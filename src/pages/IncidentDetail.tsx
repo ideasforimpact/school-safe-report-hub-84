@@ -86,9 +86,38 @@ const IncidentDetail = () => {
     incident?.status || 'Open'
   );
   
-  // Refresh function to reload incident data
+  // Refresh function to reload incident data without full page refresh
   const handleRefreshIncident = () => {
-    window.location.reload();
+    // Just trigger a re-fetch of the incident data
+    if (fetchedIncident && setIncident) {
+      const convertedIncident = {
+        id: fetchedIncident.id,
+        ticketId: fetchedIncident.ticket_id,
+        type: fetchedIncident.type.name,
+        category: fetchedIncident.category.name,
+        subcategory: fetchedIncident.subcategory.name,
+        description: fetchedIncident.description,
+        date: new Date(fetchedIncident.date),
+        location: fetchedIncident.location.name,
+        peopleInvolved: fetchedIncident.people_involved || [],
+        status: fetchedIncident.status.name,
+        reportedBy: {
+          id: fetchedIncident.created_by.id,
+          name: `${fetchedIncident.created_by.first_name} ${fetchedIncident.created_by.last_name}`
+        },
+        owner: fetchedIncident.assigned_to ? {
+          id: fetchedIncident.assigned_to.id,
+          name: `${fetchedIncident.assigned_to.first_name} ${fetchedIncident.assigned_to.last_name}`
+        } : undefined,
+        facility: fetchedIncident.facility.name,
+        documents: fetchedIncident.documents || [],
+        createdAt: new Date(fetchedIncident.date),
+        updatedAt: new Date(fetchedIncident.date),
+        priority: fetchedIncident.priority.name,
+        comments: fetchedIncident.comments || []
+      };
+      setIncident(convertedIncident);
+    }
   };
   
   if (isLoading || isFetchingIncident) {
@@ -142,7 +171,7 @@ const IncidentDetail = () => {
   const contentProps = {
     incident,
     statusUpdate,
-    setStatusUpdate,
+    setStatusUpdate: (status: string) => setStatusUpdate(status as any),
     incidentActivities: incidentDetailProps.incidentActivities || [],
     commentText: '',
     setCommentText: () => {},

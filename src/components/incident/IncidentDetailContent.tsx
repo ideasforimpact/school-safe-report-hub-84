@@ -74,18 +74,30 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   const [localCommentFiles, setLocalCommentFiles] = useState<FileItem[]>([]);
   const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [currentIncident, setCurrentIncident] = useState(incident);
 
   // Function to refresh comments without page reload
   const handleCommentAdded = useCallback(() => {
     console.log('Comment added, refreshing comments...');
     // Increment refresh key to trigger re-render
     setRefreshKey(prev => prev + 1);
-    // Trigger any additional refresh logic
+    
+    // Update the local incident state with new comments
+    // This will be updated when the parent component re-fetches data
+    setCurrentIncident(prev => ({
+      ...prev,
+      comments: prev.comments || []
+    }));
+    
+    // Call the parent's refresh handler
     handleCommentSubmit();
   }, [handleCommentSubmit]);
 
   const userName = authUser ? formatUserFullName(authUser) : 'Unknown User';
   const userId = authUser?.id || 'unknown';
+
+  // Use currentIncident instead of incident for display
+  const displayIncident = currentIncident;
 
   return (
     <div className="container max-w-6xl py-6">
@@ -94,14 +106,14 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {incident.ticketId}
+              {displayIncident.ticketId}
             </h1>
             <div className="flex flex-wrap items-center gap-3">
-              <Badge variant="outline" className={getStatusColor(incident.status)}>
-                {incident.status}
+              <Badge variant="outline" className={getStatusColor(displayIncident.status)}>
+                {displayIncident.status}
               </Badge>
-              <Badge variant="secondary">{incident.type}</Badge>
-              <Badge variant="secondary">{incident.category}</Badge>
+              <Badge variant="secondary">{displayIncident.type}</Badge>
+              <Badge variant="secondary">{displayIncident.category}</Badge>
             </div>
           </div>
         </div>
@@ -113,7 +125,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
               <Calendar className="h-5 w-5 text-gray-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Date</p>
-                <p className="font-semibold">{formatDate(incident.date)}</p>
+                <p className="font-semibold">{formatDate(displayIncident.date)}</p>
               </div>
             </CardContent>
           </Card>
@@ -123,7 +135,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
               <MapPin className="h-5 w-5 text-gray-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Location</p>
-                <p className="font-semibold">{incident.location}</p>
+                <p className="font-semibold">{displayIncident.location}</p>
               </div>
             </CardContent>
           </Card>
@@ -133,7 +145,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
               <User className="h-5 w-5 text-gray-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Reported By</p>
-                <p className="font-semibold">{incident.reportedBy.name}</p>
+                <p className="font-semibold">{displayIncident.reportedBy.name}</p>
               </div>
             </CardContent>
           </Card>
@@ -143,7 +155,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
               <Clock className="h-5 w-5 text-gray-500 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Created</p>
-                <p className="font-semibold">{formatDate(incident.createdAt)}</p>
+                <p className="font-semibold">{formatDate(displayIncident.createdAt)}</p>
               </div>
             </CardContent>
           </Card>
@@ -161,7 +173,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
 
         <TabsContent value="details" className="mt-6">
           <IncidentDetails 
-            incident={incident}
+            incident={displayIncident}
             statusUpdate={statusUpdate}
             setStatusUpdate={setStatusUpdate}
             handleStatusChange={handleStatusChange}
@@ -176,9 +188,9 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
               <CardTitle>Supporting Documents</CardTitle>
             </CardHeader>
             <CardContent>
-              {incident.documents && incident.documents.length > 0 ? (
+              {displayIncident.documents && displayIncident.documents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {incident.documents.map((doc, index) => (
+                  {displayIncident.documents.map((doc, index) => (
                     <div key={index} className="border rounded-lg p-4">
                       <p className="font-medium">{doc.name}</p>
                       <p className="text-sm text-gray-500">{doc.type}</p>
@@ -195,7 +207,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <TabsContent value="comments" className="mt-6 space-y-6">
           {/* Add Comment Form */}
           <InlineCommentForm
-            incidentId={incident.id}
+            incidentId={displayIncident.id}
             commentText={localCommentText}
             setCommentText={setLocalCommentText}
             commentFiles={localCommentFiles}
@@ -208,8 +220,8 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
           {/* Comments List */}
           <CommentsList
             key={refreshKey}
-            comments={incident.comments || []}
-            incident={incident}
+            comments={displayIncident.comments || []}
+            incident={displayIncident}
             addComment={addComment}
             updateComment={updateComment}
             deleteComment={deleteComment}
