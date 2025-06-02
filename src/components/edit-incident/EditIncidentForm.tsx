@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -35,8 +36,50 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
     users: incidentUsers
   } = useIncidentForm();
 
+  // Log all incident information for debugging
+  useEffect(() => {
+    console.log('=== EDIT INCIDENT FORM DEBUG ===');
+    console.log('Incident received:', incident);
+    console.log('Incident ID:', incident?.id);
+    console.log('Ticket ID:', incident?.ticket_id);
+    console.log('Type:', incident?.type);
+    console.log('Category:', incident?.category);
+    console.log('Subcategory:', incident?.subcategory);
+    console.log('Location:', incident?.location);
+    console.log('Facility:', incident?.facility);
+    console.log('Priority:', incident?.priority);
+    console.log('Owner:', incident?.owner);
+    console.log('Status:', incident?.status);
+    console.log('Date:', incident?.date);
+    console.log('Description:', incident?.description);
+    console.log('=== FORM CONFIG DATA ===');
+    console.log('Report Types:', reportTypes);
+    console.log('Categories:', categories);
+    console.log('Subcategories:', subcategories);
+    console.log('Locations:', locations);
+    console.log('Facilities:', facilities);
+    console.log('Priorities:', priorities);
+    console.log('Users:', incidentUsers);
+  }, [incident, reportTypes, categories, subcategories, locations, facilities, priorities, incidentUsers]);
+
   // Form state - initialize with incident data
   const [formData, setFormData] = useState(() => {
+    if (!incident) return {
+      type: '',
+      typeId: '',
+      categoryId: '',
+      subcategoryId: '',
+      description: '',
+      date: '',
+      time: '',
+      locationId: '',
+      status: 'Open',
+      owner: '',
+      facilityId: '',
+      priority: 'Medium',
+      priorityId: ''
+    };
+
     // Parse the date to get date and time
     const incidentDate = new Date(incident.date);
     const dateString = incidentDate.toISOString().split('T')[0];
@@ -61,15 +104,24 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
 
-  // Update form data when configuration data loads
+  // Update form data when configuration data loads and map incident values to IDs
   useEffect(() => {
-    if (reportTypes.length > 0 && categories.length > 0 && locations.length > 0) {
+    if (incident && reportTypes.length > 0 && categories.length > 0 && locations.length > 0) {
+      console.log('=== MAPPING INCIDENT VALUES TO IDs ===');
+      
       const typeId = reportTypes.find(t => t.name === incident.type)?.id || '';
       const categoryId = categories.find(c => c.name === incident.category)?.id || '';
       const subcategoryId = subcategories.find(s => s.name === incident.subcategory)?.id || '';
       const locationId = locations.find(l => l.name === incident.location)?.id || '';
       const facilityId = facilities.find(f => f.name === incident.facility)?.id || '';
       const priorityId = priorities.find(p => p.name === incident.priority)?.id || '';
+
+      console.log('Type mapping:', incident.type, '->', typeId);
+      console.log('Category mapping:', incident.category, '->', categoryId);
+      console.log('Subcategory mapping:', incident.subcategory, '->', subcategoryId);
+      console.log('Location mapping:', incident.location, '->', locationId);
+      console.log('Facility mapping:', incident.facility, '->', facilityId);
+      console.log('Priority mapping:', incident.priority, '->', priorityId);
 
       setFormData(prev => ({
         ...prev,
@@ -80,6 +132,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
         facilityId,
         priorityId
       }));
+
+      console.log('Form data updated with IDs');
     }
   }, [reportTypes, categories, subcategories, locations, facilities, priorities, incident]);
 
@@ -93,10 +147,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    console.log('Input change:', name, '=', value);
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
+    console.log('Select change:', name, '=', value);
     setFormData(prev => ({ ...prev, [name]: value }));
     
     // Clear subcategory when category changes
@@ -145,6 +201,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
       toast.error("You must be logged in to edit incidents");
       return;
     }
+
+    console.log('=== SUBMITTING FORM ===');
+    console.log('Form data:', formData);
 
     setIsSubmitting(true);
     
@@ -195,6 +254,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
   const handleCancel = () => {
     navigate(`/incident/${id}`);
   };
+
+  // Log current form state for debugging
+  console.log('Current form data state:', formData);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
