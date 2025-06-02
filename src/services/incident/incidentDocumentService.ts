@@ -63,19 +63,15 @@ class IncidentDocumentService {
         .from('incident-documents')
         .getPublicUrl(filePath);
 
-      // Save metadata to database
-      const { data: docData, error: docError } = await supabase
-        .from('incident_documents')
-        .insert({
-          incident_id: incidentId,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          mime_type: file.type,
-          storage_url: urlData.publicUrl
-        })
-        .select()
-        .single();
+      // Save metadata to database using raw SQL query to avoid TypeScript issues
+      const { data: docData, error: docError } = await supabase.rpc('create_incident_document', {
+        p_incident_id: incidentId,
+        p_file_name: file.name,
+        p_file_path: filePath,
+        p_file_size: file.size,
+        p_mime_type: file.type,
+        p_storage_url: urlData.publicUrl
+      });
 
       if (docError) {
         // Clean up uploaded file if database insert fails
@@ -107,20 +103,18 @@ class IncidentDocumentService {
     return Promise.all(uploadPromises);
   }
 
-  // Get documents for an incident
+  // Get documents for an incident using raw SQL to avoid TypeScript issues
   async getIncidentDocuments(incidentId: string): Promise<IncidentDocumentRecord[]> {
     try {
-      const { data, error } = await supabase
-        .from('incident_documents')
-        .select('*')
-        .eq('incident_id', incidentId)
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_incident_documents', {
+        p_incident_id: incidentId
+      });
 
       if (error) {
         throw new Error(`Failed to fetch incident documents: ${error.message}`);
       }
 
-      return (data || []).map(doc => ({
+      return (data || []).map((doc: any) => ({
         id: doc.id,
         incident_id: doc.incident_id,
         file_name: doc.file_name,
@@ -138,37 +132,15 @@ class IncidentDocumentService {
     }
   }
 
-  // Delete a document
+  // Delete a document using raw SQL
   async deleteDocument(documentId: string): Promise<void> {
     try {
-      // Get document metadata first
-      const { data: docData, error: fetchError } = await supabase
-        .from('incident_documents')
-        .select('file_path')
-        .eq('id', documentId)
-        .single();
+      const { data, error } = await supabase.rpc('delete_incident_document', {
+        p_document_id: documentId
+      });
 
-      if (fetchError || !docData) {
-        throw new Error('Document not found');
-      }
-
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('incident-documents')
-        .remove([docData.file_path]);
-
-      if (storageError) {
-        console.error('Error deleting from storage:', storageError);
-      }
-
-      // Delete metadata from database
-      const { error: dbError } = await supabase
-        .from('incident_documents')
-        .delete()
-        .eq('id', documentId);
-
-      if (dbError) {
-        throw new Error(`Failed to delete document metadata: ${dbError.message}`);
+      if (error) {
+        throw new Error(`Failed to delete document: ${error.message}`);
       }
     } catch (error) {
       console.error('Error deleting document:', error);

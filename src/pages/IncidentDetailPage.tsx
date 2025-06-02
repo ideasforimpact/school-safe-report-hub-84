@@ -8,7 +8,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { Incident, IncidentStatus } from '@/types/incident';
 import { useIncidents } from '@/contexts/IncidentContext';
 import IncidentDetails from '@/components/incident/IncidentDetails';
-import PeopleInvolvedList from '@/components/incident/PeopleInvolvedList';
 import IncidentDocuments from '@/components/incident/IncidentDocuments';
 import CommentsList from '@/components/incident/CommentsList';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -190,14 +189,27 @@ const IncidentDetailPage = () => {
 
               {/* People Involved */}
               {incident.peopleInvolved && incident.peopleInvolved.length > 0 && (
-                <PeopleInvolvedList people={incident.peopleInvolved} />
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-lg font-semibold mb-4">People Involved</h3>
+                  <div className="space-y-3">
+                    {incident.peopleInvolved.map((person, index) => (
+                      <div key={index} className="border-l-4 border-blue-500 pl-4">
+                        <p className="font-medium">{person.name}</p>
+                        <p className="text-sm text-gray-600">{person.role}</p>
+                        {person.notes && (
+                          <p className="text-sm text-gray-500 mt-1">{person.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Comments */}
-              <CommentsList incidentId={incident.id} />
+              <CommentsList incident={incident} />
             </div>
           </div>
         </div>
