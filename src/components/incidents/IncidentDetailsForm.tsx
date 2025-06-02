@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { FileItem } from '@/types/fileTypes';
-import { useIncidentForm } from '@/hooks/useIncidentForm';
+import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import AssignmentSection from './sections/AssignmentSection';
 
 interface IncidentDetailsFormProps {
@@ -30,33 +30,19 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   supportingFiles,
   onFilesChange,
 }) => {
-  const {
-    locations,
-    facilities,
-    reportTypes,
-    categories,
-    subcategories,
-    priorities,
-  } = useIncidentForm();
+  // Get form configuration data from database
+  const { formData: configData, loading: configLoading } = useIncidentFormData();
 
   // Get filtered subcategories based on selected category
   const getFilteredSubcategories = () => {
     if (!formData.categoryId) return [];
-    return subcategories.filter(sub => {
-      // For now, return all subcategories
-      // In a real implementation, you'd filter by category_id
-      return true;
-    });
+    return configData.subcategories.filter(sub => sub.category_id === formData.categoryId);
   };
 
   // Get filtered facilities based on selected location
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
-    return facilities.filter(facility => {
-      // For now, return all facilities
-      // In a real implementation, you'd filter by location_id
-      return true;
-    });
+    return configData.facilities.filter(facility => facility.campus_id === formData.locationId);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,6 +85,16 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
     onFilesChange(updatedFiles);
   };
 
+  if (configLoading) {
+    return (
+      <Card className="border-none shadow-none bg-white">
+        <CardContent className="space-y-6 p-6">
+          <div className="text-center py-8">Loading form configuration...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-none shadow-none bg-white">
       <CardContent className="space-y-6 p-6">
@@ -119,7 +115,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
-                {reportTypes.map((type) => (
+                {configData.reportTypes.map((type) => (
                   <SelectItem key={type.id} value={type.id}>
                     {type.name}
                   </SelectItem>
@@ -137,7 +133,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
-                {categories.map((category) => (
+                {configData.categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -155,7 +151,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
                 <SelectValue placeholder="Select location" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
-                {locations.map((location) => (
+                {configData.locations.map((location) => (
                   <SelectItem key={location.id} value={location.id}>
                     {location.name}
                   </SelectItem>
@@ -212,7 +208,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
-                {priorities.map((priority) => (
+                {configData.priorities.map((priority) => (
                   <SelectItem key={priority.id} value={priority.id}>
                     {priority.name}
                   </SelectItem>

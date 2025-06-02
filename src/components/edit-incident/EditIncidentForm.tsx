@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Person } from '@/types/incident';
-import { useIncidentForm } from '@/hooks/useIncidentForm';
+import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import { EditIncidentData } from '@/services/incident/editIncidentService';
 import AssignmentSection from './AssignmentSection';
 
@@ -25,30 +26,21 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Get form configuration data
-  const {
-    locations,
-    facilities,
-    reportTypes,
-    categories,
-    subcategories,
-    priorities,
-    users: incidentUsers
-  } = useIncidentForm();
+  // Get form configuration data from the new hook
+  const { formData: configData, loading: configLoading } = useIncidentFormData();
 
   // Log all incident information for debugging
   useEffect(() => {
     console.log('=== EDIT INCIDENT FORM DEBUG ===');
     console.log('Incident data received:', incidentData);
     console.log('=== FORM CONFIG DATA ===');
-    console.log('Report Types:', reportTypes);
-    console.log('Categories:', categories);
-    console.log('Subcategories:', subcategories);
-    console.log('Locations:', locations);
-    console.log('Facilities:', facilities);
-    console.log('Priorities:', priorities);
-    console.log('Users:', incidentUsers);
-  }, [incidentData, reportTypes, categories, subcategories, locations, facilities, priorities, incidentUsers]);
+    console.log('Report Types:', configData.reportTypes);
+    console.log('Categories:', configData.categories);
+    console.log('Subcategories:', configData.subcategories);
+    console.log('Locations:', configData.locations);
+    console.log('Facilities:', configData.facilities);
+    console.log('Priorities:', configData.priorities);
+  }, [incidentData, configData]);
 
   // Form state - initialize with incident data
   const [formData, setFormData] = useState(() => ({
@@ -92,20 +84,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
 
   const getFilteredSubcategories = () => {
     if (!formData.categoryId) return [];
-    return subcategories.filter(sub => {
-      // For now, return all subcategories
-      // In a real implementation, you'd filter by category_id
-      return true;
-    });
+    return configData.subcategories.filter(sub => sub.category_id === formData.categoryId);
   };
 
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
-    return facilities.filter(facility => {
-      // For now, return all facilities
-      // In a real implementation, you'd filter by location_id
-      return true;
-    });
+    return configData.facilities.filter(facility => facility.campus_id === formData.locationId);
   };
 
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
@@ -184,6 +168,14 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     navigate(`/incident/${id}`);
   };
 
+  if (configLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center py-8">Loading form configuration...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <form onSubmit={handleSubmit} className="w-full">
@@ -200,7 +192,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">
-                    {reportTypes.map((type) => (
+                    {configData.reportTypes.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
                       </SelectItem>
@@ -218,7 +210,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">
-                    {categories.map((category) => (
+                    {configData.categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
@@ -236,7 +228,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">
-                    {locations.map((location) => (
+                    {configData.locations.map((location) => (
                       <SelectItem key={location.id} value={location.id}>
                         {location.name}
                       </SelectItem>
@@ -293,7 +285,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">
-                    {priorities.map((priority) => (
+                    {configData.priorities.map((priority) => (
                       <SelectItem key={priority.id} value={priority.id}>
                         {priority.name}
                       </SelectItem>
@@ -349,10 +341,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               />
             </div>
 
-            {/* Assign To - Using the new AssignmentSection component */}
+            {/* Assign To - Using the AssignmentSection component */}
             <AssignmentSection
               owner={formData.owner}
-              users={incidentUsers}
               onSelectChange={handleSelectChange}
             />
 
