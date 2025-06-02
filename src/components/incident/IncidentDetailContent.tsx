@@ -183,7 +183,9 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
             setStatusUpdate={setStatusUpdate}
             handleStatusChange={handleStatusUpdate}
             formatDate={formatDate}
+            formatDateTime={formatDateTime}
             getStatusColor={getStatusColor}
+            updateIncident={updateIncident}
           />
         </TabsContent>
 
