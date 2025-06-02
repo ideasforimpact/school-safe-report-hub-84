@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -146,7 +145,7 @@ const ReportIncident = () => {
         return;
       }
       
-      // Create a safe date with better validation
+      // Create a safe date with comprehensive validation
       const createSafeDate = () => {
         try {
           // Use current date/time as fallback if form data is invalid
@@ -158,6 +157,8 @@ const ReportIncident = () => {
           // Parse the date string safely
           const dateStr = formData.date;
           const timeStr = formData.time || '12:00';
+          
+          console.log('Processing date:', dateStr, 'time:', timeStr);
           
           // Validate date format (YYYY-MM-DD)
           if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
@@ -171,16 +172,34 @@ const ReportIncident = () => {
             return new Date();
           }
           
-          // Create the date-time string
-          const dateTimeString = `${dateStr}T${timeStr}:00`;
-          const date = new Date(dateTimeString);
+          // Parse date components to ensure they're valid
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const [hour, minute] = timeStr.split(':').map(Number);
           
-          // Check if the date is valid
-          if (isNaN(date.getTime())) {
-            console.log('Invalid date created, using current date');
+          // Additional validation for date/time ranges
+          if (year < 1900 || year > 2100 || 
+              month < 1 || month > 12 || 
+              day < 1 || day > 31 ||
+              hour < 0 || hour > 23 ||
+              minute < 0 || minute > 59) {
+            console.log('Date/time values out of range, using current date');
             return new Date();
           }
           
+          // Create date using Date constructor with individual components
+          // Note: Month is 0-based in JavaScript Date constructor
+          const date = new Date(year, month - 1, day, hour, minute, 0, 0);
+          
+          // Final validation - check if the date is valid
+          if (isNaN(date.getTime()) || 
+              date.getFullYear() !== year ||
+              date.getMonth() !== (month - 1) ||
+              date.getDate() !== day) {
+            console.log('Invalid date created (likely invalid day for month), using current date');
+            return new Date();
+          }
+          
+          console.log('Created valid date:', date);
           return date;
         } catch (error) {
           console.error('Error creating date:', error);
@@ -218,8 +237,8 @@ const ReportIncident = () => {
         location_id: formData.locationId || null,
         facility_id: formData.facilityId || null,
         priority_id: formData.priorityId || null,
-        people_involved: JSON.parse(JSON.stringify(validPeople)), // Convert to Json type
-        documents: JSON.parse(JSON.stringify(documents)), // Convert to Json type
+        people_involved: JSON.parse(JSON.stringify(validPeople)),
+        documents: JSON.parse(JSON.stringify(documents)),
         created_by: employeeId,
         assigned_to: formData.owner || null,
         client_id: clientId,
