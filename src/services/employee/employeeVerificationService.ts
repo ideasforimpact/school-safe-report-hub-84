@@ -7,6 +7,26 @@ export interface EmployeeVerificationDetails {
   documents: VerificationDocument[];
 }
 
+// Helper function to safely parse employee_docs_log
+const parseEmployeeDocsLog = (log: any): Array<{
+  timestamp: string;
+  action: string;
+  response: any;
+  notes?: string;
+}> => {
+  if (!log) return [];
+  if (Array.isArray(log)) return log;
+  if (typeof log === 'string') {
+    try {
+      const parsed = JSON.parse(log);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export const getEmployeeVerificationDetails = async (employeeId: string): Promise<EmployeeVerificationDetails> => {
   try {
     console.log('Fetching employee verification details for ID:', employeeId);
@@ -92,7 +112,7 @@ export const getEmployeeVerificationDetails = async (employeeId: string): Promis
       return { employee, documents: [] };
     }
 
-    // Map documents data to VerificationDocument type
+    // Map documents data to VerificationDocument type with proper type conversion
     const documents: VerificationDocument[] = (documentsData || []).map(doc => ({
       id: doc.id,
       employeeId: doc.employee_id,
@@ -106,8 +126,8 @@ export const getEmployeeVerificationDetails = async (employeeId: string): Promis
       verificationDate: null,
       verificationNotes: '',
       verificationMethod: 'manual',
-      employee_docs_log: doc.employee_docs_log || [],
-      params: doc.params || {},
+      employee_docs_log: parseEmployeeDocsLog(doc.employee_docs_log),
+      params: (doc.params as Record<string, any>) || {},
       createdAt: doc.created_at,
       updatedAt: doc.updated_at
     }));
@@ -186,7 +206,7 @@ export const getEmployeeDocumentsByTimeframe = async (employeeId: string, timefr
       return [];
     }
 
-    // Map documents data to VerificationDocument type
+    // Map documents data to VerificationDocument type with proper type conversion
     const documents: VerificationDocument[] = (data || []).map(doc => ({
       id: doc.id,
       employeeId: doc.employee_id,
@@ -200,8 +220,8 @@ export const getEmployeeDocumentsByTimeframe = async (employeeId: string, timefr
       verificationDate: null,
       verificationNotes: '',
       verificationMethod: 'manual',
-      employee_docs_log: doc.employee_docs_log || [],
-      params: doc.params || {},
+      employee_docs_log: parseEmployeeDocsLog(doc.employee_docs_log),
+      params: (doc.params as Record<string, any>) || {},
       createdAt: doc.created_at,
       updatedAt: doc.updated_at
     }));
