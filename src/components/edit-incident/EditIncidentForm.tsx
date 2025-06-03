@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -6,20 +7,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Person } from '@/types/incident';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import { EditIncidentData } from '@/services/incident/editIncidentService';
-import { FileItem } from '@/types/fileTypes';
 import { useIncidentDocuments } from '@/hooks/useIncidentDocuments';
 import AssignmentSection from './AssignmentSection';
 import DragDropFileUpload from '@/components/file/DragDropFileUpload';
+import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
+import { Student } from '@/types/student';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
+}
+
+interface UserBasicInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  name: string;
 }
 
 const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => {
@@ -111,17 +119,22 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     return configData.facilities.filter(facility => facility.campus_id === formData.locationId);
   };
 
-  const handlePersonChange = (index: number, field: keyof Person, value: string) => {
+  const handlePersonChange = (index: number, field: string, value: string) => {
     const updatedPeople = [...peopleInvolved];
-    updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    if (field === 'role' && value !== updatedPeople[index].role) {
+      // Clear name when role changes
+      updatedPeople[index] = { ...updatedPeople[index], [field]: value as 'Student' | 'Staff' | 'Other', name: '' };
+    } else {
+      updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    }
     setPeopleInvolved(updatedPeople);
   };
 
-  const addPerson = () => {
+  const handleAddPerson = () => {
     setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
   };
 
-  const removePerson = (index: number) => {
+  const handleRemovePerson = (index: number) => {
     const updatedPeople = peopleInvolved.filter((_, i) => i !== index);
     setPeopleInvolved(updatedPeople);
   };
@@ -202,6 +215,10 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       </div>
     );
   }
+
+  // Create empty arrays for students and employees - they will be fetched inside the component
+  const students: Student[] = [];
+  const employees: UserBasicInfo[] = [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -374,7 +391,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               onSelectChange={handleSelectChange}
             />
 
-            {/* Supporting Files Section - NEW */}
+            {/* Supporting Files Section */}
             <div className="space-y-4">
               <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
               <DragDropFileUpload
@@ -419,75 +436,15 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               )}
             </div>
 
-            {/* People Involved */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-gray-700">People Involved</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addPerson}
-                  className="h-8 px-3"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Person
-                </Button>
-              </div>
-
-              {peopleInvolved.map((person, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600">Name</Label>
-                    <Input
-                      placeholder="Full name"
-                      value={person.name}
-                      onChange={(e) => handlePersonChange(index, 'name', e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600">Role</Label>
-                    <Select 
-                      value={person.role} 
-                      onValueChange={(value) => handlePersonChange(index, 'role', value as 'Student' | 'Staff' | 'Other')}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white z-50">
-                        <SelectItem value="Student">Student</SelectItem>
-                        <SelectItem value="Staff">Staff</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs text-gray-600">Notes</Label>
-                    <Input
-                      placeholder="Additional notes"
-                      value={person.notes || ''}
-                      onChange={(e) => handlePersonChange(index, 'notes', e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removePerson(index)}
-                      className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* People Involved - Now using the same component as the report form */}
+            <PeopleInvolvedSection
+              peopleInvolved={peopleInvolved}
+              onPersonChange={handlePersonChange}
+              onAddPerson={handleAddPerson}
+              onRemovePerson={handleRemovePerson}
+              students={students}
+              employees={employees}
+            />
           </CardContent>
 
           <CardFooter className="flex justify-between border-t bg-white px-6 py-4">
