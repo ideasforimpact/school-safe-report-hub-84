@@ -53,7 +53,7 @@ class IncidentDataService {
         .eq('client_id', clientId);
 
       // Apply filtering based on user role and permissions
-      console.log(employeeData,"employeeData");
+      console.log(employeeData,"employeeData",hasIncidentAdmin);
       if (employeeData) {
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
