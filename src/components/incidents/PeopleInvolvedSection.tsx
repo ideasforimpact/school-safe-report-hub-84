@@ -46,7 +46,14 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [fetchedStudents, setFetchedStudents] = useState<Student[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
-  const [clientType, setClientType] = useState<string>('');
+  
+  // Get client type from auth context
+  const clientType = employeeData?.client?.client_type?.key || employeeData?.clientType?.key || '';
+  const isSchoolClient = clientType.toLowerCase() === 'school';
+  
+  console.log('Auth employeeData in incidents:', employeeData);
+  console.log('Client type from auth:', clientType);
+  console.log('Is school client:', isSchoolClient);
   
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
@@ -192,7 +199,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         ? fetchedStudents.filter(student => {
             const searchTerm = searchQuery.toLowerCase();
             return student.name.toLowerCase().includes(searchTerm) ||
-                   student.studentId.toLowerCase().includes(searchTerm) ||
+                   student.studentId.toLowerCase().includes(searchQuery) ||
                    student.grade.toLowerCase().includes(searchTerm) ||
                    student.section.toLowerCase().includes(searchTerm);
           })
@@ -322,7 +329,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     const options = [];
     
     // Only show Student option if client type is "school"
-    if (clientType.toLowerCase() === 'school') {
+    if (isSchoolClient) {
       options.push({ value: 'Student', label: 'Student' });
     }
     

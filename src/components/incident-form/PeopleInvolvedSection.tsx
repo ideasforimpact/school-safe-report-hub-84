@@ -21,42 +21,23 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   setPeopleInvolved
 }) => {
   const { employeeData } = useAuth();
-  const [clientType, setClientType] = useState<string>('');
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
 
-  // Fetch client type information
-  useEffect(() => {
-    const fetchClientType = async () => {
-      if (!employeeData?.clientId) return;
+  // Get client type from auth context
+  const clientType = employeeData?.client?.client_type?.key || employeeData?.clientType?.key || '';
+  const isSchoolClient = clientType.toLowerCase() === 'school';
 
-      try {
-        const { data: clientData, error } = await supabase
-          .from('clients')
-          .select('institution_type')
-          .eq('id', employeeData.clientId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching client type:', error);
-          return;
-        }
-
-        setClientType(clientData?.institution_type || '');
-      } catch (error) {
-        console.error('Error fetching client type:', error);
-      }
-    };
-
-    fetchClientType();
-  }, [employeeData?.clientId]);
+  console.log('Auth employeeData:', employeeData);
+  console.log('Client type from auth:', clientType);
+  console.log('Is school client:', isSchoolClient);
 
   // Fetch students when client type is school
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!employeeData?.clientId || clientType.toLowerCase() !== 'school') return;
+      if (!employeeData?.clientId || !isSchoolClient) return;
 
       try {
         setIsLoadingStudents(true);
@@ -90,7 +71,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     };
 
     fetchStudents();
-  }, [employeeData?.clientId, clientType]);
+  }, [employeeData?.clientId, isSchoolClient]);
 
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
@@ -134,7 +115,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const addPerson = () => {
-    const defaultRole = clientType.toLowerCase() === 'school' ? 'Student' as const : 'Staff' as const;
+    const defaultRole = isSchoolClient ? 'Student' as const : 'Staff' as const;
     setPeopleInvolved([...peopleInvolved, { name: '', role: defaultRole, notes: '' }]);
   };
 
@@ -148,7 +129,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     const options = [];
     
     // Only show Student option if client type is "school"
-    if (clientType.toLowerCase() === 'school') {
+    if (isSchoolClient) {
       options.push({ value: 'Student', label: 'Student' });
     }
     
@@ -162,7 +143,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const renderNameField = (person: Person, index: number) => {
-    if (person.role === 'Student' && clientType.toLowerCase() === 'school') {
+    if (person.role === 'Student' && isSchoolClient) {
       const isCurrentlySearching = isSearching[index];
       const filteredStudents = getFilteredStudents(index);
 
@@ -228,7 +209,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   if (peopleInvolved.length === 0) {
-    const defaultRole = clientType.toLowerCase() === 'school' ? 'Student' as const : 'Staff' as const;
+    const defaultRole = isSchoolClient ? 'Student' as const : 'Staff' as const;
     setPeopleInvolved([{ name: '', role: defaultRole, notes: '' }]);
   }
 
