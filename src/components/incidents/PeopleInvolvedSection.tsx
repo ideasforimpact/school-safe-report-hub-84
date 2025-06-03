@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
@@ -44,7 +43,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 }) => {
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [fetchedStudents, setFetchedStudents] = useState<Student[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [clientType, setClientType] = useState<string>('');
@@ -146,7 +145,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           updatedAt: new Date()
         }));
 
-        setFilteredStudents(mappedStudents);
+        setFetchedStudents(mappedStudents);
       } catch (error) {
         console.error('Error fetching students:', error);
         toast.error('Failed to load students');
@@ -169,7 +168,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       onPersonChange(index, 'name', `${staff.firstName} ${staff.lastName}`);
     } else {
       const student = person as Student;
-      onPersonChange(index, 'name', student.name);
+      // For students, store the name with student ID for better identification
+      onPersonChange(index, 'name', `${student.name} (${student.studentId})`);
     }
     setIsSearching(prev => ({ ...prev, [index]: false }));
     setSearchQueries(prev => ({ ...prev, [index]: '' }));
@@ -189,13 +189,14 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         : staffMembers;
     } else if (role === 'Student') {
       return searchQuery
-        ? filteredStudents.filter(student => {
+        ? fetchedStudents.filter(student => {
             const searchTerm = searchQuery.toLowerCase();
             return student.name.toLowerCase().includes(searchTerm) ||
+                   student.studentId.toLowerCase().includes(searchTerm) ||
                    student.grade.toLowerCase().includes(searchTerm) ||
                    student.section.toLowerCase().includes(searchTerm);
           })
-        : filteredStudents;
+        : fetchedStudents;
     }
     return [];
   };
@@ -205,8 +206,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const staff = staffMembers.find(s => `${s.firstName} ${s.lastName}` === person.name);
       return staff ? `${staff.firstName} ${staff.lastName} (${staff.email})` : person.name;
     } else if (role === 'Student') {
-      const student = filteredStudents.find(s => s.name === person.name);
-      return student ? `${student.name} - ${student.grade} ${student.section}` : person.name;
+      // If the name already includes student ID in parentheses, return as is
+      if (person.name.includes('(') && person.name.includes(')')) {
+        return person.name;
+      }
+      // Otherwise, try to find the student and add ID
+      const student = fetchedStudents.find(s => s.name === person.name);
+      return student ? `${student.name} (${student.studentId})` : person.name;
     }
     return person.name;
   };
@@ -237,7 +243,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               placeholder={
                 isLoading 
                   ? `Loading ${person.role === 'Student' ? 'students' : person.role.toLowerCase()}s...` 
-                  : `Search by ${person.role === 'Student' ? 'student' : person.role.toLowerCase()} name...`
+                  : `Search by ${person.role === 'Student' ? 'student name or ID' : person.role.toLowerCase() + ' name'}...`
               }
               className={`w-full pr-8 ${hasError ? 'border-red-500' : ''}`}
               disabled={isLoading}
@@ -275,7 +281,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                             {(option as Student).name}
                           </span>
                           <span className="text-gray-500 ml-1">
-                            - {(option as Student).grade} {(option as Student).section}
+                            ({(option as Student).studentId}) - {(option as Student).grade} {(option as Student).section}
                           </span>
                         </>
                       )}
