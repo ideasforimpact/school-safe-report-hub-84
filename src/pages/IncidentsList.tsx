@@ -24,12 +24,14 @@ const IncidentsList = () => {
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
-    
+
     // Find module based on current route
     const currentModule = employeeState.configuredModules?.find(
       module => module.url === location.pathname
     );
-    
+
+    console.log(currentModule,"currentModule")
+
     return currentModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules, location.pathname]);
 
