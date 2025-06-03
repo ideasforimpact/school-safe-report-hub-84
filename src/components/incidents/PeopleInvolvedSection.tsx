@@ -58,7 +58,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
-  const [clientType, setClientType] = useState<string>('');
 
   // Fetch client type information
   useEffect(() => {
