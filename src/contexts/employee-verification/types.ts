@@ -9,19 +9,19 @@ export interface EmployeeVerificationContextType {
   
   // Employee management
   employees: Employee[];
-  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateEmployee: (id: string, employee: Partial<Employee>) => Promise<void>;
-  deleteEmployee: (id: string) => Promise<void>;
+  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
+  updateEmployee: (id: string, employee: Partial<Employee>) => Promise<Employee>;
+  deleteEmployee: (id: string) => Promise<boolean>;
   getEmployee: (id: string) => Employee | undefined;
-  fetchEmployees: () => Promise<void>;
+  fetchEmployees: () => Promise<Employee[]>;
   
   // Document management
   documents: VerificationDocument[];
-  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
   verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
-  fetchEmployeeDocuments: (employeeId: string, timeframe?: string) => Promise<void>;
+  fetchEmployeeDocuments: (employeeId: string, timeframe?: string) => Promise<VerificationDocument[]>;
   
   // Document types and statuses
   documentTypes: DocumentType[];

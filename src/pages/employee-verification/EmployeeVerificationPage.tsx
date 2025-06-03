@@ -1,29 +1,16 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import { FileCheck, BarChart2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useAuth } from '@/contexts/auth';
 
 const EmployeeVerificationPage = () => {
-  const { fetchEmployees, isLoading } = useEmployeeVerification();
-  const { user, employeeData } = useAuth();
-  
-  // Get client_id from either employeeData or user context
-  const clientId = employeeData?.clientId || user?.clientId;
-
-  // Debug logging
-  useEffect(() => {
-    console.log('EmployeeVerificationPage - Current user:', user);
-    console.log('EmployeeVerificationPage - Current employeeData:', employeeData);
-    console.log('EmployeeVerificationPage - ClientId:', clientId);
-  }, [user, employeeData, clientId]);
+  const { fetchEmployees } = useEmployeeVerification();
   
   const handleRefresh = () => {
-    console.log('EmployeeVerificationPage: Manual refresh triggered');
     fetchEmployees();
   };
 
@@ -36,9 +23,6 @@ const EmployeeVerificationPage = () => {
             <div>
               <h1 className="text-2xl font-bold text-left">Employee Verification</h1>
               <p className="text-gray-500 text-sm text-left">Manage and verify employee documents</p>
-              {clientId && (
-                <p className="text-xs text-gray-400">Client ID: {clientId}</p>
-              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -53,9 +37,8 @@ const EmployeeVerificationPage = () => {
               size="icon" 
               onClick={handleRefresh} 
               title="Refresh employees"
-              disabled={isLoading}
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
         </div>

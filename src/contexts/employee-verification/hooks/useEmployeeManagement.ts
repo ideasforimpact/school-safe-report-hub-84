@@ -54,20 +54,13 @@ export const useEmployeeManagement = () => {
         employeeId: emp.employee_id,
         name: `${emp.first_name} ${emp.last_name}`,
         department: emp.department,
-        employeeType: emp.employee_type as Employee['employeeType'],
+        employeeType: emp.employee_type,
         joiningDate: emp.joining_date,
         status: emp.status,
         clientId: emp.client_id,
         email: emp.email,
         createdAt: emp.created_at,
-        updatedAt: emp.updated_at,
-        // Add optional fields with defaults
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        position: emp.department,
-        firstName: emp.first_name,
-        lastName: emp.last_name
+        updatedAt: emp.updated_at
       }));
 
       console.log('Fetched employees:', formattedEmployees);
@@ -110,20 +103,13 @@ export const useEmployeeManagement = () => {
         employeeId: data.employee_id,
         name: `${data.first_name} ${data.last_name}`,
         department: data.department,
-        employeeType: data.employee_type as Employee['employeeType'],
+        employeeType: data.employee_type,
         joiningDate: data.joining_date,
         status: data.status,
         clientId: data.client_id,
         email: data.email,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        // Add optional fields with defaults
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        position: data.department,
-        firstName: data.first_name,
-        lastName: data.last_name
+        updatedAt: data.updated_at
       };
 
       setEmployees(prev => [newEmployee, ...prev]);
@@ -164,20 +150,13 @@ export const useEmployeeManagement = () => {
         employeeId: data.employee_id,
         name: `${data.first_name} ${data.last_name}`,
         department: data.department,
-        employeeType: data.employee_type as Employee['employeeType'],
+        employeeType: data.employee_type,
         joiningDate: data.joining_date,
         status: data.status,
         clientId: data.client_id,
         email: data.email,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        // Add optional fields with defaults
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        position: data.department,
-        firstName: data.first_name,
-        lastName: data.last_name
+        updatedAt: data.updated_at
       };
 
       setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));

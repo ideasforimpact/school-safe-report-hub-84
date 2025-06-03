@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,8 +29,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     updateEmployee,
     deleteEmployee,
     getEmployee,
-    fetchEmployees,
-    isLoading: isEmployeeLoading
+    fetchEmployees
   } = useEmployeeManagement();
 
   // Update employee status based on document verifications
@@ -55,12 +53,6 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     fetchEmployeeDocuments,
     isLoading: isDocumentLoading
   } = useDocumentManagement(updateEmployeeStatus);
-
-  // Auto-fetch employees when the context is initialized
-  useEffect(() => {
-    console.log('EmployeeVerificationContext: Auto-fetching employees on mount');
-    fetchEmployees();
-  }, [fetchEmployees]);
 
   // Fetch document types from the database with cache control
   const fetchDocumentTypes = useCallback(async () => {
@@ -207,14 +199,20 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     fetchDocumentStatuses,
     
     // Loading state
-    isLoading: isLoading || isDocumentLoading || isEmployeeLoading
+    isLoading: isLoading || isDocumentLoading
   }), [
     verifyEmployee, isVerifying, verificationError,
     employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees,
     documents, addDocument, verifyDocument, deleteDocument, getEmployeeDocuments, fetchEmployeeDocuments,
     documentTypes, documentStatuses, fetchDocumentTypes, fetchDocumentStatuses,
-    isLoading, isDocumentLoading, isEmployeeLoading
+    isLoading, isDocumentLoading
   ]);
+
+  // Fetch initial data when the context mounts, but only once
+  useEffect(() => {
+    fetchDocumentTypes();
+    fetchDocumentStatuses();
+  }, []);
 
   return (
     <EmployeeVerificationContext.Provider value={contextValue}>
@@ -223,10 +221,9 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   );
 };
 
-// Hook to use the context
-export const useEmployeeVerification = (): EmployeeVerificationContextType => {
+export const useEmployeeVerification = () => {
   const context = useContext(EmployeeVerificationContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useEmployeeVerification must be used within an EmployeeVerificationProvider');
   }
   return context;
