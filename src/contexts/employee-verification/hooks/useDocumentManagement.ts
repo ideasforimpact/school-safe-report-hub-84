@@ -63,13 +63,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const formattedDocuments: VerificationDocument[] = data.map(doc => ({
         id: doc.id,
         employeeId: doc.employee_id,
-        documentTypeId: doc.document_type_id,
-        documentImage: doc.document_url,
+        documentType: doc.document_type?.name || 'Unknown',
+        documentUrl: doc.document_url,
         documentNumber: doc.document_number || '',
         verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-        createdAt: doc.created_at,
-        updatedAt: doc.updated_at,
-        expiryDate: (doc.params as any)?.expiryDate || null,
+        uploadDate: doc.created_at,
+        expiryDate: doc.params?.expiryDate || null,
         verificationDate: null,
         verificationNotes: '',
         verificationMethod: 'manual'
@@ -87,7 +86,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   }, [clientId]);
 
-  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'uploadDate'>) => {
     if (!clientId) {
       toast.error('No client context available');
       return;
@@ -111,7 +110,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const { data: docType } = await supabase
         .from('employee_document_type')
         .select('id')
-        .eq('id', document.documentTypeId)
+        .eq('name', document.documentType)
         .single();
 
       // Get pending status ID
@@ -125,9 +124,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         .from('employee_documents')
         .insert([{
           employee_id: document.employeeId,
-          document_type_id: document.documentTypeId,
+          document_type_id: docType?.id,
           document_status_id: pendingStatus?.id,
-          document_url: document.documentImage,
+          document_url: document.documentUrl,
           document_number: document.documentNumber,
           verification_status: document.verificationStatus,
           params: document.expiryDate ? { expiryDate: document.expiryDate } : {}
@@ -140,12 +139,11 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const newDocument: VerificationDocument = {
         id: data.id,
         employeeId: data.employee_id,
-        documentTypeId: data.document_type_id,
-        documentImage: data.document_url,
+        documentType: document.documentType,
+        documentUrl: data.document_url,
         documentNumber: data.document_number || '',
         verificationStatus: data.verification_status as 'verified' | 'failed' | 'pending',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
+        uploadDate: data.created_at,
         expiryDate: document.expiryDate,
         verificationDate: null,
         verificationNotes: '',
