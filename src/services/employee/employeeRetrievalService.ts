@@ -114,8 +114,17 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee | nul
   }
 };
 
-export const getEmployeeByUserIdFromApi = async (userId: string): Promise<Employee | null> => {
+export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: string): Promise<Employee | null> => {
   try {
+    // Skip employee fetch for routes that don't need it
+    const skipRoutes = ['/', '/login', '/pricing', '/support', '/blog'];
+    if (routePath && skipRoutes.includes(routePath)) {
+      console.log('Skipping employee fetch for route:', routePath);
+      return null;
+    }
+
+    console.log('Fetching employee by user ID:', userId);
+    
     // Use maybeSingle to avoid errors when no employee is found
     const { data, error } = await supabase
       .from('employees')
@@ -132,6 +141,8 @@ export const getEmployeeByUserIdFromApi = async (userId: string): Promise<Employ
       console.log("No employee found for user ID:", userId);
       return null;
     }
+
+    console.log('Found employee data:', data);
 
     // Convert the response to our Employee type
     return {

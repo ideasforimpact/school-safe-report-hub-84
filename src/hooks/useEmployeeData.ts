@@ -14,11 +14,20 @@ export const useEmployeeData = () => {
 
   // Check if we're on a route that needs employee data
   const needsEmployeeData = location.pathname === '/dashboard' || 
-                           location.pathname.includes('/employee') ||
+                           location.pathname.includes('/employee-verification') ||
                            location.pathname.includes('/settings') ||
                            location.pathname.includes('/assessment') ||
                            location.pathname.includes('/incident') ||
-                           location.pathname.includes('/transport');
+                           location.pathname.includes('/transport') ||
+                           location.pathname.includes('/edusafe') ||
+                           location.pathname.includes('/grievances');
+
+  // Don't fetch employee data on home page or other non-relevant routes
+  const shouldSkipEmployeeData = location.pathname === '/' || 
+                                location.pathname === '/login' ||
+                                location.pathname === '/pricing' ||
+                                location.pathname === '/support' ||
+                                location.pathname === '/blog';
 
   // Fetch configured modules for the employee - now optimized to avoid unnecessary calls
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
@@ -48,9 +57,10 @@ export const useEmployeeData = () => {
         .from('employees')
         .select('is_super_admin')
         .eq('id', employeeId)
-        .single();
+        .maybeSingle();
 
       if (employeeError) {
+        console.error('Error fetching employee:', employeeError);
         dispatch(setError(employeeError.message));
         return;
       }
@@ -74,6 +84,7 @@ export const useEmployeeData = () => {
           .eq('enabled', true);
 
         if (clientModulesError) {
+          console.error('Error fetching client modules:', clientModulesError);
           dispatch(setError(clientModulesError.message));
           return;
         }
@@ -109,6 +120,7 @@ export const useEmployeeData = () => {
           .eq('enabled', true);
 
         if (clientModulesError) {
+          console.error('Error fetching client modules:', clientModulesError);
           dispatch(setError(clientModulesError.message));
           return;
         }
@@ -123,6 +135,7 @@ export const useEmployeeData = () => {
           .eq('employee_id', employeeId);
 
         if (employeeModulesError) {
+          console.error('Error fetching employee modules:', employeeModulesError);
           dispatch(setError(employeeModulesError.message));
           return;
         }
@@ -183,6 +196,7 @@ export const useEmployeeData = () => {
       }, remainingTime);
 
     } catch (error) {
+      console.error('Error in fetchConfiguredModules:', error);
       dispatch(setError("Failed to fetch configured modules"));
       dispatch(setLoading(false));
     }
@@ -190,6 +204,11 @@ export const useEmployeeData = () => {
 
   // Set employee data from auth context and fetch modules when available
   useEffect(() => {
+    // Skip employee data processing on routes that don't need it
+    if (shouldSkipEmployeeData) {
+      return;
+    }
+
     // Only process employee data if we're on a route that needs it
     if (!needsEmployeeData) {
       return;
@@ -214,14 +233,17 @@ export const useEmployeeData = () => {
       if (user && user.id) {
         const fetchEmployeeDataFromDB = async () => {
           try {
+            console.log('Fetching employee data for user:', user.id);
+            
             // Try to get employee data by user ID
             const { data, error } = await supabase
               .from('employees')
               .select('id, client_id, first_name, last_name, email, is_super_admin')
               .eq('user_id', user.id)
-              .single();
+              .maybeSingle();
               
             if (error) {
+              console.error('Error fetching employee data:', error);
               return;
             }
             
@@ -235,6 +257,8 @@ export const useEmployeeData = () => {
                 isSuperAdmin: data.is_super_admin
               };
               
+              console.log('Found employee data:', employeeData);
+              
               // Set employee data in Redux store
               dispatch(setEmployeeData(employeeData));
               
@@ -247,16 +271,18 @@ export const useEmployeeData = () => {
               if (data.id && data.client_id) {
                 fetchConfiguredModules(data.id, data.client_id);
               }
+            } else {
+              console.log('No employee data found for user:', user.id);
             }
           } catch (fetchError) {
-            // Silent error handling
+            console.error('Error in fetchEmployeeDataFromDB:', fetchError);
           }
         };
         
         fetchEmployeeDataFromDB();
       }
     }
-  }, [authEmployeeData, user, needsEmployeeData]);
+  }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
 
   return {
     employeeData: state.employeeData,
