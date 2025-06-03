@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -14,7 +13,7 @@ class IncidentDataService {
     return IncidentDataService.instance;
   }
 
-  async fetchIncidentsForClient(clientId: string, forceRefresh = false, employeeData?: any): Promise<IncidentRecord[]> {
+  async fetchIncidentsForClient(clientId: string, forceRefresh = false, employeeData?: any, hasIncidentAdmin?: boolean): Promise<IncidentRecord[]> {
     const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}`;
     
     // Return cached data if available and not forcing refresh
@@ -59,12 +58,7 @@ class IncidentDataService {
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
         if (!isSuperAdmin) {
-          // Check if user has incident admin access
-          const hasIncidentAdmin = employeeData.configuredModules?.some((module: any) => 
-            (module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')) &&
-            (module.accessLevel?.isAdmin === true || module.accessLevel?.is_admin === true)
-          );
-
+          // Use the passed hasIncidentAdmin parameter
           if (hasIncidentAdmin) {
             // Incident admin (non-super admin): Own incidents + incidents assigned to them
             query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
@@ -121,7 +115,7 @@ class IncidentDataService {
   }
 
   // Method to get basic stats without full incident data
-  async getIncidentStats(clientId: string, employeeData?: any): Promise<{
+  async getIncidentStats(clientId: string, employeeData?: any, hasIncidentAdmin?: boolean): Promise<{
     total: number;
     open: number;
     inProgress: number;
@@ -143,11 +137,6 @@ class IncidentDataService {
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
         if (!isSuperAdmin) {
-          const hasIncidentAdmin = employeeData.configuredModules?.some((module: any) => 
-            (module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')) &&
-            (module.accessLevel?.isAdmin === true || module.accessLevel?.is_admin === true)
-          );
-
           if (hasIncidentAdmin) {
             query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
           } else {

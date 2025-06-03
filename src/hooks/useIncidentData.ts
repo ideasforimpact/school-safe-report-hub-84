@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus } from '@/types/incident';
 import { toast } from 'sonner';
 import { incidentDataService } from '@/services/incident/incidentDataService';
+import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import React from 'react';
 
 export const useIncidentData = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -13,6 +15,19 @@ export const useIncidentData = () => {
   const [error, setError] = useState<string | null>(null);
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
+
+  // Check if user has incident admin access
+  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  const hasIncidentAdmin = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    // Check configured modules for incidents admin access
+    const incidentsModule = employeeState.configuredModules?.find(
+      module => module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')
+    );
+    
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
 
   const fetchIncidents = useCallback(async () => {
     try {
@@ -42,14 +57,15 @@ export const useIncidentData = () => {
 
       console.log('Fetching incidents for client:', clientId);
 
-      // Pass employee data for role-based filtering
+      // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
 
-      // Use the centralized service with employee data
+      // Use the centralized service with employee data and incident admin access
       const incidentRecords = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         false, 
-        employeeDataForFiltering
+        employeeDataForFiltering,
+        hasIncidentAdmin
       );
 
       // Transform the data with proper type casting
@@ -90,7 +106,7 @@ export const useIncidentData = () => {
     } finally {
       setLoading(false);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
   const refetchIncidents = useCallback(async () => {
     await fetchIncidents();

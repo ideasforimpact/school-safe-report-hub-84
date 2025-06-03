@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -11,12 +10,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
+
+  // Check if user has incident admin access
+  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  const hasIncidentAdmin = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    // Check configured modules for incidents admin access
+    const incidentsModule = employeeState.configuredModules?.find(
+      module => module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')
+    );
+    
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
 
   // Transform IncidentRecord[] to Incident[] for the filter hook
   const transformedIncidents = incidents.map(record => ({
@@ -105,13 +118,14 @@ const IncidentsList = () => {
         incidentDataService.clearCache(clientId, employeeId);
       }
 
-      // Pass employee data for role-based filtering
+      // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
       const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
-        employeeDataForFiltering
+        employeeDataForFiltering,
+        hasIncidentAdmin
       );
       
       setIncidents(fetchedIncidents);
