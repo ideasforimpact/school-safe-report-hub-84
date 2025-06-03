@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -152,8 +153,12 @@ const IncidentsList = () => {
   };
 
   useEffect(() => {
-    fetchIncidents();
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
+    // Only fetch if we have the necessary data and hasIncidentAdmin is properly determined
+    if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
+        employeeState.configuredModules) {
+      fetchIncidents();
+    }
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin]);
 
   // Add visibility change listener to refetch when page becomes visible
   useEffect(() => {
@@ -169,7 +174,7 @@ const IncidentsList = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin]);
 
   // Add focus listener to refetch when window regains focus
   useEffect(() => {
@@ -183,7 +188,7 @@ const IncidentsList = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin]);
 
   return (
     <Layout>
