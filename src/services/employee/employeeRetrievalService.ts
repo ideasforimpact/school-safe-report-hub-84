@@ -3,9 +3,15 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
-export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<Employee[]> => {
+export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoClient: boolean = true): Promise<Employee[]> => {
   try {
     console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
+    
+    // If no clientId and we should skip, return empty array
+    if (!clientId && skipIfNoClient) {
+      console.log("No clientId provided and skipIfNoClient is true, returning empty array");
+      return [];
+    }
     
     // Simple query to employees table
     const query = supabase.from('employees').select('*');

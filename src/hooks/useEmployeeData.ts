@@ -5,10 +5,20 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId } from '@/store/employeeActions';
 import { supabase } from '@/integrations/supabase/client';
 import { Module } from '@/store/types';
+import { useLocation } from 'react-router-dom';
 
 export const useEmployeeData = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const { state, dispatch } = useEmployeeStore();
+  const location = useLocation();
+
+  // Check if we're on a route that needs employee data
+  const needsEmployeeData = location.pathname === '/dashboard' || 
+                           location.pathname.includes('/employee') ||
+                           location.pathname.includes('/settings') ||
+                           location.pathname.includes('/assessment') ||
+                           location.pathname.includes('/incident') ||
+                           location.pathname.includes('/transport');
 
   // Fetch configured modules for the employee - now optimized to avoid unnecessary calls
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
@@ -180,6 +190,11 @@ export const useEmployeeData = () => {
 
   // Set employee data from auth context and fetch modules when available
   useEffect(() => {
+    // Only process employee data if we're on a route that needs it
+    if (!needsEmployeeData) {
+      return;
+    }
+
     if (authEmployeeData) {
       // Set employee data in Redux store
       dispatch(setEmployeeData(authEmployeeData));
@@ -241,7 +256,7 @@ export const useEmployeeData = () => {
         fetchEmployeeDataFromDB();
       }
     }
-  }, [authEmployeeData, user]);
+  }, [authEmployeeData, user, needsEmployeeData]);
 
   return {
     employeeData: state.employeeData,

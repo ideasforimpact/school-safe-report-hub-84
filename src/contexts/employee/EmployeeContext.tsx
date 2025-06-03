@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -29,30 +28,43 @@ import { updateModulePermissionsInApi } from '@/services/employee/employeeModule
 
 // Import the supabase client
 import { supabase } from '@/integrations/supabase/client';
+import { useLocation } from 'react-router-dom';
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
 export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const location = useLocation();
 
-  // Initialize employees from storage
+  // Check if we're on an employee management route
+  const isEmployeeManagementRoute = location.pathname.includes('/employee') || 
+                                   location.pathname.includes('/settings');
+
+  // Initialize employees from storage only on relevant routes
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    if (isEmployeeManagementRoute) {
+      fetchEmployees();
+    }
+  }, [isEmployeeManagementRoute]);
 
   // Save employees to localStorage whenever they change
   useEffect(() => {
-    if (!loading) {
+    if (!loading && isEmployeeManagementRoute) {
       saveEmployeesToStorage(employees);
     }
-  }, [employees, loading]);
+  }, [employees, loading, isEmployeeManagementRoute]);
 
   const fetchEmployees = async () => {
+    // Only fetch if we're on relevant routes
+    if (!isEmployeeManagementRoute) {
+      return;
+    }
+
     try {
       setLoading(true);
       // First try to get employees from the API
-      const apiEmployees = await getAllEmployeesFromApi().catch(() => null);
+      const apiEmployees = await getAllEmployeesFromApi(undefined, false).catch(() => null);
       
       if (apiEmployees && apiEmployees.length > 0) {
         setEmployees(apiEmployees);

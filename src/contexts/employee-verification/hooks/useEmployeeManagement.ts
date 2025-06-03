@@ -1,21 +1,26 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '../types';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
+import { useLocation } from 'react-router-dom';
 
 export const useEmployeeManagement = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user, employeeData } = useAuth();
+  const location = useLocation();
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
+  // Check if we're on an employee verification route
+  const isEmployeeVerificationRoute = location.pathname.includes('/employee-verification');
+
   const fetchEmployees = useCallback(async () => {
-    if (!clientId) {
-      console.log('No client ID available - cannot fetch employees');
+    // Only fetch if we're on employee verification route and have clientId
+    if (!isEmployeeVerificationRoute || !clientId) {
+      console.log('Skipping employee fetch - not on employee verification route or no client ID');
       setEmployees([]);
       return [];
     }
@@ -32,11 +37,13 @@ export const useEmployeeManagement = () => {
           first_name,
           last_name,
           email,
-          department,
           employee_type,
-          joining_date,
+          department,
           status,
           client_id,
+          is_super_admin,
+          user_id,
+          joining_date,
           created_at,
           updated_at
         `)
@@ -49,23 +56,31 @@ export const useEmployeeManagement = () => {
         return [];
       }
 
-      const formattedEmployees: Employee[] = data.map(emp => ({
+      const mappedEmployees: Employee[] = (data || []).map(emp => ({
         id: emp.id,
-        employeeId: emp.employee_id,
+        employeeId: emp.employee_id || '',
         name: `${emp.first_name} ${emp.last_name}`,
-        department: emp.department,
-        employeeType: emp.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
-        joiningDate: emp.joining_date,
-        status: emp.status,
-        clientId: emp.client_id,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
         email: emp.email,
-        createdAt: emp.created_at,
-        updatedAt: emp.updated_at
+        phone: '',
+        dateOfBirth: '',
+        address: '',
+        joiningDate: emp.joining_date || new Date().toISOString(),
+        department: emp.department || '',
+        position: emp.employee_type || '',
+        employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
+        status: emp.status === true,
+        createdAt: emp.created_at || new Date().toISOString(),
+        updatedAt: emp.updated_at || new Date().toISOString(),
+        clientId: emp.client_id,
+        isSuperAdmin: emp.is_super_admin,
+        documents: []
       }));
 
-      console.log('Fetched employees:', formattedEmployees);
-      setEmployees(formattedEmployees);
-      return formattedEmployees;
+      console.log(`Fetched ${mappedEmployees.length} employees`);
+      setEmployees(mappedEmployees);
+      return mappedEmployees;
     } catch (error) {
       console.error('Error in fetchEmployees:', error);
       toast.error('Failed to fetch employees');
@@ -73,7 +88,7 @@ export const useEmployeeManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, isEmployeeVerificationRoute]);
 
   const addEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
