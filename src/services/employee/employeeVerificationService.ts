@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
@@ -6,6 +5,52 @@ export interface EmployeeVerificationData {
   employee: Employee | null;
   documents: VerificationDocument[];
 }
+
+// Helper function to upload base64 file to Supabase storage
+const uploadDocumentToStorage = async (base64Data: string, employeeId: string, documentType: string): Promise<string> => {
+  try {
+    // Extract the base64 content and content type
+    const base64Regex = /^data:([^;]+);base64,(.+)$/;
+    const matches = base64Data.match(base64Regex);
+    
+    if (!matches || matches.length !== 3) {
+      throw new Error("Invalid base64 image format");
+    }
+    
+    const contentType = matches[1];
+    const base64Content = matches[2];
+    const binaryData = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+    
+    // Generate a unique file path
+    const timestamp = new Date().getTime();
+    const fileExtension = contentType.includes('pdf') ? 'pdf' : 'jpg';
+    const filePath = `${employeeId}/${documentType}_${timestamp}.${fileExtension}`;
+    
+    console.log('Uploading file to storage at path:', filePath);
+    
+    // Upload to storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('employee-documents')
+      .upload(filePath, binaryData, {
+        contentType,
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      throw uploadError;
+    }
+    
+    console.log('File uploaded successfully:', uploadData);
+    
+    // Return the file path for database storage
+    return filePath;
+  } catch (error) {
+    console.error('Error uploading document to storage:', error);
+    throw error;
+  }
+};
 
 export const fetchEmployeeVerificationData = async (employeeId: string, clientId: string): Promise<EmployeeVerificationData> => {
   try {
@@ -88,30 +133,39 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       return { employee, documents: [] };
     }
 
-    // Map documents to the expected format
-    const documents: VerificationDocument[] = (documentsData || []).map(doc => ({
-      id: doc.id,
-      employeeId: doc.employee_id,
-      documentTypeId: doc.document_type_id || '',
-      documentTypeName: doc.document_type?.name || 'Unknown',
-      documentNumber: doc.document_number || '',
-      documentImage: doc.document_url,
-      verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-      documentStatusId: doc.document_status_id,
-      documentStatusName: doc.document_status?.name,
-      verificationDate: null,
-      verificationNotes: '',
-      verificationMethod: 'manual',
-      employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
-        timestamp: string;
-        action: string;
-        response: any;
-        notes?: string;
-      }> : [],
-      params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
-      createdAt: doc.created_at,
-      updatedAt: doc.updated_at
-    }));
+    // Map documents to the expected format with proper URL handling
+    const documents: VerificationDocument[] = (documentsData || []).map(doc => {
+      let documentUrl = doc.document_url;
+      
+      // If document_url is a storage path, convert to full URL
+      if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+        documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+      }
+      
+      return {
+        id: doc.id,
+        employeeId: doc.employee_id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: doc.document_type?.name || 'Unknown',
+        documentNumber: doc.document_number || '',
+        documentImage: documentUrl,
+        verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name,
+        verificationDate: null,
+        verificationNotes: '',
+        verificationMethod: 'manual',
+        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+          timestamp: string;
+          action: string;
+          response: any;
+          notes?: string;
+        }> : [],
+        params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
+      };
+    });
 
     console.log(`Fetched employee and ${documents.length} documents`);
     return { employee, documents };
@@ -186,29 +240,38 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
       return [];
     }
 
-    const documents: VerificationDocument[] = (data || []).map(doc => ({
-      id: doc.id,
-      employeeId: doc.employee_id,
-      documentTypeId: doc.document_type_id || '',
-      documentTypeName: doc.document_type?.name || 'Unknown',
-      documentNumber: doc.document_number || '',
-      documentImage: doc.document_url,
-      verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-      documentStatusId: doc.document_status_id,
-      documentStatusName: doc.document_status?.name,
-      verificationDate: null,
-      verificationNotes: '',
-      verificationMethod: 'manual',
-      employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
-        timestamp: string;
-        action: string;
-        response: any;
-        notes?: string;
-      }> : [],
-      params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
-      createdAt: doc.created_at,
-      updatedAt: doc.updated_at
-    }));
+    const documents: VerificationDocument[] = (data || []).map(doc => {
+      let documentUrl = doc.document_url;
+      
+      // If document_url is a storage path, convert to full URL
+      if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+        documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+      }
+      
+      return {
+        id: doc.id,
+        employeeId: doc.employee_id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: doc.document_type?.name || 'Unknown',
+        documentNumber: doc.document_number || '',
+        documentImage: documentUrl,
+        verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name,
+        verificationDate: null,
+        verificationNotes: '',
+        verificationMethod: 'manual',
+        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+          timestamp: string;
+          action: string;
+          response: any;
+          notes?: string;
+        }> : [],
+        params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
+      };
+    });
 
     console.log('Fetched documents:', documents);
     return documents;

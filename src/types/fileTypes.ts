@@ -36,10 +36,28 @@ export const formatSupabaseUrl = (url: string): string => {
   // Get the Supabase project reference
   const projectRef = 'ybvxkiubnnixntghojyy';
   
-  // Handle data URLs (base64 encoded)
+  // Handle data URLs (base64 encoded) - convert to blob URL for viewing
   if (url.startsWith('data:')) {
-    console.log('formatSupabaseUrl: Data URL provided:', url.substring(0, 50) + '...');
-    return url;
+    console.log('formatSupabaseUrl: Converting data URL to blob for viewing');
+    try {
+      // Extract base64 content
+      const base64Data = url.split(',')[1];
+      const mimeType = url.split(':')[1].split(';')[0];
+      
+      // Convert to binary
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Create blob and return blob URL
+      const blob = new Blob([bytes], { type: mimeType });
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error('Error converting data URL to blob:', error);
+      return url; // fallback to original
+    }
   }
   
   // Clean the URL path by removing any leading slashes or protocol remnants
@@ -67,6 +85,11 @@ export const formatSupabaseUrl = (url: string): string => {
 
 // Function to determine if file is a PDF
 export const isPdfFile = (url: string, fileName?: string): boolean => {
+  // Handle data URLs
+  if (url.startsWith('data:')) {
+    return url.includes('application/pdf') || url.includes('pdf');
+  }
+  
   const formattedUrl = formatSupabaseUrl(url);
   return formattedUrl.toLowerCase().endsWith('.pdf') || 
          formattedUrl.toLowerCase().includes('application/pdf') ||

@@ -28,12 +28,18 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
       console.log('Opening document URL for viewing:', formattedUrl);
       
       // Check if it's a PDF or image
-      const isPdf = isPdfFile(formattedUrl);
+      const isPdf = isPdfFile(documentImage);
       
       if (isPdf) {
-        // For PDFs, open in a new tab with PDF viewer
-        const pdfViewerUrl = `${formattedUrl}#toolbar=1&navpanes=1&scrollbar=1`;
-        window.open(pdfViewerUrl, '_blank', 'noopener,noreferrer');
+        // For PDFs, create an iframe or open in new tab
+        if (documentImage.startsWith('data:')) {
+          // For base64 PDFs, open in new tab directly
+          window.open(documentImage, '_blank', 'noopener,noreferrer');
+        } else {
+          // For stored PDFs, open with PDF viewer
+          const pdfViewerUrl = `${formattedUrl}#toolbar=1&navpanes=1&scrollbar=1`;
+          window.open(pdfViewerUrl, '_blank', 'noopener,noreferrer');
+        }
       } else {
         // For images, open directly
         window.open(formattedUrl, '_blank', 'noopener,noreferrer');
@@ -59,13 +65,25 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     }
 
     try {
-      const formattedUrl = formatSupabaseUrl(documentImage);
-      console.log('Downloading document URL:', formattedUrl);
+      let downloadUrl = documentImage;
+      let fileName = `document-${Date.now()}`;
+      
+      // If it's a data URL, use it directly
+      if (documentImage.startsWith('data:')) {
+        downloadUrl = documentImage;
+        const mimeType = documentImage.split(':')[1].split(';')[0];
+        fileName = `document-${Date.now()}.${mimeType.includes('pdf') ? 'pdf' : 'jpg'}`;
+      } else {
+        // Format Supabase URL for download
+        downloadUrl = formatSupabaseUrl(documentImage);
+      }
+      
+      console.log('Downloading document URL:', downloadUrl);
       
       // Create a temporary link element for download
       const link = document.createElement('a');
-      link.href = formattedUrl;
-      link.download = `document-${Date.now()}`;
+      link.href = downloadUrl;
+      link.download = fileName;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       
