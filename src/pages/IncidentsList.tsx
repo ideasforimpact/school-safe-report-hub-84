@@ -11,25 +11,27 @@ import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { useLocation } from 'react-router-dom';
 
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
+  const location = useLocation();
 
-  // Check if user has incident admin access
+  // Check if user has incident admin access based on current route
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
-    // Check configured modules for incidents admin access
-    const incidentsModule = employeeState.configuredModules?.find(
-      module => module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')
+    // Find module based on current route
+    const currentModule = employeeState.configuredModules?.find(
+      module => module.url === location.pathname
     );
     
-    return incidentsModule?.accessLevel?.is_admin === true;
-  }, [isSuperAdmin, employeeState.configuredModules]);
+    return currentModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules, location.pathname]);
 
   // Transform IncidentRecord[] to Incident[] for the filter hook
   const transformedIncidents = incidents.map(record => ({
@@ -95,7 +97,7 @@ const IncidentsList = () => {
 
       // If no client ID from context, get from user email
       if (!clientId && user?.email) {
-        const { data: empData } = await supabase
+        const { data: empData, error } = await supabase
           .from('employees')
           .select('client_id')
           .eq('email', user.email.toLowerCase())

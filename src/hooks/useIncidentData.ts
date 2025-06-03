@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { incidentDataService } from '@/services/incident/incidentDataService';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 
 export const useIncidentData = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -15,19 +16,20 @@ export const useIncidentData = () => {
   const [error, setError] = useState<string | null>(null);
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
+  const location = useLocation();
 
-  // Check if user has incident admin access
+  // Check if user has incident admin access based on current route
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
-    // Check configured modules for incidents admin access
-    const incidentsModule = employeeState.configuredModules?.find(
-      module => module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')
+    // Find module based on current route
+    const currentModule = employeeState.configuredModules?.find(
+      module => module.url === location.pathname
     );
     
-    return incidentsModule?.accessLevel?.is_admin === true;
-  }, [isSuperAdmin, employeeState.configuredModules]);
+    return currentModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules, location.pathname]);
 
   const fetchIncidents = useCallback(async () => {
     try {

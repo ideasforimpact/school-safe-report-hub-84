@@ -1,13 +1,14 @@
 
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, PieChart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import React from 'react';
 
 const IncidentsHeader = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state } = useEmployeeStore();
   
   // Check if user has admin access level for incidents
@@ -16,19 +17,13 @@ const IncidentsHeader = () => {
   const hasIncidentsAdminAccess = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
-    // Check configured modules for incidents admin access
-    const incidentsModule = state.configuredModules?.find(
-      module => module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')
+    // Find module based on current route
+    const currentModule = state.configuredModules?.find(
+      module => module.url === location.pathname
     );
     
-    if (incidentsModule?.accessLevel) {
-      // Check for different possible admin flag formats
-      return incidentsModule.accessLevel.isAdmin === true || 
-             incidentsModule.accessLevel.is_admin === true;
-    }
-    
-    return false;
-  }, [isSuperAdmin, state.configuredModules]);
+    return currentModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, state.configuredModules, location.pathname]);
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
