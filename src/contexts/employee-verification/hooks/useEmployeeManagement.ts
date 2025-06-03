@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '../types';
@@ -32,7 +31,11 @@ export const useEmployeeManagement = () => {
           first_name,
           last_name,
           email,
+          phone,
+          date_of_birth,
+          address,
           department,
+          position,
           employee_type,
           joining_date,
           status,
@@ -53,12 +56,16 @@ export const useEmployeeManagement = () => {
         id: emp.id,
         employeeId: emp.employee_id,
         name: `${emp.first_name} ${emp.last_name}`,
+        email: emp.email,
+        phone: emp.phone || '',
+        dateOfBirth: emp.date_of_birth || '',
+        address: emp.address || '',
         department: emp.department,
-        employeeType: emp.employee_type,
+        position: emp.position || '',
+        employeeType: emp.employee_type as "permanent" | "contract" | "temporary" | "part_time" | "consultant" | "intern",
         joiningDate: emp.joining_date,
         status: emp.status,
         clientId: emp.client_id,
-        email: emp.email,
         createdAt: emp.created_at,
         updatedAt: emp.updated_at
       }));
@@ -87,7 +94,11 @@ export const useEmployeeManagement = () => {
           first_name: employeeData.name.split(' ')[0],
           last_name: employeeData.name.split(' ').slice(1).join(' '),
           email: employeeData.email,
+          phone: employeeData.phone,
+          date_of_birth: employeeData.dateOfBirth,
+          address: employeeData.address,
           department: employeeData.department,
+          position: employeeData.position,
           employee_type: employeeData.employeeType,
           joining_date: employeeData.joiningDate,
           status: employeeData.status,
@@ -102,12 +113,16 @@ export const useEmployeeManagement = () => {
         id: data.id,
         employeeId: data.employee_id,
         name: `${data.first_name} ${data.last_name}`,
+        email: data.email,
+        phone: data.phone || '',
+        dateOfBirth: data.date_of_birth || '',
+        address: data.address || '',
         department: data.department,
-        employeeType: data.employee_type,
+        position: data.position || '',
+        employeeType: data.employee_type as "permanent" | "contract" | "temporary" | "part_time" | "consultant" | "intern",
         joiningDate: data.joining_date,
         status: data.status,
         clientId: data.client_id,
-        email: data.email,
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };
@@ -130,7 +145,11 @@ export const useEmployeeManagement = () => {
         dbUpdates.last_name = nameParts.slice(1).join(' ');
       }
       if (updates.email) dbUpdates.email = updates.email;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+      if (updates.dateOfBirth !== undefined) dbUpdates.date_of_birth = updates.dateOfBirth;
+      if (updates.address !== undefined) dbUpdates.address = updates.address;
       if (updates.department) dbUpdates.department = updates.department;
+      if (updates.position !== undefined) dbUpdates.position = updates.position;
       if (updates.employeeType) dbUpdates.employee_type = updates.employeeType;
       if (updates.joiningDate) dbUpdates.joining_date = updates.joiningDate;
       if (updates.status !== undefined) dbUpdates.status = updates.status;
@@ -149,12 +168,16 @@ export const useEmployeeManagement = () => {
         id: data.id,
         employeeId: data.employee_id,
         name: `${data.first_name} ${data.last_name}`,
+        email: data.email,
+        phone: data.phone || '',
+        dateOfBirth: data.date_of_birth || '',
+        address: data.address || '',
         department: data.department,
-        employeeType: data.employee_type,
+        position: data.position || '',
+        employeeType: data.employee_type as "permanent" | "contract" | "temporary" | "part_time" | "consultant" | "intern",
         joiningDate: data.joining_date,
         status: data.status,
         clientId: data.client_id,
-        email: data.email,
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };
