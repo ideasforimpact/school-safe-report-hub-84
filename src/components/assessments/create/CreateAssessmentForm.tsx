@@ -2,17 +2,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
-import { useEmployees } from '@/hooks/useEmployees';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Loader, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Loader, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  department: string;
+}
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
@@ -23,13 +30,14 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
-  const {
-    templates
-  } = useAssessment();
-  const {
-    employees,
-    loading: employeesLoading
-  } = useEmployees();
+  const { templates } = useAssessment();
+  
+  // Employee management state
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -42,12 +50,79 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
+  // Fetch employees filtered by client_id
+  React.useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!clientId) {
+        console.log('No client ID available for fetching employees');
+        setEmployeesLoading(false);
+        return;
+      }
+
+      try {
+        setEmployeesLoading(true);
+        console.log('Fetching employees for client:', clientId);
+
+        const { data: employeesData, error } = await supabase
+          .from('employees')
+          .select('id, first_name, last_name, email, department')
+          .eq('client_id', clientId)
+          .eq('status', true) // Only active employees
+          .order('first_name');
+
+        if (error) {
+          console.error('Error fetching employees:', error);
+          toast.error('Failed to load employees');
+          return;
+        }
+
+        console.log('Fetched employees:', employeesData);
+        setEmployees(employeesData || []);
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+        toast.error('Failed to load employees');
+      } finally {
+        setEmployeesLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [clientId]);
+
+  // Find the selected employee
+  const selectedEmployee = employees.find(emp => emp.id === formData.assignedTo);
+  const selectedEmployeeDisplay = selectedEmployee 
+    ? `${selectedEmployee.first_name} ${selectedEmployee.last_name} (${selectedEmployee.email})` 
+    : '';
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
+
+  const handleEmployeeSearch = (value: string) => {
+    setSearchQuery(value);
+    setIsSearching(true);
+  };
+
+  const handleSelectEmployee = (employee: Employee) => {
+    handleInputChange('assignedTo', employee.id);
+    setIsSearching(false);
+    setSearchQuery('');
+  };
+
+  // Filter employees based on search query
+  const filteredEmployees = searchQuery
+    ? employees.filter(employee => {
+        const fullName = `${employee.first_name} ${employee.last_name}`;
+        const searchTerm = searchQuery.toLowerCase();
+        return fullName.toLowerCase().includes(searchTerm) || 
+               employee.email.toLowerCase().includes(searchTerm) ||
+               employee.department.toLowerCase().includes(searchTerm);
+      })
+    : employees;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,24 +294,65 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 )}
               </div>
 
-              {/* Assigned To */}
+              {/* Assigned To with Search */}
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Assign To *</Label>
-                <Select value={formData.assignedTo} onValueChange={value => handleInputChange('assignedTo', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select staff member" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map(employee => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        {employee.first_name} {employee.last_name} - {employee.department}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <div className="relative">
+                    <Input
+                      value={searchQuery || (isSearching ? '' : selectedEmployeeDisplay)}
+                      onChange={(e) => handleEmployeeSearch(e.target.value)}
+                      onFocus={() => setIsSearching(true)}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          if (!searchQuery) {
+                            setIsSearching(false);
+                          }
+                        }, 200);
+                      }}
+                      placeholder="Search by name, email, or department..."
+                      className="w-full pr-8"
+                      required
+                    />
+                    <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  </div>
+                  
+                  {isSearching && filteredEmployees.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                      <ul className="py-1 text-sm">
+                        {filteredEmployees.map((employee) => (
+                          <li
+                            key={employee.id}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => handleSelectEmployee(employee)}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div>
+                              <span className="font-medium">
+                                {employee.first_name} {employee.last_name}
+                              </span>
+                              <span className="text-gray-500 ml-1">
+                                ({employee.email})
+                              </span>
+                              <div className="text-xs text-gray-400">
+                                {employee.department}
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {isSearching && searchQuery && filteredEmployees.length === 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
+                      <p className="p-3 text-sm text-gray-500">No employees found</p>
+                    </div>
+                  )}
+                </div>
                 {employees.length === 0 && (
                   <p className="text-sm text-gray-500">
-                    No staff members available.
+                    No staff members available for this client.
                   </p>
                 )}
               </div>
