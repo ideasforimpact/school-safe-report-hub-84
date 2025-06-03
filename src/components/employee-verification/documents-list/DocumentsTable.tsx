@@ -17,6 +17,7 @@ import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
+import { formatSupabaseUrl } from '@/types/fileTypes';
 import AadharDetailsDialog from './AadharDetailsDialog';
 import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
@@ -54,6 +55,66 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     console.log('DocumentsTable - Documents with driving license:', 
       documents.filter(doc => doc.documentTypeName?.toLowerCase().includes('driving')));
   }, [documents]);
+
+  const handleViewDocument = (documentImage: string) => {
+    if (!documentImage) {
+      toast({
+        title: "No Document",
+        description: "No document image available to view.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formattedUrl = formatSupabaseUrl(documentImage);
+      console.log('Opening document URL:', formattedUrl);
+      window.open(formattedUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadDocument = (documentImage: string) => {
+    if (!documentImage) {
+      toast({
+        title: "No Document",
+        description: "No document available to download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formattedUrl = formatSupabaseUrl(documentImage);
+      console.log('Downloading document URL:', formattedUrl);
+      
+      const link = document.createElement('a');
+      link.href = formattedUrl;
+      link.download = `document-${new Date().getTime()}`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Download Started",
+        description: "Document download has been initiated.",
+      });
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Download Error",
+        description: "Failed to download document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
     if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
@@ -212,7 +273,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => onViewDocument(doc.documentImage)}
+                        onClick={() => handleViewDocument(doc.documentImage)}
                       >
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">View</span>
@@ -220,7 +281,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => onDownloadDocument(doc.documentImage)}
+                        onClick={() => handleDownloadDocument(doc.documentImage)}
                       >
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Download</span>

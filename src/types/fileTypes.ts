@@ -22,29 +22,47 @@ export interface UploadedDocument {
 
 // Updated utility functions for Supabase URLs with improved URL handling
 export const formatSupabaseUrl = (url: string): string => {
-  if (!url) return '';
+  if (!url) {
+    console.warn('formatSupabaseUrl: Empty URL provided');
+    return '';
+  }
   
   // Check if it's already a properly formed URL with https://
-  if (url.startsWith('https://')) return url;
+  if (url.startsWith('https://')) {
+    console.log('formatSupabaseUrl: URL already formatted:', url);
+    return url;
+  }
   
   // Get the Supabase project reference
   const projectRef = 'ybvxkiubnnixntghojyy';
   
-  // Handle the case where URL is just a path within employee-documents bucket
-  if (!url.includes('/')) {
-    return `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+  // Handle data URLs (base64 encoded)
+  if (url.startsWith('data:')) {
+    console.log('formatSupabaseUrl: Data URL provided:', url.substring(0, 50) + '...');
+    return url;
+  }
+  
+  // Handle the case where URL is just a filename within employee-documents bucket
+  if (!url.includes('/') && !url.includes('storage')) {
+    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+    console.log('formatSupabaseUrl: Formatted filename to URL:', formattedUrl);
+    return formattedUrl;
   }
   
   // Handle the case where URL is a relative path in a bucket (e.g., employee-id/filename)
-  if (!url.includes('employee-documents/') && !url.includes('vehicle-documents/')) {
-    return `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+  if (!url.includes('employee-documents/') && !url.includes('vehicle-documents/') && !url.includes('storage')) {
+    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+    console.log('formatSupabaseUrl: Formatted relative path to URL:', formattedUrl);
+    return formattedUrl;
   }
   
   // Handle the case where URL has the bucket name directly
-  if (url.includes('employee-documents/') || url.includes('vehicle-documents/')) {
+  if ((url.includes('employee-documents/') || url.includes('vehicle-documents/')) && !url.includes('storage')) {
     // Remove any leading slashes
     const cleanPath = url.replace(/^\/+/, '');
-    return `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath}`;
+    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath}`;
+    console.log('formatSupabaseUrl: Formatted bucket path to URL:', formattedUrl);
+    return formattedUrl;
   }
   
   // Handle the case with the full storage path including "/storage/v1/object/public/"
@@ -54,14 +72,20 @@ export const formatSupabaseUrl = (url: string): string => {
                          .replace(/^https?:\/\/.*?\/storage\//, 'storage/');
     
     if (cleanPath.startsWith('storage/v1/object/public/')) {
-      return `https://${projectRef}.supabase.co/${cleanPath}`;
+      const formattedUrl = `https://${projectRef}.supabase.co/${cleanPath}`;
+      console.log('formatSupabaseUrl: Formatted storage path to URL:', formattedUrl);
+      return formattedUrl;
     }
     
-    return `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath.replace('storage/v1/object/public/', '')}`;
+    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath.replace('storage/v1/object/public/', '')}`;
+    console.log('formatSupabaseUrl: Cleaned storage path to URL:', formattedUrl);
+    return formattedUrl;
   }
   
   // Default case: Assume it's a direct path to a file in the employee-documents bucket
-  return `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+  const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+  console.log('formatSupabaseUrl: Default formatting to URL:', formattedUrl);
+  return formattedUrl;
 };
 
 // Function to determine if file is a PDF

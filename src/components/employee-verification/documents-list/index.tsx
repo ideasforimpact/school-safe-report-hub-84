@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { useToast } from '@/hooks/use-toast';
+import { formatSupabaseUrl } from '@/types/fileTypes';
 import DocumentsTable from './DocumentsTable';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import VerificationDialog from './VerificationDialog';
@@ -26,29 +27,60 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
 
   const handleViewDocument = (documentImage: string) => {
-    if (documentImage) {
-      window.open(documentImage, '_blank');
-    } else {
+    if (!documentImage) {
       toast({
         title: "No Document",
         description: "No document image available to view.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formattedUrl = formatSupabaseUrl(documentImage);
+      console.log('Opening document URL:', formattedUrl);
+      window.open(formattedUrl, '_blank');
+    } catch (error) {
+      console.error('Error opening document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open document. Please try again.",
         variant: "destructive",
       });
     }
   };
 
   const handleDownloadDocument = (documentImage: string) => {
-    if (documentImage) {
-      const link = document.createElement('a');
-      link.href = documentImage;
-      link.download = 'document';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
+    if (!documentImage) {
       toast({
         title: "No Document",
         description: "No document available to download.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const formattedUrl = formatSupabaseUrl(documentImage);
+      console.log('Downloading document URL:', formattedUrl);
+      
+      const link = document.createElement('a');
+      link.href = formattedUrl;
+      link.download = `document-${new Date().getTime()}`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Download Started",
+        description: "Document download has been initiated.",
+      });
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Download Error",
+        description: "Failed to download document. Please try again.",
         variant: "destructive",
       });
     }
