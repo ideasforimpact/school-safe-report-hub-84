@@ -6,12 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
-import { Upload, X } from 'lucide-react';
-import { toast } from 'sonner';
 import { FileItem } from '@/types/fileTypes';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import AssignmentSection from './sections/AssignmentSection';
+import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 
 interface IncidentDetailsFormProps {
   formData: any;
@@ -43,46 +41,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
     return configData.facilities.filter(facility => facility.campus_id === formData.locationId);
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-
-    const newFiles: FileItem[] = [];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-
-    Array.from(files).forEach((file) => {
-      if (file.size > maxSize) {
-        toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const fileItem: FileItem = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          base64: e.target?.result as string,
-        };
-        newFiles.push(fileItem);
-        
-        if (newFiles.length === Array.from(files).length) {
-          onFilesChange([...supportingFiles, ...newFiles]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // Reset the input
-    event.target.value = '';
-  };
-
-  const removeFile = (fileId: string) => {
-    const updatedFiles = supportingFiles.filter(file => file.id !== fileId);
-    onFilesChange(updatedFiles);
   };
 
   if (configLoading) {
@@ -270,55 +228,15 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           onSelectChange={onSelectChange}
         />
 
-        {/* Supporting Files */}
+        {/* Supporting Files - Updated to use DragDropFileUpload */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
-            <div>
-              <input
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById('file-upload')?.click()}
-                className="h-8 px-3"
-              >
-                <Upload className="h-4 w-4 mr-1" />
-                Upload Files
-              </Button>
-            </div>
-          </div>
-
-          {supportingFiles.length > 0 && (
-            <div className="grid grid-cols-1 gap-2">
-              {supportingFiles.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-sm">
-                      <p className="font-medium text-gray-900">{file.name}</p>
-                      <p className="text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFile(file.id)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+          <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
+          <DragDropFileUpload
+            onFilesChange={onFilesChange}
+            initialFiles={supportingFiles}
+            maxFiles={5}
+            className="w-full"
+          />
         </div>
       </CardContent>
     </Card>
