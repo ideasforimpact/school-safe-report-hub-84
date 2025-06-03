@@ -7,7 +7,9 @@ import { DateRange } from 'react-day-picker';
 export const processCategoryData = (incidents: Incident[]) => {
   const categoryCounts = incidents.reduce((acc, incident) => {
     const { category } = incident;
-    acc[category] = (acc[category] || 0) + 1;
+    if (category) {
+      acc[category] = (acc[category] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
   
@@ -253,6 +255,8 @@ export const processRiskData = (incidents: Incident[]) => {
   
   incidents.forEach(incident => {
     const category = incident.category;
+    if (!category) return;
+    
     if (!categoryRiskMap.has(category)) {
       categoryRiskMap.set(category, { count: 0, severity: 0, incidents: [] });
     }
@@ -300,8 +304,11 @@ export const applyFilters = (
   roleFilter: string,
   isAdmin: boolean
 ) => {
-  // First apply date filtering
-  let result = filterByDateRange(incidents, dateFilter, dateRange);
+  // First apply date filtering if implemented
+  let result = incidents;
+  if (typeof filterByDateRange === 'function') {
+    result = filterByDateRange(incidents, dateFilter, dateRange);
+  }
   
   // Then apply the rest of the filters
   return result.filter(incident => {

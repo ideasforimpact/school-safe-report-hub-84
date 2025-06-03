@@ -4,7 +4,8 @@ import Layout from '@/components/layout/Layout';
 import { useInsightsData } from '@/hooks/useInsightsData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import InsightsHeader from '@/components/insights/InsightsHeader';
 import InsightsFilters from '@/components/insights/InsightsFilters';
 import OverviewTab from '@/components/insights/tabs/OverviewTab';
@@ -14,6 +15,7 @@ import LocationTab from '@/components/insights/tabs/LocationTab';
 import RiskAnalysisTab from '@/components/insights/tabs/RiskAnalysisTab';
 
 const Insights = () => {
+  const navigate = useNavigate();
   const {
     facilities,
     isAdmin,
@@ -24,14 +26,9 @@ const Insights = () => {
     availableSubcategories,
     peopleInvolved,
     chartData,
-    roleDistributionData
+    roleDistributionData,
+    isLoading
   } = useInsightsData();
-
-  // Function to handle export
-  const handleExport = () => {
-    // If there's a real export function in useInsightsData, use that instead
-    console.log('Exporting data...');
-  };
   
   // Function to clear filters
   const clearFilters = () => {
@@ -52,9 +49,36 @@ const Insights = () => {
     '#f59e0b', '#10b981', '#6366f1', '#14b8a6', '#d946ef'
   ];
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading insights data...</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
+        {/* Back button */}
+        <div className="flex items-center justify-between">
+          <Button 
+            variant="ghost" 
+            className="flex items-center"
+            onClick={() => navigate('/incidents')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Incidents
+          </Button>
+        </div>
+
         {/* InsightsHeader with no export prop */}
         <InsightsHeader />
         
