@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,17 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, Trash2, FileText, Calendar, Users, AlertCircle, Star, Filter } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -58,8 +49,6 @@ const AssessmentsTable: React.FC = () => {
   const [assignedToFilter, setAssignedToFilter] = useState('all');
   const [targetDateFrom, setTargetDateFrom] = useState<Date | undefined>(undefined);
   const [targetDateTo, setTargetDateTo] = useState<Date | undefined>(undefined);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
 
@@ -272,88 +261,6 @@ const AssessmentsTable: React.FC = () => {
 
   const handleAnswerQuestions = (assessmentId: number) => {
     navigate(`/assessment/answer/${assessmentId}`);
-  };
-
-  const handleEdit = (assessmentId: number) => {
-    // Navigate to edit assessment page or open edit dialog
-    toast.info('Edit functionality will be implemented');
-  };
-
-  const handleDeleteClick = (assessment: Assessment) => {
-    setAssessmentToDelete(assessment);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!assessmentToDelete || !clientId) {
-      toast.error('Assessment or client information is missing');
-      return;
-    }
-
-    try {
-      console.log('=== CALLING DELETE EDGE FUNCTION ===');
-      console.log('Assessment to delete:', assessmentToDelete);
-      console.log('Assessment UUID (id):', assessmentToDelete.id);
-      console.log('Client ID:', clientId);
-
-      // Call the delete-assessment edge function
-      const { data, error } = await supabase.functions.invoke('delete-assessment', {
-        body: {
-          assessment_id: assessmentToDelete.id,
-          client_id: clientId
-        }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw new Error(error.message || 'Failed to delete assessment');
-      }
-
-      if (!data.success) {
-        console.error('Delete operation failed:', data);
-        throw new Error(data.error || 'Failed to delete assessment');
-      }
-
-      console.log('Assessment deleted successfully via edge function:', data);
-      
-      // Remove from local state
-      const updatedAssessments = assessments.filter(a => a.id !== assessmentToDelete.id);
-      setAssessments(updatedAssessments);
-      
-      // Re-apply filters to the updated list
-      let filteredList = updatedAssessments;
-      
-      if (searchTerm) {
-        filteredList = filteredList.filter(assessment =>
-          assessment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          assessment.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          assessment.assignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          assessment.assessment_id.toString().includes(searchTerm)
-        );
-      }
-
-      if (statusFilter !== 'all') {
-        filteredList = filteredList.filter(assessment => 
-          assessment.status.toLowerCase() === statusFilter.toLowerCase()
-        );
-      }
-      
-      setFilteredAssessments(filteredList);
-
-      toast.success('Assessment deleted successfully');
-      
-      // Close the dialog
-      setDeleteDialogOpen(false);
-      setAssessmentToDelete(null);
-    } catch (error) {
-      console.error('Error deleting assessment:', error);
-      toast.error('Failed to delete assessment. Please try again.');
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    setAssessmentToDelete(null);
   };
 
   const handleView = (assessmentId: number) => {
@@ -598,14 +505,6 @@ const AssessmentsTable: React.FC = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteClick(assessment)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -615,27 +514,6 @@ const AssessmentsTable: React.FC = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{assessmentToDelete?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Assessment View Dialog */}
       <AssessmentViewDialog
