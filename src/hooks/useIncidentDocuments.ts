@@ -11,6 +11,7 @@ export const useIncidentDocuments = (incidentId?: string) => {
 
   // Handle file selection for upload
   const handleFilesChange = useCallback((files: FileItem[]) => {
+    console.log('Files changed:', files.length);
     setSupportingFiles(files);
   }, []);
 
@@ -18,13 +19,17 @@ export const useIncidentDocuments = (incidentId?: string) => {
   const uploadAndSaveDocuments = useCallback(async (incidentId: string, files: FileItem[]): Promise<IncidentDocument[]> => {
     if (!files.length) return [];
     
+    console.log('Starting upload of', files.length, 'files for incident:', incidentId);
     setIsUploading(true);
+    
     try {
       // Upload files to storage
       const uploadedDocs = await incidentDocumentService.uploadFiles(incidentId, files);
+      console.log('Files uploaded to storage:', uploadedDocs.length);
       
       // Get existing documents
       const existingDocs = await incidentDocumentService.getIncidentDocuments(incidentId);
+      console.log('Existing documents:', existingDocs.length);
       
       // Combine existing and new documents
       const allDocuments = [...existingDocs, ...uploadedDocs];
@@ -36,10 +41,11 @@ export const useIncidentDocuments = (incidentId?: string) => {
       setSupportingFiles([]); // Clear the form files after successful upload
       
       toast.success(`${uploadedDocs.length} file(s) uploaded successfully`);
+      console.log('Upload completed successfully');
       return uploadedDocs;
     } catch (error) {
       console.error('Error uploading documents:', error);
-      toast.error('Failed to upload files');
+      toast.error('Failed to upload files: ' + (error?.message || 'Unknown error'));
       throw error;
     } finally {
       setIsUploading(false);
@@ -49,7 +55,9 @@ export const useIncidentDocuments = (incidentId?: string) => {
   // Load documents for an incident
   const loadDocuments = useCallback(async (incidentId: string) => {
     try {
+      console.log('Loading documents for incident:', incidentId);
       const docs = await incidentDocumentService.getIncidentDocuments(incidentId);
+      console.log('Loaded documents:', docs.length);
       setDocuments(docs);
       return docs;
     } catch (error) {
@@ -62,15 +70,17 @@ export const useIncidentDocuments = (incidentId?: string) => {
   // Delete a document
   const deleteDocument = useCallback(async (incidentId: string, documentPath: string) => {
     try {
+      console.log('Deleting document:', documentPath, 'for incident:', incidentId);
       await incidentDocumentService.deleteDocument(incidentId, documentPath);
       
       // Update local state
       setDocuments(prev => prev.filter(doc => doc.path !== documentPath));
       
       toast.success('Document deleted successfully');
+      console.log('Document deleted successfully');
     } catch (error) {
       console.error('Error deleting document:', error);
-      toast.error('Failed to delete document');
+      toast.error('Failed to delete document: ' + (error?.message || 'Unknown error'));
       throw error;
     }
   }, []);

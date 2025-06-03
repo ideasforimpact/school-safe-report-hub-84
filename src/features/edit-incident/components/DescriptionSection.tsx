@@ -2,7 +2,7 @@
 import React from 'react';
 import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
-import MultipleFilesUpload from '@/components/MultipleFilesUpload';
+import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import ImageUpload from '@/components/ImageUpload';
 
 interface DescriptionSectionProps {
@@ -59,7 +59,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           <label className="text-sm font-medium">
             Additional Files (Optional)
           </label>
-          <MultipleFilesUpload
+          <DragDropFileUpload
             onFilesChange={onFilesChange}
             initialFiles={supportingFiles}
             maxFiles={5}

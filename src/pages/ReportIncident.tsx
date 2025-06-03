@@ -213,12 +213,6 @@ const ReportIncident = () => {
         p.name?.trim() || p.role?.trim() || p.notes?.trim()
       );
       
-      const documents = supportingFiles.map(file => ({
-        name: file.name,
-        type: file.type,
-        data: file.base64
-      }));
-      
       // Get the 'Open' status ID
       const { data: statusData } = await supabase
         .from('incident_status')
@@ -226,9 +220,12 @@ const ReportIncident = () => {
         .eq('name', 'Open')
         .maybeSingle();
 
-      // Convert data to proper types for database insert
+      // Generate unique ticket ID
+      const ticketId = `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      // First, create the incident record without documents
       const incidentRecord = {
-        ticket_id: `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        ticket_id: ticketId,
         type_id: formData.typeId || null,
         category_id: formData.categoryId || null,
         subcategory_id: formData.subcategoryId || null,
@@ -238,29 +235,52 @@ const ReportIncident = () => {
         facility_id: formData.facilityId || null,
         priority_id: formData.priorityId || null,
         people_involved: JSON.parse(JSON.stringify(validPeople)),
-        documents: JSON.parse(JSON.stringify(documents)),
+        documents: [], // Initialize with empty array
         created_by: employeeId,
         assigned_to: formData.owner || null,
         client_id: clientId,
         status_id: statusData?.id || null
       };
       
-      console.log('Creating incident directly in database...');
+      console.log('Creating incident in database...');
       
-      // Direct database insert
-      const { data, error } = await supabase
+      // Insert incident record
+      const { data: incidentData, error: incidentError } = await supabase
         .from('incidents')
         .insert(incidentRecord)
         .select('id, ticket_id')
         .single();
       
-      if (error) {
-        console.error('Error creating incident:', error);
-        throw new Error(error.message);
+      if (incidentError) {
+        console.error('Error creating incident:', incidentError);
+        throw new Error(incidentError.message);
       }
       
-      console.log('Incident created successfully:', data);
-      toast.success(`Incident reported successfully! Ticket ID: ${data.ticket_id}`);
+      console.log('Incident created successfully:', incidentData);
+
+      // Upload supporting files if any exist
+      if (supportingFiles && supportingFiles.length > 0) {
+        console.log('Uploading supporting files...');
+        try {
+          // Import the document service here to avoid circular imports
+          const { incidentDocumentService } = await import('@/services/incident/incidentDocumentService');
+          
+          // Upload files to storage
+          const uploadedDocuments = await incidentDocumentService.uploadFiles(incidentData.id, supportingFiles);
+          
+          // Update incident with document URLs
+          await incidentDocumentService.updateIncidentDocuments(incidentData.id, uploadedDocuments);
+          
+          console.log('Supporting files uploaded successfully');
+          toast.success(`${uploadedDocuments.length} supporting document(s) uploaded`);
+        } catch (uploadError) {
+          console.error('Error uploading supporting files:', uploadError);
+          // Don't fail the entire incident creation if file upload fails
+          toast.warning('Incident created but some files failed to upload');
+        }
+      }
+      
+      toast.success(`Incident reported successfully! Ticket ID: ${incidentData.ticket_id}`);
       
       // Small delay to show success message, then navigate
       setTimeout(() => {

@@ -32,7 +32,8 @@ export const incidentDocumentService = {
       try {
         // Generate unique file path
         const timestamp = Date.now();
-        const fileName = `${incidentId}/${timestamp}_${file.name}`;
+        const fileExtension = file.name.split('.').pop() || '';
+        const fileName = `incidents/${incidentId}/${timestamp}_${file.id}.${fileExtension}`;
         
         // Convert base64 to blob
         const base64Data = file.base64.split(',')[1];
@@ -49,7 +50,8 @@ export const incidentDocumentService = {
           .from('incident-documents')
           .upload(fileName, blob, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: file.type
           });
 
         if (uploadError) {
@@ -73,6 +75,7 @@ export const incidentDocumentService = {
         };
 
         uploadedDocuments.push(document);
+        console.log('Successfully uploaded file:', file.name, 'to:', urlData.publicUrl);
       } catch (error) {
         console.error('Error uploading file:', file.name, error);
         throw error;
@@ -104,6 +107,8 @@ export const incidentDocumentService = {
       console.error('Error updating incident documents:', error);
       throw error;
     }
+
+    console.log('Successfully updated incident documents in database for incident:', incidentId);
   },
 
   // Get incident documents
@@ -134,23 +139,30 @@ export const incidentDocumentService = {
 
   // Delete document from storage and update incident
   async deleteDocument(incidentId: string, documentPath: string): Promise<void> {
-    // Delete from storage
-    const { error: storageError } = await supabase.storage
-      .from('incident-documents')
-      .remove([documentPath]);
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('incident-documents')
+        .remove([documentPath]);
 
-    if (storageError) {
-      console.error('Error deleting from storage:', storageError);
-      throw storageError;
+      if (storageError) {
+        console.error('Error deleting from storage:', storageError);
+        throw storageError;
+      }
+
+      // Get current documents
+      const currentDocuments = await this.getIncidentDocuments(incidentId);
+      
+      // Remove the deleted document
+      const updatedDocuments = currentDocuments.filter(doc => doc.path !== documentPath);
+      
+      // Update incident
+      await this.updateIncidentDocuments(incidentId, updatedDocuments);
+      
+      console.log('Successfully deleted document:', documentPath);
+    } catch (error) {
+      console.error('Error in deleteDocument:', error);
+      throw error;
     }
-
-    // Get current documents
-    const currentDocuments = await this.getIncidentDocuments(incidentId);
-    
-    // Remove the deleted document
-    const updatedDocuments = currentDocuments.filter(doc => doc.path !== documentPath);
-    
-    // Update incident
-    await this.updateIncidentDocuments(incidentId, updatedDocuments);
   }
 };
