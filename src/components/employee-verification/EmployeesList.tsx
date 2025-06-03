@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -9,14 +9,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 
 const EmployeesList = () => {
-  const { employees, getEmployeeDocuments } = useEmployeeVerification();
+  const { employees, getEmployeeDocuments, fetchEmployees, isLoading } = useEmployeeVerification();
   const navigate = useNavigate();
+
+  // Ensure employees are fetched when component mounts if not already loaded
+  useEffect(() => {
+    if (employees.length === 0 && !isLoading) {
+      fetchEmployees();
+    }
+  }, [employees.length, isLoading, fetchEmployees]);
 
   // Use both sources of employee documents - direct from API and from context
   const renderDocumentsInfo = (employee) => {
@@ -59,6 +66,15 @@ const EmployeesList = () => {
       </div>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-gray-600">Loading employees...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

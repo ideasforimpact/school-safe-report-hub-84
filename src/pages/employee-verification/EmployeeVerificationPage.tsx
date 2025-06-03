@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import { FileCheck, BarChart2, RefreshCw } from 'lucide-react';
@@ -8,7 +8,12 @@ import { Link } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 const EmployeeVerificationPage = () => {
-  const { fetchEmployees } = useEmployeeVerification();
+  const { fetchEmployees, employees } = useEmployeeVerification();
+  
+  // Fetch employees when component mounts
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
   
   const handleRefresh = () => {
     fetchEmployees();
