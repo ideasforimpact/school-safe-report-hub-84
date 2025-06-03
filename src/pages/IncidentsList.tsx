@@ -73,48 +73,78 @@ const IncidentsList = () => {
     updatedAt: incident.updatedAt
   }));
 
+  const fetchIncidents = async () => {
+    try {
+      setLoading(true);
+
+      // Get client ID from available sources
+      let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+
+      // If no client ID from context, get from user email
+      if (!clientId && user?.email) {
+        const { data: empData } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('email', user.email.toLowerCase())
+          .maybeSingle();
+          
+        if (empData) {
+          clientId = empData.client_id;
+        }
+      }
+
+      if (!clientId) {
+        setIncidents([]);
+        return;
+      }
+
+      const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(clientId);
+      setIncidents(fetchedIncidents);
+
+    } catch (error: any) {
+      console.error('Error fetching incidents:', error);
+      if (error.message?.includes('timeout')) {
+        toast.error('Request timed out. Please try again or contact support if the issue persists.');
+      } else {
+        toast.error('Failed to load incidents. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchIncidents = async () => {
-      try {
-        setLoading(true);
+    fetchIncidents();
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
 
-        // Get client ID from available sources
-        let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-
-        // If no client ID from context, get from user email
-        if (!clientId && user?.email) {
-          const { data: empData } = await supabase
-            .from('employees')
-            .select('client_id')
-            .eq('email', user.email.toLowerCase())
-            .maybeSingle();
-            
-          if (empData) {
-            clientId = empData.client_id;
-          }
-        }
-
-        if (!clientId) {
-          setIncidents([]);
-          return;
-        }
-
-        const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(clientId);
-        setIncidents(fetchedIncidents);
-
-      } catch (error: any) {
-        console.error('Error fetching incidents:', error);
-        if (error.message?.includes('timeout')) {
-          toast.error('Request timed out. Please try again or contact support if the issue persists.');
-        } else {
-          toast.error('Failed to load incidents. Please try again.');
-        }
-      } finally {
-        setLoading(false);
+  // Add visibility change listener to refetch when page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page became visible, refetching incidents...');
+        fetchIncidents();
       }
     };
 
-    fetchIncidents();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
+
+  // Add focus listener to refetch when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('Window focused, refetching incidents...');
+      fetchIncidents();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
 
   return (
