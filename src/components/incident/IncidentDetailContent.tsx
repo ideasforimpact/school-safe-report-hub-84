@@ -148,67 +148,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         </div>
       )}
 
-      {/* Incident Header */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {displayIncident.ticketId}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge variant="outline" className={getStatusColor(displayIncident.status)}>
-                {displayIncident.status}
-              </Badge>
-              <Badge variant="secondary">{displayIncident.type}</Badge>
-              <Badge variant="secondary">{displayIncident.category}</Badge>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="flex items-center p-4">
-              <Calendar className="h-5 w-5 text-gray-500 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Date</p>
-                <p className="font-semibold">{formatDate(displayIncident.date)}</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex items-center p-4">
-              <MapPin className="h-5 w-5 text-gray-500 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Location</p>
-                <p className="font-semibold">{displayIncident.location}</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex items-center p-4">
-              <User className="h-5 w-5 text-gray-500 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Reported By</p>
-                <p className="font-semibold">{displayIncident.reportedBy.name}</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex items-center p-4">
-              <Clock className="h-5 w-5 text-gray-500 mr-3" />
-              <div>
-                <p className="text-sm text-gray-500">Created</p>
-                <p className="font-semibold">{formatDate(displayIncident.createdAt)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
       {/* Main Content Tabs */}
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
