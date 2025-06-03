@@ -122,6 +122,7 @@ const IncidentsList = () => {
         incidentDataService.clearCache(clientId, employeeId);
       }
 
+      console.log(hasIncidentAdmin,"hasIncidentAdmin")
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
