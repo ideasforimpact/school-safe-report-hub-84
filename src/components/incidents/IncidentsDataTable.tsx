@@ -16,6 +16,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { useMemo } from 'react';
 
 interface IncidentsDataTableProps {
   incidents: IncidentRecord[];
@@ -25,6 +26,22 @@ interface IncidentsDataTableProps {
 const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, loading }) => {
   const navigate = useNavigate();
   
+  // Sort incidents by ticket ID in ascending order
+  const sortedIncidents = useMemo(() => {
+    return [...incidents].sort((a, b) => {
+      // Extract the numeric part from ticket IDs for proper sorting
+      const getNumericPart = (ticketId: string) => {
+        const match = ticketId.match(/(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      };
+      
+      const numA = getNumericPart(a.ticket_id);
+      const numB = getNumericPart(b.ticket_id);
+      
+      return numA - numB; // Ascending order
+    });
+  }, [incidents]);
+  
   // Use pagination hook with 10 items per page
   const {
     currentPage,
@@ -33,7 +50,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
     paginatedItems,
     goToNextPage,
     goToPreviousPage
-  } = usePagination(incidents, 10);
+  } = usePagination(sortedIncidents, 10);
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -254,7 +271,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
           
           {/* Results info */}
           <div className="text-sm text-gray-500 mt-2 text-center">
-            Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, incidents.length)} of {incidents.length} incidents
+            Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, sortedIncidents.length)} of {sortedIncidents.length} incidents
           </div>
         </div>
       )}

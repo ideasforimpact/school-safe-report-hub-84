@@ -121,7 +121,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
 
       onClose();
       
-      // Navigate to incidents list
+      // Navigate to incidents list after successful closure
       navigate('/incidents');
 
     } catch (error: any) {
