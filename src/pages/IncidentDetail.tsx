@@ -1,7 +1,7 @@
-
 import Layout from '@/components/layout/Layout';
 import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 import IncidentHeader from '@/components/incident/IncidentHeader';
+import IncidentClosureForm from '@/components/incident/IncidentClosureForm';
 import { useIncidentDetailPage } from '@/hooks/useIncidentDetailPage';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useIncidents } from '@/contexts/incident';
 import { useState, useEffect, useCallback } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
-import { FileItem } from '@/types/incident';
+import { FileItem, ContributingFactor, Action } from '@/types/incident';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -23,7 +23,8 @@ const IncidentDetail = () => {
   
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+
   // Priority: Use fetched incident data if available, otherwise fall back to context
   useEffect(() => {
     console.log("IncidentDetail - Looking for incident with ID:", id);
@@ -100,14 +101,21 @@ const IncidentDetail = () => {
     }
   }, [reload]);
 
-  // Handle close button click
+  // Handle close button click - open the closure form
   const handleCloseButtonClick = async () => {
-    try {
-      await incidentDetailProps.handleStatusChange('Closed');
-      handleRefreshIncident();
-    } catch (error) {
-      console.error('Error closing incident:', error);
-    }
+    setIsClosureFormOpen(true);
+  };
+
+  // Handle closure form submission
+  const handleClosureFormSubmit = (data: {
+    rootCause: string;
+    contributingFactors: ContributingFactor[];
+    actions: Action[];
+  }) => {
+    // The IncidentClosureForm component handles the actual closing logic
+    // After successful closure, close the form and refresh
+    setIsClosureFormOpen(false);
+    handleRefreshIncident();
   };
 
   // Create a wrapper function for status change that matches the expected signature
@@ -210,7 +218,7 @@ const IncidentDetail = () => {
         </Button>
       </div>
       
-      {/* Use IncidentHeader component which already has Close and Edit buttons */}
+      {/* Single IncidentHeader component with Close and Edit buttons */}
       <div className="container max-w-6xl pb-6">
         <IncidentHeader
           incident={incident}
@@ -224,6 +232,14 @@ const IncidentDetail = () => {
       </div>
       
       <IncidentDetailContent {...contentProps} />
+      
+      {/* Incident Closure Form */}
+      <IncidentClosureForm
+        incident={incident}
+        isOpen={isClosureFormOpen && !incident?.isVoided}
+        onClose={() => setIsClosureFormOpen(false)}
+        onSubmit={handleClosureFormSubmit}
+      />
     </Layout>
   );
 };
