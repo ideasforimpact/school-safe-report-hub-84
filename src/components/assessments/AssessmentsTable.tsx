@@ -65,6 +65,9 @@ const AssessmentsTable: React.FC = () => {
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
+  
+  // Get current user's employee ID for checking assignment
+  const currentUserEmployeeId = employeeData?.id;
 
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
@@ -362,6 +365,10 @@ const AssessmentsTable: React.FC = () => {
     return status === 'New' || status === 'Draft';
   };
 
+  const isAssignedToCurrentUser = (assignedTo: string | null) => {
+    return assignedTo === currentUserEmployeeId;
+  };
+
   if (!clientId) {
     return (
       <Card>
@@ -561,20 +568,23 @@ const AssessmentsTable: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAnswerQuestions(assessment.assessment_id)}
-                          disabled={!isAnswerButtonEnabled(assessment.status)}
-                          className={`${
-                            isAnswerButtonEnabled(assessment.status)
-                              ? 'text-blue-600 hover:text-blue-700'
-                              : 'text-gray-400 cursor-not-allowed opacity-50'
-                          }`}
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          Answer
-                        </Button>
+                        {/* Only show Answer button if user is assigned to this assessment */}
+                        {isAssignedToCurrentUser(assessment.assigned_to) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAnswerQuestions(assessment.assessment_id)}
+                            disabled={!isAnswerButtonEnabled(assessment.status)}
+                            className={`${
+                              isAnswerButtonEnabled(assessment.status)
+                                ? 'text-blue-600 hover:text-blue-700'
+                                : 'text-gray-400 cursor-not-allowed opacity-50'
+                            }`}
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            Answer
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
