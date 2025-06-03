@@ -109,6 +109,16 @@ const IncidentDetail = () => {
       console.error('Error closing incident:', error);
     }
   };
+
+  // Create a wrapper function for status change that matches the expected signature
+  const handleStatusChangeWrapper = useCallback(async () => {
+    try {
+      await incidentDetailProps.handleStatusChange(statusUpdate);
+      handleRefreshIncident();
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  }, [incidentDetailProps.handleStatusChange, statusUpdate, handleRefreshIncident]);
   
   if (isLoading || isFetchingIncident) {
     return (
@@ -206,7 +216,7 @@ const IncidentDetail = () => {
           incident={incident}
           statusUpdate={statusUpdate}
           setStatusUpdate={setStatusUpdate}
-          onStatusChange={incidentDetailProps.handleStatusChange}
+          onStatusChange={handleStatusChangeWrapper}
           formatDate={formatDate}
           getStatusColor={getStatusColor}
           onCloseButtonClick={handleCloseButtonClick}
