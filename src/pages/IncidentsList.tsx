@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -94,7 +95,7 @@ const IncidentsList = () => {
     updatedAt: incident.updatedAt
   }));
 
-  const fetchIncidents = async (forceRefresh = false) => {
+  const fetchIncidents = React.useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
 
@@ -150,7 +151,7 @@ const IncidentsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin, employeeState.employeeData, authEmployeeData]);
 
   useEffect(() => {
     // Only fetch if we have the necessary data and hasIncidentAdmin is properly determined
@@ -158,7 +159,7 @@ const IncidentsList = () => {
         employeeState.configuredModules) {
       fetchIncidents();
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin]);
+  }, [fetchIncidents, employeeState.configuredModules]);
 
   // Add visibility change listener to refetch when page becomes visible
   useEffect(() => {
@@ -174,7 +175,7 @@ const IncidentsList = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin]);
+  }, [fetchIncidents]);
 
   // Add focus listener to refetch when window regains focus
   useEffect(() => {
@@ -188,7 +189,7 @@ const IncidentsList = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin]);
+  }, [fetchIncidents]);
 
   return (
     <Layout>
@@ -223,3 +224,4 @@ const IncidentsList = () => {
 };
 
 export default IncidentsList;
+

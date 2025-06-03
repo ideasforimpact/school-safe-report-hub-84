@@ -1,4 +1,5 @@
 
+
 import { useState, useCallback } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -127,3 +128,4 @@ export const useIncidentData = () => {
     refetchIncidents
   };
 };
+
