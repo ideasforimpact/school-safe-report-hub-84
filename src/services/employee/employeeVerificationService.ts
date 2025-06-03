@@ -108,7 +108,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         response: any;
         notes?: string;
       }> : [],
-      params: doc.params || {},
+      params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
       createdAt: doc.created_at,
       updatedAt: doc.updated_at
     }));
@@ -205,7 +205,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         response: any;
         notes?: string;
       }> : [],
-      params: doc.params || {},
+      params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
       createdAt: doc.created_at,
       updatedAt: doc.updated_at
     }));
