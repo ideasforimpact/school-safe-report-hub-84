@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
 import { incidentDataService } from '@/services/incident/incidentDataService';
-import IncidentsDataTable from '@/components/incidents/IncidentsDataTable';
+import LazyIncidentsTable from '@/components/incidents/LazyIncidentsTable';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentFilters from '@/components/incidents/IncidentFilters';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -224,7 +224,7 @@ const IncidentsList = () => {
             statusOptions={statusOptions}
           />
           
-          <IncidentsDataTable incidents={filteredIncidentRecords} loading={loading} />
+          <LazyIncidentsTable incidents={filteredIncidentRecords} loading={loading} />
         </div>
       </div>
     </Layout>
