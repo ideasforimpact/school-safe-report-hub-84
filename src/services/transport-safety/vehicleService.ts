@@ -1,14 +1,17 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle, VehicleType } from "@/types/transportSafety";
-import { useClient } from "@/contexts/ClientContext";
 
-// Get all vehicles from the database
-export const getAllVehicles = async (): Promise<Vehicle[]> => {
+// Get all vehicles from the database filtered by client_id
+export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
   try {
-    const { data, error } = await supabase
-      .from('vehicles')
-      .select('*');
+    let query = supabase.from('vehicles').select('*');
+    
+    // Filter by client_id if provided
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    
+    const { data, error } = await query;
       
     if (error) {
       console.error('Error fetching vehicles:', error);
@@ -48,14 +51,20 @@ export const getAllVehicles = async (): Promise<Vehicle[]> => {
   }
 };
 
-// Get a vehicle by ID
-export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
+// Get a vehicle by ID and optionally verify client ownership
+export const getVehicleById = async (id: string, clientId?: string): Promise<Vehicle | null> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('vehicles')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+    
+    // Add client_id filter if provided
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    
+    const { data, error } = await query.single();
       
     if (error) {
       console.error('Error fetching vehicle:', error);

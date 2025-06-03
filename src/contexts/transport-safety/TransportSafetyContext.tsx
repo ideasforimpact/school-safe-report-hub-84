@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TransportSafetyContextType, TransportSafetyProviderProps } from './types';
 import { Vehicle, VehicleDocument } from '@/types/transportSafety';
@@ -11,7 +10,7 @@ import {
   updateVehicle as updateVehicleService, 
   deleteVehicle as deleteVehicleService 
 } from '@/services/transport-safety/vehicleService';
-import { useClient } from '@/contexts/ClientContext';
+import { useAuth } from '@/contexts/auth';
 
 const TransportSafetyContext = createContext<TransportSafetyContextType | undefined>(undefined);
 
@@ -27,17 +26,27 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { client } = useClient();
+  const { user, employeeData } = useAuth();
+
+  // Get client_id from either employeeData or user context
+  const clientId = employeeData?.clientId || user?.clientId;
 
   const fetchVehicles = async () => {
     try {
       setLoading(true);
-      const vehiclesData = await getAllVehicles();
-      // If client is selected, filter vehicles by client_id
-      const filteredVehicles = client 
-        ? vehiclesData.filter(v => v.clientId === client.id) 
-        : vehiclesData;
-      setVehicles(filteredVehicles);
+      
+      if (!clientId) {
+        console.log('No client ID available - cannot fetch vehicles');
+        setVehicles([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Fetching vehicles for client:', clientId);
+      const vehiclesData = await getAllVehicles(clientId);
+      
+      console.log('Fetched vehicles:', vehiclesData);
+      setVehicles(vehiclesData);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch vehicles:', err);
@@ -48,17 +57,27 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     }
   };
 
-  // Fetch vehicles on component mount
+  // Fetch vehicles on component mount and when client changes
   useEffect(() => {
-    fetchVehicles();
-  }, [client]);
+    if (clientId) {
+      fetchVehicles();
+    } else {
+      setVehicles([]);
+      setLoading(false);
+    }
+  }, [clientId]);
 
   const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>) => {
     try {
+      if (!clientId) {
+        toast.error('No client context available');
+        return;
+      }
+
       // Ensure client_id is set
       const dataWithClient = {
         ...vehicleData,
-        clientId: client?.id
+        clientId: clientId
       };
 
       const newVehicle = await addVehicleService(dataWithClient);

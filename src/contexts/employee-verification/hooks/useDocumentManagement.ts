@@ -1,277 +1,233 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { VerificationDocument } from '@/types/employeeVerification';
-import { initialDocuments } from '../initialData';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { VerificationDocument } from '../types';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth';
 
 export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: boolean) => Promise<void>) => {
-  const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
+  const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
-  const fetchTimestampsRef = useRef<Record<string, number>>({});
+  const { user, employeeData } = useAuth();
 
-  // Update a document in the local state
-  const updateDocumentInState = useCallback((updatedDoc: VerificationDocument) => {
-    setDocuments(prevDocs => 
-      prevDocs.map(doc => 
-        doc.id === updatedDoc.id ? { ...doc, ...updatedDoc } : doc
-      )
-    );
-  }, []);
+  // Get client_id from either employeeData or user context
+  const clientId = employeeData?.clientId || user?.clientId;
 
-  // Fetch documents from the database via the edge function with cache control
-  const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
-    // Skip if we're already loading
-    if (isLoading) {
-      console.log('Skipping fetchEmployeeDocuments - already loading');
-      return [];
+  const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
+    if (!clientId) {
+      console.log('No client ID available - cannot fetch documents');
+      return;
     }
-    
-    // Cache check - don't fetch if we've fetched within the last 30 seconds for this employee
-    const now = Date.now();
-    const cacheKey = `${employeeId}${timeframe || ''}`;
-    const lastFetch = fetchTimestampsRef.current[cacheKey] || 0;
-    
-    if (now - lastFetch < 30000) {
-      console.log(`Skipping fetch for employee ${employeeId} - cached (last fetched ${now - lastFetch}ms ago)`);
-      return documents.filter(doc => doc.employeeId === employeeId);
-    }
-    
-    console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
-    
+
     setIsLoading(true);
     try {
-      console.log('Making API call to employee-documents edge function');
-      // For GET requests, we should pass parameters as query strings, not in the body
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'POST',  // Using POST to send data in body
-        body: { employeeId, timeframe }
-      });
+      console.log('Fetching documents for employee:', employeeId, 'client:', clientId);
       
+      // First verify the employee belongs to the current client
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (empError || !employee) {
+        console.error('Employee not found or does not belong to current client');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .select(`
+          id,
+          employee_id,
+          document_type_id,
+          document_status_id,
+          document_url,
+          document_number,
+          verification_status,
+          params,
+          employee_docs_log,
+          last_otp_generated,
+          created_at,
+          updated_at,
+          document_type:employee_document_type(name, description),
+          document_status:document_status(name, description)
+        `)
+        .eq('employee_id', employeeId);
+
       if (error) {
-        console.error('Error fetching documents:', error);
-        return [];
+        console.error('Error fetching employee documents:', error);
+        return;
       }
-      
-      // Documents are now returned directly from the edge function
-      const mappedDocuments = data?.documents || [];
-      console.log('Documents fetched successfully:', mappedDocuments.length);
-      
-      // Update cache timestamp
-      fetchTimestampsRef.current[cacheKey] = now;
-      
-      setDocuments(currentDocuments => {
-        // If timeframe is specified, we're doing a filtered fetch, don't replace all documents
-        if (timeframe) {
-          console.log('Timeframe specified, replacing documents with filtered results');
-          return mappedDocuments;
-        }
-        
-        // Otherwise merge with existing documents that are not for this employee
-        const otherEmployeeDocs = currentDocuments.filter(doc => doc.employeeId !== employeeId);
-        console.log(`Merging ${otherEmployeeDocs.length} existing docs with ${mappedDocuments.length} new docs`);
-        return [...otherEmployeeDocs, ...mappedDocuments];
+
+      const formattedDocuments: VerificationDocument[] = data.map(doc => ({
+        id: doc.id,
+        employeeId: doc.employee_id,
+        documentType: doc.document_type?.name || 'Unknown',
+        documentUrl: doc.document_url,
+        documentNumber: doc.document_number || '',
+        verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+        uploadDate: doc.created_at,
+        expiryDate: doc.params?.expiryDate || null,
+        verificationDate: null,
+        verificationNotes: '',
+        verificationMethod: 'manual'
+      }));
+
+      console.log('Fetched documents:', formattedDocuments);
+      setDocuments(prev => {
+        const filtered = prev.filter(d => d.employeeId !== employeeId);
+        return [...filtered, ...formattedDocuments];
       });
-      
-      // Mark this employee ID as fetched
-      if (!fetchedEmployeeIds.includes(employeeId)) {
-        setFetchedEmployeeIds(prev => [...prev, employeeId]);
-        console.log('Marked employee as fetched:', employeeId);
-      }
-      
-      return mappedDocuments;
-    } catch (err) {
-      console.error('Failed to fetch employee documents:', err);
-      return [];
+    } catch (error) {
+      console.error('Error in fetchEmployeeDocuments:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, fetchedEmployeeIds, documents]);
+  }, [clientId]);
 
-  const addDocument = useCallback(async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'uploadDate'>) => {
+    if (!clientId) {
+      toast.error('No client context available');
+      return;
+    }
+
     try {
-      console.log('Starting document upload process:', {
-        employeeId: documentData.employeeId,
-        documentTypeId: documentData.documentTypeId,
-        hasImage: !!documentData.documentImage,
-        hasDocNumber: !!documentData.documentNumber,
-        documentStatusId: documentData.documentStatusId || 'Not provided',
-        params: documentData.params ? JSON.stringify(documentData.params) : 'No params'
-      });
-      
-      setIsLoading(true);
-      
-      // Call the edge function to upload the document with only necessary data
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'POST',
-        body: { 
-          employeeId: documentData.employeeId, 
-          documentData: {
-            documentTypeId: documentData.documentTypeId,
-            documentNumber: documentData.documentNumber,
-            documentImage: documentData.documentImage,
-            documentStatusId: documentData.documentStatusId,
-            params: documentData.params // Include params in the API call
-          } 
-        }
-      });
-      
-      if (error) {
-        console.error('Error adding document:', error);
-        throw new Error('Failed to add document');
+      // Verify the employee belongs to the current client
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', document.employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (empError || !employee) {
+        toast.error('Employee not found or access denied');
+        return;
       }
-      
-      console.log('Document upload successful, response:', data);
-      
-      // Add the returned document to local state
+
+      // Get document type ID
+      const { data: docType } = await supabase
+        .from('employee_document_type')
+        .select('id')
+        .eq('name', document.documentType)
+        .single();
+
+      // Get pending status ID
+      const { data: pendingStatus } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', 'pending')
+        .single();
+
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .insert([{
+          employee_id: document.employeeId,
+          document_type_id: docType?.id,
+          document_status_id: pendingStatus?.id,
+          document_url: document.documentUrl,
+          document_number: document.documentNumber,
+          verification_status: document.verificationStatus,
+          params: document.expiryDate ? { expiryDate: document.expiryDate } : {}
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
       const newDocument: VerificationDocument = {
-        id: data.document.id,
-        employeeId: documentData.employeeId,
-        documentTypeId: documentData.documentTypeId,
-        documentTypeName: data.document.documentTypeName,
-        documentNumber: data.document.documentNumber || '',
-        documentImage: data.document.documentImage || '',
-        documentStatusId: data.document.documentStatusId || undefined,
-        documentStatusName: data.document.documentStatusName,
-        verificationStatus: data.document.verificationStatus || 'pending',
-        employee_docs_log: data.document.employee_docs_log || [],
-        params: data.document.params || {}, // Include params in the returned document
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        id: data.id,
+        employeeId: data.employee_id,
+        documentType: document.documentType,
+        documentUrl: data.document_url,
+        documentNumber: data.document_number || '',
+        verificationStatus: data.verification_status as 'verified' | 'failed' | 'pending',
+        uploadDate: data.created_at,
+        expiryDate: document.expiryDate,
+        verificationDate: null,
+        verificationNotes: '',
+        verificationMethod: 'manual'
       };
-      
+
       setDocuments(prev => [...prev, newDocument]);
-      return newDocument;
-    } catch (err) {
-      console.error('Error in addDocument:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
+      toast.success('Document uploaded successfully');
+    } catch (error) {
+      console.error('Error adding document:', error);
+      toast.error('Failed to upload document');
+    }
+  }, [clientId]);
+
+  const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual', notes?: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('employee_documents')
+        .update({
+          verification_status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', documentId)
+        .select('employee_id')
+        .single();
+
+      if (error) throw error;
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === documentId 
+          ? { 
+              ...doc, 
+              verificationStatus: status,
+              verificationDate: new Date().toISOString(),
+              verificationNotes: notes || '',
+              verificationMethod: method
+            }
+          : doc
+      ));
+
+      // Check if all documents are verified for this employee
+      const employeeId = data.employee_id;
+      const employeeDocs = documents.filter(d => d.employeeId === employeeId);
+      const allVerified = employeeDocs.every(d => d.id === documentId ? status === 'verified' : d.verificationStatus === 'verified');
+
+      if (allVerified && status === 'verified') {
+        await updateEmployeeStatus(employeeId, true);
+      }
+
+      toast.success(`Document ${status} successfully`);
+    } catch (error) {
+      console.error('Error verifying document:', error);
+      toast.error('Failed to verify document');
+    }
+  }, [documents, updateEmployeeStatus]);
+
+  const deleteDocument = useCallback(async (documentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('employee_documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (error) throw error;
+
+      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+      toast.success('Document deleted successfully');
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast.error('Failed to delete document');
     }
   }, []);
 
-  const verifyDocument = async (id: string, status: 'verified' | 'failed', notes?: string) => {
-    try {
-      setIsLoading(true);
-      const documentToVerify = documents.find(doc => doc.id === id);
-      
-      if (!documentToVerify) {
-        throw new Error('Document not found');
-      }
-      
-      // Find the document first to get employeeId
-      const employeeId = documentToVerify.employeeId;
-      
-      // Call the edge function to update the document verification status
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'PUT',
-        body: { 
-          employeeId,
-          documentId: id,
-          verificationStatus: status,
-          verificationNotes: notes
-        }
-      });
-      
-      if (error) {
-        console.error('Error updating document verification status:', error);
-        throw new Error('Failed to update document verification status');
-      }
-      
-      // Update local state with the updated document
-      setDocuments(docs => docs.map(doc => {
-        if (doc.id === id) {
-          return { 
-            ...doc, 
-            verificationStatus: status, 
-            verificationDate: new Date().toISOString(),
-            verificationNotes: notes || doc.verificationNotes,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return doc;
-      }));
-
-      // Only update employee status for verified documents, not for rejected ones
-      if (status === 'verified') {
-        // Convert status string to boolean (true for verified)
-        await updateEmployeeStatus(employeeId, true);
-      }
-      
-    } catch (err) {
-      console.error('Error in verifyDocument:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Delete document with updated schema support
-  const deleteDocument = async (id: string) => {
-    try {
-      setIsLoading(true);
-      
-      // Find the document first to get employeeId
-      const docToDelete = documents.find(doc => doc.id === id);
-      
-      if (!docToDelete) {
-        throw new Error('Document not found');
-      }
-      
-      // Call the edge function to delete the document
-      const { error } = await supabase.functions.invoke('employee-documents', {
-        method: 'DELETE',
-        body: { 
-          employeeId: docToDelete.employeeId,
-          documentId: id
-        }
-      });
-      
-      if (error) {
-        console.error('Error deleting document:', error);
-        throw new Error('Failed to delete document');
-      }
-      
-      // Update local state
-      setDocuments(documents.filter(doc => doc.id !== id));
-    } catch (err) {
-      console.error('Error in deleteDocument:', err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Modified to avoid state updates during render
   const getEmployeeDocuments = useCallback((employeeId: string) => {
     return documents.filter(doc => doc.employeeId === employeeId);
   }, [documents]);
 
-  // Add a new effect to check and fetch documents if needed
-  useEffect(() => {
-    const checkAndFetchEmployeeDocuments = async (employeeId: string) => {
-      // If we haven't fetched documents for this employee yet and we're not loading
-      if (!fetchedEmployeeIds.includes(employeeId) && !isLoading) {
-        const docsForEmployee = documents.filter(doc => doc.employeeId === employeeId);
-        
-        // Only fetch if we don't have docs for this employee
-        if (docsForEmployee.length === 0) {
-          await fetchEmployeeDocuments(employeeId);
-        }
-      }
-    };
-    
-    // This effect will run when component using getEmployeeDocuments mounts
-    return () => {}; // Empty cleanup function
-  }, [fetchedEmployeeIds, documents, isLoading, fetchEmployeeDocuments]);
-
   return {
     documents,
+    isLoading,
+    fetchEmployeeDocuments,
     addDocument,
     verifyDocument,
     deleteDocument,
-    getEmployeeDocuments,
-    fetchEmployeeDocuments,
-    updateDocumentInState,
-    isLoading
+    getEmployeeDocuments
   };
 };
