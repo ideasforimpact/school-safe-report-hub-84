@@ -73,7 +73,7 @@ const IncidentsList = () => {
     updatedAt: incident.updatedAt
   }));
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = async (forceRefresh = false) => {
     try {
       setLoading(true);
 
@@ -98,8 +98,15 @@ const IncidentsList = () => {
         return;
       }
 
-      const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(clientId);
+      // Clear cache if force refresh is requested
+      if (forceRefresh) {
+        console.log('Force refreshing incidents - clearing cache...');
+        incidentDataService.clearCache(clientId);
+      }
+
+      const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(clientId, forceRefresh);
       setIncidents(fetchedIncidents);
+      console.log('Incidents fetched successfully:', fetchedIncidents.length);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
@@ -121,8 +128,8 @@ const IncidentsList = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('Page became visible, refetching incidents...');
-        fetchIncidents();
+        console.log('Page became visible, force refetching incidents...');
+        fetchIncidents(true); // Force refresh when page becomes visible
       }
     };
 
@@ -136,8 +143,8 @@ const IncidentsList = () => {
   // Add focus listener to refetch when window regains focus
   useEffect(() => {
     const handleFocus = () => {
-      console.log('Window focused, refetching incidents...');
-      fetchIncidents();
+      console.log('Window focused, force refetching incidents...');
+      fetchIncidents(true); // Force refresh when window regains focus
     };
 
     window.addEventListener('focus', handleFocus);
