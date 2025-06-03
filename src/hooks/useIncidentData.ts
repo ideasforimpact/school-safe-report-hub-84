@@ -18,18 +18,21 @@ export const useIncidentData = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const location = useLocation();
 
-  // Check if user has incident admin access based on current route
+  // Check if user has incident admin access by finding incidents module
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
-    // Find module based on current route
-    const currentModule = employeeState.configuredModules?.find(
-      module => module.url === location.pathname
+    // Find incidents module by name (more reliable than URL matching)
+    const incidentsModule = employeeState.configuredModules?.find(
+      module => module.name.toLowerCase() === 'incidents'
     );
     
-    return currentModule?.accessLevel?.is_admin === true;
-  }, [isSuperAdmin, employeeState.configuredModules, location.pathname]);
+    console.log('Incidents module found:', incidentsModule);
+    console.log('Access level:', incidentsModule?.accessLevel);
+    
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
 
   const fetchIncidents = useCallback(async () => {
     try {

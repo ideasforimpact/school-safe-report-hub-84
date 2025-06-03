@@ -17,13 +17,18 @@ const IncidentsHeader = () => {
   const hasIncidentsAdminAccess = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
-    // Find module based on current route
-    const currentModule = state.configuredModules?.find(
-      module => module.url === location.pathname
+    // Find incidents module by name (more reliable than URL matching)
+    const incidentsModule = state.configuredModules?.find(
+      module => module.name.toLowerCase() === 'incidents'
     );
     
-    return currentModule?.accessLevel?.is_admin === true;
-  }, [isSuperAdmin, state.configuredModules, location.pathname]);
+    console.log('Incidents module found:', incidentsModule);
+    console.log('Access level:', incidentsModule?.accessLevel);
+    
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, state.configuredModules]);
+
+  console.log('hasIncidentsAdminAccess:', hasIncidentsAdminAccess);
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

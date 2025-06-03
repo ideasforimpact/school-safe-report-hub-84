@@ -20,20 +20,23 @@ const IncidentsList = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const location = useLocation();
 
-  // Check if user has incident admin access based on current route
+  // Check if user has incident admin access by finding incidents module
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
 
-    // Find module based on current route
-    const currentModule = employeeState.configuredModules?.find(
-      module => module.url === location.pathname
+    // Find incidents module by name (more reliable than URL matching)
+    const incidentsModule = employeeState.configuredModules?.find(
+      module => module.name.toLowerCase() === 'incidents'
     );
 
-    console.log(currentModule,"currentModule")
+    console.log('Incidents module found:', incidentsModule);
+    console.log('Access level:', incidentsModule?.accessLevel);
 
-    return currentModule?.accessLevel?.is_admin === true;
-  }, [isSuperAdmin, employeeState.configuredModules, location.pathname]);
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
+
+  console.log('hasIncidentAdmin:', hasIncidentAdmin);
 
   // Transform IncidentRecord[] to Incident[] for the filter hook
   const transformedIncidents = incidents.map(record => ({
@@ -122,7 +125,7 @@ const IncidentsList = () => {
         incidentDataService.clearCache(clientId, employeeId);
       }
 
-      console.log(hasIncidentAdmin,"hasIncidentAdmin")
+      console.log('hasIncidentAdmin:', hasIncidentAdmin);
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
