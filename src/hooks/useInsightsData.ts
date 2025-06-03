@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +21,7 @@ import {
 import { incidentDataService } from '@/services/incident/incidentDataService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface InsightsFiltersState {
   dateFilter: DateRangeFilter;
