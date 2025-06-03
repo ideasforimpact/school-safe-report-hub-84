@@ -9,6 +9,7 @@ import DocumentsList from '@/components/employee-verification/documents-list';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth';
 import { 
   Select, 
   SelectContent, 
@@ -16,44 +17,70 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { Employee, VerificationDocument } from '@/types/employeeVerification';
+import { fetchEmployeeVerificationData, fetchEmployeeDocuments } from '@/services/employee/employeeVerificationService';
 
 const EmployeeDetailPage = () => {
-  const {
-    employeeId
-  } = useParams<{
-    employeeId: string;
-  }>();
+  const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
-  const {
-    getEmployee,
-    fetchEmployeeDocuments,
-    fetchDocumentStatuses,
-    isLoading
-  } = useEmployeeVerification();
+  const { fetchDocumentStatuses } = useEmployeeVerification();
   const { toast } = useToast();
+  const { user, employeeData } = useAuth();
+  
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [documents, setDocuments] = useState<VerificationDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeframeFilter, setTimeframeFilter] = useState<string | undefined>(undefined);
   
-  // Move all hook calls outside of conditional logic
-  const employee = getEmployee(employeeId || '');
+  // Get client_id from either employeeData or user context
+  const clientId = employeeData?.clientId || user?.clientId;
 
-  // Define all callback functions before any conditional returns
+  // Define all callback functions
   const handleAddDocument = useCallback(() => {
     if (employeeId) {
       navigate(`/employee-verification/${employeeId}/upload-document`);
     }
   }, [employeeId, navigate]);
 
+  const loadEmployeeData = useCallback(async () => {
+    if (!employeeId || !clientId) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('Loading employee data for:', employeeId);
+      const data = await fetchEmployeeVerificationData(employeeId, clientId);
+      
+      if (data.employee) {
+        setEmployee(data.employee);
+        setDocuments(data.documents);
+        console.log('Employee data loaded successfully');
+      } else {
+        console.log('Employee not found');
+        setEmployee(null);
+        setDocuments([]);
+      }
+    } catch (error) {
+      console.error('Error loading employee data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load employee data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [employeeId, clientId, toast]);
+
   const handleRefreshDocuments = useCallback(async () => {
     if (employeeId && !isRefreshing) {
       console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
       setIsRefreshing(true);
       try {
-        // Fetch employee documents using the selected timeframe filter
-        const result = await fetchEmployeeDocuments(employeeId, timeframeFilter);
-        console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
-        console.log('Refresh result:', result);
+        const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter);
+        setDocuments(refreshedDocuments);
+        console.log('Documents refreshed for employee:', employeeId);
         
         toast({
           title: "Data Refreshed",
@@ -70,7 +97,7 @@ const EmployeeDetailPage = () => {
         setIsRefreshing(false);
       }
     }
-  }, [employeeId, fetchEmployeeDocuments, toast, isRefreshing, timeframeFilter]);
+  }, [employeeId, isRefreshing, timeframeFilter, toast]);
 
   // Handle timeframe filter change
   const handleTimeframeChange = useCallback(async (value: string) => {
@@ -82,8 +109,9 @@ const EmployeeDetailPage = () => {
       setIsRefreshing(true);
       try {
         const timeframe = value === 'all' ? undefined : value;
-        const result = await fetchEmployeeDocuments(employeeId, timeframe);
-        console.log('Filter applied, documents fetched:', result);
+        const filteredDocuments = await fetchEmployeeDocuments(employeeId, timeframe);
+        setDocuments(filteredDocuments);
+        console.log('Filter applied, documents fetched');
         
         toast({
           title: "Filter Applied",
@@ -100,18 +128,17 @@ const EmployeeDetailPage = () => {
         setIsRefreshing(false);
       }
     }
-  }, [employeeId, fetchEmployeeDocuments, toast]);
+  }, [employeeId, toast]);
 
-  // Fetch data when component mounts - only once
+  // Fetch data when component mounts
   useEffect(() => {
-    if (!employeeId || initialLoadComplete) return;
+    if (!employeeId || !clientId || initialLoadComplete) return;
     
     const loadData = async () => {
       try {
         console.log('Initial data loading for employee:', employeeId);
-        // Fetch documents and statuses in parallel on initial load
         await Promise.all([
-          fetchEmployeeDocuments(employeeId),
+          loadEmployeeData(),
           fetchDocumentStatuses()
         ]);
         console.log('Initial data loading complete for employee:', employeeId);
@@ -127,11 +154,12 @@ const EmployeeDetailPage = () => {
     };
     
     loadData();
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, initialLoadComplete]);
+  }, [employeeId, clientId, initialLoadComplete, loadEmployeeData, fetchDocumentStatuses, toast]);
 
   // Early return for non-existent employee
-  if (!employee) {
-    return <Layout>
+  if (!isLoading && !employee && initialLoadComplete) {
+    return (
+      <Layout>
         <div className="p-8 text-left">
           <h2 className="text-2xl font-bold mb-4">Employee Not Found</h2>
           <p className="text-gray-600 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
@@ -140,10 +168,28 @@ const EmployeeDetailPage = () => {
             Back to Employees
           </Button>
         </div>
-      </Layout>;
+      </Layout>
+    );
   }
 
-  return <Layout>
+  // Loading state
+  if (isLoading || !employee) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading employee details...</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
           <div className="flex items-center mb-4 sm:mb-0">
@@ -224,13 +270,15 @@ const EmployeeDetailPage = () => {
             
             <DocumentsList 
               employeeId={employee.id}
+              documents={documents}
               onAddDocument={handleAddDocument}
               initialLoadComplete={initialLoadComplete}
             />
           </div>
         </div>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
 
 export default EmployeeDetailPage;

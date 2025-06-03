@@ -1,206 +1,103 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
+import React, { useState } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { VerificationDocument } from '@/types/employeeVerification';
 import { useToast } from '@/hooks/use-toast';
-import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
+import EmptyDocumentsState from './EmptyDocumentsState';
 import VerificationDialog from './VerificationDialog';
-import { Loader2 } from 'lucide-react';
-import { useDocumentRealtime } from '@/hooks/useDocumentRealtime';
 
 interface DocumentsListProps {
   employeeId: string;
-  onAddDocument?: () => void;
-  initialLoadComplete?: boolean;
+  documents: VerificationDocument[];
+  onAddDocument: () => void;
+  initialLoadComplete: boolean;
 }
 
-const DocumentsList: React.FC<DocumentsListProps> = ({ 
-  employeeId, 
+const DocumentsList: React.FC<DocumentsListProps> = ({
+  employeeId,
+  documents,
   onAddDocument,
-  initialLoadComplete = false 
+  initialLoadComplete
 }) => {
-  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
+  const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
-  
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  const [selectedDocumentTypeName, setSelectedDocumentTypeName] = useState<string | null>(null);
-  const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
-  const [verifying, setVerifying] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
-  const [localLoadComplete, setLocalLoadComplete] = useState(initialLoadComplete);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
+  const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
 
-  // Get documents and sort by created date (newest first)
-  const documents = useMemo(() => {
-    const docs = getEmployeeDocuments(employeeId);
-    // Sort documents by createdAt (most recent first)
-    return [...docs].sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return dateB - dateA; // Descending order (newest first)
-    });
-  }, [getEmployeeDocuments, employeeId]);
-
-  // Handle real-time document updates
-  const handleDocumentUpdate = useCallback((updatedDocument) => {
-    console.log('Document updated via real-time:', updatedDocument);
-    toast({
-      title: "Document Updated",
-      description: `Document status changed to ${updatedDocument.documentStatusName || updatedDocument.verificationStatus}`,
-    });
-  }, [toast]);
-
-  // Set up real-time subscription
-  useDocumentRealtime(employeeId, handleDocumentUpdate);
-
-  // Fetch documents only once when component mounts and avoid duplicate fetches
-  useEffect(() => {
-    // Skip if documents are already loaded or we're currently fetching
-    if (documents.length > 0 || isFetching || localLoadComplete) {
-      return;
-    }
-    
-    const loadDocuments = async () => {
-      setIsFetching(true);
-      try {
-        await fetchEmployeeDocuments(employeeId);
-      } finally {
-        // Mark initial load as complete regardless of success/failure
-        setLocalLoadComplete(true);
-        setIsFetching(false);
-      }
-    };
-    
-    loadDocuments();
-  }, [employeeId, fetchEmployeeDocuments, documents.length, isFetching, localLoadComplete]);
-
-  // Update local state when parent passes initialLoadComplete
-  useEffect(() => {
-    if (initialLoadComplete && !localLoadComplete) {
-      setLocalLoadComplete(true);
-    }
-  }, [initialLoadComplete, localLoadComplete]);
-
-  const handleViewDocument = useCallback((documentImage: string) => {
-    window.open(documentImage, '_blank');
-  }, []);
-
-  const handleDownloadDocument = useCallback((documentImage: string) => {
-    const link = document.createElement('a');
-    link.href = documentImage;
-    link.download = `document-${new Date().getTime()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, []);
-
-  const openVerifyDialog = useCallback((documentId: string) => {
-    const document = documents.find(doc => doc.id === documentId);
-    if (document) {
-      setSelectedDocument(documentId);
-      setSelectedDocumentTypeName(document.documentTypeName || '');
-      setSelectedDocumentNumber(document.documentNumber || '');
-      setVerifyDialogOpen(true);
-    }
-  }, [documents]);
-
-  const handleVerify = useCallback(async (method: 'api' | 'manual') => {
-    if (!selectedDocument) return;
-    
-    setVerifying(true);
-    
-    try {
-      // For non-Aadhar documents or manual verification
-      const notes = method === 'api' 
-        ? 'Document automatically verified successfully with government database.' 
-        : 'Document manually verified successfully.';
-      
-      await verifyDocument(
-        selectedDocument,
-        'verified',
-        notes
-      );
-      
+  const handleViewDocument = (documentImage: string) => {
+    if (documentImage) {
+      window.open(documentImage, '_blank');
+    } else {
       toast({
-        title: "Document Verified",
-        description: `The document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
-      });
-      
-      setVerifying(false);
-      setVerifyDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred during verification.",
+        title: "No Document",
+        description: "No document image available to view.",
         variant: "destructive",
       });
-      setVerifying(false);
     }
-  }, [selectedDocument, verifyDocument, toast]);
+  };
 
-  const rejectDocument = useCallback(async () => {
-    if (!selectedDocument) return;
-    
-    setVerifying(true);
-    
-    try {
-      await verifyDocument(
-        selectedDocument,
-        'failed',
-        'Failed to verify document. Details do not match records.'
-      );
-      
+  const handleDownloadDocument = (documentImage: string) => {
+    if (documentImage) {
+      const link = document.createElement('a');
+      link.href = documentImage;
+      link.download = 'document';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
       toast({
-        title: "Verification Failed",
-        description: "Document verification failed.",
-        variant: "destructive"
-      });
-      
-      setVerifying(false);
-      setVerifyDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred during verification.",
+        title: "No Document",
+        description: "No document available to download.",
         variant: "destructive",
       });
-      setVerifying(false);
     }
-  }, [selectedDocument, verifyDocument, toast]);
+  };
 
-  // Show loading state only during initial load, not for subsequent operations
-  if ((isLoading || isFetching) && !localLoadComplete) {
+  const handleVerifyDocument = (documentId: string) => {
+    setSelectedDocumentId(documentId);
+    setIsVerificationDialogOpen(true);
+  };
+
+  const handleVerificationSubmit = async (status: 'verified' | 'failed', notes?: string) => {
+    if (selectedDocumentId) {
+      await verifyDocument(selectedDocumentId, status, 'manual', notes);
+      setIsVerificationDialogOpen(false);
+      setSelectedDocumentId('');
+    }
+  };
+
+  if (!initialLoadComplete) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
-        <p className="text-gray-600">Loading documents...</p>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading documents...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {documents.length === 0 ? (
-        <EmptyDocumentsState onAddDocument={onAddDocument} />
-      ) : (
-        <DocumentsTable 
-          documents={documents}
-          onViewDocument={handleViewDocument}
-          onDownloadDocument={handleDownloadDocument}
-          onVerifyDocument={openVerifyDialog}
-        />
-      )}
+  if (documents.length === 0) {
+    return <EmptyDocumentsState onAddDocument={onAddDocument} />;
+  }
 
-      <VerificationDialog
-        open={verifyDialogOpen}
-        onOpenChange={setVerifyDialogOpen}
-        onVerify={handleVerify}
-        onReject={rejectDocument}
-        isVerifying={verifying}
-        documentType={selectedDocumentTypeName || undefined}
-        documentId={selectedDocument || undefined}
-        documentNumber={selectedDocumentNumber}
+  return (
+    <>
+      <DocumentsTable
+        documents={documents}
+        onViewDocument={handleViewDocument}
+        onDownloadDocument={handleDownloadDocument}
+        onVerifyDocument={handleVerifyDocument}
       />
-    </div>
+      
+      <VerificationDialog
+        open={isVerificationDialogOpen}
+        onOpenChange={setIsVerificationDialogOpen}
+        onSubmit={handleVerificationSubmit}
+        documentId={selectedDocumentId}
+      />
+    </>
   );
 };
 
