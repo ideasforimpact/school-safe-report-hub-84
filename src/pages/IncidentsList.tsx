@@ -9,6 +9,7 @@ import IncidentFilters from '@/components/incidents/IncidentFilters';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
+import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
@@ -74,6 +75,15 @@ const IncidentsList = () => {
     toggleAdvancedFilters,
     clearFilters
   } = useIncidentFilters(transformedIncidents);
+
+  // Get database filter options
+  const { 
+    statusOptions: dbStatusOptions, 
+    priorityOptions: dbPriorityOptions,
+    categoryOptions: dbCategoryOptions,
+    subcategoryOptions: dbSubcategoryOptions,
+    locationOptions: dbLocationOptions 
+  } = useFilterOptions();
 
   // Transform filtered incidents back to IncidentRecord[]
   const filteredIncidentRecords = filteredIncidents.map(incident => ({
@@ -214,14 +224,14 @@ const IncidentsList = () => {
             onFilterChange={handleFilterChange}
             onClearFilters={clearFilters}
             toggleAdvancedFilters={toggleAdvancedFilters}
-            availableCategories={availableCategories}
-            availableSubcategories={availableSubcategories}
-            availableLocations={availableLocations}
+            availableCategories={dbCategoryOptions.length > 0 ? dbCategoryOptions : availableCategories}
+            availableSubcategories={dbSubcategoryOptions.length > 0 ? dbSubcategoryOptions : availableSubcategories}
+            availableLocations={dbLocationOptions.length > 0 ? dbLocationOptions : availableLocations}
             availableFacilities={availableFacilities}
             availableOwners={availableOwners}
-            priorityOptions={priorityOptions}
-            locationOptions={locationOptions}
-            statusOptions={statusOptions}
+            priorityOptions={dbPriorityOptions.length > 0 ? dbPriorityOptions : priorityOptions}
+            locationOptions={dbLocationOptions.length > 0 ? dbLocationOptions : locationOptions}
+            statusOptions={dbStatusOptions.length > 0 ? dbStatusOptions : statusOptions}
           />
           
           <LazyIncidentsTable incidents={filteredIncidentRecords} loading={loading} />

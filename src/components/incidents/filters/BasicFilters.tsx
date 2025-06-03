@@ -38,11 +38,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </div>
 
       {/* Location */}
-      <Select value={filters.location || ''} onValueChange={(value) => onFilterChange('location', value)}>
-        <SelectTrigger>
+      <Select value={filters.location || ''} onValueChange={(value) => onFilterChange('location', value === '' ? '' : value)}>
+        <SelectTrigger className="bg-white">
           <SelectValue placeholder="Location" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border shadow-lg z-50">
           <SelectItem value="">All Locations</SelectItem>
           {availableLocations.map((location) => (
             <SelectItem key={location} value={location}>
@@ -52,12 +52,12 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         </SelectContent>
       </Select>
 
-      {/* Status - Show all statuses including Closed */}
-      <Select value={filters.status || ''} onValueChange={(value) => onFilterChange('status', value)}>
-        <SelectTrigger>
+      {/* Status - Show database statuses */}
+      <Select value={filters.status || ''} onValueChange={(value) => onFilterChange('status', value === '' ? '' : value)}>
+        <SelectTrigger className="bg-white">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border shadow-lg z-50">
           <SelectItem value="">All Statuses</SelectItem>
           {statusOptions.map((status) => (
             <SelectItem key={status} value={status}>
@@ -68,11 +68,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Category */}
-      <Select value={filters.category || ''} onValueChange={(value) => onFilterChange('category', value)}>
-        <SelectTrigger>
+      <Select value={filters.category || ''} onValueChange={(value) => onFilterChange('category', value === '' ? '' : value)}>
+        <SelectTrigger className="bg-white">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border shadow-lg z-50">
           <SelectItem value="">All Categories</SelectItem>
           {availableCategories.map((category) => (
             <SelectItem key={category} value={category}>
@@ -83,11 +83,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Subcategory */}
-      <Select value={filters.subcategory || ''} onValueChange={(value) => onFilterChange('subcategory', value)}>
-        <SelectTrigger>
+      <Select value={filters.subcategory || ''} onValueChange={(value) => onFilterChange('subcategory', value === '' ? '' : value)}>
+        <SelectTrigger className="bg-white">
           <SelectValue placeholder="Subcategory" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border shadow-lg z-50">
           <SelectItem value="">All Subcategories</SelectItem>
           {availableSubcategories.map((subcategory) => (
             <SelectItem key={subcategory} value={subcategory}>
@@ -98,11 +98,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Priority */}
-      <Select value={filters.priority || ''} onValueChange={(value) => onFilterChange('priority', value)}>
-        <SelectTrigger>
+      <Select value={filters.priority || ''} onValueChange={(value) => onFilterChange('priority', value === '' ? '' : value)}>
+        <SelectTrigger className="bg-white">
           <SelectValue placeholder="Priority" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white border shadow-lg z-50">
           <SelectItem value="">All Priorities</SelectItem>
           {priorityOptions.map((priority) => (
             <SelectItem key={priority} value={priority}>

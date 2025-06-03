@@ -27,7 +27,7 @@ export const useIncidentFilters = (incidents: Incident[]) => {
     dateTo: ''
   });
 
-  // Extract unique values for filter options
+  // Extract unique values for filter options from actual incident data
   const availableCategories = useMemo(() => {
     const categories = incidents.map(incident => incident.category).filter(Boolean);
     return [...new Set(categories)].sort();
@@ -49,12 +49,25 @@ export const useIncidentFilters = (incidents: Incident[]) => {
   }, [incidents]);
 
   const availableOwners = useMemo(() => {
-    const owners = incidents.map(incident => incident.owner).filter(Boolean);
-    return [...new Set(owners.map(owner => ({ id: owner.id, name: owner.name })))];
+    const owners = incidents
+      .map(incident => incident.owner)
+      .filter(Boolean)
+      .map(owner => ({ id: owner!.id, name: owner!.name }));
+    return [...new Set(owners.map(owner => JSON.stringify(owner)))].map(str => JSON.parse(str));
   }, [incidents]);
 
-  const priorityOptions = ['Low', 'Medium', 'High', 'Critical'];
-  const statusOptions = ['New', 'Open', 'In Progress', 'Closed', 'On Hold']; // Include all statuses
+  // Extract status options from incidents data
+  const statusOptions = useMemo(() => {
+    const statuses = incidents.map(incident => incident.status).filter(Boolean);
+    return [...new Set(statuses)].sort();
+  }, [incidents]);
+
+  // Extract priority options from incidents data
+  const priorityOptions = useMemo(() => {
+    const priorities = incidents.map(incident => incident.priority).filter(Boolean);
+    return [...new Set(priorities)].sort();
+  }, [incidents]);
+
   const locationOptions = availableLocations;
 
   // Filter incidents based on current filters
@@ -71,7 +84,7 @@ export const useIncidentFilters = (incidents: Incident[]) => {
           incident.location,
           incident.reportedBy?.name,
           incident.owner?.name
-        ].join(' ').toLowerCase();
+        ].filter(Boolean).join(' ').toLowerCase();
         
         if (!searchableText.includes(searchTerm)) return false;
       }
@@ -90,6 +103,12 @@ export const useIncidentFilters = (incidents: Incident[]) => {
 
       // Location filter
       if (filters.location && incident.location !== filters.location) return false;
+
+      // Facility filter
+      if (filters.facility && incident.facility !== filters.facility) return false;
+
+      // Owner filter
+      if (filters.owner && incident.owner?.name !== filters.owner) return false;
 
       // Date range filter using dateFrom and dateTo
       if (filters.dateFrom) {

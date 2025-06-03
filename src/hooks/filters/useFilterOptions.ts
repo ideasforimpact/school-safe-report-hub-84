@@ -7,7 +7,7 @@ import { categoryService } from '@/services/incident/categoryService';
 import { priorityService } from '@/services/incident/priorityService';
 import { supabase } from '@/integrations/supabase/client';
 
-// Hook to get filter options for incidents
+// Hook to get filter options for incidents from database
 export const useFilterOptions = () => {
   const { incidents, locations, facilities, designations, campuses, classes, sections } = useIncidents();
   const location = useLocation();
@@ -59,8 +59,9 @@ export const useFilterOptions = () => {
         if (statusError) {
           console.error('Error fetching status options:', statusError);
         } else {
-          setStatusOptions(statusData?.map(status => status.name) || []);
-          console.log('Status options loaded:', statusData?.length || 0);
+          const dbStatusOptions = statusData?.map(status => status.name) || [];
+          setStatusOptions(dbStatusOptions);
+          console.log('Status options loaded from database:', dbStatusOptions);
         }
 
         // Fetch locations from campuses table
@@ -127,7 +128,7 @@ export const useFilterOptions = () => {
     categoryOptions,
     subcategoryOptions,
     priorityOptions,
-    statusOptions,
+    statusOptions, // These come from database now
     locationOptions,
     facilityOptions,
     assigneeOptions,
