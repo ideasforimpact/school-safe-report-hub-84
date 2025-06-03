@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -18,6 +17,7 @@ interface AssessmentViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessmentId: number;
+  onAssessmentUpdated?: () => void; // Add callback prop
 }
 
 interface Question {
@@ -56,7 +56,7 @@ interface AssessmentData {
   };
 }
 
-const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentViewDialogProps) => {
+const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUpdated }: AssessmentViewDialogProps) => {
   const [assessment, setAssessment] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -170,6 +170,11 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
       
       // Close the main Assessment Details dialog
       onOpenChange(false);
+      
+      // Trigger refetch in parent component
+      if (onAssessmentUpdated) {
+        onAssessmentUpdated();
+      }
     } catch (error) {
       console.error('Error completing assessment:', error);
       toast.error('Failed to complete assessment. Please try again.');

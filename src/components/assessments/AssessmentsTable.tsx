@@ -369,6 +369,11 @@ const AssessmentsTable: React.FC = () => {
     return assignedTo === currentUserEmployeeId;
   };
 
+  const handleAssessmentUpdated = () => {
+    // Refetch assessments when an assessment is updated
+    fetchAssessments();
+  };
+
   if (!clientId) {
     return (
       <Card>
@@ -637,6 +642,7 @@ const AssessmentsTable: React.FC = () => {
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
         assessmentId={selectedAssessmentId || 0}
+        onAssessmentUpdated={handleAssessmentUpdated}
       />
     </>
   );
