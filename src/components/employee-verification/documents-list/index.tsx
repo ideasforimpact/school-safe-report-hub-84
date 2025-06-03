@@ -59,9 +59,17 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     setIsVerificationDialogOpen(true);
   };
 
-  const handleVerificationSubmit = async (status: 'verified' | 'failed', notes?: string) => {
+  const handleVerificationSubmit = async (method: 'api' | 'manual') => {
     if (selectedDocumentId) {
-      await verifyDocument(selectedDocumentId, status, 'manual', notes);
+      await verifyDocument(selectedDocumentId, 'verified', method);
+      setIsVerificationDialogOpen(false);
+      setSelectedDocumentId('');
+    }
+  };
+
+  const handleRejectDocument = async () => {
+    if (selectedDocumentId) {
+      await verifyDocument(selectedDocumentId, 'failed', 'manual');
       setIsVerificationDialogOpen(false);
       setSelectedDocumentId('');
     }
@@ -82,6 +90,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     return <EmptyDocumentsState onAddDocument={onAddDocument} />;
   }
 
+  // Find the selected document to get its details
+  const selectedDocument = documents.find(doc => doc.id === selectedDocumentId);
+
   return (
     <>
       <DocumentsTable
@@ -94,8 +105,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       <VerificationDialog
         open={isVerificationDialogOpen}
         onOpenChange={setIsVerificationDialogOpen}
-        onSubmit={handleVerificationSubmit}
+        onVerify={handleVerificationSubmit}
+        onReject={handleRejectDocument}
+        isVerifying={false}
+        documentType={selectedDocument?.documentTypeName?.toLowerCase()}
         documentId={selectedDocumentId}
+        documentNumber={selectedDocument?.documentNumber}
       />
     </>
   );

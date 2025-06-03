@@ -102,7 +102,12 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       verificationDate: null,
       verificationNotes: '',
       verificationMethod: 'manual',
-      employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
+      employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+        timestamp: string;
+        action: string;
+        response: any;
+        notes?: string;
+      }> : [],
       params: doc.params || {},
       createdAt: doc.created_at,
       updatedAt: doc.updated_at
@@ -194,7 +199,12 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
       verificationDate: null,
       verificationNotes: '',
       verificationMethod: 'manual',
-      employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
+      employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+        timestamp: string;
+        action: string;
+        response: any;
+        notes?: string;
+      }> : [],
       params: doc.params || {},
       createdAt: doc.created_at,
       updatedAt: doc.updated_at
