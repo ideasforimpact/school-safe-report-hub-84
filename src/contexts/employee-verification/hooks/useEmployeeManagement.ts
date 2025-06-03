@@ -17,7 +17,7 @@ export const useEmployeeManagement = () => {
     if (!clientId) {
       console.log('No client ID available - cannot fetch employees');
       setEmployees([]);
-      return;
+      return [];
     }
 
     setIsLoading(true);
@@ -46,7 +46,7 @@ export const useEmployeeManagement = () => {
       if (error) {
         console.error('Error fetching employees:', error);
         toast.error('Failed to fetch employees');
-        return;
+        return [];
       }
 
       const formattedEmployees: Employee[] = data.map(emp => ({
@@ -54,7 +54,7 @@ export const useEmployeeManagement = () => {
         employeeId: emp.employee_id,
         name: `${emp.first_name} ${emp.last_name}`,
         department: emp.department,
-        employeeType: emp.employee_type,
+        employeeType: emp.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
         joiningDate: emp.joining_date,
         status: emp.status,
         clientId: emp.client_id,
@@ -65,9 +65,11 @@ export const useEmployeeManagement = () => {
 
       console.log('Fetched employees:', formattedEmployees);
       setEmployees(formattedEmployees);
+      return formattedEmployees;
     } catch (error) {
       console.error('Error in fetchEmployees:', error);
       toast.error('Failed to fetch employees');
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +78,7 @@ export const useEmployeeManagement = () => {
   const addEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
       toast.error('No client context available');
-      return;
+      throw new Error('No client context available');
     }
 
     try {
@@ -103,7 +105,7 @@ export const useEmployeeManagement = () => {
         employeeId: data.employee_id,
         name: `${data.first_name} ${data.last_name}`,
         department: data.department,
-        employeeType: data.employee_type,
+        employeeType: data.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
         joiningDate: data.joining_date,
         status: data.status,
         clientId: data.client_id,
@@ -114,9 +116,11 @@ export const useEmployeeManagement = () => {
 
       setEmployees(prev => [newEmployee, ...prev]);
       toast.success('Employee added successfully');
+      return newEmployee;
     } catch (error) {
       console.error('Error adding employee:', error);
       toast.error('Failed to add employee');
+      throw error;
     }
   }, [clientId]);
 
@@ -150,7 +154,7 @@ export const useEmployeeManagement = () => {
         employeeId: data.employee_id,
         name: `${data.first_name} ${data.last_name}`,
         department: data.department,
-        employeeType: data.employee_type,
+        employeeType: data.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
         joiningDate: data.joining_date,
         status: data.status,
         clientId: data.client_id,
@@ -161,9 +165,11 @@ export const useEmployeeManagement = () => {
 
       setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
       toast.success('Employee updated successfully');
+      return updatedEmployee;
     } catch (error) {
       console.error('Error updating employee:', error);
       toast.error('Failed to update employee');
+      throw error;
     }
   }, [clientId]);
 
@@ -179,9 +185,11 @@ export const useEmployeeManagement = () => {
 
       setEmployees(prev => prev.filter(emp => emp.id !== id));
       toast.success('Employee deleted successfully');
+      return true;
     } catch (error) {
       console.error('Error deleting employee:', error);
       toast.error('Failed to delete employee');
+      return false;
     }
   }, [clientId]);
 
