@@ -63,12 +63,22 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const formattedDocuments: VerificationDocument[] = data.map(doc => ({
         id: doc.id,
         employeeId: doc.employee_id,
-        documentType: doc.document_type?.name || 'Unknown',
-        documentUrl: doc.document_url,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: doc.document_type?.name || 'Unknown',
+        documentImage: doc.document_url,
         documentNumber: doc.document_number || '',
         verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at,
+        params: doc.params as any,
+        employee_docs_log: doc.employee_docs_log as any,
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name,
+        // Legacy compatibility
+        documentType: doc.document_type?.name || 'Unknown',
+        documentUrl: doc.document_url,
         uploadDate: doc.created_at,
-        expiryDate: doc.params?.expiryDate || null,
+        expiryDate: (doc.params as any)?.expiryDate || null,
         verificationDate: null,
         verificationNotes: '',
         verificationMethod: 'manual'
@@ -86,7 +96,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   }, [clientId]);
 
-  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'uploadDate'>) => {
+  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
       toast.error('No client context available');
       return;
@@ -110,7 +120,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const { data: docType } = await supabase
         .from('employee_document_type')
         .select('id')
-        .eq('name', document.documentType)
+        .eq('name', document.documentTypeName || document.documentTypeId)
         .single();
 
       // Get pending status ID
@@ -126,10 +136,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           employee_id: document.employeeId,
           document_type_id: docType?.id,
           document_status_id: pendingStatus?.id,
-          document_url: document.documentUrl,
+          document_url: document.documentImage,
           document_number: document.documentNumber,
           verification_status: document.verificationStatus,
-          params: document.expiryDate ? { expiryDate: document.expiryDate } : {}
+          params: document.params || {}
         }])
         .select()
         .single();
@@ -139,12 +149,19 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const newDocument: VerificationDocument = {
         id: data.id,
         employeeId: data.employee_id,
-        documentType: document.documentType,
-        documentUrl: data.document_url,
+        documentTypeId: docType?.id || '',
+        documentTypeName: document.documentTypeName,
+        documentImage: data.document_url,
         documentNumber: data.document_number || '',
         verificationStatus: data.verification_status as 'verified' | 'failed' | 'pending',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        params: document.params,
+        // Legacy compatibility
+        documentType: document.documentTypeName,
+        documentUrl: data.document_url,
         uploadDate: data.created_at,
-        expiryDate: document.expiryDate,
+        expiryDate: document.params?.expiryDate,
         verificationDate: null,
         verificationNotes: '',
         verificationMethod: 'manual'
@@ -158,7 +175,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   }, [clientId]);
 
-  const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual', notes?: string) => {
+  const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', notes?: string) => {
     try {
       const { data, error } = await supabase
         .from('employee_documents')
@@ -179,7 +196,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
               verificationStatus: status,
               verificationDate: new Date().toISOString(),
               verificationNotes: notes || '',
-              verificationMethod: method
+              verificationMethod: 'manual' as const
             }
           : doc
       ));

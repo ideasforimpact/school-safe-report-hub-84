@@ -1,14 +1,15 @@
+
 export interface Employee {
   id: string;
   employeeId: string;
   name: string;
   email: string;
-  phone: string;
-  dateOfBirth: string;
-  address: string;
+  phone?: string;
+  dateOfBirth?: string;
+  address?: string;
   joiningDate: string;
   department: string;
-  position: string;
+  position?: string;
   employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
   status: boolean; // Boolean value for active status
   createdAt: string;
@@ -17,8 +18,8 @@ export interface Employee {
   documents?: VerificationDocument[]; // Added documents property
   
   // Add these fields to make it compatible with the other Employee type
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   isSuperAdmin?: boolean; // Added this property to fix the error
 }
 
@@ -65,10 +66,17 @@ export interface VerificationDocument {
   };
   params?: {
     DOB?: string;
+    expiryDate?: string;
     [key: string]: any;
   };
   createdAt: string;
   updatedAt: string;
+  
+  // Legacy compatibility fields
+  documentType?: string;
+  documentUrl?: string;
+  uploadDate?: string;
+  expiryDate?: string;
 }
 
 export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'other';
