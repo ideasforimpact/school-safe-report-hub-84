@@ -1,5 +1,4 @@
 
-
 import { useState, useCallback } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +34,7 @@ export const useIncidentData = () => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules]);
 
-  const fetchIncidents = useCallback(async () => {
+  const fetchIncidents = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -69,7 +68,7 @@ export const useIncidentData = () => {
       // Use the centralized service with employee data and incident admin access
       const incidentRecords = await incidentDataService.fetchIncidentsForClient(
         clientId, 
-        false, 
+        forceRefresh, 
         employeeDataForFiltering,
         hasIncidentAdmin
       );
@@ -115,7 +114,7 @@ export const useIncidentData = () => {
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
   const refetchIncidents = useCallback(async () => {
-    await fetchIncidents();
+    await fetchIncidents(true); // Force refresh
   }, [fetchIncidents]);
 
   // Note: Removed automatic useEffect - components must explicitly call fetchIncidents
@@ -125,7 +124,7 @@ export const useIncidentData = () => {
     loading,
     error,
     fetchIncidents, // Export this so components can manually trigger fetching
-    refetchIncidents
+    refetchIncidents,
+    hasIncidentAdmin // Export this so components can access the admin status
   };
 };
-

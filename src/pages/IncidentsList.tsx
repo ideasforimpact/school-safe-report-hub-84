@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -151,15 +150,24 @@ const IncidentsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, hasIncidentAdmin, employeeState.employeeData, authEmployeeData]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
+  // Initial fetch when component mounts and required data is available
   useEffect(() => {
-    // Only fetch if we have the necessary data and hasIncidentAdmin is properly determined
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
       fetchIncidents();
     }
-  }, [fetchIncidents, employeeState.configuredModules]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
+
+  // Separate effect to refetch when hasIncidentAdmin changes
+  useEffect(() => {
+    // Only refetch if we already have incidents loaded and admin status changes
+    if (incidents.length > 0 || (employeeState.configuredModules && (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email))) {
+      console.log('hasIncidentAdmin changed, refetching incidents with new permissions');
+      fetchIncidents(true); // Force refresh to get data with new permissions
+    }
+  }, [hasIncidentAdmin]);
 
   // Add visibility change listener to refetch when page becomes visible
   useEffect(() => {
@@ -224,4 +232,3 @@ const IncidentsList = () => {
 };
 
 export default IncidentsList;
-
