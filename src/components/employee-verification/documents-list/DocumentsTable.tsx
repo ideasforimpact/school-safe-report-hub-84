@@ -69,7 +69,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     try {
       const formattedUrl = formatSupabaseUrl(documentImage);
       console.log('Opening document URL:', formattedUrl);
-      window.open(formattedUrl, '_blank');
+      
+      // Add timestamp to bypass cache and ensure fresh load
+      const urlWithTimestamp = `${formattedUrl}?t=${Date.now()}`;
+      window.open(urlWithTimestamp, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error opening document:', error);
       toast({
@@ -94,18 +97,51 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       const formattedUrl = formatSupabaseUrl(documentImage);
       console.log('Downloading document URL:', formattedUrl);
       
-      const link = document.createElement('a');
-      link.href = formattedUrl;
-      link.download = `document-${new Date().getTime()}`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Download Started",
-        description: "Document download has been initiated.",
-      });
+      // Use fetch to download the file and then create blob URL
+      fetch(formattedUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `document-${Date.now()}`;
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clean up the blob URL
+          window.URL.revokeObjectURL(url);
+          
+          toast({
+            title: "Download Started",
+            description: "Document download has been initiated.",
+          });
+        })
+        .catch(error => {
+          console.error('Error downloading document:', error);
+          
+          // Fallback: try direct link download
+          const link = document.createElement('a');
+          link.href = formattedUrl;
+          link.download = `document-${Date.now()}`;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          toast({
+            title: "Download Started",
+            description: "Document download has been initiated (fallback method).",
+          });
+        });
     } catch (error) {
       console.error('Error downloading document:', error);
       toast({
@@ -274,6 +310,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleViewDocument(doc.documentImage)}
+                        title="View document"
                       >
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">View</span>
@@ -282,6 +319,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleDownloadDocument(doc.documentImage)}
+                        title="Download document"
                       >
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Download</span>

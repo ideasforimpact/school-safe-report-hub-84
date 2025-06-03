@@ -42,49 +42,26 @@ export const formatSupabaseUrl = (url: string): string => {
     return url;
   }
   
-  // Handle the case where URL is just a filename within employee-documents bucket
-  if (!url.includes('/') && !url.includes('storage')) {
-    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
-    console.log('formatSupabaseUrl: Formatted filename to URL:', formattedUrl);
+  // Clean the URL path by removing any leading slashes or protocol remnants
+  let cleanUrl = url.replace(/^\/+/, '').replace(/^https?:\/\/[^\/]+\//, '');
+  
+  // If URL already contains the full storage path, construct the complete URL
+  if (cleanUrl.includes('storage/v1/object/public/')) {
+    const formattedUrl = `https://${projectRef}.supabase.co/${cleanUrl}`;
+    console.log('formatSupabaseUrl: Full storage path detected:', formattedUrl);
     return formattedUrl;
   }
   
-  // Handle the case where URL is a relative path in a bucket (e.g., employee-id/filename)
-  if (!url.includes('employee-documents/') && !url.includes('vehicle-documents/') && !url.includes('storage')) {
-    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
-    console.log('formatSupabaseUrl: Formatted relative path to URL:', formattedUrl);
+  // If URL contains bucket path but not full storage path
+  if (cleanUrl.includes('employee-documents/') || cleanUrl.includes('vehicle-documents/')) {
+    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanUrl}`;
+    console.log('formatSupabaseUrl: Bucket path detected:', formattedUrl);
     return formattedUrl;
   }
   
-  // Handle the case where URL has the bucket name directly
-  if ((url.includes('employee-documents/') || url.includes('vehicle-documents/')) && !url.includes('storage')) {
-    // Remove any leading slashes
-    const cleanPath = url.replace(/^\/+/, '');
-    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath}`;
-    console.log('formatSupabaseUrl: Formatted bucket path to URL:', formattedUrl);
-    return formattedUrl;
-  }
-  
-  // Handle the case with the full storage path including "/storage/v1/object/public/"
-  if (url.includes('/storage/v1/object/public/') || url.includes('storage/v1/object/public/')) {
-    // Normalize the path by removing leading slashes and ensuring proper structure
-    const cleanPath = url.replace(/^\/+/, '')
-                         .replace(/^https?:\/\/.*?\/storage\//, 'storage/');
-    
-    if (cleanPath.startsWith('storage/v1/object/public/')) {
-      const formattedUrl = `https://${projectRef}.supabase.co/${cleanPath}`;
-      console.log('formatSupabaseUrl: Formatted storage path to URL:', formattedUrl);
-      return formattedUrl;
-    }
-    
-    const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath.replace('storage/v1/object/public/', '')}`;
-    console.log('formatSupabaseUrl: Cleaned storage path to URL:', formattedUrl);
-    return formattedUrl;
-  }
-  
-  // Default case: Assume it's a direct path to a file in the employee-documents bucket
-  const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
-  console.log('formatSupabaseUrl: Default formatting to URL:', formattedUrl);
+  // Default case: assume it's a filename in employee-documents bucket
+  const formattedUrl = `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${cleanUrl}`;
+  console.log('formatSupabaseUrl: Default employee-documents formatting:', formattedUrl);
   return formattedUrl;
 };
 

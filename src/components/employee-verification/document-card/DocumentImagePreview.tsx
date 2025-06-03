@@ -26,7 +26,10 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     try {
       const formattedUrl = formatSupabaseUrl(documentImage);
       console.log('Opening document URL:', formattedUrl);
-      window.open(formattedUrl, '_blank');
+      
+      // Add a timestamp to bypass cache issues
+      const urlWithTimestamp = `${formattedUrl}?t=${Date.now()}`;
+      window.open(urlWithTimestamp, '_blank');
     } catch (error) {
       console.error('Error opening document:', error);
       toast({
@@ -51,11 +54,14 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
       const formattedUrl = formatSupabaseUrl(documentImage);
       console.log('Downloading document URL:', formattedUrl);
       
-      // Create an anchor element and trigger download
+      // Create a temporary link element for download
       const link = document.createElement('a');
       link.href = formattedUrl;
-      link.download = `document-${new Date().getTime()}`;
+      link.download = `document-${Date.now()}`;
       link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Append to body, click, and remove
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -87,12 +93,13 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-gray-200 mb-4 hover:shadow-md transition-all duration-200 relative">
+    <div className="overflow-hidden rounded-md border border-gray-200 mb-4 hover:shadow-md transition-all duration-200 relative group">
       <AspectRatio ratio={16 / 9}>
         <div className="h-full w-full bg-gray-100 flex items-center justify-center">
           <FileCheck className="h-10 w-10 text-gray-400 mb-2" />
         </div>
-        <div className="absolute inset-0 flex items-center justify-center gap-3">
+        {/* Overlay with action buttons - visible on hover */}
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Button 
             variant="secondary" 
             size="sm" 
