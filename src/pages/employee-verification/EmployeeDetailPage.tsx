@@ -16,147 +16,134 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { 
-  getEmployeeVerificationDetails, 
-  getEmployeeDocumentsByTimeframe,
-  EmployeeVerificationDetails 
-} from '@/services/employee/employeeVerificationService';
-import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
 const EmployeeDetailPage = () => {
-  const { employeeId } = useParams<{ employeeId: string }>();
+  const {
+    employeeId
+  } = useParams<{
+    employeeId: string;
+  }>();
   const navigate = useNavigate();
-  const { fetchDocumentStatuses } = useEmployeeVerification();
+  const {
+    getEmployee,
+    fetchEmployeeDocuments,
+    fetchDocumentStatuses,
+    isLoading
+  } = useEmployeeVerification();
   const { toast } = useToast();
-  
-  const [employee, setEmployee] = useState<Employee | null>(null);
-  const [documents, setDocuments] = useState<VerificationDocument[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeframeFilter, setTimeframeFilter] = useState<string | undefined>(undefined);
+  
+  // Move all hook calls outside of conditional logic
+  const employee = getEmployee(employeeId || '');
 
-  // Fetch employee and document details
-  const fetchEmployeeDetails = useCallback(async () => {
-    if (!employeeId) return;
-    
-    setIsLoading(true);
-    try {
-      console.log('Fetching employee details for ID:', employeeId);
-      const details: EmployeeVerificationDetails = await getEmployeeVerificationDetails(employeeId);
-      
-      if (details.employee) {
-        setEmployee(details.employee);
-        setDocuments(details.documents);
-        console.log('Employee details loaded successfully');
-      } else {
-        console.log('No employee found');
-        setEmployee(null);
-        setDocuments([]);
-      }
-    } catch (error) {
-      console.error('Error fetching employee details:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load employee details.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [employeeId, toast]);
-
-  // Fetch documents with timeframe filter
-  const fetchDocumentsWithTimeframe = useCallback(async (timeframe?: string) => {
-    if (!employeeId) return;
-    
-    setIsRefreshing(true);
-    try {
-      console.log('Fetching documents with timeframe:', timeframe || 'all');
-      const filteredDocuments = await getEmployeeDocumentsByTimeframe(employeeId, timeframe);
-      setDocuments(filteredDocuments);
-      
-      toast({
-        title: "Data Refreshed",
-        description: `Employee documents have been refreshed${timeframe ? ` for ${timeframe}` : ''}.`,
-      });
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      toast({
-        title: "Error",
-        description: "Failed to refresh document data.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [employeeId, toast]);
-
-  // Handle add document
+  // Define all callback functions before any conditional returns
   const handleAddDocument = useCallback(() => {
     if (employeeId) {
       navigate(`/employee-verification/${employeeId}/upload-document`);
     }
   }, [employeeId, navigate]);
 
-  // Handle refresh documents
   const handleRefreshDocuments = useCallback(async () => {
-    await fetchDocumentsWithTimeframe(timeframeFilter);
-  }, [fetchDocumentsWithTimeframe, timeframeFilter]);
+    if (employeeId && !isRefreshing) {
+      console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
+      setIsRefreshing(true);
+      try {
+        // Fetch employee documents using the selected timeframe filter
+        const result = await fetchEmployeeDocuments(employeeId, timeframeFilter);
+        console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
+        console.log('Refresh result:', result);
+        
+        toast({
+          title: "Data Refreshed",
+          description: `Employee documents have been refreshed${timeframeFilter ? ` for ${timeframeFilter}` : ''}.`,
+        });
+      } catch (error) {
+        console.error('Error refreshing documents:', error);
+        toast({
+          title: "Error",
+          description: "Failed to refresh document data.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  }, [employeeId, fetchEmployeeDocuments, toast, isRefreshing, timeframeFilter]);
 
   // Handle timeframe filter change
   const handleTimeframeChange = useCallback(async (value: string) => {
-    const newTimeframe = value === 'all' ? undefined : value;
-    setTimeframeFilter(newTimeframe);
-    await fetchDocumentsWithTimeframe(newTimeframe);
+    setTimeframeFilter(value === 'all' ? undefined : value);
+    console.log('Timeframe filter changed to:', value);
     
-    toast({
-      title: "Filter Applied",
-      description: `Showing documents ${value === 'all' ? 'from all time' : `from ${value}`}.`,
-    });
-  }, [fetchDocumentsWithTimeframe, toast]);
+    // Immediately apply the filter if we have an employee ID
+    if (employeeId) {
+      setIsRefreshing(true);
+      try {
+        const timeframe = value === 'all' ? undefined : value;
+        const result = await fetchEmployeeDocuments(employeeId, timeframe);
+        console.log('Filter applied, documents fetched:', result);
+        
+        toast({
+          title: "Filter Applied",
+          description: `Showing documents ${value === 'all' ? 'from all time' : `from ${value}`}.`,
+        });
+      } catch (error) {
+        console.error('Error applying timeframe filter:', error);
+        toast({
+          title: "Error",
+          description: "Failed to apply filter.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  }, [employeeId, fetchEmployeeDocuments, toast]);
 
-  // Initial load
+  // Fetch data when component mounts - only once
   useEffect(() => {
-    fetchEmployeeDetails();
-    fetchDocumentStatuses();
-  }, [fetchEmployeeDetails, fetchDocumentStatuses]);
+    if (!employeeId || initialLoadComplete) return;
+    
+    const loadData = async () => {
+      try {
+        console.log('Initial data loading for employee:', employeeId);
+        // Fetch documents and statuses in parallel on initial load
+        await Promise.all([
+          fetchEmployeeDocuments(employeeId),
+          fetchDocumentStatuses()
+        ]);
+        console.log('Initial data loading complete for employee:', employeeId);
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        toast({
+          title: "Data Loading Error",
+          description: "Failed to load some employee data. Please try refreshing.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    loadData();
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, initialLoadComplete]);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <RefreshCcw className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-600">Loading employee details...</p>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Employee not found
+  // Early return for non-existent employee
   if (!employee) {
-    return (
-      <Layout>
-        <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Employee Not Found</h2>
-            <p className="text-gray-600 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
-            <Button onClick={() => navigate('/employee-verification')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Employees
-            </Button>
-          </div>
+    return <Layout>
+        <div className="p-8 text-left">
+          <h2 className="text-2xl font-bold mb-4">Employee Not Found</h2>
+          <p className="text-gray-600 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate('/employee-verification')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Employees
+          </Button>
         </div>
-      </Layout>
-    );
+      </Layout>;
   }
 
-  return (
-    <Layout>
+  return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
           <div className="flex items-center mb-4 sm:mb-0">
@@ -238,14 +225,12 @@ const EmployeeDetailPage = () => {
             <DocumentsList 
               employeeId={employee.id}
               onAddDocument={handleAddDocument}
-              initialLoadComplete={true}
-              documents={documents}
+              initialLoadComplete={initialLoadComplete}
             />
           </div>
         </div>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
 
 export default EmployeeDetailPage;
