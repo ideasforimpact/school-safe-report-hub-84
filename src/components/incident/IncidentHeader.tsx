@@ -2,9 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Calendar, User, Building2, MapPin, AlertTriangle } from 'lucide-react';
+import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X } from 'lucide-react';
 import { Incident, IncidentStatus } from '@/types/incident';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,6 +33,12 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
     navigate(`/incident/${incident.id}/edit`);
   };
 
+  const handleCloseIncident = () => {
+    if (onCloseButtonClick) {
+      onCloseButtonClick();
+    }
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 pb-4">
@@ -61,22 +66,28 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
           </div>
           
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleEditClick}
-              className="flex items-center gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
-            {incident.status !== 'Closed' && !incident.isVoided && onCloseButtonClick && (
+            {/* Show Close button only if incident is Open and not voided */}
+            {incident.status === 'Open' && !incident.isVoided && (
               <Button 
-                onClick={onCloseButtonClick}
+                onClick={handleCloseIncident}
                 size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white"
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
               >
-                Close Incident
+                <X className="h-4 w-4" />
+                Close
+              </Button>
+            )}
+            
+            {/* Always show Edit button (unless voided) */}
+            {!incident.isVoided && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleEditClick}
+                className="flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Edit
               </Button>
             )}
           </div>
