@@ -76,7 +76,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           return;
         }
 
-        setClientType(clientData?.institution_type || '');
+        console.log('Fetched client data:', clientData);
       } catch (error) {
         console.error('Error fetching client type:', error);
       }
