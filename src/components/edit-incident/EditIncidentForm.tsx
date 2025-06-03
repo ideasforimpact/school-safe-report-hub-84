@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,10 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { Person } from '@/types/incident';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import { EditIncidentData } from '@/services/incident/editIncidentService';
+import { FileItem } from '@/types/fileTypes';
+import { useIncidentDocuments } from '@/hooks/useIncidentDocuments';
 import AssignmentSection from './AssignmentSection';
+import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -29,6 +31,16 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   // Get form configuration data from the new hook
   const { formData: configData, loading: configLoading } = useIncidentFormData();
 
+  // Use the document management hook
+  const {
+    supportingFiles,
+    documents,
+    isUploading,
+    handleFilesChange,
+    uploadAndSaveDocuments,
+    loadDocuments
+  } = useIncidentDocuments(id);
+
   // Log all incident information for debugging
   useEffect(() => {
     console.log('=== EDIT INCIDENT FORM DEBUG ===');
@@ -41,6 +53,13 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     console.log('Facilities:', configData.facilities);
     console.log('Priorities:', configData.priorities);
   }, [incidentData, configData]);
+
+  // Load existing documents when component mounts
+  useEffect(() => {
+    if (id) {
+      loadDocuments(id);
+    }
+  }, [id, loadDocuments]);
 
   // Form state - initialize with incident data
   const [formData, setFormData] = useState(() => ({
@@ -121,6 +140,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     setIsSubmitting(true);
     
     try {
+      // First, upload any new files if there are any
+      if (supportingFiles.length > 0) {
+        console.log('Uploading new supporting files:', supportingFiles.length);
+        await uploadAndSaveDocuments(id, supportingFiles);
+      }
+
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
@@ -348,6 +373,51 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               owner={formData.owner}
               onSelectChange={handleSelectChange}
             />
+
+            {/* Supporting Files Section - NEW */}
+            <div className="space-y-4">
+              <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
+              <DragDropFileUpload
+                onFilesChange={handleFilesChange}
+                initialFiles={supportingFiles}
+                maxFiles={5}
+                className="w-full"
+              />
+              
+              {/* Show existing documents */}
+              {documents.length > 0 && (
+                <div className="mt-4">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Existing Documents</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex items-center space-x-3">
+                          <div className="text-sm">
+                            <p className="font-medium text-gray-900">{doc.name}</p>
+                            <p className="text-gray-500">{(doc.size / 1024 / 1024).toFixed(2)} MB</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(doc.url, '_blank')}
+                            className="h-8 px-3 text-blue-600 hover:text-blue-700"
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {isUploading && (
+                <div className="text-sm text-gray-500">Uploading files...</div>
+              )}
+            </div>
 
             {/* People Involved */}
             <div className="space-y-4">
