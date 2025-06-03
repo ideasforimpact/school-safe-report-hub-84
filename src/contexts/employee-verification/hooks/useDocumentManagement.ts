@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { VerificationDocument } from '../types';
@@ -63,15 +64,18 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const formattedDocuments: VerificationDocument[] = data.map(doc => ({
         id: doc.id,
         employeeId: doc.employee_id,
-        documentType: doc.document_type?.name || 'Unknown',
-        documentUrl: doc.document_url,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: doc.document_type?.name || 'Unknown',
         documentNumber: doc.document_number || '',
+        documentImage: doc.document_url,
         verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-        uploadDate: doc.created_at,
-        expiryDate: doc.params?.expiryDate || null,
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name,
         verificationDate: null,
         verificationNotes: '',
-        verificationMethod: 'manual'
+        verificationMethod: 'manual',
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
       }));
 
       console.log('Fetched documents:', formattedDocuments);
@@ -86,9 +90,14 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   }, [clientId]);
 
-  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'uploadDate'>) => {
+  const addDocument = useCallback(async (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
       toast.error('No client context available');
+      return;
+    }
+
+    if (!document.documentImage) {
+      toast.error('Document image is required');
       return;
     }
 
@@ -106,59 +115,87 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         return;
       }
 
-      // Get document type ID
-      const { data: docType } = await supabase
-        .from('employee_document_type')
-        .select('id')
-        .eq('name', document.documentType)
-        .single();
+      // Get document type ID if not provided
+      let documentTypeId = document.documentTypeId;
+      if (!documentTypeId) {
+        const { data: docType } = await supabase
+          .from('employee_document_type')
+          .select('id')
+          .eq('name', document.documentTypeName)
+          .single();
+        documentTypeId = docType?.id;
+      }
 
-      // Get pending status ID
-      const { data: pendingStatus } = await supabase
-        .from('document_status')
-        .select('id')
-        .eq('name', 'pending')
-        .single();
+      // Get pending status ID if not provided
+      let documentStatusId = document.documentStatusId;
+      if (!documentStatusId) {
+        const { data: pendingStatus } = await supabase
+          .from('document_status')
+          .select('id')
+          .eq('name', 'pending')
+          .single();
+        documentStatusId = pendingStatus?.id;
+      }
+
+      console.log('Inserting document with data:', {
+        employee_id: document.employeeId,
+        document_type_id: documentTypeId,
+        document_status_id: documentStatusId,
+        document_url: document.documentImage ? 'Provided' : 'Missing',
+        document_number: document.documentNumber || null,
+        verification_status: document.verificationStatus,
+        params: document.params || {}
+      });
 
       const { data, error } = await supabase
         .from('employee_documents')
         .insert([{
           employee_id: document.employeeId,
-          document_type_id: docType?.id,
-          document_status_id: pendingStatus?.id,
-          document_url: document.documentUrl,
-          document_number: document.documentNumber,
+          document_type_id: documentTypeId,
+          document_status_id: documentStatusId,
+          document_url: document.documentImage, // This is the key fix - ensuring document_url gets the image data
+          document_number: document.documentNumber || null,
           verification_status: document.verificationStatus,
-          params: document.expiryDate ? { expiryDate: document.expiryDate } : {}
+          params: document.params || {}
         }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
       const newDocument: VerificationDocument = {
         id: data.id,
         employeeId: data.employee_id,
-        documentType: document.documentType,
-        documentUrl: data.document_url,
+        documentTypeId: documentTypeId || '',
+        documentTypeName: document.documentTypeName || '',
         documentNumber: data.document_number || '',
+        documentImage: data.document_url,
         verificationStatus: data.verification_status as 'verified' | 'failed' | 'pending',
-        uploadDate: data.created_at,
-        expiryDate: document.expiryDate,
+        documentStatusId: documentStatusId,
+        documentStatusName: 'pending',
         verificationDate: null,
         verificationNotes: '',
-        verificationMethod: 'manual'
+        verificationMethod: 'manual',
+        params: document.params,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
       };
 
       setDocuments(prev => [...prev, newDocument]);
       toast.success('Document uploaded successfully');
+      
+      return newDocument;
     } catch (error) {
       console.error('Error adding document:', error);
-      toast.error('Failed to upload document');
+      toast.error('Failed to upload document: ' + (error?.message || 'Unknown error'));
+      throw error;
     }
   }, [clientId]);
 
-  const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual', notes?: string) => {
+  const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual' = 'manual', notes?: string) => {
     try {
       const { data, error } = await supabase
         .from('employee_documents')

@@ -1,14 +1,15 @@
+
 export interface Employee {
   id: string;
   employeeId: string;
   name: string;
   email: string;
-  phone: string;
-  dateOfBirth: string;
-  address: string;
+  phone?: string;
+  dateOfBirth?: string;
+  address?: string;
   joiningDate: string;
   department: string;
-  position: string;
+  position?: string;
   employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
   status: boolean; // Boolean value for active status
   createdAt: string;
@@ -17,8 +18,8 @@ export interface Employee {
   documents?: VerificationDocument[]; // Added documents property
   
   // Add these fields to make it compatible with the other Employee type
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   isSuperAdmin?: boolean; // Added this property to fix the error
 }
 
@@ -44,7 +45,7 @@ export interface VerificationDocument {
   documentTypeId: string;
   documentTypeName?: string;
   documentNumber?: string;
-  documentImage: string;
+  documentImage: string; // This should always be required and not null
   verificationStatus: 'pending' | 'verified' | 'failed';
   documentStatusId?: string;
   documentStatusName?: string;
