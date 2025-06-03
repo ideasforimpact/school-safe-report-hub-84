@@ -38,12 +38,12 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </div>
 
       {/* Location */}
-      <Select value={filters.location || ''} onValueChange={(value) => onFilterChange('location', value === '' ? '' : value)}>
+      <Select value={filters.location || 'all'} onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}>
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Location" />
         </SelectTrigger>
         <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="">All Locations</SelectItem>
+          <SelectItem value="all">All Locations</SelectItem>
           {availableLocations.map((location) => (
             <SelectItem key={location} value={location}>
               {location}
@@ -53,12 +53,12 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Status - Show database statuses */}
-      <Select value={filters.status || ''} onValueChange={(value) => onFilterChange('status', value === '' ? '' : value)}>
+      <Select value={filters.status || 'all'} onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}>
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="">All Statuses</SelectItem>
+          <SelectItem value="all">All Statuses</SelectItem>
           {statusOptions.map((status) => (
             <SelectItem key={status} value={status}>
               {status}
@@ -68,12 +68,12 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Category */}
-      <Select value={filters.category || ''} onValueChange={(value) => onFilterChange('category', value === '' ? '' : value)}>
+      <Select value={filters.category || 'all'} onValueChange={(value) => onFilterChange('category', value === 'all' ? '' : value)}>
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="">All Categories</SelectItem>
+          <SelectItem value="all">All Categories</SelectItem>
           {availableCategories.map((category) => (
             <SelectItem key={category} value={category}>
               {category}
@@ -83,12 +83,12 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Subcategory */}
-      <Select value={filters.subcategory || ''} onValueChange={(value) => onFilterChange('subcategory', value === '' ? '' : value)}>
+      <Select value={filters.subcategory || 'all'} onValueChange={(value) => onFilterChange('subcategory', value === 'all' ? '' : value)}>
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Subcategory" />
         </SelectTrigger>
         <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="">All Subcategories</SelectItem>
+          <SelectItem value="all">All Subcategories</SelectItem>
           {availableSubcategories.map((subcategory) => (
             <SelectItem key={subcategory} value={subcategory}>
               {subcategory}
@@ -98,12 +98,12 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Priority */}
-      <Select value={filters.priority || ''} onValueChange={(value) => onFilterChange('priority', value === '' ? '' : value)}>
+      <Select value={filters.priority || 'all'} onValueChange={(value) => onFilterChange('priority', value === 'all' ? '' : value)}>
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Priority" />
         </SelectTrigger>
         <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="">All Priorities</SelectItem>
+          <SelectItem value="all">All Priorities</SelectItem>
           {priorityOptions.map((priority) => (
             <SelectItem key={priority} value={priority}>
               {priority}
