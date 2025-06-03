@@ -30,6 +30,22 @@ const IncidentsHeader = () => {
     return false;
   }, [isSuperAdmin, state.configuredModules]);
 
+  // Show Report Incident button only for users with incident admin privileges
+  const canReportIncident = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    const incidentsModule = state.configuredModules?.find(
+      module => module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')
+    );
+    
+    if (incidentsModule?.accessLevel) {
+      return incidentsModule.accessLevel.isAdmin === true || 
+             incidentsModule.accessLevel.is_admin === true;
+    }
+    
+    return false;
+  }, [isSuperAdmin, state.configuredModules]);
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="text-left w-full">
@@ -51,10 +67,13 @@ const IncidentsHeader = () => {
           </Button>
         )}
         
-        <Button onClick={() => navigate('/report-incident')}>
-          <AlertTriangle className="h-4 w-4 mr-2" />
-          Report Incident
-        </Button>
+        {/* Only show Report Incident button if user has incident admin privileges */}
+        {canReportIncident && (
+          <Button onClick={() => navigate('/report-incident')}>
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Report Incident
+          </Button>
+        )}
       </div>
     </div>
   );

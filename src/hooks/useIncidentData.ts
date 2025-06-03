@@ -42,8 +42,15 @@ export const useIncidentData = () => {
 
       console.log('Fetching incidents for client:', clientId);
 
-      // Use the centralized service
-      const incidentRecords = await incidentDataService.fetchIncidentsForClient(clientId);
+      // Pass employee data for role-based filtering
+      const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+
+      // Use the centralized service with employee data
+      const incidentRecords = await incidentDataService.fetchIncidentsForClient(
+        clientId, 
+        false, 
+        employeeDataForFiltering
+      );
 
       // Transform the data with proper type casting
       const transformedIncidents: Incident[] = incidentRecords.map((record) => ({
@@ -83,7 +90,7 @@ export const useIncidentData = () => {
     } finally {
       setLoading(false);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData]);
 
   const refetchIncidents = useCallback(async () => {
     await fetchIncidents();

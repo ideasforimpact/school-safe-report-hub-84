@@ -101,10 +101,19 @@ const IncidentsList = () => {
       // Clear cache if force refresh is requested
       if (forceRefresh) {
         console.log('Force refreshing incidents - clearing cache...');
-        incidentDataService.clearCache(clientId);
+        const employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
+        incidentDataService.clearCache(clientId, employeeId);
       }
 
-      const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(clientId, forceRefresh);
+      // Pass employee data for role-based filtering
+      const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+      
+      const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(
+        clientId, 
+        forceRefresh, 
+        employeeDataForFiltering
+      );
+      
       setIncidents(fetchedIncidents);
       console.log('Incidents fetched successfully:', fetchedIncidents.length);
 

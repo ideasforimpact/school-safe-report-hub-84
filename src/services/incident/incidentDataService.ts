@@ -14,21 +14,23 @@ class IncidentDataService {
     return IncidentDataService.instance;
   }
 
-  async fetchIncidentsForClient(clientId: string, forceRefresh = false): Promise<IncidentRecord[]> {
+  async fetchIncidentsForClient(clientId: string, forceRefresh = false, employeeData?: any): Promise<IncidentRecord[]> {
+    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}`;
+    
     // Return cached data if available and not forcing refresh
-    if (!forceRefresh && this.incidentCache.has(clientId)) {
-      return this.incidentCache.get(clientId)!;
+    if (!forceRefresh && this.incidentCache.has(cacheKey)) {
+      return this.incidentCache.get(cacheKey)!;
     }
 
     // Prevent multiple simultaneous requests
     if (this.isLoading) {
-      return this.incidentCache.get(clientId) || [];
+      return this.incidentCache.get(cacheKey) || [];
     }
 
     this.isLoading = true;
 
     try {
-      const { data: incidents, error } = await supabase
+      let query = supabase
         .from('incidents')
         .select(`
           id,
@@ -37,6 +39,8 @@ class IncidentDataService {
           date,
           created_at,
           updated_at,
+          created_by,
+          assigned_to,
           incident_report_types!type_id(id, name),
           incident_categories!category_id(id, name),
           incident_subcategories!subcategory_id(id, name),
@@ -47,9 +51,35 @@ class IncidentDataService {
           created_by_employee:employees!created_by(id, first_name, last_name),
           assigned_employee:employees!assigned_to(id, first_name, last_name)
         `)
-        .eq('client_id', clientId)
+        .eq('client_id', clientId);
+
+      // Apply filtering based on user role and permissions
+      if (employeeData) {
+        const isSuperAdmin = employeeData.isSuperAdmin === true;
+        
+        if (!isSuperAdmin) {
+          // Check if user has incident admin access
+          const hasIncidentAdmin = employeeData.configuredModules?.some((module: any) => 
+            (module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')) &&
+            (module.accessLevel?.isAdmin === true || module.accessLevel?.is_admin === true)
+          );
+
+          if (hasIncidentAdmin) {
+            // Incident admin (non-super admin): Own incidents + incidents assigned to them
+            query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+          } else {
+            // Regular user: Only own incidents
+            query = query.eq('created_by', employeeData.id);
+          }
+        }
+        // Super admin: No additional filtering - gets all incidents for the client
+      }
+
+      query = query
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(200);
+
+      const { data: incidents, error } = await query;
 
       if (error) {
         throw new Error(`Failed to fetch incidents: ${error.message}`);
@@ -77,8 +107,8 @@ class IncidentDataService {
         updatedAt: new Date(inc.updated_at)
       }));
 
-      // Cache the results
-      this.incidentCache.set(clientId, transformedIncidents);
+      // Cache the results with user-specific key
+      this.incidentCache.set(cacheKey, transformedIncidents);
       return transformedIncidents;
 
     } catch (error) {
@@ -90,20 +120,42 @@ class IncidentDataService {
   }
 
   // Method to get basic stats without full incident data
-  async getIncidentStats(clientId: string): Promise<{
+  async getIncidentStats(clientId: string, employeeData?: any): Promise<{
     total: number;
     open: number;
     inProgress: number;
     closed: number;
   }> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('incidents')
         .select(`
           id,
+          created_by,
+          assigned_to,
           incident_status!status_id(name)
         `)
         .eq('client_id', clientId);
+
+      // Apply same filtering logic for stats
+      if (employeeData) {
+        const isSuperAdmin = employeeData.isSuperAdmin === true;
+        
+        if (!isSuperAdmin) {
+          const hasIncidentAdmin = employeeData.configuredModules?.some((module: any) => 
+            (module.key === 'incidentAdmin' || module.name.toLowerCase().includes('incident')) &&
+            (module.accessLevel?.isAdmin === true || module.accessLevel?.is_admin === true)
+          );
+
+          if (hasIncidentAdmin) {
+            query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+          } else {
+            query = query.eq('created_by', employeeData.id);
+          }
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         throw error;
@@ -130,9 +182,14 @@ class IncidentDataService {
     }
   }
 
-  clearCache(clientId?: string): void {
-    if (clientId) {
-      this.incidentCache.delete(clientId);
+  clearCache(clientId?: string, employeeId?: string): void {
+    if (clientId && employeeId) {
+      const cacheKey = `${clientId}_${employeeId}`;
+      this.incidentCache.delete(cacheKey);
+    } else if (clientId) {
+      // Clear all cache entries for this client
+      const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => key.startsWith(`${clientId}_`));
+      keysToDelete.forEach(key => this.incidentCache.delete(key));
     } else {
       this.incidentCache.clear();
     }
