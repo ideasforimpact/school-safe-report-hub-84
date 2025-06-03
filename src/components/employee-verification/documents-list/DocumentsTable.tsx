@@ -76,8 +76,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     console.log('DocumentsTable - Has logs:', hasLogs);
     console.log('DocumentsTable - Number of logs:', doc.employee_docs_log?.length || 0);
     
-    if (!hasLogs || !statusName || doc.verificationStatus !== 'verified') {
-      console.log('DocumentsTable - Not showing dialog - Missing logs, status name, or not verified');
+    // Check if this is a governance verified document with logs
+    if (doc.verificationStatus !== 'verified' || statusName !== 'governance' || !hasLogs) {
+      console.log('DocumentsTable - Not governance verified or no logs, showing info toast');
+      if (statusName && doc.verificationStatus === 'verified') {
+        toast({
+          title: "Information",
+          description: `This document is verified with status: ${statusName}`
+        });
+      }
       return;
     }
     
@@ -85,7 +92,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     console.log('DocumentsTable - Document type (lowercase):', docType);
     setSelectedDocumentId(doc.id);
     
-    if (docType?.includes('aadhar') && statusName === 'governance') {
+    if (docType?.includes('aadhar')) {
       // Find the most recent successful verification log for Aadhar
       const verificationLog = doc.employee_docs_log
         .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
@@ -98,7 +105,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         description: "Showing verification information for this document."
       });
     } 
-    else if (docType === 'pan' && statusName === 'governance') {
+    else if (docType === 'pan') {
       // Find PAN verification log
       const panVerificationLog = doc.employee_docs_log.find(log => 
         log.action === 'verify_pan_api' && 
@@ -115,7 +122,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         });
       }
     }
-    else if (docType === 'voter_id' && statusName === 'governance') {
+    else if (docType === 'voter_id') {
       // Find Voter ID verification log
       const voterIdVerificationLog = doc.employee_docs_log.find(log => 
         log.action === 'verify_voter_id_api' && 
@@ -144,7 +151,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       
       console.log('DocumentsTable - Found driving license log:', drivingLicenseLog);
       
-      if (drivingLicenseLog && statusName === 'governance') {
+      if (drivingLicenseLog) {
         // Set the driving license details and open the dialog
         setSelectedDrivingLicenseDetails(drivingLicenseLog.response);
         setDrivingLicenseDialogOpen(true);
@@ -154,12 +161,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
           description: "Showing verification information for this document."
         });
       }
-    }
-    else if (statusName) {
-      toast({
-        title: "Information",
-        description: `This document is verified with status: ${statusName}`
-      });
     }
   };
   
@@ -182,7 +183,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
               const docType = doc.documentTypeName?.toLowerCase();
-              const isClickable = isGovernanceVerified && hasLogs;
               
               return (
                 <TableRow key={doc.id}>
@@ -201,7 +201,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       status={doc.verificationStatus} 
                       documentStatusName={statusName}
                       isGovernance={isGovernanceVerified}
-                      onClick={isClickable ? () => handleBadgeClick(doc) : undefined}
+                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
                       documentLogs={doc.employee_docs_log}
                       documentId={doc.id}
                       documentType={docType}

@@ -34,7 +34,6 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   documentId,
   documentType
 }) => {
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [panDialogOpen, setPanDialogOpen] = useState(false);
   const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
@@ -76,123 +75,107 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   const { icon: Icon, text, bgColor } = getStatusConfig();
 
   // Check if this document has details that can be shown in a dialog
-  const isPanWithGovernance = documentType === 'pan' && 
-                             status === 'verified' && 
-                             documentStatusName === 'governance' && 
-                             documentLogs && 
-                             documentLogs.length > 0;
-                             
-  const isVoterIdWithGovernance = documentType === 'voter_id' && 
-                                status === 'verified' && 
-                                documentStatusName === 'governance' && 
-                                documentLogs && 
-                                documentLogs.length > 0;
-
-  const isDrivingLicenseWithGovernance = documentType === 'driving_license' &&
-                                      status === 'verified' &&
-                                      documentStatusName === 'governance' &&
-                                      documentLogs &&
-                                      documentLogs.length > 0;
-                                      
-  const isBankStatementWithGovernance = documentType === 'bank_account' &&
-                                     status === 'verified' &&
-                                     documentStatusName === 'governance' &&
-                                     documentLogs &&
-                                     documentLogs.length > 0;
+  const isGovernanceVerified = status === 'verified' && documentStatusName === 'governance';
+  const hasVerificationLogs = documentLogs && documentLogs.length > 0;
+  
+  // Determine if badge should be clickable
+  const isClickable = isGovernanceVerified && hasVerificationLogs;
   
   console.log('VerificationStatusBadge - Document Type:', documentType);
   console.log('VerificationStatusBadge - Status:', status);
   console.log('VerificationStatusBadge - Document Status Name:', documentStatusName);
-  console.log('VerificationStatusBadge - Has Logs:', documentLogs ? documentLogs.length > 0 : false);
-  console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
-  console.log('VerificationStatusBadge - isBankStatementWithGovernance:', isBankStatementWithGovernance);
-  
-  const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance || 
-                     isDrivingLicenseWithGovernance || isBankStatementWithGovernance;
+  console.log('VerificationStatusBadge - Is Governance Verified:', isGovernanceVerified);
+  console.log('VerificationStatusBadge - Has Verification Logs:', hasVerificationLogs);
+  console.log('VerificationStatusBadge - Is Clickable:', isClickable);
   
   const handleClick = () => {
     console.log('VerificationStatusBadge - Badge clicked!');
-    console.log('VerificationStatusBadge - onClick handler exists:', !!onClick);
-    console.log('VerificationStatusBadge - isPanWithGovernance:', isPanWithGovernance);
-    console.log('VerificationStatusBadge - isVoterIdWithGovernance:', isVoterIdWithGovernance);
-    console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
-    console.log('VerificationStatusBadge - isBankStatementWithGovernance:', isBankStatementWithGovernance);
     
     if (onClick) {
       console.log('VerificationStatusBadge - Calling provided onClick handler');
       onClick();
-    } else if (isPanWithGovernance) {
-      console.log('VerificationStatusBadge - Opening PAN dialog');
-      setPanDialogOpen(true);
-    } else if (isVoterIdWithGovernance) {
-      console.log('VerificationStatusBadge - Opening Voter ID dialog');
-      setVoterIdDialogOpen(true);
-    } else if (isDrivingLicenseWithGovernance) {
-      console.log('VerificationStatusBadge - Opening Driving License dialog');
-      setDrivingLicenseDialogOpen(true);
-    } else if (isBankStatementWithGovernance) {
-      console.log('VerificationStatusBadge - Opening Bank Statement dialog');
-      setBankStatementDialogOpen(true);
+      return;
+    }
+
+    if (!isClickable) {
+      console.log('VerificationStatusBadge - Not clickable, returning');
+      return;
+    }
+
+    const docType = documentType?.toLowerCase();
+    console.log('VerificationStatusBadge - Document type (lowercase):', docType);
+    
+    if (docType?.includes('aadhar')) {
+      // For Aadhar, use the provided onClick if available
+      if (onClick) {
+        onClick();
+      }
+    } else if (docType === 'pan') {
+      const panVerificationLog = documentLogs?.find(log => 
+        log.action === 'verify_pan_api' && 
+        log.response?.success === true && 
+        log.response?.status_code === 200
+      );
+      
+      if (panVerificationLog) {
+        console.log('VerificationStatusBadge - Opening PAN dialog');
+        setPanDialogOpen(true);
+      }
+    } else if (docType === 'voter_id') {
+      const voterIdVerificationLog = documentLogs?.find(log => 
+        log.action === 'verify_voter_id_api' && 
+        log.response?.success === true && 
+        log.response?.status_code === 200
+      );
+      
+      if (voterIdVerificationLog) {
+        console.log('VerificationStatusBadge - Opening Voter ID dialog');
+        setVoterIdDialogOpen(true);
+      }
+    } else if (docType?.includes('driving') || docType?.includes('license')) {
+      const drivingLicenseLog = documentLogs?.find(log => 
+        log.action?.includes('driving') || log.action?.includes('license')
+      );
+      
+      if (drivingLicenseLog) {
+        console.log('VerificationStatusBadge - Opening Driving License dialog');
+        setDrivingLicenseDialogOpen(true);
+      }
+    } else if (docType === 'bank_account') {
+      const bankStatementLog = documentLogs?.find(log =>
+        (log.action?.includes('bank') || log.action?.includes('statement')) &&
+        log.response
+      );
+      
+      if (bankStatementLog) {
+        console.log('VerificationStatusBadge - Opening Bank Statement dialog');
+        setBankStatementDialogOpen(true);
+      }
     }
   };
 
-  // Find PAN verification log if available
+  // Find verification logs for dialogs
   const panVerificationLog = documentLogs?.find(log => 
     log.action === 'verify_pan_api' && 
     log.response?.success === true && 
     log.response?.status_code === 200
   );
   
-  // Find Voter ID verification log if available
   const voterIdVerificationLog = documentLogs?.find(log => 
     log.action === 'verify_voter_id_api' && 
     log.response?.success === true && 
     log.response?.status_code === 200
   );
 
-  // Find Driving License verification log if available
   const drivingLicenseVerificationLog = documentLogs?.find(log =>
-    log.action === 'verify_driving_license_api' &&
-    log.response?.success === true &&
-    log.response?.status_code === 200
+    (log.action?.includes('driving') || log.action?.includes('license')) &&
+    log.response
   );
   
-  // Find Bank Statement verification log if available
   const bankStatementVerificationLog = documentLogs?.find(log =>
-    (log.action === 'bank_statement_download_api' || log.action === 'bank_statement_upload_api') &&
-    log.response?.success === true &&
-    log.response?.status_code === 200
+    (log.action?.includes('bank') || log.action?.includes('statement')) &&
+    log.response
   );
-
-  // If no specific log found, try to find any log with driving license data
-  const fallbackDrivingLicenseLog = !drivingLicenseVerificationLog && documentType === 'driving_license' && documentLogs ? 
-    documentLogs.find(log => 
-      log.response?.data && 
-      (log.action.includes('driving') || log.action.includes('license'))
-    ) : null;
-    
-  // If no specific log found, try to find any log with bank statement data
-  const fallbackBankStatementLog = !bankStatementVerificationLog && documentType === 'bank_account' && documentLogs ? 
-    documentLogs.find(log => 
-      log.response?.data && 
-      (log.action.includes('bank') || log.action.includes('statement'))
-    ) : null;
-  
-  // Log detailed information about found logs
-  console.log('VerificationStatusBadge - Found PAN verification log:', !!panVerificationLog);
-  console.log('VerificationStatusBadge - Found Voter ID verification log:', !!voterIdVerificationLog);
-  console.log('VerificationStatusBadge - Found Driving License verification log:', !!drivingLicenseVerificationLog);
-  console.log('VerificationStatusBadge - Found Bank Statement verification log:', !!bankStatementVerificationLog);
-  console.log('VerificationStatusBadge - Found fallback Driving License log:', !!fallbackDrivingLicenseLog);
-  console.log('VerificationStatusBadge - Found fallback Bank Statement log:', !!fallbackBankStatementLog);
-  
-  if (documentType === 'driving_license' && documentLogs) {
-    console.log('VerificationStatusBadge - All logs for driving license:', documentLogs);
-  }
-  
-  if (documentType === 'bank_account' && documentLogs) {
-    console.log('VerificationStatusBadge - All logs for bank account:', documentLogs);
-  }
   
   return (
     <>
@@ -208,7 +191,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         <Icon className="h-3.5 w-3.5" />
         {text}
         {isClickable && (
-          <span className="sr-only">{onClick ? "(click for action)" : "(click to view details)"}</span>
+          <span className="sr-only">(click to view details)</span>
         )}
       </Badge>
 
@@ -233,21 +216,21 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       )}
 
       {/* Display Driving License Details Dialog */}
-      {drivingLicenseDialogOpen && documentType === 'driving_license' && (
+      {drivingLicenseDialogOpen && drivingLicenseVerificationLog && documentType?.includes('driving') && (
         <DrivingLicenseDetailsDialog
           open={drivingLicenseDialogOpen}
           onOpenChange={setDrivingLicenseDialogOpen}
-          licenseDetails={(drivingLicenseVerificationLog || fallbackDrivingLicenseLog)?.response}
+          licenseDetails={drivingLicenseVerificationLog.response}
           documentId={documentId}
         />
       )}
       
       {/* Display Bank Statement Details Dialog */}
-      {bankStatementDialogOpen && documentType === 'bank_account' && (
+      {bankStatementDialogOpen && bankStatementVerificationLog && documentType === 'bank_account' && (
         <BankStatementDetailsDialog
           open={bankStatementDialogOpen}
           onOpenChange={setBankStatementDialogOpen}
-          statementDetails={(bankStatementVerificationLog || fallbackBankStatementLog)?.response}
+          statementDetails={bankStatementVerificationLog.response}
           documentId={documentId}
         />
       )}
