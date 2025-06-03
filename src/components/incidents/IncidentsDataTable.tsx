@@ -129,7 +129,8 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
               <TableHead>Priority</TableHead>
               <TableHead>Facility</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Owner</TableHead>
+              <TableHead>Created By</TableHead>
+              <TableHead>Assigned to</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -179,6 +180,13 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
                   <Badge variant="outline" className={getStatusBadgeClass(incident.status)}>
                     {incident.status}
                   </Badge>
+                </TableCell>
+                
+                <TableCell>
+                  <div className="flex items-center text-sm">
+                    <User className="h-4 w-4 mr-2 text-gray-500" />
+                    {incident.reportedBy || 'Unknown'}
+                  </div>
                 </TableCell>
                 
                 <TableCell>
