@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -166,6 +167,9 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
       toast.success('Assessment completed successfully');
       setShowConfirmDialog(false);
       setCompletionComments('');
+      
+      // Close the main Assessment Details dialog
+      onOpenChange(false);
     } catch (error) {
       console.error('Error completing assessment:', error);
       toast.error('Failed to complete assessment. Please try again.');
