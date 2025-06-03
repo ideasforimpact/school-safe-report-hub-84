@@ -346,7 +346,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch(setLoading(false));
         }
         
-        toast.success(`Welcome back, ${user.firstName}!`);
+        // toast.success(`Welcome back, ${user.firstName}!`);
         // Hide loading after a delay
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
