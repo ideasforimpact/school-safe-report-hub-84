@@ -1,6 +1,7 @@
 
 import Layout from '@/components/layout/Layout';
 import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
+import IncidentHeader from '@/components/incident/IncidentHeader';
 import { useIncidentDetailPage } from '@/hooks/useIncidentDetailPage';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,16 @@ const IncidentDetail = () => {
       console.error('Error refreshing incident:', error);
     }
   }, [reload]);
+
+  // Handle close button click
+  const handleCloseButtonClick = async () => {
+    try {
+      await incidentDetailProps.handleStatusChange('Closed');
+      handleRefreshIncident();
+    } catch (error) {
+      console.error('Error closing incident:', error);
+    }
+  };
   
   if (isLoading || isFetchingIncident) {
     return (
@@ -187,6 +198,19 @@ const IncidentDetail = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Incidents
         </Button>
+      </div>
+      
+      {/* Use IncidentHeader component which already has Close and Edit buttons */}
+      <div className="container max-w-6xl pb-6">
+        <IncidentHeader
+          incident={incident}
+          statusUpdate={statusUpdate}
+          setStatusUpdate={setStatusUpdate}
+          onStatusChange={incidentDetailProps.handleStatusChange}
+          formatDate={formatDate}
+          getStatusColor={getStatusColor}
+          onCloseButtonClick={handleCloseButtonClick}
+        />
       </div>
       
       <IncidentDetailContent {...contentProps} />
