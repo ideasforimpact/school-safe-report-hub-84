@@ -346,7 +346,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch(setLoading(false));
         }
         
-        toast.success(`Welcome back, ${user.firstName}!`);
+        // Remove the welcome toast message
+        // toast.success(`Welcome back, ${user.firstName}!`);
         // Hide loading after a delay
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
@@ -462,7 +463,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Update Redux state with modules using action creators properly - FIXED
         dispatch(setConfiguredModules(backofficeModules));
         
-        toast.success(`Welcome back, Backoffice Admin!`);
+        // Remove the welcome toast message
+        // toast.success(`Welcome back, Backoffice Admin!`);
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }

@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData, Client, ClientType } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -615,7 +616,8 @@ export const useAuthHandlers = ({
       // Clear any auth errors
       setAuthError(null);
       
-      toast.success(`Welcome, ${firstName}!`);
+      // Remove the welcome toast message
+      // toast.success(`Welcome, ${firstName}!`);
       
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;
