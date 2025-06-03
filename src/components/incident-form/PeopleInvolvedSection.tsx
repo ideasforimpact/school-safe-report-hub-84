@@ -95,8 +95,9 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
     if (field === 'role' && value !== updatedPeople[index].role) {
-      // Clear name when role changes
-      updatedPeople[index] = { ...updatedPeople[index], [field]: value, name: '' };
+      // Clear name when role changes and properly type the role value
+      const roleValue = value as 'Student' | 'Staff' | 'Other';
+      updatedPeople[index] = { ...updatedPeople[index], [field]: roleValue, name: '' };
     } else {
       updatedPeople[index] = { ...updatedPeople[index], [field]: value };
     }
@@ -133,8 +134,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const addPerson = () => {
-    const defaultRole = clientType.toLowerCase() === 'school' ? 'Student' : 'Staff';
-    setPeopleInvolved([...peopleInvolved, { name: '', role: defaultRole as 'Student' | 'Staff', notes: '' }]);
+    const defaultRole = clientType.toLowerCase() === 'school' ? 'Student' as const : 'Staff' as const;
+    setPeopleInvolved([...peopleInvolved, { name: '', role: defaultRole, notes: '' }]);
   };
 
   const removePerson = (index: number) => {
@@ -227,8 +228,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   if (peopleInvolved.length === 0) {
-    const defaultRole = clientType.toLowerCase() === 'school' ? 'Student' : 'Staff';
-    setPeopleInvolved([{ name: '', role: defaultRole as 'Student' | 'Staff', notes: '' }]);
+    const defaultRole = clientType.toLowerCase() === 'school' ? 'Student' as const : 'Staff' as const;
+    setPeopleInvolved([{ name: '', role: defaultRole, notes: '' }]);
   }
 
   return (
@@ -243,7 +244,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 <Label htmlFor={`person-role-${index}`}>Role</Label>
                 <Select 
                   value={person.role} 
-                  onValueChange={(value) => handlePersonChange(index, 'role', value as 'Student' | 'Staff' | 'Other')}
+                  onValueChange={(value) => handlePersonChange(index, 'role', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
