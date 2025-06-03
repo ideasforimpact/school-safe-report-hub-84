@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Eye, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
-import { formatSupabaseUrl } from '@/types/fileTypes';
+import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 import AadharDetailsDialog from './AadharDetailsDialog';
 import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
@@ -68,11 +67,19 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 
     try {
       const formattedUrl = formatSupabaseUrl(documentImage);
-      console.log('Opening document URL:', formattedUrl);
+      console.log('Opening document URL for viewing:', formattedUrl);
       
-      // Add timestamp to bypass cache and ensure fresh load
-      const urlWithTimestamp = `${formattedUrl}?t=${Date.now()}`;
-      window.open(urlWithTimestamp, '_blank', 'noopener,noreferrer');
+      // Check if it's a PDF or image for proper viewing
+      const isPdf = isPdfFile(formattedUrl);
+      
+      if (isPdf) {
+        // For PDFs, open with PDF viewer controls
+        const pdfViewerUrl = `${formattedUrl}#toolbar=1&navpanes=1&scrollbar=1`;
+        window.open(pdfViewerUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        // For images, open directly
+        window.open(formattedUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       console.error('Error opening document:', error);
       toast({

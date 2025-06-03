@@ -4,7 +4,7 @@ import { FileCheck, Eye, Download } from 'lucide-react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { formatSupabaseUrl } from '@/types/fileTypes';
+import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 
 interface DocumentImagePreviewProps {
   documentImage: string;
@@ -25,11 +25,19 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
 
     try {
       const formattedUrl = formatSupabaseUrl(documentImage);
-      console.log('Opening document URL:', formattedUrl);
+      console.log('Opening document URL for viewing:', formattedUrl);
       
-      // Add a timestamp to bypass cache issues
-      const urlWithTimestamp = `${formattedUrl}?t=${Date.now()}`;
-      window.open(urlWithTimestamp, '_blank');
+      // Check if it's a PDF or image
+      const isPdf = isPdfFile(formattedUrl);
+      
+      if (isPdf) {
+        // For PDFs, open in a new tab with PDF viewer
+        const pdfViewerUrl = `${formattedUrl}#toolbar=1&navpanes=1&scrollbar=1`;
+        window.open(pdfViewerUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        // For images, open directly
+        window.open(formattedUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       console.error('Error opening document:', error);
       toast({

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { useToast } from '@/hooks/use-toast';
-import { formatSupabaseUrl } from '@/types/fileTypes';
+import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 import DocumentsTable from './DocumentsTable';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import VerificationDialog from './VerificationDialog';
@@ -38,8 +38,19 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
     try {
       const formattedUrl = formatSupabaseUrl(documentImage);
-      console.log('Opening document URL:', formattedUrl);
-      window.open(formattedUrl, '_blank');
+      console.log('Opening document URL for viewing:', formattedUrl);
+      
+      // Check if it's a PDF or image for proper viewing
+      const isPdf = isPdfFile(formattedUrl);
+      
+      if (isPdf) {
+        // For PDFs, open with PDF viewer controls
+        const pdfViewerUrl = `${formattedUrl}#toolbar=1&navpanes=1&scrollbar=1`;
+        window.open(pdfViewerUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        // For images, open directly
+        window.open(formattedUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
       console.error('Error opening document:', error);
       toast({
