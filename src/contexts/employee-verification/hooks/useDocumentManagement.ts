@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { VerificationDocument } from '../types';
@@ -13,10 +12,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
+  const fetchEmployeeDocuments = useCallback(async (employeeId: string): Promise<VerificationDocument[]> => {
     if (!clientId) {
       console.log('No client ID available - cannot fetch documents');
-      return;
+      return [];
     }
 
     setIsLoading(true);
@@ -33,7 +32,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
       if (empError || !employee) {
         console.error('Employee not found or does not belong to current client');
-        return;
+        return [];
       }
 
       const { data, error } = await supabase
@@ -58,7 +57,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
       if (error) {
         console.error('Error fetching employee documents:', error);
-        return;
+        return [];
       }
 
       const formattedDocuments: VerificationDocument[] = data.map(doc => ({
@@ -83,8 +82,11 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         const filtered = prev.filter(d => d.employeeId !== employeeId);
         return [...filtered, ...formattedDocuments];
       });
+      
+      return formattedDocuments;
     } catch (error) {
       console.error('Error in fetchEmployeeDocuments:', error);
+      return [];
     } finally {
       setIsLoading(false);
     }
