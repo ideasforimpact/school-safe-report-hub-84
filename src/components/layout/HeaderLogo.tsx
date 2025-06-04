@@ -26,7 +26,7 @@ const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps)
         )}
         
         <h1 className="text-lg font-bold text-gray-800 ml-2 truncate">
-          {userClient ? `${userClient.name} Safe School` : 'Safe School'}
+          Safe School
         </h1>
       </Link>
     </div>
