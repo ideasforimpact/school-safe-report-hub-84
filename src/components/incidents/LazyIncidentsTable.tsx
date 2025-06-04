@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2 } from 'lucide-react';
 import { useLazyPagination } from '@/hooks/useLazyPagination';
 import { useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LazyIncidentsTableProps {
   incidents: IncidentRecord[];
@@ -121,17 +122,55 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ incidents, load
     return ticketId.split('-').pop() || ticketId;
   };
 
+  // Show loading skeleton during initial load
   if (loading && paginatedItems.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading incidents...</p>
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="text-lg text-gray-600">Loading incidents...</span>
+          </div>
+        </div>
+        
+        {/* Loading skeleton table */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Ticket #</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Facility</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Assigned to</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     );
   }
 
+  // Show no results message if no incidents and not loading
   if (incidents.length === 0 && !loading) {
     return (
       <div className="bg-white rounded-lg shadow">
