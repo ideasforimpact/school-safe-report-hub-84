@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import {
   Table,
@@ -13,16 +12,10 @@ import { Eye, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
-import { useEmployees } from '@/hooks/useEmployees';
 
 const EmployeesList = () => {
-  const { employees: contextEmployees, getEmployeeDocuments, fetchEmployees, isLoading: contextLoading } = useEmployeeVerification();
-  const { employees: hookEmployees, loading: hookLoading } = useEmployees();
+  const { employees, getEmployeeDocuments, fetchEmployees, isLoading } = useEmployeeVerification();
   const navigate = useNavigate();
-
-  // Use employees from the hook that includes documents, fallback to context employees
-  const employees = hookEmployees.length > 0 ? hookEmployees : contextEmployees;
-  const isLoading = hookLoading || contextLoading;
 
   // Ensure employees are fetched when component mounts if not already loaded
   useEffect(() => {
@@ -31,15 +24,15 @@ const EmployeesList = () => {
     }
   }, [employees.length, isLoading, fetchEmployees]);
 
-  // Enhanced document rendering with direct employee documents
+  // Use both sources of employee documents - direct from API and from context
   const renderDocumentsInfo = (employee) => {
-    // Use documents directly from employee data (from new API call) or fallback to context
+    // First check if we have documents directly on the employee (from API)
     const documents = employee.documents || getEmployeeDocuments(employee.id) || [];
     
     // Group by verification status
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verification_status === 'verified');
-    const failed = documents.filter(doc => doc.verificationStatus === 'failed' || doc.verification_status === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verification_status === 'pending');
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
     const total = documents.length;
 
     if (total === 0) {
@@ -105,12 +98,12 @@ const EmployeesList = () => {
             ) : (
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
-                const isInactive = employee.status === false;
+                const isInactive = employee.status === false; // Updated to use boolean
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
-                    <TableCell>{employee.employee_id}</TableCell>
-                    <TableCell>{`${employee.first_name} ${employee.last_name}`}</TableCell>
+                    <TableCell>{employee.employeeId}</TableCell>
+                    <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}
