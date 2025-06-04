@@ -14,8 +14,11 @@ const Incidents = () => {
     incidents, 
     loading, 
     error, 
+    pagination,
     fetchIncidents, 
     refetchIncidents, 
+    goToPage,
+    changePageSize,
     hasIncidentAdmin 
   } = useIncidentData();
 
@@ -78,7 +81,7 @@ const Incidents = () => {
     const loadIncidents = async () => {
       setIsInitialLoading(true);
       try {
-        await fetchIncidents();
+        await fetchIncidents(false, 1, 10); // Start with page 1, 10 records
       } finally {
         setIsInitialLoading(false);
       }
@@ -134,6 +137,9 @@ const Incidents = () => {
         <LazyIncidentsTable 
           incidents={filteredIncidentRecords} 
           loading={showLoadingSpinner}
+          pagination={pagination}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
         />
       </div>
     </Layout>

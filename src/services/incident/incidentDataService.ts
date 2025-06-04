@@ -1,9 +1,25 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
+interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+  offset?: number;
+  limit?: number;
+}
+
+interface PaginatedResponse<T> {
+  data: T[];
+  totalCount: number;
+  hasMore: boolean;
+  currentPage: number;
+  totalPages: number;
+}
+
 class IncidentDataService {
   private static instance: IncidentDataService;
-  private incidentCache: Map<string, IncidentRecord[]> = new Map();
+  private incidentCache: Map<string, PaginatedResponse<IncidentRecord>> = new Map();
   private isLoading = false;
 
   static getInstance(): IncidentDataService {
@@ -13,8 +29,16 @@ class IncidentDataService {
     return IncidentDataService.instance;
   }
 
-  async fetchIncidentsForClient(clientId: string, forceRefresh = false, employeeData?: any, hasIncidentAdmin?: boolean): Promise<IncidentRecord[]> {
-    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}`;
+  async fetchIncidentsForClient(
+    clientId: string, 
+    forceRefresh = false, 
+    employeeData?: any, 
+    hasIncidentAdmin?: boolean,
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<PaginatedResponse<IncidentRecord>> {
+    const { page = 1, pageSize = 10 } = pagination;
+    const offset = (page - 1) * pageSize;
+    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${pageSize}`;
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
@@ -23,7 +47,13 @@ class IncidentDataService {
 
     // Prevent multiple simultaneous requests
     if (this.isLoading) {
-      return this.incidentCache.get(cacheKey) || [];
+      return this.incidentCache.get(cacheKey) || {
+        data: [],
+        totalCount: 0,
+        hasMore: false,
+        currentPage: page,
+        totalPages: 0
+      };
     }
 
     this.isLoading = true;
@@ -49,7 +79,7 @@ class IncidentDataService {
           incident_status!status_id(id, name),
           created_by_employee:employees!created_by(id, first_name, last_name),
           assigned_employee:employees!assigned_to(id, first_name, last_name)
-        `)
+        `, { count: 'exact' })
         .eq('client_id', clientId);
 
       // Apply filtering based on user role and permissions
@@ -70,11 +100,12 @@ class IncidentDataService {
         // Super admin: No additional filtering - gets all incidents for the client
       }
 
+      // Apply pagination
       query = query
         .order('created_at', { ascending: false })
-        .limit(200);
+        .range(offset, offset + pageSize - 1);
 
-      const { data: incidents, error } = await query;
+      const { data: incidents, error, count } = await query;
 
       if (error) {
         throw new Error(`Failed to fetch incidents: ${error.message}`);
@@ -102,9 +133,21 @@ class IncidentDataService {
         updatedAt: new Date(inc.updated_at)
       }));
 
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasMore = page < totalPages;
+
+      const response: PaginatedResponse<IncidentRecord> = {
+        data: transformedIncidents,
+        totalCount,
+        hasMore,
+        currentPage: page,
+        totalPages
+      };
+
       // Cache the results with user-specific key
-      this.incidentCache.set(cacheKey, transformedIncidents);
-      return transformedIncidents;
+      this.incidentCache.set(cacheKey, response);
+      return response;
 
     } catch (error) {
       console.error('Error in incidentDataService.fetchIncidentsForClient:', error);
@@ -112,6 +155,17 @@ class IncidentDataService {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // Legacy method for backward compatibility - returns just the incidents array
+  async fetchIncidentsForClientLegacy(
+    clientId: string, 
+    forceRefresh = false, 
+    employeeData?: any, 
+    hasIncidentAdmin?: boolean
+  ): Promise<IncidentRecord[]> {
+    const response = await this.fetchIncidentsForClient(clientId, forceRefresh, employeeData, hasIncidentAdmin);
+    return response.data;
   }
 
   // Method to get basic stats without full incident data
@@ -174,8 +228,11 @@ class IncidentDataService {
 
   clearCache(clientId?: string, employeeId?: string): void {
     if (clientId && employeeId) {
-      const cacheKey = `${clientId}_${employeeId}`;
-      this.incidentCache.delete(cacheKey);
+      // Clear all cache entries for this client and employee
+      const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => 
+        key.startsWith(`${clientId}_${employeeId}_`)
+      );
+      keysToDelete.forEach(key => this.incidentCache.delete(key));
     } else if (clientId) {
       // Clear all cache entries for this client
       const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => key.startsWith(`${clientId}_`));

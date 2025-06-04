@@ -1,82 +1,46 @@
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IncidentRecord } from '@/services/incidentService';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2 } from 'lucide-react';
-import { useLazyPagination } from '@/hooks/useLazyPagination';
-import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasMore: boolean;
+  pageSize: number;
+}
 
 interface LazyIncidentsTableProps {
   incidents: IncidentRecord[];
   loading: boolean;
+  pagination?: PaginationInfo;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
-const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ incidents, loading }) => {
+const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ 
+  incidents, 
+  loading, 
+  pagination,
+  onPageChange,
+  onPageSizeChange 
+}) => {
   const navigate = useNavigate();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  
-  // Sort incidents by ticket ID in ascending order
-  const sortedIncidents = useMemo(() => {
-    return [...incidents].sort((a, b) => {
-      const getNumericPart = (ticketId: string) => {
-        const match = ticketId.match(/(\d+)$/);
-        return match ? parseInt(match[1], 10) : 0;
-      };
-      
-      const numA = getNumericPart(a.ticket_id);
-      const numB = getNumericPart(b.ticket_id);
-      
-      return numA - numB; // Ascending order
-    });
-  }, [incidents]);
-  
-  // Use lazy pagination hook
-  const {
-    paginatedItems,
-    hasMore,
-    totalLoaded,
-    loadNextPage,
-    resetPagination
-  } = useLazyPagination(sortedIncidents, {
-    initialPageSize: 20,
-    loadMoreThreshold: 5
-  });
-
-  // Reset pagination when incidents change (e.g., filters applied)
-  useEffect(() => {
-    resetPagination();
-  }, [incidents, resetPagination]);
-
-  // Intersection Observer for lazy loading
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0];
-        if (first.isIntersecting && hasMore && !loading) {
-          loadNextPage();
-        }
-      },
-      {
-        threshold: 0.1,
-        rootMargin: '100px'
-      }
-    );
-
-    const currentRef = loadMoreRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, [hasMore, loading, loadNextPage]);
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -122,8 +86,48 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ incidents, load
     return ticketId.split('-').pop() || ticketId;
   };
 
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    if (!pagination) return [];
+    
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    const { currentPage, totalPages } = pagination;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if there are few
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Show first page, current page, and pages around it
+      if (currentPage <= 3) {
+        // Near the start
+        for (let i = 1; i <= Math.min(maxVisiblePages, totalPages); i++) {
+          pageNumbers.push(i);
+        }
+        if (totalPages > maxVisiblePages) pageNumbers.push(-1); // Ellipsis
+      } else if (currentPage > totalPages - 3) {
+        // Near the end
+        pageNumbers.push(1, -1); // First page and ellipsis
+        for (let i = Math.max(totalPages - maxVisiblePages + 3, 1); i <= totalPages; i++) {
+          pageNumbers.push(i);
+        }
+      } else {
+        // Middle
+        pageNumbers.push(1, -1); // First page and ellipsis
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push(-1, totalPages); // Ellipsis and last page
+      }
+    }
+    
+    return pageNumbers;
+  };
+
   // Show loading skeleton during initial load
-  if (loading && paginatedItems.length === 0) {
+  if (loading && incidents.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-8 text-center">
@@ -183,6 +187,33 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ incidents, load
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Page size selector */}
+      {pagination && onPageSizeChange && (
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-700">Show</span>
+            <Select 
+              value={pagination.pageSize.toString()} 
+              onValueChange={(value) => onPageSizeChange(parseInt(value))}
+            >
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-700">entries</span>
+          </div>
+          <div className="text-sm text-gray-500">
+            Showing {((pagination.currentPage - 1) * pagination.pageSize) + 1} to {Math.min(pagination.currentPage * pagination.pageSize, pagination.totalCount)} of {pagination.totalCount} incidents
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -199,7 +230,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ incidents, load
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedItems.map((incident) => (
+            {incidents.map((incident) => (
               <TableRow 
                 key={incident.id}
                 className="cursor-pointer transition-colors hover:bg-gray-50"
@@ -288,34 +319,70 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ incidents, load
         </Table>
       </div>
       
-      {/* Lazy Loading Indicator */}
-      {hasMore && (
-        <div 
-          ref={loadMoreRef}
-          className="border-t border-gray-200 px-6 py-4 text-center"
-        >
-          {loading ? (
-            <div className="flex items-center justify-center space-x-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm text-gray-500">Loading more incidents...</span>
-            </div>
-          ) : (
-            <Button 
-              variant="outline" 
-              onClick={loadNextPage}
-              className="text-sm"
-            >
-              Load More Incidents
-            </Button>
-          )}
+      {/* Server-side pagination */}
+      {pagination && pagination.totalPages > 1 && onPageChange && (
+        <div className="py-4 border-t">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                {pagination.currentPage === 1 ? (
+                  <PaginationPrevious 
+                    aria-disabled="true"
+                    className="pointer-events-none opacity-50"
+                  />
+                ) : (
+                  <PaginationPrevious 
+                    onClick={() => onPageChange(Math.max(pagination.currentPage - 1, 1))}
+                    className="cursor-pointer"
+                  />
+                )}
+              </PaginationItem>
+              
+              {getPageNumbers().map((pageNum, index) => 
+                pageNum === -1 ? (
+                  <PaginationItem key={`ellipsis-${index}`}>
+                    <span className="flex h-10 w-10 items-center justify-center">...</span>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      isActive={pagination.currentPage === pageNum}
+                      onClick={() => onPageChange(pageNum)}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              
+              <PaginationItem>
+                {pagination.currentPage === pagination.totalPages ? (
+                  <PaginationNext 
+                    aria-disabled="true" 
+                    className="pointer-events-none opacity-50"
+                  />
+                ) : (
+                  <PaginationNext 
+                    onClick={() => onPageChange(Math.min(pagination.currentPage + 1, pagination.totalPages))}
+                    className="cursor-pointer"
+                  />
+                )}
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
       
-      {/* Results info */}
-      <div className="text-sm text-gray-500 px-6 py-2 border-t text-center bg-gray-50">
-        Showing {totalLoaded} of {sortedIncidents.length} incidents
-        {hasMore && ` (${sortedIncidents.length - totalLoaded} more available)`}
-      </div>
+      {/* Loading indicator for page changes */}
+      {loading && incidents.length > 0 && (
+        <div className="text-center py-4 border-t">
+          <div className="flex items-center justify-center space-x-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm text-gray-500">Loading...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -8,15 +8,29 @@ import { toast } from 'sonner';
 import { incidentDataService } from '@/services/incident/incidentDataService';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasMore: boolean;
+  pageSize: number;
+}
 
 export const useIncidentData = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 0,
+    totalCount: 0,
+    hasMore: false,
+    pageSize: 10
+  });
+  
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
-  const location = useLocation();
 
   // Check if user has incident admin access by finding incidents module
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
@@ -34,7 +48,7 @@ export const useIncidentData = () => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules]);
 
-  const fetchIncidents = useCallback(async (forceRefresh = false) => {
+  const fetchIncidents = useCallback(async (forceRefresh = false, page = 1, pageSize = 10) => {
     try {
       setLoading(true);
       setError(null);
@@ -57,24 +71,32 @@ export const useIncidentData = () => {
 
       if (!clientId) {
         setIncidents([]);
+        setPagination({
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasMore: false,
+          pageSize: 10
+        });
         return;
       }
 
-      console.log('Fetching incidents for client:', clientId);
+      console.log('Fetching incidents for client:', clientId, 'page:', page, 'pageSize:', pageSize);
 
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
 
-      // Use the centralized service with employee data and incident admin access
-      const incidentRecords = await incidentDataService.fetchIncidentsForClient(
+      // Use the centralized service with pagination
+      const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
         employeeDataForFiltering,
-        hasIncidentAdmin
+        hasIncidentAdmin,
+        { page, pageSize }
       );
 
       // Transform the data with proper type casting
-      const transformedIncidents: Incident[] = incidentRecords.map((record) => ({
+      const transformedIncidents: Incident[] = response.data.map((record) => ({
         id: record.id,
         ticketId: record.ticket_id,
         type: record.type as IncidentType,
@@ -102,7 +124,15 @@ export const useIncidentData = () => {
       }));
 
       setIncidents(transformedIncidents);
-      console.log(`Successfully fetched ${transformedIncidents.length} incidents`);
+      setPagination({
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        totalCount: response.totalCount,
+        hasMore: response.hasMore,
+        pageSize
+      });
+
+      console.log(`Successfully fetched ${transformedIncidents.length} incidents (page ${response.currentPage} of ${response.totalPages})`);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
@@ -114,17 +144,35 @@ export const useIncidentData = () => {
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
   const refetchIncidents = useCallback(async () => {
-    await fetchIncidents(true); // Force refresh
-  }, [fetchIncidents]);
+    await fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh
+  }, [fetchIncidents, pagination.currentPage, pagination.pageSize]);
 
-  // Note: Removed automatic useEffect - components must explicitly call fetchIncidents
+  const loadNextPage = useCallback(async () => {
+    if (pagination.hasMore && !loading) {
+      await fetchIncidents(false, pagination.currentPage + 1, pagination.pageSize);
+    }
+  }, [fetchIncidents, pagination.hasMore, pagination.currentPage, pagination.pageSize, loading]);
+
+  const goToPage = useCallback(async (page: number) => {
+    if (page >= 1 && page <= pagination.totalPages && !loading) {
+      await fetchIncidents(false, page, pagination.pageSize);
+    }
+  }, [fetchIncidents, pagination.totalPages, pagination.pageSize, loading]);
+
+  const changePageSize = useCallback(async (newPageSize: number) => {
+    await fetchIncidents(false, 1, newPageSize); // Reset to page 1 when changing page size
+  }, [fetchIncidents]);
 
   return {
     incidents,
     loading,
     error,
-    fetchIncidents, // Export this so components can manually trigger fetching
+    pagination,
+    fetchIncidents,
     refetchIncidents,
-    hasIncidentAdmin // Export this so components can access the admin status
+    loadNextPage,
+    goToPage,
+    changePageSize,
+    hasIncidentAdmin
   };
 };
