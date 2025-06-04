@@ -36,44 +36,44 @@ export const useDashboardStats = (clientId: string | null) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchDashboardStats = async () => {
+    if (!clientId) {
+      setStats(null);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('Fetching dashboard stats for client:', clientId);
+
+      const { data, error } = await supabase.functions.invoke('dashboard-stats', {
+        body: { clientId }
+      });
+
+      if (error) {
+        console.error('Error calling dashboard-stats function:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch dashboard stats');
+      }
+
+      console.log('Dashboard stats received:', data.stats);
+      setStats(data.stats);
+
+    } catch (err: any) {
+      console.error('Error fetching dashboard stats:', err);
+      setError(err.message || 'Failed to fetch dashboard statistics');
+      toast.error('Failed to load dashboard statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDashboardStats = async () => {
-      if (!clientId) {
-        setStats(null);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        console.log('Fetching dashboard stats for client:', clientId);
-
-        const { data, error } = await supabase.functions.invoke('dashboard-stats', {
-          body: { clientId }
-        });
-
-        if (error) {
-          console.error('Error calling dashboard-stats function:', error);
-          throw error;
-        }
-
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch dashboard stats');
-        }
-
-        console.log('Dashboard stats received:', data.stats);
-        setStats(data.stats);
-
-      } catch (err: any) {
-        console.error('Error fetching dashboard stats:', err);
-        setError(err.message || 'Failed to fetch dashboard statistics');
-        toast.error('Failed to load dashboard statistics');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDashboardStats();
   }, [clientId]);
 

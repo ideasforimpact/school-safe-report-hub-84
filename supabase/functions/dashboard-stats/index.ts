@@ -39,7 +39,8 @@ serve(async (req) => {
       todayIncidentsResult,
       weekIncidentsResult,
       totalAssessmentsResult,
-      verificationStatusResult
+      employeesResult,
+      employeeDocumentsResult
     ] = await Promise.all([
       // Open Incidents
       supabaseClient
@@ -76,18 +77,18 @@ serve(async (req) => {
         .select('id')
         .eq('client_id', clientId),
 
-      // Verification Status (Pending employees)
+      // Active Employees
       supabaseClient
         .from('employees')
-        .select(`
-          id,
-          employee_documents(
-            id,
-            verification_status
-          )
-        `)
+        .select('id')
         .eq('client_id', clientId)
-        .eq('status', true)
+        .eq('status', true),
+
+      // Employee Documents for verification status
+      supabaseClient
+        .from('employee_documents')
+        .select('id, employee_id, verification_status, employees!inner(client_id)')
+        .eq('employees.client_id', clientId)
     ]);
 
     // Check for errors
@@ -96,19 +97,38 @@ serve(async (req) => {
     if (todayIncidentsResult.error) throw todayIncidentsResult.error;
     if (weekIncidentsResult.error) throw weekIncidentsResult.error;
     if (totalAssessmentsResult.error) throw totalAssessmentsResult.error;
-    if (verificationStatusResult.error) throw verificationStatusResult.error;
+    if (employeesResult.error) throw employeesResult.error;
+    if (employeeDocumentsResult.error) throw employeeDocumentsResult.error;
 
     // Process verification status
-    const totalEmployees = verificationStatusResult.data?.length || 0;
-    let pendingVerification = 0;
+    const totalEmployees = employeesResult.data?.length || 0;
+    const employeeDocuments = employeeDocumentsResult.data || [];
+    
+    // Group documents by employee
+    const documentsByEmployee = employeeDocuments.reduce((acc: Record<string, any[]>, doc) => {
+      if (!acc[doc.employee_id]) {
+        acc[doc.employee_id] = [];
+      }
+      acc[doc.employee_id].push(doc);
+      return acc;
+    }, {});
 
-    verificationStatusResult.data?.forEach(employee => {
-      const hasDocuments = employee.employee_documents && employee.employee_documents.length > 0;
-      if (!hasDocuments) {
+    // Count employees with pending verification
+    let pendingVerification = 0;
+    const activeEmployees = employeesResult.data || [];
+    
+    activeEmployees.forEach(employee => {
+      const employeeDocs = documentsByEmployee[employee.id] || [];
+      
+      if (employeeDocs.length === 0) {
+        // No documents uploaded - pending
         pendingVerification++;
       } else {
-        const hasPendingDocs = employee.employee_documents.some(
-          (doc: any) => !doc.verification_status || doc.verification_status === 'pending'
+        // Check if any documents are pending or failed verification
+        const hasPendingDocs = employeeDocs.some(
+          doc => !doc.verification_status || 
+                 doc.verification_status === 'pending' || 
+                 doc.verification_status === 'failed'
         );
         if (hasPendingDocs) {
           pendingVerification++;
