@@ -43,15 +43,14 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
   onClose,
   onUpdate
 }) => {
-  const [acknowledgmentComment, setAcknowledgmentComment] = useState(submission.comments || '');
+  const [acknowledgmentComment, setAcknowledgmentComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const getStatusBadge = (status: string) => {
     const variants = {
       new: 'default',
-      open: 'secondary',
       reviewed: 'secondary',
-      closed: 'outline'
+      resolved: 'outline'
     } as const;
     return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
   };
@@ -75,23 +74,14 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
     try {
       console.log('Updating submission:', {
         submissionId: submission.id,
-        comment: acknowledgmentComment,
-        currentStatus: submission.status
+        comment: acknowledgmentComment
       });
-
-      // Determine new status based on current status
-      let newStatus = submission.status;
-      if (submission.status === 'new') {
-        newStatus = 'open';
-      } else if (submission.status === 'open' || submission.status === 'reviewed') {
-        newStatus = 'closed';
-      }
 
       const { data, error } = await supabase.functions.invoke('update-form-submission', {
         body: {
           submission_id: submission.id,
           comments: acknowledgmentComment,
-          status: newStatus
+          status: 'reviewed'
         }
       });
 
@@ -106,7 +96,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 
       toast({
         title: "Success",
-        description: `Submission status updated to ${newStatus}`
+        description: "Submission acknowledged successfully"
       });
 
       if (onUpdate) {
@@ -131,15 +121,6 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
       return response.value.join(', ');
     }
     return response.value?.toString() || 'N/A';
-  };
-
-  const getActionButtonText = () => {
-    if (submission.status === 'new') {
-      return 'Open Submission';
-    } else if (submission.status === 'open' || submission.status === 'reviewed') {
-      return 'Close Submission';
-    }
-    return 'Update Submission';
   };
 
   return (
@@ -205,24 +186,35 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
             </div>
           </div>
 
+          {/* Existing Comments */}
+          {submission.comments && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Previous Comments
+                </h3>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="whitespace-pre-wrap">{submission.comments}</p>
+                </div>
+              </div>
+            </>
+          )}
+
           <Separator />
 
-          {/* Comments Section */}
+          {/* Acknowledgment Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              {submission.comments ? 'Previous Comments' : 'Add Comment'}
-            </h3>
+            <h3 className="text-lg font-semibold">Acknowledgment</h3>
             <div className="space-y-3">
               <div>
-                <Label htmlFor="acknowledgment-comment">
-                  {submission.comments ? 'Update Comment' : 'Add Comment'}
-                </Label>
+                <Label htmlFor="acknowledgment-comment">Add Comment</Label>
                 <Textarea
                   id="acknowledgment-comment"
-                  placeholder={submission.comments ? "Update your comment..." : "Enter your comment..."}
+                  placeholder="Enter your acknowledgment comment..."
                   value={acknowledgmentComment}
-                  onChange={(e) => setAcknowledmentComment(e.target.value)}
+                  onChange={(e) => setAcknowledgmentComment(e.target.value)}
                   rows={4}
                   className="mt-1"
                 />
@@ -239,7 +231,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
             onClick={handleAcknowledge}
             disabled={submitting || !acknowledgmentComment.trim()}
           >
-            {submitting ? 'Processing...' : getActionButtonText()}
+            {submitting ? 'Processing...' : 'Acknowledge Submission'}
           </Button>
         </DialogFooter>
       </DialogContent>

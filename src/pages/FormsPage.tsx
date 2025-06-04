@@ -95,9 +95,8 @@ const FormsPage = () => {
   const getStatusBadge = (status: string) => {
     const variants = {
       new: 'default',
-      open: 'secondary',
       reviewed: 'secondary',
-      closed: 'outline'
+      resolved: 'outline'
     } as const;
     return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
   };
