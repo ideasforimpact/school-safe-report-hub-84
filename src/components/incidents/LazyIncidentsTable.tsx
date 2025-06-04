@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IncidentRecord } from '@/services/incidentService';
@@ -185,6 +184,9 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     );
   }
 
+  console.log('LazyIncidentsTable - Pagination data:', pagination);
+  console.log('LazyIncidentsTable - Has pagination handlers:', { onPageChange: !!onPageChange, onPageSizeChange: !!onPageSizeChange });
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       {/* Page size selector */}
@@ -319,7 +321,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
         </Table>
       </div>
       
-      {/* Server-side pagination */}
+      {/* Server-side pagination - Show if pagination data exists and has more than 1 page */}
       {pagination && pagination.totalPages > 1 && onPageChange && (
         <div className="py-4 border-t">
           <Pagination>
