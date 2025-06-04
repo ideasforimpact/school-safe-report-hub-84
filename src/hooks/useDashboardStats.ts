@@ -5,11 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardStats {
   openIncidents: number;
-  activeAssessments: number;
+  newAssessments: number;
   totalEmployees: number;
-  verifiedEmployees: number;
+  employeesWithDocuments: number;
   totalVehicles: number;
-  verifiedVehicles: number;
+  vehiclesWithDocuments: number;
   lastMonthIncidents: number;
   lastSixMonthsIncidents: number;
 }

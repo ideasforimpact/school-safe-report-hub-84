@@ -33,23 +33,35 @@ serve(async (req) => {
 
     console.log(`Fetching dashboard stats for client_id: ${client_id}`);
 
-    // Get open incidents count
+    // First, get the status IDs for 'New' and 'Open'
+    const { data: incidentStatuses, error: statusError } = await supabase
+      .from('incident_status')
+      .select('id, name')
+      .in('name', ['New', 'Open']);
+
+    if (statusError) {
+      console.error('Error fetching incident statuses:', statusError);
+    }
+
+    const statusIds = incidentStatuses ? incidentStatuses.map(status => status.id) : [];
+
+    // Get open incidents count using the correct status IDs
     const { data: openIncidents, error: openIncidentsError } = await supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
-      .in('status_id', ['open', 'new', 'in-progress']); // Adjust status values as needed
+      .in('status_id', statusIds);
 
     if (openIncidentsError) {
       console.error('Error fetching open incidents:', openIncidentsError);
     }
 
-    // Get active assessments count
+    // Get active assessments count - only 'New' status
     const { data: activeAssessments, error: activeAssessmentsError } = await supabase
       .from('assessments')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
-      .in('status', ['New', 'In Progress', 'Submitted']);
+      .eq('status', 'New');
 
     if (activeAssessmentsError) {
       console.error('Error fetching active assessments:', activeAssessmentsError);
@@ -65,19 +77,21 @@ serve(async (req) => {
       console.error('Error fetching total employees:', totalEmployeesError);
     }
 
-    // Get employees with verification documents
-    const { data: verifiedEmployees, error: verifiedEmployeesError } = await supabase
+    // Get employees with any documents uploaded (for verification tracking)
+    const { data: employeesWithDocs, error: employeeDocsError } = await supabase
       .from('employee_documents')
       .select('employee_id')
-      .in('verification_status', ['verified', 'pending', 'submitted']);
+      .in('employee_id', 
+        supabase.from('employees').select('id').eq('client_id', client_id)
+      );
 
-    if (verifiedEmployeesError) {
-      console.error('Error fetching verified employees:', verifiedEmployeesError);
+    if (employeeDocsError) {
+      console.error('Error fetching employee documents:', employeeDocsError);
     }
 
-    // Get unique verified employees count
-    const uniqueVerifiedEmployees = verifiedEmployees ? 
-      new Set(verifiedEmployees.map(doc => doc.employee_id)).size : 0;
+    // Get unique employees with documents
+    const uniqueEmployeesWithDocs = employeesWithDocs ? 
+      new Set(employeesWithDocs.map(doc => doc.employee_id)).size : 0;
 
     // Get total vehicles count
     const { data: totalVehicles, error: totalVehiclesError } = await supabase
@@ -89,16 +103,21 @@ serve(async (req) => {
       console.error('Error fetching total vehicles:', totalVehiclesError);
     }
 
-    // Get verified vehicles count
-    const { data: verifiedVehicles, error: verifiedVehiclesError } = await supabase
-      .from('vehicles')
-      .select('id', { count: 'exact' })
-      .eq('client_id', client_id)
-      .eq('verification_status', 'verified');
+    // Get vehicles with documents uploaded (transport safety)
+    const { data: vehiclesWithDocs, error: vehicleDocsError } = await supabase
+      .from('vehicle_documents')
+      .select('vehicle_id')
+      .in('vehicle_id', 
+        supabase.from('vehicles').select('id').eq('client_id', client_id)
+      );
 
-    if (verifiedVehiclesError) {
-      console.error('Error fetching verified vehicles:', verifiedVehiclesError);
+    if (vehicleDocsError) {
+      console.error('Error fetching vehicle documents:', vehicleDocsError);
     }
+
+    // Get unique vehicles with documents
+    const uniqueVehiclesWithDocs = vehiclesWithDocs ? 
+      new Set(vehiclesWithDocs.map(doc => doc.vehicle_id)).size : 0;
 
     // Get incidents from last month
     const oneMonthAgo = new Date();
@@ -130,11 +149,11 @@ serve(async (req) => {
 
     const stats = {
       openIncidents: openIncidents?.length || 0,
-      activeAssessments: activeAssessments?.length || 0,
+      newAssessments: activeAssessments?.length || 0,
       totalEmployees: totalEmployees?.length || 0,
-      verifiedEmployees: uniqueVerifiedEmployees,
+      employeesWithDocuments: uniqueEmployeesWithDocs,
       totalVehicles: totalVehicles?.length || 0,
-      verifiedVehicles: verifiedVehicles?.length || 0,
+      vehiclesWithDocuments: uniqueVehiclesWithDocs,
       lastMonthIncidents: lastMonthIncidents?.length || 0,
       lastSixMonthsIncidents: lastSixMonthsIncidents?.length || 0
     };
