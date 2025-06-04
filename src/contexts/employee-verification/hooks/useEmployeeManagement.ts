@@ -27,53 +27,59 @@ export const useEmployeeManagement = () => {
 
     setIsLoading(true);
     try {
-      console.log('Fetching employees with documents for client:', clientId);
+      console.log('Fetching employees for client:', clientId);
       
-      // Fetch employees with their documents in a single query
-      const { data, error } = await supabase
+      // First fetch employees
+      const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
-        .select(`
-          id,
-          employee_id,
-          first_name,
-          last_name,
-          email,
-          employee_type,
-          department,
-          status,
-          client_id,
-          is_super_admin,
-          user_id,
-          joining_date,
-          created_at,
-          updated_at,
-          employee_documents (
-            id,
-            document_type_id,
-            document_status_id,
-            document_url,
-            document_number,
-            verification_status,
-            params,
-            employee_docs_log,
-            created_at,
-            updated_at,
-            document_type:employee_document_type(name, description),
-            document_status:document_status(name, description)
-          )
-        `)
+        .select('*')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching employees:', error);
+      if (employeesError) {
+        console.error('Error fetching employees:', employeesError);
         toast.error('Failed to fetch employees');
         return [];
       }
 
-      const mappedEmployees: Employee[] = (data || []).map(emp => {
+      if (!employeesData || employeesData.length === 0) {
+        console.log('No employees found for client:', clientId);
+        setEmployees([]);
+        return [];
+      }
+
+      // Fetch documents for all employees
+      const employeeIds = employeesData.map(emp => emp.id);
+      const { data: documentsData, error: documentsError } = await supabase
+        .from('employee_documents')
+        .select(`
+          id,
+          employee_id,
+          document_type_id,
+          document_status_id,
+          document_url,
+          document_number,
+          verification_status,
+          params,
+          employee_docs_log,
+          created_at,
+          updated_at,
+          document_type:employee_document_type(name, description),
+          document_status:document_status(name, description)
+        `)
+        .in('employee_id', employeeIds);
+
+      if (documentsError) {
+        console.error('Error fetching documents:', documentsError);
+        // Continue without documents rather than failing completely
+      }
+
+      const mappedEmployees: Employee[] = employeesData.map(emp => {
+        // Find documents for this employee
+        const employeeDocuments = documentsData?.filter(doc => doc.employee_id === emp.id) || [];
+        
         // Map employee documents to the expected format
-        const documents: VerificationDocument[] = (emp.employee_documents || []).map(doc => {
+        const documents: VerificationDocument[] = employeeDocuments.map(doc => {
           let documentUrl = doc.document_url;
           
           // If document_url is a storage path, convert to full URL
