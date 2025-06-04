@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 interface Employee {
   id: string;
@@ -39,13 +40,25 @@ export const useEmployees = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, employeeData } = useAuth();
 
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         setLoading(true);
         
-        // First fetch employees
+        // Get client_id from employeeData or user context
+        const clientId = employeeData?.clientId || user?.clientId;
+        
+        if (!clientId) {
+          console.log('No client ID available, skipping employee fetch');
+          setEmployees([]);
+          return;
+        }
+
+        console.log('Fetching employees for client_id:', clientId);
+        
+        // First fetch employees with client_id filter
         const { data: employeesData, error: employeesError } = await supabase
           .from('employees')
           .select(`
@@ -64,6 +77,7 @@ export const useEmployees = () => {
             created_at,
             updated_at
           `)
+          .eq('client_id', clientId)
           .eq('status', true)
           .order('created_at', { ascending: false });
 
@@ -111,6 +125,7 @@ export const useEmployees = () => {
           documents: documentsByEmployee[employee.id] || []
         }));
         
+        console.log(`Fetched ${employeesWithDocuments.length} employees for client ${clientId}`);
         setEmployees(employeesWithDocuments);
       } catch (err) {
         console.error('Error fetching employees:', err);
@@ -121,7 +136,7 @@ export const useEmployees = () => {
     };
 
     fetchEmployees();
-  }, []);
+  }, [employeeData?.clientId, user?.clientId]);
 
   return { employees, loading, error };
 };
