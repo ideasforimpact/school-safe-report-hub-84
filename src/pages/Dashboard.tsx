@@ -3,10 +3,6 @@ import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import QuickActions from '@/components/dashboard/QuickActions';
-import RecentActivities from '@/components/dashboard/RecentActivities';
-import SafetyResources from '@/components/dashboard/SafetyResources';
-import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
 import DashboardStatsCards from '@/components/dashboard/DashboardStatsCards';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
@@ -22,36 +18,28 @@ const Dashboard = () => {
     ? clients.find(c => c.id === user.clientId) 
     : null;
 
-  // Mock activities for now - these should come from a dedicated service
-  const recentActivities = [];
-
-  // Handler for activity clicks
-  const handleActivityClick = (activity: any) => {
-    console.log("Activity clicked:", activity);
-  };
-
   // Get the school name for the welcome message
   const schoolName = userClient?.name || 'Your School';
-
-  // Data for the integrated dashboard section
-  const openIncidentsData = {
-    count: stats?.openIncidents || 0,
-    change: -5
-  };
 
   return (
     <Layout>
       <div className="container py-6 space-y-8">
+        {/* Welcome Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome to {schoolName}</h1>
+          <p className="text-lg text-gray-600">Safety Command Center Dashboard</p>
+        </div>
+
         {/* If no incidents yet and not loading, show a welcome message */}
         {!loading && stats && stats.openIncidents === 0 && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Welcome to {schoolName}'s Safety Command Center</AlertTitle>
+          <Alert className="border-green-200 bg-green-50">
+            <AlertCircle className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800">Great News!</AlertTitle>
+            <AlertDescription className="text-green-700">
+              No open incidents at {schoolName}. Your safety systems are working well.
+            </AlertDescription>
           </Alert>
         )}
-        
-        {/* Integrated Dashboard Overview */}
-        <IntegratedDashboardSection openIncidentsData={openIncidentsData} />
         
         {/* Dashboard Statistics Cards */}
         <DashboardStatsCards 
@@ -59,19 +47,6 @@ const Dashboard = () => {
           loading={loading}
           error={error}
         />
-        
-        {/* Quick Actions Section */}
-        <QuickActions />
-        
-        {/* Two column layout for activities and resources */}
-        <div className="grid gap-8 md:grid-cols-2">
-          <RecentActivities 
-            activities={recentActivities}
-            onActivityClick={handleActivityClick}
-          />
-          
-          <SafetyResources />
-        </div>
       </div>
     </Layout>
   );
