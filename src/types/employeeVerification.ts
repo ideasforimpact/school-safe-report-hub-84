@@ -68,6 +68,10 @@ export interface VerificationDocument {
     DOB?: string;
     [key: string]: any;
   };
+  // New cron-related fields
+  cronActivate?: boolean;
+  cronActivatedDate?: string;
+  cronUpdatedDate?: string;
   createdAt: string;
   updatedAt: string;
 }

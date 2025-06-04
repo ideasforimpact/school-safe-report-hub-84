@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
@@ -107,7 +108,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       documents: []
     };
 
-    // Fetch employee documents
+    // Fetch employee documents with new cron fields
     const { data: documentsData, error: documentsError } = await supabase
       .from('employee_documents')
       .select(`
@@ -121,6 +122,9 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         params,
         employee_docs_log,
         last_otp_generated,
+        cron_activate,
+        cron_activated_date,
+        cron_updated_date,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -133,7 +137,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       return { employee, documents: [] };
     }
 
-    // Map documents to the expected format with proper URL handling
+    // Map documents to the expected format with proper URL handling and new cron fields
     const documents: VerificationDocument[] = (documentsData || []).map(doc => {
       let documentUrl = doc.document_url;
       
@@ -162,6 +166,10 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
           notes?: string;
         }> : [],
         params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+        // Map new cron fields
+        cronActivate: doc.cron_activate || false,
+        cronActivatedDate: doc.cron_activated_date || undefined,
+        cronUpdatedDate: doc.cron_updated_date || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -192,6 +200,9 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         params,
         employee_docs_log,
         last_otp_generated,
+        cron_activate,
+        cron_activated_date,
+        cron_updated_date,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -268,6 +279,10 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
           notes?: string;
         }> : [],
         params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+        // Map new cron fields
+        cronActivate: doc.cron_activate || false,
+        cronActivatedDate: doc.cron_activated_date || undefined,
+        cronUpdatedDate: doc.cron_updated_date || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

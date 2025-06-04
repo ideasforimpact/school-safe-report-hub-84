@@ -96,6 +96,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           params,
           employee_docs_log,
           last_otp_generated,
+          cron_activate,
+          cron_activated_date,
+          cron_updated_date,
           created_at,
           updated_at,
           document_type:employee_document_type(name, description),
@@ -129,6 +132,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
+          // Map new cron fields
+          cronActivate: doc.cron_activate || false,
+          cronActivatedDate: doc.cron_activated_date || undefined,
+          cronUpdatedDate: doc.cron_updated_date || undefined,
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
         };
@@ -217,7 +224,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         document_url: documentUrlForDB,
         document_number: document.documentNumber || null,
         verification_status: document.verificationStatus,
-        params: document.params || {}
+        params: document.params || {},
+        cron_activate: document.cronActivate || false,
+        cron_activated_date: document.cronActivatedDate || null,
+        cron_updated_date: document.cronUpdatedDate || null
       });
 
       const { data, error } = await supabase
@@ -229,7 +239,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           document_url: documentUrlForDB,
           document_number: document.documentNumber || null,
           verification_status: document.verificationStatus,
-          params: document.params || {}
+          params: document.params || {},
+          cron_activate: document.cronActivate || false,
+          cron_activated_date: document.cronActivatedDate || null,
+          cron_updated_date: document.cronUpdatedDate || null
         }])
         .select()
         .single();
@@ -259,6 +272,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         verificationNotes: '',
         verificationMethod: 'manual',
         params: document.params,
+        cronActivate: data.cron_activate || false,
+        cronActivatedDate: data.cron_activated_date || undefined,
+        cronUpdatedDate: data.cron_updated_date || undefined,
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };

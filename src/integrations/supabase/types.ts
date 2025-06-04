@@ -576,6 +576,9 @@ export type Database = {
       employee_documents: {
         Row: {
           created_at: string | null
+          cron_activate: boolean | null
+          cron_activated_date: string | null
+          cron_updated_date: string | null
           document_number: string | null
           document_status_id: string | null
           document_type_id: string | null
@@ -590,6 +593,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          cron_activate?: boolean | null
+          cron_activated_date?: string | null
+          cron_updated_date?: string | null
           document_number?: string | null
           document_status_id?: string | null
           document_type_id?: string | null
@@ -604,6 +610,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          cron_activate?: boolean | null
+          cron_activated_date?: string | null
+          cron_updated_date?: string | null
           document_number?: string | null
           document_status_id?: string | null
           document_type_id?: string | null
