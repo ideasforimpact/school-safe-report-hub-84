@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import {
   Table,
@@ -24,15 +25,15 @@ const EmployeesList = () => {
     }
   }, [employees.length, isLoading, fetchEmployees]);
 
-  // Use both sources of employee documents - direct from API and from context
+  // Enhanced document rendering with direct employee documents
   const renderDocumentsInfo = (employee) => {
-    // First check if we have documents directly on the employee (from API)
+    // Use documents directly from employee data (from new API call) or fallback to context
     const documents = employee.documents || getEmployeeDocuments(employee.id) || [];
     
     // Group by verification status
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
-    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verification_status === 'verified');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed' || doc.verification_status === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verification_status === 'pending');
     const total = documents.length;
 
     if (total === 0) {
@@ -98,12 +99,12 @@ const EmployeesList = () => {
             ) : (
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
-                const isInactive = employee.status === false; // Updated to use boolean
+                const isInactive = employee.status === false;
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
-                    <TableCell>{employee.employeeId}</TableCell>
-                    <TableCell>{employee.name}</TableCell>
+                    <TableCell>{employee.employeeId || employee.employee_id}</TableCell>
+                    <TableCell>{employee.name || `${employee.first_name} ${employee.last_name}`}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}
