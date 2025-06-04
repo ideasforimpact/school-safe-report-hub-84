@@ -6,7 +6,11 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import React from 'react';
 
-const IncidentsHeader = () => {
+interface IncidentsHeaderProps {
+  hasIncidentAdmin: boolean;
+}
+
+const IncidentsHeader = ({ hasIncidentAdmin }: IncidentsHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useEmployeeStore();
@@ -41,7 +45,7 @@ const IncidentsHeader = () => {
       
       <div className="flex gap-3">
         {/* Only show Insights button if user has admin access */}
-        {hasIncidentsAdminAccess && (
+        {(hasIncidentsAdminAccess || hasIncidentAdmin) && (
           <Button 
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all" 
             onClick={() => navigate('/insights')}

@@ -2,11 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
-import IncidentsFilters from '@/components/incidents/IncidentsFilters';
+import IncidentFilters from '@/components/incidents/IncidentFilters';
 import LazyIncidentsTable from '@/components/incidents/LazyIncidentsTable';
 import { useIncidentData } from '@/hooks/useIncidentData';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
-import { filterIncidents } from '@/utils/incidentFilters';
 
 const Incidents = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -19,13 +18,60 @@ const Incidents = () => {
     refetchIncidents, 
     hasIncidentAdmin 
   } = useIncidentData();
+
+  // Transform incidents for the filter hook
+  const transformedIncidents = incidents.map(record => ({
+    id: record.id,
+    ticketId: record.ticketId,
+    type: record.type,
+    category: record.category,
+    subcategory: record.subcategory,
+    description: record.description,
+    date: record.date,
+    location: record.location,
+    peopleInvolved: [],
+    status: record.status,
+    reportedBy: record.reportedBy,
+    owner: record.owner,
+    facility: record.facility,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    priority: record.priority
+  }));
   
   const {
     filters,
+    filteredIncidents,
+    availableCategories,
+    availableSubcategories,
+    availableLocations,
+    availableFacilities,
+    availableOwners,
+    priorityOptions,
+    statusOptions,
+    locationOptions,
     handleFilterChange,
-    handleDateRangeChange,
     clearFilters
-  } = useIncidentFilters();
+  } = useIncidentFilters(transformedIncidents);
+
+  // Transform filtered incidents back to records
+  const filteredIncidentRecords = filteredIncidents.map(incident => ({
+    id: incident.id,
+    ticket_id: incident.ticketId,
+    type: incident.type,
+    category: incident.category,
+    subcategory: incident.subcategory,
+    description: incident.description,
+    date: incident.date,
+    location: incident.location,
+    facility: incident.facility || '',
+    status: incident.status,
+    priority: incident.priority,
+    reportedBy: incident.reportedBy.name,
+    owner: incident.owner?.name,
+    createdAt: incident.createdAt,
+    updatedAt: incident.updatedAt
+  }));
 
   // Fetch incidents on component mount
   useEffect(() => {
@@ -41,9 +87,6 @@ const Incidents = () => {
     loadIncidents();
   }, [fetchIncidents]);
 
-  // Apply filters to incidents
-  const filteredIncidents = filterIncidents(incidents, filters);
-
   // Show loading spinner during initial load or when loading
   const showLoadingSpinner = isInitialLoading || loading;
 
@@ -52,7 +95,6 @@ const Incidents = () => {
       <Layout>
         <div className="space-y-6">
           <IncidentsHeader 
-            totalIncidents={0}
             hasIncidentAdmin={hasIncidentAdmin}
           />
           <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -73,21 +115,24 @@ const Incidents = () => {
     <Layout>
       <div className="space-y-6">
         <IncidentsHeader 
-          totalIncidents={filteredIncidents.length}
           hasIncidentAdmin={hasIncidentAdmin}
         />
         
-        <IncidentsFilters
+        <IncidentFilters
           filters={filters}
           onFilterChange={handleFilterChange}
-          onDateRangeChange={handleDateRangeChange}
           onClearFilters={clearFilters}
-          totalFiltered={filteredIncidents.length}
-          totalIncidents={incidents.length}
+          availableCategories={availableCategories}
+          availableSubcategories={availableSubcategories}
+          availableLocations={locationOptions}
+          availableFacilities={availableFacilities}
+          availableOwners={availableOwners}
+          priorityOptions={priorityOptions}
+          statusOptions={statusOptions}
         />
         
         <LazyIncidentsTable 
-          incidents={filteredIncidents} 
+          incidents={filteredIncidentRecords} 
           loading={showLoadingSpinner}
         />
       </div>
