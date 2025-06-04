@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -214,7 +213,7 @@ const IncidentsList = () => {
       <div className="space-y-6 p-6 w-full">
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="w-full">
-            <IncidentsHeader />
+            <IncidentsHeader hasIncidentAdmin={hasIncidentAdmin} />
           </div>
         </div>
 
