@@ -615,7 +615,7 @@ export const useAuthHandlers = ({
       // Clear any auth errors
       setAuthError(null);
       
-      toast.success(`Welcome, ${firstName}!`);
+      //toast.success(`Welcome, ${firstName}!`);
       
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;
