@@ -33,32 +33,23 @@ serve(async (req) => {
 
     console.log(`Fetching dashboard stats for client_id: ${client_id}`);
 
-    // First get the status IDs for 'New' and 'Open'
-    const { data: incidentStatuses } = await supabase
-      .from('incident_status')
-      .select('id, name')
-      .in('name', ['New', 'Open']);
-
-    const newStatusId = incidentStatuses?.find(s => s.name === 'New')?.id;
-    const openStatusId = incidentStatuses?.find(s => s.name === 'Open')?.id;
-
-    // Get open incidents count using proper status IDs
+    // Get open incidents count
     const { data: openIncidents, error: openIncidentsError } = await supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
-      .in('status_id', [newStatusId, openStatusId].filter(Boolean));
+      .in('status_id', ['open', 'new', 'in-progress']); // Adjust status values as needed
 
     if (openIncidentsError) {
       console.error('Error fetching open incidents:', openIncidentsError);
     }
 
-    // Get assessments with status 'New' only
+    // Get active assessments count
     const { data: activeAssessments, error: activeAssessmentsError } = await supabase
       .from('assessments')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
-      .eq('status', 'New');
+      .in('status', ['New', 'In Progress', 'Submitted']);
 
     if (activeAssessmentsError) {
       console.error('Error fetching active assessments:', activeAssessmentsError);
@@ -74,11 +65,11 @@ serve(async (req) => {
       console.error('Error fetching total employees:', totalEmployeesError);
     }
 
-    // Get employees with any verification documents
+    // Get employees with verification documents
     const { data: verifiedEmployees, error: verifiedEmployeesError } = await supabase
       .from('employee_documents')
       .select('employee_id')
-      .not('verification_status', 'is', null);
+      .in('verification_status', ['verified', 'pending', 'submitted']);
 
     if (verifiedEmployeesError) {
       console.error('Error fetching verified employees:', verifiedEmployeesError);
