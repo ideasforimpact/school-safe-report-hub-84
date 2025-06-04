@@ -305,7 +305,8 @@ async function handleCronJob(supabase: any, baseUrl: string, apiKey: string, sta
   try {
     console.log("Starting cron job for bank statement verification");
     
-    // Get all documents with cron_activate = true and document_type = "bank_account"
+    // Get only the latest document with cron_activate = true and document_type = "bank_account"
+    // Order by cron_activated_date ASC to get the oldest first (FIFO processing)
     const { data: documents, error: fetchError } = await supabase
       .from('employee_documents')
       .select(`
@@ -313,12 +314,24 @@ async function handleCronJob(supabase: any, baseUrl: string, apiKey: string, sta
         employee_id,
         employee_docs_log,
         cron_log,
+        cron_activated_date,
         document_type:employee_document_type(name)
       `)
       .eq('cron_activate', true)
-      .eq('employee_document_type.name', 'bank_account');
+      .eq('employee_document_type.name', 'bank_account')
+      .order('cron_activated_date', { ascending: true })
+      .limit(1)
+      .single();
     
     if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        // No data found
+        console.log("No bank account documents with active cron found");
+        return new Response(
+          JSON.stringify({ success: true, message: "No documents to process" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       console.error("Error fetching cron documents:", fetchError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch cron documents" }),
@@ -326,7 +339,7 @@ async function handleCronJob(supabase: any, baseUrl: string, apiKey: string, sta
       );
     }
     
-    if (!documents || documents.length === 0) {
+    if (!documents) {
       console.log("No bank account documents with active cron found");
       return new Response(
         JSON.stringify({ success: true, message: "No documents to process" }),
@@ -334,147 +347,176 @@ async function handleCronJob(supabase: any, baseUrl: string, apiKey: string, sta
       );
     }
     
-    console.log(`Found ${documents.length} bank account documents to process`);
+    console.log(`Processing document ${documents.id} with cron_activated_date: ${documents.cron_activated_date}`);
     
-    let processedCount = 0;
-    let successCount = 0;
-    
-    for (const doc of documents) {
-      try {
-        processedCount++;
+    try {
+      // Extract client_id from employee_docs_log
+      const employeeDocsLog = Array.isArray(documents.employee_docs_log) ? documents.employee_docs_log : [];
+      const clientId = employeeDocsLog.find((log: any) => log.client_id)?.client_id;
+      
+      if (!clientId) {
+        console.log(`No client_id found for document ${documents.id}, skipping`);
         
-        // Extract client_id from employee_docs_log
-        const employeeDocsLog = Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [];
-        const clientId = employeeDocsLog.find((log: any) => log.client_id)?.client_id;
-        
-        if (!clientId) {
-          console.log(`No client_id found for document ${doc.id}, skipping`);
-          
-          // Add log entry for missing client_id
-          const cronLogEntry = {
-            timestamp: new Date().toISOString(),
-            action: "cron_bank_statement_download",
-            status: "skipped",
-            error: "No client_id found in employee_docs_log"
-          };
-          
-          const existingCronLog = Array.isArray(doc.cron_log) ? doc.cron_log : [];
-          await supabase
-            .from('employee_documents')
-            .update({
-              cron_log: [...existingCronLog, cronLogEntry],
-              cron_updated_date: new Date().toISOString()
-            })
-            .eq('id', doc.id);
-          
-          continue;
-        }
-        
-        console.log(`Processing document ${doc.id} with client_id: ${clientId}`);
-        
-        // Call the download API
-        const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            client_id: clientId
-          })
-        });
-        
-        const downloadResult = await downloadResponse.json();
-        console.log(`Download API response for document ${doc.id}:`, downloadResult);
-        
-        // Create cron log entry
+        // Add log entry for missing client_id
         const cronLogEntry = {
           timestamp: new Date().toISOString(),
           action: "cron_bank_statement_download",
-          status: downloadResult.success ? "success" : "failed",
-          details: downloadResult
+          status: "skipped",
+          error: "No client_id found in employee_docs_log"
         };
         
-        const existingCronLog = Array.isArray(doc.cron_log) ? doc.cron_log : [];
-        
-        // Update document based on download result
-        if (downloadResult.success && downloadResult.status_code === 200) {
-          // Verification complete - update to verified status and deactivate cron
-          await supabase
-            .from('employee_documents')
-            .update({
-              verification_status: 'verified',
-              document_status_id: statusMap[DOC_STATUS.VERIFIED],
-              cron_activate: false,
-              cron_log: [...existingCronLog, cronLogEntry],
-              cron_updated_date: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', doc.id);
-          
-          successCount++;
-          console.log(`Document ${doc.id} verified successfully`);
-        } else if (downloadResult.success && downloadResult.status_code === 202) {
-          // Still processing - just update cron log
-          await supabase
-            .from('employee_documents')
-            .update({
-              cron_log: [...existingCronLog, cronLogEntry],
-              cron_updated_date: new Date().toISOString()
-            })
-            .eq('id', doc.id);
-          
-          console.log(`Document ${doc.id} still processing`);
-        } else {
-          // Failed - update to failed status and deactivate cron
-          await supabase
-            .from('employee_documents')
-            .update({
-              verification_status: 'failed',
-              document_status_id: statusMap[DOC_STATUS.REJECTED],
-              cron_activate: false,
-              cron_log: [...existingCronLog, cronLogEntry],
-              cron_updated_date: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', doc.id);
-          
-          console.log(`Document ${doc.id} verification failed`);
-        }
-        
-      } catch (error) {
-        console.error(`Error processing document ${doc.id}:`, error);
-        
-        // Add error log entry
-        const cronLogEntry = {
-          timestamp: new Date().toISOString(),
-          action: "cron_bank_statement_download",
-          status: "error",
-          error: error.message
-        };
-        
-        const existingCronLog = Array.isArray(doc.cron_log) ? doc.cron_log : [];
+        const existingCronLog = Array.isArray(documents.cron_log) ? documents.cron_log : [];
         await supabase
           .from('employee_documents')
           .update({
             cron_log: [...existingCronLog, cronLogEntry],
             cron_updated_date: new Date().toISOString()
           })
-          .eq('id', doc.id);
+          .eq('id', documents.id);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document skipped due to missing client_id",
+            processed: 1,
+            successful: 0
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+      
+      console.log(`Processing document ${documents.id} with client_id: ${clientId}`);
+      
+      // Call the download API
+      const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_id: clientId
+        })
+      });
+      
+      const downloadResult = await downloadResponse.json();
+      console.log(`Download API response for document ${documents.id}:`, downloadResult);
+      
+      // Create cron log entry
+      const cronLogEntry = {
+        timestamp: new Date().toISOString(),
+        action: "cron_bank_statement_download",
+        status: downloadResult.success ? "success" : "failed",
+        details: downloadResult
+      };
+      
+      const existingCronLog = Array.isArray(documents.cron_log) ? documents.cron_log : [];
+      
+      // Update document based on download result
+      if (downloadResult.success && downloadResult.status_code === 200) {
+        // Verification complete - update to verified status and deactivate cron
+        await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'verified',
+            document_status_id: statusMap[DOC_STATUS.VERIFIED],
+            cron_activate: false,
+            cron_log: [...existingCronLog, cronLogEntry],
+            cron_updated_date: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documents.id);
+        
+        console.log(`Document ${documents.id} verified successfully`);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document verified successfully",
+            processed: 1,
+            successful: 1
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else if (downloadResult.success && downloadResult.status_code === 202) {
+        // Still processing - just update cron log
+        await supabase
+          .from('employee_documents')
+          .update({
+            cron_log: [...existingCronLog, cronLogEntry],
+            cron_updated_date: new Date().toISOString()
+          })
+          .eq('id', documents.id);
+        
+        console.log(`Document ${documents.id} still processing`);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document still processing",
+            processed: 1,
+            successful: 0
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        // Failed - update to failed status and deactivate cron
+        await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'failed',
+            document_status_id: statusMap[DOC_STATUS.REJECTED],
+            cron_activate: false,
+            cron_log: [...existingCronLog, cronLogEntry],
+            cron_updated_date: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documents.id);
+        
+        console.log(`Document ${documents.id} verification failed`);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document verification failed",
+            processed: 1,
+            successful: 0
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+    } catch (error) {
+      console.error(`Error processing document ${documents.id}:`, error);
+      
+      // Add error log entry
+      const cronLogEntry = {
+        timestamp: new Date().toISOString(),
+        action: "cron_bank_statement_download",
+        status: "error",
+        error: error.message
+      };
+      
+      const existingCronLog = Array.isArray(documents.cron_log) ? documents.cron_log : [];
+      await supabase
+        .from('employee_documents')
+        .update({
+          cron_log: [...existingCronLog, cronLogEntry],
+          cron_updated_date: new Date().toISOString()
+        })
+        .eq('id', documents.id);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: "Error processing document",
+          processed: 1,
+          successful: 0,
+          error: error.message
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-    
-    console.log(`Cron job completed. Processed: ${processedCount}, Successful: ${successCount}`);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Cron job completed. Processed: ${processedCount}, Successful: ${successCount}`,
-        processed: processedCount,
-        successful: successCount
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
     
   } catch (error) {
     console.error("Error in cron job:", error);
