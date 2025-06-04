@@ -222,6 +222,72 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
     return totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   };
 
+  const openDocumentViewer = (attachment: any) => {
+    try {
+      if (attachment.url) {
+        // Open the document in a new tab/window
+        window.open(attachment.url, '_blank', 'noopener,noreferrer');
+      } else if (attachment.base64) {
+        // If it's a base64 encoded file, create a blob URL and open it
+        const base64Data = attachment.base64.includes(',') 
+          ? attachment.base64.split(',')[1] 
+          : attachment.base64;
+        
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: attachment.type || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        
+        // Clean up the blob URL after a short delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else {
+        toast.error('Document URL not available for viewing');
+      }
+    } catch (error) {
+      console.error('Error opening document:', error);
+      toast.error('Unable to open document. Please try downloading instead.');
+    }
+  };
+
+  const downloadAttachment = (attachment: any) => {
+    try {
+      const link = document.createElement('a');
+      
+      if (attachment.url) {
+        // For URL-based attachments
+        link.href = attachment.url;
+        link.download = attachment.name || 'attachment';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Download started');
+      } else if (attachment.base64) {
+        // For base64-encoded attachments
+        const base64Data = attachment.base64.includes(',') 
+          ? attachment.base64 
+          : `data:${attachment.type || 'application/octet-stream'};base64,${attachment.base64}`;
+        
+        link.href = base64Data;
+        link.download = attachment.name || 'attachment';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Download started');
+      } else {
+        toast.error('Document not available for download');
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Unable to download document');
+    }
+  };
+
   // Check if current user is the creator of the assessment
   const isCurrentUserCreator = assessment?.created_by === employeeData?.id;
   const isCompleteButtonEnabled = assessment?.status === 'Submitted' && isCurrentUserCreator;
