@@ -17,7 +17,7 @@ interface AssessmentViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessmentId: number;
-  onAssessmentUpdated?: () => void; // Add callback prop
+  onAssessmentUpdated?: () => void;
 }
 
 interface Question {
@@ -157,7 +157,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
       if (error) throw error;
 
-      // Update local state
       setAssessment(prev => prev ? { 
         ...prev, 
         status: 'Completed',
@@ -170,10 +169,8 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
       setShowConfirmDialog(false);
       setCompletionComments('');
       
-      // Close the main Assessment Details dialog
       onOpenChange(false);
       
-      // Trigger refetch in parent component
       if (onAssessmentUpdated) {
         onAssessmentUpdated();
       }
@@ -222,7 +219,27 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
     return totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   };
 
-  // Check if current user is the creator of the assessment
+  const openDocumentViewer = (attachment: any) => {
+    if (attachment.url) {
+      window.open(attachment.url, '_blank');
+    } else {
+      toast.error('Document URL not available');
+    }
+  };
+
+  const downloadAttachment = (attachment: any) => {
+    if (attachment.url) {
+      const link = document.createElement('a');
+      link.href = attachment.url;
+      link.download = attachment.name || 'attachment';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      toast.error('Document URL not available for download');
+    }
+  };
+
   const isCurrentUserCreator = assessment?.created_by === employeeData?.id;
   const isCompleteButtonEnabled = assessment?.status === 'Submitted' && isCurrentUserCreator;
 
@@ -246,7 +263,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
           <div className="flex flex-col h-full">
             <ScrollArea className="flex-1 max-h-[65vh]">
               <div className="space-y-6 p-1">
-                {/* Assessment Header */}
                 <Card>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -268,7 +284,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                             </span>
                           )}
                         </div>
-                        {/* Completion details at the top */}
                         {assessment.status === 'Completed' && assessment.completed_on && (
                           <div className="flex items-center gap-4 text-sm text-green-700 bg-green-50 p-2 rounded-lg border border-green-200 mt-3">
                             <span className="flex items-center gap-1">
@@ -311,7 +326,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                   </CardContent>
                 </Card>
 
-                {/* Completion Information */}
                 {assessment.status === 'Completed' && assessment.completed_on && (
                   <Card>
                     <CardHeader>
@@ -349,7 +363,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                   </Card>
                 )}
 
-                {/* Template Info */}
                 {assessment.template && (
                   <Card>
                     <CardHeader>
@@ -361,7 +374,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                   </Card>
                 )}
 
-                {/* Questions and Answers */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Questions & Answers</CardTitle>
@@ -387,7 +399,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                                 {question.required && <span className="text-red-500 ml-1">*</span>}
                               </p>
                               
-                              {/* Answer */}
                               <div className="mt-2">
                                 {isAnswered ? (
                                   <div className="flex items-center gap-2">
@@ -408,7 +419,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                                 )}
                               </div>
 
-                              {/* Comment */}
                               {answer?.comment && (
                                 <div className="mt-3 p-3 bg-blue-50 rounded-lg">
                                   <div className="flex items-center gap-2 mb-1">
@@ -419,7 +429,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                                 </div>
                               )}
 
-                              {/* Attachments */}
                               {answer?.attachments && answer.attachments.length > 0 && (
                                 <div className="mt-3">
                                   <div className="flex items-center gap-2 mb-2">
@@ -483,7 +492,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
               </div>
             </ScrollArea>
 
-            {/* Complete Assessment Button with Confirmation Dialog - Only show to assessment creator */}
             {isCompleteButtonEnabled && (
               <div className="border-t pt-4 mt-4">
                 <div className="flex justify-end">

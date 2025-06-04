@@ -1,0 +1,181 @@
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { client_id } = await req.json()
+    
+    if (!client_id) {
+      return new Response(
+        JSON.stringify({ error: 'client_id is required' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
+    }
+
+    console.log('Fetching dashboard stats for client:', client_id)
+
+    // First get status IDs for "New" and "Open" incidents
+    const { data: incidentStatuses } = await supabase
+      .from('incident_status')
+      .select('id, name')
+      .in('name', ['New', 'Open'])
+
+    const statusIds = incidentStatuses?.map(status => status.id) || []
+    console.log('Status IDs found:', statusIds)
+
+    // Get open incidents count (New and Open status)
+    const { data: openIncidents, error: openIncidentsError } = await supabase
+      .from('incidents')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .in('status_id', statusIds)
+
+    if (openIncidentsError) {
+      console.error('Error fetching open incidents:', openIncidentsError)
+    }
+
+    // Get active assessments count (only New status)
+    const { data: activeAssessments, error: activeAssessmentsError } = await supabase
+      .from('assessments')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'New')
+
+    if (activeAssessmentsError) {
+      console.error('Error fetching active assessments:', activeAssessmentsError)
+    }
+
+    // Get total employees for the client
+    const { data: totalEmployees, error: totalEmployeesError } = await supabase
+      .from('employees')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+
+    if (totalEmployeesError) {
+      console.error('Error fetching total employees:', totalEmployeesError)
+    }
+
+    // Get employees with documents (verified employees)
+    const { data: employeesWithDocs, error: employeesWithDocsError } = await supabase
+      .from('employee_documents')
+      .select('employee_id')
+      .in('employee_id', await supabase
+        .from('employees')
+        .select('id')
+        .eq('client_id', client_id)
+        .then(res => res.data?.map(emp => emp.id) || [])
+      )
+
+    if (employeesWithDocsError) {
+      console.error('Error fetching employees with documents:', employeesWithDocsError)
+    }
+
+    // Get unique employee IDs with documents
+    const uniqueEmployeesWithDocs = new Set(employeesWithDocs?.map(doc => doc.employee_id) || [])
+
+    // Get total vehicles for the client
+    const { data: totalVehicles, error: totalVehiclesError } = await supabase
+      .from('vehicles')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+
+    if (totalVehiclesError) {
+      console.error('Error fetching total vehicles:', totalVehiclesError)
+    }
+
+    // Get vehicles with documents
+    const { data: vehiclesWithDocs, error: vehiclesWithDocsError } = await supabase
+      .from('vehicle_documents')
+      .select('vehicle_id')
+      .in('vehicle_id', await supabase
+        .from('vehicles')
+        .select('id')
+        .eq('client_id', client_id)
+        .then(res => res.data?.map(vehicle => vehicle.id) || [])
+      )
+
+    if (vehiclesWithDocsError) {
+      console.error('Error fetching vehicles with documents:', vehiclesWithDocsError)
+    }
+
+    // Get unique vehicle IDs with documents
+    const uniqueVehiclesWithDocs = new Set(vehiclesWithDocs?.map(doc => doc.vehicle_id) || [])
+
+    // Get incidents from last month
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+
+    const { data: incidentsLastMonth, error: incidentsLastMonthError } = await supabase
+      .from('incidents')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .gte('created_at', oneMonthAgo.toISOString())
+
+    if (incidentsLastMonthError) {
+      console.error('Error fetching incidents last month:', incidentsLastMonthError)
+    }
+
+    // Get incidents from last 6 months
+    const sixMonthsAgo = new Date()
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+    const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await supabase
+      .from('incidents')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .gte('created_at', sixMonthsAgo.toISOString())
+
+    if (incidentsLast6MonthsError) {
+      console.error('Error fetching incidents last 6 months:', incidentsLast6MonthsError)
+    }
+
+    const response = {
+      openIncidents: openIncidents?.length || 0,
+      activeAssessments: activeAssessments?.length || 0,
+      totalEmployees: totalEmployees?.length || 0,
+      employeesVerified: uniqueEmployeesWithDocs.size,
+      totalVehicles: totalVehicles?.length || 0,
+      vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
+      incidentsLastMonth: incidentsLastMonth?.length || 0,
+      incidentsLast6Months: incidentsLast6Months?.length || 0
+    }
+
+    console.log('Dashboard stats response:', response)
+
+    return new Response(
+      JSON.stringify(response),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    )
+
+  } catch (error) {
+    console.error('Error in dashboard-stats function:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
+    )
+  }
+})

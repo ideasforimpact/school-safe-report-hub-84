@@ -4,54 +4,20 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import SummaryCards from '@/components/dashboard/SummaryCards';
-import QuickActions from '@/components/dashboard/QuickActions';
-import RecentActivities from '@/components/dashboard/RecentActivities';
-import SafetyResources from '@/components/dashboard/SafetyResources';
-import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
+import DashboardStatsCards from '@/components/dashboard/DashboardStatsCards';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
-import { useIncidentStats } from '@/hooks/useIncidentStats';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { clients } = useClient();
-  const { stats: incidentStats, loading: statsLoading } = useIncidentStats();
+  const { stats, loading, error } = useDashboardStats();
 
   // Find the client associated with the current user
   const userClient = user?.clientId 
     ? clients.find(c => c.id === user.clientId) 
     : null;
-
-  // Mock activities for now - these should come from a dedicated service
-  const recentActivities = [];
-
-  // Calculate statistics for the dashboard using the stats hook
-  const totalIncidents = incidentStats.total;
-  const openIncidents = incidentStats.open;
-  const inProgressIncidents = incidentStats.inProgress;
-  const closedIncidents = incidentStats.closed;
-  
-  // Safety stats - these should come from actual calculations
-  const incidentFreeStreak = 14;
-  const reportRate = 92;
-  
-  // Mock calculations for categories and people involved
-  const categoryCounts = { 'Physical Injury': 5, 'Property Damage': 3 };
-  const mostCommonCategory = 'Physical Injury';
-  const totalPeopleInvolved = totalIncidents * 2; // Mock calculation
-
-  // Data for the integrated dashboard section
-  const openIncidentsData = {
-    count: openIncidents,
-    change: -5
-  };
-
-  // Handler for activity clicks
-  const handleActivityClick = (activity: any) => {
-    console.log("Activity clicked:", activity);
-  };
 
   // Get the school name for the welcome message
   const schoolName = userClient?.name || 'Your School';
@@ -59,39 +25,56 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="container py-6 space-y-8">
-        {/* If no incidents yet, show a welcome message */}
-        {totalIncidents === 0 && !statsLoading && (
-          <Alert>
+        {/* Welcome Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome to {schoolName}'s Safety Dashboard
+          </h1>
+          <p className="text-gray-600">
+            Monitor your safety metrics and key performance indicators
+          </p>
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Welcome to {schoolName}'s Safety Command Center</AlertTitle>
+            <AlertTitle>Error Loading Dashboard</AlertTitle>
+            <AlertDescription>
+              {error}. Please try refreshing the page.
+            </AlertDescription>
           </Alert>
         )}
-        
-        {/* Integrated Dashboard Overview */}
-        <IntegratedDashboardSection openIncidentsData={openIncidentsData} />
-        
-        {/* Dashboard Cards */}
-        <SummaryCards 
-          openIncidents={openIncidents}
-          totalIncidents={totalIncidents}
-          incidentsThisMonth={inProgressIncidents}
-          mostCommonCategory={mostCommonCategory}
-          categoryCounts={categoryCounts}
-          totalPeopleInvolved={totalPeopleInvolved}
-        />
-        
-        {/* Quick Actions Section */}
-        <QuickActions />
-        
-        {/* Two column layout for activities and resources */}
-        <div className="grid gap-8 md:grid-cols-2">
-          <RecentActivities 
-            activities={recentActivities}
-            onActivityClick={handleActivityClick}
-          />
+
+        {/* Dashboard Statistics Cards */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-gray-900">Dashboard Overview</h2>
+            <div className="text-sm text-gray-500">
+              Last updated: {new Date().toLocaleString()}
+            </div>
+          </div>
           
-          <SafetyResources />
+          <DashboardStatsCards stats={stats} loading={loading} />
         </div>
+
+        {/* Welcome message for new users */}
+        {!loading && stats.openIncidents === 0 && stats.activeAssessments === 0 && (
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <AlertCircle className="h-5 w-5" />
+                Getting Started
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-blue-700">
+                Welcome to your Safety Management Dashboard! This is your central hub for monitoring 
+                incidents, assessments, employee verification, and transport safety across your organization.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
