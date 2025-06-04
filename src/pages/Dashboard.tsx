@@ -4,49 +4,28 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import SummaryCards from '@/components/dashboard/SummaryCards';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivities from '@/components/dashboard/RecentActivities';
 import SafetyResources from '@/components/dashboard/SafetyResources';
-import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
+import DashboardStatsCards from '@/components/dashboard/DashboardStatsCards';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
-import { useIncidentStats } from '@/hooks/useIncidentStats';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { clients } = useClient();
-  const { stats: incidentStats, loading: statsLoading } = useIncidentStats();
-
+  
   // Find the client associated with the current user
   const userClient = user?.clientId 
     ? clients.find(c => c.id === user.clientId) 
     : null;
 
+  // Fetch dashboard stats using the new hook
+  const { stats, loading: statsLoading, error: statsError } = useDashboardStats(user?.clientId || null);
+
   // Mock activities for now - these should come from a dedicated service
   const recentActivities = [];
-
-  // Calculate statistics for the dashboard using the stats hook
-  const totalIncidents = incidentStats.total;
-  const openIncidents = incidentStats.open;
-  const inProgressIncidents = incidentStats.inProgress;
-  const closedIncidents = incidentStats.closed;
-  
-  // Safety stats - these should come from actual calculations
-  const incidentFreeStreak = 14;
-  const reportRate = 92;
-  
-  // Mock calculations for categories and people involved
-  const categoryCounts = { 'Physical Injury': 5, 'Property Damage': 3 };
-  const mostCommonCategory = 'Physical Injury';
-  const totalPeopleInvolved = totalIncidents * 2; // Mock calculation
-
-  // Data for the integrated dashboard section
-  const openIncidentsData = {
-    count: openIncidents,
-    change: -5
-  };
 
   // Handler for activity clicks
   const handleActivityClick = (activity: any) => {
@@ -59,26 +38,30 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="container py-6 space-y-8">
-        {/* If no incidents yet, show a welcome message */}
-        {totalIncidents === 0 && !statsLoading && (
+        {/* Welcome message */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome to {schoolName}'s Safety Command Center
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Monitor your safety metrics and manage incidents effectively
+          </p>
+        </div>
+
+        {/* Error handling */}
+        {statsError && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Welcome to {schoolName}'s Safety Command Center</AlertTitle>
+            <AlertTitle>Error Loading Dashboard</AlertTitle>
+            <AlertDescription>{statsError}</AlertDescription>
           </Alert>
         )}
         
-        {/* Integrated Dashboard Overview */}
-        <IntegratedDashboardSection openIncidentsData={openIncidentsData} />
-        
-        {/* Dashboard Cards */}
-        <SummaryCards 
-          openIncidents={openIncidents}
-          totalIncidents={totalIncidents}
-          incidentsThisMonth={inProgressIncidents}
-          mostCommonCategory={mostCommonCategory}
-          categoryCounts={categoryCounts}
-          totalPeopleInvolved={totalPeopleInvolved}
-        />
+        {/* Dashboard Statistics Cards */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Dashboard Overview</h2>
+          <DashboardStatsCards stats={stats} loading={statsLoading} />
+        </div>
         
         {/* Quick Actions Section */}
         <QuickActions />
