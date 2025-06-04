@@ -13,10 +13,16 @@ import { Eye, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
+import { useEmployees } from '@/hooks/useEmployees';
 
 const EmployeesList = () => {
-  const { employees, getEmployeeDocuments, fetchEmployees, isLoading } = useEmployeeVerification();
+  const { employees: contextEmployees, getEmployeeDocuments, fetchEmployees, isLoading: contextLoading } = useEmployeeVerification();
+  const { employees: hookEmployees, loading: hookLoading } = useEmployees();
   const navigate = useNavigate();
+
+  // Use employees from the hook that includes documents, fallback to context employees
+  const employees = hookEmployees.length > 0 ? hookEmployees : contextEmployees;
+  const isLoading = hookLoading || contextLoading;
 
   // Ensure employees are fetched when component mounts if not already loaded
   useEffect(() => {
@@ -103,8 +109,8 @@ const EmployeesList = () => {
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
-                    <TableCell>{employee.employeeId || employee.employee_id}</TableCell>
-                    <TableCell>{employee.name || `${employee.first_name} ${employee.last_name}`}</TableCell>
+                    <TableCell>{employee.employee_id}</TableCell>
+                    <TableCell>{`${employee.first_name} ${employee.last_name}`}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}
