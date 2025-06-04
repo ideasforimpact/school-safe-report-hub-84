@@ -45,27 +45,30 @@ const CommentsList: React.FC<CommentsListProps> = ({
   const [showEditComment, setShowEditComment] = useState(false);
   const [currentComment, setCurrentComment] = useState<IncidentComment | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [localComments, setLocalComments] = useState<IncidentComment[]>(comments);
+  const [localComments, setLocalComments] = useState<IncidentComment[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const { users } = useIncidents();
 
   // Update local comments when props change
   useEffect(() => {
+    // Ensure comments is always an array
+    const safeComments = Array.isArray(comments) ? comments : [];
+    
     if (isInitialLoad) {
       setIsInitialLoad(false);
-      setLocalComments(comments);
+      setLocalComments(safeComments);
       return;
     }
 
     // Show a brief loading state when comments update
-    if (comments.length !== localComments.length) {
+    if (safeComments.length !== localComments.length) {
       setIsRefreshing(true);
       setTimeout(() => {
-        setLocalComments(comments);
+        setLocalComments(safeComments);
         setIsRefreshing(false);
       }, 300);
     } else {
-      setLocalComments(comments);
+      setLocalComments(safeComments);
     }
   }, [comments, localComments.length, isInitialLoad]);
 
@@ -175,7 +178,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
       {currentComment && (
         <Dialog open={showEditComment} onOpenChange={setShowEditComment}>
           <CommentForm
-            users={users}
+            users={users || []}
             incidentId={incident.id}
             onCommentAdded={handleCommentAdded}
             isOpen={showEditComment}

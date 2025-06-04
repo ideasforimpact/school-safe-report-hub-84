@@ -29,7 +29,7 @@ const IncidentDetail = () => {
   useEffect(() => {
     console.log("IncidentDetail - Looking for incident with ID:", id);
     console.log("IncidentDetail - Fetched incident:", fetchedIncident);
-    console.log("IncidentDetail - Available incidents in context:", incidents.length);
+    console.log("IncidentDetail - Available incidents in context:", Array.isArray(incidents) ? incidents.length : 0);
     
     if (isFetchingIncident) {
       setIsLoading(true);
@@ -47,7 +47,7 @@ const IncidentDetail = () => {
         description: fetchedIncident.description,
         date: new Date(fetchedIncident.date),
         location: fetchedIncident.location.name,
-        peopleInvolved: fetchedIncident.people_involved || [],
+        peopleInvolved: Array.isArray(fetchedIncident.people_involved) ? fetchedIncident.people_involved : [],
         status: fetchedIncident.status.name,
         reportedBy: {
           id: fetchedIncident.created_by.id,
@@ -58,16 +58,16 @@ const IncidentDetail = () => {
           name: `${fetchedIncident.assigned_to.first_name} ${fetchedIncident.assigned_to.last_name}`
         } : undefined,
         facility: fetchedIncident.facility.name,
-        documents: fetchedIncident.documents || [],
+        documents: Array.isArray(fetchedIncident.documents) ? fetchedIncident.documents : [],
         createdAt: new Date(fetchedIncident.date),
         updatedAt: new Date(fetchedIncident.date),
         priority: fetchedIncident.priority.name,
-        comments: fetchedIncident.comments || []
+        comments: Array.isArray(fetchedIncident.comments) ? fetchedIncident.comments : []
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
       setIsLoading(false);
-    } else if (id && incidents.length > 0) {
+    } else if (id && Array.isArray(incidents) && incidents.length > 0) {
       // Fall back to context data if fetch failed
       const contextIncident = getIncident(id);
       console.log("IncidentDetail - Using context incident:", contextIncident);
@@ -180,7 +180,7 @@ const IncidentDetail = () => {
     incident,
     statusUpdate,
     setStatusUpdate: (status: string) => setStatusUpdate(status as any),
-    incidentActivities: incidentDetailProps.incidentActivities || [],
+    incidentActivities: Array.isArray(incidentDetailProps.incidentActivities) ? incidentDetailProps.incidentActivities : [],
     commentText: '',
     setCommentText: () => {},
     commentFiles: [],
