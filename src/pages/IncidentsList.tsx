@@ -26,7 +26,6 @@ interface PaginationInfo {
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [navigationLoading, setNavigationLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     totalPages: 0,
@@ -122,9 +121,10 @@ const IncidentsList = () => {
     updatedAt: incident.updatedAt
   }));
 
-  const fetchIncidents = React.useCallback(async (forceRefresh = false, page = 1, pageSize = 10) => {
+  const fetchIncidents = React.useCallback(async (forceRefresh = false, page = 1) => {
     try {
       setLoading(true);
+      console.log(`Starting fetchIncidents - page: ${page}, forceRefresh: ${forceRefresh}`);
 
       // Get client ID from available sources
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
@@ -143,6 +143,7 @@ const IncidentsList = () => {
       }
 
       if (!clientId) {
+        console.log('No client ID found');
         setIncidents([]);
         setPagination({
           currentPage: 1,
@@ -161,20 +162,27 @@ const IncidentsList = () => {
         incidentDataService.clearCache(clientId, employeeId);
       }
 
-      console.log('Fetching incidents - Page:', page, 'PageSize:', pageSize, 'hasIncidentAdmin:', hasIncidentAdmin);
+      console.log('Fetching incidents - Page:', page, 'hasIncidentAdmin:', hasIncidentAdmin);
       
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Use the paginated service - fetch specific page from server
+      // Use the paginated service - fetch specific page from server with exactly 10 records
       const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page, pageSize: 10 } // Always use 10 records per page
+        { page, pageSize: 10 } // Always fetch exactly 10 records per page
       );
       
+      console.log(`Server returned ${response.data.length} incidents for page ${page}`);
+      console.log('Pagination info:', { 
+        currentPage: response.currentPage, 
+        totalPages: response.totalPages, 
+        totalCount: response.totalCount 
+      });
+
       setIncidents(response.data);
       setPagination({
         currentPage: response.currentPage,
@@ -183,8 +191,6 @@ const IncidentsList = () => {
         hasMore: response.hasMore,
         pageSize: 10
       });
-      
-      console.log(`Server-side pagination: Fetched page ${response.currentPage} of ${response.totalPages} (${response.data.length} records)`);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
@@ -195,40 +201,42 @@ const IncidentsList = () => {
       }
     } finally {
       setLoading(false);
-      setNavigationLoading(false);
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
-  // Server-side pagination handler
+  // Server-side pagination handler - fetch new page from server
   const goToPage = React.useCallback(async (page: number) => {
     if (page >= 1 && page <= pagination.totalPages && !loading) {
       console.log(`Navigating to page ${page} - fetching from server...`);
-      await fetchIncidents(false, page, 10); // Fetch specific page from server
+      await fetchIncidents(false, page); // Fetch specific page from server
     }
   }, [fetchIncidents, pagination.totalPages, loading]);
 
-  // Page size change handler
+  // Page size change handler - reset to page 1 and fetch
   const changePageSize = React.useCallback(async (newPageSize: number) => {
-    console.log(`Changing page size to ${newPageSize} - resetting to page 1`);
-    await fetchIncidents(false, 1, 10); // Always use 10 records, reset to page 1
+    console.log(`Page size change requested to ${newPageSize}, but keeping fixed size of 10`);
+    await fetchIncidents(false, 1); // Always use 10 records, reset to page 1
   }, [fetchIncidents]);
 
-  // Navigation listener - call fetchIncidents when navigating to /incidents page
+  // Navigation listener - force refresh when navigating to /incidents page
   useEffect(() => {
-    console.log('NAVIGATION INCIDENT data');
+    console.log('Navigation effect triggered for path:', location.pathname);
     if (location.pathname === '/incidents' && 
         (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
-      setNavigationLoading(true);
-      fetchIncidents(true, 1, 10); // Force refresh on navigation with page 1
+      console.log('Forcing refresh on navigation to incidents page');
+      fetchIncidents(true, 1); // Force refresh on navigation with page 1
     }
   }, [location.pathname, fetchIncidents, employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
   // Initial fetch when component mounts and required data is available
   useEffect(() => {
+    console.log('Initial mount effect triggered');
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
-        employeeState.configuredModules) {
-      fetchIncidents(false, 1, 10); // Initial fetch with page 1
+        employeeState.configuredModules && 
+        location.pathname !== '/incidents') { // Avoid double fetch on navigation
+      console.log('Initial fetch of incidents');
+      fetchIncidents(false, 1); // Initial fetch with page 1
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
@@ -237,45 +245,12 @@ const IncidentsList = () => {
     // Only refetch if we already have incidents loaded and admin status changes
     if (incidents.length > 0 || (employeeState.configuredModules && (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email))) {
       console.log('hasIncidentAdmin changed, refetching incidents with new permissions');
-      fetchIncidents(true, 1, 10); // Force refresh to get data with new permissions, reset to page 1
+      fetchIncidents(true, 1); // Force refresh to get data with new permissions, reset to page 1
     }
   }, [hasIncidentAdmin]);
 
-  // Add visibility change listener to refetch when page becomes visible
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('Page became visible, force refetching incidents...');
-        fetchIncidents(true, pagination.currentPage, 10); // Force refresh when page becomes visible
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [fetchIncidents, pagination.currentPage]);
-
-  // Add focus listener to refetch when window regains focus
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('Window focused, force refetching incidents...');
-      fetchIncidents(true, pagination.currentPage, 10); // Force refresh when window regains focus
-    };
-
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [fetchIncidents, pagination.currentPage]);
-
   console.log('IncidentsList - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
-  console.log('IncidentsList - Server-side pagination handlers ready');
-
-  // Show proper loading state during navigation or initial load
-  const isLoadingData = loading || navigationLoading;
+  console.log('IncidentsList - Total incidents:', pagination.totalCount, 'Current incidents shown:', incidents.length);
 
   return (
     <Layout>
@@ -304,7 +279,7 @@ const IncidentsList = () => {
           
           <LazyIncidentsTable 
             incidents={filteredIncidentRecords} 
-            loading={isLoadingData}
+            loading={loading}
             pagination={pagination}
             onPageChange={goToPage}
             onPageSizeChange={changePageSize}

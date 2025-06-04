@@ -42,17 +42,20 @@ class IncidentDataService {
     const offset = (page - 1) * limitedPageSize;
     const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${limitedPageSize}`;
     
-    console.log(`Fetching incidents from server - Page: ${page}, PageSize: ${limitedPageSize}, Offset: ${offset}`);
+    console.log(`🔄 fetchIncidentsForClient called:`);
+    console.log(`   - Page: ${page}, PageSize: ${limitedPageSize}, Offset: ${offset}`);
+    console.log(`   - Force refresh: ${forceRefresh}`);
+    console.log(`   - Cache key: ${cacheKey}`);
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
-      console.log(`Returning cached data for page ${page}`);
+      console.log(`✅ Returning cached data for page ${page}`);
       return this.incidentCache.get(cacheKey)!;
     }
 
     // Prevent multiple simultaneous requests for the same page
     if (this.isLoading) {
-      console.log('Request already in progress, returning cached or empty data');
+      console.log('⚠️ Request already in progress, returning cached or empty data');
       return this.incidentCache.get(cacheKey) || {
         data: [],
         totalCount: 0,
@@ -65,7 +68,7 @@ class IncidentDataService {
     this.isLoading = true;
 
     try {
-      console.log('Making server request for incidents...');
+      console.log('🚀 Making server request for incidents...');
       
       let query = supabase
         .from('incidents')
@@ -91,7 +94,7 @@ class IncidentDataService {
         .eq('client_id', clientId);
 
       // Apply filtering based on user role and permissions
-      console.log('Employee data for filtering:', employeeData, 'hasIncidentAdmin:', hasIncidentAdmin);
+      console.log('🔒 Applying role-based filtering:', { employeeData, hasIncidentAdmin });
       if (employeeData) {
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
@@ -100,10 +103,14 @@ class IncidentDataService {
           if (hasIncidentAdmin) {
             // Incident admin (non-super admin): Own incidents + incidents assigned to them
             query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+            console.log(`   - Applied incident admin filter for employee ${employeeData.id}`);
           } else {
             // Regular user: Only own incidents
             query = query.eq('created_by', employeeData.id);
+            console.log(`   - Applied regular user filter for employee ${employeeData.id}`);
           }
+        } else {
+          console.log('   - Super admin: no additional filtering');
         }
         // Super admin: No additional filtering - gets all incidents for the client
       }
@@ -113,15 +120,17 @@ class IncidentDataService {
         .order('created_at', { ascending: false })
         .range(offset, offset + limitedPageSize - 1);
 
-      console.log(`Server query: fetching range ${offset} to ${offset + limitedPageSize - 1}`);
+      console.log(`📊 Server query: fetching range ${offset} to ${offset + limitedPageSize - 1}`);
 
       const { data: incidents, error, count } = await query;
 
       if (error) {
+        console.error('❌ Database query error:', error);
         throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
 
-      console.log(`Server returned ${incidents?.length || 0} incidents for page ${page}`);
+      console.log(`✅ Server returned ${incidents?.length || 0} incidents for page ${page}`);
+      console.log(`📈 Total count from database: ${count}`);
 
       const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: any) => ({
         id: inc.id,
@@ -157,14 +166,20 @@ class IncidentDataService {
         totalPages
       };
 
-      console.log(`Server-side pagination result: Page ${page}/${totalPages}, ${transformedIncidents.length} records, Total: ${totalCount}`);
+      console.log(`📋 Server-side pagination result:`);
+      console.log(`   - Page ${page}/${totalPages}`);
+      console.log(`   - Records: ${transformedIncidents.length}`);
+      console.log(`   - Total: ${totalCount}`);
+      console.log(`   - Has more: ${hasMore}`);
 
       // Cache the results with page-specific key
       this.incidentCache.set(cacheKey, response);
+      console.log(`💾 Cached result with key: ${cacheKey}`);
+      
       return response;
 
     } catch (error) {
-      console.error('Error in incidentDataService.fetchIncidentsForClient:', error);
+      console.error('❌ Error in incidentDataService.fetchIncidentsForClient:', error);
       throw error;
     } finally {
       this.isLoading = false;
@@ -247,15 +262,15 @@ class IncidentDataService {
         key.startsWith(`${clientId}_${employeeId}_`)
       );
       keysToDelete.forEach(key => this.incidentCache.delete(key));
-      console.log(`Cleared cache for client ${clientId} and employee ${employeeId}`);
+      console.log(`🗑️ Cleared cache for client ${clientId} and employee ${employeeId} (${keysToDelete.length} entries)`);
     } else if (clientId) {
       // Clear all cache entries for this client
       const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => key.startsWith(`${clientId}_`));
       keysToDelete.forEach(key => this.incidentCache.delete(key));
-      console.log(`Cleared cache for client ${clientId}`);
+      console.log(`🗑️ Cleared cache for client ${clientId} (${keysToDelete.length} entries)`);
     } else {
       this.incidentCache.clear();
-      console.log('Cleared all cache');
+      console.log('🗑️ Cleared all cache');
     }
   }
 }
