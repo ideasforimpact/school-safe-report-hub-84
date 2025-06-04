@@ -228,25 +228,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
   if (!open) return null;
 
-  const openDocumentViewer = (attachment: any) => {
-    // Open document in a new tab or modal viewer
-    if (attachment.url) {
-      window.open(attachment.url, '_blank');
-    }
-  };
-
-  const downloadAttachment = (attachment: any) => {
-    // Create download link and trigger download
-    if (attachment.url) {
-      const link = document.createElement('a');
-      link.href = attachment.url;
-      link.download = attachment.name || 'document';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
