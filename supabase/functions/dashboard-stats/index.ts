@@ -32,7 +32,7 @@ serve(async (req) => {
 
     console.log('Fetching dashboard stats for client:', client_id)
 
-    // First get status IDs for "New" and "Open" incidents
+    // Get status IDs for "New" and "Open" incidents
     const { data: incidentStatuses } = await supabase
       .from('incident_status')
       .select('id, name')
@@ -147,6 +147,54 @@ serve(async (req) => {
       console.error('Error fetching incidents last 6 months:', incidentsLast6MonthsError)
     }
 
+    // Get monthly incidents data for chart
+    const monthlyIncidentsData = []
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date()
+      monthStart.setMonth(monthStart.getMonth() - i)
+      monthStart.setDate(1)
+      monthStart.setHours(0, 0, 0, 0)
+      
+      const monthEnd = new Date(monthStart)
+      monthEnd.setMonth(monthEnd.getMonth() + 1)
+      monthEnd.setDate(0)
+      monthEnd.setHours(23, 59, 59, 999)
+
+      const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' })
+
+      // Get all incidents for this month
+      const { data: monthIncidents } = await supabase
+        .from('incidents')
+        .select('status_id')
+        .eq('client_id', client_id)
+        .gte('created_at', monthStart.toISOString())
+        .lte('created_at', monthEnd.toISOString())
+
+      // Get closed status ID
+      const { data: closedStatus } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', 'Closed')
+        .single()
+
+      const closedStatusId = closedStatus?.id
+
+      const openCount = monthIncidents?.filter(incident => 
+        statusIds.includes(incident.status_id)
+      ).length || 0
+
+      const closedCount = monthIncidents?.filter(incident => 
+        incident.status_id === closedStatusId
+      ).length || 0
+
+      monthlyIncidentsData.push({
+        month: monthName,
+        open: openCount,
+        closed: closedCount,
+        total: openCount + closedCount
+      })
+    }
+
     const response = {
       openIncidents: openIncidents?.length || 0,
       activeAssessments: activeAssessments?.length || 0,
@@ -155,7 +203,8 @@ serve(async (req) => {
       totalVehicles: totalVehicles?.length || 0,
       vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
       incidentsLastMonth: incidentsLastMonth?.length || 0,
-      incidentsLast6Months: incidentsLast6Months?.length || 0
+      incidentsLast6Months: incidentsLast6Months?.length || 0,
+      monthlyIncidentsData
     }
 
     console.log('Dashboard stats response:', response)

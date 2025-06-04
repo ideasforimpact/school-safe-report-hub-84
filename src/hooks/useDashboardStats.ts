@@ -12,6 +12,12 @@ interface DashboardStats {
   vehiclesWithDocuments: number;
   incidentsLastMonth: number;
   incidentsLast6Months: number;
+  monthlyIncidentsData: Array<{
+    month: string;
+    open: number;
+    closed: number;
+    total: number;
+  }>;
 }
 
 export const useDashboardStats = () => {
@@ -23,7 +29,8 @@ export const useDashboardStats = () => {
     totalVehicles: 0,
     vehiclesWithDocuments: 0,
     incidentsLastMonth: 0,
-    incidentsLast6Months: 0
+    incidentsLast6Months: 0,
+    monthlyIncidentsData: []
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

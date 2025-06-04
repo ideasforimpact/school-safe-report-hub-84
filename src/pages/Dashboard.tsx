@@ -1,11 +1,11 @@
 
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import DashboardStatsCards from '@/components/dashboard/DashboardStatsCards';
+import MonthlyIncidentsChart from '@/components/dashboard/MonthlyIncidentsChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 
@@ -58,23 +58,13 @@ const Dashboard = () => {
           <DashboardStatsCards stats={stats} loading={loading} />
         </div>
 
-        {/* Welcome message for new users */}
-        {!loading && stats.openIncidents === 0 && stats.activeAssessments === 0 && (
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
-                <AlertCircle className="h-5 w-5" />
-                Getting Started
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-blue-700">
-                Welcome to your Safety Management Dashboard! This is your central hub for monitoring 
-                incidents, assessments, employee verification, and transport safety across your organization.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Monthly Incidents Chart */}
+        <div className="space-y-6">
+          <MonthlyIncidentsChart 
+            data={stats.monthlyIncidentsData} 
+            loading={loading} 
+          />
+        </div>
       </div>
     </Layout>
   );

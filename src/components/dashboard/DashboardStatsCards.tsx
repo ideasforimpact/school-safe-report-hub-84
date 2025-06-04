@@ -30,14 +30,16 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
     {
       title: 'Open Incidents',
       value: stats.openIncidents,
+      description: `Total open incidents: ${stats.openIncidents}`,
       icon: AlertTriangle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       borderColor: 'border-red-200'
     },
     {
-      title: 'New Assessments',
+      title: 'Active Assessments',
       value: stats.activeAssessments,
+      description: `Total active assessments: ${stats.activeAssessments}`,
       icon: FileCheck,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -46,7 +48,7 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
     {
       title: 'Employee Verification',
       value: `${employeeVerificationPercentage}%`,
-      subtitle: `${stats.employeesVerified} of ${stats.totalEmployees} employees`,
+      description: `Verified employees: ${stats.employeesVerified} of ${stats.totalEmployees}`,
       icon: Users,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -55,7 +57,7 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
     {
       title: 'Transport Safety',
       value: `${vehicleDocumentationPercentage}%`,
-      subtitle: `${stats.vehiclesWithDocuments} of ${stats.totalVehicles} vehicles`,
+      description: `Vehicles with documents: ${stats.vehiclesWithDocuments} of ${stats.totalVehicles}`,
       icon: Truck,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -64,6 +66,7 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
     {
       title: 'Incidents Last Month',
       value: stats.incidentsLastMonth,
+      description: `Total incidents last month: ${stats.incidentsLastMonth}`,
       icon: Calendar,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
@@ -72,6 +75,7 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
     {
       title: 'Incidents Last 6 Months',
       value: stats.incidentsLast6Months,
+      description: `Total incidents last 6 months: ${stats.incidentsLast6Months}`,
       icon: TrendingUp,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
@@ -113,14 +117,13 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-bold ${card.color} mb-1`}>
+              <div className={`text-3xl font-bold ${card.color} mb-2`}>
                 {card.value}
               </div>
-              {card.subtitle && (
-                <p className="text-xs text-gray-600">
-                  {card.subtitle}
-                </p>
-              )}
+              <p className="text-sm text-gray-600">
+                <span className="font-bold">{card.description.split(':')[0]}:</span>
+                <span className="ml-1">{card.description.split(':')[1]}</span>
+              </p>
             </CardContent>
           </Card>
         );
