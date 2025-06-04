@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import {
   Table,
@@ -24,10 +25,10 @@ const EmployeesList = () => {
     }
   }, [employees.length, isLoading, fetchEmployees]);
 
-  // Use both sources of employee documents - direct from API and from context
+  // Render documents info using employee.documents directly (now loaded with employee data)
   const renderDocumentsInfo = (employee) => {
-    // First check if we have documents directly on the employee (from API)
-    const documents = employee.documents || getEmployeeDocuments(employee.id) || [];
+    // Use documents from employee data directly
+    const documents = employee.documents || [];
     
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified');
@@ -98,7 +99,7 @@ const EmployeesList = () => {
             ) : (
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
-                const isInactive = employee.status === false; // Updated to use boolean
+                const isInactive = employee.status === false;
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
