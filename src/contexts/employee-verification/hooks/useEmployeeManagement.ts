@@ -27,9 +27,10 @@ export const useEmployeeManagement = () => {
 
     setIsLoading(true);
     try {
-      console.log('Fetching employees for client:', clientId);
+      console.log('Fetching employees with documents for client:', clientId);
       
-      const { data, error } = await supabase
+      // First fetch employees for the client
+      const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
         .select(`
           id,
@@ -50,35 +51,109 @@ export const useEmployeeManagement = () => {
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching employees:', error);
+      if (employeesError) {
+        console.error('Error fetching employees:', employeesError);
         toast.error('Failed to fetch employees');
         return [];
       }
 
-      const mappedEmployees: Employee[] = (data || []).map(emp => ({
-        id: emp.id,
-        employeeId: emp.employee_id || '',
-        name: `${emp.first_name} ${emp.last_name}`,
-        firstName: emp.first_name,
-        lastName: emp.last_name,
-        email: emp.email,
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        joiningDate: emp.joining_date || new Date().toISOString(),
-        department: emp.department || '',
-        position: emp.employee_type || '',
-        employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
-        status: emp.status === true,
-        createdAt: emp.created_at || new Date().toISOString(),
-        updatedAt: emp.updated_at || new Date().toISOString(),
-        clientId: emp.client_id,
-        isSuperAdmin: emp.is_super_admin,
-        documents: []
-      }));
+      if (!employeesData || employeesData.length === 0) {
+        console.log('No employees found for client:', clientId);
+        setEmployees([]);
+        return [];
+      }
 
-      console.log(`Fetched ${mappedEmployees.length} employees`);
+      // Get all employee IDs to fetch documents
+      const employeeIds = employeesData.map(emp => emp.id);
+
+      // Fetch documents for all employees
+      const { data: documentsData, error: documentsError } = await supabase
+        .from('employee_documents')
+        .select(`
+          id,
+          employee_id,
+          document_type_id,
+          document_status_id,
+          document_url,
+          document_number,
+          verification_status,
+          params,
+          employee_docs_log,
+          last_otp_generated,
+          created_at,
+          updated_at,
+          document_type:employee_document_type(name, description),
+          document_status:document_status(name, description)
+        `)
+        .in('employee_id', employeeIds);
+
+      if (documentsError) {
+        console.error('Error fetching employee documents:', documentsError);
+        // Continue without documents rather than failing completely
+      }
+
+      // Map employees and attach their documents
+      const mappedEmployees: Employee[] = employeesData.map(emp => {
+        // Find documents for this employee
+        const employeeDocuments = (documentsData || [])
+          .filter(doc => doc.employee_id === emp.id)
+          .map(doc => {
+            let documentUrl = doc.document_url;
+            
+            // If document_url is a storage path, convert to full URL
+            if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+              documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+            }
+            
+            return {
+              id: doc.id,
+              employeeId: doc.employee_id,
+              documentTypeId: doc.document_type_id || '',
+              documentTypeName: doc.document_type?.name || 'Unknown',
+              documentNumber: doc.document_number || '',
+              documentImage: documentUrl,
+              verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+              documentStatusId: doc.document_status_id,
+              documentStatusName: doc.document_status?.name,
+              verificationDate: null,
+              verificationNotes: '',
+              verificationMethod: 'manual',
+              employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+                timestamp: string;
+                action: string;
+                response: any;
+                notes?: string;
+              }> : [],
+              params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+              createdAt: doc.created_at,
+              updatedAt: doc.updated_at
+            };
+          });
+
+        return {
+          id: emp.id,
+          employeeId: emp.employee_id || '',
+          name: `${emp.first_name} ${emp.last_name}`,
+          firstName: emp.first_name,
+          lastName: emp.last_name,
+          email: emp.email,
+          phone: '',
+          dateOfBirth: '',
+          address: '',
+          joiningDate: emp.joining_date || new Date().toISOString(),
+          department: emp.department || '',
+          position: emp.employee_type || '',
+          employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
+          status: emp.status === true,
+          createdAt: emp.created_at || new Date().toISOString(),
+          updatedAt: emp.updated_at || new Date().toISOString(),
+          clientId: emp.client_id,
+          isSuperAdmin: emp.is_super_admin,
+          documents: employeeDocuments
+        };
+      });
+
+      console.log(`Fetched ${mappedEmployees.length} employees with their documents`);
       setEmployees(mappedEmployees);
       return mappedEmployees;
     } catch (error) {

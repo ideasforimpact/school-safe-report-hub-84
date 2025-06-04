@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import {
   Table,
@@ -14,7 +15,7 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 
 const EmployeesList = () => {
-  const { employees, getEmployeeDocuments, fetchEmployees, isLoading } = useEmployeeVerification();
+  const { employees, fetchEmployees, isLoading } = useEmployeeVerification();
   const navigate = useNavigate();
 
   // Ensure employees are fetched when component mounts if not already loaded
@@ -24,10 +25,9 @@ const EmployeesList = () => {
     }
   }, [employees.length, isLoading, fetchEmployees]);
 
-  // Use both sources of employee documents - direct from API and from context
+  // Render documents information for each employee
   const renderDocumentsInfo = (employee) => {
-    // First check if we have documents directly on the employee (from API)
-    const documents = employee.documents || getEmployeeDocuments(employee.id) || [];
+    const documents = employee.documents || [];
     
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified');
@@ -98,7 +98,7 @@ const EmployeesList = () => {
             ) : (
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
-                const isInactive = employee.status === false; // Updated to use boolean
+                const isInactive = employee.status === false;
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
