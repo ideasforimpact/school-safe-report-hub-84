@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Employee, VerificationDocument } from '../types';
+import { Employee } from '../types';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
 import { useLocation } from 'react-router-dom';
@@ -29,113 +29,56 @@ export const useEmployeeManagement = () => {
     try {
       console.log('Fetching employees for client:', clientId);
       
-      // First fetch employees
-      const { data: employeesData, error: employeesError } = await supabase
+      const { data, error } = await supabase
         .from('employees')
-        .select('*')
+        .select(`
+          id,
+          employee_id,
+          first_name,
+          last_name,
+          email,
+          employee_type,
+          department,
+          status,
+          client_id,
+          is_super_admin,
+          user_id,
+          joining_date,
+          created_at,
+          updated_at
+        `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
-      if (employeesError) {
-        console.error('Error fetching employees:', employeesError);
+      if (error) {
+        console.error('Error fetching employees:', error);
         toast.error('Failed to fetch employees');
         return [];
       }
 
-      if (!employeesData || employeesData.length === 0) {
-        console.log('No employees found for client:', clientId);
-        setEmployees([]);
-        return [];
-      }
+      const mappedEmployees: Employee[] = (data || []).map(emp => ({
+        id: emp.id,
+        employeeId: emp.employee_id || '',
+        name: `${emp.first_name} ${emp.last_name}`,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        email: emp.email,
+        phone: '',
+        dateOfBirth: '',
+        address: '',
+        joiningDate: emp.joining_date || new Date().toISOString(),
+        department: emp.department || '',
+        position: emp.employee_type || '',
+        employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
+        status: emp.status === true,
+        createdAt: emp.created_at || new Date().toISOString(),
+        updatedAt: emp.updated_at || new Date().toISOString(),
+        clientId: emp.client_id,
+        isSuperAdmin: emp.is_super_admin,
+        documents: []
+      }));
 
-      // Fetch documents for all employees
-      const employeeIds = employeesData.map(emp => emp.id);
-      const { data: documentsData, error: documentsError } = await supabase
-        .from('employee_documents')
-        .select(`
-          id,
-          employee_id,
-          document_type_id,
-          document_status_id,
-          document_url,
-          document_number,
-          verification_status,
-          params,
-          employee_docs_log,
-          created_at,
-          updated_at,
-          document_type:employee_document_type(name, description),
-          document_status:document_status(name, description)
-        `)
-        .in('employee_id', employeeIds);
-
-      if (documentsError) {
-        console.error('Error fetching documents:', documentsError);
-        // Continue without documents rather than failing completely
-      }
-
-      const mappedEmployees: Employee[] = employeesData.map(emp => {
-        // Find documents for this employee
-        const employeeDocuments = documentsData?.filter(doc => doc.employee_id === emp.id) || [];
-        
-        // Map employee documents to the expected format
-        const documents: VerificationDocument[] = employeeDocuments.map(doc => {
-          let documentUrl = doc.document_url;
-          
-          // If document_url is a storage path, convert to full URL
-          if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-            documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
-          }
-          
-          return {
-            id: doc.id,
-            employeeId: emp.id,
-            documentTypeId: doc.document_type_id || '',
-            documentTypeName: doc.document_type?.name || 'Unknown',
-            documentNumber: doc.document_number || '',
-            documentImage: documentUrl || '',
-            verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-            documentStatusId: doc.document_status_id,
-            documentStatusName: doc.document_status?.name,
-            verificationDate: null,
-            verificationNotes: '',
-            verificationMethod: 'manual' as const,
-            employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
-              timestamp: string;
-              action: string;
-              response: any;
-              notes?: string;
-            }> : [],
-            params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
-            createdAt: doc.created_at,
-            updatedAt: doc.updated_at
-          };
-        });
-
-        return {
-          id: emp.id,
-          employeeId: emp.employee_id || '',
-          name: `${emp.first_name} ${emp.last_name}`,
-          firstName: emp.first_name,
-          lastName: emp.last_name,
-          email: emp.email,
-          phone: '',
-          dateOfBirth: '',
-          address: '',
-          joiningDate: emp.joining_date || new Date().toISOString(),
-          department: emp.department || '',
-          position: emp.employee_type || '',
-          employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
-          status: emp.status === true,
-          createdAt: emp.created_at || new Date().toISOString(),
-          updatedAt: emp.updated_at || new Date().toISOString(),
-          clientId: emp.client_id,
-          isSuperAdmin: emp.is_super_admin,
-          documents: documents
-        };
-      });
-
-      console.log(`Fetched ${mappedEmployees.length} employees with their documents`);
+      console.log(`Fetched ${mappedEmployees.length} employees`);
       setEmployees(mappedEmployees);
       return mappedEmployees;
     } catch (error) {
@@ -183,8 +126,7 @@ export const useEmployeeManagement = () => {
         clientId: data.client_id,
         email: data.email,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        documents: []
+        updatedAt: data.updated_at
       };
 
       setEmployees(prev => [newEmployee, ...prev]);
@@ -216,7 +158,7 @@ export const useEmployeeManagement = () => {
         .from('employees')
         .update(dbUpdates)
         .eq('id', id)
-        .eq('client_id', clientId)
+        .eq('client_id', clientId) // Ensure we only update employees from current client
         .select()
         .single();
 
@@ -233,8 +175,7 @@ export const useEmployeeManagement = () => {
         clientId: data.client_id,
         email: data.email,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        documents: employees.find(emp => emp.id === id)?.documents || []
+        updatedAt: data.updated_at
       };
 
       setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
@@ -245,7 +186,7 @@ export const useEmployeeManagement = () => {
       toast.error('Failed to update employee');
       throw error;
     }
-  }, [clientId, employees]);
+  }, [clientId]);
 
   const deleteEmployee = useCallback(async (id: string) => {
     try {
@@ -253,7 +194,7 @@ export const useEmployeeManagement = () => {
         .from('employees')
         .delete()
         .eq('id', id)
-        .eq('client_id', clientId);
+        .eq('client_id', clientId); // Ensure we only delete employees from current client
 
       if (error) throw error;
 
