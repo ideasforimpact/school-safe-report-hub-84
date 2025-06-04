@@ -117,7 +117,7 @@ export const useEmployeeManagement = () => {
               documentStatusName: doc.document_status?.name,
               verificationDate: null,
               verificationNotes: '',
-              verificationMethod: 'manual',
+              verificationMethod: 'manual' as const, // Fix: Explicitly set as 'manual'
               employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
                 timestamp: string;
                 action: string;
