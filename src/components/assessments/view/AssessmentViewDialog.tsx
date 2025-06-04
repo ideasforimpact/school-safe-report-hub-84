@@ -226,31 +226,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
   const isCurrentUserCreator = assessment?.created_by === employeeData?.id;
   const isCompleteButtonEnabled = assessment?.status === 'Submitted' && isCurrentUserCreator;
 
-  const openDocumentViewer = (attachment: any) => {
-    // Open document in a new tab/window
-    if (attachment.url) {
-      window.open(attachment.url, '_blank');
-    } else {
-      console.log('Opening document viewer for:', attachment);
-      // Implement document viewer logic here
-    }
-  };
-
-  const downloadAttachment = (attachment: any) => {
-    // Download the attachment
-    if (attachment.url) {
-      const link = document.createElement('a');
-      link.href = attachment.url;
-      link.download = attachment.name || 'attachment';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      console.log('Downloading attachment:', attachment);
-      // Implement download logic here
-    }
-  };
-
   if (!open) return null;
 
   return (
