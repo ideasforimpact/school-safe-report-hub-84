@@ -133,17 +133,17 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
-          // Map new cron fields including cron_log
+          // Map new cron fields including cron_log with proper type casting
           cronActivate: doc.cron_activate || false,
           cronActivatedDate: doc.cron_activated_date || undefined,
           cronUpdatedDate: doc.cron_updated_date || undefined,
-          cronLog: Array.isArray(doc.cron_log) ? doc.cron_log as Array<{
+          cronLog: Array.isArray(doc.cron_log) ? (doc.cron_log as Array<{
             timestamp: string;
             action: string;
             status: string;
             details?: any;
             error?: string;
-          }> : [],
+          }>) : [],
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
         };
@@ -285,7 +285,13 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         cronActivate: data.cron_activate || false,
         cronActivatedDate: data.cron_activated_date || undefined,
         cronUpdatedDate: data.cron_updated_date || undefined,
-        cronLog: Array.isArray(data.cron_log) ? data.cron_log : [],
+        cronLog: Array.isArray(data.cron_log) ? (data.cron_log as Array<{
+          timestamp: string;
+          action: string;
+          status: string;
+          details?: any;
+          error?: string;
+        }>) : [],
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };
