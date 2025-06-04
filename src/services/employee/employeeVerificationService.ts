@@ -108,7 +108,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       documents: []
     };
 
-    // Fetch employee documents with new cron fields
+    // Fetch employee documents with new cron fields including cron_log
     const { data: documentsData, error: documentsError } = await supabase
       .from('employee_documents')
       .select(`
@@ -125,6 +125,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         cron_activate,
         cron_activated_date,
         cron_updated_date,
+        cron_log,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -166,10 +167,17 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
           notes?: string;
         }> : [],
         params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
-        // Map new cron fields
+        // Map new cron fields including cron_log
         cronActivate: doc.cron_activate || false,
         cronActivatedDate: doc.cron_activated_date || undefined,
         cronUpdatedDate: doc.cron_updated_date || undefined,
+        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log as Array<{
+          timestamp: string;
+          action: string;
+          status: string;
+          details?: any;
+          error?: string;
+        }> : [],
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -203,6 +211,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         cron_activate,
         cron_activated_date,
         cron_updated_date,
+        cron_log,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -279,10 +288,17 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
           notes?: string;
         }> : [],
         params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
-        // Map new cron fields
+        // Map new cron fields including cron_log
         cronActivate: doc.cron_activate || false,
         cronActivatedDate: doc.cron_activated_date || undefined,
         cronUpdatedDate: doc.cron_updated_date || undefined,
+        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log as Array<{
+          timestamp: string;
+          action: string;
+          status: string;
+          details?: any;
+          error?: string;
+        }> : [],
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

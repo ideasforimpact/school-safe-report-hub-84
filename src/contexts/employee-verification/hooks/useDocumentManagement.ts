@@ -99,6 +99,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           cron_activate,
           cron_activated_date,
           cron_updated_date,
+          cron_log,
           created_at,
           updated_at,
           document_type:employee_document_type(name, description),
@@ -132,10 +133,17 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
-          // Map new cron fields
+          // Map new cron fields including cron_log
           cronActivate: doc.cron_activate || false,
           cronActivatedDate: doc.cron_activated_date || undefined,
           cronUpdatedDate: doc.cron_updated_date || undefined,
+          cronLog: Array.isArray(doc.cron_log) ? doc.cron_log as Array<{
+            timestamp: string;
+            action: string;
+            status: string;
+            details?: any;
+            error?: string;
+          }> : [],
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
         };
@@ -227,7 +235,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         params: document.params || {},
         cron_activate: document.cronActivate || false,
         cron_activated_date: document.cronActivatedDate || null,
-        cron_updated_date: document.cronUpdatedDate || null
+        cron_updated_date: document.cronUpdatedDate || null,
+        cron_log: document.cronLog || []
       });
 
       const { data, error } = await supabase
@@ -242,7 +251,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           params: document.params || {},
           cron_activate: document.cronActivate || false,
           cron_activated_date: document.cronActivatedDate || null,
-          cron_updated_date: document.cronUpdatedDate || null
+          cron_updated_date: document.cronUpdatedDate || null,
+          cron_log: document.cronLog || []
         }])
         .select()
         .single();
@@ -275,6 +285,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         cronActivate: data.cron_activate || false,
         cronActivatedDate: data.cron_activated_date || undefined,
         cronUpdatedDate: data.cron_updated_date || undefined,
+        cronLog: Array.isArray(data.cron_log) ? data.cron_log : [],
         createdAt: data.created_at,
         updatedAt: data.updated_at
       };

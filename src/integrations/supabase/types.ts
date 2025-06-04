@@ -578,6 +578,7 @@ export type Database = {
           created_at: string | null
           cron_activate: boolean | null
           cron_activated_date: string | null
+          cron_log: Json | null
           cron_updated_date: string | null
           document_number: string | null
           document_status_id: string | null
@@ -595,6 +596,7 @@ export type Database = {
           created_at?: string | null
           cron_activate?: boolean | null
           cron_activated_date?: string | null
+          cron_log?: Json | null
           cron_updated_date?: string | null
           document_number?: string | null
           document_status_id?: string | null
@@ -612,6 +614,7 @@ export type Database = {
           created_at?: string | null
           cron_activate?: boolean | null
           cron_activated_date?: string | null
+          cron_log?: Json | null
           cron_updated_date?: string | null
           document_number?: string | null
           document_status_id?: string | null
