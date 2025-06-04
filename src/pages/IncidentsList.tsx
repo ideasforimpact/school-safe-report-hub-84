@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -56,7 +57,7 @@ const IncidentsList = () => {
 
   console.log('hasIncidentAdmin:', hasIncidentAdmin);
 
-  // Transform IncidentRecord[] to Incident[] for the filter hook
+  // Transform IncidentRecord[] to Incident[] for the filter hook - only for UI filtering
   const transformedIncidents = incidents.map(record => ({
     id: record.id,
     ticketId: record.ticket_id,
@@ -76,6 +77,7 @@ const IncidentsList = () => {
     priority: record.priority as any
   }));
 
+  // Use incident filters for UI-level filtering only (not pagination)
   const {
     filters,
     filteredIncidents,
@@ -101,7 +103,7 @@ const IncidentsList = () => {
     locationOptions: dbLocationOptions 
   } = useFilterOptions();
 
-  // Transform filtered incidents back to IncidentRecord[]
+  // Transform filtered incidents back to IncidentRecord[] - for display only
   const filteredIncidentRecords = filteredIncidents.map(incident => ({
     id: incident.id,
     ticket_id: incident.ticketId,
@@ -159,17 +161,18 @@ const IncidentsList = () => {
         incidentDataService.clearCache(clientId, employeeId);
       }
 
-      console.log('hasIncidentAdmin:', hasIncidentAdmin);
+      console.log('Fetching incidents - Page:', page, 'PageSize:', pageSize, 'hasIncidentAdmin:', hasIncidentAdmin);
+      
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Use the paginated service - ensure only 10 records are fetched
+      // Use the paginated service - fetch specific page from server
       const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page, pageSize: 10 } // Force pageSize to be 10
+        { page, pageSize: 10 } // Always use 10 records per page
       );
       
       setIncidents(response.data);
@@ -178,10 +181,10 @@ const IncidentsList = () => {
         totalPages: response.totalPages,
         totalCount: response.totalCount,
         hasMore: response.hasMore,
-        pageSize: 10 // Force pageSize to be 10
+        pageSize: 10
       });
       
-      console.log('Incidents fetched successfully:', response.data.length);
+      console.log(`Server-side pagination: Fetched page ${response.currentPage} of ${response.totalPages} (${response.data.length} records)`);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
@@ -196,14 +199,18 @@ const IncidentsList = () => {
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
+  // Server-side pagination handler
   const goToPage = React.useCallback(async (page: number) => {
     if (page >= 1 && page <= pagination.totalPages && !loading) {
-      await fetchIncidents(false, page, 10); // Force pageSize to be 10
+      console.log(`Navigating to page ${page} - fetching from server...`);
+      await fetchIncidents(false, page, 10); // Fetch specific page from server
     }
   }, [fetchIncidents, pagination.totalPages, loading]);
 
+  // Page size change handler
   const changePageSize = React.useCallback(async (newPageSize: number) => {
-    await fetchIncidents(false, 1, 10); // Always use 10 records regardless of newPageSize
+    console.log(`Changing page size to ${newPageSize} - resetting to page 1`);
+    await fetchIncidents(false, 1, 10); // Always use 10 records, reset to page 1
   }, [fetchIncidents]);
 
   // Navigation listener - call fetchIncidents when navigating to /incidents page
@@ -213,7 +220,7 @@ const IncidentsList = () => {
         (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
       setNavigationLoading(true);
-      fetchIncidents(true, 1, 10); // Force refresh on navigation with 10 records
+      fetchIncidents(true, 1, 10); // Force refresh on navigation with page 1
     }
   }, [location.pathname, fetchIncidents, employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
@@ -221,7 +228,7 @@ const IncidentsList = () => {
   useEffect(() => {
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
-      fetchIncidents(false, 1, 10); // Initial fetch with 10 records
+      fetchIncidents(false, 1, 10); // Initial fetch with page 1
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
@@ -230,7 +237,7 @@ const IncidentsList = () => {
     // Only refetch if we already have incidents loaded and admin status changes
     if (incidents.length > 0 || (employeeState.configuredModules && (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email))) {
       console.log('hasIncidentAdmin changed, refetching incidents with new permissions');
-      fetchIncidents(true, 1, 10); // Force refresh to get data with new permissions
+      fetchIncidents(true, 1, 10); // Force refresh to get data with new permissions, reset to page 1
     }
   }, [hasIncidentAdmin]);
 
@@ -264,9 +271,8 @@ const IncidentsList = () => {
     };
   }, [fetchIncidents, pagination.currentPage]);
 
-  console.log('IncidentsList - Pagination data:', pagination);
-  console.log('IncidentsList - goToPage function:', !!goToPage);
-  console.log('IncidentsList - changePageSize function:', !!changePageSize);
+  console.log('IncidentsList - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
+  console.log('IncidentsList - Server-side pagination handlers ready');
 
   // Show proper loading state during navigation or initial load
   const isLoadingData = loading || navigationLoading;

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -36,18 +37,22 @@ class IncidentDataService {
     pagination: PaginationParams = { page: 1, pageSize: 10 }
   ): Promise<PaginatedResponse<IncidentRecord>> {
     const { page = 1, pageSize = 10 } = pagination;
-    // Ensure pageSize is always 10
+    // Force pageSize to be exactly 10 for server-side pagination
     const limitedPageSize = 10;
     const offset = (page - 1) * limitedPageSize;
     const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${limitedPageSize}`;
     
+    console.log(`Fetching incidents from server - Page: ${page}, PageSize: ${limitedPageSize}, Offset: ${offset}`);
+    
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
+      console.log(`Returning cached data for page ${page}`);
       return this.incidentCache.get(cacheKey)!;
     }
 
-    // Prevent multiple simultaneous requests
+    // Prevent multiple simultaneous requests for the same page
     if (this.isLoading) {
+      console.log('Request already in progress, returning cached or empty data');
       return this.incidentCache.get(cacheKey) || {
         data: [],
         totalCount: 0,
@@ -60,6 +65,8 @@ class IncidentDataService {
     this.isLoading = true;
 
     try {
+      console.log('Making server request for incidents...');
+      
       let query = supabase
         .from('incidents')
         .select(`
@@ -84,7 +91,7 @@ class IncidentDataService {
         .eq('client_id', clientId);
 
       // Apply filtering based on user role and permissions
-      console.log(employeeData,"employeeData",hasIncidentAdmin);
+      console.log('Employee data for filtering:', employeeData, 'hasIncidentAdmin:', hasIncidentAdmin);
       if (employeeData) {
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
@@ -101,16 +108,20 @@ class IncidentDataService {
         // Super admin: No additional filtering - gets all incidents for the client
       }
 
-      // Apply pagination with limited page size
+      // Apply server-side pagination with exact 10 records per page
       query = query
         .order('created_at', { ascending: false })
         .range(offset, offset + limitedPageSize - 1);
+
+      console.log(`Server query: fetching range ${offset} to ${offset + limitedPageSize - 1}`);
 
       const { data: incidents, error, count } = await query;
 
       if (error) {
         throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
+
+      console.log(`Server returned ${incidents?.length || 0} incidents for page ${page}`);
 
       const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: any) => ({
         id: inc.id,
@@ -146,7 +157,9 @@ class IncidentDataService {
         totalPages
       };
 
-      // Cache the results with user-specific key
+      console.log(`Server-side pagination result: Page ${page}/${totalPages}, ${transformedIncidents.length} records, Total: ${totalCount}`);
+
+      // Cache the results with page-specific key
       this.incidentCache.set(cacheKey, response);
       return response;
 
@@ -234,12 +247,15 @@ class IncidentDataService {
         key.startsWith(`${clientId}_${employeeId}_`)
       );
       keysToDelete.forEach(key => this.incidentCache.delete(key));
+      console.log(`Cleared cache for client ${clientId} and employee ${employeeId}`);
     } else if (clientId) {
       // Clear all cache entries for this client
       const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => key.startsWith(`${clientId}_`));
       keysToDelete.forEach(key => this.incidentCache.delete(key));
+      console.log(`Cleared cache for client ${clientId}`);
     } else {
       this.incidentCache.clear();
+      console.log('Cleared all cache');
     }
   }
 }
