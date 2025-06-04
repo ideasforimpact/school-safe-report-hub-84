@@ -1,5 +1,6 @@
+
 import { useMemo, useState } from 'react';
-import { useIncidents } from '@/contexts/incident';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFacilities } from '@/contexts/FacilityContext';
 import { DateRange } from 'react-day-picker';
@@ -19,7 +20,6 @@ import {
   extractUniqueValues
 } from '@/utils/insights/dataProcessors';
 import { incidentDataService } from '@/services/incident/incidentDataService';
-import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -93,15 +93,17 @@ export const useInsightsData = () => {
           module => module.name.toLowerCase() === 'incidents'
         )?.accessLevel?.is_admin === true;
 
-        const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(
+        // Use the paginated service but get all data for insights
+        const response = await incidentDataService.fetchIncidentsForClient(
           clientId, 
           false, 
           employeeDataForFiltering,
-          hasIncidentAdmin
+          hasIncidentAdmin,
+          { page: 1, pageSize: 1000 } // Get a large number for insights
         );
 
         // Transform incidents to the format expected by insights
-        const transformedIncidents = fetchedIncidents.map(record => ({
+        const transformedIncidents = response.data.map(record => ({
           id: record.id,
           ticketId: record.ticket_id,
           type: record.type,

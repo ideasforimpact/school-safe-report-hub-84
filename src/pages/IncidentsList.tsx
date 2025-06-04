@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -139,15 +140,17 @@ const IncidentsList = () => {
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      const fetchedIncidents = await incidentDataService.fetchIncidentsForClient(
+      // Use the paginated service but get all data for this legacy page
+      const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
         employeeDataForFiltering,
-        hasIncidentAdmin
+        hasIncidentAdmin,
+        { page: 1, pageSize: 1000 } // Get a large number for legacy compatibility
       );
       
-      setIncidents(fetchedIncidents);
-      console.log('Incidents fetched successfully:', fetchedIncidents.length);
+      setIncidents(response.data);
+      console.log('Incidents fetched successfully:', response.data.length);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
