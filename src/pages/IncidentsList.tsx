@@ -15,9 +15,25 @@ import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useLocation } from 'react-router-dom';
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasMore: boolean;
+  pageSize: number;
+}
+
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 0,
+    totalCount: 0,
+    hasMore: false,
+    pageSize: 10
+  });
+  
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
   const location = useLocation();
@@ -104,7 +120,7 @@ const IncidentsList = () => {
     updatedAt: incident.updatedAt
   }));
 
-  const fetchIncidents = React.useCallback(async (forceRefresh = false) => {
+  const fetchIncidents = React.useCallback(async (forceRefresh = false, page = 1, pageSize = 10) => {
     try {
       setLoading(true);
 
@@ -126,6 +142,13 @@ const IncidentsList = () => {
 
       if (!clientId) {
         setIncidents([]);
+        setPagination({
+          currentPage: 1,
+          totalPages: 0,
+          totalCount: 0,
+          hasMore: false,
+          pageSize: 10
+        });
         return;
       }
 
@@ -140,16 +163,24 @@ const IncidentsList = () => {
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Use the paginated service but get all data for this legacy page
+      // Use the paginated service
       const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page: 1, pageSize: 1000 } // Get a large number for legacy compatibility
+        { page, pageSize }
       );
       
       setIncidents(response.data);
+      setPagination({
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        totalCount: response.totalCount,
+        hasMore: response.hasMore,
+        pageSize
+      });
+      
       console.log('Incidents fetched successfully:', response.data.length);
 
     } catch (error: any) {
@@ -164,11 +195,21 @@ const IncidentsList = () => {
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
+  const goToPage = React.useCallback(async (page: number) => {
+    if (page >= 1 && page <= pagination.totalPages && !loading) {
+      await fetchIncidents(false, page, pagination.pageSize);
+    }
+  }, [fetchIncidents, pagination.totalPages, pagination.pageSize, loading]);
+
+  const changePageSize = React.useCallback(async (newPageSize: number) => {
+    await fetchIncidents(false, 1, newPageSize); // Reset to page 1 when changing page size
+  }, [fetchIncidents]);
+
   // Initial fetch when component mounts and required data is available
   useEffect(() => {
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
-      fetchIncidents();
+      fetchIncidents(false, 1, 10);
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
@@ -177,7 +218,7 @@ const IncidentsList = () => {
     // Only refetch if we already have incidents loaded and admin status changes
     if (incidents.length > 0 || (employeeState.configuredModules && (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email))) {
       console.log('hasIncidentAdmin changed, refetching incidents with new permissions');
-      fetchIncidents(true); // Force refresh to get data with new permissions
+      fetchIncidents(true, 1, pagination.pageSize); // Force refresh to get data with new permissions
     }
   }, [hasIncidentAdmin]);
 
@@ -186,7 +227,7 @@ const IncidentsList = () => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('Page became visible, force refetching incidents...');
-        fetchIncidents(true); // Force refresh when page becomes visible
+        fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh when page becomes visible
       }
     };
 
@@ -195,13 +236,13 @@ const IncidentsList = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchIncidents]);
+  }, [fetchIncidents, pagination.currentPage, pagination.pageSize]);
 
   // Add focus listener to refetch when window regains focus
   useEffect(() => {
     const handleFocus = () => {
       console.log('Window focused, force refetching incidents...');
-      fetchIncidents(true); // Force refresh when window regains focus
+      fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh when window regains focus
     };
 
     window.addEventListener('focus', handleFocus);
@@ -209,7 +250,11 @@ const IncidentsList = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchIncidents]);
+  }, [fetchIncidents, pagination.currentPage, pagination.pageSize]);
+
+  console.log('IncidentsList - Pagination data:', pagination);
+  console.log('IncidentsList - goToPage function:', !!goToPage);
+  console.log('IncidentsList - changePageSize function:', !!changePageSize);
 
   return (
     <Layout>
@@ -236,7 +281,13 @@ const IncidentsList = () => {
             statusOptions={dbStatusOptions.length > 0 ? dbStatusOptions : statusOptions}
           />
           
-          <LazyIncidentsTable incidents={filteredIncidentRecords} loading={loading} />
+          <LazyIncidentsTable 
+            incidents={filteredIncidentRecords} 
+            loading={loading}
+            pagination={pagination}
+            onPageChange={goToPage}
+            onPageSizeChange={changePageSize}
+          />
         </div>
       </div>
     </Layout>
