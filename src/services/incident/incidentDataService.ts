@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -37,8 +36,10 @@ class IncidentDataService {
     pagination: PaginationParams = { page: 1, pageSize: 10 }
   ): Promise<PaginatedResponse<IncidentRecord>> {
     const { page = 1, pageSize = 10 } = pagination;
-    const offset = (page - 1) * pageSize;
-    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${pageSize}`;
+    // Ensure pageSize is always 10
+    const limitedPageSize = 10;
+    const offset = (page - 1) * limitedPageSize;
+    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${limitedPageSize}`;
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
@@ -100,10 +101,10 @@ class IncidentDataService {
         // Super admin: No additional filtering - gets all incidents for the client
       }
 
-      // Apply pagination
+      // Apply pagination with limited page size
       query = query
         .order('created_at', { ascending: false })
-        .range(offset, offset + pageSize - 1);
+        .range(offset, offset + limitedPageSize - 1);
 
       const { data: incidents, error, count } = await query;
 
@@ -134,7 +135,7 @@ class IncidentDataService {
       }));
 
       const totalCount = count || 0;
-      const totalPages = Math.ceil(totalCount / pageSize);
+      const totalPages = Math.ceil(totalCount / limitedPageSize);
       const hasMore = page < totalPages;
 
       const response: PaginatedResponse<IncidentRecord> = {

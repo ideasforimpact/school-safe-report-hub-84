@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
@@ -26,6 +25,7 @@ interface PaginationInfo {
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [navigationLoading, setNavigationLoading] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     totalPages: 0,
@@ -163,13 +163,13 @@ const IncidentsList = () => {
       // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Use the paginated service
+      // Use the paginated service - ensure only 10 records are fetched
       const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page, pageSize }
+        { page, pageSize: 10 } // Force pageSize to be 10
       );
       
       setIncidents(response.data);
@@ -178,7 +178,7 @@ const IncidentsList = () => {
         totalPages: response.totalPages,
         totalCount: response.totalCount,
         hasMore: response.hasMore,
-        pageSize
+        pageSize: 10 // Force pageSize to be 10
       });
       
       console.log('Incidents fetched successfully:', response.data.length);
@@ -192,26 +192,28 @@ const IncidentsList = () => {
       }
     } finally {
       setLoading(false);
+      setNavigationLoading(false);
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
   const goToPage = React.useCallback(async (page: number) => {
     if (page >= 1 && page <= pagination.totalPages && !loading) {
-      await fetchIncidents(false, page, pagination.pageSize);
+      await fetchIncidents(false, page, 10); // Force pageSize to be 10
     }
-  }, [fetchIncidents, pagination.totalPages, pagination.pageSize, loading]);
+  }, [fetchIncidents, pagination.totalPages, loading]);
 
   const changePageSize = React.useCallback(async (newPageSize: number) => {
-    await fetchIncidents(false, 1, newPageSize); // Reset to page 1 when changing page size
+    await fetchIncidents(false, 1, 10); // Always use 10 records regardless of newPageSize
   }, [fetchIncidents]);
 
-  // Navigation listener - call fetchIncidents when navigating to /incident page
+  // Navigation listener - call fetchIncidents when navigating to /incidents page
   useEffect(() => {
     console.log('NAVIGATION INCIDENT data');
     if (location.pathname === '/incidents' && 
         (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
-      fetchIncidents(true, 1, 10); // Force refresh on navigation
+      setNavigationLoading(true);
+      fetchIncidents(true, 1, 10); // Force refresh on navigation with 10 records
     }
   }, [location.pathname, fetchIncidents, employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
@@ -219,7 +221,7 @@ const IncidentsList = () => {
   useEffect(() => {
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
-      fetchIncidents(false, 1, 10);
+      fetchIncidents(false, 1, 10); // Initial fetch with 10 records
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
 
@@ -228,7 +230,7 @@ const IncidentsList = () => {
     // Only refetch if we already have incidents loaded and admin status changes
     if (incidents.length > 0 || (employeeState.configuredModules && (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email))) {
       console.log('hasIncidentAdmin changed, refetching incidents with new permissions');
-      fetchIncidents(true, 1, pagination.pageSize); // Force refresh to get data with new permissions
+      fetchIncidents(true, 1, 10); // Force refresh to get data with new permissions
     }
   }, [hasIncidentAdmin]);
 
@@ -237,7 +239,7 @@ const IncidentsList = () => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log('Page became visible, force refetching incidents...');
-        fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh when page becomes visible
+        fetchIncidents(true, pagination.currentPage, 10); // Force refresh when page becomes visible
       }
     };
 
@@ -246,13 +248,13 @@ const IncidentsList = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchIncidents, pagination.currentPage, pagination.pageSize]);
+  }, [fetchIncidents, pagination.currentPage]);
 
   // Add focus listener to refetch when window regains focus
   useEffect(() => {
     const handleFocus = () => {
       console.log('Window focused, force refetching incidents...');
-      fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh when window regains focus
+      fetchIncidents(true, pagination.currentPage, 10); // Force refresh when window regains focus
     };
 
     window.addEventListener('focus', handleFocus);
@@ -260,11 +262,14 @@ const IncidentsList = () => {
     return () => {
       window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchIncidents, pagination.currentPage, pagination.pageSize]);
+  }, [fetchIncidents, pagination.currentPage]);
 
   console.log('IncidentsList - Pagination data:', pagination);
   console.log('IncidentsList - goToPage function:', !!goToPage);
   console.log('IncidentsList - changePageSize function:', !!changePageSize);
+
+  // Show proper loading state during navigation or initial load
+  const isLoadingData = loading || navigationLoading;
 
   return (
     <Layout>
@@ -293,7 +298,7 @@ const IncidentsList = () => {
           
           <LazyIncidentsTable 
             incidents={filteredIncidentRecords} 
-            loading={loading}
+            loading={isLoadingData}
             pagination={pagination}
             onPageChange={goToPage}
             onPageSizeChange={changePageSize}
