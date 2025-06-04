@@ -33,6 +33,7 @@ const EmployeeDetailPage = () => {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeframeFilter, setTimeframeFilter] = useState<string | undefined>(undefined);
+  const [isDocumentRefreshing, setIsDocumentRefreshing] = useState(false);
   
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -72,6 +73,28 @@ const EmployeeDetailPage = () => {
       setIsLoading(false);
     }
   }, [employeeId, clientId, toast]);
+
+  // New function to refetch documents only
+  const refetchDocuments = useCallback(async () => {
+    if (!employeeId) return;
+    
+    setIsDocumentRefreshing(true);
+    try {
+      console.log('Refetching documents for employee:', employeeId);
+      const refreshedDocuments = await fetchEmployeeDocuments(employeeId, timeframeFilter);
+      setDocuments(refreshedDocuments);
+      console.log('Documents refetched successfully');
+    } catch (error) {
+      console.error('Error refetching documents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh document data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDocumentRefreshing(false);
+    }
+  }, [employeeId, timeframeFilter, toast]);
 
   const handleRefreshDocuments = useCallback(async () => {
     if (employeeId && !isRefreshing) {
@@ -260,19 +283,27 @@ const EmployeeDetailPage = () => {
                   variant="outline"
                   size="icon"
                   onClick={handleRefreshDocuments}
-                  disabled={isLoading || isRefreshing}
+                  disabled={isLoading || isRefreshing || isDocumentRefreshing}
                   aria-label="Refresh documents"
                 >
-                  <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing || isDocumentRefreshing ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
             </div>
+            
+            {isDocumentRefreshing && (
+              <div className="flex items-center justify-center p-4 mb-4 bg-gray-50 rounded-lg">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-3"></div>
+                <p className="text-gray-600">Refreshing documents...</p>
+              </div>
+            )}
             
             <DocumentsList 
               employeeId={employee.id}
               documents={documents}
               onAddDocument={handleAddDocument}
               initialLoadComplete={initialLoadComplete}
+              onDocumentAction={refetchDocuments}
             />
           </div>
         </div>

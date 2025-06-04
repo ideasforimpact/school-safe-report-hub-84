@@ -13,13 +13,15 @@ interface DocumentsListProps {
   documents: VerificationDocument[];
   onAddDocument: () => void;
   initialLoadComplete: boolean;
+  onDocumentAction?: () => void;
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({
   employeeId,
   documents,
   onAddDocument,
-  initialLoadComplete
+  initialLoadComplete,
+  onDocumentAction
 }) => {
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
@@ -107,6 +109,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       await verifyDocument(selectedDocumentId, 'verified', method);
       setIsVerificationDialogOpen(false);
       setSelectedDocumentId('');
+      
+      // Trigger document refetch after verification
+      if (onDocumentAction) {
+        onDocumentAction();
+      }
     }
   };
 
@@ -115,7 +122,17 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       await verifyDocument(selectedDocumentId, 'failed', 'manual');
       setIsVerificationDialogOpen(false);
       setSelectedDocumentId('');
+      
+      // Trigger document refetch after rejection
+      if (onDocumentAction) {
+        onDocumentAction();
+      }
     }
+  };
+
+  const handleDialogClose = () => {
+    setIsVerificationDialogOpen(false);
+    setSelectedDocumentId('');
   };
 
   if (!initialLoadComplete) {
@@ -147,7 +164,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       
       <VerificationDialog
         open={isVerificationDialogOpen}
-        onOpenChange={setIsVerificationDialogOpen}
+        onOpenChange={handleDialogClose}
         onVerify={handleVerificationSubmit}
         onReject={handleRejectDocument}
         isVerifying={false}
