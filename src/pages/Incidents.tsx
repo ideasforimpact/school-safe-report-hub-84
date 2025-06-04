@@ -93,6 +93,10 @@ const Incidents = () => {
   // Show loading spinner during initial load or when loading
   const showLoadingSpinner = isInitialLoading || loading;
 
+  console.log('Incidents page - Pagination data:', pagination);
+  console.log('Incidents page - goToPage function:', !!goToPage);
+  console.log('Incidents page - changePageSize function:', !!changePageSize);
+
   if (error) {
     return (
       <Layout>
