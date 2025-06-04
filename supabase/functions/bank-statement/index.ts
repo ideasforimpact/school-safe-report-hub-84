@@ -17,10 +17,6 @@ const DOC_STATUS = {
   MANUAL: 'manual'
 };
 
-// Max retry attempts for checking document status
-const MAX_RETRY_ATTEMPTS = 10;
-const RETRY_DELAY_MS = 3000; // 3 seconds between retries
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -104,7 +100,7 @@ serve(async (req) => {
         if (params["ifsc-details"] && accountNumber && ifscCode) {
           console.log("Verifying bank account details with IFSC:", ifscCode, "Account:", accountNumber);
           
-          // Call the bank verification API first
+          // Call the bank verification API with the correct payload format
           const verificationResponse = await fetch(`${baseUrl}/api/v1/bank-verification/`, {
             method: 'POST',
             headers: {
@@ -112,35 +108,16 @@ serve(async (req) => {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              account_number: accountNumber,
-              ifsc: ifscCode
+              id_number: accountNumber,
+              ifsc: ifscCode,
+              ifsc_details: true
             })
           });
           
           const verificationResult = await verificationResponse.json();
           console.log("Bank Verification API Response:", verificationResult);
           
-          // Create log entry for the bank verification response
-          const verificationLogEntry = {
-            timestamp: new Date().toISOString(),
-            action: "bank_statement_details",
-            response: verificationResult
-          };
-          
-          // Update document with verification log
-          const { error: updateLogError } = await supabase
-            .from('employee_documents')
-            .update({
-              employee_docs_log: [verificationLogEntry],
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
-            
-          if (updateLogError) {
-            console.error("Error updating document with verification log:", updateLogError);
-          }
-          
-          // Check if bank verification was successful
+          // Check if bank verification was successful (status_code == 200)
           if (!verificationResult.success || verificationResult.status_code !== 200) {
             // Update document with failed status
             const { error: updateError } = await supabase
@@ -166,137 +143,51 @@ serve(async (req) => {
             );
           }
           
-          // Bank verification was successful, now continue with statement verification
-          console.log("Bank verification successful, proceeding with statement verification");
-        }
-        
-        // Step 1: Download the file from Supabase storage
-        console.log("Downloading file from 'employee-documents' storage bucket:", document.document_url);
-        
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from('employee-documents')
-          .download(document.document_url);
-        
-        if (downloadError || !fileData) {
-          console.error("Error downloading file from storage:", downloadError);
-          throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
-        }
-        
-        console.log("File downloaded successfully, size:", fileData.size);
-        
-        // Step 2: Convert the blob to ArrayBuffer
-        const arrayBuffer = await fileData.arrayBuffer();
-        console.log("Converted file to ArrayBuffer, size:", arrayBuffer.byteLength);
-        
-        // Step 3: Create FormData and append file with buffer data
-        const formData = new FormData();
-        
-        // Extract filename from the path or use default
-        const fileName = document.document_url.split('/').pop() || "bank_statement.pdf";
-        
-        // Create a File object with the array buffer data
-        const file = new File([arrayBuffer], fileName, { type: "application/pdf" });
-        formData.append('file', file);
-        
-        console.log("FormData created with file:", fileName);
-        
-        // Step 4: Call Surepass API with the FormData
-        console.log("Calling bank statement upload API...");
-        const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: formData
-        });
-        
-        const uploadResult = await uploadResponse.json();
-        console.log("Bank Statement Upload API Response:", uploadResult);
-        
-        // Create log entry for the upload response
-        const uploadLogEntry = {
-          timestamp: new Date().toISOString(),
-          action: "bank_statement_upload_api",
-          response: uploadResult
-        };
-        
-        // Combine logs - if we have verification logs, append the upload log
-        let combinedLogs = [];
-        if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
-          combinedLogs = [...document.employee_docs_log, uploadLogEntry];
-        } else {
-          combinedLogs = [uploadLogEntry];
-        }
-        
-        // Check if upload was successful
-        if (!uploadResult.success || uploadResult.status_code !== 200) {
-          // Update document with failed status and log
+          // Bank verification was successful, update employee_docs_log with client_id and response
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: "bank_verification",
+            response: verificationResult,
+            client_id: verificationResult.data?.client_id
+          };
+          
+          // Update document with verification log, activate cron, and set dates
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update({
-              verification_status: 'failed',
-              document_status_id: statusMap[DOC_STATUS.REJECTED],
-              employee_docs_log: combinedLogs,
+              verification_status: 'pending',
+              document_status_id: statusMap[DOC_STATUS.PENDING],
+              employee_docs_log: [logEntry],
+              cron_activate: true,
+              cron_activated_date: new Date().toISOString(),
+              cron_updated_date: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
             
           if (updateError) {
-            console.error("Error updating document with failed status:", updateError);
+            console.error("Error updating document with verification log:", updateError);
           }
+          
+          console.log("Bank verification successful, cron job activated");
           
           return new Response(
             JSON.stringify({ 
-              success: false, 
-              message: uploadResult.message || "Bank statement upload failed",
-              status_code: uploadResult.status_code
+              success: true, 
+              message: "Bank verification successful, cron job activated",
+              status_code: 200,
+              client_id: verificationResult.data?.client_id
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
         
-        // Step 5: Get client_id from upload response and call the download API
-        const clientId = uploadResult.data?.client_id;
-        if (!clientId) {
-          throw new Error("Client ID not found in upload response");
-        }
-        
-        // First update document status to "in-progress"
-        const { error: pendingUpdateError } = await supabase
-          .from('employee_documents')
-          .update({
-            verification_status: 'pending',
-            document_status_id: statusMap[DOC_STATUS.PENDING],
-            employee_docs_log: combinedLogs,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', documentId);
-        
-        if (pendingUpdateError) {
-          console.error("Error updating document with pending status:", pendingUpdateError);
-        }
-        
-        // Start background processing
-        EdgeRuntime.waitUntil(
-          processDocumentVerification(
-            baseUrl,
-            apiKey,
-            clientId,
-            documentId,
-            statusMap,
-            supabase,
-            document.employee_id,
-            combinedLogs
-          )
-        );
-        
         return new Response(
           JSON.stringify({ 
-            success: true, 
-            message: "Bank statement verification in progress",
-            status_code: 202
+            success: false, 
+            message: "Missing required parameters: accountNumber, ifscCode, or ifsc-details flag" 
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
         
       } catch (error) {
@@ -310,7 +201,7 @@ serve(async (req) => {
             document_status_id: statusMap[DOC_STATUS.REJECTED],
             employee_docs_log: [{
               timestamp: new Date().toISOString(),
-              action: "bank_statement_api_error",
+              action: "bank_verification_error",
               response: { error: error.message }
             }],
             updated_at: new Date().toISOString()
@@ -388,6 +279,10 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    // Handle cron job execution
+    else if (action === 'cronJob') {
+      return await handleCronJob(supabase, baseUrl, apiKey, statusMap);
+    }
     
     return new Response(
       JSON.stringify({ error: "Invalid action specified" }),
@@ -404,187 +299,188 @@ serve(async (req) => {
 });
 
 /**
- * Process document verification with retries
+ * Handle cron job execution for bank statement downloads
  */
-async function processDocumentVerification(
-  baseUrl: string,
-  apiKey: string,
-  clientId: string,
-  documentId: string,
-  statusMap: Record<string, string>,
-  supabase: any,
-  employeeId: string,
-  existingLogs: any[] = []
-) {
-  let attempts = 0;
-  let isProcessingComplete = false;
-  
-  while (!isProcessingComplete && attempts < MAX_RETRY_ATTEMPTS) {
-    attempts++;
+async function handleCronJob(supabase: any, baseUrl: string, apiKey: string, statusMap: Record<string, string>) {
+  try {
+    console.log("Starting cron job for bank statement verification");
     
-    try {
-      console.log(`Processing attempt ${attempts} for client ID: ${clientId}`);
-      
-      // Call the download API
-      const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          client_id: clientId
-        })
-      });
-      
-      const downloadResult = await downloadResponse.json();
-      console.log("Bank Statement Download API Response:", downloadResult);
-      
-      // Create log entry for the download response
-      const downloadLogEntry = {
-        timestamp: new Date().toISOString(),
-        action: "bank_statement_download_api",
-        response: downloadResult
-      };
-      
-      // Combine logs
-      const combinedLogs = [...existingLogs, downloadLogEntry];
-      
-      // Check download result
-      if (downloadResult.success) {
-        if (downloadResult.status_code === 200) {
-          // Processing complete - update document with verified status
-          const { error: updateError } = await supabase
+    // Get all documents with cron_activate = true and document_type = "bank_account"
+    const { data: documents, error: fetchError } = await supabase
+      .from('employee_documents')
+      .select(`
+        id,
+        employee_id,
+        employee_docs_log,
+        cron_log,
+        document_type:employee_document_type(name)
+      `)
+      .eq('cron_activate', true)
+      .eq('employee_document_type.name', 'bank_account');
+    
+    if (fetchError) {
+      console.error("Error fetching cron documents:", fetchError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch cron documents" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!documents || documents.length === 0) {
+      console.log("No bank account documents with active cron found");
+      return new Response(
+        JSON.stringify({ success: true, message: "No documents to process" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    console.log(`Found ${documents.length} bank account documents to process`);
+    
+    let processedCount = 0;
+    let successCount = 0;
+    
+    for (const doc of documents) {
+      try {
+        processedCount++;
+        
+        // Extract client_id from employee_docs_log
+        const employeeDocsLog = Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [];
+        const clientId = employeeDocsLog.find((log: any) => log.client_id)?.client_id;
+        
+        if (!clientId) {
+          console.log(`No client_id found for document ${doc.id}, skipping`);
+          
+          // Add log entry for missing client_id
+          const cronLogEntry = {
+            timestamp: new Date().toISOString(),
+            action: "cron_bank_statement_download",
+            status: "skipped",
+            error: "No client_id found in employee_docs_log"
+          };
+          
+          const existingCronLog = Array.isArray(doc.cron_log) ? doc.cron_log : [];
+          await supabase
+            .from('employee_documents')
+            .update({
+              cron_log: [...existingCronLog, cronLogEntry],
+              cron_updated_date: new Date().toISOString()
+            })
+            .eq('id', doc.id);
+          
+          continue;
+        }
+        
+        console.log(`Processing document ${doc.id} with client_id: ${clientId}`);
+        
+        // Call the download API
+        const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            client_id: clientId
+          })
+        });
+        
+        const downloadResult = await downloadResponse.json();
+        console.log(`Download API response for document ${doc.id}:`, downloadResult);
+        
+        // Create cron log entry
+        const cronLogEntry = {
+          timestamp: new Date().toISOString(),
+          action: "cron_bank_statement_download",
+          status: downloadResult.success ? "success" : "failed",
+          details: downloadResult
+        };
+        
+        const existingCronLog = Array.isArray(doc.cron_log) ? doc.cron_log : [];
+        
+        // Update document based on download result
+        if (downloadResult.success && downloadResult.status_code === 200) {
+          // Verification complete - update to verified status and deactivate cron
+          await supabase
             .from('employee_documents')
             .update({
               verification_status: 'verified',
               document_status_id: statusMap[DOC_STATUS.VERIFIED],
-              employee_docs_log: combinedLogs,
+              cron_activate: false,
+              cron_log: [...existingCronLog, cronLogEntry],
+              cron_updated_date: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
-            .eq('id', documentId);
-            
-          if (updateError) {
-            console.error("Error updating document with verified status:", updateError);
-          } else {
-            console.log(`Document ${documentId} verified successfully`);
-          }
+            .eq('id', doc.id);
           
-          isProcessingComplete = true;
-          break;
-        } 
-        else if (downloadResult.status_code === 202 && 
-                downloadResult.message_code === "pending_document") {
-          // Document still processing - keep the in-progress status
-          console.log(`Document ${documentId} still processing. Will retry in ${RETRY_DELAY_MS}ms`);
-          
-          // Update logs but keep the pending status
-          const { error: updateLogError } = await supabase
+          successCount++;
+          console.log(`Document ${doc.id} verified successfully`);
+        } else if (downloadResult.success && downloadResult.status_code === 202) {
+          // Still processing - just update cron log
+          await supabase
             .from('employee_documents')
             .update({
-              employee_docs_log: combinedLogs,
-              updated_at: new Date().toISOString()
+              cron_log: [...existingCronLog, cronLogEntry],
+              cron_updated_date: new Date().toISOString()
             })
-            .eq('id', documentId);
-            
-          if (updateLogError) {
-            console.error("Error updating document logs:", updateLogError);
-          }
+            .eq('id', doc.id);
           
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-        } 
-        else {
-          // Unexpected status - update document with failed status
-          const { error: updateError } = await supabase
+          console.log(`Document ${doc.id} still processing`);
+        } else {
+          // Failed - update to failed status and deactivate cron
+          await supabase
             .from('employee_documents')
             .update({
               verification_status: 'failed',
               document_status_id: statusMap[DOC_STATUS.REJECTED],
-              employee_docs_log: combinedLogs,
+              cron_activate: false,
+              cron_log: [...existingCronLog, cronLogEntry],
+              cron_updated_date: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
-            .eq('id', documentId);
-            
-          if (updateError) {
-            console.error("Error updating document with failed status:", updateError);
-          }
+            .eq('id', doc.id);
           
-          isProcessingComplete = true;
-          break;
-        }
-      } 
-      else {
-        // API error - update document with failed status
-        const { error: updateError } = await supabase
-          .from('employee_documents')
-          .update({
-            verification_status: 'failed',
-            document_status_id: statusMap[DOC_STATUS.REJECTED],
-            employee_docs_log: combinedLogs,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', documentId);
-          
-        if (updateError) {
-          console.error("Error updating document with failed status:", updateError);
+          console.log(`Document ${doc.id} verification failed`);
         }
         
-        isProcessingComplete = true;
-        break;
-      }
-    } 
-    catch (error) {
-      console.error(`Error in verification attempt ${attempts}:`, error);
-      
-      // If we've reached max attempts, mark as failed
-      if (attempts >= MAX_RETRY_ATTEMPTS) {
-        const { error: updateError } = await supabase
+      } catch (error) {
+        console.error(`Error processing document ${doc.id}:`, error);
+        
+        // Add error log entry
+        const cronLogEntry = {
+          timestamp: new Date().toISOString(),
+          action: "cron_bank_statement_download",
+          status: "error",
+          error: error.message
+        };
+        
+        const existingCronLog = Array.isArray(doc.cron_log) ? doc.cron_log : [];
+        await supabase
           .from('employee_documents')
           .update({
-            verification_status: 'failed',
-            document_status_id: statusMap[DOC_STATUS.REJECTED],
-            employee_docs_log: [...existingLogs, {
-              timestamp: new Date().toISOString(),
-              action: "bank_statement_download_error",
-              response: { error: error.message, attempts }
-            }],
-            updated_at: new Date().toISOString()
+            cron_log: [...existingCronLog, cronLogEntry],
+            cron_updated_date: new Date().toISOString()
           })
-          .eq('id', documentId);
-          
-        if (updateError) {
-          console.error("Error updating document with failed status after max retries:", updateError);
-        }
-      } 
-      else {
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          .eq('id', doc.id);
       }
     }
-  }
-  
-  // If we've exited the loop without completing, it means we've reached max attempts
-  if (!isProcessingComplete) {
-    console.log(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for document ${documentId}`);
     
-    // Update document with failed status
-    const { error: updateError } = await supabase
-      .from('employee_documents')
-      .update({
-        verification_status: 'failed',
-        document_status_id: statusMap[DOC_STATUS.REJECTED],
-        employee_docs_log: [...existingLogs, {
-          timestamp: new Date().toISOString(),
-          action: "bank_statement_max_retries",
-          response: { error: "Max retry attempts reached", attempts }
-        }],
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', documentId);
-      
-    if (updateError) {
-      console.error("Error updating document with failed status after max retries:", updateError);
-    }
+    console.log(`Cron job completed. Processed: ${processedCount}, Successful: ${successCount}`);
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: `Cron job completed. Processed: ${processedCount}, Successful: ${successCount}`,
+        processed: processedCount,
+        successful: successCount
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+    
+  } catch (error) {
+    console.error("Error in cron job:", error);
+    return new Response(
+      JSON.stringify({ error: "Cron job failed", details: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 }
