@@ -8,9 +8,10 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DocumentDeleteButtonProps {
   documentId: string;
+  onDocumentDeleted?: () => void;
 }
 
-const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId }) => {
+const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId, onDocumentDeleted }) => {
   const { deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -25,6 +26,11 @@ const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId 
         description: 'The document has been deleted successfully.',
       });
       setDialogOpen(false);
+      
+      // Trigger document refetch after deletion
+      if (onDocumentDeleted) {
+        onDocumentDeleted();
+      }
     } catch (error) {
       console.error("Error in handleDelete:", error);
       toast({

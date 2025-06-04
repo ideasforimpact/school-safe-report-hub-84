@@ -27,13 +27,15 @@ interface DocumentsTableProps {
   onViewDocument: (documentImage: string) => void;
   onDownloadDocument: (documentImage: string) => void;
   onVerifyDocument: (documentId: string) => void;
+  onDocumentAction?: () => void;
 }
 
 const DocumentsTable: React.FC<DocumentsTableProps> = ({
   documents,
   onViewDocument,
   onDownloadDocument,
-  onVerifyDocument
+  onVerifyDocument,
+  onDocumentAction
 }) => {
   const { documentStatuses } = useEmployeeVerification();
   const { toast } = useToast();
@@ -342,7 +344,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           Verify
                         </Button>
                       )}
-                      <DocumentDeleteButton documentId={doc.id} />
+                      <DocumentDeleteButton 
+                        documentId={doc.id} 
+                        onDocumentDeleted={onDocumentAction}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>

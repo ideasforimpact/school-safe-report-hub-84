@@ -160,6 +160,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         onViewDocument={handleViewDocument}
         onDownloadDocument={handleDownloadDocument}
         onVerifyDocument={handleVerifyDocument}
+        onDocumentAction={onDocumentAction}
       />
       
       <VerificationDialog
