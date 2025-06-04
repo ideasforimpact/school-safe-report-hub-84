@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface MonthlyIncidentsChartProps {
   data: Array<{
@@ -31,27 +31,47 @@ const MonthlyIncidentsChart = ({ data, loading }: MonthlyIncidentsChartProps) =>
     <Card>
       <CardHeader>
         <CardTitle className="text-xl font-semibold text-gray-900">
-          Monthly Incidents Overview
+          Incidents Over Time
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Open vs Closed incidents by month
+          Monthly trend of reported incidents with detailed analysis
         </p>
       </CardHeader>
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip 
-                formatter={(value, name) => [value, name === 'open' ? 'Open' : 'Closed']}
-                labelFormatter={(label) => `Month: ${label}`}
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis 
+                dataKey="month" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: '#666' }}
               />
-              <Legend />
-              <Bar dataKey="open" fill="#ef4444" name="Open" />
-              <Bar dataKey="closed" fill="#10b981" name="Closed" />
-            </BarChart>
+              <YAxis 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12, fill: '#666' }}
+              />
+              <Tooltip 
+                formatter={(value, name) => [value, name === 'total' ? 'Incident Count' : name]}
+                labelFormatter={(label) => `Month: ${label}`}
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="total" 
+                stroke="#8b5cf6" 
+                strokeWidth={2}
+                dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
