@@ -205,6 +205,16 @@ const IncidentsList = () => {
     await fetchIncidents(false, 1, newPageSize); // Reset to page 1 when changing page size
   }, [fetchIncidents]);
 
+  // Navigation listener - call fetchIncidents when navigating to /incident page
+  useEffect(() => {
+    console.log('NAVIGATION INCIDENT data');
+    if (location.pathname === '/incidents' && 
+        (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
+        employeeState.configuredModules) {
+      fetchIncidents(true, 1, 10); // Force refresh on navigation
+    }
+  }, [location.pathname, fetchIncidents, employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
+
   // Initial fetch when component mounts and required data is available
   useEffect(() => {
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
