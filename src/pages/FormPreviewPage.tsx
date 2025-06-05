@@ -14,11 +14,6 @@ const FormPreviewPage = () => {
   
   const form = forms.find(f => f.id === formId);
 
-  // Dummy function for preview mode
-  const handlePreviewSubmit = () => {
-    // This won't be called in preview mode, but satisfies TypeScript
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -105,7 +100,6 @@ const FormPreviewPage = () => {
           <CardContent>
             <ConditionalFormRenderer 
               fields={form.fields} 
-              onSubmit={handlePreviewSubmit}
               isPreview={true}
             />
           </CardContent>
