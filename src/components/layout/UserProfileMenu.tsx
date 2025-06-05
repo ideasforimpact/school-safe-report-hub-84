@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, User, Key } from 'lucide-react';
+import { LogOut, User, Key } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { formatUserFullName } from '@/utils/userUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,9 +34,6 @@ const UserProfileMenu = () => {
   
   // Check if current route is a backoffice route
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
-  
-  // Show settings only for super admins based on Redux data
-  const showSettings = isSuperAdmin;
 
   const getInitials = () => {
     if (!user || !user.firstName || !user.lastName) return '';
@@ -95,12 +92,6 @@ const UserProfileMenu = () => {
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          {showSettings && (
-            <DropdownMenuItem onClick={() => navigate('/settings')}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-          )}
           {isBackofficeRoute && (
             <DropdownMenuItem onClick={handleChangePassword}>
               <Key className="mr-2 h-4 w-4" />
