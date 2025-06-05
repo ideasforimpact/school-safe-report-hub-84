@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +44,15 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 }) => {
   const [acknowledgmentComment, setAcknowledgmentComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Prepopulate the comment with existing comments when dialog opens
+  useEffect(() => {
+    if (submission.comments) {
+      setAcknowledgmentComment(submission.comments);
+    } else {
+      setAcknowledgmentComment('');
+    }
+  }, [submission.comments]);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -186,7 +194,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
             </div>
           </div>
 
-          {/* Existing Comments */}
+          {/* Previous Comments Section */}
           {submission.comments && (
             <>
               <Separator />
@@ -206,13 +214,17 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 
           {/* Acknowledgment Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Acknowledgment</h3>
+            <h3 className="text-lg font-semibold">
+              {submission.comments ? 'Update Comment' : 'Add Comment'}
+            </h3>
             <div className="space-y-3">
               <div>
-                <Label htmlFor="acknowledgment-comment">Add Comment</Label>
+                <Label htmlFor="acknowledgment-comment">
+                  {submission.comments ? 'Edit Comment' : 'Add Comment'}
+                </Label>
                 <Textarea
                   id="acknowledgment-comment"
-                  placeholder="Enter your acknowledgment comment..."
+                  placeholder={submission.comments ? "Edit your comment..." : "Enter your acknowledgment comment..."}
                   value={acknowledgmentComment}
                   onChange={(e) => setAcknowledgmentComment(e.target.value)}
                   rows={4}
@@ -231,7 +243,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
             onClick={handleAcknowledge}
             disabled={submitting || !acknowledgmentComment.trim()}
           >
-            {submitting ? 'Processing...' : 'Acknowledge Submission'}
+            {submitting ? 'Processing...' : (submission.comments ? 'Update Comment' : 'Acknowledge Submission')}
           </Button>
         </DialogFooter>
       </DialogContent>
