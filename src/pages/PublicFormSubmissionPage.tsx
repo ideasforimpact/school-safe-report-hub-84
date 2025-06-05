@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePublicForm } from '@/hooks/usePublicForm';
 import ConditionalFormRenderer from '@/components/forms/ConditionalFormRenderer';
 import PublicLayout from '@/components/layout/PublicLayout';
+import SimpleCaptcha from '@/components/captcha/SimpleCaptcha';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -14,6 +15,7 @@ const PublicFormSubmissionPage = () => {
   const { form, loading, error } = usePublicForm(formId);
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
 
   if (loading) {
     return (
@@ -49,6 +51,15 @@ const PublicFormSubmissionPage = () => {
 
   const handleFormSubmit = async (data: Record<string, any>) => {
     if (isSubmitting) return;
+    
+    if (!isCaptchaVerified) {
+      toast({
+        title: "Error",
+        description: "Please verify the CAPTCHA before submitting the form.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -115,6 +126,10 @@ const PublicFormSubmissionPage = () => {
     }
   };
 
+  const handleCaptchaVerify = (isValid: boolean) => {
+    setIsCaptchaVerified(isValid);
+  };
+
   return (
     <PublicLayout>
       <div className="container mx-auto py-6 max-w-3xl">
@@ -126,13 +141,41 @@ const PublicFormSubmissionPage = () => {
             )}
           </CardHeader>
           
-          <CardContent>
+          <CardContent className="space-y-6">
             <ConditionalFormRenderer 
               fields={form.fields} 
               onSubmit={handleFormSubmit}
               isPreview={false}
               isSubmitting={isSubmitting}
+              showSubmitButton={false}
             />
+            
+            {/* CAPTCHA Verification */}
+            <SimpleCaptcha 
+              onVerify={handleCaptchaVerify}
+              isSubmitting={isSubmitting}
+            />
+            
+            {/* Custom Submit Button */}
+            <div className="pt-4">
+              <button
+                onClick={() => {
+                  // Trigger form submission from ConditionalFormRenderer
+                  const formElement = document.querySelector('form');
+                  if (formElement) {
+                    formElement.requestSubmit();
+                  }
+                }}
+                disabled={isSubmitting || !isCaptchaVerified}
+                className={`w-full py-3 px-6 rounded-md font-medium transition-colors ${
+                  isSubmitting || !isCaptchaVerified
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Form'}
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>
