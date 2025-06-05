@@ -126,44 +126,44 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     />
                   </TableCell>
                   <TableCell className="text-left">
-                    {!hasVerification ? (
-                      <Badge className="bg-gray-100 text-gray-800 border-gray-200" variant="outline">
-                        Pending Verification
+                    <div className="flex gap-1">
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs flex items-center gap-1 px-2 py-1", 
+                          hasVerification 
+                            ? getDocumentStatusColor(insuranceStatus === 'missing' ? 'expired' : insuranceStatus)
+                            : 'bg-gray-100 border-gray-200 text-gray-800'
+                        )}
+                      >
+                        {getDocumentIcon(insuranceStatus)}
+                        <span>Ins</span>
                       </Badge>
-                    ) : (
-                      <div className="flex gap-1">
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-xs flex items-center gap-1 px-2 py-1", 
-                            getDocumentStatusColor(insuranceStatus === 'missing' ? 'expired' : insuranceStatus)
-                          )}
-                        >
-                          {getDocumentIcon(insuranceStatus)}
-                          <span>Ins</span>
-                        </Badge>
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-xs flex items-center gap-1 px-2 py-1", 
-                            getDocumentStatusColor(fcStatus === 'missing' ? 'expired' : fcStatus)
-                          )}
-                        >
-                          {getDocumentIcon(fcStatus)}
-                          <span>FC</span>
-                        </Badge>
-                        <Badge 
-                          variant="outline" 
-                          className={cn(
-                            "text-xs flex items-center gap-1 px-2 py-1", 
-                            getDocumentStatusColor(pollutionStatus === 'missing' ? 'expired' : pollutionStatus)
-                          )}
-                        >
-                          {getDocumentIcon(pollutionStatus)}
-                          <span>PUC</span>
-                        </Badge>
-                      </div>
-                    )}
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs flex items-center gap-1 px-2 py-1", 
+                          hasVerification 
+                            ? getDocumentStatusColor(fcStatus === 'missing' ? 'expired' : fcStatus)
+                            : 'bg-gray-100 border-gray-200 text-gray-800'
+                        )}
+                      >
+                        {getDocumentIcon(fcStatus)}
+                        <span>FC</span>
+                      </Badge>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs flex items-center gap-1 px-2 py-1", 
+                          hasVerification 
+                            ? getDocumentStatusColor(pollutionStatus === 'missing' ? 'expired' : pollutionStatus)
+                            : 'bg-gray-100 border-gray-200 text-gray-800'
+                        )}
+                      >
+                        {getDocumentIcon(pollutionStatus)}
+                        <span>PUC</span>
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell className="text-left">
                     {hasVerification ? (
