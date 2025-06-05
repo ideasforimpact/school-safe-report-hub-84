@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -41,6 +42,7 @@ import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
 import PublicFormSubmissionPage from '@/pages/PublicFormSubmissionPage';
 import PublicFormSubmissionSuccessPage from '@/pages/PublicFormSubmissionSuccessPage';
+import CaptchaVerificationPage from '@/pages/CaptchaVerificationPage';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -98,6 +100,18 @@ function App() {
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/backoffice/login" element={<BackofficeLogin />} />
                     
+                    {/* CAPTCHA Verification routes */}
+                    <Route path="/captcha-verification" element={<CaptchaVerificationPage />} />
+                    <Route path="/captcha-verification/:formId" element={<CaptchaVerificationPage />} />
+                    
+                    {/* Public form routes */}
+                    <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
+                    <Route path="/public-form-submission-success" element={<PublicFormSubmissionSuccessPage />} />
+                    
+                    {/* Public grievance routes */}
+                    <Route path="/public-grievance-form" element={<PublicGrievanceForm />} />
+                    <Route path="/grievance-thank-you" element={<ThankYouPage />} />
+                    
                     {/* Make Home page the default route */}
                     <Route path="/" element={<Home />} />
                     
@@ -122,8 +136,6 @@ function App() {
                     {/* Form routes */}
                     <Route path="/forms" element={<FormsPage />} />
                     <Route path="/form-preview/:formId" element={<FormPreviewPage />} />
-                    <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
-                    <Route path="/public-form-submission-success" element={<PublicFormSubmissionSuccessPage />} />
 
                     {/* Incident routes - Fixed routing for edit incident */}
                     <Route path="/incidents" element={<IncidentsList />} />
