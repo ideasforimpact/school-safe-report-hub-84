@@ -37,7 +37,7 @@ serve(async (req) => {
 
     console.log(`Submitting form: ${form_id}`);
 
-    // Insert the form submission with 'new' status
+    // Insert the form submission with 'open' status
     const { data, error } = await supabaseClient
       .from('form_submissions')
       .insert([{
@@ -45,7 +45,7 @@ serve(async (req) => {
         submitter_name,
         submitter_email,
         responses,
-        status: 'new', // Always start with 'new' status
+        status: 'open', // Set initial status as 'open'
         comments: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

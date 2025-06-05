@@ -57,11 +57,10 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      new: 'default',
-      reviewed: 'secondary',
+      open: 'default',
       closed: 'outline'
     } as const;
-    return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
+    return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
   };
 
   const formatDate = (dateString: string) => {
@@ -237,7 +236,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
                 />
               </div>
               <div className="text-sm text-gray-500">
-                {submission.status === 'new' && 'Adding a comment will mark this submission as "closed".'}
+                {submission.status === 'open' && 'Adding a comment will mark this submission as "Closed".'}
               </div>
             </div>
           </div>
