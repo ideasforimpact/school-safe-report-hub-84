@@ -78,6 +78,24 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     return vehicle.verificationData && vehicle.verificationData.length > 0;
   };
 
+  // Get the correct status badge variant for the Status column
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'maintenance':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'inactive':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   return (
     <div className="w-full">
       <div className="rounded-md border">
@@ -119,11 +137,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
                   </TableCell>
                   <TableCell className="text-left">
-                    <VehicleStatusBadge 
-                      status={vehicle.status} 
-                      verificationStatus={vehicle.verificationStatus}
-                      verificationData={vehicle.verificationData}
-                    />
+                    <Badge 
+                      variant="outline" 
+                      className={cn(getStatusBadgeVariant(vehicle.status))}
+                    >
+                      {getStatusLabel(vehicle.status)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-left">
                     <div className="flex gap-1">
