@@ -1,20 +1,34 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import GrievanceSubmissionForm from '@/components/grievances/GrievanceSubmissionForm';
 import ShareOptions from '@/components/grievances/ShareOptions';
 import { useNavigate } from 'react-router-dom';
+import { isCaptchaVerified, requireCaptchaVerification } from '@/utils/captchaUtils';
 
 const PublicGrievanceForm = () => {
   const navigate = useNavigate();
   const schoolName = "Safe School District"; // School name can be configured here or passed as a prop
   const formUrl = window.location.href;
   
+  // Check CAPTCHA verification on component mount
+  useEffect(() => {
+    if (!isCaptchaVerified()) {
+      // Redirect to CAPTCHA verification page
+      navigate(requireCaptchaVerification(undefined, 'grievance'));
+    }
+  }, [navigate]);
+
   const handleBack = () => {
     navigate('/grievances');
   };
+
+  // Don't render form if CAPTCHA is not verified
+  if (!isCaptchaVerified()) {
+    return null; // Component will redirect via useEffect
+  }
   
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">

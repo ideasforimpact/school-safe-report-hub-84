@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePublicForm } from '@/hooks/usePublicForm';
@@ -8,12 +8,21 @@ import PublicLayout from '@/components/layout/PublicLayout';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { isCaptchaVerified, requireCaptchaVerification } from '@/utils/captchaUtils';
 
 const PublicFormSubmissionPage = () => {
   const { formId } = useParams<{ formId: string }>();
   const { form, loading, error } = usePublicForm(formId);
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check CAPTCHA verification on component mount
+  useEffect(() => {
+    if (!isCaptchaVerified()) {
+      // Redirect to CAPTCHA verification page
+      navigate(requireCaptchaVerification(formId, 'form'));
+    }
+  }, [formId, navigate]);
 
   if (loading) {
     return (
@@ -45,6 +54,11 @@ const PublicFormSubmissionPage = () => {
         </div>
       </PublicLayout>
     );
+  }
+
+  // Don't render form if CAPTCHA is not verified
+  if (!isCaptchaVerified()) {
+    return null; // Component will redirect via useEffect
   }
 
   const handleFormSubmit = async (data: Record<string, any>) => {
