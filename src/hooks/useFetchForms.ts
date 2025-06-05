@@ -31,44 +31,10 @@ export const useFetchForms = () => {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authReady, setAuthReady] = useState(false);
   
   const { getClientId } = useEmployeeAccess();
 
-  // Check if auth is ready
-  useEffect(() => {
-    let mounted = true;
-
-    const checkAuthReady = async () => {
-      try {
-        // Wait for the session to be properly loaded
-        const { data: { session } } = await supabase.auth.getSession();
-        if (mounted) {
-          setAuthReady(true);
-        }
-      } catch (error) {
-        console.error('Error checking auth session:', error);
-        if (mounted) {
-          setAuthReady(true); // Allow it to proceed even if there's an error
-        }
-      }
-    };
-
-    // Small delay to ensure auth context is initialized
-    const timer = setTimeout(checkAuthReady, 100);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, []);
-
   const fetchForms = async () => {
-    if (!authReady) {
-      console.log('Auth not ready yet, skipping form fetch');
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
@@ -78,6 +44,7 @@ export const useFetchForms = () => {
       if (!clientId) {
         console.log('No client ID available, user may not be logged in yet');
         setError('Please log in to view forms');
+        setLoading(false);
         return;
       }
 
@@ -106,10 +73,66 @@ export const useFetchForms = () => {
   };
 
   useEffect(() => {
-    if (authReady) {
-      fetchForms();
-    }
-  }, [authReady]);
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    const initializeForms = async () => {
+      // Wait for auth session to be initialized
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Auth session check:', session ? 'Session found' : 'No session');
+        
+        if (isMounted) {
+          // Small delay to ensure contexts are ready
+          timeoutId = setTimeout(() => {
+            if (isMounted) {
+              fetchForms();
+            }
+          }, 200);
+        }
+      } catch (error) {
+        console.error('Error checking auth session:', error);
+        if (isMounted) {
+          // Still try to fetch forms even if session check fails
+          timeoutId = setTimeout(() => {
+            if (isMounted) {
+              fetchForms();
+            }
+          }, 200);
+        }
+      }
+    };
+
+    initializeForms();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session ? 'Session exists' : 'No session');
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Delay to ensure contexts are updated
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            fetchForms();
+          }
+        }, 300);
+      } else if (event === 'SIGNED_OUT') {
+        if (isMounted) {
+          setForms([]);
+          setError('Please log in to view forms');
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return {
     forms,
