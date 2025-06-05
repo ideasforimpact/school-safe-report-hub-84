@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import ReCAPTCHA from 'react-google-recaptcha';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AlertCircle, ShieldCheck } from 'lucide-react';
+import { ShieldCheck, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface CaptchaVerificationProps {
@@ -16,64 +15,58 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
   onVerificationSuccess,
   onBack
 }) => {
-  const [num1, setNum1] = useState(0);
-  const [num2, setNum2] = useState(0);
-  const [userAnswer, setUserAnswer] = useState('');
-  const [attempts, setAttempts] = useState(0);
+  const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const generateCaptcha = () => {
-    const newNum1 = Math.floor(Math.random() * 10) + 1;
-    const newNum2 = Math.floor(Math.random() * 10) + 1;
-    setNum1(newNum1);
-    setNum2(newNum2);
-    setUserAnswer('');
-  };
+  // You'll need to get this from Google reCAPTCHA console
+  // For now, using a test key - replace with your actual site key
+  const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"; // Test key
 
-  useEffect(() => {
-    generateCaptcha();
-  }, []);
-
-  const handleVerify = () => {
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      const correctAnswer = num1 + num2;
-      const userAnswerNum = parseInt(userAnswer);
-
-      if (userAnswerNum === correctAnswer) {
-        toast({
-          title: "Verification Successful",
-          description: "You can now proceed to the form.",
-        });
-        onVerificationSuccess();
-      } else {
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        
-        if (newAttempts >= 3) {
-          toast({
-            title: "Too Many Failed Attempts",
-            description: "Please refresh the page and try again.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Incorrect Answer",
-            description: `Please try again. ${3 - newAttempts} attempts remaining.`,
-            variant: "destructive"
-          });
-          generateCaptcha();
-        }
-      }
-      setIsLoading(false);
-    }, 500);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && userAnswer && attempts < 3) {
-      handleVerify();
+  const handleCaptchaChange = (token: string | null) => {
+    if (token) {
+      setIsVerified(true);
+      toast({
+        title: "Verification Successful",
+        description: "You can now proceed to the form.",
+      });
+    } else {
+      setIsVerified(false);
     }
+  };
+
+  const handleCaptchaExpired = () => {
+    setIsVerified(false);
+    toast({
+      title: "Verification Expired",
+      description: "Please complete the CAPTCHA again.",
+      variant: "destructive"
+    });
+  };
+
+  const handleCaptchaError = () => {
+    setIsVerified(false);
+    toast({
+      title: "Verification Error",
+      description: "There was an error with the CAPTCHA. Please try again.",
+      variant: "destructive"
+    });
+  };
+
+  const handleProceed = () => {
+    if (!isVerified) {
+      toast({
+        title: "Verification Required",
+        description: "Please complete the CAPTCHA verification first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    // Small delay to show loading state
+    setTimeout(() => {
+      onVerificationSuccess();
+    }, 500);
   };
 
   return (
@@ -85,43 +78,26 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
           </div>
           <CardTitle className="text-2xl">Security Verification</CardTitle>
           <p className="text-gray-600">
-            Please solve the math problem below to continue
+            Please complete the verification below to continue
           </p>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-            <Label className="text-lg font-medium mb-2 block">
-              What is the sum of:
-            </Label>
-            <div className="text-3xl font-bold text-blue-600 mb-4">
-              {num1} + {num2} = ?
-            </div>
-            <Input
-              type="number"
-              placeholder="Enter your answer"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="text-center text-lg"
-              disabled={attempts >= 3 || isLoading}
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              sitekey={RECAPTCHA_SITE_KEY}
+              onChange={handleCaptchaChange}
+              onExpired={handleCaptchaExpired}
+              onError={handleCaptchaError}
+              theme="light"
             />
           </div>
 
-          {attempts > 0 && attempts < 3 && (
+          {!isVerified && (
             <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-lg">
               <AlertCircle className="h-4 w-4" />
               <span className="text-sm">
-                {3 - attempts} attempts remaining
-              </span>
-            </div>
-          )}
-
-          {attempts >= 3 && (
-            <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">
-                Maximum attempts reached. Please refresh the page to try again.
+                Please complete the CAPTCHA verification to proceed
               </span>
             </div>
           )}
@@ -138,22 +114,21 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
               </Button>
             )}
             <Button
-              onClick={handleVerify}
-              disabled={!userAnswer || attempts >= 3 || isLoading}
+              onClick={handleProceed}
+              disabled={!isVerified || isLoading}
               className="flex-1"
             >
-              {isLoading ? "Verifying..." : "Verify"}
+              {isLoading ? "Verifying..." : "Proceed"}
             </Button>
           </div>
 
-          <Button
-            variant="ghost"
-            onClick={generateCaptcha}
-            className="w-full"
-            disabled={attempts >= 3 || isLoading}
-          >
-            Generate New Problem
-          </Button>
+          <div className="text-center text-xs text-gray-500">
+            <p>This site is protected by reCAPTCHA and the Google</p>
+            <p>
+              <a href="https://policies.google.com/privacy" className="text-blue-600 hover:underline">Privacy Policy</a> and{' '}
+              <a href="https://policies.google.com/terms" className="text-blue-600 hover:underline">Terms of Service</a> apply.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
