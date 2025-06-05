@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,9 +35,8 @@ export const useFetchForms = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { user } = useAuth();
-  const { state } = useEmployeeStore();
-  const employeeData = getEmployeeData(state);
+  const { user, employeeData } = useAuth();
+  const clientId = employeeData?.clientId || user?.clientId;
 
   const fetchForms = async (clientId: string) => {
     try {
@@ -75,21 +75,17 @@ export const useFetchForms = () => {
       return;
     }
 
-    // Get client ID from employee data first, fallback to user metadata
-    const clientId = employeeData?.clientId || user?.user_metadata?.client_id;
-    
     if (clientId) {
       console.log('Client ID found, fetching forms:', clientId);
       fetchForms(clientId);
     } else {
-      console.log('No client ID available in employeeData or user metadata, waiting...');
+      console.log('No client ID available, waiting...');
       setLoading(true);
       setError(null);
     }
-  }, [user, employeeData?.clientId]);
+  }, [user, clientId]);
 
   const refetch = () => {
-    const clientId = employeeData?.clientId || user?.user_metadata?.client_id;
     if (clientId) {
       fetchForms(clientId);
     }
@@ -102,3 +98,4 @@ export const useFetchForms = () => {
     refetch
   };
 };
+
