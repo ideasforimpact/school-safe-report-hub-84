@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import RouteGuard from './components/RouteGuard';
@@ -402,7 +403,7 @@ const AppRoutes = () => {
         <RouteGuard requireAuth={true}>
           <ModuleGuard requiredModules={['grievance_management']}>
             <GrievancesDashboardPage />
-          </RouteGuard>
+          </ModuleGuard>
         </RouteGuard>
       } />
       <Route path="/grievances/submit" element={
