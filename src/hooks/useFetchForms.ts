@@ -31,10 +31,44 @@ export const useFetchForms = () => {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   
   const { getClientId } = useEmployeeAccess();
 
+  // Check if auth is ready
+  useEffect(() => {
+    let mounted = true;
+
+    const checkAuthReady = async () => {
+      try {
+        // Wait for the session to be properly loaded
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          setAuthReady(true);
+        }
+      } catch (error) {
+        console.error('Error checking auth session:', error);
+        if (mounted) {
+          setAuthReady(true); // Allow it to proceed even if there's an error
+        }
+      }
+    };
+
+    // Small delay to ensure auth context is initialized
+    const timer = setTimeout(checkAuthReady, 100);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
   const fetchForms = async () => {
+    if (!authReady) {
+      console.log('Auth not ready yet, skipping form fetch');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -42,7 +76,9 @@ export const useFetchForms = () => {
       const clientId = getClientId();
       
       if (!clientId) {
-        throw new Error('Client ID not available. Please ensure you are logged in.');
+        console.log('No client ID available, user may not be logged in yet');
+        setError('Please log in to view forms');
+        return;
       }
 
       console.log('Fetching forms for client:', clientId);
@@ -70,8 +106,10 @@ export const useFetchForms = () => {
   };
 
   useEffect(() => {
-    fetchForms();
-  }, []);
+    if (authReady) {
+      fetchForms();
+    }
+  }, [authReady]);
 
   return {
     forms,
