@@ -49,11 +49,11 @@ const EnhancedGrievanceForm: React.FC<EnhancedGrievanceFormProps> = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
         <div className="space-y-6">
-          <EnhancedSubmitterInfoSection control={form.control} />
-          <EnhancedGrievanceHeadingSection control={form.control} />
-          <EnhancedDescriptionSection control={form.control} />
-          <EnhancedResolutionSection control={form.control} />
-          <EnhancedContactPreferenceSection control={form.control} />
+          <EnhancedSubmitterInfoSection form={form} />
+          <EnhancedGrievanceHeadingSection form={form} />
+          <EnhancedDescriptionSection form={form} />
+          <EnhancedResolutionSection form={form} />
+          <EnhancedContactPreferenceSection form={form} />
           
           {/* CAPTCHA Verification */}
           <SimpleCaptcha 
