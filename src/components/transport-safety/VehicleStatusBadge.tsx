@@ -19,15 +19,7 @@ const VehicleStatusBadge: React.FC<VehicleStatusBadgeProps> = ({
   // Check if vehicle has been verified (has verification data)
   const hasVerificationData = verificationData && verificationData.length > 0;
   
-  // If no verification data, show "Pending Verification" in grey
-  if (!hasVerificationData) {
-    return (
-      <Badge className={cn('bg-gray-100 text-gray-800 border-gray-200', className)} variant="outline">
-        Pending Verification
-      </Badge>
-    );
-  }
-
+  // Always show the vehicle status with appropriate colors
   const getVariant = () => {
     switch (status) {
       case 'active':
