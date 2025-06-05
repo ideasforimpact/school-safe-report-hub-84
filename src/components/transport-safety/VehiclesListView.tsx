@@ -73,6 +73,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     );
   };
 
+  // Check if vehicle has been verified
+  const hasVerificationData = (vehicle: Vehicle) => {
+    return vehicle.verificationData && vehicle.verificationData.length > 0;
+  };
+
   return (
     <div className="w-full">
       <div className="rounded-md border">
@@ -90,11 +95,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           </TableHeader>
           <TableBody>
             {paginatedItems.map(vehicle => {
-              const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
-              const fcStatus = getDocumentStatus(vehicle, 'fitness').status;
-              const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
-              const vehicleHasChallan = hasChallan(vehicle);
-              const rowClassName = getVehicleRowClassName(vehicle);
+              const hasVerification = hasVerificationData(vehicle);
+              const insuranceStatus = hasVerification ? getDocumentStatus(vehicle, 'insurance').status : 'unverified';
+              const fcStatus = hasVerification ? getDocumentStatus(vehicle, 'fitness').status : 'unverified';
+              const pollutionStatus = hasVerification ? getDocumentStatus(vehicle, 'pollution').status : 'unverified';
+              const vehicleHasChallan = hasVerification ? hasChallan(vehicle) : false;
+              const rowClassName = hasVerification ? getVehicleRowClassName(vehicle) : "hover:bg-muted/50 border-l-4 border-l-gray-300";
               
               return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
@@ -113,7 +119,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
                   </TableCell>
                   <TableCell className="text-left">
-                    <VehicleStatusBadge status={vehicle.status} />
+                    <VehicleStatusBadge 
+                      status={vehicle.status} 
+                      verificationStatus={vehicle.verificationStatus}
+                      verificationData={vehicle.verificationData}
+                    />
                   </TableCell>
                   <TableCell className="text-left">
                     <div className="flex gap-1">
@@ -121,7 +131,9 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         variant="outline" 
                         className={cn(
                           "text-xs flex items-center gap-1 px-2 py-1", 
-                          getDocumentStatusColor(insuranceStatus === 'missing' ? 'expired' : insuranceStatus)
+                          hasVerification 
+                            ? getDocumentStatusColor(insuranceStatus === 'missing' ? 'expired' : insuranceStatus)
+                            : 'bg-gray-100 border-gray-200 text-gray-800'
                         )}
                       >
                         {getDocumentIcon(insuranceStatus)}
@@ -131,7 +143,9 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         variant="outline" 
                         className={cn(
                           "text-xs flex items-center gap-1 px-2 py-1", 
-                          getDocumentStatusColor(fcStatus === 'missing' ? 'expired' : fcStatus)
+                          hasVerification 
+                            ? getDocumentStatusColor(fcStatus === 'missing' ? 'expired' : fcStatus)
+                            : 'bg-gray-100 border-gray-200 text-gray-800'
                         )}
                       >
                         {getDocumentIcon(fcStatus)}
@@ -141,7 +155,9 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         variant="outline" 
                         className={cn(
                           "text-xs flex items-center gap-1 px-2 py-1", 
-                          getDocumentStatusColor(pollutionStatus === 'missing' ? 'expired' : pollutionStatus)
+                          hasVerification 
+                            ? getDocumentStatusColor(pollutionStatus === 'missing' ? 'expired' : pollutionStatus)
+                            : 'bg-gray-100 border-gray-200 text-gray-800'
                         )}
                       >
                         {getDocumentIcon(pollutionStatus)}
@@ -150,13 +166,17 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell className="text-left">
-                    {vehicleHasChallan ? (
-                      <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
-                        <Flag className="h-4 w-4 text-orange-600" />
-                        <span>Yes</span>
-                      </Badge>
+                    {hasVerification ? (
+                      vehicleHasChallan ? (
+                        <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
+                          <Flag className="h-4 w-4 text-orange-600" />
+                          <span>Yes</span>
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )
                     ) : (
-                      <span className="text-gray-500 text-xs">-</span>
+                      <span className="text-gray-400 text-xs">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-left">

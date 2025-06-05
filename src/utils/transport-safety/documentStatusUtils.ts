@@ -84,6 +84,11 @@ export const getDocumentStatusFromDate = (expiryDateStr: string | undefined): Do
  * Get status for a specific document type
  */
 export const getDocumentStatus = (vehicle: Vehicle, docType: string): DocumentStatus => {
+  // Check if vehicle has verification data
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return { status: 'missing' };
+  }
+  
   // Get latest verification log
   const verificationLog = getLatestVerificationLog(vehicle);
   
@@ -120,6 +125,11 @@ export const getDocumentStatus = (vehicle: Vehicle, docType: string): DocumentSt
  * Check if vehicle has a specific document type
  */
 export const hasDocument = (vehicle: Vehicle, docType: string): boolean => {
+  // Check if vehicle has verification data
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return false;
+  }
+  
   const verificationLog = getLatestVerificationLog(vehicle);
   
   if (docType === 'fitness') {
@@ -141,6 +151,11 @@ export const hasDocument = (vehicle: Vehicle, docType: string): boolean => {
  * Check if vehicle has any expired or missing documents
  */
 export const hasExpiredDocuments = (vehicle: Vehicle): boolean => {
+  // If no verification data, don't treat as expired (treat as unverified)
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return false;
+  }
+  
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness');
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
@@ -154,6 +169,11 @@ export const hasExpiredDocuments = (vehicle: Vehicle): boolean => {
  * Check if vehicle has any documents expiring soon but none expired
  */
 export const hasExpiringDocuments = (vehicle: Vehicle): boolean => {
+  // If no verification data, don't treat as expiring
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return false;
+  }
+  
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness');
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
@@ -170,6 +190,11 @@ export const hasExpiringDocuments = (vehicle: Vehicle): boolean => {
  * Check if all vehicle documents are valid (not expired, not missing, not expiring soon)
  */
 export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
+  // If no verification data, can't be valid
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return false;
+  }
+  
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness').status;
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
@@ -184,6 +209,11 @@ export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
  */
 export const getVehicleRowClassName = (vehicle: Vehicle): string => {
   const baseClasses = "hover:bg-muted/50";
+  
+  // If no verification data, show grey border
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return `${baseClasses} border-l-4 border-l-gray-300`;
+  }
   
   if (hasExpiredDocuments(vehicle)) {
     return `${baseClasses} bg-red-50 border-l-4 border-l-red-500`;
@@ -208,6 +238,8 @@ export const getDocumentStatusColor = (status: string): string => {
       return 'bg-red-100 border-red-200 text-red-800';
     case 'expiring_soon':
       return 'bg-yellow-100 border-yellow-200 text-yellow-800';
+    case 'unverified':
+      return 'bg-gray-100 border-gray-200 text-gray-800';
     default:
       return 'bg-gray-100 border-gray-200 text-gray-800';
   }

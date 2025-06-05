@@ -5,10 +5,29 @@ import { cn } from '@/lib/utils';
 
 interface VehicleStatusBadgeProps {
   status: 'active' | 'maintenance' | 'inactive';
+  verificationStatus?: string;
+  verificationData?: any[];
   className?: string;
 }
 
-const VehicleStatusBadge: React.FC<VehicleStatusBadgeProps> = ({ status, className }) => {
+const VehicleStatusBadge: React.FC<VehicleStatusBadgeProps> = ({ 
+  status, 
+  verificationStatus, 
+  verificationData, 
+  className 
+}) => {
+  // Check if vehicle has been verified (has verification data)
+  const hasVerificationData = verificationData && verificationData.length > 0;
+  
+  // If no verification data, show "Pending Verification" in grey
+  if (!hasVerificationData) {
+    return (
+      <Badge className={cn('bg-gray-100 text-gray-800 border-gray-200', className)} variant="outline">
+        Pending Verification
+      </Badge>
+    );
+  }
+
   const getVariant = () => {
     switch (status) {
       case 'active':
