@@ -1,3 +1,4 @@
+
 import { Vehicle, VehicleVerificationField } from '@/types/transportSafety';
 
 export interface DocumentStatus {
@@ -180,10 +181,28 @@ export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
 };
 
 /**
+ * Check if vehicle is newly added (no verification data or documents)
+ */
+export const isNewlyAddedVehicle = (vehicle: Vehicle): boolean => {
+  // Check if vehicle has no verification data
+  const hasVerificationData = vehicle.verificationData && vehicle.verificationData.length > 0;
+  
+  // Check if vehicle has no documents
+  const hasDocuments = vehicle.documents && vehicle.documents.length > 0;
+  
+  return !hasVerificationData && !hasDocuments;
+};
+
+/**
  * Get vehicle row className based on document statuses
  */
 export const getVehicleRowClassName = (vehicle: Vehicle): string => {
   const baseClasses = "hover:bg-muted/50";
+  
+  // If newly added vehicle, show grey border
+  if (isNewlyAddedVehicle(vehicle)) {
+    return `${baseClasses} border-l-4 border-l-gray-400`;
+  }
   
   if (hasExpiredDocuments(vehicle)) {
     return `${baseClasses} bg-red-50 border-l-4 border-l-red-500`;
