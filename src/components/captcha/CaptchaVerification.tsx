@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { loadCaptchaEnginge, LoadCanvasTemplate, validateCaptcha } from 'react-simple-captcha';
 
 interface CaptchaVerificationProps {
   onVerificationSuccess: () => void;
@@ -15,41 +17,48 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
   onVerificationSuccess,
   onBack
 }) => {
+  const [captchaInput, setCaptchaInput] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // You'll need to get this from Google reCAPTCHA console
-  // For now, using a test key - replace with your actual site key
-  const RECAPTCHA_SITE_KEY = "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"; // Test key
+  useEffect(() => {
+    // Load captcha engine on component mount
+    loadCaptchaEnginge(6); // 6 characters
+  }, []);
 
-  const handleCaptchaChange = (token: string | null) => {
-    if (token) {
+  const handleCaptchaValidation = () => {
+    if (!captchaInput.trim()) {
+      toast({
+        title: "Input Required",
+        description: "Please enter the CAPTCHA text.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (validateCaptcha(captchaInput)) {
       setIsVerified(true);
       toast({
         title: "Verification Successful",
-        description: "You can now proceed to the form.",
+        description: "CAPTCHA verified successfully. You can now proceed.",
       });
     } else {
       setIsVerified(false);
+      setCaptchaInput('');
+      toast({
+        title: "Verification Failed",
+        description: "CAPTCHA text is incorrect. Please try again.",
+        variant: "destructive"
+      });
+      // Reload captcha
+      loadCaptchaEnginge(6);
     }
   };
 
-  const handleCaptchaExpired = () => {
+  const handleRefreshCaptcha = () => {
+    loadCaptchaEnginge(6);
+    setCaptchaInput('');
     setIsVerified(false);
-    toast({
-      title: "Verification Expired",
-      description: "Please complete the CAPTCHA again.",
-      variant: "destructive"
-    });
-  };
-
-  const handleCaptchaError = () => {
-    setIsVerified(false);
-    toast({
-      title: "Verification Error",
-      description: "There was an error with the CAPTCHA. Please try again.",
-      variant: "destructive"
-    });
   };
 
   const handleProceed = () => {
@@ -83,14 +92,51 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="flex justify-center">
-            <ReCAPTCHA
-              sitekey={RECAPTCHA_SITE_KEY}
-              onChange={handleCaptchaChange}
-              onExpired={handleCaptchaExpired}
-              onError={handleCaptchaError}
-              theme="light"
-            />
+          <div className="space-y-4">
+            {/* CAPTCHA Canvas */}
+            <div className="flex justify-center">
+              <div className="border border-gray-300 rounded-lg p-4 bg-white">
+                <LoadCanvasTemplate />
+              </div>
+            </div>
+
+            {/* Refresh Button */}
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshCaptcha}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh CAPTCHA
+              </Button>
+            </div>
+
+            {/* Input Field */}
+            <div className="space-y-2">
+              <Label htmlFor="captcha-input">Enter the text shown above</Label>
+              <Input
+                id="captcha-input"
+                type="text"
+                value={captchaInput}
+                onChange={(e) => setCaptchaInput(e.target.value)}
+                placeholder="Enter CAPTCHA text"
+                className="text-center"
+                disabled={isVerified}
+              />
+            </div>
+
+            {/* Verify Button */}
+            {!isVerified && (
+              <Button
+                onClick={handleCaptchaValidation}
+                className="w-full"
+                disabled={!captchaInput.trim()}
+              >
+                Verify CAPTCHA
+              </Button>
+            )}
           </div>
 
           {!isVerified && (
@@ -98,6 +144,15 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
               <AlertCircle className="h-4 w-4" />
               <span className="text-sm">
                 Please complete the CAPTCHA verification to proceed
+              </span>
+            </div>
+          )}
+
+          {isVerified && (
+            <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+              <ShieldCheck className="h-4 w-4" />
+              <span className="text-sm">
+                CAPTCHA verified successfully!
               </span>
             </div>
           )}
@@ -123,11 +178,7 @@ const CaptchaVerification: React.FC<CaptchaVerificationProps> = ({
           </div>
 
           <div className="text-center text-xs text-gray-500">
-            <p>This site is protected by reCAPTCHA and the Google</p>
-            <p>
-              <a href="https://policies.google.com/privacy" className="text-blue-600 hover:underline">Privacy Policy</a> and{' '}
-              <a href="https://policies.google.com/terms" className="text-blue-600 hover:underline">Terms of Service</a> apply.
-            </p>
+            <p>This verification helps protect against automated abuse.</p>
           </div>
         </CardContent>
       </Card>
