@@ -14,8 +14,7 @@ import {
   getDocumentStatus, 
   getDocumentStatusColor, 
   getVehicleRowClassName,
-  getLatestVerificationLog,
-  isNewlyAddedVehicle
+  getLatestVerificationLog
 } from '@/utils/transport-safety/documentStatusUtils';
 import { toast } from 'sonner';
 
@@ -96,7 +95,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
               const vehicleHasChallan = hasChallan(vehicle);
               const rowClassName = getVehicleRowClassName(vehicle);
-              const isNewVehicle = isNewlyAddedVehicle(vehicle);
               
               return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
@@ -115,7 +113,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
                   </TableCell>
                   <TableCell className="text-left">
-                    <VehicleStatusBadge status={vehicle.status} isNewlyAdded={isNewVehicle} />
+                    <VehicleStatusBadge status={vehicle.status} />
                   </TableCell>
                   <TableCell className="text-left">
                     <div className="flex gap-1">
