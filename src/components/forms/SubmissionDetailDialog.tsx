@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -58,9 +57,27 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
   const getStatusBadge = (status: string) => {
     const variants = {
       open: 'default',
-      closed: 'outline'
+      closed: 'destructive'
     } as const;
-    return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>;
+    
+    // Custom styling based on status
+    const getStatusStyle = (status: string) => {
+      if (status === 'open') {
+        return 'bg-green-500 text-white hover:bg-green-500/80';
+      } else if (status === 'closed') {
+        return 'bg-red-500 text-white hover:bg-red-500/80';
+      }
+      return '';
+    };
+
+    return (
+      <Badge 
+        variant={variants[status as keyof typeof variants] || 'default'}
+        className={getStatusStyle(status)}
+      >
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   const formatDate = (dateString: string) => {
