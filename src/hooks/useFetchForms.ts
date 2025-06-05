@@ -33,6 +33,7 @@ export const useFetchForms = () => {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
   
   const { getClientId } = useEmployeeAccess();
   const { state } = useEmployeeStore();
@@ -47,8 +48,7 @@ export const useFetchForms = () => {
       const clientId = employeeData?.clientId || getClientId();
       
       if (!clientId) {
-        console.log('No client ID available, user may not be logged in yet');
-        setError('Please log in to view forms');
+        console.log('No client ID available, waiting for authentication...');
         setLoading(false);
         return;
       }
@@ -69,6 +69,7 @@ export const useFetchForms = () => {
       }
 
       setForms(data.data || []);
+      setHasFetched(true);
     } catch (err) {
       console.error('Error fetching forms:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -77,63 +78,42 @@ export const useFetchForms = () => {
     }
   };
 
+  // Watch for changes in employee data from Redux store
+  useEffect(() => {
+    const clientId = employeeData?.clientId || getClientId();
+    
+    if (clientId && !hasFetched) {
+      console.log('Employee data available, fetching forms');
+      fetchForms();
+    }
+  }, [employeeData?.clientId, hasFetched]);
+
+  // Listen for auth state changes
   useEffect(() => {
     let isMounted = true;
     let timeoutId: NodeJS.Timeout;
 
-    const initializeForms = async () => {
-      // Wait for auth session to be initialized
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('Auth session check:', session ? 'Session found' : 'No session');
-        
-        if (isMounted) {
-          // Check if we have employee data from Redux store
-          const clientId = employeeData?.clientId || getClientId();
-          
-          if (clientId) {
-            // If we have client ID, fetch immediately
-            fetchForms();
-          } else {
-            // Wait a bit more for employee data to load
-            timeoutId = setTimeout(() => {
-              if (isMounted) {
-                fetchForms();
-              }
-            }, 500);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking auth session:', error);
-        if (isMounted) {
-          // Still try to fetch forms even if session check fails
-          timeoutId = setTimeout(() => {
-            if (isMounted) {
-              fetchForms();
-            }
-          }, 500);
-        }
-      }
-    };
-
-    initializeForms();
-
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session ? 'Session exists' : 'No session');
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Reset hasFetched when user signs in
+        setHasFetched(false);
         // Delay to ensure contexts and Redux store are updated
         timeoutId = setTimeout(() => {
           if (isMounted) {
-            fetchForms();
+            const clientId = employeeData?.clientId || getClientId();
+            if (clientId) {
+              fetchForms();
+            }
           }
         }, 600);
       } else if (event === 'SIGNED_OUT') {
         if (isMounted) {
           setForms([]);
-          setError('Please log in to view forms');
+          setError(null);
           setLoading(false);
+          setHasFetched(false);
         }
       }
     });
@@ -145,20 +125,69 @@ export const useFetchForms = () => {
       }
       subscription.unsubscribe();
     };
-  }, []);
-
-  // Watch for changes in employee data from Redux store
-  useEffect(() => {
-    if (employeeData?.clientId) {
-      console.log('Employee data available, fetching forms');
-      fetchForms();
-    }
   }, [employeeData?.clientId]);
+
+  // Initial check for existing session
+  useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Auth session check:', session ? 'Session found' : 'No session');
+        
+        if (isMounted && session) {
+          // Check if we have employee data from Redux store
+          const clientId = employeeData?.clientId || getClientId();
+          
+          if (clientId && !hasFetched) {
+            // If we have client ID, fetch immediately
+            fetchForms();
+          } else if (!clientId) {
+            // Wait for employee data to load
+            timeoutId = setTimeout(() => {
+              if (isMounted && !hasFetched) {
+                const retryClientId = employeeData?.clientId || getClientId();
+                if (retryClientId) {
+                  fetchForms();
+                } else {
+                  setError('Unable to load user data. Please try refreshing the page.');
+                  setLoading(false);
+                }
+              }
+            }, 1000);
+          }
+        } else if (isMounted && !session) {
+          setError('Please log in to view forms');
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error checking auth session:', error);
+        if (isMounted) {
+          setError('Authentication error. Please try refreshing the page.');
+          setLoading(false);
+        }
+      }
+    };
+
+    checkSession();
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []);
 
   return {
     forms,
     loading,
     error,
-    refetch: fetchForms
+    refetch: () => {
+      setHasFetched(false);
+      fetchForms();
+    }
   };
 };
