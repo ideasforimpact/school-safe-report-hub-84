@@ -58,7 +58,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
     const variants = {
       new: 'default',
       reviewed: 'secondary',
-      resolved: 'outline'
+      closed: 'outline'
     } as const;
     return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
   };
@@ -72,7 +72,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please enter an acknowledgment comment"
+        description: "Please enter a comment"
       });
       return;
     }
@@ -82,14 +82,22 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
     try {
       console.log('Updating submission:', {
         submissionId: submission.id,
-        comment: acknowledgmentComment
+        comment: acknowledgmentComment,
+        currentStatus: submission.status
       });
 
+      // Determine the new status based on current status and whether we're adding/updating comments
+      let newStatus = 'reviewed'; // Default to 'reviewed' when adding comments
+      
+      // If current status is 'new' and we're adding a comment, change to 'reviewed'
+      // If current status is already 'reviewed' and we're updating comment, keep as 'reviewed'
+      // User can manually change to 'closed' later if needed
+      
       const { data, error } = await supabase.functions.invoke('update-form-submission', {
         body: {
           submission_id: submission.id,
           comments: acknowledgmentComment,
-          status: 'reviewed'
+          status: newStatus
         }
       });
 
@@ -104,7 +112,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 
       toast({
         title: "Success",
-        description: "Submission acknowledged successfully"
+        description: `Submission ${submission.comments ? 'updated' : 'reviewed'} successfully`
       });
 
       if (onUpdate) {
@@ -113,11 +121,11 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 
       onClose();
     } catch (error) {
-      console.error('Error acknowledging submission:', error);
+      console.error('Error updating submission:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to acknowledge submission"
+        description: "Failed to update submission"
       });
     } finally {
       setSubmitting(false);
@@ -212,7 +220,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
 
           <Separator />
 
-          {/* Acknowledgment Section */}
+          {/* Comment Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">
               {submission.comments ? 'Update Comment' : 'Add Comment'}
@@ -224,12 +232,15 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
                 </Label>
                 <Textarea
                   id="acknowledgment-comment"
-                  placeholder={submission.comments ? "Edit your comment..." : "Enter your acknowledgment comment..."}
+                  placeholder={submission.comments ? "Edit your comment..." : "Enter your comment..."}
                   value={acknowledgmentComment}
                   onChange={(e) => setAcknowledgmentComment(e.target.value)}
                   rows={4}
                   className="mt-1"
                 />
+              </div>
+              <div className="text-sm text-gray-500">
+                {submission.status === 'new' && 'Adding a comment will mark this submission as "reviewed".'}
               </div>
             </div>
           </div>
@@ -243,7 +254,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
             onClick={handleAcknowledge}
             disabled={submitting || !acknowledgmentComment.trim()}
           >
-            {submitting ? 'Processing...' : (submission.comments ? 'Update Comment' : 'Acknowledge Submission')}
+            {submitting ? 'Processing...' : (submission.comments ? 'Update Comment' : 'Review Submission')}
           </Button>
         </DialogFooter>
       </DialogContent>

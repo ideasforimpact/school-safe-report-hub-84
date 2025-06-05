@@ -17,34 +17,16 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { form_id, responses, submitter_name, submitter_email, comments } = await req.json();
+    const { form_id, submitter_name, submitter_email, responses } = await req.json();
     
-    if (!form_id) {
+    if (!form_id || !responses) {
       return new Response(
         JSON.stringify({ 
-          error: 'form_id is required',
-          code: 'MISSING_FORM_ID'
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    if (!responses || !Array.isArray(responses)) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'responses array is required',
-          code: 'MISSING_RESPONSES'
+          error: 'form_id and responses are required',
+          code: 'MISSING_REQUIRED_FIELDS'
         }),
         { 
           status: 400,
@@ -54,76 +36,34 @@ serve(async (req) => {
     }
 
     console.log(`Submitting form: ${form_id}`);
-    console.log('Responses:', JSON.stringify(responses, null, 2));
 
-    // Verify the form exists and is active
-    const { data: form, error: formError } = await supabaseClient
-      .from('custom_forms')
-      .select('id, title, is_active')
-      .eq('id', form_id)
-      .single();
-
-    if (formError || !form) {
-      console.error('Form not found:', formError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Form not found',
-          code: 'FORM_NOT_FOUND'
-        }),
-        { 
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    if (!form.is_active) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Form is not active',
-          code: 'FORM_INACTIVE'
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Insert the form submission
-    const { data: submission, error: submissionError } = await supabaseClient
+    // Insert the form submission with 'new' status
+    const { data, error } = await supabaseClient
       .from('form_submissions')
-      .insert({
-        form_id: form_id,
-        submitter_name: submitter_name || null,
-        submitter_email: submitter_email || null,
-        responses: responses,
-        comments: comments || null,
-        status: 'new'
-      })
+      .insert([{
+        form_id,
+        submitter_name,
+        submitter_email,
+        responses,
+        status: 'new', // Always start with 'new' status
+        comments: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
       .select()
       .single();
 
-    if (submissionError) {
-      console.error('Error creating submission:', submissionError);
-      return new Response(
-        JSON.stringify({ 
-          error: `Failed to create submission: ${submissionError.message}`,
-          code: 'SUBMISSION_FAILED'
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+    if (error) {
+      console.error('Error submitting form:', error);
+      throw new Error(`Failed to submit form: ${error.message}`);
     }
 
-    console.log('Form submission created successfully:', submission.id);
+    console.log('Form submitted successfully:', data.id);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: submission,
+        data: data,
         message: 'Form submitted successfully'
       }),
       { 
