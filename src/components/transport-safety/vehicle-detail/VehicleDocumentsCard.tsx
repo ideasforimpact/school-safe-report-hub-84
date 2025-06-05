@@ -20,10 +20,13 @@ interface VehicleDocumentsCardProps {
 const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
   const { id: vehicleId, documents } = vehicle;
   
-  // Get document statuses
-  const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
-  const fcStatus = getDocumentStatus(vehicle, 'fitness');
-  const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
+  // Check if vehicle has verification data
+  const hasVerificationData = vehicle.verificationData && vehicle.verificationData.length > 0;
+  
+  // Get document statuses only if verification data exists
+  const insuranceStatus = hasVerificationData ? getDocumentStatus(vehicle, 'insurance') : { status: 'unverified', expiryDate: null };
+  const fcStatus = hasVerificationData ? getDocumentStatus(vehicle, 'fitness') : { status: 'unverified', expiryDate: null };
+  const pollutionStatus = hasVerificationData ? getDocumentStatus(vehicle, 'pollution') : { status: 'unverified', expiryDate: null };
   
   const getDocumentIcon = (status: string) => {
     switch (status) {
@@ -34,6 +37,8 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
         return <FileX className="h-4 w-4 text-red-600" />;
       case 'expiring_soon':
         return <ShieldAlert className="h-4 w-4 text-yellow-600" />;
+      case 'unverified':
+        return <FileX className="h-4 w-4 text-gray-400" />;
       default:
         return <FileX className="h-4 w-4 text-gray-400" />;
     }
@@ -41,7 +46,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   
   // Check for challan details in verification data
   const hasChallanFromApi = () => {
-    if (!vehicle.verificationData) return false;
+    if (!hasVerificationData) return false;
     
     // Find the verification_log entry
     const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
@@ -65,7 +70,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   
   // Get the latest challan data from verification log
   const getChallanDetails = () => {
-    if (!vehicle.verificationData) return null;
+    if (!hasVerificationData) return null;
     
     // Get the latest verification log
     const latestLog = getLatestVerificationLog(vehicle);
@@ -121,11 +126,13 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               variant="outline" 
               className={cn(
                 "text-xs flex items-center gap-1 px-2 py-1", 
-                getDocumentStatusColor(insuranceStatus.status === 'missing' ? 'expired' : insuranceStatus.status)
+                hasVerificationData 
+                  ? getDocumentStatusColor(insuranceStatus.status === 'missing' ? 'expired' : insuranceStatus.status)
+                  : 'bg-gray-100 border-gray-200 text-gray-800'
               )}
             >
               {getDocumentIcon(insuranceStatus.status)}
-              <span>Expires: {formatDate(insuranceStatus.expiryDate)}</span>
+              <span>Expires: {hasVerificationData ? formatDate(insuranceStatus.expiryDate) : 'Not Available'}</span>
             </Badge>
           </div>
           
@@ -135,11 +142,13 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               variant="outline" 
               className={cn(
                 "text-xs flex items-center gap-1 px-2 py-1", 
-                getDocumentStatusColor(fcStatus.status === 'missing' ? 'expired' : fcStatus.status)
+                hasVerificationData 
+                  ? getDocumentStatusColor(fcStatus.status === 'missing' ? 'expired' : fcStatus.status)
+                  : 'bg-gray-100 border-gray-200 text-gray-800'
               )}
             >
               {getDocumentIcon(fcStatus.status)}
-              <span>Expires: {formatDate(fcStatus.expiryDate)}</span>
+              <span>Expires: {hasVerificationData ? formatDate(fcStatus.expiryDate) : 'Not Available'}</span>
             </Badge>
           </div>
           
@@ -149,24 +158,32 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               variant="outline" 
               className={cn(
                 "text-xs flex items-center gap-1 px-2 py-1", 
-                getDocumentStatusColor(pollutionStatus.status === 'missing' ? 'expired' : pollutionStatus.status)
+                hasVerificationData 
+                  ? getDocumentStatusColor(pollutionStatus.status === 'missing' ? 'expired' : pollutionStatus.status)
+                  : 'bg-gray-100 border-gray-200 text-gray-800'
               )}
             >
               {getDocumentIcon(pollutionStatus.status)}
-              <span>Expires: {formatDate(pollutionStatus.expiryDate)}</span>
+              <span>Expires: {hasVerificationData ? formatDate(pollutionStatus.expiryDate) : 'Not Available'}</span>
             </Badge>
           </div>
           
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Challan Status</span>
-            {hasChallan() ? (
-              <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
-                <AlertCircle className="h-4 w-4 text-orange-600" />
-                <span>Pending Challan</span>
-              </Badge>
+            {hasVerificationData ? (
+              hasChallan() ? (
+                <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <span>Pending Challan</span>
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-green-100 border-green-200 text-green-800 text-xs flex items-center gap-1">
+                  <span>No Pending Challans</span>
+                </Badge>
+              )
             ) : (
-              <Badge variant="outline" className="bg-green-100 border-green-200 text-green-800 text-xs flex items-center gap-1">
-                <span>No Pending Challans</span>
+              <Badge variant="outline" className="bg-gray-100 border-gray-200 text-gray-800 text-xs flex items-center gap-1">
+                <span>Not Available</span>
               </Badge>
             )}
           </div>
