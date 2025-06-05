@@ -8,14 +8,18 @@ import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors
 
 interface RouteGuardProps {
   children?: React.ReactNode;
+  requireAuth?: boolean;
   requireAdmin?: boolean;
   requireSaasOwner?: boolean;
+  isBackoffice?: boolean;
 }
 
 const RouteGuard = ({ 
   children, 
+  requireAuth = false,
   requireAdmin = false,
-  requireSaasOwner = false
+  requireSaasOwner = false,
+  isBackoffice = false
 }: RouteGuardProps) => {
   const { user, authError } = useAuth();
   const location = useLocation();

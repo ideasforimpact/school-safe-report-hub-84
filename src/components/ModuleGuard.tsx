@@ -7,24 +7,28 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { hasModulePermission } from '@/store/employeeSelectors';
 
 interface ModuleGuardProps {
-  moduleType: keyof ModulePermissions | string;
+  moduleType?: keyof ModulePermissions | string;
+  requiredModules?: string[];
   children?: React.ReactNode;
 }
 
-const ModuleGuard = ({ moduleType, children }: ModuleGuardProps) => {
+const ModuleGuard = ({ moduleType, requiredModules, children }: ModuleGuardProps) => {
   const { state } = useEmployeeStore();
   
+  // Determine which module to check
+  const moduleToCheck = moduleType || (requiredModules && requiredModules[0]);
+  
   // Only check the Redux store for permissions, no fallback to auth context
-  const hasPermission = hasModulePermission(state, moduleType as keyof ModulePermissions);
+  const hasPermission = moduleToCheck ? hasModulePermission(state, moduleToCheck as keyof ModulePermissions) : true;
 
-  if (!hasPermission) {
+  if (!hasPermission && moduleToCheck) {
     return (
       <div className="p-6">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
               <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
-              <p className="text-gray-600">You don't have permission to access the {moduleType} module.</p>
+              <p className="text-gray-600">You don't have permission to access the {moduleToCheck} module.</p>
               <p className="text-gray-600 mt-2">Please contact your administrator if you require access.</p>
             </div>
           </CardContent>
