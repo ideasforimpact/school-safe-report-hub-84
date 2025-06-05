@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData } from '@/store/employeeSelectors';
 
 interface FormField {
   id: string;
@@ -33,13 +35,16 @@ export const useFetchForms = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { getClientId } = useEmployeeAccess();
+  const { state } = useEmployeeStore();
+  const employeeData = getEmployeeData(state);
 
   const fetchForms = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const clientId = getClientId();
+      // Get client ID from Redux store first, then fallback to useEmployeeAccess
+      const clientId = employeeData?.clientId || getClientId();
       
       if (!clientId) {
         console.log('No client ID available, user may not be logged in yet');
@@ -83,12 +88,20 @@ export const useFetchForms = () => {
         console.log('Auth session check:', session ? 'Session found' : 'No session');
         
         if (isMounted) {
-          // Small delay to ensure contexts are ready
-          timeoutId = setTimeout(() => {
-            if (isMounted) {
-              fetchForms();
-            }
-          }, 200);
+          // Check if we have employee data from Redux store
+          const clientId = employeeData?.clientId || getClientId();
+          
+          if (clientId) {
+            // If we have client ID, fetch immediately
+            fetchForms();
+          } else {
+            // Wait a bit more for employee data to load
+            timeoutId = setTimeout(() => {
+              if (isMounted) {
+                fetchForms();
+              }
+            }, 500);
+          }
         }
       } catch (error) {
         console.error('Error checking auth session:', error);
@@ -98,7 +111,7 @@ export const useFetchForms = () => {
             if (isMounted) {
               fetchForms();
             }
-          }, 200);
+          }, 500);
         }
       }
     };
@@ -110,12 +123,12 @@ export const useFetchForms = () => {
       console.log('Auth state change:', event, session ? 'Session exists' : 'No session');
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        // Delay to ensure contexts are updated
+        // Delay to ensure contexts and Redux store are updated
         timeoutId = setTimeout(() => {
           if (isMounted) {
             fetchForms();
           }
-        }, 300);
+        }, 600);
       } else if (event === 'SIGNED_OUT') {
         if (isMounted) {
           setForms([]);
@@ -133,6 +146,14 @@ export const useFetchForms = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Watch for changes in employee data from Redux store
+  useEffect(() => {
+    if (employeeData?.clientId) {
+      console.log('Employee data available, fetching forms');
+      fetchForms();
+    }
+  }, [employeeData?.clientId]);
 
   return {
     forms,
