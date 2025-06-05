@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -93,12 +92,21 @@ const FormsPage = () => {
   }, [submissions, searchTerm]);
 
   const getStatusBadge = (status: string) => {
-    const variants = {
-      new: 'default',
-      reviewed: 'secondary',
-      resolved: 'outline'
-    } as const;
-    return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
+    // Custom styling based on status
+    const getStatusStyle = (status: string) => {
+      if (status === 'open') {
+        return 'bg-green-500 text-white hover:bg-green-500/80';
+      } else if (status === 'closed') {
+        return 'bg-red-500 text-white hover:bg-red-500/80';
+      }
+      return 'bg-gray-500 text-white hover:bg-gray-500/80';
+    };
+
+    return (
+      <Badge className={getStatusStyle(status)}>
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   const formatDate = (dateString: string) => {
