@@ -83,38 +83,53 @@ serve(async (req) => {
       );
     }
     
-    // Extract client_id from the response for challan API call
+    // Extract required data for challan API call
     let challanData = null;
-    if (surepassData.data && surepassData.data.client_id) {
-      const clientId = surepassData.data.client_id;
-      console.log(`Got client_id: ${clientId}, making challan details request`);
+    if (surepassData.data) {
+      const data = surepassData.data;
+      const rcNumber = registrationNumber;
+      const chassisNumber = data.vehicle_chasi_number;
+      const engineNumber = data.vehicle_engine_number;
       
-      try {
-        // Make the second API call to get challan details
-        const challanResponse = await fetch(surepassChallanUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${surepassApiKey}`
-          },
-          body: JSON.stringify({
-            client_id: clientId
-          })
-        });
-        
-        challanData = await challanResponse.json();
-        console.log("Challan API response received:", challanData.success ? "Success" : "Failed");
-        
-        // Add challan data to the registration data
-        if (surepassData.data) {
-          surepassData.data.challan_details = challanData.data || null;
+      console.log(`Got vehicle data - RC: ${rcNumber}, Chassis: ${chassisNumber}, Engine: ${engineNumber}`);
+      
+      // Check if we have all required parameters for challan call
+      if (rcNumber && chassisNumber && engineNumber) {
+        try {
+          // Make the second API call to get challan details with required parameters
+          const challanResponse = await fetch(surepassChallanUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${surepassApiKey}`
+            },
+            body: JSON.stringify({
+              rc_number: rcNumber,
+              chassis_number: chassisNumber,
+              engine_number: engineNumber
+            })
+          });
+          
+          challanData = await challanResponse.json();
+          console.log("Challan API response received:", challanData.success ? "Success" : "Failed");
+          
+          // Add challan data to the registration data
+          if (surepassData.data) {
+            surepassData.data.challan_details = challanData.data || null;
+          }
+        } catch (challanError) {
+          console.error("Error fetching challan details:", challanError);
+          // Continue even if challan request fails
         }
-      } catch (challanError) {
-        console.error("Error fetching challan details:", challanError);
-        // Continue even if challan request fails
+      } else {
+        console.log("Missing required parameters for challan lookup:", {
+          rcNumber: !!rcNumber,
+          chassisNumber: !!chassisNumber,
+          engineNumber: !!engineNumber
+        });
       }
     } else {
-      console.log("No client_id available from verification response for challan lookup");
+      console.log("No vehicle data available from verification response for challan lookup");
     }
     
     // Generate verification status based on response
@@ -186,7 +201,6 @@ serve(async (req) => {
     if (challanData && challanData.data) {
       // Process challan data to keep only essential information
       const processedChallanData = {
-        client_id: challanData.data.client_id,
         challan_details: {
           challans: challanData.data.challan_details?.challans?.map(challan => ({
             challan_number: challan.challan_number,
@@ -220,7 +234,6 @@ serve(async (req) => {
     };
     
     // The complete transformed data array should have the verification log as the first item
-    // No need to add challan_details separately as it's already in the verification log
     const completeTransformedData = [verificationLogEntry];
     
     // If we have a vehicleId, update the vehicle record with verification data
