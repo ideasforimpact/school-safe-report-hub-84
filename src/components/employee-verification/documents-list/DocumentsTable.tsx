@@ -9,12 +9,20 @@ interface DocumentsTableProps {
   documents: VerificationDocument[];
   onVerify?: (documentId: string, status: 'verified' | 'failed', method?: 'api' | 'manual', notes?: string) => void;
   onDelete?: (documentId: string) => void;
+  onViewDocument?: (documentImage: string) => void;
+  onDownloadDocument?: (documentImage: string) => void;
+  onVerifyDocument?: (documentId: string) => void;
+  onDocumentAction?: () => void;
 }
 
 const DocumentsTable: React.FC<DocumentsTableProps> = ({
   documents,
   onVerify,
-  onDelete
+  onDelete,
+  onViewDocument,
+  onDownloadDocument,
+  onVerifyDocument,
+  onDocumentAction
 }) => {
   const handleVerify = (document: VerificationDocument) => {
     return (status: 'verified' | 'failed', method?: 'api' | 'manual', notes?: string) => {
