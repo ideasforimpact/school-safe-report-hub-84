@@ -318,177 +318,32 @@ export const useAuthHandlers = ({
 
       console.log("useAuthHandlers - Processing authentication for user:", supabaseUser.email);
       
-      // Extract auth provider from user metadata or email
-      let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
-      
-      // If email is present but no provider is specified, assume direct sign-in
-      if (supabaseUser.email && !provider) {
-        provider = 'email';
-      }
-      
-      // Construct a name from available information
-      const name = supabaseUser.user_metadata?.full_name || 
-                  supabaseUser.user_metadata?.name || 
-                  supabaseUser.email?.split('@')[0] || 
-                  'User';
-      
-      // Try to split the name into first and last name
-      const nameParts = name.split(' ');
-      const firstName = nameParts[0] || 'User';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
-      // Now fetch the employee details from the employees table
-      // to check if they exist and get their role if they do
-      let employeeData = null;
-      let employeeRole: UserRole = 'user'; // Default role
-      let clientId = null;
-      let department = null;
-      let employeeType = null;
-      let isSuperAdmin = false;
-      let client: Client | null = null;
-      let clientType: ClientType | null = null;
-      
-      // First, try to find the employee by user ID if it exists
-      if (supabaseUser.id) {
-        const { data, error } = await supabase
-          .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
-          .eq('user_id', supabaseUser.id)
-          .single();
-          
-        if (!error && data) {
-          // Fetch client and client type information
-          const clientInfo = await fetchClientInfo(data.client_id);
-          client = clientInfo.client;
-          clientType = clientInfo.clientType;
-
-          employeeData = {
-            id: data.id,
-            clientId: data.client_id,
-            firstName: data.first_name,
-            lastName: data.last_name,
-            email: data.email,
-            isSuperAdmin: data.is_super_admin,
-            department: data.department,
-            employeeType: data.employee_type,
-            client: client,
-            clientType: clientType
-          };
-          
-          // Store values for use later
-          department = data.department;
-          employeeType = data.employee_type;
-          isSuperAdmin = data.is_super_admin;
-          
-          // Convert employee_type string to UserRole
-          switch (data.employee_type) {
-            case 'admin':
-              employeeRole = 'admin';
-              break;
-            case 'viewer':
-              employeeRole = 'viewer';
-              break;
-            case 'reporter':
-              employeeRole = 'reporter';
-              break;
-            case 'saas_owner':
-              employeeRole = 'saas_owner';
-              break;
-            default:
-              employeeRole = 'user';
-          }
-          
-          clientId = data.client_id;
-          
-          // Check if employee is inactive
-          if (data.status !== true) {
-            console.log("User account is inactive");
-            setAuthError("Your account has been deactivated. Please contact support.");
-            toast.error("Your account has been deactivated. Please contact support.");
-            await supabase.auth.signOut();
-            setIsProcessingAuth(false);
-            return;
-          }
-          
-          console.log("useAuthHandlers - Found employee record by user_id:", employeeData);
-        } else if (error) {
-          console.log("useAuthHandlers - Error finding employee by user_id:", error);
-        }
-      }
-      
-      // If not found by ID, try by email
-      if (!employeeData && supabaseUser.email) {
-        const { data, error } = await supabase
-          .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
-          .eq('email', supabaseUser.email.toLowerCase())
-          .single();
-          
-        if (!error && data) {
-          // Fetch client and client type information
-          const clientInfo = await fetchClientInfo(data.client_id);
-          client = clientInfo.client;
-          clientType = clientInfo.clientType;
-
-          employeeData = {
-            id: data.id,
-            clientId: data.client_id,
-            firstName: data.first_name,
-            lastName: data.last_name,
-            email: data.email,
-            isSuperAdmin: data.is_super_admin,
-            department: data.department,
-            employeeType: data.employee_type,
-            client: client,
-            clientType: clientType
-          };
-          
-          // Store values for use later
-          department = data.department;
-          employeeType = data.employee_type;
-          isSuperAdmin = data.is_super_admin;
-          
-          // Convert employee_type string to UserRole
-          switch (data.employee_type) {
-            case 'admin':
-              employeeRole = 'admin';
-              break;
-            case 'viewer':
-              employeeRole = 'viewer';
-              break;
-            case 'reporter':
-              employeeRole = 'reporter';
-              break;
-            case 'saas_owner':
-              employeeRole = 'saas_owner';
-              break;
-            default:
-              employeeRole = 'user';
-          }
-          
-          clientId = data.client_id;
-          
-          // Check if employee is inactive
-          if (data.status !== true) {
-            console.log("User account is inactive");
-            setAuthError("Your account has been deactivated. Please contact support.");
-            toast.error("Your account has been deactivated. Please contact support.");
-            await supabase.auth.signOut();
-            setIsProcessingAuth(false);
-            return;
-          }
-          
-          console.log("useAuthHandlers - Found employee record by email:", employeeData);
-        } else if (error) {
-          console.log("useAuthHandlers - Error finding employee by email:", error);
-        }
+      // STEP 1: Check if employee exists FIRST before proceeding
+      if (!supabaseUser.email) {
+        console.log("useAuthHandlers - No email provided in authentication");
+        setAuthError("No email found in authentication data. Please contact support.");
+        toast.error("No email found in authentication data. Please contact support.");
+        
+        // Sign out the user from Supabase since we can't proceed
+        await supabase.auth.signOut();
+        setIsProcessingAuth(false);
+        return;
       }
 
-      // If no employee record was found, alert the user and sign out
-      if (!employeeData) {
-        console.log("useAuthHandlers - No employee record found for authenticated user");
-        setAuthError("No employee record found for your account. Please contact an administrator.");
-        toast.error("No employee record found for your account. Please contact an administrator.");
+      // STEP 2: Look for employee record by email (this is the gatekeeper)
+      console.log("useAuthHandlers - Checking for employee record with email:", supabaseUser.email);
+      
+      const { data: employeeRecord, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
+        .eq('email', supabaseUser.email.toLowerCase())
+        .single();
+
+      // STEP 3: If no employee record found, reject authentication immediately
+      if (employeeError || !employeeRecord) {
+        console.log("useAuthHandlers - No employee record found for email:", supabaseUser.email);
+        setAuthError("Your email is not registered as an employee. Please contact your administrator to register your account first.");
+        toast.error("Your email is not registered as an employee. Please contact your administrator.");
         
         // Sign out the user from Supabase
         await supabase.auth.signOut();
@@ -512,13 +367,23 @@ export const useAuthHandlers = ({
         
         return;
       }
-      
-      // Check domain validation if we have an email and clientId
-      if (supabaseUser.email && clientId) {
-        const isDomainValid = await validateDomain(supabaseUser.email, clientId);
+
+      // STEP 4: Check if employee is active
+      if (employeeRecord.status !== true) {
+        console.log("useAuthHandlers - Employee account is inactive");
+        setAuthError("Your employee account has been deactivated. Please contact support.");
+        toast.error("Your employee account has been deactivated. Please contact support.");
+        await supabase.auth.signOut();
+        setIsProcessingAuth(false);
+        return;
+      }
+
+      // STEP 5: Validate domain for this client (unless super admin)
+      if (!employeeRecord.is_super_admin) {
+        const isDomainValid = await validateDomain(supabaseUser.email, employeeRecord.client_id);
         
-        if (!isDomainValid && !employeeData.isSuperAdmin) {
-          console.log("User email domain not authorized for this client");
+        if (!isDomainValid) {
+          console.log("useAuthHandlers - User email domain not authorized for this client");
           setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
           toast.error("Your email domain is not authorized for this application.");
           
@@ -545,6 +410,84 @@ export const useAuthHandlers = ({
           return;
         }
       }
+
+      // STEP 6: If employee exists and is valid, link user_id if not already linked
+      if (!employeeRecord.user_id) {
+        console.log("useAuthHandlers - Linking user_id to employee record for first-time login");
+        
+        const { error: updateError } = await supabase
+          .from('employees')
+          .update({ user_id: supabaseUser.id })
+          .eq('id', employeeRecord.id);
+
+        if (updateError) {
+          console.error("useAuthHandlers - Error linking user_id to employee:", updateError);
+          setAuthError("Failed to link your account. Please contact support.");
+          toast.error("Failed to link your account. Please contact support.");
+          await supabase.auth.signOut();
+          setIsProcessingAuth(false);
+          return;
+        }
+
+        // Update the employee record with the new user_id for further processing
+        employeeRecord.user_id = supabaseUser.id;
+        console.log("useAuthHandlers - Successfully linked user_id to employee record");
+      }
+
+      // STEP 7: Create user and employee data objects
+      // Extract auth provider from user metadata or email
+      let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
+      
+      // If email is present but no provider is specified, assume direct sign-in
+      if (supabaseUser.email && !provider) {
+        provider = 'email';
+      }
+      
+      // Construct a name from available information
+      const name = supabaseUser.user_metadata?.full_name || 
+                  supabaseUser.user_metadata?.name || 
+                  supabaseUser.email?.split('@')[0] || 
+                  'User';
+      
+      // Try to split the name into first and last name
+      const nameParts = name.split(' ');
+      const firstName = nameParts[0] || 'User';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      // Convert employee_type string to UserRole
+      let employeeRole: UserRole = 'user'; // Default role
+      switch (employeeRecord.employee_type) {
+        case 'admin':
+          employeeRole = 'admin';
+          break;
+        case 'viewer':
+          employeeRole = 'viewer';
+          break;
+        case 'reporter':
+          employeeRole = 'reporter';
+          break;
+        case 'saas_owner':
+          employeeRole = 'saas_owner';
+          break;
+        default:
+          employeeRole = 'user';
+      }
+
+      // Fetch client and client type information
+      const clientInfo = await fetchClientInfo(employeeRecord.client_id);
+
+      const employeeData: EmployeeData = {
+        id: employeeRecord.id,
+        clientId: employeeRecord.client_id,
+        firstName: employeeRecord.first_name,
+        lastName: employeeRecord.last_name,
+        email: employeeRecord.email,
+        isSuperAdmin: employeeRecord.is_super_admin,
+        department: employeeRecord.department,
+        employeeType: employeeRecord.employee_type,
+        client: clientInfo.client,
+        clientType: clientInfo.clientType
+      };
       
       // Create a new user object with client information
       const newUser: User = {
@@ -555,67 +498,66 @@ export const useAuthHandlers = ({
         role: employeeRole,
         isActive: true,
         provider,
-        clientId,
+        clientId: employeeRecord.client_id,
         createdAt: supabaseUser.created_at || new Date().toISOString(),
-        department,
-        employeeType,
-        isSuperAdmin,
-        client,
-        clientType
+        department: employeeRecord.department,
+        employeeType: employeeRecord.employee_type,
+        isSuperAdmin: employeeRecord.is_super_admin,
+        client: clientInfo.client,
+        clientType: clientInfo.clientType
       };
 
-      // Save the user to localStorage and context
+      // STEP 8: Save the user to localStorage and context
       setUser(newUser);
       saveUserToStorage(newUser);
       
       // Save employee data to localStorage, context, and Redux
-      if (employeeData) {
-        console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
+      console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
+      
+      // Store employee data in Redux - MANUAL DISPATCH FORMAT
+      if (dispatch) {
+        console.log("useAuthHandlers - Manually dispatching SET_EMPLOYEE_DATA to Redux during auth:", employeeData);
+        dispatch({
+          type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
+          payload: employeeData
+        });
         
-        // Store employee data in Redux - MANUAL DISPATCH FORMAT
-        if (dispatch) {
-          console.log("useAuthHandlers - Manually dispatching SET_EMPLOYEE_DATA to Redux during auth:", employeeData);
-          dispatch({
-            type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
-            payload: employeeData
-          });
-          
-          // Also set clientId in Redux
-          if (employeeData.clientId) {
-            console.log("useAuthHandlers - Dispatching setClientId to Redux during auth:", employeeData.clientId);
-            dispatch(setClientId(employeeData.clientId));
-          }
-        } else {
-          console.error("useAuthHandlers - dispatch is not available, cannot set employee data in Redux");
+        // Also set clientId in Redux
+        if (employeeData.clientId) {
+          console.log("useAuthHandlers - Dispatching setClientId to Redux during auth:", employeeData.clientId);
+          dispatch(setClientId(employeeData.clientId));
         }
-        
-        // FETCH MODULES HERE if employee is a super admin or has a client ID
-        if (dispatch && employeeData.id && employeeData.clientId) {
-          console.log("useAuthHandlers - Fetching modules during authentication process");
-          dispatch(setLoading(true));
-          
-          // Get configured modules based on super admin status
-          const modules = await fetchConfiguredModules(
-            employeeData.id, 
-            employeeData.clientId,
-            !!employeeData.isSuperAdmin
-          );
-          
-          // Store modules in Redux
-          console.log("useAuthHandlers - Storing modules in Redux during auth:", modules.length);
-          dispatch(setConfiguredModules(modules));
-          dispatch(setLoading(false));
-        }
-        
-        // Also update context and localStorage for backward compatibility
-        setEmployeeData(employeeData);
-        saveEmployeeDataToStorage(employeeData);
+      } else {
+        console.error("useAuthHandlers - dispatch is not available, cannot set employee data in Redux");
       }
+      
+      // FETCH MODULES HERE if employee is a super admin or has a client ID
+      if (dispatch && employeeData.id && employeeData.clientId) {
+        console.log("useAuthHandlers - Fetching modules during authentication process");
+        dispatch(setLoading(true));
+        
+        // Get configured modules based on super admin status
+        const modules = await fetchConfiguredModules(
+          employeeData.id, 
+          employeeData.clientId,
+          !!employeeData.isSuperAdmin
+        );
+        
+        // Store modules in Redux
+        console.log("useAuthHandlers - Storing modules in Redux during auth:", modules.length);
+        dispatch(setConfiguredModules(modules));
+        dispatch(setLoading(false));
+      }
+      
+      // Also update context and localStorage for backward compatibility
+      setEmployeeData(employeeData);
+      saveEmployeeDataToStorage(employeeData);
 
       // Clear any auth errors
       setAuthError(null);
       
-      //toast.success(`Welcome, ${firstName}!`);
+      console.log("useAuthHandlers - Authentication successful for employee:", employeeData.email);
+      toast.success(`Welcome back, ${employeeData.firstName}!`);
       
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;
