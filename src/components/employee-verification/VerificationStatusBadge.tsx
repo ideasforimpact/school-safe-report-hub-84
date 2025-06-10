@@ -141,15 +141,21 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         console.log('VerificationStatusBadge - Opening Driving License dialog');
         setDrivingLicenseDialogOpen(true);
       }
-    } else if (docType === 'bank_account') {
+    } else if (docType === 'bank account' || docType?.includes('bank')) {
+      // Find any bank-related verification log
       const bankStatementLog = documentLogs?.find(log =>
-        (log.action?.includes('bank') || log.action?.includes('statement')) &&
+        (log.action?.includes('bank') || 
+         log.action?.includes('statement') ||
+         log.action === 'bank_statement_upload_api' ||
+         log.action === 'bank_verification') &&
         log.response
       );
       
       if (bankStatementLog) {
         console.log('VerificationStatusBadge - Opening Bank Statement dialog');
         setBankStatementDialogOpen(true);
+      } else {
+        console.log('VerificationStatusBadge - No bank statement log found');
       }
     }
   };
@@ -173,7 +179,10 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   );
   
   const bankStatementVerificationLog = documentLogs?.find(log =>
-    (log.action?.includes('bank') || log.action?.includes('statement')) &&
+    (log.action?.includes('bank') || 
+     log.action?.includes('statement') ||
+     log.action === 'bank_statement_upload_api' ||
+     log.action === 'bank_verification') &&
     log.response
   );
   
@@ -226,7 +235,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       )}
       
       {/* Display Bank Statement Details Dialog */}
-      {bankStatementDialogOpen && bankStatementVerificationLog && documentType === 'bank_account' && (
+      {bankStatementDialogOpen && bankStatementVerificationLog && (
         <BankStatementDetailsDialog
           open={bankStatementDialogOpen}
           onOpenChange={setBankStatementDialogOpen}

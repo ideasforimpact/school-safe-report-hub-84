@@ -34,7 +34,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
           documentStatusName={document.documentStatusName}
           documentLogs={document.employee_docs_log}
           documentId={document.id}
-          documentType={document.documentTypeId} // Pass document type ID
+          documentType={document.documentTypeName?.toLowerCase()} // Pass document type name instead of ID
         />
       </div>
       
