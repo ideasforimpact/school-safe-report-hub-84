@@ -81,6 +81,9 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   // Determine if badge should be clickable
   const isClickable = isGovernanceVerified && hasVerificationLogs;
   
+  // Define docType at component level so it can be accessed everywhere
+  const docType = documentType?.toLowerCase();
+  
   console.log('VerificationStatusBadge - Document Type:', documentType);
   console.log('VerificationStatusBadge - Status:', status);
   console.log('VerificationStatusBadge - Document Status Name:', documentStatusName);
@@ -103,7 +106,6 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       return;
     }
 
-    const docType = documentType?.toLowerCase();
     console.log('VerificationStatusBadge - Document type (lowercase):', docType);
     
     if (docType?.includes('aadhar')) {
