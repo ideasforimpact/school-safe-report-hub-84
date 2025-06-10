@@ -176,15 +176,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 
   const handleBadgeClick = (doc: VerificationDocument) => {
     console.log('DocumentsTable - Badge clicked for document:', doc);
-    console.log('DocumentsTable - Document type:', doc.documentTypeName);
-    console.log('DocumentsTable - Verification status:', doc.verificationStatus);
+    console.log('DocumentsTable - cron_log data:', doc.cronLog);
     
     const statusName = getDocumentStatusName(doc);
-    console.log('DocumentsTable - Document status name:', statusName);
-    
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    console.log('DocumentsTable - Has logs:', hasLogs);
-    console.log('DocumentsTable - Number of logs:', doc.employee_docs_log?.length || 0);
     
     // Check if this is a governance verified document with logs
     if (doc.verificationStatus !== 'verified' || statusName !== 'governance' || !hasLogs) {
@@ -339,15 +334,18 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
                   </TableCell>
                   <TableCell>
-                    <VerificationStatusBadge 
-                      status={doc.verificationStatus} 
-                      documentStatusName={statusName}
-                      isGovernance={isGovernanceVerified}
-                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
-                      documentLogs={doc.employee_docs_log}
-                      documentId={doc.id}
-                      documentType={docType}
-                    />
+                    <div className="flex items-center gap-2">
+                      <VerificationStatusBadge 
+                        status={doc.verificationStatus} 
+                        documentStatusName={statusName}
+                        isGovernance={isGovernanceVerified}
+                        onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                        documentLogs={doc.employee_docs_log}
+                        documentId={doc.id}
+                        documentType={docType}
+                      />
+                      <BankStatementDownloadIcon document={doc} />
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center space-x-2 justify-end">
@@ -369,7 +367,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Download</span>
                       </Button>
-                      <BankStatementDownloadIcon document={doc} />
                       {doc.verificationStatus === 'pending' && (
                         <Button 
                           variant="outline" 

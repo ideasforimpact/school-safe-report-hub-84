@@ -29,7 +29,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
 
   return (
     <Card className={`h-full transition-all duration-200 ${getCardStyle()}`}>
-      <div className="absolute top-3 right-3 z-10">
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
         <VerificationStatusBadge 
           status={document.verificationStatus} 
           documentStatusName={document.documentStatusName}
@@ -37,6 +37,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
           documentId={document.id}
           documentType={document.documentTypeName?.toLowerCase()}
         />
+        <BankStatementDownloadIcon document={document} />
       </div>
       
       <CardContent className="p-4 pt-6">
@@ -60,7 +61,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
           ) : (
             <DocumentStatusButton document={document} />
           )}
-          <BankStatementDownloadIcon document={document} />
         </div>
         
         <DocumentDeleteButton documentId={document.id} />
