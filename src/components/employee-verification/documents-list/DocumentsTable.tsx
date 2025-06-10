@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Eye, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import AadharDetailsDialog from './AadharDetailsDialog';
 import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
+import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -44,9 +46,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [panDialogOpen, setPanDialogOpen] = React.useState(false);
   const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
+  const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
   const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
   const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
   const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
+  const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
   
   // Log documents for debugging
@@ -268,6 +272,38 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         });
       }
     }
+    else if (docType === 'bank account' || docType?.includes('bank')) {
+      console.log('DocumentsTable - This is a bank account document');
+      console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
+      
+      // Find the bank verification log specifically
+      const bankVerificationLog = doc.employee_docs_log?.find(log => 
+        log.action === 'bank_verification' && 
+        log.response?.success === true && 
+        log.response?.status_code === 200
+      );
+      
+      console.log('DocumentsTable - Looking for bank verification log');
+      console.log('DocumentsTable - Available logs:', doc.employee_docs_log?.map(log => log.action));
+      console.log('DocumentsTable - Found bank verification log:', bankVerificationLog);
+      
+      if (bankVerificationLog) {
+        console.log('DocumentsTable - Opening Bank Statement dialog with bank_verification log');
+        setSelectedBankStatementDetails(bankVerificationLog.response);
+        setBankStatementDialogOpen(true);
+        
+        toast({
+          title: "Viewing Bank Account verification details",
+          description: "Showing verification information for this document."
+        });
+      } else {
+        console.log('DocumentsTable - No bank_verification log found');
+        toast({
+          title: "No verification details",
+          description: "No bank verification details available for this document."
+        });
+      }
+    }
   };
   
   return (
@@ -382,6 +418,13 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         open={drivingLicenseDialogOpen}
         onOpenChange={setDrivingLicenseDialogOpen}
         licenseDetails={selectedDrivingLicenseDetails}
+        documentId={selectedDocumentId}
+      />
+      
+      <BankStatementDetailsDialog
+        open={bankStatementDialogOpen}
+        onOpenChange={setBankStatementDialogOpen}
+        statementDetails={selectedBankStatementDetails}
         documentId={selectedDocumentId}
       />
     </>
