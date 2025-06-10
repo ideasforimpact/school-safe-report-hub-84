@@ -143,21 +143,105 @@ serve(async (req) => {
             );
           }
           
-          // Bank verification was successful, update employee_docs_log with client_id and response
-          const logEntry = {
+          // Bank verification was successful, now proceed with file upload
+          console.log("Bank verification successful, proceeding with file upload");
+          
+          // Step 1: Download the file from Supabase storage
+          console.log("Downloading file from 'employee-documents' storage bucket:", document.document_url);
+          
+          const { data: fileData, error: downloadError } = await supabase.storage
+            .from('employee-documents')
+            .download(document.document_url);
+          
+          if (downloadError || !fileData) {
+            console.error("Error downloading file from storage:", downloadError);
+            throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
+          }
+          
+          console.log("File downloaded successfully, size:", fileData.size);
+          
+          // Step 2: Convert the blob to ArrayBuffer
+          const arrayBuffer = await fileData.arrayBuffer();
+          console.log("Converted file to ArrayBuffer, size:", arrayBuffer.byteLength);
+          
+          // Step 3: Create FormData and append file with buffer data
+          const formData = new FormData();
+          
+          // Extract filename from the path or use default
+          const fileName = document.document_url.split('/').pop() || "bank_statement.pdf";
+          
+          // Create a File object with the array buffer data
+          const file = new File([arrayBuffer], fileName, { type: "application/pdf" });
+          formData.append('file', file);
+          
+          console.log("FormData created with file:", fileName);
+          
+          // Step 4: Call Surepass API with the FormData
+          console.log("Calling bank statement upload API...");
+          const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: formData
+          });
+          
+          const uploadResult = await uploadResponse.json();
+          console.log("Bank Statement Upload API Response:", uploadResult);
+          
+          // Create log entry for the upload response with client_id
+          const uploadLogEntry = {
+            timestamp: new Date().toISOString(),
+            action: "bank_statement_upload_api",
+            response: uploadResult,
+            client_id: uploadResult.data?.client_id
+          };
+          
+          // Create verification log entry
+          const verificationLogEntry = {
             timestamp: new Date().toISOString(),
             action: "bank_verification",
             response: verificationResult,
             client_id: verificationResult.data?.client_id
           };
           
-          // Update document with verification log, activate cron, and set dates
+          // Combine both logs
+          const combinedLogs = [verificationLogEntry, uploadLogEntry];
+          
+          // Check if upload was successful
+          if (!uploadResult.success || uploadResult.status_code !== 200) {
+            // Update document with failed status and logs
+            const { error: updateError } = await supabase
+              .from('employee_documents')
+              .update({
+                verification_status: 'failed',
+                document_status_id: statusMap[DOC_STATUS.REJECTED],
+                employee_docs_log: combinedLogs,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+              
+            if (updateError) {
+              console.error("Error updating document with failed status:", updateError);
+            }
+            
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                message: uploadResult.message || "Bank statement upload failed",
+                status_code: uploadResult.status_code
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          // Upload successful - update document with in-progress status, logs, and activate cron
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update({
               verification_status: 'pending',
               document_status_id: statusMap[DOC_STATUS.PENDING],
-              employee_docs_log: [logEntry],
+              employee_docs_log: combinedLogs,
               cron_activate: true,
               cron_activated_date: new Date().toISOString(),
               cron_updated_date: new Date().toISOString(),
@@ -166,17 +250,17 @@ serve(async (req) => {
             .eq('id', documentId);
             
           if (updateError) {
-            console.error("Error updating document with verification log:", updateError);
+            console.error("Error updating document with upload success:", updateError);
           }
           
-          console.log("Bank verification successful, cron job activated");
+          console.log("Bank statement upload successful, cron job activated");
           
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Bank verification successful, cron job activated",
+              message: "Bank statement uploaded successfully, processing initiated",
               status_code: 200,
-              client_id: verificationResult.data?.client_id
+              client_id: uploadResult.data?.client_id
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
