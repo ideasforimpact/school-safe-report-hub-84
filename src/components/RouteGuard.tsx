@@ -29,23 +29,23 @@ const RouteGuard = ({
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // Notice: This component is set to be more permissive now.
-  // It will still show warnings but won't block access
+  // If authentication is required and user is not logged in, redirect to login
+  if (requireAuth && !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-  useEffect(() => {
-    if (!user) {
-      // Only show if not already showing an auth error and if we're not on the login page
-      if (!authError && location.pathname !== '/login') {
-        toast.info("You're browsing as a guest. Some features may be limited.");
-      }
-    } else if (requireAdmin && !isAdmin) {
-      toast.warning("This page normally requires admin privileges");
-    } else if (requireSaasOwner && !isSuperAdmin) {
-      toast.warning("This page normally requires owner privileges");
-    }
-  }, [user, isAdmin, isSuperAdmin, requireAdmin, requireSaasOwner, authError, location.pathname]);
+  // If admin access is required and user is not admin, redirect to dashboard
+  if (requireAdmin && user && !isAdmin) {
+    toast.error("Admin privileges required to access this page");
+    return <Navigate to="/dashboard" replace />;
+  }
 
-  // Always allow access, but show different UI based on user status
+  // If owner access is required and user is not super admin, redirect to dashboard
+  if (requireSaasOwner && user && !isSuperAdmin) {
+    toast.error("Owner privileges required to access this page");
+    return <Navigate to="/dashboard" replace />;
+  }
+
   // Return children if provided, otherwise return Outlet for nested routes
   return children ? <>{children}</> : <Outlet />;
 };
