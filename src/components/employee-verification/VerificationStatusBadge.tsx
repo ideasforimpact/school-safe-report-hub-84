@@ -87,6 +87,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   console.log('VerificationStatusBadge - Is Governance Verified:', isGovernanceVerified);
   console.log('VerificationStatusBadge - Has Verification Logs:', hasVerificationLogs);
   console.log('VerificationStatusBadge - Is Clickable:', isClickable);
+  console.log('VerificationStatusBadge - Document Logs:', documentLogs);
   
   const handleClick = () => {
     console.log('VerificationStatusBadge - Badge clicked!');
@@ -148,6 +149,10 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         log.response?.success === true && 
         log.response?.status_code === 200
       );
+      
+      console.log('VerificationStatusBadge - Looking for bank verification log');
+      console.log('VerificationStatusBadge - Available logs:', documentLogs?.map(log => log.action));
+      console.log('VerificationStatusBadge - Found bank verification log:', bankVerificationLog);
       
       if (bankVerificationLog) {
         console.log('VerificationStatusBadge - Opening Bank Statement dialog with bank_verification log');
@@ -232,7 +237,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       )}
       
       {/* Display Bank Statement Details Dialog */}
-      {bankStatementDialogOpen && bankVerificationLog && (
+      {bankStatementDialogOpen && bankVerificationLog && (docType === 'bank account' || docType?.includes('bank')) && (
         <BankStatementDetailsDialog
           open={bankStatementDialogOpen}
           onOpenChange={setBankStatementDialogOpen}
