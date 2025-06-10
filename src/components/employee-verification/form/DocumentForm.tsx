@@ -10,7 +10,6 @@ import DocumentFileUploader from './DocumentFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { toast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import BankStatementUploader from './BankStatementUploader';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -185,16 +184,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   };
 
   const handleFileChange = (base64: string, file?: File) => {
-    // Validate file type for bank account (PDF only)
-    if (isBankAccount && file && !file.type.includes('pdf')) {
-      toast({
-        title: 'Invalid file format',
-        description: 'Bank statements must be in PDF format only',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     form.setValue('documentImage', base64);
     setSelectedFileName(file?.name || '');
     onFileUploaded(base64);
@@ -304,26 +293,18 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                {isBankAccount ? 'Bank Statement (PDF only)' : 'Document Image'} <span className="text-red-500">*</span>
+                {isBankAccount ? 'Document Image' : 'Document Image'} <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <div className="space-y-2">
                   {!selectedFileName ? (
-                    isBankAccount ? (
-                      <BankStatementUploader 
-                        files={files}
-                        setFiles={() => {}} // Handled by parent
-                        onFileUploaded={(base64, file) => handleFileChange(base64, file)}
-                      />
-                    ) : (
-                      <DocumentFileUploader 
-                        files={files}
-                        setFiles={() => {}} // Handled by parent
-                        onFileUploaded={(base64, file) => handleFileChange(base64, file)}
-                        acceptedFileTypes={isBankAccount ? 'application/pdf' : 'image/*,.pdf'}
-                        documentType={isBankAccount ? 'bank_account' : undefined}
-                      />
-                    )
+                    <DocumentFileUploader 
+                      files={files}
+                      setFiles={() => {}} // Handled by parent
+                      onFileUploaded={(base64, file) => handleFileChange(base64, file)}
+                      acceptedFileTypes={isBankAccount ? 'image/*,.pdf' : 'image/*,.pdf'}
+                      documentType={isBankAccount ? 'bank_account' : undefined}
+                    />
                   ) : (
                     <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
                       <span className="text-sm truncate">{selectedFileName}</span>
