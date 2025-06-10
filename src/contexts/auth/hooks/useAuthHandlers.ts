@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { User, UserRole, EmployeeData, Client, ClientType } from '../types';
+import { User, UserRole, EmployeeData, Client, ClientType, DepartmentType, EmployeeType } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -500,8 +500,8 @@ export const useAuthHandlers = ({
         provider,
         clientId: employeeRecord.client_id,
         createdAt: supabaseUser.created_at || new Date().toISOString(),
-        department: employeeRecord.department,
-        employeeType: employeeRecord.employee_type,
+        department: employeeRecord.department as DepartmentType,
+        employeeType: employeeRecord.employee_type as EmployeeType,
         isSuperAdmin: employeeRecord.is_super_admin,
         client: clientInfo.client,
         clientType: clientInfo.clientType
