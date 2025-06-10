@@ -41,13 +41,59 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
       console.log('BankStatementDetailsDialog - Dialog unmounting');
     };
   }, [open]);
+
+  // Helper function to format field names
+  const formatFieldName = (key: string) => {
+    return key
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Helper function to format field values
+  const formatFieldValue = (value: any) => {
+    if (value === null || value === undefined) {
+      return '—';
+    }
+    
+    if (typeof value === 'boolean') {
+      return value ? 'Yes' : 'No';
+    }
+    
+    if (typeof value === 'object') {
+      // For nested objects, format them nicely
+      if (typeof value === 'object' && value !== null) {
+        try {
+          // Try to extract meaningful information from nested objects
+          const jsonString = JSON.stringify(value, null, 2);
+          // If it's a small object, format it inline
+          if (jsonString.length < 100) {
+            return Object.entries(value)
+              .map(([k, v]) => `${formatFieldName(k)}: ${v}`)
+              .join(', ');
+          }
+          // For larger objects, format as multiline
+          return (
+            <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto whitespace-pre-wrap">
+              {jsonString}
+            </pre>
+          );
+        } catch {
+          return String(value);
+        }
+      }
+    }
+    
+    return String(value);
+  };
   
   return (
     <Dialog open={open} onOpenChange={(newOpenState) => {
       console.log('BankStatementDetailsDialog - Dialog open state changing to:', newOpenState);
       onOpenChange(newOpenState);
     }}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <span>Bank Statement Details</span>
@@ -62,24 +108,26 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="h-[400px] rounded-md border">
+        <ScrollArea className="h-[500px] rounded-md border">
           {(isSuccessful && Object.keys(data).length > 0) ? (
             <div className="p-4">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-1/3">Field</TableHead>
-                    <TableHead>Value</TableHead>
+                    <TableHead className="w-1/3 font-semibold">Field</TableHead>
+                    <TableHead className="font-semibold">Value</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {Object.entries(data).map(([key, value]) => (
                     <TableRow key={key}>
-                      <TableCell className="font-medium">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableCell>
-                      <TableCell>
-                        {typeof value === 'object' 
-                          ? JSON.stringify(value) 
-                          : String(value)}
+                      <TableCell className="font-medium align-top">
+                        {formatFieldName(key)}
+                      </TableCell>
+                      <TableCell className="align-top">
+                        <div className="max-w-md">
+                          {formatFieldValue(value)}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
