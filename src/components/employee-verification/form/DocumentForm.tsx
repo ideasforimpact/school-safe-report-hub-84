@@ -97,13 +97,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     // Set defaults based on document type
     if (isBankAccountDoc) {
       form.setValue('documentNumber', 'bank-statement');
+      // Set a placeholder value for documentImage since it's not needed for bank accounts
+      form.setValue('documentImage', 'not-required-for-bank-account');
     } else {
       form.setValue('documentNumber', '');
+      form.setValue('documentImage', '');
     }
 
     // Reset file selection when document type changes
-    form.setValue('documentImage', '');
-    setSelectedFileName('');
+    if (!isBankAccountDoc) {
+      setSelectedFileName('');
+    }
   }, [selectedTypeId, documentTypes, form]);
 
   // Check form validity on value changes
@@ -115,18 +119,18 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       const accountNumber = value.accountNumber || '';
       const ifscCode = value.ifscCode || '';
       
-      let valid = documentImage !== '';
-      
-      if (!isBankAccount) {
-        valid = valid && documentNumber !== '';
-      }
-      
-      if (showDateOfBirth) {
-        valid = valid && dateOfBirth !== '';
-      }
+      let valid = true;
       
       if (isBankAccount) {
-        valid = valid && accountNumber !== '' && ifscCode !== '';
+        // For bank accounts, only require account number and IFSC code
+        valid = accountNumber !== '' && ifscCode !== '';
+      } else {
+        // For other documents, require document image and document number
+        valid = documentImage !== '' && documentNumber !== '';
+        
+        if (showDateOfBirth) {
+          valid = valid && dateOfBirth !== '';
+        }
       }
       
       setIsFormValid(valid);
@@ -136,7 +140,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   }, [form, form.watch, isBankAccount, showDateOfBirth]);
 
   const handleSubmit = (data: any) => {
-    if (!data.documentImage) {
+    // For bank accounts, skip document image validation
+    if (!isBankAccount && !data.documentImage) {
       toast({
         title: 'Error',
         description: 'Please upload a document image',
@@ -160,7 +165,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       employeeId: employeeId,
       documentTypeId: selectedTypeId,
       documentNumber: data.documentNumber,
-      documentImage: data.documentImage,
+      documentImage: isBankAccount ? 'not-required-for-bank-account' : data.documentImage,
       // Include date of birth for driving license
       ...(showDateOfBirth && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
       // Include bank account details if applicable
@@ -177,7 +182,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       dateOfBirth: uploadData.dateOfBirth ? 'Provided' : 'Not provided',
       accountNumber: uploadData.accountNumber ? 'Provided' : 'Not provided',
       ifscCode: uploadData.ifscCode ? 'Provided' : 'Not provided',
-      imageSize: uploadData.documentImage ? uploadData.documentImage.length : 0,
+      imageSize: isBankAccount ? 'Not required for bank account' : (uploadData.documentImage ? uploadData.documentImage.length : 0),
     });
 
     onSubmit(uploadData);
@@ -287,53 +292,55 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
         
-        <FormField
-          control={form.control}
-          name="documentImage"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                {isBankAccount ? 'Document Image' : 'Document Image'} <span className="text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <div className="space-y-2">
-                  {!selectedFileName ? (
-                    <DocumentFileUploader 
-                      files={files}
-                      setFiles={() => {}} // Handled by parent
-                      onFileUploaded={(base64, file) => handleFileChange(base64, file)}
-                      acceptedFileTypes={isBankAccount ? 'image/*,.pdf' : 'image/*,.pdf'}
-                      documentType={isBankAccount ? 'bank_account' : undefined}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                      <span className="text-sm truncate">{selectedFileName}</span>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => {
-                          form.setValue('documentImage', '');
-                          setSelectedFileName('');
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Only show document image upload for non-bank accounts */}
+        {!isBankAccount && (
+          <FormField
+            control={form.control}
+            name="documentImage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Document Image <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <div className="space-y-2">
+                    {!selectedFileName ? (
+                      <DocumentFileUploader 
+                        files={files}
+                        setFiles={() => {}} // Handled by parent
+                        onFileUploaded={(base64, file) => handleFileChange(base64, file)}
+                        acceptedFileTypes='image/*,.pdf'
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <span className="text-sm truncate">{selectedFileName}</span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            form.setValue('documentImage', '');
+                            setSelectedFileName('');
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting || !isFormValid}>
-            {isSubmitting ? 'Uploading...' : 'Upload Document'}
+            {isSubmitting ? 'Uploading...' : (isBankAccount ? 'Submit Details' : 'Upload Document')}
           </Button>
         </div>
       </form>

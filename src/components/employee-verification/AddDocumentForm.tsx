@@ -71,7 +71,8 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       return;
     }
 
-    if (!values.documentImage) {
+    // For non-bank accounts, validate document image
+    if (!isBankAccount(selectedTypeId) && !values.documentImage) {
       toast({
         title: 'Error',
         description: 'Please upload a document image',
@@ -121,7 +122,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
-        documentImage: values.documentImage,
+        documentImage: isBankAccount(selectedTypeId) ? 'not-required-for-bank-account' : values.documentImage,
         documentStatusId: pendingStatus?.id,
         verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
         params: params // Add params object with DOB for driving license or account details for bank
@@ -135,14 +136,14 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         verificationStatus: documentData.verificationStatus,
         params: params ? JSON.stringify(params) : 'Not provided',
         // Don't log entire base64 string
-        documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
+        documentImageSize: isBankAccount(selectedTypeId) ? 'Not required for bank account' : (documentData.documentImage ? documentData.documentImage.length : 0),
       });
 
       await addDocument(documentData);
       
       toast({
         title: 'Document Added',
-        description: `The ${getDocumentTypeLabel(selectedTypeId)} has been uploaded successfully and is pending verification.`,
+        description: `The ${getDocumentTypeLabel(selectedTypeId)} has been ${isBankAccount(selectedTypeId) ? 'submitted' : 'uploaded'} successfully and is pending verification.`,
       });
       
       // Reset form
@@ -196,7 +197,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
           {isSubmitting && (
             <div className="flex justify-center items-center py-4">
               <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              <p className="ml-2 text-gray-600">Uploading document...</p>
+              <p className="ml-2 text-gray-600">{isBankAccount(selectedTypeId || '') ? 'Submitting details...' : 'Uploading document...'}</p>
             </div>
           )}
         </div>
