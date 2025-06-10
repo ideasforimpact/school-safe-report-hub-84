@@ -19,12 +19,15 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
   onDelete,
   showActions = true
 }) => {
+  const handleVerify = (method: 'api' | 'manual') => {
+    onVerify?.('verified', method);
+  };
+
   if (!showActions) {
     return (
       <div className="flex items-center justify-end space-x-2">
         <DocumentImagePreview 
-          imageUrl={document.documentImage} 
-          documentType={document.documentTypeName}
+          documentImage={document.documentImage}
         />
       </div>
     );
@@ -33,8 +36,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
   return (
     <div className="flex items-center justify-end space-x-2">
       <DocumentImagePreview 
-        imageUrl={document.documentImage} 
-        documentType={document.documentTypeName}
+        documentImage={document.documentImage}
       />
       
       <BankStatementDownloadButton
@@ -46,12 +48,14 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       />
       
       <DocumentVerifyDropdown 
-        document={document}
-        onVerify={onVerify}
+        onVerify={handleVerify}
+        documentTypeName={document.documentTypeName}
+        isDisabled={document.verificationStatus !== 'pending'}
       />
       
       <DocumentDeleteButton 
-        onDelete={onDelete}
+        documentId={document.id}
+        onDocumentDeleted={onDelete}
       />
     </div>
   );
