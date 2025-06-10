@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -197,12 +196,11 @@ serve(async (req) => {
             client_id: uploadResult.data?.client_id
           };
           
-          // Create verification log entry
+          // Create verification log entry (without client_id)
           const verificationLogEntry = {
             timestamp: new Date().toISOString(),
             action: "bank_verification",
-            response: verificationResult,
-            client_id: verificationResult.data?.client_id
+            response: verificationResult
           };
           
           // Combine both logs
