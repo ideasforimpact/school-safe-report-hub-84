@@ -238,8 +238,8 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         />
       )}
       
-      {/* Display Bank Statement Details Dialog */}
-      {bankStatementDialogOpen && bankVerificationLog && (docType === 'bank account' || docType?.includes('bank')) && (
+      {/* Display Bank Statement Details Dialog - Fixed condition */}
+      {bankStatementDialogOpen && bankVerificationLog && (
         <BankStatementDetailsDialog
           open={bankStatementDialogOpen}
           onOpenChange={setBankStatementDialogOpen}
