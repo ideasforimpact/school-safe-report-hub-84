@@ -22,7 +22,6 @@ import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
-import BankStatementDownloadIcon from '../document-card/BankStatementDownloadIcon';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -334,18 +333,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <VerificationStatusBadge 
-                        status={doc.verificationStatus} 
-                        documentStatusName={statusName}
-                        isGovernance={isGovernanceVerified}
-                        onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
-                        documentLogs={doc.employee_docs_log}
-                        documentId={doc.id}
-                        documentType={docType}
-                      />
-                      <BankStatementDownloadIcon document={doc} />
-                    </div>
+                    <VerificationStatusBadge 
+                      status={doc.verificationStatus} 
+                      documentStatusName={statusName}
+                      isGovernance={isGovernanceVerified}
+                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                      documentLogs={doc.employee_docs_log}
+                      documentId={doc.id}
+                      documentType={docType}
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center space-x-2 justify-end">
