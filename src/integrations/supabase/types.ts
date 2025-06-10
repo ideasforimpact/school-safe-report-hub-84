@@ -1518,6 +1518,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_cron_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          jobid: number
+          schedule: string
+          command: string
+          nodename: string
+          nodeport: number
+          database: string
+          username: string
+          active: boolean
+          jobname: string
+        }[]
+      }
+      check_recent_cron_runs: {
+        Args: { limit_count?: number }
+        Returns: {
+          jobid: number
+          runid: number
+          job_pid: number
+          database: string
+          username: string
+          command: string
+          status: string
+          return_message: string
+          start_time: string
+          end_time: string
+        }[]
+      }
       decrypt_document_number: {
         Args: { encrypted_doc_number: string }
         Returns: string
