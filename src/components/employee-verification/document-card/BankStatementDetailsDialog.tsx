@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Building, Banknote, CreditCard } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface BankStatementDetailsDialogProps {
   open: boolean;
@@ -87,6 +88,19 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
     
     return String(value);
   };
+
+  // Extract IFSC details from the data if available
+  const extractIfscDetails = () => {
+    const ifscDetails = data?.ifsc_details || {};
+    return ifscDetails;
+  };
+
+  // Skip the first 5 fields and get the rest of the data
+  const getRemainingFields = () => {
+    const entries = Object.entries(data);
+    // Skip the first 5 fields
+    return entries.slice(5);
+  };
   
   return (
     <Dialog open={open} onOpenChange={(newOpenState) => {
@@ -110,29 +124,91 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
         
         <ScrollArea className="h-[500px] rounded-md border">
           {(isSuccessful && Object.keys(data).length > 0) ? (
-            <div className="p-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-1/3 font-semibold">Field</TableHead>
-                    <TableHead className="font-semibold">Value</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(data).map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell className="font-medium align-top">
-                        {formatFieldName(key)}
-                      </TableCell>
-                      <TableCell className="align-top">
-                        <div className="max-w-md">
-                          {formatFieldValue(value)}
+            <div className="p-4 space-y-6">
+              {/* IFSC Details Card */}
+              {data.ifsc_details && (
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardHeader className="bg-gray-50 pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Building className="h-5 w-5 text-blue-600" />
+                      IFSC Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    {Object.entries(data.ifsc_details).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <div className="text-sm font-medium text-gray-500">
+                          {formatFieldName(key)}
                         </div>
-                      </TableCell>
+                        <div className="font-medium">
+                          {value ? String(value) : '—'}
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Bank Account Info Card */}
+              {(data.account_number || data.account_holder_name) && (
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardHeader className="bg-gray-50 pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Banknote className="h-5 w-5 text-green-600" />
+                      Account Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    {data.account_number && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-500">Account Number</div>
+                        <div className="font-medium">{data.account_number}</div>
+                      </div>
+                    )}
+                    {data.account_holder_name && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-500">Account Holder Name</div>
+                        <div className="font-medium">{data.account_holder_name}</div>
+                      </div>
+                    )}
+                    {data.bank_name && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-500">Bank Name</div>
+                        <div className="font-medium">{data.bank_name}</div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Remaining Fields Table */}
+              <div className="mt-6">
+                <h3 className="text-base font-semibold mb-3">Additional Details</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-1/3 font-semibold">Field</TableHead>
+                      <TableHead className="font-semibold">Value</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {getRemainingFields()
+                      .filter(([key]) => !['ifsc_details', 'account_number', 'account_holder_name', 'bank_name'].includes(key))
+                      .map(([key, value]) => (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium align-top">
+                            {formatFieldName(key)}
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <div className="max-w-md">
+                              {formatFieldValue(value)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           ) : (
             <div className="p-4 text-center">
