@@ -142,20 +142,18 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         setDrivingLicenseDialogOpen(true);
       }
     } else if (docType === 'bank account' || docType?.includes('bank')) {
-      // Find any bank-related verification log
-      const bankStatementLog = documentLogs?.find(log =>
-        (log.action?.includes('bank') || 
-         log.action?.includes('statement') ||
-         log.action === 'bank_statement_upload_api' ||
-         log.action === 'bank_verification') &&
-        log.response
+      // Find the bank verification log specifically
+      const bankVerificationLog = documentLogs?.find(log => 
+        log.action === 'bank_verification' && 
+        log.response?.success === true && 
+        log.response?.status_code === 200
       );
       
-      if (bankStatementLog) {
-        console.log('VerificationStatusBadge - Opening Bank Statement dialog');
+      if (bankVerificationLog) {
+        console.log('VerificationStatusBadge - Opening Bank Statement dialog with bank_verification log');
         setBankStatementDialogOpen(true);
       } else {
-        console.log('VerificationStatusBadge - No bank statement log found');
+        console.log('VerificationStatusBadge - No bank_verification log found');
       }
     }
   };
@@ -178,12 +176,11 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
     log.response
   );
   
-  const bankStatementVerificationLog = documentLogs?.find(log =>
-    (log.action?.includes('bank') || 
-     log.action?.includes('statement') ||
-     log.action === 'bank_statement_upload_api' ||
-     log.action === 'bank_verification') &&
-    log.response
+  // Find the specific bank_verification log for the dialog
+  const bankVerificationLog = documentLogs?.find(log =>
+    log.action === 'bank_verification' &&
+    log.response?.success === true &&
+    log.response?.status_code === 200
   );
   
   return (
@@ -235,11 +232,11 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       )}
       
       {/* Display Bank Statement Details Dialog */}
-      {bankStatementDialogOpen && bankStatementVerificationLog && (
+      {bankStatementDialogOpen && bankVerificationLog && (
         <BankStatementDetailsDialog
           open={bankStatementDialogOpen}
           onOpenChange={setBankStatementDialogOpen}
-          statementDetails={bankStatementVerificationLog.response}
+          statementDetails={bankVerificationLog.response}
           documentId={documentId}
         />
       )}
