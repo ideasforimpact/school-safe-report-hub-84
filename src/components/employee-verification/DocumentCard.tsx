@@ -8,7 +8,6 @@ import DocumentImagePreview from './document-card/DocumentImagePreview';
 import DocumentActions from './document-card/DocumentActions';
 import DocumentStatusButton from './document-card/DocumentStatusButton';
 import DocumentDeleteButton from './document-card/DocumentDeleteButton';
-import BankStatementDownloadIcon from './document-card/BankStatementDownloadIcon';
 
 interface DocumentCardProps {
   document: VerificationDocument;
@@ -37,7 +36,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
           documentId={document.id}
           documentType={document.documentTypeName?.toLowerCase()}
         />
-        <BankStatementDownloadIcon document={document} />
       </div>
       
       <CardContent className="p-4 pt-6">
