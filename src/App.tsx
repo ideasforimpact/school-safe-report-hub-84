@@ -10,6 +10,7 @@ import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 import { EmployeeProvider as EmployeeContextProvider } from './contexts/employee/EmployeeContext';
+import RouteGuard from '@/components/RouteGuard';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -94,13 +95,13 @@ function App() {
               <EmployeeVerificationProvider>
                 <AssessmentProvider>
                   <Routes>
-                    {/* Public routes */}
+                    {/* Public routes - no authentication required */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/home" element={<Home />} />
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/backoffice/login" element={<BackofficeLogin />} />
                     
-                    {/* CAPTCHA Verification routes */}
+                    {/* CAPTCHA Verification routes - public */}
                     <Route path="/captcha-verification" element={<CaptchaVerificationPage />} />
                     <Route path="/captcha-verification/:formId" element={<CaptchaVerificationPage />} />
                     
@@ -115,93 +116,86 @@ function App() {
                     {/* Make Home page the default route */}
                     <Route path="/" element={<Home />} />
                     
-                    {/* Routes that were previously protected - now public */}
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/users" element={<UserManagement />} />
-                    <Route path="/clients" element={<ClientManagement />} />
-                    <Route path="/employees" element={<EmployeeManagement />} />
-                    <Route path="/students" element={<StudentManagement />} />
-                    <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-                    <Route path="/other-configuration" element={<OtherConfiguration />} />
-                    <Route path="/facilities-configuration" element={<FacilityManagement />} />
-                    <Route path="/facility-management" element={<FacilityManagement />} />
-                    <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                    {/* Protected routes - require authentication */}
+                    <Route path="/dashboard" element={<RouteGuard requireAuth={true}><Dashboard /></RouteGuard>} />
+                    <Route path="/users" element={<RouteGuard requireAuth={true}><UserManagement /></RouteGuard>} />
+                    <Route path="/clients" element={<RouteGuard requireAuth={true}><ClientManagement /></RouteGuard>} />
+                    <Route path="/employees" element={<RouteGuard requireAuth={true}><EmployeeManagement /></RouteGuard>} />
+                    <Route path="/students" element={<RouteGuard requireAuth={true}><StudentManagement /></RouteGuard>} />
+                    <Route path="/educational-configuration" element={<RouteGuard requireAuth={true}><EducationalConfiguration /></RouteGuard>} />
+                    <Route path="/other-configuration" element={<RouteGuard requireAuth={true}><OtherConfiguration /></RouteGuard>} />
+                    <Route path="/facilities-configuration" element={<RouteGuard requireAuth={true}><FacilityManagement /></RouteGuard>} />
+                    <Route path="/facility-management" element={<RouteGuard requireAuth={true}><FacilityManagement /></RouteGuard>} />
+                    <Route path="/incident-configuration" element={<RouteGuard requireAuth={true}><IncidentConfiguration /></RouteGuard>} />
                     
-                    {/* New Settings route */}
-                    <Route path="/settings" element={<SettingsPage />} />
+                    {/* Settings route */}
+                    <Route path="/settings" element={<RouteGuard requireAuth={true}><SettingsPage /></RouteGuard>} />
                     
                     {/* Profile route */}
-                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/profile" element={<RouteGuard requireAuth={true}><ProfilePage /></RouteGuard>} />
 
                     {/* Form routes */}
-                    <Route path="/forms" element={<FormsPage />} />
-                    <Route path="/form-preview/:formId" element={<FormPreviewPage />} />
+                    <Route path="/forms" element={<RouteGuard requireAuth={true}><FormsPage /></RouteGuard>} />
+                    <Route path="/form-preview/:formId" element={<RouteGuard requireAuth={true}><FormPreviewPage /></RouteGuard>} />
 
-                    {/* Incident routes - Fixed routing for edit incident */}
-                    <Route path="/incidents" element={<IncidentsList />} />
-                    <Route path="/incidents/:id" element={<IncidentDetail />} />
-                    <Route path="/incident/:id" element={<IncidentDetail />} />
-                    <Route path="/report-incident" element={<ReportIncident />} />
-                    {/* Use dedicated EditIncidentPage for editing incidents */}
-                    <Route path="/incident/:id/edit" element={<EditIncidentPage />} />
-                    <Route path="/edit-incident/:id" element={<EditIncidentPage />} />
-                    <Route path="/insights" element={<Insights />} />
+                    {/* Incident routes */}
+                    <Route path="/incidents" element={<RouteGuard requireAuth={true}><IncidentsList /></RouteGuard>} />
+                    <Route path="/incidents/:id" element={<RouteGuard requireAuth={true}><IncidentDetail /></RouteGuard>} />
+                    <Route path="/incident/:id" element={<RouteGuard requireAuth={true}><IncidentDetail /></RouteGuard>} />
+                    <Route path="/report-incident" element={<RouteGuard requireAuth={true}><ReportIncident /></RouteGuard>} />
+                    <Route path="/incident/:id/edit" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
+                    <Route path="/edit-incident/:id" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
+                    <Route path="/insights" element={<RouteGuard requireAuth={true}><Insights /></RouteGuard>} />
 
                     {/* Assessment routes */}
-                    <Route path="/assessments" element={<AssessmentsPage />} />
-                    <Route path="/assessments/templates" element={<AssessmentsPage />} />
-                    <Route path="/assessments/templates/:templateId" element={<AssessmentsPage />} />
-                    <Route path="/assessments/templates/new" element={<AssessmentsPage />} />
-                    <Route path="/assessments/templates/:templateId/edit" element={<AssessmentsPage />} />
-                    <Route path="/assessments/templates/:templateId/assign" element={<AssessmentsPage />} />
-                    <Route path="/assessments/templates/:templateId/bulk-assign" element={<AssessmentsPage />} />
-                    <Route path="/assessments/assignments" element={<AssessmentsPage />} />
-                    <Route path="/assessments/results" element={<AssessmentsPage />} />
-                    {/* New route for answering assessments with new design */}
-                    <Route path="/assessment/answer/:assessmentId" element={<AssessmentAnswerPage />} />
-                    {/* Keep existing routes for backward compatibility */}
-                    <Route path="/assessments/answer/:assessmentId" element={<AnswerAssessmentPage />} />
-                    <Route path="/assessments/response/:assessmentId" element={<AssessmentResponsePage />} />
-                    <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
+                    <Route path="/assessments" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/templates" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/templates/:templateId" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/templates/new" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/templates/:templateId/edit" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/templates/:templateId/assign" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/templates/:templateId/bulk-assign" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/assignments" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessments/results" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
+                    <Route path="/assessment/answer/:assessmentId" element={<RouteGuard requireAuth={true}><AssessmentAnswerPage /></RouteGuard>} />
+                    <Route path="/assessments/answer/:assessmentId" element={<RouteGuard requireAuth={true}><AnswerAssessmentPage /></RouteGuard>} />
+                    <Route path="/assessments/response/:assessmentId" element={<RouteGuard requireAuth={true}><AssessmentResponsePage /></RouteGuard>} />
+                    <Route path="/assessments/respond/:assignmentId" element={<RouteGuard requireAuth={true}><AssessmentResponsePage /></RouteGuard>} />
 
                     {/* EduSafe routes */}
-                    <Route path="/edusafe" element={<EduSafeResourcesPage />} />
-                    <Route path="/edusafe/upload" element={<UploadResourcePage />} />
-                    <Route path="/edusafe/edit/:resourceId" element={<EditResourcePage />} />
+                    <Route path="/edusafe" element={<RouteGuard requireAuth={true}><EduSafeResourcesPage /></RouteGuard>} />
+                    <Route path="/edusafe/upload" element={<RouteGuard requireAuth={true}><UploadResourcePage /></RouteGuard>} />
+                    <Route path="/edusafe/edit/:resourceId" element={<RouteGuard requireAuth={true}><EditResourcePage /></RouteGuard>} />
 
                     {/* Feedback routes */}
-                    <Route path="/feedback" element={<FeedbackPage />} />
-                    <Route path="/feedback/form/:formId" element={<FormResponsePage />} />
+                    <Route path="/feedback" element={<RouteGuard requireAuth={true}><FeedbackPage /></RouteGuard>} />
+                    <Route path="/feedback/form/:formId" element={<RouteGuard requireAuth={true}><FormResponsePage /></RouteGuard>} />
 
                     {/* Grievances routes */}
-                    <Route path="/grievances" element={<GrievancesPage />} />
-                    <Route path="/grievances/dashboard" element={<GrievancesDashboardPage />} />
-                    <Route path="/grievances/submit" element={<GrievanceSubmitPage />} />
+                    <Route path="/grievances" element={<RouteGuard requireAuth={true}><GrievancesPage /></RouteGuard>} />
+                    <Route path="/grievances/dashboard" element={<RouteGuard requireAuth={true}><GrievancesDashboardPage /></RouteGuard>} />
+                    <Route path="/grievances/submit" element={<RouteGuard requireAuth={true}><GrievanceSubmitPage /></RouteGuard>} />
                     <Route path="/grievances/submit-public" element={<PublicGrievanceForm />} />
                     <Route path="/grievances/thank-you" element={<ThankYouPage />} />
 
                     {/* Transport Safety routes */}
-                    <Route path="/transport-safety" element={<TransportSafetyPage />} />
-                    <Route path="/transport-safety/documents" element={<DocumentsPage />} />
-                    <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
-                    <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
+                    <Route path="/transport-safety" element={<RouteGuard requireAuth={true}><TransportSafetyPage /></RouteGuard>} />
+                    <Route path="/transport-safety/documents" element={<RouteGuard requireAuth={true}><DocumentsPage /></RouteGuard>} />
+                    <Route path="/transport-safety/:vehicleId" element={<RouteGuard requireAuth={true}><VehicleDetailPage /></RouteGuard>} />
+                    <Route path="/transport-safety/:vehicleId/documents" element={<RouteGuard requireAuth={true}><DocumentsPage /></RouteGuard>} />
                     
                     {/* Employee Verification routes */}
-                    <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
-                    <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
-                    <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
-                    <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
+                    <Route path="/employee-verification" element={<RouteGuard requireAuth={true}><EmployeeVerificationPage /></RouteGuard>} />
+                    <Route path="/employee-verification/:employeeId" element={<RouteGuard requireAuth={true}><EmployeeDetailPage /></RouteGuard>} />
+                    <Route path="/employee-verification/:employeeId/upload-document" element={<RouteGuard requireAuth={true}><UploadDocumentPage /></RouteGuard>} />
+                    <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><VerificationDashboardPage /></RouteGuard>} />
 
-                    {/* Backoffice routes - updated modules route to use standard Layout */}
+                    {/* Backoffice routes - these remain unprotected as requested */}
                     <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                     <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
                     <Route path="/backoffice/settings" element={<BackofficeWrapper component={SettingsPage} />} />
                     <Route path="/backoffice/modules" element={<ModulesPage />} />
-                    
-                    {/* Backoffice Profile route */}
                     <Route path="/backoffice/profile" element={<BackofficeWrapper component={ProfilePage} />} />
-                    
-                    {/* Backoffice Assessment routes */}
                     <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/templates" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/templates/:templateId" element={<BackofficeWrapper component={AssessmentsPage} />} />
@@ -211,14 +205,10 @@ function App() {
                     <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                    {/* New backoffice assessment answer route */}
                     <Route path="/backoffice/assessment/answer/:assessmentId" element={<BackofficeWrapper component={AssessmentAnswerPage} />} />
-                    {/* Existing backoffice assessment response routes */}
                     <Route path="/backoffice/assessments/answer/:assessmentId" element={<BackofficeWrapper component={AnswerAssessmentPage} />} />
                     <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
-
-                    {/* Backoffice EduSafe Resources route - Fixed path */}
                     <Route path="/backoffice/edusafe-resources" element={<BackofficeWrapper component={BackofficeEduSafeResourcesPage} />} />
                     
                     {/* 404 route */}
