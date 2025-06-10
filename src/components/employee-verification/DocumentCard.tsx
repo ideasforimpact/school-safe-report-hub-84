@@ -8,6 +8,7 @@ import DocumentImagePreview from './document-card/DocumentImagePreview';
 import DocumentActions from './document-card/DocumentActions';
 import DocumentStatusButton from './document-card/DocumentStatusButton';
 import DocumentDeleteButton from './document-card/DocumentDeleteButton';
+import BankStatementDownloadIcon from './document-card/BankStatementDownloadIcon';
 
 interface DocumentCardProps {
   document: VerificationDocument;
@@ -34,7 +35,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
           documentStatusName={document.documentStatusName}
           documentLogs={document.employee_docs_log}
           documentId={document.id}
-          documentType={document.documentTypeName?.toLowerCase()} // Pass document type name instead of ID
+          documentType={document.documentTypeName?.toLowerCase()}
         />
       </div>
       
@@ -53,11 +54,14 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
       </CardContent>
       
       <CardFooter className="border-t p-4 bg-gray-50 flex justify-between">
-        {document.verificationStatus === 'pending' && showVerifyButton ? (
-          <DocumentActions document={document} showVerifyButton={showVerifyButton} />
-        ) : (
-          <DocumentStatusButton document={document} />
-        )}
+        <div className="flex items-center gap-2">
+          {document.verificationStatus === 'pending' && showVerifyButton ? (
+            <DocumentActions document={document} showVerifyButton={showVerifyButton} />
+          ) : (
+            <DocumentStatusButton document={document} />
+          )}
+          <BankStatementDownloadIcon document={document} />
+        </div>
         
         <DocumentDeleteButton documentId={document.id} />
       </CardFooter>

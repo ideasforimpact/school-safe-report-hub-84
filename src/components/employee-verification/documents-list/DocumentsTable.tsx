@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Eye, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +22,7 @@ import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
+import BankStatementDownloadIcon from '../document-card/BankStatementDownloadIcon';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -369,6 +369,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Download</span>
                       </Button>
+                      <BankStatementDownloadIcon document={doc} />
                       {doc.verificationStatus === 'pending' && (
                         <Button 
                           variant="outline" 
