@@ -7,11 +7,7 @@ import {
   Car, 
   Globe2 as Globe, 
   Building, 
-  Users,
-  BarChart3,
-  Scale,
-  TestTube,
-  Shield
+  Users 
 } from 'lucide-react';
 import { DocumentType } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -21,7 +17,7 @@ interface DocumentTypeSelectorProps {
   onChange: (typeId: string) => void;
 }
 
-// Ordered document types as specified with new tabs after passport
+// Ordered document types as specified
 const defaultDocumentTypes = [
   { id: '1', name: 'aadhar', description: 'Aadhar Card', icon: CreditCard, bgColor: 'bg-blue-50' },
   { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50' },
@@ -29,15 +25,13 @@ const defaultDocumentTypes = [
   { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50' },
   { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50' },
   { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
-  { id: '8', name: 'bank_analysis', description: 'Bank Statement Analysis', icon: BarChart3, bgColor: 'bg-indigo-50' },
-  { id: '9', name: 'court_case', description: 'Court Case Check', icon: Scale, bgColor: 'bg-amber-50' },
-  { id: '10', name: 'drug_test', description: 'Drug Test', icon: TestTube, bgColor: 'bg-emerald-50' },
-  { id: '11', name: 'police_verification', description: 'Police Verification', icon: Shield, bgColor: 'bg-rose-50' },
   { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
 ];
 
 const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange }) => {
   const { documentTypes, isLoading } = useEmployeeVerification();
+  
+  // No API calls here - the parent component handles fetching
   
   // Use fetched document types, or fall back to default if still loading
   const typesToDisplay = documentTypes.length > 0 ? 
@@ -50,11 +44,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
         'driving_license': 4,
         'bank_account': 5,
         'passport': 6,
-        'bank_analysis': 7,
-        'court_case': 8,
-        'drug_test': 9,
-        'police_verification': 10,
-        'other': 11
+        'other': 7
       };
       return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
     }) : 
@@ -69,10 +59,6 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
       case 'driving_license': return Car;
       case 'passport': return Globe;
       case 'voter_id': return Users;
-      case 'bank_analysis': return BarChart3;
-      case 'court_case': return Scale;
-      case 'drug_test': return TestTube;
-      case 'police_verification': return Shield;
       case 'other': default: return Wallet;
     }
   };
@@ -86,10 +72,6 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
       case 'driving_license': return 'bg-purple-50';
       case 'passport': return 'bg-cyan-50';
       case 'voter_id': return 'bg-pink-50';
-      case 'bank_analysis': return 'bg-indigo-50';
-      case 'court_case': return 'bg-amber-50';
-      case 'drug_test': return 'bg-emerald-50';
-      case 'police_verification': return 'bg-rose-50';
       case 'other': default: return 'bg-orange-50';
     }
   };
@@ -101,7 +83,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
         const bgColor = getBgColorForType(type.name);
         const isSelected = selectedTypeId === type.id;
         
-        const displayLabel = type.description && type.description.length <= 12 ? 
+        const displayLabel = type.description && type.description.length <= 8 ? 
           type.description : 
           type.name.replace('_', ' ');
         
@@ -118,7 +100,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
             onClick={() => onChange(type.id)}
           >
             <Icon className={`h-6 w-6 mb-1 ${isSelected ? 'text-primary' : 'text-gray-500'}`} />
-            <span className="text-xs font-medium capitalize text-center">{displayLabel}</span>
+            <span className="text-xs font-medium capitalize">{displayLabel}</span>
           </div>
         );
       })}
