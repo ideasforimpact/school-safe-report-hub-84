@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { FileItem } from '@/types/fileTypes';
-import DocumentVerificationTabs from './form/DocumentVerificationTabs';
+import DocumentForm from './form/DocumentForm';
+import DocumentTypeSelector from './DocumentTypeSelector';
 
 interface AddDocumentFormProps {
   employeeId: string;
@@ -165,21 +167,32 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       <CardContent className="pt-6">
         <div className="flex items-center mb-4">
           <Upload className="h-5 w-5 mr-2 text-primary" />
-          <h3 className="text-lg font-medium">Employee Verification</h3>
+          <h3 className="text-lg font-medium">Upload Document for Verification</h3>
         </div>
         
         <div className="space-y-6 w-full">
-          <DocumentVerificationTabs
-            employeeId={employeeId}
-            selectedTypeId={selectedTypeId}
-            files={files}
-            isSubmitting={isSubmitting}
-            onSelectedTypeChange={setSelectedTypeId}
-            onSubmit={handleSubmit}
-            onCancel={onSuccess || (() => {})}
-            onFileUploaded={handleFileUploaded}
-            onSuccess={onSuccess}
-          />
+          <div>
+            <h4 className="text-sm font-medium mb-3">Select Document Type <span className="text-red-500">*</span></h4>
+            <div className="w-full">
+              <DocumentTypeSelector 
+                selectedTypeId={selectedTypeId} 
+                onChange={setSelectedTypeId} 
+              />
+            </div>
+            {!selectedTypeId && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
+          </div>
+
+          {selectedTypeId && (
+            <DocumentForm
+              employeeId={employeeId}
+              selectedTypeId={selectedTypeId}
+              files={files}
+              isSubmitting={isSubmitting}
+              onSubmit={handleSubmit}
+              onCancel={onSuccess || (() => {})}
+              onFileUploaded={handleFileUploaded}
+            />
+          )}
 
           {isSubmitting && (
             <div className="flex justify-center items-center py-4">

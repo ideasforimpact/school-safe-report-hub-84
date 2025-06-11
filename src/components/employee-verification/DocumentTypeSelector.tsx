@@ -7,10 +7,7 @@ import {
   Car, 
   Globe2 as Globe, 
   Building, 
-  Users,
-  TestTube,
-  Scale,
-  Shield
+  Users 
 } from 'lucide-react';
 import { DocumentType } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -20,7 +17,7 @@ interface DocumentTypeSelectorProps {
   onChange: (typeId: string) => void;
 }
 
-// Ordered document types with new verification types
+// Ordered document types as specified
 const defaultDocumentTypes = [
   { id: '1', name: 'aadhar', description: 'Aadhar Card', icon: CreditCard, bgColor: 'bg-blue-50' },
   { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50' },
@@ -28,15 +25,13 @@ const defaultDocumentTypes = [
   { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50' },
   { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50' },
   { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
-  { id: '8', name: 'bank_analysis', description: 'Bank Analysis', icon: FileText, bgColor: 'bg-blue-50' },
-  { id: '9', name: 'court_case', description: 'Court Case', icon: Scale, bgColor: 'bg-purple-50' },
-  { id: '10', name: 'drug_test', description: 'Drug Test', icon: TestTube, bgColor: 'bg-green-50' },
-  { id: '11', name: 'police_verification', description: 'Police', icon: Shield, bgColor: 'bg-indigo-50' },
   { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
 ];
 
 const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange }) => {
   const { documentTypes, isLoading } = useEmployeeVerification();
+  
+  // No API calls here - the parent component handles fetching
   
   // Use fetched document types, or fall back to default if still loading
   const typesToDisplay = documentTypes.length > 0 ? 
@@ -49,11 +44,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
         'driving_license': 4,
         'bank_account': 5,
         'passport': 6,
-        'bank_analysis': 7,
-        'court_case': 8,
-        'drug_test': 9,
-        'police_verification': 10,
-        'other': 11
+        'other': 7
       };
       return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
     }) : 
@@ -68,10 +59,6 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
       case 'driving_license': return Car;
       case 'passport': return Globe;
       case 'voter_id': return Users;
-      case 'bank_analysis': return FileText;
-      case 'court_case': return Scale;
-      case 'drug_test': return TestTube;
-      case 'police_verification': return Shield;
       case 'other': default: return Wallet;
     }
   };
@@ -85,10 +72,6 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
       case 'driving_license': return 'bg-purple-50';
       case 'passport': return 'bg-cyan-50';
       case 'voter_id': return 'bg-pink-50';
-      case 'bank_analysis': return 'bg-blue-50';
-      case 'court_case': return 'bg-purple-50';
-      case 'drug_test': return 'bg-green-50';
-      case 'police_verification': return 'bg-indigo-50';
       case 'other': default: return 'bg-orange-50';
     }
   };

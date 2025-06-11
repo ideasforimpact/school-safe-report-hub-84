@@ -9,5 +9,4 @@ export const documentFormSchema = z.object({
   ifscCode: z.string().optional(),
 });
 
-export type DocumentFormData = z.infer<typeof documentFormSchema>;
 export type DocumentFormValues = z.infer<typeof documentFormSchema>;
