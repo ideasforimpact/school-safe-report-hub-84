@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -309,13 +310,16 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
       }
     };
     
+    // Generate a unique document number for bank statement analysis
+    const documentNumber = `BSA_${timestamp}`;
+    
     // Insert new document record
     const newDocumentRecord = {
       employee_id: employeeId,
       document_type_id: documentTypeId,
-      document_number: 'bank_statement_analysis',
+      document_number: documentNumber, // Use generated document number instead of type name
       document_url: storageUrl, // Store the full storage URL
-      verification_status: 'pending',
+      verification_status: 'in-progress', // Set to in-progress instead of pending
       document_status_id: inProgressStatus?.id,
       employee_docs_log: [initialLogEntry],
       params: params || { selected: 'bank_statement_analysis' },
@@ -326,6 +330,8 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     console.log("Creating document record with storage URL:", {
       employeeId: newDocumentRecord.employee_id,
       documentTypeId: newDocumentRecord.document_type_id,
+      documentNumber: newDocumentRecord.document_number,
+      verificationStatus: newDocumentRecord.verification_status,
       storageUrl: newDocumentRecord.document_url,
       documentStatusId: newDocumentRecord.document_status_id,
       params: JSON.stringify(newDocumentRecord.params)
