@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData } from '@/store/employeeSelectors';
 import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/fileTypes';
 import DocumentForm from './form/DocumentForm';
@@ -20,7 +21,9 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const { toast } = useToast();
-  const { getClientId } = useEmployeeAccess();
+  const { user } = useAuth();
+  const { state } = useEmployeeStore();
+  const employeeData = getEmployeeData(state);
   const { 
     addDocument, 
     fetchEmployeeDocuments, 
@@ -85,7 +88,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         return;
       }
 
-      const clientId = getClientId();
+      const clientId = employeeData?.clientId || state.clientId;
       if (!clientId) {
         toast({
           title: 'Error',
