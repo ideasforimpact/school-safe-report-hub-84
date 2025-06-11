@@ -1,346 +1,156 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { documentFormSchema } from './documentFormSchema';
-import DocumentFileUploader from './DocumentFileUploader';
-import { FileItem } from '@/types/fileTypes';
-import { toast } from '@/hooks/use-toast';
+import { Form } from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { FileItem } from '@/types/fileTypes';
+import { documentFormSchema, DocumentFormData } from './documentFormSchema';
+import DocumentFileUploader from './DocumentFileUploader';
+import BankStatementUploader from './BankStatementUploader';
+import BankStatementAnalysisTab from './tabs/BankStatementAnalysisTab';
+import CourtCaseCheckTab from './tabs/CourtCaseCheckTab';
+import DrugTestTab from './tabs/DrugTestTab';
+import PoliceVerificationTab from './tabs/PoliceVerificationTab';
 
 interface DocumentFormProps {
   employeeId: string;
   selectedTypeId: string;
   files: FileItem[];
   isSubmitting: boolean;
-  onSubmit: (data: any) => void;
+  onSubmit: (values: any) => void;
   onCancel: () => void;
   onFileUploaded: (base64: string) => void;
 }
 
-const DocumentForm: React.FC<DocumentFormProps> = ({ 
-  employeeId, 
-  selectedTypeId, 
-  files, 
-  isSubmitting, 
-  onSubmit, 
+const DocumentForm: React.FC<DocumentFormProps> = ({
+  employeeId,
+  selectedTypeId,
+  files,
+  isSubmitting,
+  onSubmit,
   onCancel,
-  onFileUploaded 
+  onFileUploaded
 }) => {
-  const form = useForm({
+  const { documentTypes } = useEmployeeVerification();
+  const { toast } = useToast();
+  
+  const form = useForm<DocumentFormData>({
     resolver: zodResolver(documentFormSchema),
     defaultValues: {
-      employeeId: employeeId || '',
-      documentTypeId: selectedTypeId,
       documentNumber: '',
       documentImage: '',
       dateOfBirth: '',
       accountNumber: '',
-      ifscCode: '',
-    },
+      ifscCode: ''
+    }
   });
 
-  const [selectedFileName, setSelectedFileName] = useState<string>('');
-  const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
-  const [showDateOfBirth, setShowDateOfBirth] = useState(false);
-  const [isBankAccount, setIsBankAccount] = useState(false);
-  const [isFormValid, setIsFormValid] = useState(false);
-  const { documentTypes } = useEmployeeVerification();
+  // Get the selected document type
+  const selectedDocumentType = documentTypes.find(type => type.id === selectedTypeId);
+  const documentTypeName = selectedDocumentType?.name || '';
+
+  // Check if this is one of the new verification types
+  const isNewVerificationType = ['bank_analysis', 'court_case', 'drug_test', 'police_verification'].includes(documentTypeName);
+
+  // Render special components for new verification types
+  if (isNewVerificationType) {
+    switch (documentTypeName) {
+      case 'bank_analysis':
+        return (
+          <BankStatementAnalysisTab 
+            employeeId={employeeId} 
+            onSubmit={() => {
+              toast({
+                title: 'Bank Analysis Submitted',
+                description: 'Bank statement analysis has been submitted successfully.',
+              });
+            }}
+          />
+        );
+      case 'court_case':
+        return (
+          <CourtCaseCheckTab 
+            employeeId={employeeId} 
+            onSubmit={() => {
+              toast({
+                title: 'Court Case Check Initiated',
+                description: 'Court case verification has been initiated.',
+              });
+            }}
+          />
+        );
+      case 'drug_test':
+        return (
+          <DrugTestTab 
+            employeeId={employeeId} 
+            onSubmit={() => {
+              toast({
+                title: 'Drug Test Requested',
+                description: 'Drug test request has been submitted.',
+              });
+            }}
+          />
+        );
+      case 'police_verification':
+        return (
+          <PoliceVerificationTab 
+            employeeId={employeeId} 
+            onSubmit={() => {
+              toast({
+                title: 'Police Verification Requested',
+                description: 'Police verification request has been submitted.',
+              });
+            }}
+          />
+        );
+      default:
+        return null;
+    }
+  }
+
+  const handleFormSubmit = (values: DocumentFormData) => {
+    onSubmit(values);
+  };
+
+  // Check if selected type is driving license
+  const isDrivingLicense = documentTypeName === 'driving_license' || selectedTypeId === '4';
   
-  // Get the document type name
-  const getDocumentTypeName = (): string => {
-    const docType = documentTypes.find(type => type.id === selectedTypeId);
-    return docType?.name || '';
-  };
-
-  // Get document label based on document type
-  const getDocumentNumberLabel = (): string => {
-    const docTypeName = getDocumentTypeName();
-    switch (docTypeName) {
-      case 'aadhar': return 'Enter Aadhar Number';
-      case 'pan': return 'Enter PAN Number';
-      case 'voter_id': return 'Enter Voter ID Number';
-      case 'driving_license': return 'Enter Driving License Number';
-      case 'bank_account': return 'Enter Account Number';
-      case 'passport': return 'Enter Passport Number';
-      default: return 'Enter Document Number';
-    }
-  };
-
-  // Get document placeholder based on document type
-  const getDocumentNumberPlaceholder = (): string => {
-    const docTypeName = getDocumentTypeName();
-    switch (docTypeName) {
-      case 'aadhar': return 'XXXX XXXX XXXX';
-      case 'pan': return 'ABCDE1234F';
-      case 'voter_id': return 'ABC1234567';
-      case 'driving_license': return 'DL1234567890123';
-      case 'bank_account': return '12345678901234';
-      case 'passport': return 'A1234567';
-      default: return 'Enter document number';
-    }
-  };
-  
-  // Detect document type and set appropriate flags
-  useEffect(() => {
-    const docType = documentTypes.find(type => type.id === selectedTypeId);
-    const docTypeName = docType?.name || '';
-    const isDrivingLicense = docTypeName === 'driving_license' || selectedTypeId === '4';
-    const isBankAccountDoc = docTypeName === 'bank_account' || selectedTypeId === '3';
-    
-    setShowDateOfBirth(isDrivingLicense);
-    setIsBankAccount(isBankAccountDoc);
-    
-    // Set defaults based on document type
-    if (isBankAccountDoc) {
-      form.setValue('documentNumber', 'bank-statement');
-      // Set a placeholder value for documentImage since it's not needed for bank accounts
-      form.setValue('documentImage', 'not-required-for-bank-account');
-    } else {
-      form.setValue('documentNumber', '');
-      form.setValue('documentImage', '');
-    }
-
-    // Reset file selection when document type changes
-    if (!isBankAccountDoc) {
-      setSelectedFileName('');
-    }
-  }, [selectedTypeId, documentTypes, form]);
-
-  // Check form validity on value changes
-  useEffect(() => {
-    const subscription = form.watch((value) => {
-      const documentNumber = value.documentNumber || '';
-      const documentImage = value.documentImage || '';
-      const dateOfBirth = value.dateOfBirth || '';
-      const accountNumber = value.accountNumber || '';
-      const ifscCode = value.ifscCode || '';
-      
-      let valid = true;
-      
-      if (isBankAccount) {
-        // For bank accounts, only require account number and IFSC code
-        valid = accountNumber !== '' && ifscCode !== '';
-      } else {
-        // For other documents, require document image and document number
-        valid = documentImage !== '' && documentNumber !== '';
-        
-        if (showDateOfBirth) {
-          valid = valid && dateOfBirth !== '';
-        }
-      }
-      
-      setIsFormValid(valid);
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [form, form.watch, isBankAccount, showDateOfBirth]);
-
-  const handleSubmit = (data: any) => {
-    // For bank accounts, skip document image validation
-    if (!isBankAccount && !data.documentImage) {
-      toast({
-        title: 'Error',
-        description: 'Please upload a document image',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // For bank account, ensure account number and IFSC code are provided
-    if (isBankAccount && (!data.accountNumber || !data.ifscCode)) {
-      toast({
-        title: 'Error',
-        description: 'Please enter account number and IFSC code',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Prepare the upload data - only send essential fields
-    const uploadData = {
-      employeeId: employeeId,
-      documentTypeId: selectedTypeId,
-      documentNumber: data.documentNumber,
-      documentImage: isBankAccount ? 'not-required-for-bank-account' : data.documentImage,
-      // Include date of birth for driving license
-      ...(showDateOfBirth && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
-      // Include bank account details if applicable
-      ...(isBankAccount && { 
-        accountNumber: data.accountNumber,
-        ifscCode: data.ifscCode 
-      }),
-    };
-
-    console.log('Submitting document with data:', {
-      employeeId: uploadData.employeeId,
-      documentTypeId: uploadData.documentTypeId,
-      documentNumber: uploadData.documentNumber ? 'Provided' : 'Not provided',
-      dateOfBirth: uploadData.dateOfBirth ? 'Provided' : 'Not provided',
-      accountNumber: uploadData.accountNumber ? 'Provided' : 'Not provided',
-      ifscCode: uploadData.ifscCode ? 'Provided' : 'Not provided',
-      imageSize: isBankAccount ? 'Not required for bank account' : (uploadData.documentImage ? uploadData.documentImage.length : 0),
-    });
-
-    onSubmit(uploadData);
-  };
-
-  const handleFileChange = (base64: string, file?: File) => {
-    form.setValue('documentImage', base64);
-    setSelectedFileName(file?.name || '');
-    onFileUploaded(base64);
-  };
+  // Check if selected type is bank account
+  const isBankAccount = documentTypeName === 'bank_account' || selectedTypeId === '3';
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <input type="hidden" {...form.register('employeeId')} value={employeeId} />
-        
-        {/* Bank account specific fields */}
-        {isBankAccount && (
-          <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="accountNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Account Number <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Enter your bank account number"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <p className="text-xs text-gray-500 mt-1">Enter your complete bank account number</p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="ifscCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    IFSC Code <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="e.g., SBIN0000123"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <p className="text-xs text-gray-500 mt-1">11-character code that identifies your bank branch</p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        )}
-        
-        {/* Only show document number field if not a bank account */}
-        {!isBankAccount && (
-          <FormField
-            control={form.control}
-            name="documentNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {getDocumentNumberLabel()} <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder={getDocumentNumberPlaceholder()}
-                    {...field} 
-                  />
-                </FormControl>
-                {documentNumberHelp && (
-                  <p className="text-xs text-gray-500 mt-1">{documentNumberHelp}</p>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+        {isBankAccount ? (
+          <BankStatementUploader
+            form={form}
+            onFileUploaded={onFileUploaded}
+          />
+        ) : (
+          <DocumentFileUploader
+            form={form}
+            files={files}
+            isDrivingLicense={isDrivingLicense}
+            onFileUploaded={onFileUploaded}
           />
         )}
-        
-        {/* Date of Birth field for driving license */}
-        {showDateOfBirth && (
-          <FormField
-            control={form.control}
-            name="dateOfBirth"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Date of Birth <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input 
-                    type="date"
-                    placeholder="Enter date of birth"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        
-        {/* Only show document image upload for non-bank accounts */}
-        {!isBankAccount && (
-          <FormField
-            control={form.control}
-            name="documentImage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Document Image <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <div className="space-y-2">
-                    {!selectedFileName ? (
-                      <DocumentFileUploader 
-                        files={files}
-                        setFiles={() => {}} // Handled by parent
-                        onFileUploaded={(base64, file) => handleFileChange(base64, file)}
-                        acceptedFileTypes='image/*,.pdf'
-                      />
-                    ) : (
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                        <span className="text-sm truncate">{selectedFileName}</span>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => {
-                            form.setValue('documentImage', '');
-                            setSelectedFileName('');
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
+
+        <div className="flex justify-end space-x-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || !isFormValid}>
-            {isSubmitting ? 'Uploading...' : (isBankAccount ? 'Submit Details' : 'Upload Document')}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Document'}
           </Button>
         </div>
       </form>
