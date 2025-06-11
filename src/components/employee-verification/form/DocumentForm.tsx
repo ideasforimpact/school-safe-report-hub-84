@@ -187,7 +187,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       return;
     }
 
-    // Prepare the upload data
+    // Prepare the upload data with special handling for bank statement analysis
     const uploadData = {
       employeeId: employeeId,
       documentTypeId: selectedTypeId,
@@ -198,7 +198,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         accountNumber: data.accountNumber,
         ifscCode: data.ifscCode 
       }),
-      ...(isOtherType && { otherType: selectedOtherType }),
+      ...(isOtherType && { 
+        otherType: selectedOtherType,
+        // Special flag for bank statement analysis to use dedicated storage
+        useBankStatementStorage: selectedOtherType === 'bank_statement_analysis'
+      }),
     };
 
     console.log('Submitting document with data:', {
@@ -209,6 +213,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       accountNumber: uploadData.accountNumber ? 'Provided' : 'Not provided',
       ifscCode: uploadData.ifscCode ? 'Provided' : 'Not provided',
       otherType: uploadData.otherType || 'Not provided',
+      useBankStatementStorage: uploadData.useBankStatementStorage || false,
       imageSize: isBankAccount ? 'Not required for bank account' : (uploadData.documentImage ? uploadData.documentImage.length : 0),
     });
 

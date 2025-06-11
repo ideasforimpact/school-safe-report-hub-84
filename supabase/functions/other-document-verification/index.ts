@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -23,12 +22,21 @@ serve(async (req) => {
     const { 
       action,
       documentId, 
-      verification_notes
+      verification_notes,
+      // New fields for bank statement analysis
+      employeeId,
+      clientId,
+      documentImage,
+      params
     } = requestBody;
     
     console.log(`Other Document Verification: Received ${action} request`, { 
       documentId, 
-      hasVerificationNotes: !!verification_notes
+      employeeId,
+      clientId,
+      hasVerificationNotes: !!verification_notes,
+      hasDocumentImage: !!documentImage,
+      params
     });
     
     // Initialize Supabase client
@@ -38,6 +46,15 @@ serve(async (req) => {
     
     // Set up production vs. sandbox environment for the API
     const environment = Deno.env.get("ENVIRONMENT") || "development";
+    
+    // Handle Bank Statement Analysis processing
+    if (action === 'processBankStatementAnalysis') {
+      return await handleBankStatementAnalysis(
+        requestBody, 
+        supabase, 
+        corsHeaders
+      );
+    }
     
     // First, fetch document status IDs for manual and rejected statuses
     const { data: manualStatus, error: manualError } = await supabase
@@ -209,3 +226,156 @@ serve(async (req) => {
     );
   }
 });
+
+// New function to handle Bank Statement Analysis
+async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
+  const { 
+    employeeId,
+    clientId,
+    documentImage,
+    documentTypeId,
+    params 
+  } = requestBody;
+  
+  if (!employeeId || !clientId || !documentImage) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId, documentImage" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    console.log("Processing Bank Statement Analysis for employee:", employeeId, "client:", clientId);
+    
+    // Extract the base64 content and content type
+    const base64Regex = /^data:([^;]+);base64,(.+)$/;
+    const matches = documentImage.match(base64Regex);
+    
+    if (!matches || matches.length !== 3) {
+      throw new Error("Invalid base64 image format");
+    }
+    
+    const contentType = matches[1];
+    const base64Content = matches[2];
+    const binaryData = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+    
+    // Generate file path with client_id/employee_id structure
+    const timestamp = new Date().getTime();
+    const filePath = `${clientId}/${employeeId}/bank_statement_${timestamp}.pdf`;
+    
+    console.log("Uploading bank statement to path:", filePath);
+    
+    // Upload to the dedicated bank-statement-analysis bucket
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('bank-statement-analysis')
+      .upload(filePath, binaryData, {
+        contentType,
+        upsert: true
+      });
+    
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      throw uploadError;
+    }
+    
+    console.log("Bank statement uploaded successfully:", uploadData);
+    
+    // Get the in-progress status ID
+    const { data: inProgressStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    
+    if (statusError) {
+      console.error("Error getting in-progress status ID:", statusError);
+      throw statusError;
+    }
+    
+    console.log("Using in-progress status ID:", inProgressStatus?.id);
+    
+    // Create storage URL for the uploaded file
+    const storageUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/bank-statement-analysis/${filePath}`;
+    
+    // Add initial log entry for bank statement analysis
+    const initialLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: "bank_statement_analysis_uploaded",
+      response: {
+        documentTypeId: documentTypeId,
+        documentStatusId: inProgressStatus?.id,
+        storageUrl: storageUrl
+      }
+    };
+    
+    // Insert new document record
+    const newDocumentRecord = {
+      employee_id: employeeId,
+      document_type_id: documentTypeId,
+      document_number: 'bank_statement_analysis',
+      document_url: storageUrl, // Store the full storage URL
+      verification_status: 'pending',
+      document_status_id: inProgressStatus?.id,
+      employee_docs_log: [initialLogEntry],
+      params: params || { selected: 'bank_statement_analysis' },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log("Creating document record with storage URL:", {
+      employeeId: newDocumentRecord.employee_id,
+      documentTypeId: newDocumentRecord.document_type_id,
+      storageUrl: newDocumentRecord.document_url,
+      documentStatusId: newDocumentRecord.document_status_id,
+      params: JSON.stringify(newDocumentRecord.params)
+    });
+    
+    // Insert the document record
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert(newDocumentRecord)
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    
+    if (insertError) {
+      // If database insertion fails, try to delete the uploaded file
+      await supabase.storage.from('bank-statement-analysis').remove([filePath]);
+      throw insertError;
+    }
+    
+    console.log("Bank statement analysis document created successfully");
+    
+    // Prepare response document object
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: storageUrl,
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: "Bank statement analysis uploaded and processing initiated",
+        document: documentResponse
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error processing bank statement analysis:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Failed to process bank statement analysis" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}

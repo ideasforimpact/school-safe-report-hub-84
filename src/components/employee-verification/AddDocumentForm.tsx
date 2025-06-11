@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
@@ -68,6 +67,68 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         description: 'Please select a document type',
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Special handling for Bank Statement Analysis
+    if (values.otherType === 'bank_statement_analysis') {
+      if (!values.documentImage) {
+        toast({
+          title: 'Error',
+          description: 'Please upload a PDF bank statement',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        // Find the in-progress status ID
+        const inProgressStatus = documentStatuses.find(status => status.name.toLowerCase() === 'in-progress');
+
+        const documentData = {
+          employeeId,
+          documentTypeId: selectedTypeId,
+          documentNumber: 'bank_statement_analysis',
+          documentImage: values.documentImage,
+          documentStatusId: inProgressStatus?.id,
+          verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
+          params: { selected: 'bank_statement_analysis' },
+          useBankStatementStorage: true
+        };
+
+        console.log('Submitting Bank Statement Analysis with data:', {
+          employeeId: documentData.employeeId,
+          documentTypeId: documentData.documentTypeId,
+          documentNumber: documentData.documentNumber,
+          documentStatusId: documentData.documentStatusId,
+          verificationStatus: documentData.verificationStatus,
+          params: JSON.stringify(documentData.params),
+          useBankStatementStorage: documentData.useBankStatementStorage,
+          documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
+        });
+
+        await addDocument(documentData);
+        
+        toast({
+          title: 'Bank Statement Submitted',
+          description: 'The bank statement has been uploaded successfully and is being processed.',
+        });
+        
+        // Reset form
+        setSelectedTypeId(null);
+        setFiles([]);
+        if (onSuccess) onSuccess();
+      } catch (error) {
+        console.error('Error submitting bank statement:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to submit bank statement. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 

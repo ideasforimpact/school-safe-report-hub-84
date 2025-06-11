@@ -44,7 +44,12 @@ serve(async (req) => {
       
       // If documentData is provided, it's an upload operation
       if (documentData) {
-        return await handleDocumentUpload(employeeId, documentData, supabase, corsHeaders);
+        // Check if this is a bank statement analysis upload
+        if (documentData.useBankStatementStorage) {
+          return await handleBankStatementAnalysisUpload(employeeId, documentData, supabase, corsHeaders);
+        } else {
+          return await handleDocumentUpload(employeeId, documentData, supabase, corsHeaders);
+        }
       } 
       // Otherwise it's a list operation
       else if (employeeId) {
@@ -95,6 +100,71 @@ serve(async (req) => {
     );
   }
 });
+
+// New function to handle Bank Statement Analysis uploads
+async function handleBankStatementAnalysisUpload(employeeId, documentData, supabase, corsHeaders) {
+  if (!employeeId || !documentData) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    console.log("Handling Bank Statement Analysis upload for employee:", employeeId);
+    
+    // Get employee details to fetch client_id
+    const { data: employeeData, error: employeeError } = await supabase
+      .from('employees')
+      .select('client_id')
+      .eq('id', employeeId)
+      .single();
+    
+    if (employeeError || !employeeData) {
+      throw new Error("Could not fetch employee details");
+    }
+    
+    const clientId = employeeData.client_id;
+    console.log("Employee client_id:", clientId);
+    
+    // Call the other-document-verification function to handle the upload
+    const otherDocVerificationUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/other-document-verification`;
+    const functionResponse = await fetch(otherDocVerificationUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
+      },
+      body: JSON.stringify({
+        action: 'processBankStatementAnalysis',
+        employeeId: employeeId,
+        clientId: clientId,
+        documentImage: documentData.documentImage,
+        documentTypeId: documentData.documentTypeId,
+        params: documentData.params || { selected: 'bank_statement_analysis' }
+      })
+    });
+    
+    if (!functionResponse.ok) {
+      const errorData = await functionResponse.json().catch(() => ({}));
+      throw new Error(errorData.error || "Failed to process bank statement analysis");
+    }
+    
+    const result = await functionResponse.json();
+    console.log("Bank statement analysis processed successfully");
+    
+    return new Response(
+      JSON.stringify(result),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in bank statement analysis upload:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
 
 // New function to handle getting document types
 async function handleGetDocumentTypes(supabase, corsHeaders) {
@@ -254,7 +324,11 @@ async function handleUpdateVerificationStatus(
       documentTypeId: updateData.document_type_id,
       documentTypeName: updateData.document_type?.name || '',
       documentNumber: updateData.document_number || '',
-      documentImage: updateData.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${updateData.document_url}` : '',
+      documentImage: updateData.document_url ? 
+        (updateData.document_url.startsWith('https://') ? 
+          updateData.document_url : 
+          `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${updateData.document_url}`
+        ) : '',
       verificationStatus: updateData.verification_status,
       documentStatusId: updateData.document_status_id,
       documentStatusName: updateData.document_status?.name || '',
@@ -490,13 +564,26 @@ async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe 
     
     // Process documents to match the expected structure for frontend
     const processedDocuments = data.map(doc => {
+      let documentUrl = doc.document_url;
+      
+      // Handle different storage scenarios
+      if (documentUrl) {
+        if (documentUrl.startsWith('https://')) {
+          // Already a full URL (e.g., bank statement analysis)
+          documentUrl = documentUrl;
+        } else if (!documentUrl.startsWith('data:')) {
+          // Storage path, convert to full URL
+          documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+        }
+      }
+      
       return {
         id: doc.id,
         employeeId: doc.employee_id,
         documentTypeId: doc.document_type_id,
         documentTypeName: doc.document_type?.name || '',
         documentNumber: doc.document_number || '',
-        documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
+        documentImage: documentUrl,
         verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
         documentStatusName: doc.document_status?.name || '',
@@ -550,14 +637,32 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     
     // Delete the file from storage if document_url exists
     if (documentToDelete.document_url) {
-      const { error: storageError } = await supabase
-        .storage
-        .from('employee-documents')
-        .remove([documentToDelete.document_url]);
-      
-      if (storageError) {
-        console.error("Error deleting file from storage:", storageError);
-        // Continue anyway, as we still want to remove the document record
+      // Check if it's a bank statement analysis document
+      if (documentToDelete.document_url.includes('bank-statement-analysis')) {
+        // Extract path from full URL for bank statement analysis
+        const urlParts = documentToDelete.document_url.split('/');
+        const pathIndex = urlParts.findIndex(part => part === 'bank-statement-analysis');
+        if (pathIndex > -1 && pathIndex < urlParts.length - 1) {
+          const filePath = urlParts.slice(pathIndex + 1).join('/');
+          const { error: storageError } = await supabase
+            .storage
+            .from('bank-statement-analysis')
+            .remove([filePath]);
+          
+          if (storageError) {
+            console.error("Error deleting bank statement file from storage:", storageError);
+          }
+        }
+      } else {
+        // Regular employee documents
+        const { error: storageError } = await supabase
+          .storage
+          .from('employee-documents')
+          .remove([documentToDelete.document_url]);
+        
+        if (storageError) {
+          console.error("Error deleting file from storage:", storageError);
+        }
       }
     }
     
@@ -799,13 +904,18 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
     }
     
     // Process the document to match frontend expected structure
+    let documentUrl = updatedDoc.document_url;
+    if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
+      documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+    }
+    
     const processedDocument = {
       id: updatedDoc.id,
       employeeId: updatedDoc.employee_id,
       documentTypeId: updatedDoc.document_type_id,
       documentTypeName: updatedDoc.document_type?.name || '',
       documentNumber: updatedDoc.document_number || '',
-      documentImage: updatedDoc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${updatedDoc.document_url}` : '',
+      documentImage: documentUrl,
       verificationStatus: updatedDoc.verification_status,
       documentStatusId: updatedDoc.document_status_id,
       documentStatusName: updatedDoc.document_status?.name || '',
