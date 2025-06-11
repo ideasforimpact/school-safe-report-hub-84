@@ -1,15 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { toast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { Upload } from 'lucide-react';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -47,6 +48,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
   const [showDateOfBirth, setShowDateOfBirth] = useState(false);
   const [isBankAccount, setIsBankAccount] = useState(false);
+  const [isOtherType, setIsOtherType] = useState(false);
+  const [selectedOtherType, setSelectedOtherType] = useState<string>('');
   const [isFormValid, setIsFormValid] = useState(false);
   const { documentTypes } = useEmployeeVerification();
   
@@ -90,14 +93,20 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     const docTypeName = docType?.name || '';
     const isDrivingLicense = docTypeName === 'driving_license' || selectedTypeId === '4';
     const isBankAccountDoc = docTypeName === 'bank_account' || selectedTypeId === '3';
+    const isOther = docTypeName === 'other' || selectedTypeId === '7';
     
     setShowDateOfBirth(isDrivingLicense);
     setIsBankAccount(isBankAccountDoc);
+    setIsOtherType(isOther);
+    
+    // Reset other type selection when document type changes
+    if (!isOther) {
+      setSelectedOtherType('');
+    }
     
     // Set defaults based on document type
     if (isBankAccountDoc) {
       form.setValue('documentNumber', 'bank-statement');
-      // Set a placeholder value for documentImage since it's not needed for bank accounts
       form.setValue('documentImage', 'not-required-for-bank-account');
     } else {
       form.setValue('documentNumber', '');
@@ -122,12 +131,14 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       let valid = true;
       
       if (isBankAccount) {
-        // For bank accounts, only require account number and IFSC code
         valid = accountNumber !== '' && ifscCode !== '';
+      } else if (isOtherType) {
+        valid = selectedOtherType !== '';
+        if (selectedOtherType === 'bank_statement_analysis') {
+          valid = valid && documentImage !== '';
+        }
       } else {
-        // For other documents, require document image and document number
         valid = documentImage !== '' && documentNumber !== '';
-        
         if (showDateOfBirth) {
           valid = valid && dateOfBirth !== '';
         }
@@ -137,11 +148,19 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     });
     
     return () => subscription.unsubscribe();
-  }, [form, form.watch, isBankAccount, showDateOfBirth]);
+  }, [form, form.watch, isBankAccount, showDateOfBirth, isOtherType, selectedOtherType]);
 
   const handleSubmit = (data: any) => {
-    // For bank accounts, skip document image validation
-    if (!isBankAccount && !data.documentImage) {
+    if (isOtherType && !selectedOtherType) {
+      toast({
+        title: 'Error',
+        description: 'Please select a verification type',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isBankAccount && !isOtherType && !data.documentImage) {
       toast({
         title: 'Error',
         description: 'Please upload a document image',
@@ -150,7 +169,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       return;
     }
 
-    // For bank account, ensure account number and IFSC code are provided
     if (isBankAccount && (!data.accountNumber || !data.ifscCode)) {
       toast({
         title: 'Error',
@@ -160,19 +178,27 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       return;
     }
 
-    // Prepare the upload data - only send essential fields
+    if (isOtherType && selectedOtherType === 'bank_statement_analysis' && !data.documentImage) {
+      toast({
+        title: 'Error',
+        description: 'Please upload a PDF bank statement',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prepare the upload data
     const uploadData = {
       employeeId: employeeId,
       documentTypeId: selectedTypeId,
-      documentNumber: data.documentNumber,
+      documentNumber: isOtherType ? selectedOtherType : data.documentNumber,
       documentImage: isBankAccount ? 'not-required-for-bank-account' : data.documentImage,
-      // Include date of birth for driving license
       ...(showDateOfBirth && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
-      // Include bank account details if applicable
       ...(isBankAccount && { 
         accountNumber: data.accountNumber,
         ifscCode: data.ifscCode 
       }),
+      ...(isOtherType && { otherType: selectedOtherType }),
     };
 
     console.log('Submitting document with data:', {
@@ -182,6 +208,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       dateOfBirth: uploadData.dateOfBirth ? 'Provided' : 'Not provided',
       accountNumber: uploadData.accountNumber ? 'Provided' : 'Not provided',
       ifscCode: uploadData.ifscCode ? 'Provided' : 'Not provided',
+      otherType: uploadData.otherType || 'Not provided',
       imageSize: isBankAccount ? 'Not required for bank account' : (uploadData.documentImage ? uploadData.documentImage.length : 0),
     });
 
@@ -194,10 +221,160 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     onFileUploaded(base64);
   };
 
+  const handleCourtCaseCheck = () => {
+    toast({
+      title: 'Court Case Check',
+      description: 'Initiating court case verification through E Court...',
+    });
+    // Handle court case check logic
+  };
+
+  const handleDrugTest = () => {
+    toast({
+      title: 'Drug Test',
+      description: 'Submitting drug test request...',
+    });
+    // Handle drug test logic
+  };
+
+  const handlePoliceVerification = () => {
+    toast({
+      title: 'Police Verification',
+      description: 'Submitting police verification request...',
+    });
+    // Handle police verification logic
+  };
+
+  const renderOtherTypeContent = () => {
+    switch (selectedOtherType) {
+      case 'bank_statement_analysis':
+        return (
+          <FormField
+            control={form.control}
+            name="documentImage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Bank Statement PDF <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <div className="space-y-2">
+                    {!selectedFileName ? (
+                      <DocumentFileUploader 
+                        files={files}
+                        setFiles={() => {}}
+                        onFileUploaded={(base64, file) => handleFileChange(base64, file)}
+                        acceptedFileTypes='.pdf'
+                      />
+                    ) : (
+                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <span className="text-sm truncate">{selectedFileName}</span>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            form.setValue('documentImage', '');
+                            setSelectedFileName('');
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">Please upload your PDF bank statement for analysis</p>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case 'court_case_check':
+        return (
+          <div className="space-y-4">
+            <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+              <h4 className="text-lg font-medium mb-2">Court Case Verification</h4>
+              <p className="text-gray-600 mb-4">Click the button below to check for court cases through E Court</p>
+              <Button 
+                type="button" 
+                onClick={handleCourtCaseCheck}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Check for Court Cases through E Court
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'drug_test':
+        return (
+          <div className="space-y-4">
+            <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+              <h4 className="text-lg font-medium mb-2">Drug Test Verification</h4>
+              <p className="text-gray-600 mb-4">Submit a request for drug test verification</p>
+              <Button 
+                type="button" 
+                onClick={handleDrugTest}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                Submit for Drug Test
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'police_verification':
+        return (
+          <div className="space-y-4">
+            <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+              <h4 className="text-lg font-medium mb-2">Police Verification</h4>
+              <p className="text-gray-600 mb-4">Submit a request for police verification</p>
+              <Button 
+                type="button" 
+                onClick={handlePoliceVerification}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Submit for Police Verification
+              </Button>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <input type="hidden" {...form.register('employeeId')} value={employeeId} />
+        
+        {/* Other document type dropdown */}
+        {isOtherType && (
+          <div className="space-y-4">
+            <FormLabel>
+              Select Verification Type <span className="text-red-500">*</span>
+            </FormLabel>
+            <Select value={selectedOtherType} onValueChange={setSelectedOtherType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose verification type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bank_statement_analysis">Bank Statement Analysis</SelectItem>
+                <SelectItem value="court_case_check">Court Case Check</SelectItem>
+                <SelectItem value="drug_test">Drug Test</SelectItem>
+                <SelectItem value="police_verification">Police Verification</SelectItem>
+              </SelectContent>
+            </Select>
+            {!selectedOtherType && <p className="text-xs text-red-500">Please select a verification type</p>}
+          </div>
+        )}
+
+        {/* Render content based on selected other type */}
+        {isOtherType && selectedOtherType && renderOtherTypeContent()}
         
         {/* Bank account specific fields */}
         {isBankAccount && (
@@ -244,8 +421,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </div>
         )}
         
-        {/* Only show document number field if not a bank account */}
-        {!isBankAccount && (
+        {/* Only show document number field if not a bank account and not other type */}
+        {!isBankAccount && !isOtherType && (
           <FormField
             control={form.control}
             name="documentNumber"
@@ -292,8 +469,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
         
-        {/* Only show document image upload for non-bank accounts */}
-        {!isBankAccount && (
+        {/* Only show document image upload for non-bank accounts and non-other types */}
+        {!isBankAccount && !isOtherType && (
           <FormField
             control={form.control}
             name="documentImage"
@@ -307,7 +484,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                     {!selectedFileName ? (
                       <DocumentFileUploader 
                         files={files}
-                        setFiles={() => {}} // Handled by parent
+                        setFiles={() => {}}
                         onFileUploaded={(base64, file) => handleFileChange(base64, file)}
                         acceptedFileTypes='image/*,.pdf'
                       />
@@ -340,7 +517,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting || !isFormValid}>
-            {isSubmitting ? 'Uploading...' : (isBankAccount ? 'Submit Details' : 'Upload Document')}
+            {isSubmitting ? 'Processing...' : 
+             isOtherType ? `Submit ${selectedOtherType.replace('_', ' ')}` :
+             isBankAccount ? 'Submit Details' : 'Upload Document'}
           </Button>
         </div>
       </form>
