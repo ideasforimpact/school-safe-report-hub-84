@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +10,7 @@ import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import { FileItem } from '@/types/fileTypes';
 import { toast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { Scale, TestTube, Shield } from 'lucide-react';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -488,3 +488,5 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 };
 
 export default DocumentForm;
+
+}
