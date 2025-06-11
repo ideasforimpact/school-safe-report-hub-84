@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -24,7 +23,7 @@ serve(async (req) => {
       action,
       documentId, 
       verification_notes,
-      // New fields for bank statement analysis
+      // New fields for document processing
       employeeId,
       clientId,
       documentImage,
@@ -51,6 +50,24 @@ serve(async (req) => {
     // Handle Bank Statement Analysis processing
     if (action === 'processBankStatementAnalysis') {
       return await handleBankStatementAnalysis(
+        requestBody, 
+        supabase, 
+        corsHeaders
+      );
+    }
+
+    // Handle Court Case Check processing
+    if (action === 'processCourtCaseCheck') {
+      return await handleCourtCaseCheck(
+        requestBody, 
+        supabase, 
+        corsHeaders
+      );
+    }
+
+    // Handle Police Verification processing
+    if (action === 'processPoliceVerification') {
+      return await handlePoliceVerification(
         requestBody, 
         supabase, 
         corsHeaders
@@ -228,7 +245,7 @@ serve(async (req) => {
   }
 });
 
-// New function to handle Bank Statement Analysis
+// Function to handle Bank Statement Analysis
 async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
   const { 
     employeeId,
@@ -317,9 +334,9 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     const newDocumentRecord = {
       employee_id: employeeId,
       document_type_id: documentTypeId,
-      document_number: documentNumber, // Use generated document number instead of type name
-      document_url: storageUrl, // Store the full storage URL
-      verification_status: 'in-progress', // Set to in-progress instead of pending
+      document_number: documentNumber,
+      document_url: storageUrl,
+      verification_status: 'in-progress',
       document_status_id: inProgressStatus?.id,
       employee_docs_log: [initialLogEntry],
       params: params || { selected: 'bank_statement_analysis' },
@@ -381,6 +398,240 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     console.error("Error processing bank statement analysis:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Failed to process bank statement analysis" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Function to handle Court Case Check
+async function handleCourtCaseCheck(requestBody, supabase, corsHeaders) {
+  const { 
+    employeeId,
+    clientId,
+    documentTypeId,
+    params 
+  } = requestBody;
+  
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    console.log("Processing Court Case Check for employee:", employeeId, "client:", clientId);
+    
+    // Get the in-progress status ID
+    const { data: inProgressStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    
+    if (statusError) {
+      console.error("Error getting in-progress status ID:", statusError);
+      throw statusError;
+    }
+    
+    console.log("Using in-progress status ID:", inProgressStatus?.id);
+    
+    // Add initial log entry for court case check
+    const initialLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: "court_case_check_initiated",
+      response: {
+        documentTypeId: documentTypeId,
+        documentStatusId: inProgressStatus?.id
+      }
+    };
+    
+    // Generate a unique document number for court case check
+    const timestamp = new Date().getTime();
+    const documentNumber = `CCC_${timestamp}`;
+    
+    // Insert new document record
+    const newDocumentRecord = {
+      employee_id: employeeId,
+      document_type_id: documentTypeId,
+      document_number: documentNumber,
+      document_url: 'not-required-for-court-check',
+      verification_status: 'in-progress',
+      document_status_id: inProgressStatus?.id,
+      employee_docs_log: [initialLogEntry],
+      params: params || { selected: 'court_case_check' },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log("Creating court case check document record:", {
+      employeeId: newDocumentRecord.employee_id,
+      documentTypeId: newDocumentRecord.document_type_id,
+      documentNumber: newDocumentRecord.document_number,
+      verificationStatus: newDocumentRecord.verification_status,
+      documentStatusId: newDocumentRecord.document_status_id,
+      params: JSON.stringify(newDocumentRecord.params)
+    });
+    
+    // Insert the document record
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert(newDocumentRecord)
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    
+    if (insertError) {
+      throw insertError;
+    }
+    
+    console.log("Court case check document created successfully");
+    
+    // Prepare response document object
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: 'not-required-for-court-check',
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: "Court case check initiated and processing started",
+        document: documentResponse
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error processing court case check:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Failed to process court case check" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Function to handle Police Verification
+async function handlePoliceVerification(requestBody, supabase, corsHeaders) {
+  const { 
+    employeeId,
+    clientId,
+    documentTypeId,
+    params 
+  } = requestBody;
+  
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    console.log("Processing Police Verification for employee:", employeeId, "client:", clientId);
+    
+    // Get the in-progress status ID
+    const { data: inProgressStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    
+    if (statusError) {
+      console.error("Error getting in-progress status ID:", statusError);
+      throw statusError;
+    }
+    
+    console.log("Using in-progress status ID:", inProgressStatus?.id);
+    
+    // Add initial log entry for police verification
+    const initialLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: "police_verification_initiated",
+      response: {
+        documentTypeId: documentTypeId,
+        documentStatusId: inProgressStatus?.id
+      }
+    };
+    
+    // Generate a unique document number for police verification
+    const timestamp = new Date().getTime();
+    const documentNumber = `PV_${timestamp}`;
+    
+    // Insert new document record
+    const newDocumentRecord = {
+      employee_id: employeeId,
+      document_type_id: documentTypeId,
+      document_number: documentNumber,
+      document_url: 'not-required-for-police-verification',
+      verification_status: 'in-progress',
+      document_status_id: inProgressStatus?.id,
+      employee_docs_log: [initialLogEntry],
+      params: params || { selected: 'police_verification' },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log("Creating police verification document record:", {
+      employeeId: newDocumentRecord.employee_id,
+      documentTypeId: newDocumentRecord.document_type_id,
+      documentNumber: newDocumentRecord.document_number,
+      verificationStatus: newDocumentRecord.verification_status,
+      documentStatusId: newDocumentRecord.document_status_id,
+      params: JSON.stringify(newDocumentRecord.params)
+    });
+    
+    // Insert the document record
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert(newDocumentRecord)
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    
+    if (insertError) {
+      throw insertError;
+    }
+    
+    console.log("Police verification document created successfully");
+    
+    // Prepare response document object
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: 'not-required-for-police-verification',
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: "Police verification initiated and processing started",
+        document: documentResponse
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error processing police verification:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Failed to process police verification" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
