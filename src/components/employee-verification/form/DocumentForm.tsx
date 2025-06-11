@@ -7,11 +7,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
-import BankStatementUploader from './BankStatementUploader';
 import { FileItem } from '@/types/fileTypes';
 import { toast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { Scale, TestTube, Shield, FileBarChart } from 'lucide-react';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -49,10 +47,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
   const [showDateOfBirth, setShowDateOfBirth] = useState(false);
   const [isBankAccount, setIsBankAccount] = useState(false);
-  const [isBankStatementAnalysis, setIsBankStatementAnalysis] = useState(false);
-  const [isCourtCaseCheck, setIsCourtCaseCheck] = useState(false);
-  const [isDrugTest, setIsDrugTest] = useState(false);
-  const [isPoliceVerification, setIsPoliceVerification] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const { documentTypes } = useEmployeeVerification();
   
@@ -96,32 +90,22 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     const docTypeName = docType?.name || '';
     const isDrivingLicense = docTypeName === 'driving_license' || selectedTypeId === '4';
     const isBankAccountDoc = docTypeName === 'bank_account' || selectedTypeId === '3';
-    const isBankStatementAnalysisDoc = docTypeName === 'bank_statement_analysis' || selectedTypeId === '8';
-    const isCourtCaseCheckDoc = docTypeName === 'court_case_check' || selectedTypeId === '9';
-    const isDrugTestDoc = docTypeName === 'drug_test' || selectedTypeId === '10';
-    const isPoliceVerificationDoc = docTypeName === 'police_verification' || selectedTypeId === '11';
     
     setShowDateOfBirth(isDrivingLicense);
     setIsBankAccount(isBankAccountDoc);
-    setIsBankStatementAnalysis(isBankStatementAnalysisDoc);
-    setIsCourtCaseCheck(isCourtCaseCheckDoc);
-    setIsDrugTest(isDrugTestDoc);
-    setIsPoliceVerification(isPoliceVerificationDoc);
     
     // Set defaults based on document type
     if (isBankAccountDoc) {
       form.setValue('documentNumber', 'bank-statement');
+      // Set a placeholder value for documentImage since it's not needed for bank accounts
       form.setValue('documentImage', 'not-required-for-bank-account');
-    } else if (isBankStatementAnalysisDoc || isCourtCaseCheckDoc || isDrugTestDoc || isPoliceVerificationDoc) {
-      form.setValue('documentNumber', 'verification-request');
-      form.setValue('documentImage', 'not-required-for-verification');
     } else {
       form.setValue('documentNumber', '');
       form.setValue('documentImage', '');
     }
 
     // Reset file selection when document type changes
-    if (!isBankAccountDoc && !isBankStatementAnalysisDoc) {
+    if (!isBankAccountDoc) {
       setSelectedFileName('');
     }
   }, [selectedTypeId, documentTypes, form]);
@@ -140,12 +124,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       if (isBankAccount) {
         // For bank accounts, only require account number and IFSC code
         valid = accountNumber !== '' && ifscCode !== '';
-      } else if (isBankStatementAnalysis) {
-        // For bank statement analysis, require PDF file
-        valid = documentImage !== '' && documentImage !== 'not-required-for-verification';
-      } else if (isCourtCaseCheck || isDrugTest || isPoliceVerification) {
-        // For verification types, always valid since they just need button clicks
-        valid = true;
       } else {
         // For other documents, require document image and document number
         valid = documentImage !== '' && documentNumber !== '';
@@ -159,52 +137,14 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     });
     
     return () => subscription.unsubscribe();
-  }, [form, form.watch, isBankAccount, isBankStatementAnalysis, isCourtCaseCheck, isDrugTest, isPoliceVerification, showDateOfBirth]);
+  }, [form, form.watch, isBankAccount, showDateOfBirth]);
 
   const handleSubmit = (data: any) => {
-    // Handle verification button clicks
-    if (isCourtCaseCheck) {
-      console.log('Court Case Check submitted');
-      toast({
-        title: 'Court Case Check Initiated',
-        description: 'Checking for court cases through E-Court system...',
-      });
-      return;
-    }
-
-    if (isDrugTest) {
-      console.log('Drug Test submitted');
-      toast({
-        title: 'Drug Test Submitted',
-        description: 'Drug test verification request has been submitted.',
-      });
-      return;
-    }
-
-    if (isPoliceVerification) {
-      console.log('Police Verification submitted');
-      toast({
-        title: 'Police Verification Submitted',
-        description: 'Police verification request has been submitted.',
-      });
-      return;
-    }
-
     // For bank accounts, skip document image validation
-    if (!isBankAccount && !isBankStatementAnalysis && !data.documentImage) {
+    if (!isBankAccount && !data.documentImage) {
       toast({
         title: 'Error',
         description: 'Please upload a document image',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // For bank statement analysis, validate PDF file
-    if (isBankStatementAnalysis && !data.documentImage) {
-      toast({
-        title: 'Error',
-        description: 'Please upload a PDF bank statement',
         variant: 'destructive',
       });
       return;
@@ -225,7 +165,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       employeeId: employeeId,
       documentTypeId: selectedTypeId,
       documentNumber: data.documentNumber,
-      documentImage: (isBankAccount || isBankStatementAnalysis) ? 'not-required-for-bank-account' : data.documentImage,
+      documentImage: isBankAccount ? 'not-required-for-bank-account' : data.documentImage,
       // Include date of birth for driving license
       ...(showDateOfBirth && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
       // Include bank account details if applicable
@@ -242,7 +182,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       dateOfBirth: uploadData.dateOfBirth ? 'Provided' : 'Not provided',
       accountNumber: uploadData.accountNumber ? 'Provided' : 'Not provided',
       ifscCode: uploadData.ifscCode ? 'Provided' : 'Not provided',
-      imageSize: (isBankAccount || isBankStatementAnalysis) ? 'Not required for this type' : (uploadData.documentImage ? uploadData.documentImage.length : 0),
+      imageSize: isBankAccount ? 'Not required for bank account' : (uploadData.documentImage ? uploadData.documentImage.length : 0),
     });
 
     onSubmit(uploadData);
@@ -254,117 +194,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     onFileUploaded(base64);
   };
 
-  const handleVerificationButtonClick = (verificationType: string) => {
-    console.log(`${verificationType} button clicked`);
-    
-    const messages = {
-      'court_case': 'Court Case Check initiated through E-Court system',
-      'drug_test': 'Drug test verification request submitted',
-      'police_verification': 'Police verification request submitted'
-    };
-
-    toast({
-      title: `${verificationType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Submitted`,
-      description: messages[verificationType as keyof typeof messages],
-    });
-
-    // Call onSubmit to trigger the parent's submission logic
-    onSubmit({
-      employeeId,
-      documentTypeId: selectedTypeId,
-      documentNumber: 'verification-request',
-      documentImage: 'not-required-for-verification',
-      verificationType
-    });
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <input type="hidden" {...form.register('employeeId')} value={employeeId} />
-        
-        {/* Bank Statement Analysis */}
-        {isBankStatementAnalysis && (
-          <div className="space-y-4">
-            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
-              <FileBarChart className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium mb-2">Bank Statement Analysis</h3>
-              <p className="text-gray-600 mb-4 text-center">
-                Drag and drop your PDF bank statement file here
-              </p>
-              <div className="text-sm text-red-500 mb-4">* Required field</div>
-              <BankStatementUploader 
-                files={files}
-                setFiles={() => {}} // Handled by parent
-                onFileUploaded={(base64, file) => handleFileChange(base64, file)}
-                maxFileSize={10}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Court Case Check */}
-        {isCourtCaseCheck && (
-          <div className="flex flex-col items-center justify-center p-8">
-            <Scale className="h-12 w-12 text-blue-600 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Court Case Check</h3>
-            <p className="text-gray-600 mb-6 text-center">
-              Check for any court cases through E-Court system
-            </p>
-            <div className="text-sm text-red-500 mb-4">* Required field</div>
-            <Button 
-              type="button"
-              onClick={() => handleVerificationButtonClick('court_case')}
-              disabled={isSubmitting}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Scale className="h-4 w-4 mr-2" />
-              Check for Court Cases through E Court
-            </Button>
-          </div>
-        )}
-
-        {/* Drug Test */}
-        {isDrugTest && (
-          <div className="flex flex-col items-center justify-center p-8">
-            <TestTube className="h-12 w-12 text-green-600 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Drug Test</h3>
-            <p className="text-gray-600 mb-6 text-center">
-              Submit drug test verification request
-            </p>
-            <div className="text-sm text-red-500 mb-4">* Required field</div>
-            <Button 
-              type="button"
-              onClick={() => handleVerificationButtonClick('drug_test')}
-              disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <TestTube className="h-4 w-4 mr-2" />
-              Submit for Drug Test
-            </Button>
-          </div>
-        )}
-
-        {/* Police Verification */}
-        {isPoliceVerification && (
-          <div className="flex flex-col items-center justify-center p-8">
-            <Shield className="h-12 w-12 text-red-600 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Police Verification</h3>
-            <p className="text-gray-600 mb-6 text-center">
-              Submit for police verification check
-            </p>
-            <div className="text-sm text-red-500 mb-4">* Required field</div>
-            <Button 
-              type="button"
-              onClick={() => handleVerificationButtonClick('police_verification')}
-              disabled={isSubmitting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              Submit for Police Verification
-            </Button>
-          </div>
-        )}
         
         {/* Bank account specific fields */}
         {isBankAccount && (
@@ -411,8 +244,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </div>
         )}
         
-        {/* Only show document number field for regular documents */}
-        {!isBankAccount && !isBankStatementAnalysis && !isCourtCaseCheck && !isDrugTest && !isPoliceVerification && (
+        {/* Only show document number field if not a bank account */}
+        {!isBankAccount && (
           <FormField
             control={form.control}
             name="documentNumber"
@@ -459,8 +292,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
         
-        {/* Only show document image upload for regular documents */}
-        {!isBankAccount && !isBankStatementAnalysis && !isCourtCaseCheck && !isDrugTest && !isPoliceVerification && (
+        {/* Only show document image upload for non-bank accounts */}
+        {!isBankAccount && (
           <FormField
             control={form.control}
             name="documentImage"
@@ -502,17 +335,14 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
         
-        {/* Only show form actions for non-verification button types */}
-        {!isCourtCaseCheck && !isDrugTest && !isPoliceVerification && (
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting || !isFormValid}>
-              {isSubmitting ? 'Uploading...' : (isBankAccount ? 'Submit Details' : (isBankStatementAnalysis ? 'Upload Bank Statement' : 'Upload Document'))}
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting || !isFormValid}>
+            {isSubmitting ? 'Uploading...' : (isBankAccount ? 'Submit Details' : 'Upload Document')}
+          </Button>
+        </div>
       </form>
     </Form>
   );
