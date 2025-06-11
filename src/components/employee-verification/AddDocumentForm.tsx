@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
+import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/fileTypes';
 import DocumentForm from './form/DocumentForm';
 import DocumentTypeSelector from './DocumentTypeSelector';
@@ -17,6 +20,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const { toast } = useToast();
+  const { getClientId } = useEmployeeAccess();
   const { 
     addDocument, 
     fetchEmployeeDocuments, 
@@ -81,44 +85,56 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         return;
       }
 
+      const clientId = getClientId();
+      if (!clientId) {
+        toast({
+          title: 'Error',
+          description: 'Client ID not found. Please ensure you are logged in properly.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       setIsSubmitting(true);
       try {
-        // Find the in-progress status ID
-        const inProgressStatus = documentStatuses.find(status => status.name.toLowerCase() === 'in-progress');
-
-        const documentData = {
-          employeeId,
-          documentTypeId: selectedTypeId,
-          documentNumber: 'bank_statement_analysis',
-          documentImage: values.documentImage,
-          documentStatusId: inProgressStatus?.id,
-          verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
-          params: { selected: 'bank_statement_analysis' },
-          useBankStatementStorage: true
-        };
-
-        console.log('Submitting Bank Statement Analysis with data:', {
-          employeeId: documentData.employeeId,
-          documentTypeId: documentData.documentTypeId,
-          documentNumber: documentData.documentNumber,
-          documentStatusId: documentData.documentStatusId,
-          verificationStatus: documentData.verificationStatus,
-          params: JSON.stringify(documentData.params),
-          useBankStatementStorage: documentData.useBankStatementStorage,
-          documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
+        console.log('Calling other-document-verification edge function for Bank Statement Analysis');
+        
+        const { data, error } = await supabase.functions.invoke('other-document-verification', {
+          body: {
+            action: 'processBankStatementAnalysis',
+            employeeId,
+            clientId,
+            documentImage: values.documentImage,
+            documentTypeId: selectedTypeId,
+            params: { selected: 'bank_statement_analysis' }
+          }
         });
 
-        await addDocument(documentData);
-        
-        toast({
-          title: 'Bank Statement Submitted',
-          description: 'The bank statement has been uploaded successfully and is being processed.',
-        });
-        
-        // Reset form
-        setSelectedTypeId(null);
-        setFiles([]);
-        if (onSuccess) onSuccess();
+        if (error) {
+          console.error('Error calling other-document-verification function:', error);
+          throw error;
+        }
+
+        console.log('Bank Statement Analysis upload response:', data);
+
+        if (data?.success) {
+          toast({
+            title: 'Bank Statement Submitted',
+            description: 'The bank statement has been uploaded successfully and is being processed.',
+          });
+          
+          // Refresh employee documents to show the new document
+          if (employeeId) {
+            fetchEmployeeDocuments(employeeId);
+          }
+          
+          // Reset form
+          setSelectedTypeId(null);
+          setFiles([]);
+          if (onSuccess) onSuccess();
+        } else {
+          throw new Error(data?.error || 'Failed to upload bank statement');
+        }
       } catch (error) {
         console.error('Error submitting bank statement:', error);
         toast({
