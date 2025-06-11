@@ -5,8 +5,7 @@ import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { FileItem } from '@/types/fileTypes';
-import DocumentForm from './form/DocumentForm';
-import DocumentTypeSelector from './DocumentTypeSelector';
+import DocumentTabs from './form/DocumentTabs';
 
 interface AddDocumentFormProps {
   employeeId: string;
@@ -171,28 +170,16 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         </div>
         
         <div className="space-y-6 w-full">
-          <div>
-            <h4 className="text-sm font-medium mb-3">Select Document Type <span className="text-red-500">*</span></h4>
-            <div className="w-full">
-              <DocumentTypeSelector 
-                selectedTypeId={selectedTypeId} 
-                onChange={setSelectedTypeId} 
-              />
-            </div>
-            {!selectedTypeId && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
-          </div>
-
-          {selectedTypeId && (
-            <DocumentForm
-              employeeId={employeeId}
-              selectedTypeId={selectedTypeId}
-              files={files}
-              isSubmitting={isSubmitting}
-              onSubmit={handleSubmit}
-              onCancel={onSuccess || (() => {})}
-              onFileUploaded={handleFileUploaded}
-            />
-          )}
+          <DocumentTabs
+            employeeId={employeeId}
+            selectedTypeId={selectedTypeId}
+            onTypeChange={setSelectedTypeId}
+            files={files}
+            isSubmitting={isSubmitting}
+            onSubmit={handleSubmit}
+            onCancel={onSuccess || (() => {})}
+            onFileUploaded={handleFileUploaded}
+          />
 
           {isSubmitting && (
             <div className="flex justify-center items-center py-4">
