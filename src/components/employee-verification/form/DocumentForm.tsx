@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
 import ImageUpload from '@/components/ImageUpload';
 import BankStatementUploader from './BankStatementUploader';
+import { FileItem } from '@/types/fileTypes';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -44,6 +46,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [ifscCode, setIfscCode] = useState('');
   const [otherType, setOtherType] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bankStatementFiles, setBankStatementFiles] = useState<FileItem[]>([]);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -163,6 +166,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
         {otherType === 'bank_statement_analysis' && (
           <BankStatementUploader
+            files={bankStatementFiles}
+            setFiles={setBankStatementFiles}
             onFileUploaded={(base64) => {
               setDocumentImage(base64);
               onFileUploaded(base64);
@@ -320,9 +325,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </Label>
           <div className="mt-1">
             <ImageUpload
-              onImageUploaded={(base64) => {
-                setDocumentImage(base64);
-                onFileUploaded(base64);
+              onImageChange={(base64) => {
+                if (base64) {
+                  setDocumentImage(base64);
+                  onFileUploaded(base64);
+                }
               }}
               className="w-full"
             />
