@@ -266,10 +266,10 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     
     console.log("Uploading bank statement to path:", filePath);
     
-    // Upload to the dedicated bank-statement-analysis bucket
+    // Upload to the new employee_other_type_statement bucket
     const { data: uploadData, error: uploadError } = await supabase
       .storage
-      .from('bank-statement-analysis')
+      .from('employee_other_type_statement')
       .upload(filePath, binaryData, {
         contentType,
         upsert: true
@@ -296,8 +296,8 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     
     console.log("Using in-progress status ID:", inProgressStatus?.id);
     
-    // Create storage URL for the uploaded file
-    const storageUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/bank-statement-analysis/${filePath}`;
+    // Create storage URL for the uploaded file using the new bucket name
+    const storageUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${filePath}`;
     
     // Add initial log entry for bank statement analysis
     const initialLogEntry = {
@@ -346,7 +346,7 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     
     if (insertError) {
       // If database insertion fails, try to delete the uploaded file
-      await supabase.storage.from('bank-statement-analysis').remove([filePath]);
+      await supabase.storage.from('employee_other_type_statement').remove([filePath]);
       throw insertError;
     }
     
