@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +36,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 }) => {
   const { documentTypes } = useEmployeeVerification();
   const { toast } = useToast();
+  const [localFiles, setLocalFiles] = useState<FileItem[]>(files);
   
   const form = useForm<DocumentFormData>({
     resolver: zodResolver(documentFormSchema),
@@ -114,6 +116,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     onSubmit(values);
   };
 
+  const handleFileUpload = (base64: string, file?: File) => {
+    onFileUploaded(base64);
+  };
+
   // Check if selected type is driving license
   const isDrivingLicense = documentTypeName === 'driving_license' || selectedTypeId === '4';
   
@@ -125,15 +131,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         {isBankAccount ? (
           <BankStatementUploader
-            form={form}
-            onFileUploaded={onFileUploaded}
+            files={localFiles}
+            setFiles={setLocalFiles}
+            onFileUploaded={handleFileUpload}
           />
         ) : (
           <DocumentFileUploader
-            form={form}
-            files={files}
-            isDrivingLicense={isDrivingLicense}
-            onFileUploaded={onFileUploaded}
+            files={localFiles}
+            setFiles={setLocalFiles}
+            onFileUploaded={handleFileUpload}
+            documentType={documentTypeName}
+            acceptedFileTypes={isDrivingLicense ? 'image/*,.pdf' : 'image/*,.pdf'}
           />
         )}
 
