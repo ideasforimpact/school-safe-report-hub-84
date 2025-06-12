@@ -28,13 +28,17 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   const { supportingFiles, handleFilesChange } = useFilesManagement();
   const [isUploading, setIsUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const handleFileUploaded = (base64: string, file?: File) => {
     console.log('File uploaded for re-upload:', file?.name);
+    if (file) {
+      setUploadedFile(file);
+    }
   };
 
   const handleUpdateDocument = async () => {
-    if (supportingFiles.length === 0) {
+    if (supportingFiles.length === 0 || !uploadedFile) {
       toast({
         title: "No File Selected",
         description: "Please select a new document to upload.",
@@ -54,11 +58,9 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
 
     setIsUploading(true);
     try {
-      const file = supportingFiles[0];
-      
-      // Upload file to storage
+      // Upload file to storage using the actual File object
       const storagePath = await backofficeDocumentService.uploadToStorage(
-        file,
+        uploadedFile,
         employee.clientId,
         employee.id
       );
