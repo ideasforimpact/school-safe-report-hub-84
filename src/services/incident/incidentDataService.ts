@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -40,7 +41,133 @@ class IncidentDataService {
     return IncidentDataService.instance;
   }
 
-  // New method with server-side filtering support
+  // Helper functions for ID lookups
+  private async getStatusId(clientId: string, statusName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', statusName)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`Error looking up status ID for "${statusName}":`, error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.warn(`Failed to lookup status ID for "${statusName}":`, error);
+      return null;
+    }
+  }
+
+  private async getCategoryId(clientId: string, categoryName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('incident_categories')
+        .select('id')
+        .eq('name', categoryName)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`Error looking up category ID for "${categoryName}":`, error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.warn(`Failed to lookup category ID for "${categoryName}":`, error);
+      return null;
+    }
+  }
+
+  private async getSubcategoryId(clientId: string, subcategoryName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('incident_subcategories')
+        .select('id')
+        .eq('name', subcategoryName)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`Error looking up subcategory ID for "${subcategoryName}":`, error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.warn(`Failed to lookup subcategory ID for "${subcategoryName}":`, error);
+      return null;
+    }
+  }
+
+  private async getPriorityId(clientId: string, priorityName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('incident_priorities')
+        .select('id')
+        .eq('name', priorityName)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`Error looking up priority ID for "${priorityName}":`, error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.warn(`Failed to lookup priority ID for "${priorityName}":`, error);
+      return null;
+    }
+  }
+
+  private async getLocationId(clientId: string, locationName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('campuses')
+        .select('id')
+        .eq('name', locationName)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`Error looking up location ID for "${locationName}":`, error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.warn(`Failed to lookup location ID for "${locationName}":`, error);
+      return null;
+    }
+  }
+
+  private async getFacilityId(clientId: string, facilityName: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('facilities')
+        .select('id')
+        .eq('name', facilityName)
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) {
+        console.warn(`Error looking up facility ID for "${facilityName}":`, error);
+        return null;
+      }
+      
+      return data?.id || null;
+    } catch (error) {
+      console.warn(`Failed to lookup facility ID for "${facilityName}":`, error);
+      return null;
+    }
+  }
+
+  // Method with server-side filtering support
   async fetchIncidentsForClientWithFilters(
     clientId: string, 
     forceRefresh = false, 
@@ -86,6 +213,25 @@ class IncidentDataService {
     try {
       console.log('🚀 Making server request for incidents with filters...');
       
+      // Perform parallel ID lookups for filters
+      const [statusId, categoryId, subcategoryId, priorityId, locationId, facilityId] = await Promise.all([
+        filters.status ? this.getStatusId(clientId, filters.status) : Promise.resolve(null),
+        filters.category ? this.getCategoryId(clientId, filters.category) : Promise.resolve(null),
+        filters.subcategory ? this.getSubcategoryId(clientId, filters.subcategory) : Promise.resolve(null),
+        filters.priority ? this.getPriorityId(clientId, filters.priority) : Promise.resolve(null),
+        filters.location ? this.getLocationId(clientId, filters.location) : Promise.resolve(null),
+        filters.facility ? this.getFacilityId(clientId, filters.facility) : Promise.resolve(null)
+      ]);
+
+      console.log('🔍 Filter ID lookups completed:', {
+        statusId: statusId || 'none',
+        categoryId: categoryId || 'none',
+        subcategoryId: subcategoryId || 'none',
+        priorityId: priorityId || 'none',
+        locationId: locationId || 'none',
+        facilityId: facilityId || 'none'
+      });
+      
       let query = supabase
         .from('incidents')
         .select(`
@@ -127,40 +273,52 @@ class IncidentDataService {
         }
       }
 
-      // Apply server-side filters
+      // Apply server-side filters using foreign key IDs
       if (filters.search && filters.search.trim()) {
         query = query.or(`ticket_id.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
         console.log(`   - Applied search filter: ${filters.search}`);
       }
 
-      if (filters.category) {
-        query = query.eq('incident_categories.name', filters.category);
-        console.log(`   - Applied category filter: ${filters.category}`);
+      if (statusId) {
+        query = query.eq('status_id', statusId);
+        console.log(`   - Applied status filter: ${filters.status} (ID: ${statusId})`);
+      } else if (filters.status) {
+        console.warn(`   - Status "${filters.status}" not found, skipping status filter`);
       }
 
-      if (filters.subcategory) {
-        query = query.eq('incident_subcategories.name', filters.subcategory);
-        console.log(`   - Applied subcategory filter: ${filters.subcategory}`);
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+        console.log(`   - Applied category filter: ${filters.category} (ID: ${categoryId})`);
+      } else if (filters.category) {
+        console.warn(`   - Category "${filters.category}" not found, skipping category filter`);
       }
 
-      if (filters.status) {
-        query = query.eq('incident_status.name', filters.status);
-        console.log(`   - Applied status filter: ${filters.status}`);
+      if (subcategoryId) {
+        query = query.eq('subcategory_id', subcategoryId);
+        console.log(`   - Applied subcategory filter: ${filters.subcategory} (ID: ${subcategoryId})`);
+      } else if (filters.subcategory) {
+        console.warn(`   - Subcategory "${filters.subcategory}" not found, skipping subcategory filter`);
       }
 
-      if (filters.priority) {
-        query = query.eq('incident_priorities.name', filters.priority);
-        console.log(`   - Applied priority filter: ${filters.priority}`);
+      if (priorityId) {
+        query = query.eq('priority_id', priorityId);
+        console.log(`   - Applied priority filter: ${filters.priority} (ID: ${priorityId})`);
+      } else if (filters.priority) {
+        console.warn(`   - Priority "${filters.priority}" not found, skipping priority filter`);
       }
 
-      if (filters.location) {
-        query = query.eq('campuses.name', filters.location);
-        console.log(`   - Applied location filter: ${filters.location}`);
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+        console.log(`   - Applied location filter: ${filters.location} (ID: ${locationId})`);
+      } else if (filters.location) {
+        console.warn(`   - Location "${filters.location}" not found, skipping location filter`);
       }
 
-      if (filters.facility) {
-        query = query.eq('facilities.name', filters.facility);
-        console.log(`   - Applied facility filter: ${filters.facility}`);
+      if (facilityId) {
+        query = query.eq('facility_id', facilityId);
+        console.log(`   - Applied facility filter: ${filters.facility} (ID: ${facilityId})`);
+      } else if (filters.facility) {
+        console.warn(`   - Facility "${filters.facility}" not found, skipping facility filter`);
       }
 
       if (filters.dateFrom) {
@@ -263,7 +421,6 @@ class IncidentDataService {
     );
   }
 
-  // Legacy method for backward compatibility - returns just the incidents array
   async fetchIncidentsForClientLegacy(
     clientId: string, 
     forceRefresh = false, 
@@ -274,7 +431,6 @@ class IncidentDataService {
     return response.data;
   }
 
-  // Method to get basic stats without full incident data
   async getIncidentStats(clientId: string, employeeData?: any, hasIncidentAdmin?: boolean): Promise<{
     total: number;
     open: number;
