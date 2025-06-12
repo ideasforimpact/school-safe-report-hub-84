@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ import AssignmentSection from './AssignmentSection';
 import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { Student } from '@/types/student';
+import { formatFileSize } from '@/utils/fileUtils';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -417,7 +419,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                         <div className="flex items-center space-x-3">
                           <div className="text-sm">
                             <p className="font-medium text-gray-900">{doc.name}</p>
-                            <p className="text-gray-500">{(doc.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p className="text-gray-500">{formatFileSize(doc.size)}</p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">

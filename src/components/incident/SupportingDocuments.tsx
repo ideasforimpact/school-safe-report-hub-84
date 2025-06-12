@@ -13,6 +13,7 @@ import { useIncidentDocuments } from '@/hooks/useIncidentDocuments';
 import { IncidentDocument } from '@/services/incident/incidentDocumentService';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import IncidentDocumentUploader from './IncidentDocumentUploader';
+import { formatFileSize, viewDocument } from '@/utils/fileUtils';
 
 interface SupportingDocumentsProps {
   incidentId: string;
@@ -64,6 +65,10 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
       setSelectedDocument(document);
       setPreviewOpen(true);
     }
+  };
+
+  const handleView = (doc: IncidentDocument) => {
+    viewDocument(doc.url, doc.name || 'document');
   };
 
   const handleDownload = (doc: IncidentDocument) => {
@@ -162,7 +167,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                           {document.type || 'Unknown type'}
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          {document.size ? `${(document.size / 1024).toFixed(1)} KB` : ''}
+                          {formatFileSize(document.size)}
                         </p>
                         
                         {isImage && document.url && (
@@ -177,17 +182,15 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                         )}
                         
                         <div className="flex gap-2 mt-3">
-                          {isImage && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePreview(document)}
-                              className="flex items-center gap-1"
-                            >
-                              <Eye className="h-3 w-3" />
-                              View
-                            </Button>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleView(document)}
+                            className="flex items-center gap-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            View
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
