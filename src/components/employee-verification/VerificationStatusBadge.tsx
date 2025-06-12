@@ -1,260 +1,118 @@
-
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { CheckCircle, AlertCircle, Clock, Play } from 'lucide-react';
-import PanDetailsDialog from './document-card/PanDetailsDialog';
-import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
-import DrivingLicenseDetailsDialog from './document-card/DrivingLicenseDetailsDialog';
-import BankStatementDetailsDialog from './document-card/BankStatementDetailsDialog';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Eye, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending' | 'in-progress';
-  className?: string;
-  isGovernance?: boolean;
+  status: 'pending' | 'verified' | 'failed' | 'in-progress';
   documentStatusName?: string;
-  onClick?: () => void;
   documentLogs?: Array<{
     timestamp: string;
     action: string;
     response: any;
     notes?: string;
   }>;
-  documentId?: string;
+  documentId: string;
   documentType?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
   status, 
-  className, 
-  isGovernance = false,
-  documentStatusName,
-  onClick,
-  documentLogs,
+  documentStatusName, 
+  documentLogs = [],
   documentId,
   documentType
 }) => {
-  const [panDialogOpen, setPanDialogOpen] = useState(false);
-  const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
-  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
-  const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
+  const [logsDialogOpen, setLogsDialogOpen] = useState(false);
 
   const getStatusConfig = () => {
     switch (status) {
       case 'verified':
         return {
-          icon: CheckCircle,
-          text: documentStatusName ? `Verified/${documentStatusName}` : 'Verified',
-          variant: 'success',
-          bgColor: 'bg-green-100 text-green-800 border-green-200'
+          variant: 'default' as const,
+          className: 'bg-green-500 hover:bg-green-600',
+          icon: <CheckCircle className="h-3 w-3 mr-1" />,
+          label: 'Verified'
         };
       case 'failed':
         return {
-          icon: AlertCircle,
-          text: 'Failed',
-          variant: 'destructive',
-          bgColor: 'bg-red-100 text-red-800 border-red-200'
+          variant: 'destructive' as const,
+          className: '',
+          icon: <XCircle className="h-3 w-3 mr-1" />,
+          label: 'Failed'
         };
       case 'in-progress':
         return {
-          icon: Play,
-          text: 'In Progress',
-          variant: 'default',
-          bgColor: 'bg-blue-100 text-blue-800 border-blue-200'
+          variant: 'default' as const,
+          className: 'bg-blue-500 hover:bg-blue-600',
+          icon: <Clock className="h-3 w-3 mr-1" />,
+          label: 'In Progress'
         };
       case 'pending':
-        return {
-          icon: Clock,
-          text: 'Pending',
-          variant: 'default',
-          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        };
       default:
         return {
-          icon: Clock,
-          text: 'Unknown',
-          variant: 'default',
-          bgColor: 'bg-gray-100 text-gray-800 border-gray-200'
+          variant: 'outline' as const,
+          className: 'border-yellow-500 text-yellow-700',
+          icon: <AlertCircle className="h-3 w-3 mr-1" />,
+          label: 'Pending'
         };
     }
   };
 
-  const { icon: Icon, text, bgColor } = getStatusConfig();
+  const config = getStatusConfig();
 
-  // Check if this document has details that can be shown in a dialog
-  const isGovernanceVerified = status === 'verified' && documentStatusName === 'governance';
-  const hasVerificationLogs = documentLogs && documentLogs.length > 0;
-  
-  // Determine if badge should be clickable
-  const isClickable = isGovernanceVerified && hasVerificationLogs;
-  
-  // Define docType at component level so it can be accessed everywhere
-  const docType = documentType?.toLowerCase();
-  
-  console.log('VerificationStatusBadge - Document Type:', documentType);
-  console.log('VerificationStatusBadge - Status:', status);
-  console.log('VerificationStatusBadge - Document Status Name:', documentStatusName);
-  console.log('VerificationStatusBadge - Is Governance Verified:', isGovernanceVerified);
-  console.log('VerificationStatusBadge - Has Verification Logs:', hasVerificationLogs);
-  console.log('VerificationStatusBadge - Is Clickable:', isClickable);
-  console.log('VerificationStatusBadge - Document Logs:', documentLogs);
-  
-  const handleClick = () => {
-    console.log('VerificationStatusBadge - Badge clicked!');
-    
-    if (onClick) {
-      console.log('VerificationStatusBadge - Calling provided onClick handler');
-      onClick();
-      return;
-    }
-
-    if (!isClickable) {
-      console.log('VerificationStatusBadge - Not clickable, returning');
-      return;
-    }
-
-    console.log('VerificationStatusBadge - Document type (lowercase):', docType);
-    
-    if (docType?.includes('aadhar')) {
-      // For Aadhar, use the provided onClick if available
-      if (onClick) {
-        onClick();
-      }
-    } else if (docType === 'pan') {
-      const panVerificationLog = documentLogs?.find(log => 
-        log.action === 'verify_pan_api' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      if (panVerificationLog) {
-        console.log('VerificationStatusBadge - Opening PAN dialog');
-        setPanDialogOpen(true);
-      }
-    } else if (docType === 'voter_id') {
-      const voterIdVerificationLog = documentLogs?.find(log => 
-        log.action === 'verify_voter_id_api' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      if (voterIdVerificationLog) {
-        console.log('VerificationStatusBadge - Opening Voter ID dialog');
-        setVoterIdDialogOpen(true);
-      }
-    } else if (docType?.includes('driving') || docType?.includes('license')) {
-      const drivingLicenseLog = documentLogs?.find(log => 
-        log.action?.includes('driving') || log.action?.includes('license')
-      );
-      
-      if (drivingLicenseLog) {
-        console.log('VerificationStatusBadge - Opening Driving License dialog');
-        setDrivingLicenseDialogOpen(true);
-      }
-    } else if (docType === 'bank account' || docType?.includes('bank')) {
-      // Find the bank verification log specifically
-      const bankVerificationLog = documentLogs?.find(log => 
-        log.action === 'bank_verification' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      console.log('VerificationStatusBadge - Looking for bank verification log');
-      console.log('VerificationStatusBadge - Available logs:', documentLogs?.map(log => log.action));
-      console.log('VerificationStatusBadge - Found bank verification log:', bankVerificationLog);
-      
-      if (bankVerificationLog) {
-        console.log('VerificationStatusBadge - Opening Bank Statement dialog with bank_verification log');
-        setBankStatementDialogOpen(true);
-      } else {
-        console.log('VerificationStatusBadge - No bank_verification log found');
-      }
-    }
-  };
-
-  // Find verification logs for dialogs
-  const panVerificationLog = documentLogs?.find(log => 
-    log.action === 'verify_pan_api' && 
-    log.response?.success === true && 
-    log.response?.status_code === 200
-  );
-  
-  const voterIdVerificationLog = documentLogs?.find(log => 
-    log.action === 'verify_voter_id_api' && 
-    log.response?.success === true && 
-    log.response?.status_code === 200
-  );
-
-  const drivingLicenseVerificationLog = documentLogs?.find(log =>
-    (log.action?.includes('driving') || log.action?.includes('license')) &&
-    log.response
-  );
-  
-  // Find the specific bank_verification log for the dialog
-  const bankVerificationLog = documentLogs?.find(log =>
-    log.action === 'bank_verification' &&
-    log.response?.success === true &&
-    log.response?.status_code === 200
-  );
-  
   return (
-    <>
+    <div className="flex items-center gap-2">
       <Badge 
-        className={cn(
-          'gap-1 px-2 py-1 font-medium text-xs', 
-          bgColor, 
-          className,
-          isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
-        )}
-        onClick={isClickable ? handleClick : undefined}
+        variant={config.variant} 
+        className={`${config.className} text-white flex items-center`}
       >
-        <Icon className="h-3.5 w-3.5" />
-        {text}
-        {isClickable && (
-          <span className="sr-only">(click to view details)</span>
-        )}
+        {config.icon}
+        {config.label}
       </Badge>
-
-      {/* Display PAN Details Dialog */}
-      {panDialogOpen && panVerificationLog && documentType === 'pan' && (
-        <PanDetailsDialog 
-          open={panDialogOpen}
-          onOpenChange={setPanDialogOpen}
-          panDetails={panVerificationLog.response}
-          documentId={documentId}
-        />
-      )}
-
-      {/* Display Voter ID Details Dialog */}
-      {voterIdDialogOpen && voterIdVerificationLog && documentType === 'voter_id' && (
-        <VoterIdDetailsDialog
-          open={voterIdDialogOpen}
-          onOpenChange={setVoterIdDialogOpen}
-          voterIdDetails={voterIdVerificationLog.response}
-          documentId={documentId}
-        />
-      )}
-
-      {/* Display Driving License Details Dialog */}
-      {drivingLicenseDialogOpen && drivingLicenseVerificationLog && documentType?.includes('driving') && (
-        <DrivingLicenseDetailsDialog
-          open={drivingLicenseDialogOpen}
-          onOpenChange={setDrivingLicenseDialogOpen}
-          licenseDetails={drivingLicenseVerificationLog.response}
-          documentId={documentId}
-        />
-      )}
       
-      {/* Display Bank Statement Details Dialog - Fixed condition */}
-      {bankStatementDialogOpen && bankVerificationLog && (
-        <BankStatementDetailsDialog
-          open={bankStatementDialogOpen}
-          onOpenChange={setBankStatementDialogOpen}
-          statementDetails={bankVerificationLog.response}
-          documentId={documentId}
-        />
+      {documentLogs.length > 0 && (
+        <Dialog open={logsDialogOpen} onOpenChange={setLogsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Eye className="h-3 w-3" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>Verification Logs - {documentType || 'Document'}</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-4">
+                {documentLogs.map((log, index) => (
+                  <div key={index} className="border-l-2 border-gray-200 pl-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm">{log.action}</span>
+                      <span className="text-xs text-gray-500">
+                        {format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm:ss')}
+                      </span>
+                    </div>
+                    {log.notes && (
+                      <p className="text-sm text-gray-600 mb-2">{log.notes}</p>
+                    )}
+                    {log.response && (
+                      <div className="bg-gray-50 p-2 rounded text-xs">
+                        <pre className="whitespace-pre-wrap">
+                          {JSON.stringify(log.response, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       )}
-    </>
+    </div>
   );
 };
 
