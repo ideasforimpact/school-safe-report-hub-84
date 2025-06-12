@@ -5,7 +5,7 @@ export interface FileItem {
   size: number;
   type: string;
   url?: string;
-  base64?: string; // Make this required to match incident types
+  base64: string; // Made required to match incident types
   uploadedAt?: Date;
   status?: 'uploading' | 'uploaded' | 'error';
 }
