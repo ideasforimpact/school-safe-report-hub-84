@@ -28,11 +28,19 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
     }
   };
 
+  // Log document status for debugging
+  console.log('DocumentCard - Document status:', {
+    id: document.id,
+    verificationStatus: document.verificationStatus,
+    documentStatusName: document.documentStatusName,
+    documentStatusId: document.documentStatusId
+  });
+
   return (
     <Card className={`h-full transition-all duration-200 ${getCardStyle()}`}>
       <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
         <VerificationStatusBadge 
-          status={document.verificationStatus} 
+          status={document.verificationStatus as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed'} 
           documentStatusName={document.documentStatusName}
           documentLogs={document.employee_docs_log}
           documentId={document.id}

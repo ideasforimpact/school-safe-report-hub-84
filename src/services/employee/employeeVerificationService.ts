@@ -147,6 +147,16 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
       }
       
+      // Ensure verification_status is properly mapped, with fallback to 'pending'
+      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
+      
+      console.log('Document status mapping:', {
+        id: doc.id,
+        rawVerificationStatus: doc.verification_status,
+        mappedVerificationStatus: verificationStatus,
+        documentStatusName: doc.document_status?.name
+      });
+      
       return {
         id: doc.id,
         employeeId: doc.employee_id,
@@ -154,7 +164,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         documentTypeName: doc.document_type?.name || 'Unknown',
         documentNumber: doc.document_number || '',
         documentImage: documentUrl,
-        verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+        verificationStatus: verificationStatus || 'pending',
         documentStatusId: doc.document_status_id,
         documentStatusName: doc.document_status?.name,
         verificationDate: null,
@@ -268,6 +278,16 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
       }
       
+      // Ensure verification_status is properly mapped
+      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
+      
+      console.log('FetchEmployeeDocuments - Document status mapping:', {
+        id: doc.id,
+        rawVerificationStatus: doc.verification_status,
+        mappedVerificationStatus: verificationStatus,
+        documentStatusName: doc.document_status?.name
+      });
+      
       return {
         id: doc.id,
         employeeId: doc.employee_id,
@@ -275,7 +295,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         documentTypeName: doc.document_type?.name || 'Unknown',
         documentNumber: doc.document_number || '',
         documentImage: documentUrl,
-        verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
+        verificationStatus: verificationStatus || 'pending',
         documentStatusId: doc.document_status_id,
         documentStatusName: doc.document_status?.name,
         verificationDate: null,
