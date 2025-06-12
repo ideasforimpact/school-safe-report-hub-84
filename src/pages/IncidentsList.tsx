@@ -175,6 +175,8 @@ const IncidentsList = () => {
         hasIncidentAdmin,
         { page, pageSize: 10 } // Always fetch exactly 10 records per page
       );
+
+      console.log(response,"Response for incident");
       
       console.log(`Server returned ${response.data.length} incidents for page ${page}`);
       console.log('Pagination info:', { 
