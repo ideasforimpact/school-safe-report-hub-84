@@ -14,9 +14,8 @@ export const useEmployeeManagement = () => {
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Check if we're on an employee verification route - updated to be more comprehensive
-  const isEmployeeVerificationRoute = location.pathname.includes('/employee-verification') || 
-                                     location.pathname.includes('/backoffice/employee-verification');
+  // Check if we're on an employee verification route
+  const isEmployeeVerificationRoute = location.pathname.includes('/employee-verification');
 
   const fetchEmployees = useCallback(async () => {
     // Only fetch if we're on employee verification route and have clientId
@@ -118,7 +117,7 @@ export const useEmployeeManagement = () => {
               documentStatusName: doc.document_status?.name,
               verificationDate: null,
               verificationNotes: '',
-              verificationMethod: 'manual' as const,
+              verificationMethod: 'manual' as const, // Fix: Explicitly set as 'manual'
               employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
                 timestamp: string;
                 action: string;
@@ -165,134 +164,6 @@ export const useEmployeeManagement = () => {
       setIsLoading(false);
     }
   }, [clientId, isEmployeeVerificationRoute]);
-
-  // Fetch individual employee by ID - new function for fallback
-  const fetchEmployeeById = useCallback(async (employeeId: string): Promise<Employee | null> => {
-    if (!clientId) {
-      console.log('No client ID available for individual employee fetch');
-      return null;
-    }
-
-    try {
-      console.log('Fetching individual employee:', employeeId);
-      
-      const { data: employeeData, error: employeeError } = await supabase
-        .from('employees')
-        .select(`
-          id,
-          employee_id,
-          first_name,
-          last_name,
-          email,
-          employee_type,
-          department,
-          status,
-          client_id,
-          is_super_admin,
-          user_id,
-          joining_date,
-          created_at,
-          updated_at
-        `)
-        .eq('id', employeeId)
-        .eq('client_id', clientId)
-        .single();
-
-      if (employeeError || !employeeData) {
-        console.error('Error fetching individual employee:', employeeError);
-        return null;
-      }
-
-      // Fetch documents for this specific employee
-      const { data: documentsData, error: documentsError } = await supabase
-        .from('employee_documents')
-        .select(`
-          id,
-          employee_id,
-          document_type_id,
-          document_status_id,
-          document_url,
-          document_number,
-          verification_status,
-          params,
-          employee_docs_log,
-          last_otp_generated,
-          created_at,
-          updated_at,
-          document_type:employee_document_type(name, description),
-          document_status:document_status(name, description)
-        `)
-        .eq('employee_id', employeeId);
-
-      if (documentsError) {
-        console.error('Error fetching employee documents:', documentsError);
-      }
-
-      // Map documents
-      const employeeDocuments = (documentsData || []).map(doc => {
-        let documentUrl = doc.document_url;
-        
-        if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-          documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
-        }
-        
-        return {
-          id: doc.id,
-          employeeId: doc.employee_id,
-          documentTypeId: doc.document_type_id || '',
-          documentTypeName: doc.document_type?.name || 'Unknown',
-          documentNumber: doc.document_number || '',
-          documentImage: documentUrl,
-          verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-          documentStatusId: doc.document_status_id,
-          documentStatusName: doc.document_status?.name,
-          verificationDate: null,
-          verificationNotes: '',
-          verificationMethod: 'manual' as const,
-          employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
-          params: typeof doc.params === 'object' && doc.params !== null ? doc.params : {},
-          createdAt: doc.created_at,
-          updatedAt: doc.updated_at
-        };
-      });
-
-      const employee: Employee = {
-        id: employeeData.id,
-        employeeId: employeeData.employee_id || '',
-        name: `${employeeData.first_name} ${employeeData.last_name}`,
-        firstName: employeeData.first_name,
-        lastName: employeeData.last_name,
-        email: employeeData.email,
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        joiningDate: employeeData.joining_date || new Date().toISOString(),
-        department: employeeData.department || '',
-        position: employeeData.employee_type || '',
-        employeeType: (employeeData.employee_type as Employee['employeeType']) || 'permanent',
-        status: employeeData.status === true,
-        createdAt: employeeData.created_at || new Date().toISOString(),
-        updatedAt: employeeData.updated_at || new Date().toISOString(),
-        clientId: employeeData.client_id,
-        isSuperAdmin: employeeData.is_super_admin,
-        documents: employeeDocuments
-      };
-
-      // Add this employee to the employees list if not already there
-      setEmployees(prev => {
-        const exists = prev.find(emp => emp.id === employee.id);
-        if (!exists) {
-          return [...prev, employee];
-        }
-        return prev;
-      });
-
-      return employee;
-    } catch (error) {
-      console.error('Error fetching individual employee:', error);
-      return null;
-    }
-  }, [clientId]);
 
   const addEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
@@ -420,7 +291,6 @@ export const useEmployeeManagement = () => {
     employees,
     isLoading,
     fetchEmployees,
-    fetchEmployeeById, // New function for individual employee fetching
     addEmployee,
     updateEmployee,
     deleteEmployee,
