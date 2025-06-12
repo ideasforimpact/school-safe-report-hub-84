@@ -15,7 +15,7 @@ export interface ReUploadDocumentRequest {
 }
 
 export const backofficeDocumentService = {
-  // Complete a document by updating status to verified and document_status_id to completed
+  // Complete a document by updating status to completed and document_status_id to completed
   async completeDocument({ documentId, clientId, employeeId }: CompleteDocumentRequest) {
     try {
       console.log('Starting completeDocument for:', { documentId, clientId, employeeId });
@@ -59,11 +59,11 @@ export const backofficeDocumentService = {
 
       console.log('Updating document to completed status:', completedStatus.id);
 
-      // Update the document
+      // Update the document - set both verification_status and document_status_id to completed
       const { data: updatedDocument, error: updateError } = await supabase
         .from('employee_documents')
         .update({
-          verification_status: 'verified',
+          verification_status: 'completed',
           document_status_id: completedStatus.id,
           updated_at: new Date().toISOString()
         })
