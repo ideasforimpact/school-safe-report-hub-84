@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 const EmployeeVerificationPage = () => {
-  const { fetchEmployees, isLoading } = useEmployeeVerification();
+  const { fetchEmployees, employees } = useEmployeeVerification();
   
   // Fetch employees when component mounts
   useEffect(() => {
@@ -42,9 +42,8 @@ const EmployeeVerificationPage = () => {
               size="icon" 
               onClick={handleRefresh} 
               title="Refresh employees"
-              disabled={isLoading}
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
         </div>

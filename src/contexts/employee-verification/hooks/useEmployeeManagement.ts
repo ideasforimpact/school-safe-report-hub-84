@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '../types';
 import { toast } from 'sonner';
@@ -10,7 +10,6 @@ export const useEmployeeManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { user, employeeData } = useAuth();
   const location = useLocation();
-  const fetchInProgressRef = useRef(false);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -19,12 +18,6 @@ export const useEmployeeManagement = () => {
   const isEmployeeVerificationRoute = location.pathname.includes('/employee-verification');
 
   const fetchEmployees = useCallback(async () => {
-    // Prevent duplicate concurrent fetches
-    if (fetchInProgressRef.current) {
-      console.log('Fetch already in progress, skipping...');
-      return employees;
-    }
-
     // Only fetch if we're on employee verification route and have clientId
     if (!isEmployeeVerificationRoute || !clientId) {
       console.log('Skipping employee fetch - not on employee verification route or no client ID');
@@ -32,9 +25,7 @@ export const useEmployeeManagement = () => {
       return [];
     }
 
-    fetchInProgressRef.current = true;
     setIsLoading(true);
-    
     try {
       console.log('Fetching employees with documents for client:', clientId);
       
@@ -126,7 +117,7 @@ export const useEmployeeManagement = () => {
               documentStatusName: doc.document_status?.name,
               verificationDate: null,
               verificationNotes: '',
-              verificationMethod: 'manual' as const,
+              verificationMethod: 'manual' as const, // Fix: Explicitly set as 'manual'
               employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
                 timestamp: string;
                 action: string;
@@ -171,9 +162,8 @@ export const useEmployeeManagement = () => {
       return [];
     } finally {
       setIsLoading(false);
-      fetchInProgressRef.current = false;
     }
-  }, [clientId, isEmployeeVerificationRoute, employees]);
+  }, [clientId, isEmployeeVerificationRoute]);
 
   const addEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!clientId) {
@@ -243,7 +233,7 @@ export const useEmployeeManagement = () => {
         .from('employees')
         .update(dbUpdates)
         .eq('id', id)
-        .eq('client_id', clientId)
+        .eq('client_id', clientId) // Ensure we only update employees from current client
         .select()
         .single();
 
@@ -279,7 +269,7 @@ export const useEmployeeManagement = () => {
         .from('employees')
         .delete()
         .eq('id', id)
-        .eq('client_id', clientId);
+        .eq('client_id', clientId); // Ensure we only delete employees from current client
 
       if (error) throw error;
 

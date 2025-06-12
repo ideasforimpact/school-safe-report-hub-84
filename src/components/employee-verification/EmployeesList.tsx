@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -15,8 +15,15 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 
 const EmployeesList = () => {
-  const { employees, isLoading } = useEmployeeVerification();
+  const { employees, fetchEmployees, isLoading } = useEmployeeVerification();
   const navigate = useNavigate();
+
+  // Ensure employees are fetched when component mounts if not already loaded
+  useEffect(() => {
+    if (employees.length === 0 && !isLoading) {
+      fetchEmployees();
+    }
+  }, [employees.length, isLoading, fetchEmployees]);
 
   // Render documents information for each employee
   const renderDocumentsInfo = (employee) => {
