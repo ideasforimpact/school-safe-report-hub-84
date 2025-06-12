@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -154,7 +153,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     
     try {
       // Get clientId from user data
-      const clientId = employeeData?.clientId || employeeData?.client_id;
+      const clientId = employeeData?.clientId || employeeData?.clientId;
       if (!clientId) {
         toast.error("Unable to identify client. Please refresh and try again.");
         return;
