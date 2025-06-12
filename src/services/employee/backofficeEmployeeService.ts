@@ -101,6 +101,9 @@ export const backofficeEmployeeService = {
           phone: undefined,
           position: employee.department, // Use department as position for now
           joiningDate: employee.joining_date,
+          employeeType: employee.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
+          createdAt: employee.created_at,
+          updatedAt: employee.updated_at,
           documentsSummary: {
             verified,
             pending,
@@ -186,12 +189,14 @@ export const backofficeEmployeeService = {
         documentImage: doc.document_url,
         verificationStatus: (doc.verification_status as 'pending' | 'verified' | 'failed') || 'pending',
         documentStatusId: doc.document_status_id || undefined,
-        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
+        employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
+          doc.employee_docs_log as Array<{timestamp: string; action: string; response: any; notes?: string}> : [],
         params: doc.params || {},
         cronActivate: doc.cron_activate || false,
         cronActivatedDate: doc.cron_activated_date || undefined,
         cronUpdatedDate: doc.cron_updated_date || undefined,
-        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log : [],
+        cronLog: Array.isArray(doc.cron_log) ? 
+          doc.cron_log as Array<{timestamp: string; action: string; status: string; details?: any; error?: string}> : [],
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       }));
@@ -205,6 +210,9 @@ export const backofficeEmployeeService = {
         phone: undefined,
         position: employee.department, // Use department as position for now
         joiningDate: employee.joining_date,
+        employeeType: employee.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
+        createdAt: employee.created_at,
+        updatedAt: employee.updated_at,
         documents: mappedDocuments,
         firstName: employee.first_name,
         lastName: employee.last_name

@@ -54,12 +54,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   const handleDownload = () => {
     if (document.documentImage) {
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = document.documentImage;
       link.download = `${employee.name}_${documentTypeName}_${document.id}.jpg`;
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
     }
   };
 
