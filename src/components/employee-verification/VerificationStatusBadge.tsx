@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -41,10 +42,16 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   const getStatusConfig = () => {
     switch (status) {
       case 'verified':
-      case 'completed':
         return {
           icon: CheckCircle,
           text: documentStatusName ? `Verified/${documentStatusName}` : 'Verified',
+          variant: 'success',
+          bgColor: 'bg-green-100 text-green-800 border-green-200'
+        };
+      case 'completed':
+        return {
+          icon: CheckCircle,
+          text: 'Completed',
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
@@ -63,6 +70,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           bgColor: 'bg-blue-100 text-blue-800 border-blue-200'
         };
       case 'pending':
+        return {
+          icon: Clock,
+          text: 'Pending',
+          variant: 'default',
+          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
+      default:
         return {
           icon: Clock,
           text: 'Pending',
