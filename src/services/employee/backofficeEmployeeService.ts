@@ -52,7 +52,6 @@ export const backofficeEmployeeService = {
           last_name,
           email,
           department,
-          position,
           employee_type,
           status,
           joining_date,
@@ -100,6 +99,7 @@ export const backofficeEmployeeService = {
           dateOfBirth: undefined,
           address: undefined,
           phone: undefined,
+          position: employee.department, // Use department as position for now
           joiningDate: employee.joining_date,
           documentsSummary: {
             verified,
@@ -130,7 +130,6 @@ export const backofficeEmployeeService = {
           last_name,
           email,
           department,
-          position,
           employee_type,
           status,
           joining_date,
@@ -187,12 +186,12 @@ export const backofficeEmployeeService = {
         documentImage: doc.document_url,
         verificationStatus: (doc.verification_status as 'pending' | 'verified' | 'failed') || 'pending',
         documentStatusId: doc.document_status_id || undefined,
-        employee_docs_log: doc.employee_docs_log || [],
+        employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
         params: doc.params || {},
         cronActivate: doc.cron_activate || false,
         cronActivatedDate: doc.cron_activated_date || undefined,
         cronUpdatedDate: doc.cron_updated_date || undefined,
-        cronLog: doc.cron_log || [],
+        cronLog: Array.isArray(doc.cron_log) ? doc.cron_log : [],
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       }));
@@ -204,6 +203,7 @@ export const backofficeEmployeeService = {
         dateOfBirth: undefined,
         address: undefined,
         phone: undefined,
+        position: employee.department, // Use department as position for now
         joiningDate: employee.joining_date,
         documents: mappedDocuments,
         firstName: employee.first_name,
