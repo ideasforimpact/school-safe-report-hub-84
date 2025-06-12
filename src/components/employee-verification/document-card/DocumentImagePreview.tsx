@@ -20,15 +20,31 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     
     // If it's a storage path, construct the proper Supabase URL
     if (url.includes('/')) {
-      // Check if it's from the employee_other_type_statement bucket
-      if (url.includes('employee_other_type_statement') || url.includes('bank_statement') || url.includes('court_case') || url.includes('police_verification')) {
-        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${url}`;
+      // Extract the actual file path from the URL if it contains bucket info
+      let filePath = url;
+      
+      // If the URL already contains bucket structure, extract just the file path
+      if (url.includes('employee_other_type_statement/')) {
+        filePath = url.split('employee_other_type_statement/')[1] || url;
+        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${filePath}`;
       }
-      // Default to employee-documents bucket
-      return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+      
+      if (url.includes('employee-documents/')) {
+        filePath = url.split('employee-documents/')[1] || url;
+        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`;
+      }
+      
+      // Check document type based on path indicators
+      if (url.includes('bank_statement') || url.includes('court_case') || url.includes('police_verification') || url.includes('other_type')) {
+        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${filePath}`;
+      }
+      
+      // Default to employee-documents bucket for other documents
+      return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`;
     }
     
-    return url;
+    // For simple filenames without path, default to employee-documents
+    return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${url}`;
   };
   
   const handleViewDocument = () => {
@@ -44,6 +60,7 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     try {
       const formattedUrl = formatDocumentUrl(documentImage);
       console.log('Opening document URL for viewing:', formattedUrl);
+      console.log('Original document image path:', documentImage);
       
       // Check if it's a PDF or image
       const isPdf = documentImage.toLowerCase().includes('.pdf') || documentImage.includes('pdf');
@@ -96,10 +113,15 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
         const lastPart = urlParts[urlParts.length - 1];
         if (lastPart && lastPart.includes('.')) {
           fileName = lastPart;
+        } else {
+          // Add appropriate extension based on document type
+          const extension = documentImage.toLowerCase().includes('pdf') ? 'pdf' : 'jpg';
+          fileName = `${fileName}.${extension}`;
         }
       }
       
       console.log('Downloading document URL:', formattedUrl);
+      console.log('Download filename:', fileName);
       
       // Create a temporary link element for download
       const link = document.createElement('a');

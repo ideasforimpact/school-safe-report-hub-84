@@ -21,6 +21,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
       return 'border-green-100 shadow-sm hover:shadow-md';
     } else if (document.verificationStatus === 'failed') {
       return 'border-red-100 shadow-sm hover:shadow-md';
+    } else if (document.verificationStatus === 'in-progress') {
+      return 'border-blue-100 shadow-sm hover:shadow-md';
     } else {
       return 'border-yellow-100 shadow-sm hover:shadow-md';
     }
