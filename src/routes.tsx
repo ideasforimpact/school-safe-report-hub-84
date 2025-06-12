@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import RouteGuard from './components/RouteGuard';
@@ -79,6 +78,10 @@ import GrievanceSubmitPage from './pages/grievances/GrievanceSubmitPage';
 import PublicGrievanceForm from './pages/grievances/PublicGrievanceForm';
 import ThankYouPage from './pages/grievances/ThankYouPage';
 
+// Import the new backoffice employee verification pages
+import BackofficeEmployeeVerificationPage from './pages/backoffice/BackofficeEmployeeVerificationPage';
+import BackofficeEmployeeDocumentsPage from './pages/backoffice/BackofficeEmployeeDocumentsPage';
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -115,6 +118,16 @@ const AppRoutes = () => {
       <Route path="/backoffice/modules" element={
         <RouteGuard requireAuth={true} isBackoffice={true}>
           <ModulesPage />
+        </RouteGuard>
+      } />
+      <Route path="/backoffice/employee-verification" element={
+        <RouteGuard requireAuth={true} isBackoffice={true}>
+          <BackofficeEmployeeVerificationPage />
+        </RouteGuard>
+      } />
+      <Route path="/backoffice/employee-verification/employee/:employeeId" element={
+        <RouteGuard requireAuth={true} isBackoffice={true}>
+          <BackofficeEmployeeDocumentsPage />
         </RouteGuard>
       } />
       <Route path="/backoffice/settings" element={
