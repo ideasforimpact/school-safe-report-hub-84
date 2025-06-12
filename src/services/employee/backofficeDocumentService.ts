@@ -15,7 +15,7 @@ export interface ReUploadDocumentRequest {
 }
 
 export const backofficeDocumentService = {
-  // Complete a document by updating status to verified and document_status_id to complete
+  // Complete a document by updating status to verified and document_status_id to completed
   async completeDocument({ documentId, clientId, employeeId }: CompleteDocumentRequest) {
     try {
       console.log('Starting completeDocument for:', { documentId, clientId, employeeId });
@@ -46,25 +46,25 @@ export const backofficeDocumentService = {
         throw new Error('Employee does not belong to the specified client');
       }
 
-      // Get the complete status ID
-      const { data: completeStatus, error: statusError } = await supabase
+      // Get the completed status ID
+      const { data: completedStatus, error: statusError } = await supabase
         .from('document_status')
         .select('id')
-        .eq('name', 'complete')
+        .eq('name', 'completed')
         .single();
 
-      if (statusError || !completeStatus) {
-        throw new Error('Complete status not found');
+      if (statusError || !completedStatus) {
+        throw new Error('Completed status not found');
       }
 
-      console.log('Updating document to complete status:', completeStatus.id);
+      console.log('Updating document to completed status:', completedStatus.id);
 
       // Update the document
       const { data: updatedDocument, error: updateError } = await supabase
         .from('employee_documents')
         .update({
           verification_status: 'verified',
-          document_status_id: completeStatus.id,
+          document_status_id: completedStatus.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId)
