@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,15 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
   const [isCompletingDocument, setIsCompletingDocument] = useState(false);
   const { toast } = useToast();
+
+  // Add console logging for debugging button conditions
+  console.log('BackofficeDocumentCard - Document:', {
+    id: document.id,
+    verificationStatus: document.verificationStatus,
+    documentTypeName,
+    documentImage: document.documentImage ? 'present' : 'missing',
+    employeeClientId: employee.clientId
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -94,7 +104,10 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   const handleCompleteDocument = async () => {
+    console.log('BackofficeDocumentCard - Complete button clicked for document:', document.id);
+    
     if (!employee.clientId) {
+      console.error('BackofficeDocumentCard - No client ID found');
       toast({
         title: "Error",
         description: "Client ID not found.",
@@ -105,12 +118,19 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
     setIsCompletingDocument(true);
     try {
+      console.log('BackofficeDocumentCard - Calling completeDocument API with:', {
+        documentId: document.id,
+        clientId: employee.clientId,
+        employeeId: employee.id
+      });
+
       await backofficeDocumentService.completeDocument({
         documentId: document.id,
         clientId: employee.clientId,
         employeeId: employee.id
       });
       
+      console.log('BackofficeDocumentCard - Document completed successfully');
       toast({
         title: "Document Completed",
         description: "The document has been marked as verified.",
@@ -118,7 +138,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
       
       onRefresh();
     } catch (error) {
-      console.error('Error completing document:', error);
+      console.error('BackofficeDocumentCard - Error completing document:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to mark document as complete. Please try again.",
@@ -130,15 +150,24 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   const handleReUpload = () => {
+    console.log('BackofficeDocumentCard - Re-upload button clicked for document:', document.id);
     setReUploadDialogOpen(true);
   };
 
   const handleDocumentUpdated = () => {
+    console.log('BackofficeDocumentCard - Document updated, refreshing data');
     onRefresh();
   };
 
   // Check if this is an "Other" document with "in-progress" status
   const isOtherInProgress = documentTypeName.toLowerCase() === 'other' && document.verificationStatus === 'in-progress';
+  
+  console.log('BackofficeDocumentCard - Button conditions:', {
+    isOtherInProgress,
+    documentTypeName: documentTypeName.toLowerCase(),
+    verificationStatus: document.verificationStatus,
+    hasDocumentImage: !!document.documentImage
+  });
 
   return (
     <>

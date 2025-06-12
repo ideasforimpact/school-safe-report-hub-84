@@ -30,8 +30,15 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [actualFile, setActualFile] = useState<File | null>(null);
 
+  console.log('DocumentReUploadDialog - Rendered with:', {
+    documentId: document.id,
+    employeeId: employee.id,
+    clientId: employee.clientId,
+    open
+  });
+
   const handleFileUploaded = (base64: string, file?: File) => {
-    console.log('File uploaded for re-upload:', file?.name);
+    console.log('DocumentReUploadDialog - File uploaded for re-upload:', file?.name);
     if (file) {
       setActualFile(file);
     }
@@ -39,18 +46,28 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
 
   // Override the files change to restrict to single file and capture actual File object
   const handleSingleFileChange = (files: any[]) => {
+    console.log('DocumentReUploadDialog - Files changed:', files);
     // Restrict to single file
     const singleFile = files.slice(0, 1);
     handleFilesChange(singleFile);
     
     // Extract the actual File object if available
     if (singleFile.length > 0 && singleFile[0].file) {
+      console.log('DocumentReUploadDialog - Actual file set:', singleFile[0].file.name);
       setActualFile(singleFile[0].file);
     }
   };
 
   const handleUpdateDocument = async () => {
+    console.log('DocumentReUploadDialog - Update document clicked');
+    console.log('DocumentReUploadDialog - State:', {
+      actualFile: actualFile?.name,
+      supportingFilesLength: supportingFiles.length,
+      clientId: employee.clientId
+    });
+
     if (!actualFile && supportingFiles.length === 0) {
+      console.log('DocumentReUploadDialog - No file selected');
       toast({
         title: "No File Selected",
         description: "Please select a new document to upload.",
@@ -60,6 +77,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
     }
 
     if (!employee.clientId) {
+      console.log('DocumentReUploadDialog - No client ID found');
       toast({
         title: "Error",
         description: "Client ID not found.",
@@ -73,10 +91,13 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       // Use the actual File object if available, otherwise fall back to supportingFiles
       const fileToUpload = actualFile || (supportingFiles[0] as any)?.file;
       
+      console.log('DocumentReUploadDialog - File to upload:', fileToUpload?.name);
+      
       if (!fileToUpload) {
         throw new Error('No valid file found for upload');
       }
       
+      console.log('DocumentReUploadDialog - Starting upload to storage');
       // Upload file to storage
       const storagePath = await backofficeDocumentService.uploadToStorage(
         fileToUpload,
@@ -84,6 +105,9 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
         employee.id
       );
       
+      console.log('DocumentReUploadDialog - File uploaded to storage path:', storagePath);
+      
+      console.log('DocumentReUploadDialog - Updating document with new URL');
       // Update document with new URL
       await backofficeDocumentService.reUploadDocument({
         documentId: document.id,
@@ -92,6 +116,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
         newDocumentUrl: storagePath
       });
       
+      console.log('DocumentReUploadDialog - Document updated successfully');
       toast({
         title: "Document Updated",
         description: "The document has been successfully updated.",
@@ -100,7 +125,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       onDocumentUpdated();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error updating document:', error);
+      console.error('DocumentReUploadDialog - Error updating document:', error);
       toast({
         title: "Update Failed",
         description: error instanceof Error ? error.message : "Failed to update the document. Please try again.",
@@ -112,6 +137,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   };
 
   const handleViewCurrentDocument = () => {
+    console.log('DocumentReUploadDialog - View current document clicked');
     if (document.documentImage) {
       window.open(document.documentImage, '_blank', 'noopener,noreferrer');
     }
