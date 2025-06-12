@@ -2,7 +2,7 @@
 import React from 'react';
 import { FileItem } from '@/types/incident';
 import { Separator } from '@/components/ui/separator';
-import TypeStatusSection from './components/TypeStatusSection';
+import TypeSection from './components/TypeSection';
 import CategorySubcategorySection from './components/CategorySubcategorySection';
 import LocationFacilitySection from './components/LocationFacilitySection';
 import DateTimeSection from './components/DateTimeSection';
@@ -16,7 +16,6 @@ interface IncidentDetailsProps {
     id: string;
     ticketId: string;
     type: string;
-    status: string;
     categoryId: string;
     subcategory: string;
     description: string;
@@ -62,13 +61,12 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
     <div className="space-y-8">
       {/* Classification Section */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Classification & Status</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Classification</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* First column */}
           <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
-            <TypeStatusSection
+            <TypeSection
               type={formData.type}
-              status={formData.status}
               onSelectChange={onSelectChange}
               getCategoriesForType={getCategoriesForType}
             />
