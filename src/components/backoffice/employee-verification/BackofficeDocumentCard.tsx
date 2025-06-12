@@ -269,8 +269,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 </Button>
               )}
               
-              {/* Re-upload button - only if document has documentImage and clientId */}
-              {document.documentImage && clientId && (
+              {/* Re-upload button - only for "Other" document types with documentImage and clientId */}
+              {documentTypeName.toLowerCase() === 'other' && document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
