@@ -8,7 +8,7 @@ interface DocumentMetadataProps {
   documentTypeName: string;
   documentNumber?: string;
   createdAt: string;
-  verificationStatus: 'pending' | 'verified' | 'failed';
+  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed';
   documentStatusName?: string;
   verificationDate?: string;
   verificationNotes?: string;
@@ -36,7 +36,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
 
   // Render verification method icon/badge
   const renderVerificationMethod = () => {
-    if (verificationStatus !== 'verified' || !verificationMethod) {
+    if ((verificationStatus !== 'verified' && verificationStatus !== 'completed') || !verificationMethod) {
       return null;
     }
 
@@ -60,6 +60,40 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   // Show document status name if available
   const displayStatus = documentStatusName ? getStatusDisplayName(documentStatusName) : verificationStatus;
 
+  // Get appropriate styling based on status
+  const getStatusStyling = () => {
+    switch (verificationStatus) {
+      case 'pending':
+        return 'bg-yellow-50 border border-yellow-100 text-yellow-600';
+      case 'verified':
+      case 'completed':
+        return 'bg-green-50 border border-green-100 text-green-600';
+      case 'in-progress':
+        return 'bg-blue-50 border border-blue-100 text-blue-600';
+      case 'failed':
+        return 'bg-red-50 border border-red-100 text-red-600';
+      default:
+        return 'bg-gray-50 border border-gray-100 text-gray-600';
+    }
+  };
+
+  // Get status display text
+  const getStatusText = () => {
+    switch (verificationStatus) {
+      case 'pending':
+        return 'Pending';
+      case 'verified':
+      case 'completed':
+        return `${displayStatus} ${formatDate(verificationDate)}`;
+      case 'in-progress':
+        return 'In Progress';
+      case 'failed':
+        return `${displayStatus} ${formatDate(verificationDate)}`;
+      default:
+        return verificationStatus;
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div>
@@ -77,20 +111,8 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
           <span className="text-gray-600">Uploaded: {formatDate(createdAt)}</span>
         </div>
         
-        <div className={`px-2 py-1 rounded-md ${
-          verificationStatus === 'pending' ? 'bg-yellow-50 border border-yellow-100' : 
-          verificationStatus === 'verified' ? 'bg-green-50 border border-green-100' : 
-          'bg-red-50 border border-red-100'
-        }`}>
-          <span className={
-            verificationStatus === 'pending' ? 'text-yellow-600' : 
-            verificationStatus === 'verified' ? 'text-green-600' : 
-            'text-red-600'
-          }>
-            {displayStatus === 'pending' ? 'Pending' : 
-             verificationStatus === 'verified' ? `${displayStatus} ${formatDate(verificationDate)}` : 
-             `${displayStatus} ${formatDate(verificationDate)}`}
-          </span>
+        <div className={`px-2 py-1 rounded-md ${getStatusStyling()}`}>
+          <span>{getStatusText()}</span>
         </div>
       </div>
       

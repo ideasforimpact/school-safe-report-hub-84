@@ -69,13 +69,6 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           variant: 'default',
           bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
         };
-      default:
-        return {
-          icon: Clock,
-          text: 'Unknown',
-          variant: 'default',
-          bgColor: 'bg-gray-100 text-gray-800 border-gray-200'
-        };
     }
   };
 
