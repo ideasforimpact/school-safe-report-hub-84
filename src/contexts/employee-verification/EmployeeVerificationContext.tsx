@@ -29,7 +29,9 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     updateEmployee,
     deleteEmployee,
     getEmployee,
-    fetchEmployees
+    fetchEmployees,
+    fetchEmployeeById,
+    isLoading: isEmployeeLoading
   } = useEmployeeManagement();
 
   // Update employee status based on document verifications
@@ -183,6 +185,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     deleteEmployee,
     getEmployee,
     fetchEmployees,
+    fetchEmployeeById,
     
     // Document management
     documents,
@@ -199,13 +202,13 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     fetchDocumentStatuses,
     
     // Loading state
-    isLoading: isLoading || isDocumentLoading
+    isLoading: isLoading || isDocumentLoading || isEmployeeLoading
   }), [
     verifyEmployee, isVerifying, verificationError,
-    employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees,
+    employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees, fetchEmployeeById,
     documents, addDocument, verifyDocument, deleteDocument, getEmployeeDocuments, fetchEmployeeDocuments,
     documentTypes, documentStatuses, fetchDocumentTypes, fetchDocumentStatuses,
-    isLoading, isDocumentLoading
+    isLoading, isDocumentLoading, isEmployeeLoading
   ]);
 
   // Fetch initial data when the context mounts, but only once
