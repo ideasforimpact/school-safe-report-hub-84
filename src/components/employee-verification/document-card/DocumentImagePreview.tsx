@@ -4,7 +4,6 @@ import { FileCheck, Eye, Download } from 'lucide-react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 
 interface DocumentImagePreviewProps {
   documentImage: string;
@@ -12,6 +11,25 @@ interface DocumentImagePreviewProps {
 
 const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentImage }) => {
   const { toast } = useToast();
+  
+  const formatDocumentUrl = (url: string) => {
+    // If it's already a data URL or full URL, return as is
+    if (url.startsWith('data:') || url.startsWith('http')) {
+      return url;
+    }
+    
+    // If it's a storage path, construct the proper Supabase URL
+    if (url.includes('/')) {
+      // Check if it's from the employee_other_type_statement bucket
+      if (url.includes('employee_other_type_statement') || url.includes('bank_statement') || url.includes('court_case') || url.includes('police_verification')) {
+        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${url}`;
+      }
+      // Default to employee-documents bucket
+      return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+    }
+    
+    return url;
+  };
   
   const handleViewDocument = () => {
     if (!documentImage) {
@@ -24,11 +42,11 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     }
 
     try {
-      const formattedUrl = formatSupabaseUrl(documentImage);
+      const formattedUrl = formatDocumentUrl(documentImage);
       console.log('Opening document URL for viewing:', formattedUrl);
       
       // Check if it's a PDF or image
-      const isPdf = isPdfFile(documentImage);
+      const isPdf = documentImage.toLowerCase().includes('.pdf') || documentImage.includes('pdf');
       
       if (isPdf) {
         // For PDFs, create an iframe or open in new tab
@@ -65,24 +83,27 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     }
 
     try {
-      let downloadUrl = documentImage;
+      const formattedUrl = formatDocumentUrl(documentImage);
       let fileName = `document-${Date.now()}`;
       
       // If it's a data URL, use it directly
       if (documentImage.startsWith('data:')) {
-        downloadUrl = documentImage;
         const mimeType = documentImage.split(':')[1].split(';')[0];
         fileName = `document-${Date.now()}.${mimeType.includes('pdf') ? 'pdf' : 'jpg'}`;
       } else {
-        // Format Supabase URL for download
-        downloadUrl = formatSupabaseUrl(documentImage);
+        // Extract filename from URL if possible
+        const urlParts = documentImage.split('/');
+        const lastPart = urlParts[urlParts.length - 1];
+        if (lastPart && lastPart.includes('.')) {
+          fileName = lastPart;
+        }
       }
       
-      console.log('Downloading document URL:', downloadUrl);
+      console.log('Downloading document URL:', formattedUrl);
       
       // Create a temporary link element for download
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = formattedUrl;
       link.download = fileName;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
