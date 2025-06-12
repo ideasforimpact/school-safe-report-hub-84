@@ -46,7 +46,7 @@ export interface VerificationDocument {
   documentTypeName?: string;
   documentNumber?: string;
   documentImage: string; // This should always be required and not null
-  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress';
+  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed';
   documentStatusId?: string;
   documentStatusName?: string;
   verificationDate?: string;
