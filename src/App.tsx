@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -212,9 +213,14 @@ function App() {
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/edusafe-resources" element={<BackofficeWrapper component={BackofficeEduSafeResourcesPage} />} />
                     
-                    {/* Backoffice Employee Verification routes */}
+                    {/* Updated Backoffice Employee Verification routes */}
                     <Route path="/backoffice-employee-verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
                     <Route path="/backoffice-employee-verification/employee/:employeeId" element={<BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />} />
+                    
+                    {/* Legacy routes for backward compatibility */}
+                    <Route path="/backoffice/employee-verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
+                    <Route path="/backoffice/employee-verification/employee/:employeeId" element={<BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />} />
+                    <Route path="/backoffice/verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
                     
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />
