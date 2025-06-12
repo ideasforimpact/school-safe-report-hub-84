@@ -108,6 +108,36 @@ const ReportIncident = () => {
     
     if (isSubmitting) return;
 
+    // Get employee and client data early
+    let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
+    let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+    
+    // Early validation: Check if clientId is available before proceeding
+    if (!clientId) {
+      toast.error("Unable to identify client information. Please contact your administrator or refresh the page and try again.");
+      return;
+    }
+
+    // Only fetch employee data if not available - use maybeSingle
+    if (!employeeId && user?.email) {
+      const { data: empData, error: empError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('email', user.email.toLowerCase())
+        .maybeSingle();
+        
+      if (empData && !empError) {
+        employeeId = empData.id;
+        clientId = empData.client_id;
+      }
+    }
+    
+    // Final validation after potential database fetch
+    if (!employeeId || !clientId) {
+      toast.error("Unable to identify user or client. Please refresh and try again.");
+      return;
+    }
+
     // Validate form including people involved
     const isValid = validateForm(formData, peopleInvolved);
     
@@ -120,30 +150,6 @@ const ReportIncident = () => {
     setIsSubmitting(true);
     
     try {
-      // Get employee and client data
-      let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
-      let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-      
-      // Only fetch employee data if not available - use maybeSingle
-      if (!employeeId && user?.email) {
-        const { data: empData, error: empError } = await supabase
-          .from('employees')
-          .select('id, client_id')
-          .eq('email', user.email.toLowerCase())
-          .maybeSingle();
-          
-        if (empData && !empError) {
-          employeeId = empData.id;
-          clientId = empData.client_id;
-        }
-      }
-      
-      if (!employeeId || !clientId) {
-        toast.error("Unable to identify user. Please refresh and try again.");
-        setIsSubmitting(false);
-        return;
-      }
-      
       // Create a safe date with comprehensive validation
       const createSafeDate = () => {
         try {
@@ -257,14 +263,14 @@ const ReportIncident = () => {
       
       console.log('Incident created successfully:', incidentData);
 
-      // Upload supporting files if any exist
+      // Upload supporting files if any exist - clientId is already validated above
       if (supportingFiles && supportingFiles.length > 0) {
         console.log('Uploading supporting files...');
         try {
           // Import the document service here to avoid circular imports
           const { incidentDocumentService } = await import('@/services/incident/incidentDocumentService');
           
-          // Upload files to storage with clientId
+          // Upload files to storage with clientId (already validated)
           const uploadedDocuments = await incidentDocumentService.uploadFiles(incidentData.id, clientId, supportingFiles);
           
           // Update incident with document URLs

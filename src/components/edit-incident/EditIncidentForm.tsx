@@ -146,20 +146,20 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       return;
     }
 
+    // Early validation: Check if clientId is available before proceeding
+    const clientId = employeeData?.clientId;
+    if (!clientId) {
+      toast.error("Unable to identify client information. Please contact your administrator or refresh the page and try again.");
+      return;
+    }
+
     console.log('=== SUBMITTING FORM ===');
     console.log('Form data:', formData);
 
     setIsSubmitting(true);
     
     try {
-      // Get clientId from user data
-      const clientId = employeeData?.clientId || employeeData?.clientId;
-      if (!clientId) {
-        toast.error("Unable to identify client. Please refresh and try again.");
-        return;
-      }
-
-      // First, upload any new files if there are any
+      // First, upload any new files if there are any - clientId is already validated above
       if (supportingFiles.length > 0) {
         console.log('Uploading new supporting files:', supportingFiles.length);
         await uploadAndSaveDocuments(id, clientId, supportingFiles);
