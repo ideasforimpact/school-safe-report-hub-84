@@ -28,13 +28,29 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   const { supportingFiles, handleFilesChange } = useFilesManagement();
   const [isUploading, setIsUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [actualFile, setActualFile] = useState<File | null>(null);
 
   const handleFileUploaded = (base64: string, file?: File) => {
     console.log('File uploaded for re-upload:', file?.name);
+    if (file) {
+      setActualFile(file);
+    }
+  };
+
+  // Override the files change to restrict to single file and capture actual File object
+  const handleSingleFileChange = (files: any[]) => {
+    // Restrict to single file
+    const singleFile = files.slice(0, 1);
+    handleFilesChange(singleFile);
+    
+    // Extract the actual File object if available
+    if (singleFile.length > 0 && singleFile[0].file) {
+      setActualFile(singleFile[0].file);
+    }
   };
 
   const handleUpdateDocument = async () => {
-    if (supportingFiles.length === 0) {
+    if (!actualFile && supportingFiles.length === 0) {
       toast({
         title: "No File Selected",
         description: "Please select a new document to upload.",
@@ -54,11 +70,16 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
 
     setIsUploading(true);
     try {
-      const file = supportingFiles[0];
+      // Use the actual File object if available, otherwise fall back to supportingFiles
+      const fileToUpload = actualFile || (supportingFiles[0] as any)?.file;
+      
+      if (!fileToUpload) {
+        throw new Error('No valid file found for upload');
+      }
       
       // Upload file to storage
       const storagePath = await backofficeDocumentService.uploadToStorage(
-        file,
+        fileToUpload,
         employee.clientId,
         employee.id
       );
@@ -135,14 +156,19 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
 
             {/* New Document Upload */}
             <div>
-              <h3 className="font-medium mb-3">Upload New Document</h3>
+              <h3 className="font-medium mb-3">Upload New Document (Single File Only)</h3>
               <DocumentFileUploader
                 files={supportingFiles}
-                setFiles={handleFilesChange}
+                setFiles={handleSingleFileChange}
                 onFileUploaded={handleFileUploaded}
                 acceptedFileTypes="image/*,.pdf"
                 maxFileSize={5}
               />
+              {supportingFiles.length > 0 && (
+                <p className="text-sm text-green-600 mt-2">
+                  File selected: {supportingFiles[0].name}
+                </p>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -156,7 +182,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
               </Button>
               <Button
                 onClick={handleUpdateDocument}
-                disabled={isUploading || supportingFiles.length === 0}
+                disabled={isUploading || (!actualFile && supportingFiles.length === 0)}
                 className="flex items-center gap-2"
               >
                 {isUploading ? (

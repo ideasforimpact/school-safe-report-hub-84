@@ -1,22 +1,40 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { FileItem } from '@/types/fileTypes';
 
-export function useFilesManagement() {
-  // Supporting files state
+export interface UseFilesManagementReturn {
+  supportingFiles: FileItem[];
+  handleFilesChange: (files: FileItem[]) => void;
+  addFiles: (newFiles: FileItem[]) => void;
+  removeFile: (fileId: string) => void;
+  clearFiles: () => void;
+}
+
+export const useFilesManagement = (): UseFilesManagementReturn => {
   const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
 
-  const handleFilesChange = (files: FileItem[]) => {
-    // Ensure all files have base64 data
-    const validFiles = files.map(file => ({
-      ...file,
-      base64: file.base64 || '' // Ensure base64 is never undefined
-    }));
-    setSupportingFiles(validFiles);
-  };
+  const handleFilesChange = useCallback((files: FileItem[]) => {
+    console.log('Files changed in useFilesManagement:', files);
+    setSupportingFiles(files);
+  }, []);
+
+  const addFiles = useCallback((newFiles: FileItem[]) => {
+    setSupportingFiles(prev => [...prev, ...newFiles]);
+  }, []);
+
+  const removeFile = useCallback((fileId: string) => {
+    setSupportingFiles(prev => prev.filter(file => file.id !== fileId));
+  }, []);
+
+  const clearFiles = useCallback(() => {
+    setSupportingFiles([]);
+  }, []);
 
   return {
     supportingFiles,
-    handleFilesChange
+    handleFilesChange,
+    addFiles,
+    removeFile,
+    clearFiles
   };
-}
+};
