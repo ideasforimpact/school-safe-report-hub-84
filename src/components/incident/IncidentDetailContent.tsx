@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -116,15 +115,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   // Use currentIncident instead of incident for display
   const displayIncident = currentIncident;
 
-  // Create a wrapper function for status change that uses the current statusUpdate value
-  const handleStatusUpdate = useCallback(async () => {
-    try {
-      await handleStatusChange(statusUpdate);
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
-  }, [handleStatusChange, statusUpdate]);
-
   // Convert incident documents to the expected format
   const convertedDocuments: IncidentDocument[] = (displayIncident.documents || []).map((doc: any) => ({
     id: doc.id || crypto.randomUUID(),
@@ -165,7 +155,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
             incident={displayIncident}
             statusUpdate={statusUpdate}
             setStatusUpdate={setStatusUpdate}
-            handleStatusChange={handleStatusUpdate}
+            handleStatusChange={() => {}}
             formatDate={formatDate}
             formatDateTime={formatDateTime}
             getStatusColor={getStatusColor}

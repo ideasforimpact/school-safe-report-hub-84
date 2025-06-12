@@ -9,7 +9,6 @@ import { BanIcon } from 'lucide-react';
 
 import IncidentDetailsHeader from './details/IncidentDetailsHeader';
 import IncidentMetadata from './details/IncidentMetadata';
-import StatusUpdateSection from './details/StatusUpdateSection';
 import IncidentDescription from './details/IncidentDescription';
 import RootCauseDisplay from './details/RootCauseDisplay';
 import ContributingFactorsDisplay from './details/ContributingFactorsDisplay';
@@ -113,18 +112,6 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
               </svg>
               <span className="text-sm font-medium">Reopened Ticket</span>
             </div>
-          )}
-
-          {/* Only show status update section if incident is not closed and not voided */}
-          {incident.status !== 'Closed' && !incident.isVoided && (
-            <StatusUpdateSection
-              currentStatus={incident.status}
-              statusUpdate={statusUpdate}
-              setStatusUpdate={setStatusUpdate}
-              onStatusChange={handleStatusChange}
-              onCloseButtonClick={handleCloseButtonClick}
-              getStatusColor={getStatusColor}
-            />
           )}
 
           {/* Description section */}
