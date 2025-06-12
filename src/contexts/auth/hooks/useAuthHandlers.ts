@@ -557,7 +557,7 @@ export const useAuthHandlers = ({
       setAuthError(null);
       
       console.log("useAuthHandlers - Authentication successful for employee:", employeeData.email);
-      toast.success(`Welcome back, ${employeeData.firstName}!`);
+      // toast.success(`Welcome back, ${employeeData.firstName}!`);
       
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;
