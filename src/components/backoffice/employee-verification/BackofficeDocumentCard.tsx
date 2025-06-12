@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Download, Eye, Calendar, User, Hash } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, User, Hash, CheckCircle, Upload } from 'lucide-react';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import DocumentReUploadDialog from './DocumentReUploadDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -20,6 +22,9 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   onRefresh
 }) => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
+  const [isCompletingDocument, setIsCompletingDocument] = useState(false);
+  const { toast } = useToast();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -53,6 +58,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     return '📄';
   };
 
+  const formatDocumentTypeName = (name: string) => {
+    return name.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  };
+
   const handleDownload = () => {
     if (document.documentImage) {
       const link = window.document.createElement('a');
@@ -65,14 +76,58 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   const handleViewImage = () => {
-    setImagePreviewOpen(true);
+    if (document.documentImage) {
+      // Try to open the document
+      try {
+        window.open(document.documentImage, '_blank', 'noopener,noreferrer');
+      } catch (error) {
+        console.error('Error opening document:', error);
+        // Fallback to modal preview
+        setImagePreviewOpen(true);
+      }
+    } else {
+      toast({
+        title: "No Document",
+        description: "No document image available to view.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const formatDocumentTypeName = (name: string) => {
-    return name.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
+  const handleCompleteDocument = async () => {
+    setIsCompletingDocument(true);
+    try {
+      // TODO: Implement actual API call to mark document as verified
+      console.log('Marking document as complete:', document.id);
+      
+      toast({
+        title: "Document Completed",
+        description: "The document has been marked as verified.",
+      });
+      
+      onRefresh();
+    } catch (error) {
+      console.error('Error completing document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark document as complete. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCompletingDocument(false);
+    }
   };
+
+  const handleReUpload = () => {
+    setReUploadDialogOpen(true);
+  };
+
+  const handleDocumentUpdated = () => {
+    onRefresh();
+  };
+
+  // Check if this is an "Other" document with "in-progress" status
+  const isOtherInProgress = documentTypeName.toLowerCase() === 'other' && document.verificationStatus === 'in-progress';
 
   return (
     <>
@@ -144,25 +199,53 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              {document.documentImage && (
+              {/* Conditional buttons for "Other" documents with "in-progress" status */}
+              {isOtherInProgress && (
                 <>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleViewImage}
+                    onClick={handleCompleteDocument}
+                    disabled={isCompletingDocument}
                     className="flex items-center gap-2"
                   >
-                    <Eye className="h-4 w-4" />
-                    View
+                    {isCompletingDocument ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    Complete
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleDownload}
+                    onClick={handleReUpload}
                     className="flex items-center gap-2"
                   >
+                    <Upload className="h-4 w-4" />
+                    Re-upload
+                  </Button>
+                </>
+              )}
+              
+              {/* View and Download as icon buttons */}
+              {document.documentImage && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleViewImage}
+                    title="View Document"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleDownload}
+                    title="Download Document"
+                  >
                     <Download className="h-4 w-4" />
-                    Download
                   </Button>
                 </>
               )}
@@ -183,6 +266,15 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
               alt={`${documentTypeName} for ${employee.name}`}
               className="max-w-full max-h-full object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                console.error('Error loading image:', e);
+                toast({
+                  title: "Image Load Error",
+                  description: "Failed to load the document image.",
+                  variant: "destructive",
+                });
+                setImagePreviewOpen(false);
+              }}
             />
             <Button
               variant="outline"
@@ -194,6 +286,15 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Re-upload Dialog */}
+      <DocumentReUploadDialog
+        open={reUploadDialogOpen}
+        onOpenChange={setReUploadDialogOpen}
+        document={document}
+        employee={employee}
+        onDocumentUpdated={handleDocumentUpdated}
+      />
     </>
   );
 };
