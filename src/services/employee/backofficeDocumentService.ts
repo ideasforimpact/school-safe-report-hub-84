@@ -20,17 +20,10 @@ export const backofficeDocumentService = {
     try {
       console.log('Starting completeDocument for:', { documentId, clientId, employeeId });
       
-      // First verify the document belongs to the specified client and employee
+      // First verify the document exists and belongs to the specified employee
       const { data: document, error: documentError } = await supabase
         .from('employee_documents')
-        .select(`
-          id,
-          employee_id,
-          employees!inner(
-            id,
-            client_id
-          )
-        `)
+        .select('id, employee_id')
         .eq('id', documentId)
         .eq('employee_id', employeeId)
         .single();
@@ -40,9 +33,17 @@ export const backofficeDocumentService = {
         throw new Error('Document not found or access denied');
       }
 
-      // Verify client ID matches
-      if (document.employees.client_id !== clientId) {
-        throw new Error('Document does not belong to the specified client');
+      // Then verify the employee belongs to the specified client
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (employeeError || !employee) {
+        console.error('Employee verification failed:', employeeError);
+        throw new Error('Employee does not belong to the specified client');
       }
 
       // Get the complete status ID
@@ -88,17 +89,10 @@ export const backofficeDocumentService = {
     try {
       console.log('Starting reUploadDocument for:', { documentId, clientId, employeeId, newDocumentUrl });
       
-      // First verify the document belongs to the specified client and employee
+      // First verify the document exists and belongs to the specified employee
       const { data: document, error: documentError } = await supabase
         .from('employee_documents')
-        .select(`
-          id,
-          employee_id,
-          employees!inner(
-            id,
-            client_id
-          )
-        `)
+        .select('id, employee_id')
         .eq('id', documentId)
         .eq('employee_id', employeeId)
         .single();
@@ -108,9 +102,17 @@ export const backofficeDocumentService = {
         throw new Error('Document not found or access denied');
       }
 
-      // Verify client ID matches
-      if (document.employees.client_id !== clientId) {
-        throw new Error('Document does not belong to the specified client');
+      // Then verify the employee belongs to the specified client
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (employeeError || !employee) {
+        console.error('Employee verification failed:', employeeError);
+        throw new Error('Employee does not belong to the specified client');
       }
 
       console.log('Updating document URL to:', newDocumentUrl);
