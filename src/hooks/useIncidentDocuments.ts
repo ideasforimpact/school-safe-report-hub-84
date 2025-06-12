@@ -15,16 +15,16 @@ export const useIncidentDocuments = (incidentId?: string) => {
     setSupportingFiles(files);
   }, []);
 
-  // Upload files and update incident
-  const uploadAndSaveDocuments = useCallback(async (incidentId: string, files: FileItem[]): Promise<IncidentDocument[]> => {
+  // Upload files and update incident - now requires clientId
+  const uploadAndSaveDocuments = useCallback(async (incidentId: string, clientId: string, files: FileItem[]): Promise<IncidentDocument[]> => {
     if (!files.length) return [];
     
-    console.log('Starting upload of', files.length, 'files for incident:', incidentId);
+    console.log('Starting upload of', files.length, 'files for incident:', incidentId, 'client:', clientId);
     setIsUploading(true);
     
     try {
-      // Upload files to storage
-      const uploadedDocs = await incidentDocumentService.uploadFiles(incidentId, files);
+      // Upload files to storage with hierarchical path
+      const uploadedDocs = await incidentDocumentService.uploadFiles(incidentId, clientId, files);
       console.log('Files uploaded to storage:', uploadedDocs.length);
       
       // Get existing documents

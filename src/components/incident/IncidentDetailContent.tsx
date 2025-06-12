@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -126,6 +127,9 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
     uploadedAt: doc.uploadedAt || new Date().toISOString()
   }));
 
+  // Determine if user can upload documents (admin users)
+  const canUploadDocuments = isAdmin;
+
   return (
     <div className="container max-w-6xl py-6">
       {/* Loading overlay for incident refresh */}
@@ -168,6 +172,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
             incidentId={displayIncident.id}
             documents={convertedDocuments}
             canDelete={isAdmin}
+            canUpload={canUploadDocuments}
             onDocumentDeleted={onRefreshIncident}
           />
         </TabsContent>

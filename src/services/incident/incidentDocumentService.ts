@@ -25,15 +25,15 @@ interface IncidentDocumentRecord {
 
 export const incidentDocumentService = {
   // Upload files to storage and return document info
-  async uploadFiles(incidentId: string, files: FileItem[]): Promise<IncidentDocument[]> {
+  async uploadFiles(incidentId: string, clientId: string, files: FileItem[]): Promise<IncidentDocument[]> {
     const uploadedDocuments: IncidentDocument[] = [];
 
     for (const file of files) {
       try {
-        // Generate unique file path
+        // Generate unique file path with hierarchical structure: incidents/{clientId}/{incidentId}/
         const timestamp = Date.now();
         const fileExtension = file.name.split('.').pop() || '';
-        const fileName = `incidents/${incidentId}/${timestamp}_${file.id}.${fileExtension}`;
+        const fileName = `incidents/${clientId}/${incidentId}/${timestamp}_${file.id}.${fileExtension}`;
         
         // Convert base64 to blob
         const base64Data = file.base64.split(',')[1];

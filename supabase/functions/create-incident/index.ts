@@ -52,7 +52,7 @@ serve(async (req) => {
       throw new Error('Could not fetch incident status');
     }
 
-    // Prepare the incident record with all data
+    // Prepare the incident record with all data - start with empty documents array
     const incidentRecord = {
       ticket_id: ticketId,
       description: description || '',
@@ -61,7 +61,7 @@ serve(async (req) => {
       status_id: statusData.id,
       client_id: clientId,
       people_involved: peopleInvolved || [],
-      documents: documents || [],
+      documents: [], // Initialize with empty array, documents will be uploaded separately
       type_id: typeId || null,
       category_id: categoryId || null,
       subcategory_id: subcategoryId || null,
@@ -86,6 +86,9 @@ serve(async (req) => {
     }
 
     console.log('Incident created successfully:', incident);
+
+    // Note: Documents will be uploaded separately using the frontend document service
+    // with the new hierarchical path structure: incidents/{clientId}/{incidentId}/
 
     return new Response(
       JSON.stringify({ 
