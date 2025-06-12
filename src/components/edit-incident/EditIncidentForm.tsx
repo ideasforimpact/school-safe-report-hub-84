@@ -33,7 +33,7 @@ interface UserBasicInfo {
 const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, employeeData } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get form configuration data from the new hook
@@ -153,10 +153,17 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     setIsSubmitting(true);
     
     try {
+      // Get clientId from user data
+      const clientId = employeeData?.clientId || employeeData?.client_id;
+      if (!clientId) {
+        toast.error("Unable to identify client. Please refresh and try again.");
+        return;
+      }
+
       // First, upload any new files if there are any
       if (supportingFiles.length > 0) {
         console.log('Uploading new supporting files:', supportingFiles.length);
-        await uploadAndSaveDocuments(id, supportingFiles);
+        await uploadAndSaveDocuments(id, clientId, supportingFiles);
       }
 
       // Combine date and time

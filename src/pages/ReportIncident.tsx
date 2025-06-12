@@ -264,8 +264,8 @@ const ReportIncident = () => {
           // Import the document service here to avoid circular imports
           const { incidentDocumentService } = await import('@/services/incident/incidentDocumentService');
           
-          // Upload files to storage
-          const uploadedDocuments = await incidentDocumentService.uploadFiles(incidentData.id, supportingFiles);
+          // Upload files to storage with clientId
+          const uploadedDocuments = await incidentDocumentService.uploadFiles(incidentData.id, clientId, supportingFiles);
           
           // Update incident with document URLs
           await incidentDocumentService.updateIncidentDocuments(incidentData.id, uploadedDocuments);
