@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +51,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     switch (status) {
       case 'verified':
         return <Badge className="bg-green-500 hover:bg-green-600">Verified</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-500 hover:bg-green-600">Completed</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
       case 'in-progress':
