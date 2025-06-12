@@ -140,7 +140,7 @@ export const backofficeDocumentService = {
     }
   },
 
-  // Upload file to employee_other_type_statement bucket
+  // Upload file to employee_other_type_statement bucket and return full public URL
   async uploadToStorage(file: File, clientId: string, employeeId: string): Promise<string> {
     try {
       console.log('Starting file upload to storage:', { fileName: file.name, clientId, employeeId });
@@ -164,7 +164,12 @@ export const backofficeDocumentService = {
       }
 
       console.log('File uploaded successfully to storage:', data.path);
-      return data.path;
+      
+      // Construct the full public URL
+      const publicUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${data.path}`;
+      console.log('Generated public URL:', publicUrl);
+      
+      return publicUrl;
     } catch (error) {
       console.error('Error uploading to storage:', error);
       throw error;
