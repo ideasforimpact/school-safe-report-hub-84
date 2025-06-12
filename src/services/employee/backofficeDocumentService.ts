@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CompleteDocumentRequest {
@@ -84,7 +83,7 @@ export const backofficeDocumentService = {
     }
   },
 
-  // Re-upload a document by updating the document URL
+  // Re-upload a document by updating the document URL only, keeping the existing status
   async reUploadDocument({ documentId, clientId, employeeId, newDocumentUrl }: ReUploadDocumentRequest) {
     try {
       console.log('Starting reUploadDocument for:', { documentId, clientId, employeeId, newDocumentUrl });
@@ -117,12 +116,11 @@ export const backofficeDocumentService = {
 
       console.log('Updating document URL to:', newDocumentUrl);
 
-      // Update the document URL and reset status to pending
+      // Update only the document URL and timestamp, keep existing verification status
       const { data: updatedDocument, error: updateError } = await supabase
         .from('employee_documents')
         .update({
           document_url: newDocumentUrl,
-          verification_status: 'pending',
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId)
