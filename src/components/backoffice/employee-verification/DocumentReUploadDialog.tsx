@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import DocumentFileUploader from '@/components/employee-verification/form/DocumentFileUploader';
 import { useFilesManagement } from '@/hooks/useFilesManagement';
+import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
 
 interface DocumentReUploadDialogProps {
   open: boolean;
@@ -42,10 +43,33 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       return;
     }
 
+    if (!employee.clientId) {
+      toast({
+        title: "Error",
+        description: "Client ID not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
     try {
-      // TODO: Implement actual document update API call
-      console.log('Updating document:', document.id, 'with new file:', supportingFiles[0]);
+      const file = supportingFiles[0];
+      
+      // Upload file to storage
+      const storagePath = await backofficeDocumentService.uploadToStorage(
+        file,
+        employee.clientId,
+        employee.id
+      );
+      
+      // Update document with new URL
+      await backofficeDocumentService.reUploadDocument({
+        documentId: document.id,
+        clientId: employee.clientId,
+        employeeId: employee.id,
+        newDocumentUrl: storagePath
+      });
       
       toast({
         title: "Document Updated",
@@ -58,7 +82,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       console.error('Error updating document:', error);
       toast({
         title: "Update Failed",
-        description: "Failed to update the document. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to update the document. Please try again.",
         variant: "destructive",
       });
     } finally {

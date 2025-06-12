@@ -7,6 +7,7 @@ import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import DocumentReUploadDialog from './DocumentReUploadDialog';
+import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -77,12 +78,10 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   const handleViewImage = () => {
     if (document.documentImage) {
-      // Try to open the document
       try {
         window.open(document.documentImage, '_blank', 'noopener,noreferrer');
       } catch (error) {
         console.error('Error opening document:', error);
-        // Fallback to modal preview
         setImagePreviewOpen(true);
       }
     } else {
@@ -95,10 +94,22 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   const handleCompleteDocument = async () => {
+    if (!employee.clientId) {
+      toast({
+        title: "Error",
+        description: "Client ID not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCompletingDocument(true);
     try {
-      // TODO: Implement actual API call to mark document as verified
-      console.log('Marking document as complete:', document.id);
+      await backofficeDocumentService.completeDocument({
+        documentId: document.id,
+        clientId: employee.clientId,
+        employeeId: employee.id
+      });
       
       toast({
         title: "Document Completed",
@@ -110,7 +121,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
       console.error('Error completing document:', error);
       toast({
         title: "Error",
-        description: "Failed to mark document as complete. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to mark document as complete. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -199,33 +210,35 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              {/* Conditional buttons for "Other" documents with "in-progress" status */}
+              {/* Complete button - only for "Other" documents with "in-progress" status */}
               {isOtherInProgress && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCompleteDocument}
-                    disabled={isCompletingDocument}
-                    className="flex items-center gap-2"
-                  >
-                    {isCompletingDocument ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                    ) : (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    Complete
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReUpload}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Re-upload
-                  </Button>
-                </>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCompleteDocument}
+                  disabled={isCompletingDocument}
+                  className="flex items-center gap-2"
+                >
+                  {isCompletingDocument ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  Complete
+                </Button>
+              )}
+              
+              {/* Re-upload button - only if document has documentImage */}
+              {document.documentImage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReUpload}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Re-upload
+                </Button>
               )}
               
               {/* View and Download as icon buttons */}

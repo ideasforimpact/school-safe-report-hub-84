@@ -32,7 +32,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
     <Card className={`h-full transition-all duration-200 ${getCardStyle()}`}>
       <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
         <VerificationStatusBadge 
-          status={document.verificationStatus} 
+          status={document.verificationStatus as 'verified' | 'failed' | 'pending' | 'in-progress'} 
           documentStatusName={document.documentStatusName}
           documentLogs={document.employee_docs_log}
           documentId={document.id}
