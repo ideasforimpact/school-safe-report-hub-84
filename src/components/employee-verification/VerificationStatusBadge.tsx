@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, Play } from 'lucide-react';
 import PanDetailsDialog from './document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from './document-card/DrivingLicenseDetailsDialog';
@@ -55,19 +55,19 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           variant: 'destructive',
           bgColor: 'bg-red-100 text-red-800 border-red-200'
         };
+      case 'in-progress':
+        return {
+          icon: Play,
+          text: 'In Progress',
+          variant: 'default',
+          bgColor: 'bg-blue-100 text-blue-800 border-blue-200'
+        };
       case 'pending':
         return {
           icon: Clock,
           text: 'Pending',
           variant: 'default',
           bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        };
-      case 'in-progress':
-        return {
-          icon: Clock,
-          text: 'In Progress',
-          variant: 'default',
-          bgColor: 'bg-blue-100 text-blue-800 border-blue-200'
         };
       default:
         return {

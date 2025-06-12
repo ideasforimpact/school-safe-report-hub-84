@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         return <Badge className="bg-green-500 hover:bg-green-600">Verified</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
+      case 'in-progress':
+        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">In Progress</Badge>;
       case 'pending':
       default:
         return <Badge variant="outline">Pending</Badge>;
