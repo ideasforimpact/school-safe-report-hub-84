@@ -14,7 +14,7 @@ const UploadDocumentPage = () => {
     employeeId: string;
   }>();
   const navigate = useNavigate();
-  const { getEmployee, fetchDocumentTypes, fetchEmployees, isLoading } = useEmployeeVerification();
+  const { getEmployee, fetchDocumentTypes, fetchEmployeeById, isLoading } = useEmployeeVerification();
   const [isLoadingEmployee, setIsLoadingEmployee] = useState(false);
   const [employeeFetchAttempted, setEmployeeFetchAttempted] = useState(false);
 
@@ -23,21 +23,14 @@ const UploadDocumentPage = () => {
   // Fetch employee data if not found and not already attempted
   useEffect(() => {
     const loadEmployeeData = async () => {
-      if (!employeeId) return;
-      
-      // If employee is found or we already attempted to fetch, don't try again
-      if (employee || employeeFetchAttempted) return;
+      if (!employeeId || employee || employeeFetchAttempted) return;
       
       console.log('Employee not found in context, attempting to fetch employee data...');
       setIsLoadingEmployee(true);
       setEmployeeFetchAttempted(true);
       
       try {
-        // First try to fetch all employees (which will include this one)
-        await fetchEmployees();
-        
-        // If that doesn't work, we could add individual employee fetching here
-        // but the fetchEmployees should cover most cases
+        await fetchEmployeeById(employeeId);
       } catch (error) {
         console.error('Error fetching employee data:', error);
       } finally {
@@ -46,7 +39,7 @@ const UploadDocumentPage = () => {
     };
 
     loadEmployeeData();
-  }, [employeeId, employee, employeeFetchAttempted, fetchEmployees]);
+  }, [employeeId, employee, employeeFetchAttempted, fetchEmployeeById]);
 
   // Fetch document types once when the page loads
   useEffect(() => {

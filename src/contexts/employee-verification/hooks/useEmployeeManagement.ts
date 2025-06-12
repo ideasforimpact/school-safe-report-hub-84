@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '../types';
 import { toast } from 'sonner';
@@ -10,13 +10,29 @@ export const useEmployeeManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { user, employeeData } = useAuth();
   const location = useLocation();
+  
+  // Cache for route detection to prevent unnecessary re-calculations
+  const routeCache = useRef<{ pathname: string; isEmployeeRoute: boolean }>({ pathname: '', isEmployeeRoute: false });
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Check if we're on an employee verification route - updated to be more comprehensive
-  const isEmployeeVerificationRoute = location.pathname.includes('/employee-verification') || 
-                                     location.pathname.includes('/backoffice/employee-verification');
+  // Memoized route detection with caching
+  const isEmployeeVerificationRoute = (() => {
+    if (routeCache.current.pathname === location.pathname) {
+      return routeCache.current.isEmployeeRoute;
+    }
+    
+    const isRoute = location.pathname.includes('/employee-verification') || 
+                   location.pathname.includes('/backoffice/employee-verification');
+    
+    routeCache.current = { pathname: location.pathname, isEmployeeRoute: isRoute };
+    return isRoute;
+  })();
+
+  // Cache for fetch operations
+  const fetchCache = useRef<{ timestamp: number; data: Employee[] }>({ timestamp: 0, data: [] });
+  const CACHE_DURATION = 30000; // 30 seconds
 
   const fetchEmployees = useCallback(async () => {
     // Only fetch if we're on employee verification route and have clientId
@@ -24,6 +40,14 @@ export const useEmployeeManagement = () => {
       console.log('Skipping employee fetch - not on employee verification route or no client ID');
       setEmployees([]);
       return [];
+    }
+
+    // Check cache first
+    const now = Date.now();
+    if (fetchCache.current.timestamp && (now - fetchCache.current.timestamp) < CACHE_DURATION) {
+      console.log('Using cached employee data');
+      setEmployees(fetchCache.current.data);
+      return fetchCache.current.data;
     }
 
     setIsLoading(true);
@@ -60,8 +84,10 @@ export const useEmployeeManagement = () => {
 
       if (!employeesData || employeesData.length === 0) {
         console.log('No employees found for client:', clientId);
-        setEmployees([]);
-        return [];
+        const emptyResult: Employee[] = [];
+        setEmployees(emptyResult);
+        fetchCache.current = { timestamp: now, data: emptyResult };
+        return emptyResult;
       }
 
       // Get all employee IDs to fetch documents
@@ -106,6 +132,25 @@ export const useEmployeeManagement = () => {
               documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
             }
             
+            // Safely handle employee_docs_log with proper type checking
+            let employeeDocsLog: Array<{
+              timestamp: string;
+              action: string;
+              response: any;
+              notes?: string;
+            }> = [];
+
+            if (doc.employee_docs_log && Array.isArray(doc.employee_docs_log)) {
+              employeeDocsLog = doc.employee_docs_log.filter(log => 
+                log && typeof log === 'object' && 'timestamp' in log && 'action' in log
+              ) as Array<{
+                timestamp: string;
+                action: string;
+                response: any;
+                notes?: string;
+              }>;
+            }
+            
             return {
               id: doc.id,
               employeeId: doc.employee_id,
@@ -119,12 +164,7 @@ export const useEmployeeManagement = () => {
               verificationDate: null,
               verificationNotes: '',
               verificationMethod: 'manual' as const,
-              employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
-                timestamp: string;
-                action: string;
-                response: any;
-                notes?: string;
-              }> : [],
+              employee_docs_log: employeeDocsLog,
               params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
               createdAt: doc.created_at,
               updatedAt: doc.updated_at
@@ -156,6 +196,7 @@ export const useEmployeeManagement = () => {
 
       console.log(`Fetched ${mappedEmployees.length} employees with their documents`);
       setEmployees(mappedEmployees);
+      fetchCache.current = { timestamp: now, data: mappedEmployees };
       return mappedEmployees;
     } catch (error) {
       console.error('Error in fetchEmployees:', error);
@@ -228,12 +269,31 @@ export const useEmployeeManagement = () => {
         console.error('Error fetching employee documents:', documentsError);
       }
 
-      // Map documents
+      // Map documents with proper type handling
       const employeeDocuments = (documentsData || []).map(doc => {
         let documentUrl = doc.document_url;
         
         if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
           documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+        }
+        
+        // Safely handle employee_docs_log
+        let employeeDocsLog: Array<{
+          timestamp: string;
+          action: string;
+          response: any;
+          notes?: string;
+        }> = [];
+
+        if (doc.employee_docs_log && Array.isArray(doc.employee_docs_log)) {
+          employeeDocsLog = doc.employee_docs_log.filter(log => 
+            log && typeof log === 'object' && 'timestamp' in log && 'action' in log
+          ) as Array<{
+            timestamp: string;
+            action: string;
+            response: any;
+            notes?: string;
+          }>;
         }
         
         return {
@@ -249,7 +309,7 @@ export const useEmployeeManagement = () => {
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual' as const,
-          employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
+          employee_docs_log: employeeDocsLog,
           params: typeof doc.params === 'object' && doc.params !== null ? doc.params : {},
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
@@ -362,7 +422,7 @@ export const useEmployeeManagement = () => {
         .from('employees')
         .update(dbUpdates)
         .eq('id', id)
-        .eq('client_id', clientId) // Ensure we only update employees from current client
+        .eq('client_id', clientId)
         .select()
         .single();
 
@@ -398,7 +458,7 @@ export const useEmployeeManagement = () => {
         .from('employees')
         .delete()
         .eq('id', id)
-        .eq('client_id', clientId); // Ensure we only delete employees from current client
+        .eq('client_id', clientId);
 
       if (error) throw error;
 
@@ -420,7 +480,7 @@ export const useEmployeeManagement = () => {
     employees,
     isLoading,
     fetchEmployees,
-    fetchEmployeeById, // New function for individual employee fetching
+    fetchEmployeeById,
     addEmployee,
     updateEmployee,
     deleteEmployee,
