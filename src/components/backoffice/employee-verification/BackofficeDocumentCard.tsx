@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -199,33 +200,35 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              {/* Conditional buttons for "Other" documents with "in-progress" status */}
+              {/* Complete button - only for "Other" documents with "in-progress" status */}
               {isOtherInProgress && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCompleteDocument}
-                    disabled={isCompletingDocument}
-                    className="flex items-center gap-2"
-                  >
-                    {isCompletingDocument ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                    ) : (
-                      <CheckCircle className="h-4 w-4" />
-                    )}
-                    Complete
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReUpload}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Re-upload
-                  </Button>
-                </>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCompleteDocument}
+                  disabled={isCompletingDocument}
+                  className="flex items-center gap-2"
+                >
+                  {isCompletingDocument ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  Complete
+                </Button>
+              )}
+              
+              {/* Re-upload button - only show if document has documentImage */}
+              {document.documentImage && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReUpload}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Re-upload
+                </Button>
               )}
               
               {/* View and Download as icon buttons */}
