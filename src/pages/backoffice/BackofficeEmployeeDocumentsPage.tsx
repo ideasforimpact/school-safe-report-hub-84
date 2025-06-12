@@ -39,7 +39,7 @@ const BackofficeEmployeeDocumentsPage = () => {
     try {
       setLoading(true);
       const employeeData = await backofficeEmployeeService.fetchEmployeeWithDocuments(employeeId, clientId);
-      
+      console.log(employeeData,"employeeData")
       if (!employeeData) {
         toast({
           title: "Employee Not Found",
