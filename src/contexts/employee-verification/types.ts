@@ -14,7 +14,6 @@ export interface EmployeeVerificationContextType {
   deleteEmployee: (id: string) => Promise<boolean>;
   getEmployee: (id: string) => Employee | undefined;
   fetchEmployees: () => Promise<Employee[]>;
-  fetchEmployeeById: (employeeId: string) => Promise<Employee | null>;
   
   // Document management
   documents: VerificationDocument[];
