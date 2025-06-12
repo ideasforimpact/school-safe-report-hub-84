@@ -128,9 +128,6 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   // Check if this is an "Other" document with "in-progress" status
   const isOtherInProgress = documentTypeName.toLowerCase() === 'other' && document.verificationStatus === 'in-progress';
-  
-  // Check if document has a valid URL
-  const hasDocumentUrl = document.documentImage && document.documentImage.trim() !== '';
 
   return (
     <>
@@ -202,39 +199,37 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              {/* Complete button - only for "Other" documents with "in-progress" status */}
+              {/* Conditional buttons for "Other" documents with "in-progress" status */}
               {isOtherInProgress && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCompleteDocument}
-                  disabled={isCompletingDocument}
-                  className="flex items-center gap-2"
-                >
-                  {isCompletingDocument ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                  ) : (
-                    <CheckCircle className="h-4 w-4" />
-                  )}
-                  Complete
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCompleteDocument}
+                    disabled={isCompletingDocument}
+                    className="flex items-center gap-2"
+                  >
+                    {isCompletingDocument ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    Complete
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReUpload}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Re-upload
+                  </Button>
+                </>
               )}
               
-              {/* Re-upload button - always visible but conditionally disabled */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReUpload}
-                disabled={!hasDocumentUrl}
-                className="flex items-center gap-2"
-                title={!hasDocumentUrl ? "No document available to re-upload" : "Re-upload document"}
-              >
-                <Upload className="h-4 w-4" />
-                Re-upload
-              </Button>
-              
               {/* View and Download as icon buttons */}
-              {hasDocumentUrl && (
+              {document.documentImage && (
                 <>
                   <Button
                     variant="ghost"
