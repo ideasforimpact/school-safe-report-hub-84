@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '../types';
 import { toast } from 'sonner';
@@ -11,28 +12,22 @@ export const useEmployeeManagement = () => {
   const { user, employeeData } = useAuth();
   const location = useLocation();
   
-  // Cache for route detection to prevent unnecessary re-calculations
-  const routeCache = useRef<{ pathname: string; isEmployeeRoute: boolean }>({ pathname: '', isEmployeeRoute: false });
-
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Memoized route detection with caching
-  const isEmployeeVerificationRoute = (() => {
-    if (routeCache.current.pathname === location.pathname) {
-      return routeCache.current.isEmployeeRoute;
-    }
-    
-    const isRoute = location.pathname.includes('/employee-verification') || 
-                   location.pathname.includes('/backoffice/employee-verification');
-    
-    routeCache.current = { pathname: location.pathname, isEmployeeRoute: isRoute };
-    return isRoute;
-  })();
+  // Stable route detection using useMemo
+  const isEmployeeVerificationRoute = useMemo(() => {
+    return location.pathname.includes('/employee-verification') || 
+           location.pathname.includes('/backoffice/employee-verification');
+  }, [location.pathname]);
 
-  // Cache for fetch operations
+  // Cache for fetch operations with stable reference
   const fetchCache = useRef<{ timestamp: number; data: Employee[] }>({ timestamp: 0, data: [] });
   const CACHE_DURATION = 30000; // 30 seconds
+
+  // Ref to track ongoing fetch operations to prevent multiple simultaneous fetches
+  const isFetchingRef = useRef(false);
+  const isIndividualFetchingRef = useRef(new Set<string>());
 
   const fetchEmployees = useCallback(async () => {
     // Only fetch if we're on employee verification route and have clientId
@@ -40,6 +35,12 @@ export const useEmployeeManagement = () => {
       console.log('Skipping employee fetch - not on employee verification route or no client ID');
       setEmployees([]);
       return [];
+    }
+
+    // Prevent multiple simultaneous fetches
+    if (isFetchingRef.current) {
+      console.log('Already fetching employees, skipping...');
+      return fetchCache.current.data;
     }
 
     // Check cache first
@@ -50,7 +51,9 @@ export const useEmployeeManagement = () => {
       return fetchCache.current.data;
     }
 
+    isFetchingRef.current = true;
     setIsLoading(true);
+    
     try {
       console.log('Fetching employees with documents for client:', clientId);
       
@@ -204,6 +207,7 @@ export const useEmployeeManagement = () => {
       return [];
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
   }, [clientId, isEmployeeVerificationRoute]);
 
@@ -213,6 +217,14 @@ export const useEmployeeManagement = () => {
       console.log('No client ID available for individual employee fetch');
       return null;
     }
+
+    // Prevent multiple simultaneous fetches for the same employee
+    if (isIndividualFetchingRef.current.has(employeeId)) {
+      console.log('Already fetching employee:', employeeId);
+      return null;
+    }
+
+    isIndividualFetchingRef.current.add(employeeId);
 
     try {
       console.log('Fetching individual employee:', employeeId);
@@ -351,6 +363,8 @@ export const useEmployeeManagement = () => {
     } catch (error) {
       console.error('Error fetching individual employee:', error);
       return null;
+    } finally {
+      isIndividualFetchingRef.current.delete(employeeId);
     }
   }, [clientId]);
 

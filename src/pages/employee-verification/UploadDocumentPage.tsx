@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,18 +16,24 @@ const UploadDocumentPage = () => {
   const navigate = useNavigate();
   const { getEmployee, fetchDocumentTypes, fetchEmployeeById, isLoading } = useEmployeeVerification();
   const [isLoadingEmployee, setIsLoadingEmployee] = useState(false);
-  const [employeeFetchAttempted, setEmployeeFetchAttempted] = useState(false);
+  
+  // Use refs to track fetch attempts and prevent multiple fetches
+  const employeeFetchAttemptedRef = useRef(false);
+  const isFetchingRef = useRef(false);
 
   const employee = getEmployee(employeeId || '');
 
   // Fetch employee data if not found and not already attempted
   useEffect(() => {
     const loadEmployeeData = async () => {
-      if (!employeeId || employee || employeeFetchAttempted) return;
+      if (!employeeId || employee || employeeFetchAttemptedRef.current || isFetchingRef.current) {
+        return;
+      }
       
       console.log('Employee not found in context, attempting to fetch employee data...');
+      isFetchingRef.current = true;
       setIsLoadingEmployee(true);
-      setEmployeeFetchAttempted(true);
+      employeeFetchAttemptedRef.current = true;
       
       try {
         await fetchEmployeeById(employeeId);
@@ -35,11 +41,12 @@ const UploadDocumentPage = () => {
         console.error('Error fetching employee data:', error);
       } finally {
         setIsLoadingEmployee(false);
+        isFetchingRef.current = false;
       }
     };
 
     loadEmployeeData();
-  }, [employeeId, employee, employeeFetchAttempted, fetchEmployeeById]);
+  }, [employeeId, employee]); // Removed fetchEmployeeById from dependencies to prevent infinite loop
 
   // Fetch document types once when the page loads
   useEffect(() => {
@@ -63,7 +70,7 @@ const UploadDocumentPage = () => {
   }
 
   // Only show "Employee Not Found" after we've attempted to fetch the data
-  if (!employee && employeeFetchAttempted && !isLoadingEmployee) {
+  if (!employee && employeeFetchAttemptedRef.current && !isLoadingEmployee) {
     return (
       <Layout>
         <div className="p-8 text-left">
@@ -79,7 +86,7 @@ const UploadDocumentPage = () => {
   }
 
   // Show loading if we still don't have employee data and haven't attempted fetch yet
-  if (!employee && !employeeFetchAttempted) {
+  if (!employee && !employeeFetchAttemptedRef.current) {
     return (
       <Layout>
         <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
