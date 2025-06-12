@@ -30,10 +30,13 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [actualFile, setActualFile] = useState<File | null>(null);
 
+  // Get the client ID - try both field names for compatibility
+  const clientId = employee.clientId || (employee as any).client_id;
+
   console.log('DocumentReUploadDialog - Rendered with:', {
     documentId: document.id,
     employeeId: employee.id,
-    clientId: employee.clientId,
+    clientId: clientId,
     open
   });
 
@@ -63,7 +66,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
     console.log('DocumentReUploadDialog - State:', {
       actualFile: actualFile?.name,
       supportingFilesLength: supportingFiles.length,
-      clientId: employee.clientId
+      clientId: clientId
     });
 
     if (!actualFile && supportingFiles.length === 0) {
@@ -76,11 +79,11 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       return;
     }
 
-    if (!employee.clientId) {
-      console.log('DocumentReUploadDialog - No client ID found');
+    if (!clientId) {
+      console.log('DocumentReUploadDialog - No client ID found. Employee data:', employee);
       toast({
         title: "Error",
-        description: "Client ID not found.",
+        description: "Client ID not found. Please check employee data.",
         variant: "destructive",
       });
       return;
@@ -101,7 +104,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       // Upload file to storage
       const storagePath = await backofficeDocumentService.uploadToStorage(
         fileToUpload,
-        employee.clientId,
+        clientId,
         employee.id
       );
       
@@ -111,7 +114,7 @@ const DocumentReUploadDialog: React.FC<DocumentReUploadDialogProps> = ({
       // Update document with new URL
       await backofficeDocumentService.reUploadDocument({
         documentId: document.id,
-        clientId: employee.clientId,
+        clientId: clientId,
         employeeId: employee.id,
         newDocumentUrl: storagePath
       });

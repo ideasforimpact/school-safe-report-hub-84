@@ -104,6 +104,8 @@ export const backofficeEmployeeService = {
           employeeType: employee.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
           createdAt: employee.created_at,
           updatedAt: employee.updated_at,
+          // Fix: Map client_id to clientId for compatibility
+          clientId: employee.client_id,
           documentsSummary: {
             verified,
             pending,
@@ -216,7 +218,9 @@ export const backofficeEmployeeService = {
         updatedAt: employee.updated_at,
         documents: mappedDocuments,
         firstName: employee.first_name,
-        lastName: employee.last_name
+        lastName: employee.last_name,
+        // Fix: Map client_id to clientId for compatibility
+        clientId: employee.client_id
       };
     } catch (error) {
       console.error('Error in fetchEmployeeWithDocuments:', error);

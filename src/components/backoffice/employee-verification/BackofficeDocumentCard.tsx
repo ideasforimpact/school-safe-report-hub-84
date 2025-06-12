@@ -28,13 +28,24 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const [isCompletingDocument, setIsCompletingDocument] = useState(false);
   const { toast } = useToast();
 
-  // Add console logging for debugging button conditions
+  // Enhanced debugging for client ID issue
+  console.log('BackofficeDocumentCard - Employee data:', {
+    id: employee.id,
+    name: employee.name,
+    clientId: employee.clientId,
+    client_id: (employee as any).client_id,
+    fullEmployee: employee
+  });
+
+  // Get the client ID - try both field names for compatibility
+  const clientId = employee.clientId || (employee as any).client_id;
+  
   console.log('BackofficeDocumentCard - Document:', {
     id: document.id,
     verificationStatus: document.verificationStatus,
     documentTypeName,
     documentImage: document.documentImage ? 'present' : 'missing',
-    employeeClientId: employee.clientId
+    resolvedClientId: clientId
   });
 
   const getStatusBadge = (status: string) => {
@@ -106,11 +117,11 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const handleCompleteDocument = async () => {
     console.log('BackofficeDocumentCard - Complete button clicked for document:', document.id);
     
-    if (!employee.clientId) {
-      console.error('BackofficeDocumentCard - No client ID found');
+    if (!clientId) {
+      console.error('BackofficeDocumentCard - No client ID found. Employee data:', employee);
       toast({
         title: "Error",
-        description: "Client ID not found.",
+        description: "Client ID not found. Please check employee data.",
         variant: "destructive",
       });
       return;
@@ -120,13 +131,13 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     try {
       console.log('BackofficeDocumentCard - Calling completeDocument API with:', {
         documentId: document.id,
-        clientId: employee.clientId,
+        clientId: clientId,
         employeeId: employee.id
       });
 
       await backofficeDocumentService.completeDocument({
         documentId: document.id,
-        clientId: employee.clientId,
+        clientId: clientId,
         employeeId: employee.id
       });
       
@@ -166,7 +177,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     isOtherInProgress,
     documentTypeName: documentTypeName.toLowerCase(),
     verificationStatus: document.verificationStatus,
-    hasDocumentImage: !!document.documentImage
+    hasDocumentImage: !!document.documentImage,
+    hasClientId: !!clientId
   });
 
   return (
@@ -240,7 +252,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             
             <div className="flex items-center gap-2 ml-4">
               {/* Complete button - only for "Other" documents with "in-progress" status */}
-              {isOtherInProgress && (
+              {isOtherInProgress && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -257,8 +269,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 </Button>
               )}
               
-              {/* Re-upload button - only if document has documentImage */}
-              {document.documentImage && (
+              {/* Re-upload button - only if document has documentImage and clientId */}
+              {document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
