@@ -17,7 +17,7 @@ interface DocumentCardProps {
 const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton = true }) => {
   // Different card styles based on verification status
   const getCardStyle = () => {
-    if (document.verificationStatus === 'verified') {
+    if (document.verificationStatus === 'verified' || document.verificationStatus === 'completed') {
       return 'border-green-100 shadow-sm hover:shadow-md';
     } else if (document.verificationStatus === 'failed') {
       return 'border-red-100 shadow-sm hover:shadow-md';
