@@ -180,7 +180,7 @@ export const backofficeEmployeeService = {
         // Continue without documents rather than failing
       }
 
-      // Map documents to VerificationDocument format
+      // Map documents to VerificationDocument format with proper type casting
       const mappedDocuments: VerificationDocument[] = (documents || []).map(doc => ({
         id: doc.id,
         employeeId: doc.employee_id,
@@ -191,7 +191,8 @@ export const backofficeEmployeeService = {
         documentStatusId: doc.document_status_id || undefined,
         employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
           doc.employee_docs_log as Array<{timestamp: string; action: string; response: any; notes?: string}> : [],
-        params: doc.params || {},
+        params: typeof doc.params === 'object' && doc.params !== null ? 
+          doc.params as {DOB?: string; [key: string]: any} : {},
         cronActivate: doc.cron_activate || false,
         cronActivatedDate: doc.cron_activated_date || undefined,
         cronUpdatedDate: doc.cron_updated_date || undefined,

@@ -72,6 +72,8 @@ import ThankYouPage from '@/pages/grievances/ThankYouPage';
 // Backoffice Pages
 import ModulesPage from '@/pages/backoffice/ModulesPage';
 import BackofficeEduSafeResourcesPage from '@/pages/backoffice/BackofficeEduSafeResourcesPage';
+import BackofficeEmployeeVerificationPage from '@/pages/backoffice/BackofficeEmployeeVerificationPage';
+import BackofficeEmployeeDocumentsPage from '@/pages/backoffice/BackofficeEmployeeDocumentsPage';
 
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -190,7 +192,7 @@ function App() {
                     <Route path="/employee-verification/:employeeId/upload-document" element={<RouteGuard requireAuth={true}><UploadDocumentPage /></RouteGuard>} />
                     <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><VerificationDashboardPage /></RouteGuard>} />
 
-                    {/* Backoffice routes - these remain unprotected as requested */}
+                    {/* Backoffice routes */}
                     <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                     <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
                     <Route path="/backoffice/settings" element={<BackofficeWrapper component={SettingsPage} />} />
@@ -210,6 +212,10 @@ function App() {
                     <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/edusafe-resources" element={<BackofficeWrapper component={BackofficeEduSafeResourcesPage} />} />
+                    
+                    {/* Backoffice Employee Verification routes */}
+                    <Route path="/backoffice/employee-verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
+                    <Route path="/backoffice/employee-verification/employee/:employeeId" element={<BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />} />
                     
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />

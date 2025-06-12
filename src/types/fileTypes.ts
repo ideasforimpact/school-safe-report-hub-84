@@ -5,15 +5,9 @@ export interface FileItem {
   size: number;
   type: string;
   url?: string;
-  base64?: string;
+  base64?: string; // Make this required to match incident types
   uploadedAt?: Date;
   status?: 'uploading' | 'uploaded' | 'error';
-}
-
-export interface FileUploadResponse {
-  success: boolean;
-  fileUrl?: string;
-  error?: string;
 }
 
 export interface UploadedDocument {
@@ -53,4 +47,18 @@ export const isPdfFile = (url: string, fileName?: string): boolean => {
   return checkString.toLowerCase().includes('.pdf') || 
          checkString.toLowerCase().includes('application/pdf') ||
          checkString.includes('data:application/pdf');
+};
+
+// Helper function to ensure FileItem compatibility with incident types
+export const ensureFileItemCompatibility = (fileItem: Partial<FileItem>): FileItem => {
+  return {
+    id: fileItem.id || '',
+    name: fileItem.name || '',
+    size: fileItem.size || 0,
+    type: fileItem.type || '',
+    url: fileItem.url,
+    base64: fileItem.base64 || '', // Ensure base64 is always present
+    uploadedAt: fileItem.uploadedAt,
+    status: fileItem.status || 'uploaded'
+  };
 };
