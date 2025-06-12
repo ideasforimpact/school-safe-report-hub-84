@@ -5,11 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { FilterState } from '@/types/filterTypes';
 import BasicFilters from './filters/BasicFilters';
 
+interface ServerFilters {
+  search?: string;
+  category?: string;
+  subcategory?: string;
+  status?: string;
+  priority?: string;
+  location?: string;
+  facility?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 interface IncidentFiltersProps {
-  filters: FilterState;
+  filters: ServerFilters;
   onFilterChange: (field: string, value: any) => void;
   onClearFilters: () => void;
   toggleAdvancedFilters?: () => void;
@@ -39,7 +50,7 @@ const IncidentFilters = ({
 }: IncidentFiltersProps) => {
   const [isOpen, setIsOpen] = useState(true);
 
-  // Count active basic filters only
+  // Count active filters
   const activeFilterCount = [
     filters.search,
     filters.location,
@@ -49,7 +60,7 @@ const IncidentFilters = ({
     filters.priority,
     filters.dateFrom,
     filters.dateTo
-  ].filter(Boolean).length;
+  ].filter(value => value && value.trim() !== '').length;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -91,7 +102,7 @@ const IncidentFilters = ({
                 <span className="text-sm">From:</span>
                 <Input
                   type="date"
-                  value={filters.dateFrom}
+                  value={filters.dateFrom || ''}
                   onChange={(e) => onFilterChange('dateFrom', e.target.value)}
                   className="w-auto"
                 />
@@ -102,7 +113,7 @@ const IncidentFilters = ({
                 <span className="text-sm">To:</span>
                 <Input
                   type="date"
-                  value={filters.dateTo}
+                  value={filters.dateTo || ''}
                   onChange={(e) => onFilterChange('dateTo', e.target.value)}
                   className="w-auto"
                 />

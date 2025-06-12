@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -7,6 +6,18 @@ interface PaginationParams {
   pageSize?: number;
   offset?: number;
   limit?: number;
+}
+
+interface ServerFilters {
+  search?: string;
+  category?: string;
+  subcategory?: string;
+  status?: string;
+  priority?: string;
+  location?: string;
+  facility?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 interface PaginatedResponse<T> {
@@ -29,31 +40,36 @@ class IncidentDataService {
     return IncidentDataService.instance;
   }
 
-  async fetchIncidentsForClient(
+  // New method with server-side filtering support
+  async fetchIncidentsForClientWithFilters(
     clientId: string, 
     forceRefresh = false, 
     employeeData?: any, 
     hasIncidentAdmin?: boolean,
-    pagination: PaginationParams = { page: 1, pageSize: 10 }
+    pagination: PaginationParams = { page: 1, pageSize: 10 },
+    filters: ServerFilters = {}
   ): Promise<PaginatedResponse<IncidentRecord>> {
     const { page = 1, pageSize = 10 } = pagination;
-    // Force pageSize to be exactly 10 for server-side pagination
     const limitedPageSize = 10;
     const offset = (page - 1) * limitedPageSize;
-    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${limitedPageSize}`;
     
-    console.log(`🔄 fetchIncidentsForClient called:`);
+    // Create cache key including filters
+    const filterKey = JSON.stringify(filters);
+    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${limitedPageSize}_${filterKey}`;
+    
+    console.log(`🔄 fetchIncidentsForClientWithFilters called:`);
     console.log(`   - Page: ${page}, PageSize: ${limitedPageSize}, Offset: ${offset}`);
+    console.log(`   - Filters:`, filters);
     console.log(`   - Force refresh: ${forceRefresh}`);
     console.log(`   - Cache key: ${cacheKey}`);
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
-      console.log(`✅ Returning cached data for page ${page}`);
+      console.log(`✅ Returning cached data for page ${page} with filters`);
       return this.incidentCache.get(cacheKey)!;
     }
 
-    // Prevent multiple simultaneous requests for the same page
+    // Prevent multiple simultaneous requests
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
       return this.incidentCache.get(cacheKey) || {
@@ -68,7 +84,7 @@ class IncidentDataService {
     this.isLoading = true;
 
     try {
-      console.log('🚀 Making server request for incidents...');
+      console.log('🚀 Making server request for incidents with filters...');
       
       let query = supabase
         .from('incidents')
@@ -93,29 +109,71 @@ class IncidentDataService {
         `, { count: 'exact' })
         .eq('client_id', clientId);
 
-      // Apply filtering based on user role and permissions
+      // Apply role-based filtering
       console.log('🔒 Applying role-based filtering:', { employeeData, hasIncidentAdmin });
       if (employeeData) {
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
         if (!isSuperAdmin) {
-          // Use the passed hasIncidentAdmin parameter
           if (hasIncidentAdmin) {
-            // Incident admin (non-super admin): Own incidents + incidents assigned to them
             query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
             console.log(`   - Applied incident admin filter for employee ${employeeData.id}`);
           } else {
-            // Regular user: Only own incidents
             query = query.eq('created_by', employeeData.id);
             console.log(`   - Applied regular user filter for employee ${employeeData.id}`);
           }
         } else {
           console.log('   - Super admin: no additional filtering');
         }
-        // Super admin: No additional filtering - gets all incidents for the client
       }
 
-      // Apply server-side pagination with exact 10 records per page
+      // Apply server-side filters
+      if (filters.search && filters.search.trim()) {
+        query = query.or(`ticket_id.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        console.log(`   - Applied search filter: ${filters.search}`);
+      }
+
+      if (filters.category) {
+        query = query.eq('incident_categories.name', filters.category);
+        console.log(`   - Applied category filter: ${filters.category}`);
+      }
+
+      if (filters.subcategory) {
+        query = query.eq('incident_subcategories.name', filters.subcategory);
+        console.log(`   - Applied subcategory filter: ${filters.subcategory}`);
+      }
+
+      if (filters.status) {
+        query = query.eq('incident_status.name', filters.status);
+        console.log(`   - Applied status filter: ${filters.status}`);
+      }
+
+      if (filters.priority) {
+        query = query.eq('incident_priorities.name', filters.priority);
+        console.log(`   - Applied priority filter: ${filters.priority}`);
+      }
+
+      if (filters.location) {
+        query = query.eq('campuses.name', filters.location);
+        console.log(`   - Applied location filter: ${filters.location}`);
+      }
+
+      if (filters.facility) {
+        query = query.eq('facilities.name', filters.facility);
+        console.log(`   - Applied facility filter: ${filters.facility}`);
+      }
+
+      if (filters.dateFrom) {
+        query = query.gte('date', filters.dateFrom);
+        console.log(`   - Applied date from filter: ${filters.dateFrom}`);
+      }
+
+      if (filters.dateTo) {
+        query = query.lte('date', filters.dateTo);
+        console.log(`   - Applied date to filter: ${filters.dateTo}`);
+      }
+
+      // Apply server-side pagination
       query = query
         .order('created_at', { ascending: false })
         .range(offset, offset + limitedPageSize - 1);
@@ -166,24 +224,43 @@ class IncidentDataService {
         totalPages
       };
 
-      console.log(`📋 Server-side pagination result:`);
+      console.log(`📋 Server-side pagination result with filters:`);
       console.log(`   - Page ${page}/${totalPages}`);
       console.log(`   - Records: ${transformedIncidents.length}`);
       console.log(`   - Total: ${totalCount}`);
       console.log(`   - Has more: ${hasMore}`);
 
-      // Cache the results with page-specific key
+      // Cache the results with page-specific key including filters
       this.incidentCache.set(cacheKey, response);
       console.log(`💾 Cached result with key: ${cacheKey}`);
       
       return response;
 
     } catch (error) {
-      console.error('❌ Error in incidentDataService.fetchIncidentsForClient:', error);
+      console.error('❌ Error in incidentDataService.fetchIncidentsForClientWithFilters:', error);
       throw error;
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // Keep existing method for backward compatibility
+  async fetchIncidentsForClient(
+    clientId: string, 
+    forceRefresh = false, 
+    employeeData?: any, 
+    hasIncidentAdmin?: boolean,
+    pagination: PaginationParams = { page: 1, pageSize: 10 }
+  ): Promise<PaginatedResponse<IncidentRecord>> {
+    // Delegate to the new method with empty filters
+    return this.fetchIncidentsForClientWithFilters(
+      clientId,
+      forceRefresh,
+      employeeData,
+      hasIncidentAdmin,
+      pagination,
+      {}
+    );
   }
 
   // Legacy method for backward compatibility - returns just the incidents array

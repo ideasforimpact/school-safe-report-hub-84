@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
 import { incidentDataService } from '@/services/incident/incidentDataService';
@@ -8,12 +8,11 @@ import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentFilters from '@/components/incidents/IncidentFilters';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useIncidentFilters } from '@/hooks/useIncidentFilters';
-import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useLocation } from 'react-router-dom';
+import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
 
 interface PaginationInfo {
   currentPage: number;
@@ -21,6 +20,18 @@ interface PaginationInfo {
   totalCount: number;
   hasMore: boolean;
   pageSize: number;
+}
+
+interface ServerFilters {
+  search?: string;
+  category?: string;
+  subcategory?: string;
+  status?: string;
+  priority?: string;
+  location?: string;
+  facility?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 const IncidentsList = () => {
@@ -33,67 +44,25 @@ const IncidentsList = () => {
     hasMore: false,
     pageSize: 10
   });
-  
+
+  // Server-side filters
+  const [filters, setFilters] = useState<ServerFilters>({
+    search: '',
+    category: '',
+    subcategory: '',
+    status: '',
+    priority: '',
+    location: '',
+    facility: '',
+    dateFrom: '',
+    dateTo: ''
+  });
+
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
   const location = useLocation();
 
-  // Check if user has incident admin access by finding incidents module
-  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
-  const hasIncidentAdmin = React.useMemo(() => {
-    if (isSuperAdmin) return true;
-
-    // Find incidents module by name (more reliable than URL matching)
-    const incidentsModule = employeeState.configuredModules?.find(
-      module => module.name.toLowerCase() === 'incidents'
-    );
-
-    console.log('Incidents module found:', incidentsModule);
-    console.log('Access level:', incidentsModule?.accessLevel);
-
-    return incidentsModule?.accessLevel?.is_admin === true;
-  }, [isSuperAdmin, employeeState.configuredModules]);
-
-  console.log('hasIncidentAdmin:', hasIncidentAdmin);
-
-  // Transform IncidentRecord[] to Incident[] for the filter hook - only for UI filtering
-  const transformedIncidents = incidents.map(record => ({
-    id: record.id,
-    ticketId: record.ticket_id,
-    type: record.type as any,
-    category: record.category as any,
-    subcategory: record.subcategory,
-    description: record.description,
-    date: record.date,
-    location: record.location as any,
-    peopleInvolved: [],
-    status: record.status as any,
-    reportedBy: { id: '', name: record.reportedBy },
-    owner: record.owner ? { id: '', name: record.owner } : undefined,
-    facility: record.facility,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-    priority: record.priority as any
-  }));
-
-  // Use incident filters for UI-level filtering only (not pagination)
-  const {
-    filters,
-    filteredIncidents,
-    availableCategories,
-    availableSubcategories,
-    availableLocations,
-    availableFacilities,
-    availableOwners,
-    priorityOptions,
-    statusOptions,
-    locationOptions,
-    handleFilterChange,
-    toggleAdvancedFilters,
-    clearFilters
-  } = useIncidentFilters(transformedIncidents);
-
-  // Get database filter options
+  // Get filter options from database
   const { 
     statusOptions: dbStatusOptions, 
     priorityOptions: dbPriorityOptions,
@@ -102,34 +71,30 @@ const IncidentsList = () => {
     locationOptions: dbLocationOptions 
   } = useFilterOptions();
 
-  // Transform filtered incidents back to IncidentRecord[] - for display only
-  const filteredIncidentRecords = filteredIncidents.map(incident => ({
-    id: incident.id,
-    ticket_id: incident.ticketId,
-    type: incident.type,
-    category: incident.category,
-    subcategory: incident.subcategory,
-    description: incident.description,
-    date: incident.date,
-    location: incident.location,
-    facility: incident.facility || '',
-    status: incident.status,
-    priority: incident.priority,
-    reportedBy: incident.reportedBy.name,
-    owner: incident.owner?.name,
-    createdAt: incident.createdAt,
-    updatedAt: incident.updatedAt
-  }));
+  // Check admin access
+  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  const hasIncidentAdmin = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    const incidentsModule = employeeState.configuredModules?.find(
+      module => module.name.toLowerCase() === 'incidents'
+    );
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
 
-  const fetchIncidents = React.useCallback(async (forceRefresh = false, page = 1) => {
+  // Main fetch function with server-side filtering
+  const fetchIncidents = useCallback(async (
+    page = 1,
+    pageSize = 10,
+    serverFilters: ServerFilters = {},
+    forceRefresh = false
+  ) => {
     try {
       setLoading(true);
-      console.log(`Starting fetchIncidents - page: ${page}, forceRefresh: ${forceRefresh}`);
+      console.log(`Fetching incidents - page: ${page}, filters:`, serverFilters);
 
-      // Get client ID from available sources
+      // Get client ID
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
 
-      // If no client ID from context, get from user email
       if (!clientId && user?.email) {
         const { data: empData, error } = await supabase
           .from('employees')
@@ -155,43 +120,33 @@ const IncidentsList = () => {
         return;
       }
 
-      // Clear cache if force refresh is requested
+      // Clear cache if force refresh
       if (forceRefresh) {
-        console.log('Force refreshing incidents - clearing cache...');
         const employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
         incidentDataService.clearCache(clientId, employeeId);
       }
 
-      console.log('Fetching incidents - Page:', page, 'hasIncidentAdmin:', hasIncidentAdmin);
-      
-      // Pass employee data and incident admin access for role-based filtering
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Use the paginated service - fetch specific page from server with exactly 10 records
-      const response = await incidentDataService.fetchIncidentsForClient(
-        clientId, 
-        forceRefresh, 
+      // Call the service with server-side filters
+      const response = await incidentDataService.fetchIncidentsForClientWithFilters(
+        clientId,
+        forceRefresh,
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page, pageSize: 10 } // Always fetch exactly 10 records per page
+        { page, pageSize },
+        serverFilters
       );
 
-      console.log(response,"Response for incident");
-      
       console.log(`Server returned ${response.data.length} incidents for page ${page}`);
-      console.log('Pagination info:', { 
-        currentPage: response.currentPage, 
-        totalPages: response.totalPages, 
-        totalCount: response.totalCount 
-      });
-
+      
       setIncidents(response.data);
       setPagination({
         currentPage: response.currentPage,
         totalPages: response.totalPages,
         totalCount: response.totalCount,
         hasMore: response.hasMore,
-        pageSize: 10
+        pageSize
       });
 
     } catch (error: any) {
@@ -206,50 +161,64 @@ const IncidentsList = () => {
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
-  // Server-side pagination handler - fetch new page from server
-  const goToPage = React.useCallback(async (page: number) => {
+  // Handle filter changes
+  const handleFilterChange = useCallback((field: string, value: any) => {
+    const newFilters = { ...filters, [field]: value };
+    setFilters(newFilters);
+    
+    // Fetch with new filters, reset to page 1
+    fetchIncidents(1, pagination.pageSize, newFilters, false);
+  }, [filters, pagination.pageSize, fetchIncidents]);
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    const emptyFilters = {
+      search: '',
+      category: '',
+      subcategory: '',
+      status: '',
+      priority: '',
+      location: '',
+      facility: '',
+      dateFrom: '',
+      dateTo: ''
+    };
+    setFilters(emptyFilters);
+    fetchIncidents(1, pagination.pageSize, emptyFilters, false);
+  }, [pagination.pageSize, fetchIncidents]);
+
+  // Server-side pagination handlers
+  const goToPage = useCallback(async (page: number) => {
     if (page >= 1 && page <= pagination.totalPages && !loading) {
-      console.log(`Navigating to page ${page} - fetching from server...`);
-      await fetchIncidents(false, page); // Fetch specific page from server
+      console.log(`Navigating to page ${page}`);
+      await fetchIncidents(page, pagination.pageSize, filters, false);
     }
-  }, [fetchIncidents, pagination.totalPages, loading]);
+  }, [fetchIncidents, pagination.totalPages, pagination.pageSize, filters, loading]);
 
-  // Page size change handler - reset to page 1 and fetch
-  const changePageSize = React.useCallback(async (newPageSize: number) => {
-    console.log(`Page size change requested to ${newPageSize}, but keeping fixed size of 10`);
-    await fetchIncidents(false, 1); // Always use 10 records, reset to page 1
-  }, [fetchIncidents]);
+  const changePageSize = useCallback(async (newPageSize: number) => {
+    console.log(`Changing page size to ${newPageSize}`);
+    await fetchIncidents(1, newPageSize, filters, false);
+  }, [fetchIncidents, filters]);
 
-  // Navigation listener - force refresh when navigating to /incidents page
+  // Initial fetch and navigation handling
   useEffect(() => {
-    console.log('Navigation effect triggered for path:', location.pathname);
-    if (location.pathname === '/incidents' && 
-        (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
-        employeeState.configuredModules) {
-      console.log('Forcing refresh on navigation to incidents page');
-      fetchIncidents(true, 1); // Force refresh on navigation with page 1
-    }
-  }, [location.pathname, fetchIncidents, employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
+    const shouldFetch = (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
+                       employeeState.configuredModules;
 
-  // Initial fetch when component mounts and required data is available
-  useEffect(() => {
-    console.log('Initial mount effect triggered');
-    if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
-        employeeState.configuredModules && 
-        location.pathname !== '/incidents') { // Avoid double fetch on navigation
-      console.log('Initial fetch of incidents');
-      fetchIncidents(false, 1); // Initial fetch with page 1
+    if (shouldFetch) {
+      console.log('Initial fetch triggered');
+      // Force refresh if navigating directly to incidents page
+      const forceRefresh = location.pathname === '/incidents';
+      fetchIncidents(1, 10, filters, forceRefresh);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
-
-  // Separate effect to refetch when hasIncidentAdmin changes
-  useEffect(() => {
-    // Only refetch if we already have incidents loaded and admin status changes
-    if (incidents.length > 0 || (employeeState.configuredModules && (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email))) {
-      console.log('hasIncidentAdmin changed, refetching incidents with new permissions');
-      fetchIncidents(true, 1); // Force refresh to get data with new permissions, reset to page 1
-    }
-  }, [hasIncidentAdmin]);
+  }, [
+    employeeState.employeeData?.clientId,
+    authEmployeeData?.clientId,
+    user?.email,
+    employeeState.configuredModules,
+    location.pathname,
+    hasIncidentAdmin
+  ]);
 
   console.log('IncidentsList - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
   console.log('IncidentsList - Total incidents:', pagination.totalCount, 'Current incidents shown:', incidents.length);
@@ -268,19 +237,18 @@ const IncidentsList = () => {
             filters={filters}
             onFilterChange={handleFilterChange}
             onClearFilters={clearFilters}
-            toggleAdvancedFilters={toggleAdvancedFilters}
-            availableCategories={dbCategoryOptions.length > 0 ? dbCategoryOptions : availableCategories}
-            availableSubcategories={dbSubcategoryOptions.length > 0 ? dbSubcategoryOptions : availableSubcategories}
-            availableLocations={dbLocationOptions.length > 0 ? dbLocationOptions : availableLocations}
-            availableFacilities={availableFacilities}
-            availableOwners={availableOwners}
-            priorityOptions={dbPriorityOptions.length > 0 ? dbPriorityOptions : priorityOptions}
-            locationOptions={dbLocationOptions.length > 0 ? dbLocationOptions : locationOptions}
-            statusOptions={dbStatusOptions.length > 0 ? dbStatusOptions : statusOptions}
+            availableCategories={dbCategoryOptions}
+            availableSubcategories={dbSubcategoryOptions}
+            availableLocations={dbLocationOptions}
+            availableFacilities={[]}
+            availableOwners={[]}
+            priorityOptions={dbPriorityOptions}
+            locationOptions={dbLocationOptions}
+            statusOptions={dbStatusOptions}
           />
           
           <LazyIncidentsTable 
-            incidents={filteredIncidentRecords} 
+            incidents={incidents} 
             loading={loading}
             pagination={pagination}
             onPageChange={goToPage}

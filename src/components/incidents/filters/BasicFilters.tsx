@@ -3,10 +3,21 @@ import React from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FilterState } from '@/types/filterTypes';
+
+interface ServerFilters {
+  search?: string;
+  category?: string;
+  subcategory?: string;
+  status?: string;
+  priority?: string;
+  location?: string;
+  facility?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
 
 interface BasicFiltersProps {
-  filters: FilterState;
+  filters: ServerFilters;
   onFilterChange: (field: string, value: any) => void;
   availableCategories: string[];
   availableSubcategories: string[];
@@ -38,7 +49,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </div>
 
       {/* Location */}
-      <Select value={filters.location || 'all'} onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}>
+      <Select 
+        value={filters.location || 'all'} 
+        onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}
+      >
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Location" />
         </SelectTrigger>
@@ -52,8 +66,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         </SelectContent>
       </Select>
 
-      {/* Status - Show database statuses */}
-      <Select value={filters.status || 'all'} onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}>
+      {/* Status */}
+      <Select 
+        value={filters.status || 'all'} 
+        onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
+      >
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
@@ -68,7 +85,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Category */}
-      <Select value={filters.category || 'all'} onValueChange={(value) => onFilterChange('category', value === 'all' ? '' : value)}>
+      <Select 
+        value={filters.category || 'all'} 
+        onValueChange={(value) => onFilterChange('category', value === 'all' ? '' : value)}
+      >
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
@@ -83,7 +103,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Subcategory */}
-      <Select value={filters.subcategory || 'all'} onValueChange={(value) => onFilterChange('subcategory', value === 'all' ? '' : value)}>
+      <Select 
+        value={filters.subcategory || 'all'} 
+        onValueChange={(value) => onFilterChange('subcategory', value === 'all' ? '' : value)}
+      >
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Subcategory" />
         </SelectTrigger>
@@ -98,7 +121,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
       </Select>
 
       {/* Priority */}
-      <Select value={filters.priority || 'all'} onValueChange={(value) => onFilterChange('priority', value === 'all' ? '' : value)}>
+      <Select 
+        value={filters.priority || 'all'} 
+        onValueChange={(value) => onFilterChange('priority', value === 'all' ? '' : value)}
+      >
         <SelectTrigger className="bg-white">
           <SelectValue placeholder="Priority" />
         </SelectTrigger>
