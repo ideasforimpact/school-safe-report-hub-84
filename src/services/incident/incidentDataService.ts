@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -128,120 +127,48 @@ class IncidentDataService {
         }
       }
 
-      // Apply server-side filters with improved logic
+      // Apply server-side filters
       if (filters.search && filters.search.trim()) {
-        const searchTerm = filters.search.trim();
-        query = query.or(`ticket_id.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-        console.log(`   - Applied search filter: ${searchTerm}`);
+        query = query.or(`ticket_id.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        console.log(`   - Applied search filter: ${filters.search}`);
       }
 
-      if (filters.status && filters.status.trim()) {
-        // First get the status ID from the incident_status table
-        const { data: statusData } = await supabase
-          .from('incident_status')
-          .select('id')
-          .eq('name', filters.status)
-          .single();
-        
-        if (statusData) {
-          query = query.eq('status_id', statusData.id);
-          console.log(`   - Applied status filter: ${filters.status} (ID: ${statusData.id})`);
-        } else {
-          console.log(`   - Status not found: ${filters.status}`);
-        }
+      if (filters.category) {
+        query = query.eq('incident_categories.name', filters.category);
+        console.log(`   - Applied category filter: ${filters.category}`);
       }
 
-      if (filters.category && filters.category.trim()) {
-        // First get the category ID from the incident_categories table
-        const { data: categoryData } = await supabase
-          .from('incident_categories')
-          .select('id')
-          .eq('name', filters.category)
-          .eq('client_id', clientId)
-          .single();
-        
-        if (categoryData) {
-          query = query.eq('category_id', categoryData.id);
-          console.log(`   - Applied category filter: ${filters.category} (ID: ${categoryData.id})`);
-        } else {
-          console.log(`   - Category not found: ${filters.category}`);
-        }
+      if (filters.subcategory) {
+        query = query.eq('incident_subcategories.name', filters.subcategory);
+        console.log(`   - Applied subcategory filter: ${filters.subcategory}`);
       }
 
-      if (filters.subcategory && filters.subcategory.trim()) {
-        // First get the subcategory ID from the incident_subcategories table
-        const { data: subcategoryData } = await supabase
-          .from('incident_subcategories')
-          .select('id')
-          .eq('name', filters.subcategory)
-          .eq('client_id', clientId)
-          .single();
-        
-        if (subcategoryData) {
-          query = query.eq('subcategory_id', subcategoryData.id);
-          console.log(`   - Applied subcategory filter: ${filters.subcategory} (ID: ${subcategoryData.id})`);
-        } else {
-          console.log(`   - Subcategory not found: ${filters.subcategory}`);
-        }
+      if (filters.status) {
+        query = query.eq('incident_status.name', filters.status);
+        console.log(`   - Applied status filter: ${filters.status}`);
       }
 
-      if (filters.priority && filters.priority.trim()) {
-        // First get the priority ID from the incident_priorities table
-        const { data: priorityData } = await supabase
-          .from('incident_priorities')
-          .select('id')
-          .eq('name', filters.priority)
-          .eq('client_id', clientId)
-          .single();
-        
-        if (priorityData) {
-          query = query.eq('priority_id', priorityData.id);
-          console.log(`   - Applied priority filter: ${filters.priority} (ID: ${priorityData.id})`);
-        } else {
-          console.log(`   - Priority not found: ${filters.priority}`);
-        }
+      if (filters.priority) {
+        query = query.eq('incident_priorities.name', filters.priority);
+        console.log(`   - Applied priority filter: ${filters.priority}`);
       }
 
-      if (filters.location && filters.location.trim()) {
-        // First get the location ID from the campuses table
-        const { data: locationData } = await supabase
-          .from('campuses')
-          .select('id')
-          .eq('name', filters.location)
-          .eq('client_id', clientId)
-          .single();
-        
-        if (locationData) {
-          query = query.eq('location_id', locationData.id);
-          console.log(`   - Applied location filter: ${filters.location} (ID: ${locationData.id})`);
-        } else {
-          console.log(`   - Location not found: ${filters.location}`);
-        }
+      if (filters.location) {
+        query = query.eq('campuses.name', filters.location);
+        console.log(`   - Applied location filter: ${filters.location}`);
       }
 
-      if (filters.facility && filters.facility.trim()) {
-        // First get the facility ID from the facilities table
-        const { data: facilityData } = await supabase
-          .from('facilities')
-          .select('id')
-          .eq('name', filters.facility)
-          .eq('client_id', clientId)
-          .single();
-        
-        if (facilityData) {
-          query = query.eq('facility_id', facilityData.id);
-          console.log(`   - Applied facility filter: ${filters.facility} (ID: ${facilityData.id})`);
-        } else {
-          console.log(`   - Facility not found: ${filters.facility}`);
-        }
+      if (filters.facility) {
+        query = query.eq('facilities.name', filters.facility);
+        console.log(`   - Applied facility filter: ${filters.facility}`);
       }
 
-      if (filters.dateFrom && filters.dateFrom.trim()) {
+      if (filters.dateFrom) {
         query = query.gte('date', filters.dateFrom);
         console.log(`   - Applied date from filter: ${filters.dateFrom}`);
       }
 
-      if (filters.dateTo && filters.dateTo.trim()) {
+      if (filters.dateTo) {
         query = query.lte('date', filters.dateTo);
         console.log(`   - Applied date to filter: ${filters.dateTo}`);
       }
