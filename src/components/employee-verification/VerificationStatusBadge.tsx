@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -8,7 +9,7 @@ import DrivingLicenseDetailsDialog from './document-card/DrivingLicenseDetailsDi
 import BankStatementDetailsDialog from './document-card/BankStatementDetailsDialog';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending' | 'in-progress';
+  status: 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
   className?: string;
   isGovernance?: boolean;
   documentStatusName?: string;
@@ -47,6 +48,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
+      case 'completed':
+        return {
+          icon: CheckCircle,
+          text: documentStatusName ? `Completed/${documentStatusName}` : 'Completed',
+          variant: 'success',
+          bgColor: 'bg-green-100 text-green-800 border-green-200'
+        };
       case 'failed':
         return {
           icon: AlertCircle,
@@ -81,7 +89,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   const { icon: Icon, text, bgColor } = getStatusConfig();
 
   // Check if this document has details that can be shown in a dialog
-  const isGovernanceVerified = status === 'verified' && documentStatusName === 'governance';
+  const isGovernanceVerified = (status === 'verified' || status === 'completed') && documentStatusName === 'governance';
   const hasVerificationLogs = documentLogs && documentLogs.length > 0;
   
   // Determine if badge should be clickable

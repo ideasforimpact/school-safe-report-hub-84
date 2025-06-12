@@ -1,42 +1,22 @@
 
 export interface Employee {
   id: string;
-  employeeId: string;
   name: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone?: string;
   dateOfBirth?: string;
   address?: string;
+  phone?: string;
+  position: string;
   joiningDate: string;
-  department: string;
-  position?: string;
   employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
-  status: boolean; // Boolean value for active status
+  status: string;
   createdAt: string;
   updatedAt: string;
-  clientId?: string;
-  documents?: VerificationDocument[]; // Added documents property
-  
-  // Add these fields to make it compatible with the other Employee type
-  firstName?: string;
-  lastName?: string;
-  isSuperAdmin?: boolean; // Added this property to fix the error
-}
-
-export interface DocumentType {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface DocumentStatus {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
+  documents?: VerificationDocument[];
+  clientId: string;
 }
 
 export interface VerificationDocument {
@@ -44,31 +24,24 @@ export interface VerificationDocument {
   employeeId: string;
   documentTypeId: string;
   documentTypeName?: string;
-  documentNumber?: string;
-  documentImage: string; // This should always be required and not null
-  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress';
+  documentNumber: string;
+  documentImage?: string;
+  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed';
   documentStatusId?: string;
   documentStatusName?: string;
-  verificationDate?: string;
+  verificationDate?: string | null;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
+  params?: {
+    DOB?: string;
+    [key: string]: any;
+  };
   employee_docs_log?: Array<{
     timestamp: string;
     action: string;
     response: any;
     notes?: string;
   }>;
-  details?: {
-    address?: string;
-    name?: string;
-    dob?: string;
-    [key: string]: any;
-  };
-  params?: {
-    DOB?: string;
-    [key: string]: any;
-  };
-  // Cron-related fields
   cronActivate?: boolean;
   cronActivatedDate?: string;
   cronUpdatedDate?: string;
@@ -83,10 +56,23 @@ export interface VerificationDocument {
   updatedAt: string;
 }
 
-export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'other';
+export interface DocumentType {
+  id: string;
+  name: string;
+  description?: string;
+  required: boolean;
+  validationRules?: {
+    maxSize?: number;
+    allowedFormats?: string[];
+    expiryRequired?: boolean;
+  };
+}
 
-export interface VerificationResult {
-  success: boolean;
-  message: string;
-  details?: Record<string, any>;
+export interface VerificationRule {
+  id: string;
+  documentTypeId: string;
+  ruleName: string;
+  ruleType: 'format' | 'size' | 'expiry' | 'content';
+  ruleValue: string;
+  isActive: boolean;
 }
