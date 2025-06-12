@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -140,7 +139,7 @@ function App() {
                     <Route path="/forms" element={<RouteGuard requireAuth={true}><FormsPage /></RouteGuard>} />
                     <Route path="/form-preview/:formId" element={<RouteGuard requireAuth={true}><FormPreviewPage /></RouteGuard>} />
 
-                    {/* Incident routes */}
+                    {/* Incident routes - Updated to use IncidentsList */}
                     <Route path="/incidents" element={<RouteGuard requireAuth={true}><IncidentsList /></RouteGuard>} />
                     <Route path="/incidents/:id" element={<RouteGuard requireAuth={true}><IncidentDetail /></RouteGuard>} />
                     <Route path="/incident/:id" element={<RouteGuard requireAuth={true}><IncidentDetail /></RouteGuard>} />

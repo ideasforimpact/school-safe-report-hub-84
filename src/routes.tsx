@@ -8,7 +8,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ReportIncident from './pages/ReportIncident';
-import Incidents from './pages/Incidents';
+import IncidentsList from './pages/IncidentsList';
 import IncidentDetail from './pages/IncidentDetail';
 import EditIncident from './pages/EditIncident';
 import Insights from './pages/Insights';
@@ -164,7 +164,7 @@ const AppRoutes = () => {
         </RouteGuard>
       } />
 
-      {/* Incident Management */}
+      {/* Incident Management - Updated to use IncidentsList */}
       <Route path="/report-incident" element={
         <RouteGuard requireAuth={true}>
           <ModuleGuard requiredModules={['incident_management']}>
@@ -175,7 +175,7 @@ const AppRoutes = () => {
       <Route path="/incidents" element={
         <RouteGuard requireAuth={true}>
           <ModuleGuard requiredModules={['incident_management']}>
-            <Incidents />
+            <IncidentsList />
           </ModuleGuard>
         </RouteGuard>
       } />

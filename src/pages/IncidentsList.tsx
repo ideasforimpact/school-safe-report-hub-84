@@ -45,7 +45,7 @@ const IncidentsList = () => {
     pageSize: 10
   });
 
-  // Server-side filters
+  // Server-side filters - Start with empty filters
   const [filters, setFilters] = useState<ServerFilters>({
     search: '',
     category: '',
@@ -90,7 +90,7 @@ const IncidentsList = () => {
   ) => {
     try {
       setLoading(true);
-      console.log(`Fetching incidents - page: ${page}, filters:`, serverFilters);
+      console.log(`🔄 Fetching incidents - page: ${page}, filters:`, serverFilters);
 
       // Get client ID
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
@@ -124,6 +124,7 @@ const IncidentsList = () => {
       if (forceRefresh) {
         const employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
         incidentDataService.clearCache(clientId, employeeId);
+        console.log('🗑️ Cache cleared due to force refresh');
       }
 
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
@@ -138,7 +139,8 @@ const IncidentsList = () => {
         serverFilters
       );
 
-      console.log(`Server returned ${response.data.length} incidents for page ${page}`);
+      console.log(`✅ Server returned ${response.data.length} incidents for page ${page}`);
+      console.log(`📊 Total count: ${response.totalCount}, Total pages: ${response.totalPages}`);
       
       setIncidents(response.data);
       setPagination({
@@ -150,7 +152,7 @@ const IncidentsList = () => {
       });
 
     } catch (error: any) {
-      console.error('Error fetching incidents:', error);
+      console.error('❌ Error fetching incidents:', error);
       if (error.message?.includes('timeout')) {
         toast.error('Request timed out. Please try again or contact support if the issue persists.');
       } else {
@@ -165,6 +167,8 @@ const IncidentsList = () => {
   const handleFilterChange = useCallback((field: string, value: any) => {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
+    
+    console.log(`🔧 Filter changed: ${field} = ${value}`);
     
     // Fetch with new filters, reset to page 1
     fetchIncidents(1, pagination.pageSize, newFilters, false);
@@ -184,44 +188,67 @@ const IncidentsList = () => {
       dateTo: ''
     };
     setFilters(emptyFilters);
+    console.log('🧹 All filters cleared');
     fetchIncidents(1, pagination.pageSize, emptyFilters, false);
   }, [pagination.pageSize, fetchIncidents]);
 
   // Server-side pagination handlers
   const goToPage = useCallback(async (page: number) => {
     if (page >= 1 && page <= pagination.totalPages && !loading) {
-      console.log(`Navigating to page ${page}`);
+      console.log(`📄 Navigating to page ${page}`);
       await fetchIncidents(page, pagination.pageSize, filters, false);
     }
   }, [fetchIncidents, pagination.totalPages, pagination.pageSize, filters, loading]);
 
   const changePageSize = useCallback(async (newPageSize: number) => {
-    console.log(`Changing page size to ${newPageSize}`);
+    console.log(`📏 Changing page size to ${newPageSize}`);
     await fetchIncidents(1, newPageSize, filters, false);
   }, [fetchIncidents, filters]);
 
-  // Initial fetch and navigation handling
+  // Initial fetch and navigation handling with improved logic
   useEffect(() => {
     const shouldFetch = (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
                        employeeState.configuredModules;
 
     if (shouldFetch) {
-      console.log('Initial fetch triggered');
-      // Force refresh if navigating directly to incidents page
-      const forceRefresh = location.pathname === '/incidents';
-      fetchIncidents(1, 10, filters, forceRefresh);
+      console.log('🚀 Initial fetch triggered');
+      console.log('📍 Current location:', location.pathname);
+      console.log('🔑 Has admin access:', hasIncidentAdmin);
+      
+      // Always force refresh when coming to incidents page
+      // This ensures fresh data especially after incident creation
+      const forceRefresh = true;
+      
+      // Start with empty filters on initial load
+      const initialFilters = {
+        search: '',
+        category: '',
+        subcategory: '',
+        status: '',
+        priority: '',
+        location: '',
+        facility: '',
+        dateFrom: '',
+        dateTo: ''
+      };
+      
+      setFilters(initialFilters);
+      fetchIncidents(1, 10, initialFilters, forceRefresh);
+    } else {
+      console.log('⏳ Waiting for employee data or configured modules...');
     }
   }, [
     employeeState.employeeData?.clientId,
     authEmployeeData?.clientId,
     user?.email,
     employeeState.configuredModules,
-    location.pathname,
-    hasIncidentAdmin
+    hasIncidentAdmin,
+    location.pathname // Re-run when location changes
   ]);
 
-  console.log('IncidentsList - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
-  console.log('IncidentsList - Total incidents:', pagination.totalCount, 'Current incidents shown:', incidents.length);
+  console.log('📋 IncidentsList render - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
+  console.log('📊 Total incidents:', pagination.totalCount, 'Current incidents shown:', incidents.length);
+  console.log('🔍 Active filters:', filters);
 
   return (
     <Layout>

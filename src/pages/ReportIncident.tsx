@@ -17,7 +17,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
-import { useIncidentData } from '@/hooks/useIncidentData';
+import { incidentDataService } from '@/services/incident/incidentDataService';
 import { FileItem } from '@/types/fileTypes';
 import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
 
@@ -35,7 +35,6 @@ const ReportIncident = () => {
   const navigate = useNavigate();
   const { students } = useStudents();
   const { state: employeeState } = useEmployeeStore();
-  const { refetchIncidents } = useIncidentData();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -282,12 +281,12 @@ const ReportIncident = () => {
       
       toast.success(`Incident reported successfully! Ticket ID: ${incidentData.ticket_id}`);
       
-      // Small delay to show success message, then navigate
-      setTimeout(() => {
-        navigate('/incidents');
-        // Refetch incidents in background
-        refetchIncidents();
-      }, 1500);
+      // Clear cache for incidents and navigate immediately
+      console.log('Clearing incident cache and navigating to incidents list...');
+      incidentDataService.clearCache(clientId, employeeId);
+      
+      // Navigate immediately without delay
+      navigate('/incidents');
       
     } catch (error) {
       console.error('Error submitting incident report:', error);
