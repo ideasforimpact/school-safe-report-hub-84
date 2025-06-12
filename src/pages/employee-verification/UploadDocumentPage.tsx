@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,46 @@ const UploadDocumentPage = () => {
     employeeId: string;
   }>();
   const navigate = useNavigate();
-  const { getEmployee, fetchDocumentTypes } = useEmployeeVerification();
+  const { getEmployee, fetchEmployees } = useEmployeeVerification();
+  const [isLoadingEmployee, setIsLoadingEmployee] = useState(true);
+  
   const employee = getEmployee(employeeId || '');
 
-  // Fetch document types once when the page loads
+  // Fetch employees if not already loaded or if employee not found
   useEffect(() => {
-    // Only fetch if not already loaded
-    fetchDocumentTypes();
-  }, [fetchDocumentTypes]);
+    const loadEmployeeData = async () => {
+      if (!employee && employeeId) {
+        setIsLoadingEmployee(true);
+        try {
+          await fetchEmployees();
+        } catch (error) {
+          console.error('Error fetching employees:', error);
+        } finally {
+          setIsLoadingEmployee(false);
+        }
+      } else {
+        setIsLoadingEmployee(false);
+      }
+    };
+
+    loadEmployeeData();
+  }, [employeeId, employee, fetchEmployees]);
+
+  // Show loading state while fetching employee data
+  if (isLoadingEmployee) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading employee data...</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!employee) {
     return <Layout>
