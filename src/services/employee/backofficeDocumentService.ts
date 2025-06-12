@@ -26,7 +26,10 @@ export const backofficeDocumentService = {
         .select(`
           id,
           employee_id,
-          employees!inner(client_id)
+          employees!inner(
+            id,
+            client_id
+          )
         `)
         .eq('id', documentId)
         .eq('employee_id', employeeId)
@@ -91,7 +94,10 @@ export const backofficeDocumentService = {
         .select(`
           id,
           employee_id,
-          employees!inner(client_id)
+          employees!inner(
+            id,
+            client_id
+          )
         `)
         .eq('id', documentId)
         .eq('employee_id', employeeId)
