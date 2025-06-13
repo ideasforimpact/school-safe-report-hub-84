@@ -1,5 +1,6 @@
+
 import React, { useEffect } from 'react';
-import { Eye, Download, ShieldCheck } from 'lucide-react';
+import { Eye, Download, ShieldCheck, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -22,6 +23,7 @@ import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
+import DocumentCommentsDialog from '../DocumentCommentsDialog';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -46,10 +48,12 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
+  const [commentsDialogOpen, setCommentsDialogOpen] = React.useState(false);
   const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
   const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
   const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
   const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
+  const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<any[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
   
   // Log documents for debugging
@@ -171,6 +175,21 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     
     const status = documentStatuses.find(s => s.id === document.documentStatusId);
     return status?.name;
+  };
+
+  const handleCommentsClick = (doc: VerificationDocument) => {
+    console.log('DocumentsTable - Comments button clicked for document:', doc);
+    
+    // Get verification history from params
+    const verificationHistory = (doc.params as any)?.verification_history || [];
+    setSelectedVerificationHistory(verificationHistory);
+    setSelectedDocumentId(doc.id);
+    setCommentsDialogOpen(true);
+    
+    toast({
+      title: "Viewing Comments",
+      description: "Showing verification history and comments for this document."
+    });
   };
 
   const handleBadgeClick = (doc: VerificationDocument) => {
@@ -299,6 +318,12 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       }
     }
   };
+
+  // Helper function to check if document has comments
+  const hasVerificationHistory = (doc: VerificationDocument): boolean => {
+    const verificationHistory = (doc.params as any)?.verification_history;
+    return Array.isArray(verificationHistory) && verificationHistory.length > 0;
+  };
   
   return (
     <>
@@ -319,6 +344,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
               const docType = doc.documentTypeName?.toLowerCase();
+              const showCommentsIcon = docType === 'other' && hasVerificationHistory(doc);
               
               return (
                 <TableRow key={doc.id}>
@@ -363,6 +389,18 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Download</span>
                       </Button>
+                      {showCommentsIcon && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleCommentsClick(doc)}
+                          title="View comments and verification history"
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          <span className="sr-only">Comments</span>
+                        </Button>
+                      )}
                       {doc.verificationStatus === 'pending' && (
                         <Button 
                           variant="outline" 
@@ -419,6 +457,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         open={bankStatementDialogOpen}
         onOpenChange={setBankStatementDialogOpen}
         statementDetails={selectedBankStatementDetails}
+        documentId={selectedDocumentId}
+      />
+
+      {/* Comments Dialog */}
+      <DocumentCommentsDialog
+        open={commentsDialogOpen}
+        onOpenChange={setCommentsDialogOpen}
+        verificationHistory={selectedVerificationHistory}
         documentId={selectedDocumentId}
       />
     </>

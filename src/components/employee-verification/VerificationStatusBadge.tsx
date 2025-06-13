@@ -2,14 +2,14 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { CheckCircle, AlertCircle, Clock, Play } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, Play, X } from 'lucide-react';
 import PanDetailsDialog from './document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from './document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from './document-card/BankStatementDetailsDialog';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
+  status: 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected';
   className?: string;
   isGovernance?: boolean;
   documentStatusName?: string;
@@ -59,6 +59,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         return {
           icon: AlertCircle,
           text: 'Failed',
+          variant: 'destructive',
+          bgColor: 'bg-red-100 text-red-800 border-red-200'
+        };
+      case 'rejected':
+        return {
+          icon: X,
+          text: 'Rejected',
           variant: 'destructive',
           bgColor: 'bg-red-100 text-red-800 border-red-200'
         };
