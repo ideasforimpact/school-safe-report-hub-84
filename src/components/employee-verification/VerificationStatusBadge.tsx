@@ -14,6 +14,7 @@ interface VerificationStatusBadgeProps {
   }>;
   documentId?: string;
   documentType?: string;
+  className?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
@@ -21,7 +22,8 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   documentStatusName,
   documentLogs,
   documentId,
-  documentType
+  documentType,
+  className
 }) => {
   const getStatusConfig = () => {
     switch (status) {
@@ -64,7 +66,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   return (
     <Badge 
       variant={config.variant}
-      className={`flex items-center gap-1 ${config.className}`}
+      className={`flex items-center gap-1 ${config.className} ${className || ''}`}
     >
       {config.icon}
       {config.label}

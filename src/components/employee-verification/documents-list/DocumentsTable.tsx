@@ -11,9 +11,20 @@ import { useToast } from '@/hooks/use-toast';
 interface DocumentsTableProps {
   documents: VerificationDocument[];
   onRefresh: () => void;
+  onViewDocument?: (documentImage: string) => void;
+  onDownloadDocument?: (documentImage: string) => void;
+  onVerifyDocument?: (documentId: string) => void;
+  onDocumentAction?: () => void;
 }
 
-const DocumentsTable: React.FC<DocumentsTableProps> = ({ documents, onRefresh }) => {
+const DocumentsTable: React.FC<DocumentsTableProps> = ({ 
+  documents, 
+  onRefresh, 
+  onViewDocument, 
+  onDownloadDocument, 
+  onVerifyDocument, 
+  onDocumentAction 
+}) => {
   const { deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
 
@@ -62,6 +73,28 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({ documents, onRefresh })
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleDownload = (document: VerificationDocument) => {
+    if (onDownloadDocument) {
+      onDownloadDocument(document.documentImage);
+    } else {
+      // Fallback download implementation
+      const link = window.document.createElement('a');
+      link.href = document.documentImage;
+      link.download = `${document.documentTypeName || 'document'}_${document.id.slice(0, 8)}.jpg`;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+    }
+  };
+
+  const handleView = (document: VerificationDocument) => {
+    if (onViewDocument) {
+      onViewDocument(document.documentImage);
+    } else {
+      window.open(document.documentImage, '_blank');
+    }
   };
 
   if (documents.length === 0) {
@@ -113,7 +146,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({ documents, onRefresh })
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => window.open(document.documentImage, '_blank')}
+                    onClick={() => handleView(document)}
                     className="h-8 w-8 p-0"
                     title="View document"
                   >
@@ -122,14 +155,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({ documents, onRefresh })
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = document.documentImage;
-                      link.download = `${document.documentTypeName || 'document'}_${document.id.slice(0, 8)}.jpg`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
+                    onClick={() => handleDownload(document)}
                     className="h-8 w-8 p-0"
                     title="Download document"
                   >
