@@ -1,427 +1,156 @@
-import React, { useEffect } from 'react';
-import { Eye, Download, ShieldCheck } from 'lucide-react';
+
+import React from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Eye, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatDistanceToNow } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { VerificationDocument } from '@/types/employeeVerification';
-import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
-import VerificationStatusBadge from '../VerificationStatusBadge';
-import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
-import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
-import AadharDetailsDialog from './AadharDetailsDialog';
-import PanDetailsDialog from '../document-card/PanDetailsDialog';
-import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
-import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
-import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
-  onViewDocument: (documentImage: string) => void;
-  onDownloadDocument: (documentImage: string) => void;
-  onVerifyDocument: (documentId: string) => void;
-  onDocumentAction?: () => void;
+  onRefresh: () => void;
 }
 
-const DocumentsTable: React.FC<DocumentsTableProps> = ({
-  documents,
-  onViewDocument,
-  onDownloadDocument,
-  onVerifyDocument,
-  onDocumentAction
-}) => {
-  const { documentStatuses } = useEmployeeVerification();
+const DocumentsTable: React.FC<DocumentsTableProps> = ({ documents, onRefresh }) => {
+  const { deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
-  const [selectedDocumentDetails, setSelectedDocumentDetails] = React.useState<any>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [panDialogOpen, setPanDialogOpen] = React.useState(false);
-  const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
-  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
-  const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
-  const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
-  const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
-  const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
-  const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
-  const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
-  
-  // Log documents for debugging
-  console.log('DocumentsTable - All documents:', documents);
-  
-  useEffect(() => {
-    console.log('DocumentsTable - Documents with driving license:', 
-      documents.filter(doc => doc.documentTypeName?.toLowerCase().includes('driving')));
-  }, [documents]);
 
-  const handleViewDocument = (documentImage: string) => {
-    if (!documentImage) {
-      toast({
-        title: "No Document",
-        description: "No document image available to view.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleDeleteDocument = async (documentId: string) => {
     try {
-      const formattedUrl = formatSupabaseUrl(documentImage);
-      console.log('Opening document URL for viewing:', formattedUrl);
-      
-      // Check if it's a PDF or image for proper viewing
-      const isPdf = isPdfFile(formattedUrl);
-      
-      if (isPdf) {
-        // For PDFs, open with PDF viewer controls
-        const pdfViewerUrl = `${formattedUrl}#toolbar=1&navpanes=1&scrollbar=1`;
-        window.open(pdfViewerUrl, '_blank', 'noopener,noreferrer');
-      } else {
-        // For images, open directly
-        window.open(formattedUrl, '_blank', 'noopener,noreferrer');
-      }
+      await deleteDocument(documentId);
+      toast({
+        title: "Document Deleted",
+        description: "Document has been successfully deleted.",
+      });
+      onRefresh();
     } catch (error) {
-      console.error('Error opening document:', error);
+      console.error('Error deleting document:', error);
       toast({
         title: "Error",
-        description: "Failed to open document. Please try again.",
+        description: "Failed to delete document. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleDownloadDocument = (documentImage: string) => {
-    if (!documentImage) {
-      toast({
-        title: "No Document",
-        description: "No document available to download.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const getStatusBadge = (status: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed' | 'rejected') => {
+    const config = {
+      verified: { color: 'bg-green-100 text-green-800', label: 'Verified' },
+      completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
+      failed: { color: 'bg-red-100 text-red-800', label: 'Failed' },
+      rejected: { color: 'bg-red-100 text-red-800', label: 'Rejected' },
+      'in-progress': { color: 'bg-blue-100 text-blue-800', label: 'In Progress' },
+      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' }
+    };
 
-    try {
-      const formattedUrl = formatSupabaseUrl(documentImage);
-      console.log('Downloading document URL:', formattedUrl);
-      
-      // Use fetch to download the file and then create blob URL
-      fetch(formattedUrl)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.blob();
-        })
-        .then(blob => {
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `document-${Date.now()}`;
-          
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          // Clean up the blob URL
-          window.URL.revokeObjectURL(url);
-          
-          toast({
-            title: "Download Started",
-            description: "Document download has been initiated.",
-          });
-        })
-        .catch(error => {
-          console.error('Error downloading document:', error);
-          
-          // Fallback: try direct link download
-          const link = document.createElement('a');
-          link.href = formattedUrl;
-          link.download = `document-${Date.now()}`;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          
-          toast({
-            title: "Download Started",
-            description: "Document download has been initiated (fallback method).",
-          });
-        });
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      toast({
-        title: "Download Error",
-        description: "Failed to download document. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
-      return undefined;
-    }
+    const statusConfig = config[status] || config.pending;
     
-    const status = documentStatuses.find(s => s.id === document.documentStatusId);
-    return status?.name;
+    return (
+      <Badge className={statusConfig.color}>
+        {statusConfig.label}
+      </Badge>
+    );
   };
 
-  const handleBadgeClick = (doc: VerificationDocument) => {
-    console.log('DocumentsTable - Badge clicked for document:', doc);
-    console.log('DocumentsTable - cron_log data:', doc.cronLog);
-    
-    const statusName = getDocumentStatusName(doc);
-    const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    
-    // Check if this is a governance verified document with logs
-    if (doc.verificationStatus !== 'verified' || statusName !== 'governance' || !hasLogs) {
-      console.log('DocumentsTable - Not governance verified or no logs, showing info toast');
-      if (statusName && doc.verificationStatus === 'verified') {
-        toast({
-          title: "Information",
-          description: `This document is verified with status: ${statusName}`
-        });
-      }
-      return;
-    }
-    
-    const docType = doc.documentTypeName?.toLowerCase();
-    console.log('DocumentsTable - Document type (lowercase):', docType);
-    setSelectedDocumentId(doc.id);
-    
-    if (docType?.includes('aadhar')) {
-      // Find the most recent successful verification log for Aadhar
-      const verificationLog = doc.employee_docs_log
-        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      
-      setSelectedDocumentDetails(verificationLog || doc.employee_docs_log[0]);
-      setDialogOpen(true);
-      toast({
-        title: "Viewing Aadhar verification details",
-        description: "Showing verification information for this document."
-      });
-    } 
-    else if (docType === 'pan') {
-      // Find PAN verification log
-      const panVerificationLog = doc.employee_docs_log.find(log => 
-        log.action === 'verify_pan_api' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      if (panVerificationLog) {
-        setSelectedPanDetails(panVerificationLog.response);
-        setPanDialogOpen(true);
-        toast({
-          title: "Viewing PAN verification details",
-          description: "Showing verification information for this document."
-        });
-      }
-    }
-    else if (docType === 'voter_id') {
-      // Find Voter ID verification log
-      const voterIdVerificationLog = doc.employee_docs_log.find(log => 
-        log.action === 'verify_voter_id_api' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      if (voterIdVerificationLog) {
-        setSelectedVoterIdDetails(voterIdVerificationLog.response);
-        setVoterIdDialogOpen(true);
-        toast({
-          title: "Viewing Voter ID verification details",
-          description: "Showing verification information for this document."
-        });
-      }
-    }
-    else if (docType?.includes('driving') || docType?.includes('license')) {
-      console.log('DocumentsTable - This is a driving license document');
-      console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
-      
-      // Attempt to find any log with driving license verification data
-      const drivingLicenseLog = doc.employee_docs_log?.find(log => 
-        (log.action?.includes('driving') || log.action?.includes('license')) && 
-        log.response
-      );
-      
-      console.log('DocumentsTable - Found driving license log:', drivingLicenseLog);
-      
-      if (drivingLicenseLog) {
-        // Set the driving license details and open the dialog
-        setSelectedDrivingLicenseDetails(drivingLicenseLog.response);
-        setDrivingLicenseDialogOpen(true);
-        
-        toast({
-          title: "Viewing Driving License verification details",
-          description: "Showing verification information for this document."
-        });
-      }
-    }
-    else if (docType === 'bank account' || docType?.includes('bank')) {
-      console.log('DocumentsTable - This is a bank account document');
-      console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
-      
-      // Find the bank verification log specifically
-      const bankVerificationLog = doc.employee_docs_log?.find(log => 
-        log.action === 'bank_verification' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      console.log('DocumentsTable - Looking for bank verification log');
-      console.log('DocumentsTable - Available logs:', doc.employee_docs_log?.map(log => log.action));
-      console.log('DocumentsTable - Found bank verification log:', bankVerificationLog);
-      
-      if (bankVerificationLog) {
-        console.log('DocumentsTable - Opening Bank Statement dialog with bank_verification log');
-        setSelectedBankStatementDetails(bankVerificationLog.response);
-        setBankStatementDialogOpen(true);
-        
-        toast({
-          title: "Viewing Bank Account verification details",
-          description: "Showing verification information for this document."
-        });
-      } else {
-        console.log('DocumentsTable - No bank_verification log found');
-        toast({
-          title: "No verification details",
-          description: "No bank verification details available for this document."
-        });
-      }
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
-  
-  return (
-    <>
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Type</TableHead>
-              <TableHead>Document #</TableHead>
-              <TableHead>Uploaded</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {documents.map((doc) => {
-              const statusName = getDocumentStatusName(doc);
-              const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-              const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
-              const docType = doc.documentTypeName?.toLowerCase();
-              
-              return (
-                <TableRow key={doc.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getDocumentIcon(doc.documentTypeName || '')}
-                      <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{doc.documentNumber || '—'}</TableCell>
-                  <TableCell>
-                    {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <VerificationStatusBadge 
-                      status={doc.verificationStatus} 
-                      documentStatusName={statusName}
-                      isGovernance={isGovernanceVerified}
-                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
-                      documentLogs={doc.employee_docs_log}
-                      documentId={doc.id}
-                      documentType={docType}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center space-x-2 justify-end">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDocument(doc.documentImage)}
-                        title="View document"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleDownloadDocument(doc.documentImage)}
-                        title="Download document"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Download</span>
-                      </Button>
-                      {doc.verificationStatus === 'pending' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                          onClick={() => onVerifyDocument(doc.id)}
-                        >
-                          <ShieldCheck className="h-4 w-4 mr-1" />
-                          Verify
-                        </Button>
-                      )}
-                      <DocumentDeleteButton 
-                        documentId={doc.id} 
-                        onDocumentDeleted={onDocumentAction}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+
+  if (documents.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No Documents Found</h3>
+        <p className="text-gray-500">No verification documents have been uploaded yet.</p>
       </div>
+    );
+  }
 
-      {/* Dialogs for document verification details */}
-      <AadharDetailsDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        aadharDetails={selectedDocumentDetails}
-      />
-      
-      <PanDetailsDialog
-        open={panDialogOpen}
-        onOpenChange={setPanDialogOpen}
-        panDetails={selectedPanDetails}
-        documentId={selectedDocumentId}
-      />
-      
-      <VoterIdDetailsDialog
-        open={voterIdDialogOpen}
-        onOpenChange={setVoterIdDialogOpen}
-        voterIdDetails={selectedVoterIdDetails}
-        documentId={selectedDocumentId}
-      />
-      
-      <DrivingLicenseDetailsDialog
-        open={drivingLicenseDialogOpen}
-        onOpenChange={setDrivingLicenseDialogOpen}
-        licenseDetails={selectedDrivingLicenseDetails}
-        documentId={selectedDocumentId}
-      />
-      
-      <BankStatementDetailsDialog
-        open={bankStatementDialogOpen}
-        onOpenChange={setBankStatementDialogOpen}
-        statementDetails={selectedBankStatementDetails}
-        documentId={selectedDocumentId}
-      />
-    </>
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Document Type</TableHead>
+            <TableHead>Document Number</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Upload Date</TableHead>
+            <TableHead>Verification Date</TableHead>
+            <TableHead className="text-center">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {documents.map((document) => (
+            <TableRow key={document.id}>
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-gray-500" />
+                  {document.documentTypeName || 'Unknown'}
+                </div>
+              </TableCell>
+              <TableCell>
+                {document.documentNumber || 'N/A'}
+              </TableCell>
+              <TableCell>
+                {getStatusBadge(document.verificationStatus as 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed' | 'rejected')}
+              </TableCell>
+              <TableCell>
+                {formatDate(document.createdAt)}
+              </TableCell>
+              <TableCell>
+                {document.verificationDate ? formatDate(document.verificationDate) : 'Not verified'}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2 justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(document.documentImage, '_blank')}
+                    className="h-8 w-8 p-0"
+                    title="View document"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = document.documentImage;
+                      link.download = `${document.documentTypeName || 'document'}_${document.id.slice(0, 8)}.jpg`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="h-8 w-8 p-0"
+                    title="Download document"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteDocument(document.id)}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                    title="Delete document"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
