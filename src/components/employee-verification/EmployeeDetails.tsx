@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Employee } from '@/types/employeeVerification';
@@ -40,7 +39,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
             <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
             <p className="text-gray-500 text-left">{employee.position} · {employee.department}</p>
           </div>
-          <VerificationStatusBadge status={getStatusString(employee.status)} />
+          <VerificationStatusBadge status={getStatusString(employee.status)} className="text-sm px-3 py-1" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 mt-6">

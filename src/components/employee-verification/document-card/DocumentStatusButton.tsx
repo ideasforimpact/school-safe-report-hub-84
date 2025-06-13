@@ -1,62 +1,88 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Clock, AlertTriangle, FileCheck, RefreshCw } from 'lucide-react';
 import { VerificationDocument } from '@/types/employeeVerification';
+import { ShieldCheck, AlertCircle, Clock } from 'lucide-react';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
+import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
+import VerificationStatusBadge from '../VerificationStatusBadge';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentStatusButtonProps {
   document: VerificationDocument;
 }
 
 const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document }) => {
-  const getStatusButton = () => {
-    switch (document.verificationStatus) {
-      case 'verified':
-      case 'completed':
-        return {
-          variant: 'default' as const,
-          icon: <CheckCircle className="h-4 w-4" />,
-          label: 'Verified',
-          className: 'bg-green-600 hover:bg-green-700 text-white'
-        };
-      case 'failed':
-      case 'rejected':
-        return {
-          variant: 'destructive' as const,
-          icon: <XCircle className="h-4 w-4" />,
-          label: 'Failed',
-          className: 'bg-red-600 hover:bg-red-700 text-white'
-        };
-      case 'in-progress':
-        return {
-          variant: 'default' as const,
-          icon: <RefreshCw className="h-4 w-4" />,
-          label: 'In Progress',
-          className: 'bg-blue-600 hover:bg-blue-700 text-white'
-        };
-      case 'pending':
-      default:
-        return {
-          variant: 'secondary' as const,
-          icon: <Clock className="h-4 w-4" />,
-          label: 'Pending',
-          className: 'bg-yellow-600 hover:bg-yellow-700 text-white'
-        };
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [aadharDetails, setAadharDetails] = useState<any>(null);
+  const { documentStatuses } = useEmployeeVerification();
+  const [statusName, setStatusName] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Get status name from statusId
+  useEffect(() => {
+    if (document.documentStatusId && documentStatuses.length > 0) {
+      const status = documentStatuses.find(s => s.id === document.documentStatusId);
+      setStatusName(status?.name || null);
+    }
+  }, [document.documentStatusId, documentStatuses]);
+
+  useEffect(() => {
+    if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
+      // Find the most recent successful verification log
+      const verificationLog = document.employee_docs_log
+        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      
+      if (verificationLog) {
+        setAadharDetails(verificationLog);
+      }
+    }
+  }, [document]);
+
+  const handleClick = () => {
+    // Only open dialog if we have verification data
+    if (document.verificationStatus === 'verified' && 
+        statusName === 'governance' && 
+        document.documentTypeName?.toLowerCase().includes('aadhar') &&
+        document.employee_docs_log && 
+        document.employee_docs_log.length > 0) {
+      setDialogOpen(true);
+      toast({
+        title: "Viewing Aadhar verification details",
+        description: "Showing verification information for this document."
+      });
+    } else if (document.verificationStatus === 'verified' && statusName) {
+      toast({
+        title: "Information",
+        description: `This document is verified with status: ${statusName}`
+      });
     }
   };
-
-  const config = getStatusButton();
+  
+  const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
+  const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
+  const isAadhar = document.documentTypeName?.toLowerCase().includes('aadhar');
 
   return (
-    <Button
-      variant={config.variant}
-      size="sm"
-      className={`flex items-center gap-2 ${config.className}`}
-      disabled
-    >
-      {config.icon}
-      {config.label}
-    </Button>
+    <>
+      <VerificationStatusBadge 
+        status={document.verificationStatus} 
+        isGovernance={isGovernanceVerified}
+        documentStatusName={document.verificationStatus === 'verified' && statusName ? statusName : undefined}
+        onClick={isAadhar && isGovernanceVerified && hasLogs ? handleClick : undefined}
+        documentLogs={document.employee_docs_log}
+        documentId={document.id}
+        documentType={document.documentTypeName?.toLowerCase()}
+      />
+
+      {/* Keep Aadhar dialog for backward compatibility */}
+      <AadharDetailsDialog 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+        aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
+      />
+    </>
   );
 };
 
