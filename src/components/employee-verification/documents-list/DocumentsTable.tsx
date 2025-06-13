@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Eye, Download, ShieldCheck } from 'lucide-react';
+import { Eye, Download, ShieldCheck, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -22,6 +22,7 @@ import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
+import DocumentCommentsDialog from '../DocumentCommentsDialog';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -46,11 +47,13 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
+  const [commentsDialogOpen, setCommentsDialogOpen] = React.useState(false);
   const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
   const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
   const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
   const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
+  const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<any[]>([]);
   
   // Log documents for debugging
   console.log('DocumentsTable - All documents:', documents);
@@ -299,6 +302,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       }
     }
   };
+
+  const handleCommentsClick = (doc: VerificationDocument) => {
+    if (doc.params?.verification_history) {
+      setSelectedVerificationHistory(doc.params.verification_history);
+      setSelectedDocumentId(doc.id);
+      setCommentsDialogOpen(true);
+    }
+  };
   
   return (
     <>
@@ -319,6 +330,12 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
               const docType = doc.documentTypeName?.toLowerCase();
+              
+              // Check if this is an "Other" document with verification history
+              const isOtherDocumentWithComments = docType === 'other' && 
+                doc.params?.verification_history && 
+                Array.isArray(doc.params.verification_history) && 
+                doc.params.verification_history.length > 0;
               
               return (
                 <TableRow key={doc.id}>
@@ -374,6 +391,19 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           Verify
                         </Button>
                       )}
+                      {/* Comments button for Other documents with verification history */}
+                      {isOtherDocumentWithComments && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCommentsClick(doc)}
+                          title="View comments"
+                          className="flex items-center gap-1"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          <span className="sr-only">Comments</span>
+                        </Button>
+                      )}
                       <DocumentDeleteButton 
                         documentId={doc.id} 
                         onDocumentDeleted={onDocumentAction}
@@ -420,6 +450,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         onOpenChange={setBankStatementDialogOpen}
         statementDetails={selectedBankStatementDetails}
         documentId={selectedDocumentId}
+      />
+
+      {/* Comments Dialog for Other documents */}
+      <DocumentCommentsDialog
+        open={commentsDialogOpen}
+        onOpenChange={setCommentsDialogOpen}
+        verificationHistory={selectedVerificationHistory}
+        documentId={selectedDocumentId || ''}
       />
     </>
   );
