@@ -8,7 +8,7 @@ interface DocumentMetadataProps {
   documentTypeName: string;
   documentNumber?: string;
   createdAt: string;
-  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed';
+  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed' | 'rejected';
   documentStatusName?: string;
   verificationDate?: string;
   verificationNotes?: string;
@@ -73,6 +73,8 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         return 'bg-blue-50 border border-blue-100 text-blue-600';
       case 'failed':
         return 'bg-red-50 border border-red-100 text-red-600';
+      case 'rejected':
+        return 'bg-red-50 border border-red-100 text-red-600';
       default:
         return 'bg-gray-50 border border-gray-100 text-gray-600';
     }
@@ -91,6 +93,8 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         return 'In Progress';
       case 'failed':
         return `${displayStatus} ${formatDate(verificationDate)}`;
+      case 'rejected':
+        return `Rejected ${formatDate(verificationDate)}`;
       default:
         return verificationStatus;
     }
