@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
-import DocumentCommentsDialog from '../employee-verification/DocumentCommentsDialog';
+import DocumentCommentsDialog from '../../employee-verification/DocumentCommentsDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
