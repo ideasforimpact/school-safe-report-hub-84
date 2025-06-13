@@ -46,7 +46,7 @@ export interface VerificationDocument {
   documentTypeName?: string;
   documentNumber?: string;
   documentImage: string; // This should always be required and not null
-  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed';
+  verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed' | 'rejected';
   documentStatusId?: string;
   documentStatusName?: string;
   verificationDate?: string;
@@ -66,6 +66,13 @@ export interface VerificationDocument {
   };
   params?: {
     DOB?: string;
+    verification_history?: Array<{
+      action: 'completed' | 'rejected';
+      comments: string;
+      attachments: string[];
+      timestamp: string;
+      verified_by: string;
+    }>;
     [key: string]: any;
   };
   // Cron-related fields

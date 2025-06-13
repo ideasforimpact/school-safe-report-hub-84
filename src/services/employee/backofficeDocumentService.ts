@@ -202,8 +202,8 @@ export const backofficeDocumentService = {
         verified_by: 'backoffice_user' // TODO: Replace with actual backoffice user ID when available
       };
 
-      // Get existing params or initialize
-      const existingParams = document.params || {};
+      // Get existing params or initialize - properly type cast the params
+      const existingParams = (document.params as Record<string, any>) || {};
       const verificationHistory = existingParams.verification_history || [];
       
       // Add new entry to verification history
