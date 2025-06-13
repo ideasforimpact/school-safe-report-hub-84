@@ -148,7 +148,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       }
       
       // Ensure verification_status is properly mapped, with fallback to 'pending'
-      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected';
+      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
       
       console.log('Document status mapping:', {
         id: doc.id,
@@ -279,7 +279,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
       }
       
       // Ensure verification_status is properly mapped
-      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected';
+      const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
       
       console.log('FetchEmployeeDocuments - Document status mapping:', {
         id: doc.id,

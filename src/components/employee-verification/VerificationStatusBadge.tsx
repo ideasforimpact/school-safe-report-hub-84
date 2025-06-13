@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -8,7 +9,7 @@ import DrivingLicenseDetailsDialog from './document-card/DrivingLicenseDetailsDi
 import BankStatementDetailsDialog from './document-card/BankStatementDetailsDialog';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected';
+  status: 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
   className?: string;
   isGovernance?: boolean;
   documentStatusName?: string;
@@ -58,13 +59,6 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         return {
           icon: AlertCircle,
           text: 'Failed',
-          variant: 'destructive',
-          bgColor: 'bg-red-100 text-red-800 border-red-200'
-        };
-      case 'rejected':
-        return {
-          icon: AlertCircle,
-          text: 'Rejected',
           variant: 'destructive',
           bgColor: 'bg-red-100 text-red-800 border-red-200'
         };

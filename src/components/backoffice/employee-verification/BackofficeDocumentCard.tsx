@@ -3,13 +3,12 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload, MessageCircle } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload } from 'lucide-react';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
-import DocumentCommentsDialog from './DocumentCommentsDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -27,7 +26,6 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
-  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   // Get the client ID - try both field names for compatibility
@@ -38,8 +36,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     verificationStatus: document.verificationStatus,
     documentTypeName,
     documentImage: document.documentImage ? 'present' : 'missing',
-    resolvedClientId: clientId,
-    verificationHistory: document.params?.verification_history
+    resolvedClientId: clientId
   });
 
   const getStatusBadge = (status: string) => {
@@ -112,11 +109,6 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     setReUploadDialogOpen(true);
   };
 
-  const handleViewComments = () => {
-    console.log('BackofficeDocumentCard - Comments button clicked for document:', document.id);
-    setCommentsDialogOpen(true);
-  };
-
   const handleDocumentUpdated = () => {
     console.log('BackofficeDocumentCard - Document updated, refreshing data');
     onRefresh();
@@ -125,20 +117,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   // Check if this is an "Other" document with "in-progress" status
   const isOtherInProgress = documentTypeName.toLowerCase() === 'other' && document.verificationStatus === 'in-progress';
   
-  // Check if this is an "Other" document with verification history
-  const isOtherWithHistory = documentTypeName.toLowerCase() === 'other' && 
-    document.params?.verification_history && 
-    Array.isArray(document.params.verification_history) && 
-    document.params.verification_history.length > 0;
-  
   console.log('BackofficeDocumentCard - Button conditions:', {
     isOtherInProgress,
-    isOtherWithHistory,
     documentTypeName: documentTypeName.toLowerCase(),
     verificationStatus: document.verificationStatus,
     hasDocumentImage: !!document.documentImage,
-    hasClientId: !!clientId,
-    verificationHistory: document.params?.verification_history
+    hasClientId: !!clientId
   });
 
   return (
@@ -232,20 +216,6 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              {/* Comments button - only for "Other" documents with verification history */}
-              {isOtherWithHistory && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleViewComments}
-                  className="flex items-center gap-2"
-                  title="View verification comments and attachments"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Comments
-                </Button>
-              )}
-              
               {/* Verify button - only for "Other" documents with "in-progress" status */}
               {isOtherInProgress && clientId && (
                 <Button
@@ -348,16 +318,6 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         employee={employee}
         onDocumentUpdated={handleDocumentUpdated}
       />
-
-      {/* Comments Dialog */}
-      {isOtherWithHistory && (
-        <DocumentCommentsDialog
-          open={commentsDialogOpen}
-          onOpenChange={setCommentsDialogOpen}
-          verificationHistory={(document.params as any)?.verification_history || []}
-          documentId={document.id}
-        />
-      )}
     </>
   );
 };
