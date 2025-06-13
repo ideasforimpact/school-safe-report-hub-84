@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CompleteDocumentRequest {
@@ -11,6 +12,15 @@ export interface ReUploadDocumentRequest {
   clientId: string;
   employeeId: string;
   newDocumentUrl: string;
+}
+
+export interface VerifyDocumentRequest {
+  documentId: string;
+  clientId: string;
+  employeeId: string;
+  action: 'completed' | 'rejected';
+  comments: string;
+  attachments: string[];
 }
 
 export const backofficeDocumentService = {
@@ -136,6 +146,96 @@ export const backofficeDocumentService = {
       return updatedDocument;
     } catch (error) {
       console.error('Error re-uploading document:', error);
+      throw error;
+    }
+  },
+
+  // Verify document with complete or reject action
+  async verifyDocument({ documentId, clientId, employeeId, action, comments, attachments }: VerifyDocumentRequest) {
+    try {
+      console.log('Starting verifyDocument for:', { documentId, clientId, employeeId, action });
+      
+      // First verify the document exists and belongs to the specified employee
+      const { data: document, error: documentError } = await supabase
+        .from('employee_documents')
+        .select('id, employee_id, params')
+        .eq('id', documentId)
+        .eq('employee_id', employeeId)
+        .single();
+
+      if (documentError || !document) {
+        console.error('Document verification failed:', documentError);
+        throw new Error('Document not found or access denied');
+      }
+
+      // Then verify the employee belongs to the specified client
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (employeeError || !employee) {
+        console.error('Employee verification failed:', employeeError);
+        throw new Error('Employee does not belong to the specified client');
+      }
+
+      // Get the status ID based on action
+      const statusName = action === 'completed' ? 'completed' : 'rejected';
+      const { data: statusRecord, error: statusError } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', statusName)
+        .single();
+
+      if (statusError || !statusRecord) {
+        throw new Error(`${statusName} status not found`);
+      }
+
+      // Prepare verification history entry
+      const verificationEntry = {
+        action,
+        comments,
+        attachments,
+        timestamp: new Date().toISOString(),
+        verified_by: 'backoffice_user' // TODO: Replace with actual backoffice user ID when available
+      };
+
+      // Get existing params or initialize
+      const existingParams = document.params || {};
+      const verificationHistory = existingParams.verification_history || [];
+      
+      // Add new entry to verification history
+      const updatedParams = {
+        ...existingParams,
+        verification_history: [...verificationHistory, verificationEntry]
+      };
+
+      console.log('Updating document with verification action:', action);
+
+      // Update the document
+      const { data: updatedDocument, error: updateError } = await supabase
+        .from('employee_documents')
+        .update({
+          verification_status: action,
+          document_status_id: statusRecord.id,
+          params: updatedParams,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Verification update failed:', updateError);
+        throw new Error(`Failed to verify document: ${updateError.message}`);
+      }
+
+      console.log('Document verified successfully:', updatedDocument);
+      return updatedDocument;
+    } catch (error) {
+      console.error('Error verifying document:', error);
       throw error;
     }
   },

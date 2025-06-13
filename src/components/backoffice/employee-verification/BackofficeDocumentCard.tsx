@@ -1,13 +1,14 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Download, Eye, Calendar, User, Hash, CheckCircle, Upload } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload } from 'lucide-react';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import DocumentReUploadDialog from './DocumentReUploadDialog';
-import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
+import DocumentVerificationDialog from './DocumentVerificationDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -24,17 +25,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 }) => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
-  const [isCompletingDocument, setIsCompletingDocument] = useState(false);
+  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
   const { toast } = useToast();
-
-  // Enhanced debugging for client ID issue
-  console.log('BackofficeDocumentCard - Employee data:', {
-    id: employee.id,
-    name: employee.name,
-    clientId: employee.clientId,
-    client_id: (employee as any).client_id,
-    fullEmployee: employee
-  });
 
   // Get the client ID - try both field names for compatibility
   const clientId = employee.clientId || (employee as any).client_id;
@@ -55,6 +47,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         return <Badge className="bg-green-500 hover:bg-green-600">Completed</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>;
       case 'in-progress':
         return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">In Progress</Badge>;
       case 'pending':
@@ -65,18 +59,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   const getDocumentTypeIcon = (typeName: string) => {
     const lowerTypeName = typeName.toLowerCase();
-    if (lowerTypeName.includes('aadhar') || lowerTypeName.includes('aadhaar')) {
-      return '🆔';
-    } else if (lowerTypeName.includes('pan')) {
-      return '💳';
-    } else if (lowerTypeName.includes('driving') || lowerTypeName.includes('license')) {
-      return '🚗';
-    } else if (lowerTypeName.includes('bank') || lowerTypeName.includes('account')) {
-      return '🏦';
-    } else if (lowerTypeName.includes('voter')) {
-      return '🗳️';
-    } else if (lowerTypeName.includes('passport')) {
-      return '📘';
+    if (lowerTypeName.includes('other')) {
+      return '📄';
     }
     return '📄';
   };
@@ -115,50 +99,9 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     }
   };
 
-  const handleCompleteDocument = async () => {
-    console.log('BackofficeDocumentCard - Complete button clicked for document:', document.id);
-    
-    if (!clientId) {
-      console.error('BackofficeDocumentCard - No client ID found. Employee data:', employee);
-      toast({
-        title: "Error",
-        description: "Client ID not found. Please check employee data.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCompletingDocument(true);
-    try {
-      console.log('BackofficeDocumentCard - Calling completeDocument API with:', {
-        documentId: document.id,
-        clientId: clientId,
-        employeeId: employee.id
-      });
-
-      await backofficeDocumentService.completeDocument({
-        documentId: document.id,
-        clientId: clientId,
-        employeeId: employee.id
-      });
-      
-      console.log('BackofficeDocumentCard - Document completed successfully');
-      toast({
-        title: "Document Completed",
-        description: "The document has been marked as verified.",
-      });
-      
-      onRefresh();
-    } catch (error) {
-      console.error('BackofficeDocumentCard - Error completing document:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to mark document as complete. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCompletingDocument(false);
-    }
+  const handleVerify = () => {
+    console.log('BackofficeDocumentCard - Verify button clicked for document:', document.id);
+    setVerificationDialogOpen(true);
   };
 
   const handleReUpload = () => {
@@ -248,25 +191,41 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Show verification history if available */}
+                {document.params && (document.params as any).verification_history && (
+                  <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-sm font-medium mb-2">Verification History:</p>
+                    <div className="space-y-2 text-sm">
+                      {((document.params as any).verification_history || []).map((entry: any, index: number) => (
+                        <div key={index} className="border-l-2 border-yellow-300 pl-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium capitalize">{entry.action}</span>
+                            <span className="text-gray-500">{format(new Date(entry.timestamp), 'MMM dd, yyyy HH:mm')}</span>
+                          </div>
+                          {entry.comments && <p className="text-gray-600 mt-1">{entry.comments}</p>}
+                          {entry.attachments && entry.attachments.length > 0 && (
+                            <p className="text-gray-500 text-xs mt-1">{entry.attachments.length} attachment(s)</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
             <div className="flex items-center gap-2 ml-4">
-              {/* Complete button - only for "Other" documents with "in-progress" status */}
+              {/* Verify button - only for "Other" documents with "in-progress" status */}
               {isOtherInProgress && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleCompleteDocument}
-                  disabled={isCompletingDocument}
+                  onClick={handleVerify}
                   className="flex items-center gap-2"
                 >
-                  {isCompletingDocument ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                  ) : (
-                    <CheckCircle className="h-4 w-4" />
-                  )}
-                  Complete
+                  <Shield className="h-4 w-4" />
+                  Verify
                 </Button>
               )}
               
@@ -346,6 +305,15 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
       <DocumentReUploadDialog
         open={reUploadDialogOpen}
         onOpenChange={setReUploadDialogOpen}
+        document={document}
+        employee={employee}
+        onDocumentUpdated={handleDocumentUpdated}
+      />
+
+      {/* Verification Dialog */}
+      <DocumentVerificationDialog
+        open={verificationDialogOpen}
+        onOpenChange={setVerificationDialogOpen}
         document={document}
         employee={employee}
         onDocumentUpdated={handleDocumentUpdated}
