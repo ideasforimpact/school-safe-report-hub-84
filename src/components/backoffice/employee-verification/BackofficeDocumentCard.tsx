@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
 import DocumentCommentsDialog from '../../employee-verification/DocumentCommentsDialog';
+import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -121,12 +122,18 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
-  // Handle updating verification history
+  // Handle updating verification history with proper backend call
   const handleUpdateHistory = async (updatedHistory: any[]) => {
     try {
-      // Here you would call an API to update the document's verification history
-      // For now, we'll just refresh the document data
       console.log('BackofficeDocumentCard - Updating verification history:', updatedHistory);
+      
+      // Call the backend service to update verification history
+      await backofficeDocumentService.updateVerificationHistory({
+        documentId: document.id,
+        clientId: clientId!,
+        employeeId: employee.id,
+        verificationHistory: updatedHistory
+      });
       
       // Call the refresh function to reload the document data
       onRefresh();

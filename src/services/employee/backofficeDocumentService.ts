@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CompleteDocumentRequest {
@@ -21,6 +20,13 @@ export interface VerifyDocumentRequest {
   action: 'completed' | 'rejected';
   comments: string;
   attachments: string[];
+}
+
+export interface UpdateVerificationHistoryRequest {
+  documentId: string;
+  clientId: string;
+  employeeId: string;
+  verificationHistory: any[];
 }
 
 export const backofficeDocumentService = {
@@ -236,6 +242,72 @@ export const backofficeDocumentService = {
       return updatedDocument;
     } catch (error) {
       console.error('Error verifying document:', error);
+      throw error;
+    }
+  },
+
+  // New method to update verification history
+  async updateVerificationHistory({ documentId, clientId, employeeId, verificationHistory }: UpdateVerificationHistoryRequest) {
+    try {
+      console.log('Starting updateVerificationHistory for:', { documentId, clientId, employeeId });
+      
+      // First verify the document exists and belongs to the specified employee
+      const { data: document, error: documentError } = await supabase
+        .from('employee_documents')
+        .select('id, employee_id, params')
+        .eq('id', documentId)
+        .eq('employee_id', employeeId)
+        .single();
+
+      if (documentError || !document) {
+        console.error('Document verification failed:', documentError);
+        throw new Error('Document not found or access denied');
+      }
+
+      // Then verify the employee belongs to the specified client
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (employeeError || !employee) {
+        console.error('Employee verification failed:', employeeError);
+        throw new Error('Employee does not belong to the specified client');
+      }
+
+      // Get existing params or initialize
+      const existingParams = (document.params as Record<string, any>) || {};
+      
+      // Update params with new verification history
+      const updatedParams = {
+        ...existingParams,
+        verification_history: verificationHistory
+      };
+
+      console.log('Updating document with new verification history');
+
+      // Update the document params with the new verification history
+      const { data: updatedDocument, error: updateError } = await supabase
+        .from('employee_documents')
+        .update({
+          params: updatedParams,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Verification history update failed:', updateError);
+        throw new Error(`Failed to update verification history: ${updateError.message}`);
+      }
+
+      console.log('Verification history updated successfully:', updatedDocument);
+      return updatedDocument;
+    } catch (error) {
+      console.error('Error updating verification history:', error);
       throw error;
     }
   },

@@ -3,4 +3,5 @@
 export * from './employeeRetrievalService';
 export * from './employeeMutationService';
 export * from './employeeModulePermissionsService';
-export * from './employeeModuleService';  // Add this export to ensure the module service is available
+export * from './employeeModuleService';
+export * from './backofficeDocumentService'; // Add this export
