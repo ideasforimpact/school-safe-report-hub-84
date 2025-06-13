@@ -135,6 +135,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     setSelectedDocumentId('');
   };
 
+  const handleRefresh = () => {
+    if (onDocumentAction) {
+      onDocumentAction();
+    }
+  };
+
   if (!initialLoadComplete) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -157,6 +163,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     <>
       <DocumentsTable
         documents={documents}
+        onRefresh={handleRefresh}
         onViewDocument={handleViewDocument}
         onDownloadDocument={handleDownloadDocument}
         onVerifyDocument={handleVerifyDocument}
