@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload, MessageCircle } from 'lucide-react';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
+import DocumentCommentsDialog from '../employee-verification/DocumentCommentsDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -26,6 +26,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   // Get the client ID - try both field names for compatibility
@@ -114,6 +115,25 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     onRefresh();
   };
 
+  // Helper function to check if document has comments
+  const hasVerificationHistory = (): boolean => {
+    const verificationHistory = (document.params as any)?.verification_history;
+    return Array.isArray(verificationHistory) && verificationHistory.length > 0;
+  };
+
+  // Check if this is an "Other" document type with verification history
+  const showCommentsIcon = documentTypeName.toLowerCase() === 'other' && hasVerificationHistory();
+
+  const handleCommentsClick = () => {
+    console.log('BackofficeDocumentCard - Comments button clicked for document:', document.id);
+    setCommentsDialogOpen(true);
+    
+    toast({
+      title: "Viewing Comments",
+      description: "Showing verification history and comments for this document."
+    });
+  };
+
   // Check if this is an "Other" document with "in-progress" status
   const isOtherInProgress = documentTypeName.toLowerCase() === 'other' && document.verificationStatus === 'in-progress';
   
@@ -192,8 +212,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                   </div>
                 )}
 
-                {/* Show verification history if available */}
-                {document.params && (document.params as any).verification_history && (
+                {/* Show verification history if available but no comments icon */}
+                {document.params && (document.params as any).verification_history && !showCommentsIcon && (
                   <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
                     <p className="text-sm font-medium mb-2">Verification History:</p>
                     <div className="space-y-2 text-sm">
@@ -216,6 +236,20 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
+              {/* Comments button - for "Other" documents with verification history */}
+              {showCommentsIcon && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCommentsClick}
+                  className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                  title="View comments and verification history"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Comments
+                </Button>
+              )}
+              
               {/* Verify button - only for "Other" documents with "in-progress" status */}
               {isOtherInProgress && clientId && (
                 <Button
@@ -317,6 +351,14 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         document={document}
         employee={employee}
         onDocumentUpdated={handleDocumentUpdated}
+      />
+
+      {/* Comments Dialog */}
+      <DocumentCommentsDialog
+        open={commentsDialogOpen}
+        onOpenChange={setCommentsDialogOpen}
+        verificationHistory={(document.params as any)?.verification_history || []}
+        documentId={document.id}
       />
     </>
   );
