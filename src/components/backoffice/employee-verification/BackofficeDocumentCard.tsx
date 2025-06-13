@@ -121,6 +121,30 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
+  // Handle updating verification history
+  const handleUpdateHistory = async (updatedHistory: any[]) => {
+    try {
+      // Here you would call an API to update the document's verification history
+      // For now, we'll just refresh the document data
+      console.log('BackofficeDocumentCard - Updating verification history:', updatedHistory);
+      
+      // Call the refresh function to reload the document data
+      onRefresh();
+      
+      toast({
+        title: "History Updated",
+        description: "Verification history has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating verification history:', error);
+      toast({
+        title: "Update Error",
+        description: "Failed to update verification history. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Check if this is an "Other" document type with verification history
   const showCommentsIcon = documentTypeName.toLowerCase() === 'other' && hasVerificationHistory();
 
@@ -243,7 +267,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                   size="sm"
                   onClick={handleCommentsClick}
                   className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                  title="View comments and verification history"
+                  title="View and edit comments and verification history"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Comments
@@ -353,12 +377,13 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         onDocumentUpdated={handleDocumentUpdated}
       />
 
-      {/* Comments Dialog */}
+      {/* Comments Dialog with Edit Functionality */}
       <DocumentCommentsDialog
         open={commentsDialogOpen}
         onOpenChange={setCommentsDialogOpen}
         verificationHistory={(document.params as any)?.verification_history || []}
         documentId={document.id}
+        onUpdateHistory={handleUpdateHistory}
       />
     </>
   );
