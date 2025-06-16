@@ -178,11 +178,11 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
         setLoading(false);
       }
     }
-  }, [preloadedModules, formData.moduleInfoArray, initializeModuleAccessState, loading]);
+  }, [preloadedModules, formData.moduleInfoArray, initializeModuleAccessState]);
 
   // Main initialization effect
   useEffect(() => {
-    if (!initializedRef.current && modules.length === 0) {
+    if (!initializedRef.current && modules.length === 0 && !loading) {
       fetchModules();
     }
     
@@ -241,6 +241,10 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
           <div className="flex items-center justify-center h-40">
             <Loader2 className="w-6 h-6 text-primary animate-spin mr-2" />
             <p className="text-muted-foreground">Loading modules...</p>
+          </div>
+        ) : modules.length === 0 ? (
+          <div className="flex items-center justify-center h-40">
+            <p className="text-muted-foreground">No modules available</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 mt-4">
