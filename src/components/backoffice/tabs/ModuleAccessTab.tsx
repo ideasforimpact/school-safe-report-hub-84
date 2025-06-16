@@ -84,14 +84,49 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       }));
   }, [moduleAccessState]);
 
-  // Initialize module access state
-  const initializeModuleAccessState = useCallback((availableModules: Module[], existingModuleInfo?: ModuleInfo[]) => {
-    if (!mountedRef.current || initializedRef.current) return;
+  // Fetch modules function - simplified and isolated
+  const fetchModules = useCallback(async () => {
+    if (loading || !mountedRef.current) return;
+    
+    console.log("Fetching modules...");
+    setLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-modules', {
+        body: { fetchLevel: 'client' }
+      });
 
+      if (error) {
+        console.error("Error fetching modules:", error);
+        toast.error("Failed to load modules");
+        return;
+      }
+
+      if (data && data.modules && mountedRef.current) {
+        console.log("Modules fetched successfully:", data.modules);
+        setModules(data.modules);
+      }
+    } catch (error) {
+      console.error("Error in fetchModules:", error);
+      toast.error("Error loading modules");
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [loading]);
+
+  // Initialize module access state - called after modules are set
+  const initializeModuleAccessState = useCallback((availableModules: Module[], existingModuleInfo?: ModuleInfo[]) => {
+    if (!mountedRef.current || initializedRef.current || availableModules.length === 0) return;
+
+    console.log("Initializing module access state with modules:", availableModules.length);
+    
     let initialModuleAccess: ModuleAccess[] = [];
     
     if (existingModuleInfo && existingModuleInfo.length > 0) {
       // Use existing module info for edit mode or preloaded data
+      console.log("Using existing module info:", existingModuleInfo);
       const moduleInfoMap = new Map<string, ModuleInfo>();
       existingModuleInfo.forEach(info => {
         moduleInfoMap.set(info.module_id, info);
@@ -112,6 +147,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       });
     } else if (!isEdit) {
       // For new clients, enable all modules with admin access by default
+      console.log("Setting up default modules for new client");
       initialModuleAccess = availableModules.map((module: Module) => ({
         name: module.name,
         module_id: module.id,
@@ -121,6 +157,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       }));
     } else {
       // For edit mode without existing data, start with all disabled
+      console.log("Setting up empty modules for edit mode");
       initialModuleAccess = availableModules.map((module: Module) => ({
         name: module.name,
         module_id: module.id,
@@ -130,6 +167,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       }));
     }
     
+    console.log("Setting module access state:", initialModuleAccess);
     setModuleAccessState(initialModuleAccess);
     initializedRef.current = true;
 
@@ -143,57 +181,34 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
           is_admin: module.is_admin
         }));
       
+      console.log("Notifying parent with initial module info:", moduleInfoArray);
       debouncedUpdate(moduleInfoArray);
     }
   }, [isEdit, debouncedUpdate]);
 
-  // Fetch modules function
-  const fetchModules = useCallback(async () => {
-    if (loading || !mountedRef.current) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-modules', {
-        body: { fetchLevel: 'client' }
-      });
-
-      if (error) {
-        console.error("Error fetching modules:", error);
-        toast.error("Failed to load modules");
-        return;
-      }
-
-      if (data && data.modules && mountedRef.current) {
-        setModules(data.modules);
-        
-        // Determine which module info to use for initialization
-        const moduleInfoToUse = preloadedModules || formData.moduleInfoArray;
-        initializeModuleAccessState(data.modules, moduleInfoToUse);
-      }
-    } catch (error) {
-      console.error("Error in fetchModules:", error);
-      toast.error("Error loading modules");
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [preloadedModules, formData.moduleInfoArray, initializeModuleAccessState]);
-
-  // Main initialization effect
+  // Effect to fetch modules on mount
   useEffect(() => {
-    if (!initializedRef.current && modules.length === 0 && !loading) {
-      fetchModules();
-    }
+    console.log("Mount effect - fetching modules");
+    fetchModules();
     
     return () => {
       mountedRef.current = false;
     };
-  }, [fetchModules]);
+  }, []);
 
-  // Sync state changes to parent (with debouncing)
+  // Effect to initialize state when modules are available
+  useEffect(() => {
+    if (modules.length > 0 && !initializedRef.current) {
+      console.log("Modules available, initializing state...");
+      const moduleInfoToUse = preloadedModules || formData.moduleInfoArray;
+      initializeModuleAccessState(modules, moduleInfoToUse);
+    }
+  }, [modules, preloadedModules, formData.moduleInfoArray, initializeModuleAccessState]);
+
+  // Effect to sync state changes to parent (with debouncing)
   useEffect(() => {
     if (initializedRef.current && moduleAccessState.length > 0 && !isUpdatingRef.current) {
+      console.log("Syncing state changes to parent:", currentModuleInfoArray);
       debouncedUpdate(currentModuleInfoArray);
     }
   }, [currentModuleInfoArray, debouncedUpdate]);
@@ -202,6 +217,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
   const handleModuleCheckboxChange = useCallback((moduleId: string, checked: boolean) => {
     if (!mountedRef.current) return;
     
+    console.log("Module checkbox changed:", moduleId, checked);
     setModuleAccessState(prev => 
       prev.map(m => 
         m.module_id === moduleId 
@@ -219,6 +235,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
   const handleAdminBadgeClick = useCallback((moduleId: string) => {
     if (!mountedRef.current) return;
     
+    console.log("Admin badge clicked:", moduleId);
     setModuleAccessState(prev => 
       prev.map(m => 
         m.module_id === moduleId 
@@ -231,6 +248,13 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       )
     );
   }, []);
+
+  console.log("Render state:", { 
+    loading, 
+    modulesCount: modules.length, 
+    moduleAccessCount: moduleAccessState.length,
+    initialized: initializedRef.current
+  });
 
   return (
     <div className="space-y-4">
