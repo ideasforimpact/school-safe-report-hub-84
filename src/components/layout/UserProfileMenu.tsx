@@ -53,7 +53,6 @@ const UserProfileMenu = () => {
       console.log('✅ Local logout complete');
       
       toast.success('You have been logged out successfully');
-      navigate('/login');
     } catch (error) {
       console.error('❌ Error during logout:', error);
       toast.error('There was an error logging out');

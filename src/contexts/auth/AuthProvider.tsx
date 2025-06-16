@@ -493,15 +493,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear local storage
     logoutUser();
-    toast.info("You have been logged out");
+    // toast.info("You have been logged out");
     
-    // Redirect to login page immediately
-    window.location.href = '/login';
+    // // Redirect to login page immediately
+    // window.location.href = '/login';
     
-    // Then proceed with Supabase logout (won't affect the redirection)
-    supabase.auth.signOut().catch((error) => {
-      // Handle error silently
-    });
+    // // Then proceed with Supabase logout (won't affect the redirection)
+    // supabase.auth.signOut().catch((error) => {
+    //   // Handle error silently
+    // });
   };
 
   // Add new user
