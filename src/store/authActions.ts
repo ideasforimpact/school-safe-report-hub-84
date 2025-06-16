@@ -5,9 +5,9 @@ import {
   SetBackofficeUserAction,
   SetAuthStatusAction,
   SetAuthErrorAction,
-  ClearAuthAction,
-  User
+  ClearAuthAction
 } from './types';
+import { User } from '@/contexts/auth/types';
 
 export const setCurrentUser = (user: User | null): SetCurrentUserAction => {
   console.log("setCurrentUser action creator called with:", user);

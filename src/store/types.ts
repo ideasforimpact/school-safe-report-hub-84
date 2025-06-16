@@ -1,4 +1,4 @@
-import { EmployeeData } from '@/contexts/auth/types';
+import { EmployeeData, User, UserRole } from '@/contexts/auth/types';
 
 export interface Module {
   id: string;
@@ -12,27 +12,7 @@ export interface Module {
   url?: string;
 }
 
-// Add User interface to Redux types
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  isActive: boolean;
-  modulePermissions?: Record<string, boolean>;
-  createdAt?: string;
-  updatedAt?: string;
-  provider?: string;
-  clientId?: string | null;
-  employeeId?: string;
-  employeeType?: string;
-  department?: string;
-  joiningDate?: string;
-  isSuperAdmin?: boolean;
-  client?: any;
-  clientType?: any;
-}
+// Remove duplicate User interface since we're importing it from auth context
 
 export interface EmployeeState {
   // Authentication state
