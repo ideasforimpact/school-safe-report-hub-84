@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -30,9 +29,9 @@ serve(async (req) => {
     switch (method) {
       case 'POST': {
         const body = await req.json();
-        const { name, icon, level, url: moduleUrl } = body;
+        const { name, icon, level, url: moduleUrl, active = true } = body;
 
-        console.log('Creating module:', { name, icon, level, url: moduleUrl });
+        console.log('Creating module:', { name, icon, level, url: moduleUrl, active });
 
         const { data, error } = await supabase
           .from('modules')
@@ -40,7 +39,8 @@ serve(async (req) => {
             name,
             icon,
             level,
-            url: moduleUrl
+            url: moduleUrl,
+            active
           })
           .select()
           .single();
@@ -75,9 +75,9 @@ serve(async (req) => {
         }
 
         const body = await req.json();
-        const { name, icon, level, url: moduleUrl } = body;
+        const { name, icon, level, url: moduleUrl, active } = body;
 
-        console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl });
+        console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl, active });
 
         const { data, error } = await supabase
           .from('modules')
@@ -86,6 +86,7 @@ serve(async (req) => {
             icon,
             level,
             url: moduleUrl,
+            active,
             updated_at: new Date().toISOString()
           })
           .eq('id', moduleId)

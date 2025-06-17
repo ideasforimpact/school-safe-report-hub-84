@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus } from 'lucide-react';
@@ -16,6 +17,7 @@ interface Module {
   level: string;
   url: string | null;
   order: number | null;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -34,7 +36,8 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
     name: '',
     icon: '',
     level: '',
-    url: ''
+    url: '',
+    active: true
   });
   const { toast } = useToast();
 
@@ -44,14 +47,16 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
         name: module.name || '',
         icon: module.icon || '',
         level: module.level || '',
-        url: module.url || ''
+        url: module.url || '',
+        active: module.active !== undefined ? module.active : true
       });
     } else {
       setFormData({
         name: '',
         icon: '',
         level: '',
-        url: ''
+        url: '',
+        active: true
       });
     }
   }, [module, isEdit, isOpen]);
@@ -96,7 +101,7 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -164,6 +169,15 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
               onChange={(e) => handleInputChange('url', e.target.value)}
               placeholder="Enter module URL"
             />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="active"
+              checked={formData.active}
+              onCheckedChange={(checked) => handleInputChange('active', checked)}
+            />
+            <Label htmlFor="active">Active</Label>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
