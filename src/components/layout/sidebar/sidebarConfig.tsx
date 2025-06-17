@@ -1,4 +1,3 @@
-
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -57,7 +56,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       return cachedClientModules;
     }
     
-    // For backoffice, fetch modules directly from modules table where level = 'backoffice'
+    // For backoffice, fetch modules directly from modules table where level = 'backoffice' AND active = true
     if (isBackoffice) {
       console.log('Fetching backoffice modules from database');
       
@@ -65,6 +64,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
         .from('modules')
         .select('*')
         .eq('level', 'backoffice')
+        .eq('active', true)
         .order('order', { ascending: true, nullsFirst: false }); // Order by the order column
         
       if (error) {
@@ -73,11 +73,11 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       }
       
       if (!modulesData || modulesData.length === 0) {
-        console.log('No backoffice modules found in database');
+        console.log('No active backoffice modules found in database');
         return [];
       }
       
-      console.log(`Found ${modulesData.length} backoffice modules:`, modulesData.map(m => m.name));
+      console.log(`Found ${modulesData.length} active backoffice modules:`, modulesData.map(m => m.name));
       
       // Map modules and add keys for permission mapping
       const modules = modulesData.map(module => ({
