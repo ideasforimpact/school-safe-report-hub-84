@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -55,6 +54,13 @@ const UserProfileMenu = () => {
       // Proceed with our app's logout
       await logout();
       console.log('✅ Local logout complete');
+      
+      // Redirect based on the current route
+      if (isBackofficeRoute) {
+        navigate('/backoffice/login');
+      } else {
+        navigate('/login');
+      }
       
       toast.success('You have been logged out successfully');
     } catch (error) {
