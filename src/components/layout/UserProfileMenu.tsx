@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -19,6 +18,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { getIsBackofficeUser } from '@/store/authSelectors';
 
 const UserProfileMenu = () => {
   const { user, logout } = useAuth();
@@ -31,6 +31,7 @@ const UserProfileMenu = () => {
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
   
   // Check if current route is a backoffice route
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
@@ -44,13 +45,22 @@ const UserProfileMenu = () => {
     try {
       console.log('🚪 Logging out user');
       
-      // First sign out from Supabase
-      await supabase.auth.signOut();
-      console.log('✅ Signed out from Supabase');
+      // For backoffice users, don't sign out from Supabase
+      if (!isBackofficeUser) {
+        await supabase.auth.signOut();
+        console.log('✅ Signed out from Supabase');
+      }
       
-      // Then proceed with our app's logout
+      // Proceed with our app's logout
       await logout();
       console.log('✅ Local logout complete');
+      
+      // Redirect based on the current route
+      if (isBackofficeRoute) {
+        navigate('/backoffice/login');
+      } else {
+        navigate('/login');
+      }
       
       toast.success('You have been logged out successfully');
     } catch (error) {
@@ -60,7 +70,6 @@ const UserProfileMenu = () => {
   };
 
   const handleProfileClick = () => {
-    // Navigate to profile page using React Router's navigate
     console.log("Navigating to profile page");
     navigate('/profile');
   };

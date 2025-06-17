@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -132,4 +133,83 @@
 /* Add smooth scrolling to the whole document */
 html {
   scroll-behavior: smooth;
+}
+
+/* Enhanced floating animations for login page */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  25% {
+    transform: translate(20px, -30px) scale(1.05);
+  }
+  50% {
+    transform: translate(-15px, -20px) scale(0.95);
+  }
+  75% {
+    transform: translate(25px, 15px) scale(1.02);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(-25px, -20px) scale(1.08);
+  }
+  66% {
+    transform: translate(30px, 25px) scale(0.92);
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  20% {
+    transform: translate(15px, -25px) scale(1.1);
+  }
+  40% {
+    transform: translate(-20px, 10px) scale(0.9);
+  }
+  60% {
+    transform: translate(25px, -15px) scale(1.05);
+  }
+  80% {
+    transform: translate(-10px, 20px) scale(0.95);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate(-30px, -25px) scale(1.1) rotate(180deg);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 6s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 4s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 10s ease-in-out infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
 }

@@ -4,7 +4,6 @@ import { Client } from '@/contexts/ClientContext';
 import { TableRow, TableCell } from '@/components/ui/table';
 import ClientLogoCell from './ClientLogoCell';
 import ClientStatusBadge from './ClientStatusBadge';
-import ModuleAccessBadges from './ModuleAccessBadges';
 import ClientActionButtons from './ClientActionButtons';
 
 interface ClientRowProps {
@@ -31,9 +30,6 @@ const ClientRow = ({ client, onEditClick, onDeleteClient }: ClientRowProps) => {
       <TableCell>{formatDate(client.creationDate)}</TableCell>
       <TableCell>
         <ClientStatusBadge active={client.active} />
-      </TableCell>
-      <TableCell>
-        <ModuleAccessBadges moduleAccess={client.moduleAccess} />
       </TableCell>
       <TableCell>
         <ClientActionButtons 

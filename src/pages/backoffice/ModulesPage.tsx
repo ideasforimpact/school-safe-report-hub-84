@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Settings, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +18,7 @@ interface Module {
   level: string;
   url: string | null;
   order: number | null;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -193,6 +196,7 @@ const ModulesPage = () => {
                     <TableHead>Icon</TableHead>
                     <TableHead>Level</TableHead>
                     <TableHead>URL</TableHead>
+                    <TableHead>Active</TableHead>
                     <TableHead>Order</TableHead>
                     <TableHead>Created At</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -213,6 +217,11 @@ const ModulesPage = () => {
                         </span>
                       </TableCell>
                       <TableCell>{module.url || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={module.active ? "default" : "secondary"}>
+                          {module.active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{module.order || '-'}</TableCell>
                       <TableCell>{new Date(module.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -21,27 +22,29 @@ const RouteGuard = ({
   requireSaasOwner = false,
   isBackoffice = false
 }: RouteGuardProps) => {
-  const { user, authError } = useAuth();
+  const { authError } = useAuth();
   const location = useLocation();
   const { state } = useEmployeeStore();
   
-  // Get admin status directly from Redux
+  // Get authentication and employee state from Redux
+  const currentUser = getCurrentUser(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
   // If authentication is required and user is not logged in, redirect to login
-  if (requireAuth && !user) {
+  if (requireAuth && !currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // If admin access is required and user is not admin, redirect to dashboard
-  if (requireAdmin && user && !isAdmin) {
+  if (requireAdmin && currentUser && !isAdmin) {
     toast.error("Admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 
-  // If owner access is required and user is not super admin, redirect to dashboard
-  if (requireSaasOwner && user && !isSuperAdmin) {
+  // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
+  if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
     toast.error("Owner privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }

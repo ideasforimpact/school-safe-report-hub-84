@@ -13,7 +13,8 @@ import useClientManagement from '@/hooks/useClientManagement';
 import ClientHeader from '@/components/clients/ClientHeader';
 import ClientList from '@/components/clients/ClientList';
 import ClientDialog from '@/components/backoffice/ClientDialog';
-import { Loader2 } from 'lucide-react'; // Import loading spinner
+import ClientStatusFilter from '@/components/clients/ClientStatusFilter';
+import { Loader2 } from 'lucide-react';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
@@ -32,7 +33,9 @@ const ClientManagement = () => {
     handleDeleteClient,
     resetForm,
     handleAddDialogOpen,
-    modulesLoading
+    modulesLoading,
+    statusFilter,
+    setStatusFilter
   } = useClientManagement();
 
   if (!isAdmin) {
@@ -62,6 +65,11 @@ const ClientManagement = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <ClientStatusFilter 
+              currentFilter={statusFilter}
+              onFilterChange={setStatusFilter}
+            />
+            
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />

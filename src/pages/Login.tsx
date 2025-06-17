@@ -155,38 +155,60 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Enhanced Animated Background with Floating Shapes */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-purple-50/80 to-pink-50/80"></div>
+      
+      {/* Multiple Floating Shapes for Depth */}
+      <div className="absolute inset-0 opacity-40">
+        {/* Large floating shapes */}
+        <div className="absolute top-10 left-10 w-64 h-64 bg-purple-200/60 rounded-full mix-blend-multiply filter blur-xl animate-float-slow"></div>
+        <div className="absolute top-20 right-10 w-56 h-56 bg-blue-200/60 rounded-full mix-blend-multiply filter blur-xl animate-float-medium"></div>
+        <div className="absolute bottom-20 left-1/3 w-48 h-48 bg-pink-200/60 rounded-full mix-blend-multiply filter blur-xl animate-float-fast"></div>
+        
+        {/* Medium floating shapes */}
+        <div className="absolute top-1/2 left-20 w-32 h-32 bg-teal-200/50 rounded-full mix-blend-multiply filter blur-lg animate-float-reverse"></div>
+        <div className="absolute bottom-32 right-1/4 w-40 h-40 bg-indigo-200/50 rounded-full mix-blend-multiply filter blur-lg animate-float-slow"></div>
+        
+        {/* Small accent shapes */}
+        <div className="absolute top-1/4 right-1/3 w-20 h-20 bg-rose-200/40 rounded-full mix-blend-multiply filter blur-md animate-float-medium"></div>
+        <div className="absolute bottom-1/4 left-1/2 w-24 h-24 bg-cyan-200/40 rounded-full mix-blend-multiply filter blur-md animate-float-fast"></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="flex justify-center">
-            <ShieldCheck className="h-12 w-12 text-primary mb-2" />
+            <div className="p-3 bg-white/30 backdrop-blur-md rounded-full border border-white/40 shadow-lg shadow-blue-200/20">
+              <ShieldCheck className="h-12 w-12 text-blue-600" />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-primary">Safe School</h1>
-          <p className="text-gray-600 mt-1">Incident Management System</p>
-          <p className="text-sm text-gray-500 mt-2">Sign in to start protecting your school community</p>
+          <h1 className="text-3xl font-bold text-slate-700 mt-4">Safe School</h1>
+          <p className="text-slate-600 mt-1">Incident Management System</p>
+          <p className="text-sm text-slate-500 mt-2">Sign in to start protecting your school community</p>
         </div>
 
-        <Card className="border-t-4 border-t-primary animate-scale-in shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center">Sign In</CardTitle>
-            <CardDescription className="text-center">
+        {/* Enhanced Glassy Card with Pastel Shadows */}
+        <Card className="bg-white/80 backdrop-blur-md border border-purple-200/30 shadow-2xl shadow-purple-200/25 rounded-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-slate-700">Sign In</CardTitle>
+            <CardDescription className="text-slate-600">
               Use your organization credentials to access the system
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="bg-red-50/90 backdrop-blur-sm border-red-200/50 shadow-sm shadow-red-200/20">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             <div className="space-y-4">
-              {/* Google SSO button */}
+              {/* Enhanced Google SSO button */}
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-3 justify-center bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm transition-all transform hover:scale-[1.02] py-6"
+                className="w-full flex items-center gap-3 justify-center bg-white/90 hover:bg-white/95 backdrop-blur-sm border border-blue-200/40 text-gray-700 shadow-lg shadow-blue-200/15 transition-all transform hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-200/25 py-6 rounded-xl"
                 onClick={handleGoogleLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
@@ -212,11 +234,11 @@ const Login = () => {
                 <span className="text-base font-medium">{googleLoading ? "Connecting..." : "Sign in with Google"}</span>
               </Button>
               
-              {/* Microsoft SSO button */}
+              {/* Enhanced Microsoft SSO button */}
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-3 justify-center border bg-[#2F2F2F] hover:bg-[#1E1E1E] text-white transition-all transform hover:scale-[1.02] py-6"
+                className="w-full flex items-center gap-3 justify-center bg-slate-800/95 hover:bg-slate-800 backdrop-blur-sm border border-slate-600/40 text-white shadow-lg shadow-slate-400/15 transition-all transform hover:scale-[1.02] hover:shadow-xl hover:shadow-slate-400/25 py-6 rounded-xl"
                 onClick={handleMicrosoftLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
@@ -229,11 +251,11 @@ const Login = () => {
                 <span className="text-base font-medium">{microsoftLoading ? "Connecting..." : "Sign in with Microsoft"}</span>
               </Button>
               
-              {/* Zoho SSO button */}
+              {/* Enhanced Zoho SSO button */}
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-3 justify-center border bg-[#0073AA] hover:bg-[#005E8A] text-white transition-all transform hover:scale-[1.02] py-6"
+                className="w-full flex items-center gap-3 justify-center bg-teal-500/95 hover:bg-teal-600/95 backdrop-blur-sm border border-teal-300/40 text-white shadow-lg shadow-teal-200/15 transition-all transform hover:scale-[1.02] hover:shadow-xl hover:shadow-teal-200/25 py-6 rounded-xl"
                 onClick={handleZohoLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
@@ -244,21 +266,21 @@ const Login = () => {
           </CardContent>
           <CardFooter className="flex-col gap-3">
             <div className="w-full flex items-center gap-2 my-2">
-              <Separator className="flex-1" />
-              <span className="text-xs text-gray-500">NEED HELP?</span>
-              <Separator className="flex-1" />
+              <Separator className="flex-1 bg-slate-300/60" />
+              <span className="text-xs text-slate-500">NEED HELP?</span>
+              <Separator className="flex-1 bg-slate-300/60" />
             </div>
             
             <Button 
               type="button" 
               variant="ghost" 
               onClick={() => navigate('/home')} 
-              className="w-full transition-all hover:bg-primary/10"
+              className="w-full transition-all hover:bg-white/60 backdrop-blur-sm text-slate-600 hover:text-slate-800 rounded-xl"
             >
               Back to Home
             </Button>
             
-            <p className="text-xs text-center text-gray-500 mt-4">
+            <p className="text-xs text-center text-slate-500 mt-4">
               Contact your administrator if you're having trouble signing in
             </p>
           </CardFooter>

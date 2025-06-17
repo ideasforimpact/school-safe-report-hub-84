@@ -190,16 +190,17 @@ serve(async (req) => {
               }
             });
             
-            // Fetch the module details
+            // Fetch the module details - ONLY ACTIVE MODULES
             const { data: modulesData, error: modulesError } = await supabase
               .from('modules')
               .select('*')
-              .in('id', moduleIds);
+              .in('id', moduleIds)
+              .eq('active', true);
               
             if (modulesError) {
               console.error('Error fetching modules by IDs for super admin:', modulesError);
             } else if (modulesData) {
-              console.log(`Retrieved ${modulesData.length} modules from database for super admin`);
+              console.log(`Retrieved ${modulesData.length} active modules from database for super admin`);
               
               // Add access_level to each module
               modules = modulesData.map(module => ({
@@ -243,16 +244,17 @@ serve(async (req) => {
               }
             });
             
-            // Fetch the module details
+            // Fetch the module details - ONLY ACTIVE MODULES
             const { data: modulesData, error: modulesError } = await supabase
               .from('modules')
               .select('*')
-              .in('id', moduleIds);
+              .in('id', moduleIds)
+              .eq('active', true);
               
             if (modulesError) {
               console.error('Error fetching modules by IDs for employee:', modulesError);
             } else if (modulesData) {
-              console.log(`Retrieved ${modulesData.length} modules from database for employee`);
+              console.log(`Retrieved ${modulesData.length} active modules from database for employee`);
               console.log('Modules data:', JSON.stringify(modulesData));
               
               // Add access_level and role info to each module
@@ -288,11 +290,12 @@ serve(async (req) => {
             level: 'client',
             key: 'dashboard',
             access_level: {},
+            active: true,
             is_admin: userIsSuperAdmin // Super admins get admin access to dashboard
           });
         }
         
-        console.log(`Returning ${modules.length} modules with their access levels`);
+        console.log(`Returning ${modules.length} active modules with their access levels`);
       }
     }
     
@@ -300,8 +303,8 @@ serve(async (req) => {
     if (modules.length === 0) {
       console.log('Using standard module query logic');
       
-      // Query the modules table
-      let query = supabase.from('modules').select('*');
+      // Query the modules table - ONLY ACTIVE MODULES
+      let query = supabase.from('modules').select('*').eq('active', true);
       
       if (level === 'backoffice') {
         // For backoffice users, fetch modules with level = 'backoffice' ordered by order column
@@ -312,8 +315,8 @@ serve(async (req) => {
         console.log('Fetching client modules');
         query = query.neq('level', 'backoffice');
       } else if (level === 'all') {
-        // Fetch all modules if explicitly requested
-        console.log('Fetching all modules');
+        // Fetch all active modules if explicitly requested
+        console.log('Fetching all active modules');
       }
       
       const { data, error } = await query;
@@ -338,12 +341,13 @@ serve(async (req) => {
           level: level,
           key: 'dashboard',
           access_level: {},
+          active: true,
           order: 1 // Give dashboard order 1 by default
         });
       }
     }
     
-    console.log(`Successfully fetched ${modules.length} modules`);
+    console.log(`Successfully fetched ${modules.length} active modules`);
     console.log('Module names:', modules.map(m => m.name).join(', '));
     
     // Return the modules data along with employee information and super admin status

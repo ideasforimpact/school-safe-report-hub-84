@@ -1241,6 +1241,7 @@ export type Database = {
       }
       modules: {
         Row: {
+          active: boolean
           created_at: string
           icon: string | null
           id: string
@@ -1251,6 +1252,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          active?: boolean
           created_at?: string
           icon?: string | null
           id?: string
@@ -1261,6 +1263,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          active?: boolean
           created_at?: string
           icon?: string | null
           id?: string

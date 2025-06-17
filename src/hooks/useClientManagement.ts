@@ -1,9 +1,10 @@
-
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+export type StatusFilter = 'active' | 'inactive' | 'all';
 
 export interface ClientFormData {
   name: string;
@@ -53,6 +54,17 @@ export const useClientManagement = () => {
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modulesLoading, setModulesLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+
+  // Filter clients based on status
+  const filteredClients = useMemo(() => {
+    if (statusFilter === 'all') {
+      return clients;
+    }
+    return clients.filter(client => 
+      statusFilter === 'active' ? client.active : !client.active
+    );
+  }, [clients, statusFilter]);
 
   const resetForm = () => {
     setFormData({...initialFormData});
@@ -390,7 +402,7 @@ export const useClientManagement = () => {
   };
 
   return {
-    clients,
+    clients: filteredClients,
     loading: loading || isSubmitting,
     formData,
     setFormData,
@@ -406,7 +418,9 @@ export const useClientManagement = () => {
     resetForm,
     isSuperAdminEmailDomainAllowed,
     handleAddDialogOpen,
-    modulesLoading
+    modulesLoading,
+    statusFilter,
+    setStatusFilter
   };
 };
 
