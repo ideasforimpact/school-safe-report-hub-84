@@ -795,6 +795,7 @@ async function handleCreateClient(clientData: any) {
       auth_providers: clientInfo.authProviders ? JSON.stringify(clientInfo.authProviders) : null,
       client_type_id: clientTypeId || null,
       client_logo: clientLogoUrl || null,
+      logo: clientLogoUrl || null, // Update both logo columns with the same URL
       creation_date: new Date().toISOString()
     };
     
@@ -921,6 +922,7 @@ async function handleUpdateClient(clientData: any) {
     
     if (clientLogoUrl) {
       updateData.client_logo = clientLogoUrl;
+      updateData.logo = clientLogoUrl; // Update both logo columns with the same URL
     }
     
     // Update client record with all the new data
