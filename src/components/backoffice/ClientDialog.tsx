@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -54,12 +55,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     }
   }, [isOpen]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
+  const handleSubmit = async () => {
     if (isSubmitting || isLoading || !canSubmit) {
       return;
     }
@@ -199,68 +195,67 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          {/* Step Content */}
-          <div className="min-h-[400px] py-4">
-            {renderStepContent()}
+        {/* Step Content - No form wrapper to prevent auto-submission */}
+        <div className="min-h-[400px] py-4">
+          {renderStepContent()}
+        </div>
+
+        {/* Navigation Footer */}
+        <DialogFooter className="flex flex-row justify-between items-center mt-6 gap-2">
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel} 
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
           </div>
 
-          {/* Navigation Footer */}
-          <DialogFooter className="flex flex-row justify-between items-center mt-6 gap-2">
-            <div className="flex gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onCancel} 
+          <div className="flex gap-2">
+            {/* Previous Button */}
+            {currentStep > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
                 disabled={isProcessing}
               >
-                Cancel
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
               </Button>
-            </div>
+            )}
 
-            <div className="flex gap-2">
-              {/* Previous Button */}
-              {currentStep > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={isProcessing}
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  Previous
-                </Button>
-              )}
-
-              {/* Next Button */}
-              {currentStep < steps.length - 1 ? (
-                <Button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={isProcessing || !canProceedToNext(currentStep) || (currentStep === 1 && modulesLoading)}
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              ) : (
-                /* Submit Button */
-                <Button 
-                  type="submit"
-                  disabled={isProcessing || !canSubmit}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {modulesLoading ? 'Loading modules...' : (isEdit ? 'Updating...' : 'Creating...')}
-                    </>
-                  ) : (
-                    isEdit ? 'Update Client' : 'Create Client'
-                  )}
-                </Button>
-              )}
-            </div>
-          </DialogFooter>
-        </form>
+            {/* Next Button */}
+            {currentStep < steps.length - 1 ? (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={isProcessing || !canProceedToNext(currentStep) || (currentStep === 1 && modulesLoading)}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              /* Submit Button - Only this button should trigger submission */
+              <Button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={isProcessing || !canSubmit}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {modulesLoading ? 'Loading modules...' : (isEdit ? 'Updating...' : 'Creating...')}
+                  </>
+                ) : (
+                  isEdit ? 'Update Client' : 'Create Client'
+                )}
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

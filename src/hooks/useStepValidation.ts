@@ -28,9 +28,14 @@ export const useStepValidation = (formData: ClientFormData) => {
   }, [formData.moduleInfoArray]);
 
   const validateStep3 = useMemo(() => {
-    // Step 3 is always valid since auth settings are optional
-    return true;
-  }, []);
+    // Check if user has configured any authentication settings
+    const hasAllowedDomains = formData.allowedDomains && formData.allowedDomains.length > 0;
+    const hasSuperAdminDomains = formData.superAdminAllowedDomains && formData.superAdminAllowedDomains.length > 0;
+    const hasAuthProviders = formData.authProviders && Object.values(formData.authProviders).some(enabled => enabled === true);
+    
+    // Step 3 is valid if at least one authentication setting is configured
+    return hasAllowedDomains || hasSuperAdminDomains || hasAuthProviders;
+  }, [formData.allowedDomains, formData.superAdminAllowedDomains, formData.authProviders]);
 
   const isStepValid = (step: number): boolean => {
     switch (step) {
