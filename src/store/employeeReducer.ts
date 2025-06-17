@@ -1,12 +1,29 @@
-
 import { EmployeeState, EmployeeAction, EmployeeActionTypes } from './types';
+import { loadAuthState } from './authPersistence';
+
+// Try to restore persisted authentication state
+const restorePersistedAuthState = (): Partial<EmployeeState> => {
+  const persistedState = loadAuthState();
+  if (persistedState) {
+    return {
+      currentUser: persistedState.currentUser,
+      isAuthenticated: persistedState.isAuthenticated,
+      isBackofficeUser: persistedState.isBackofficeUser,
+      authError: persistedState.authError
+    };
+  }
+  return {};
+};
 
 export const initialEmployeeState: EmployeeState = {
-  // Authentication state
-  currentUser: null,
-  isAuthenticated: false,
-  isBackofficeUser: false,
-  authError: null,
+  // Authentication state - try to restore from persistence first
+  ...{
+    currentUser: null,
+    isAuthenticated: false,
+    isBackofficeUser: false,
+    authError: null,
+  },
+  ...restorePersistedAuthState(),
   
   // Employee data
   employeeData: null,

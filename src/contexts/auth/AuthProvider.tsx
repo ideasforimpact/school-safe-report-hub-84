@@ -17,6 +17,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
+import { clearPersistedAuthState } from '@/store/authPersistence';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 
 // Create the context
@@ -199,6 +200,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("Auth state change - SIGNED_OUT detected, clearing state");
         dispatch(clearAuth());
         dispatch(resetEmployee());
+        clearPersistedAuthState();
         setShowAuthLoading(false);
         toast.info("You have been logged out");
         logoutUser();
@@ -212,15 +214,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [handleUserAuthentication, dispatch]);
 
-  // Check Supabase auth on initialization and restore from Redux
+  // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
     const checkSupabaseAuth = async () => {
       try {
-        // For backoffice users, skip Supabase session check
+        console.log("Checking authentication state...");
+        console.log("Current user from Redux:", currentUser);
+        console.log("Is backoffice user from Redux:", isBackofficeUser);
+        console.log("Is authenticated from Redux:", isAuthenticated);
+
+        // If we have persisted backoffice user state, skip Supabase checks
         if (isBackofficeUser && currentUser) {
-          console.log("Backoffice user detected in Redux, skipping Supabase auth check");
+          console.log("Backoffice user detected from persisted state, skipping Supabase auth check");
           setIsInitializing(false);
           return;
+        }
+
+        // If we have persisted regular user state, still validate with Supabase
+        if (currentUser && !isBackofficeUser) {
+          console.log("Regular user detected from persisted state, validating with Supabase...");
         }
 
         const { data } = await supabase.auth.getSession();
@@ -234,14 +246,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }, 0);
           }
         } else {
-          // If no Supabase session and no current user in Redux, clear everything
-          if (!currentUser && !isBackofficeUser) {
+          // If no Supabase session and no persisted user (or not backoffice), clear everything
+          if (!currentUser || (!isBackofficeUser && currentUser)) {
+            console.log("No valid session found, clearing auth state");
             dispatch(clearAuth());
             dispatch(resetEmployee());
+            clearPersistedAuthState();
             logoutUser();
           }
         }
       } catch (error) {
+        console.error("Error checking authentication status:", error);
         toast.error("Error checking authentication status");
       } finally {
         setIsInitializing(false);
@@ -249,7 +264,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [currentUser, isBackofficeUser, handleUserAuthentication, dispatch]);
+  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch]);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
@@ -432,6 +447,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Clear Redux state
     dispatch(clearAuth());
     dispatch(resetEmployee());
+    
+    // Clear persisted state
+    clearPersistedAuthState();
     setShowAuthLoading(false);
     
     // Clear local storage
