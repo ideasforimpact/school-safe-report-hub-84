@@ -7,9 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 interface HomeNavbarProps {
   showBackoffice?: boolean;
   hideSignIn?: boolean;
+  onBackofficeClick?: () => void;
 }
 
-const HomeNavbar = ({ showBackoffice = false, hideSignIn = false }: HomeNavbarProps) => {
+const HomeNavbar = ({ showBackoffice = false, hideSignIn = false, onBackofficeClick }: HomeNavbarProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -50,14 +51,14 @@ const HomeNavbar = ({ showBackoffice = false, hideSignIn = false }: HomeNavbarPr
               <HelpCircle className="h-4 w-4 mr-1" />
               Support
             </Link>
-            {showBackoffice && (
-              <Link 
-                to="/dashboard" 
+            {showBackoffice && onBackofficeClick && (
+              <button 
+                onClick={onBackofficeClick}
                 className="flex items-center text-primary hover:text-primary-dark transition-colors font-medium"
               >
                 <Users className="h-4 w-4 mr-1" />
                 Backoffice
-              </Link>
+              </button>
             )}
             <div className="ml-0 md:ml-4 mt-4 md:mt-0 w-full md:w-auto flex gap-2">
               {user ? (

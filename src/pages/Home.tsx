@@ -1,4 +1,3 @@
-
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import HomeNavbar from '@/components/home/HomeNavbar';
@@ -22,9 +21,22 @@ const Home = () => {
     }
   }, [user, isSaasOwner, navigate]);
 
+  const handleBackofficeClick = () => {
+    // Check if user is authenticated and has access to backoffice
+    if (user && (isSaasOwner || user.role === 'saas_owner')) {
+      navigate('/backoffice/dashboard');
+    } else {
+      navigate('/backoffice/login');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
-      <HomeNavbar showBackoffice={isSaasOwner} hideSignIn={!!user} />
+      <HomeNavbar 
+        showBackoffice={true} 
+        hideSignIn={!!user} 
+        onBackofficeClick={handleBackofficeClick}
+      />
       <HomeHero />
       <NewsSection newsItems={newsAndAnnouncements} />
       <FeaturesSection />
