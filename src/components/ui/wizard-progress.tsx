@@ -7,27 +7,47 @@ interface WizardProgressProps {
   steps: string[];
   currentStep: number;
   completedSteps: number[];
+  onStepClick?: (step: number) => void;
 }
 
 const WizardProgress: React.FC<WizardProgressProps> = ({
   steps,
   currentStep,
-  completedSteps
+  completedSteps,
+  onStepClick
 }) => {
+  const handleStepClick = (stepIndex: number) => {
+    if (onStepClick) {
+      onStepClick(stepIndex);
+    }
+  };
+
+  const isStepClickable = (stepIndex: number) => {
+    // Step is clickable if it's completed, current, or the next step after current
+    return completedSteps.includes(stepIndex) || 
+           stepIndex === currentStep || 
+           stepIndex === currentStep + 1;
+  };
+
   return (
     <div className="w-full py-4">
       <div className="flex items-center justify-between">
         {steps.map((step, index) => (
           <React.Fragment key={index}>
             <div className="flex flex-col items-center">
-              <div
+              <button
+                onClick={() => handleStepClick(index)}
+                disabled={!onStepClick || !isStepClickable(index)}
                 className={cn(
                   "flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all",
+                  "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                   completedSteps.includes(index)
                     ? "bg-green-500 border-green-500 text-white"
                     : currentStep === index
                     ? "border-primary text-primary bg-primary/10"
-                    : "border-gray-300 text-gray-300"
+                    : "border-gray-300 text-gray-300",
+                  onStepClick && isStepClickable(index) && "hover:scale-110 cursor-pointer",
+                  (!onStepClick || !isStepClickable(index)) && "cursor-default"
                 )}
               >
                 {completedSteps.includes(index) ? (
@@ -35,7 +55,7 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
                 ) : (
                   <span className="text-sm font-medium">{index + 1}</span>
                 )}
-              </div>
+              </button>
               <span
                 className={cn(
                   "mt-2 text-xs font-medium text-center max-w-20",

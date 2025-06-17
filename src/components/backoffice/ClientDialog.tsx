@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -77,6 +76,17 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleStepClick = (stepIndex: number) => {
+    const completedSteps = getCompletedSteps();
+    
+    // Allow navigation to completed steps or the next valid step
+    if (completedSteps.includes(stepIndex) || 
+        stepIndex === currentStep || 
+        (stepIndex === currentStep + 1 && canProceedToNext(currentStep))) {
+      setCurrentStep(stepIndex);
     }
   };
 
@@ -185,6 +195,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           steps={steps}
           currentStep={currentStep}
           completedSteps={getCompletedSteps()}
+          onStepClick={handleStepClick}
         />
 
         {/* Show loading message when modules are loading for new client */}
