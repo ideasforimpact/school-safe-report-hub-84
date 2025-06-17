@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -155,27 +154,38 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 animate-gradient-x"></div>
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-0 left-0 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl animate-blob"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-0 left-1/2 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000"></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="flex justify-center">
-            <ShieldCheck className="h-12 w-12 text-primary mb-2" />
+            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-full border border-white/30 shadow-lg">
+              <ShieldCheck className="h-12 w-12 text-primary" />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-primary">Safe School</h1>
-          <p className="text-gray-600 mt-1">Incident Management System</p>
-          <p className="text-sm text-gray-500 mt-2">Sign in to start protecting your school community</p>
+          <h1 className="text-3xl font-bold text-slate-700 mt-4">Safe School</h1>
+          <p className="text-slate-600 mt-1">Incident Management System</p>
+          <p className="text-sm text-slate-500 mt-2">Sign in to start protecting your school community</p>
         </div>
 
-        <Card className="border-t-4 border-t-primary animate-scale-in shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center">Sign In</CardTitle>
-            <CardDescription className="text-center">
+        {/* Glassy Card */}
+        <Card className="bg-white/70 backdrop-blur-md border border-white/20 shadow-xl animate-scale-in">
+          <CardHeader className="text-center">
+            <CardTitle className="text-slate-700">Sign In</CardTitle>
+            <CardDescription className="text-slate-600">
               Use your organization credentials to access the system
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="bg-red-50/80 backdrop-blur-sm border-red-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
@@ -186,7 +196,7 @@ const Login = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-3 justify-center bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm transition-all transform hover:scale-[1.02] py-6"
+                className="w-full flex items-center gap-3 justify-center bg-white/80 hover:bg-white/90 backdrop-blur-sm border border-gray-200/50 text-gray-700 shadow-md transition-all transform hover:scale-[1.02] hover:shadow-lg py-6"
                 onClick={handleGoogleLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
@@ -216,7 +226,7 @@ const Login = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-3 justify-center border bg-[#2F2F2F] hover:bg-[#1E1E1E] text-white transition-all transform hover:scale-[1.02] py-6"
+                className="w-full flex items-center gap-3 justify-center bg-slate-800/90 hover:bg-slate-800 backdrop-blur-sm border border-slate-700/50 text-white shadow-md transition-all transform hover:scale-[1.02] hover:shadow-lg py-6"
                 onClick={handleMicrosoftLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
@@ -233,7 +243,7 @@ const Login = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-3 justify-center border bg-[#0073AA] hover:bg-[#005E8A] text-white transition-all transform hover:scale-[1.02] py-6"
+                className="w-full flex items-center gap-3 justify-center bg-teal-500/90 hover:bg-teal-600/90 backdrop-blur-sm border border-teal-400/50 text-white shadow-md transition-all transform hover:scale-[1.02] hover:shadow-lg py-6"
                 onClick={handleZohoLogin}
                 disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
@@ -244,21 +254,21 @@ const Login = () => {
           </CardContent>
           <CardFooter className="flex-col gap-3">
             <div className="w-full flex items-center gap-2 my-2">
-              <Separator className="flex-1" />
-              <span className="text-xs text-gray-500">NEED HELP?</span>
-              <Separator className="flex-1" />
+              <Separator className="flex-1 bg-slate-300/50" />
+              <span className="text-xs text-slate-500">NEED HELP?</span>
+              <Separator className="flex-1 bg-slate-300/50" />
             </div>
             
             <Button 
               type="button" 
               variant="ghost" 
               onClick={() => navigate('/home')} 
-              className="w-full transition-all hover:bg-primary/10"
+              className="w-full transition-all hover:bg-white/50 backdrop-blur-sm text-slate-600 hover:text-slate-800"
             >
               Back to Home
             </Button>
             
-            <p className="text-xs text-center text-gray-500 mt-4">
+            <p className="text-xs text-center text-slate-500 mt-4">
               Contact your administrator if you're having trouble signing in
             </p>
           </CardFooter>
