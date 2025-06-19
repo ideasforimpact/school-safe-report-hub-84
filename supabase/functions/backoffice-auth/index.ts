@@ -25,15 +25,45 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🔍 Backoffice auth function called');
+    
     const { email, password } = await req.json();
+    console.log('📧 Email:', email);
+
+    if (!email || !password) {
+      console.log('❌ Missing email or password');
+      return new Response(
+        JSON.stringify({ error: 'Email and password are required' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     // 1. Verify backoffice user credentials
+    console.log('🔐 Verifying password...');
     const { data: isValidUser, error: verifyError } = await supabaseAdmin.rpc('verify_password', {
-      email,
+      email: email.toLowerCase(),
       password_attempt: password
     });
 
-    if (verifyError || !isValidUser) {
+    console.log('🔐 Password verification result:', isValidUser);
+    console.log('🔐 Password verification error:', verifyError);
+
+    if (verifyError) {
+      console.error('❌ Password verification error:', verifyError);
+      return new Response(
+        JSON.stringify({ error: 'Authentication failed', details: verifyError.message }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (!isValidUser) {
+      console.log('❌ Invalid credentials');
       return new Response(
         JSON.stringify({ error: 'Invalid credentials' }),
         { 
@@ -44,13 +74,18 @@ serve(async (req) => {
     }
 
     // 2. Get backoffice user details
+    console.log('👤 Fetching backoffice user details...');
     const { data: backofficeUser, error: fetchError } = await supabaseAdmin
       .from('backoffice_users')
       .select('*')
-      .eq('email', email)
+      .eq('email', email.toLowerCase())
       .single();
 
+    console.log('👤 Backoffice user:', backofficeUser);
+    console.log('👤 Fetch error:', fetchError);
+
     if (fetchError || !backofficeUser) {
+      console.error('❌ User not found:', fetchError);
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { 
@@ -60,12 +95,14 @@ serve(async (req) => {
       );
     }
 
-    // 3. Check if user exists in auth.users
+    // 3. Check if user exists in auth.users, create if not
+    console.log('🔍 Checking if auth user exists...');
     const { data: existingAuthUser, error: authCheckError } = await supabaseAdmin.auth.admin.getUserById(backofficeUser.id);
 
     let authUser;
     
     if (authCheckError || !existingAuthUser.user) {
+      console.log('🆕 Creating new auth user...');
       // 4. Create user in auth.users if doesn't exist
       const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         id: backofficeUser.id,
@@ -74,14 +111,15 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: {
           is_backoffice_admin: true,
-          backoffice_user_id: backofficeUser.id
+          backoffice_user_id: backofficeUser.id,
+          full_name: 'Backoffice Admin'
         }
       });
 
       if (createError) {
-        console.error('Error creating auth user:', createError);
+        console.error('❌ Error creating auth user:', createError);
         return new Response(
-          JSON.stringify({ error: 'Failed to create auth user' }),
+          JSON.stringify({ error: 'Failed to create auth user', details: createError.message }),
           { 
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -90,17 +128,20 @@ serve(async (req) => {
       }
 
       authUser = newAuthUser.user;
+      console.log('✅ Auth user created successfully');
     } else {
       authUser = existingAuthUser.user;
+      console.log('✅ Using existing auth user');
     }
 
     // 5. Generate access token for the user
+    console.log('🎫 Generating access token...');
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateAccessToken(authUser.id);
 
-    if (sessionError) {
-      console.error('Error generating access token:', sessionError);
+    if (sessionError || !sessionData) {
+      console.error('❌ Error generating access token:', sessionError);
       return new Response(
-        JSON.stringify({ error: 'Failed to generate session' }),
+        JSON.stringify({ error: 'Failed to generate session', details: sessionError?.message }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -109,10 +150,13 @@ serve(async (req) => {
     }
 
     // 6. Update last signed in timestamp
+    console.log('📅 Updating last signed in timestamp...');
     await supabaseAdmin
       .from('backoffice_users')
       .update({ last_signed_in: new Date().toISOString() })
       .eq('id', backofficeUser.id);
+
+    console.log('✅ Backoffice authentication successful!');
 
     // 7. Return session data
     return new Response(
@@ -129,9 +173,13 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Backoffice auth error:', error);
+    console.error('💥 Backoffice auth error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        details: error.message,
+        stack: error.stack 
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
