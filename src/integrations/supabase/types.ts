@@ -1570,6 +1570,10 @@ export type Database = {
         Args: { password: string }
         Returns: string
       }
+      is_backoffice_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       verify_password: {
         Args: { email: string; password_attempt: string }
         Returns: boolean
