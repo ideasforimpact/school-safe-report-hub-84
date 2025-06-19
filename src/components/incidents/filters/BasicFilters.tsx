@@ -36,107 +36,128 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
   priorityOptions
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          placeholder="Search tickets..."
-          value={filters.search || ''}
-          onChange={(e) => onFilterChange('search', e.target.value)}
-          className="pl-10"
-        />
+    <div className="space-y-4">
+      {/* Search Bar - Full Width */}
+      <div className="w-full">
+        <label className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search tickets..."
+            value={filters.search || ''}
+            onChange={(e) => onFilterChange('search', e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
 
-      {/* Location */}
-      <Select 
-        value={filters.location || 'all'} 
-        onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}
-      >
-        <SelectTrigger className="bg-white">
-          <SelectValue placeholder="Location" />
-        </SelectTrigger>
-        <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="all">All Locations</SelectItem>
-          {availableLocations.map((location) => (
-            <SelectItem key={location} value={location}>
-              {location}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {/* Filter Dropdowns Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Location */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Location</label>
+          <Select 
+            value={filters.location || 'all'} 
+            onValueChange={(value) => onFilterChange('location', value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border shadow-lg z-50">
+              <SelectItem value="all">All Locations</SelectItem>
+              {availableLocations.map((location) => (
+                <SelectItem key={location} value={location}>
+                  {location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Status */}
-      <Select 
-        value={filters.status || 'all'} 
-        onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
-      >
-        <SelectTrigger className="bg-white">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="all">All Statuses</SelectItem>
-          {statusOptions.map((status) => (
-            <SelectItem key={status} value={status}>
-              {status}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Status */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Status</label>
+          <Select 
+            value={filters.status || 'all'} 
+            onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border shadow-lg z-50">
+              <SelectItem value="all">All Statuses</SelectItem>
+              {statusOptions.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Category */}
-      <Select 
-        value={filters.category || 'all'} 
-        onValueChange={(value) => onFilterChange('category', value === 'all' ? '' : value)}
-      >
-        <SelectTrigger className="bg-white">
-          <SelectValue placeholder="Category" />
-        </SelectTrigger>
-        <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="all">All Categories</SelectItem>
-          {availableCategories.map((category) => (
-            <SelectItem key={category} value={category}>
-              {category}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Category */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Category</label>
+          <Select 
+            value={filters.category || 'all'} 
+            onValueChange={(value) => onFilterChange('category', value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border shadow-lg z-50">
+              <SelectItem value="all">All Categories</SelectItem>
+              {availableCategories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Subcategory */}
-      <Select 
-        value={filters.subcategory || 'all'} 
-        onValueChange={(value) => onFilterChange('subcategory', value === 'all' ? '' : value)}
-      >
-        <SelectTrigger className="bg-white">
-          <SelectValue placeholder="Subcategory" />
-        </SelectTrigger>
-        <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="all">All Subcategories</SelectItem>
-          {availableSubcategories.map((subcategory) => (
-            <SelectItem key={subcategory} value={subcategory}>
-              {subcategory}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Subcategory */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Subcategory</label>
+          <Select 
+            value={filters.subcategory || 'all'} 
+            onValueChange={(value) => onFilterChange('subcategory', value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="All Subcategories" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border shadow-lg z-50">
+              <SelectItem value="all">All Subcategories</SelectItem>
+              {availableSubcategories.map((subcategory) => (
+                <SelectItem key={subcategory} value={subcategory}>
+                  {subcategory}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      {/* Priority */}
-      <Select 
-        value={filters.priority || 'all'} 
-        onValueChange={(value) => onFilterChange('priority', value === 'all' ? '' : value)}
-      >
-        <SelectTrigger className="bg-white">
-          <SelectValue placeholder="Priority" />
-        </SelectTrigger>
-        <SelectContent className="bg-white border shadow-lg z-50">
-          <SelectItem value="all">All Priorities</SelectItem>
-          {priorityOptions.map((priority) => (
-            <SelectItem key={priority} value={priority}>
-              {priority}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Priority */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Priority</label>
+          <Select 
+            value={filters.priority || 'all'} 
+            onValueChange={(value) => onFilterChange('priority', value === 'all' ? '' : value)}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="All Priorities" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border shadow-lg z-50">
+              <SelectItem value="all">All Priorities</SelectItem>
+              {priorityOptions.map((priority) => (
+                <SelectItem key={priority} value={priority}>
+                  {priority}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
     </div>
   );
 };

@@ -63,29 +63,31 @@ const IncidentFilters = ({
   ].filter(value => value && value.trim() !== '').length;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="space-y-4">
-        <div className="flex flex-row items-center justify-between">
-          <h2 className="font-semibold text-lg">Filters</h2>
-          {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {activeFilterCount} active
-            </Badge>
-          )}
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="p-4">
+        <div className="flex flex-row items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-lg text-gray-900">Filters</h2>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {activeFilterCount} active
+              </Badge>
+            )}
+          </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-1"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
-            <Filter className="h-4 w-4 mr-1" />
-            {isOpen ? 'Hide Filters' : 'Show Filters'}
+            <Filter className="h-4 w-4" />
+            <span className="text-sm">{isOpen ? 'Hide Filters' : 'Show Filters'}</span>
             {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </div>
         
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleContent className="space-y-0">
+          <CollapsibleContent className="space-y-4">
             <BasicFilters 
               filters={filters}
               onFilterChange={onFilterChange}
@@ -96,30 +98,40 @@ const IncidentFilters = ({
               priorityOptions={priorityOptions}
             />
             
-            <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">From:</span>
-                <Input
-                  type="date"
-                  value={filters.dateFrom || ''}
-                  onChange={(e) => onFilterChange('dateFrom', e.target.value)}
-                  className="w-auto"
-                />
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 pt-4 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 flex-1">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">From Date</label>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <Input
+                      type="date"
+                      value={filters.dateFrom || ''}
+                      onChange={(e) => onFilterChange('dateFrom', e.target.value)}
+                      className="w-auto min-w-[140px]"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">To Date</label>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <Input
+                      type="date"
+                      value={filters.dateTo || ''}
+                      onChange={(e) => onFilterChange('dateTo', e.target.value)}
+                      className="w-auto min-w-[140px]"
+                    />
+                  </div>
+                </div>
               </div>
               
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">To:</span>
-                <Input
-                  type="date"
-                  value={filters.dateTo || ''}
-                  onChange={(e) => onFilterChange('dateTo', e.target.value)}
-                  className="w-auto"
-                />
-              </div>
-              
-              <Button variant="outline" onClick={onClearFilters} className="ml-auto">
+              <Button 
+                variant="outline" 
+                onClick={onClearFilters} 
+                className="whitespace-nowrap"
+              >
                 Clear Filters
               </Button>
             </div>
