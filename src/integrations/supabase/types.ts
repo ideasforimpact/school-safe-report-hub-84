@@ -1550,14 +1550,6 @@ export type Database = {
           end_time: string
         }[]
       }
-      debug_auth_info: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      debug_backoffice_auth: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
       decrypt_document_number: {
         Args: { encrypted_doc_number: string }
         Returns: string
@@ -1579,10 +1571,6 @@ export type Database = {
         Returns: string
       }
       is_backoffice_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_backoffice_admin_by_uid: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

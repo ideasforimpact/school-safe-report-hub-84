@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
@@ -267,158 +266,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch]);
 
-  // Handle login - ENHANCED WITH BETTER ERROR HANDLING
+  // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
     try {
-      console.log("🔍 Login attempt for:", email);
-      
-      // STEP 1: Check if this is a backoffice user FIRST
-      console.log("🔍 Checking if user is a backoffice user...");
-      
-      const { data: backofficeUser, error: backofficeCheckError } = await supabase
-        .from('backoffice_users')
-        .select('id, email, is_saas_admin')
-        .eq('email', email.toLowerCase())
-        .single();
-
-      if (backofficeUser && !backofficeCheckError) {
-        console.log("✅ Backoffice user found:", backofficeUser.email);
-        console.log("🚀 Calling backoffice-auth edge function...");
-        
-        try {
-          // This is a backoffice user, use the backoffice auth flow
-          const { data: authResponse, error: authError } = await supabase.functions.invoke('backoffice-auth', {
-            body: { email, password }
-          });
-
-          console.log("📨 Backoffice auth response:", authResponse);
-
-          if (authError) {
-            console.error("❌ Edge function error:", authError);
-            dispatch(setAuthError(`Authentication service error: ${authError.message}`));
-            setShowAuthLoading(false);
-            return false;
-          }
-
-          if (!authResponse || authResponse.error) {
-            console.error("❌ Backoffice auth failed:", authResponse?.error);
-            dispatch(setAuthError(authResponse?.error || "Invalid backoffice credentials"));
-            setShowAuthLoading(false);
-            return false;
-          }
-
-          console.log("🔑 Setting session with tokens from edge function...");
-          
-          // Set the session using the tokens from the edge function
-          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-            access_token: authResponse.access_token,
-            refresh_token: authResponse.refresh_token
-          });
-
-          if (sessionError) {
-            console.error("❌ Error setting session:", sessionError);
-            dispatch(setAuthError("Failed to establish session"));
-            setShowAuthLoading(false);
-            return false;
-          }
-
-          console.log("✅ Backoffice session established successfully");
-          console.log("👤 Auth user:", sessionData.user);
-
-          // Create a user object for the backoffice user
-          const saasUser: User = {
-            id: authResponse.backoffice_user.id,
-            firstName: 'Backoffice',
-            lastName: 'Admin',
-            email: authResponse.backoffice_user.email,
-            role: 'saas_owner',
-            isActive: true,
-            modulePermissions: {
-              superAdmin: true,
-              incidentReporting: true,
-              incidentAdmin: true,
-              assessmentUser: true,
-              assessmentsAdmin: true,
-              employeeVerificationAdmin: true,
-              grievancesAdmin: true,
-              transportSafetyAdmin: true,
-              eduSafeResourceAccess: true
-            },
-            createdAt: authResponse.backoffice_user.created_at,
-            client: null,
-            clientType: null
-          };
-          
-          console.log("💾 Updating Redux state for backoffice user...");
-          
-          // Update Redux state
-          dispatch(setCurrentUser(saasUser));
-          dispatch(setBackofficeUser(true));
-          dispatch(setAuthStatus(true));
-          
-          // Create employee data for backoffice user
-          const backofficeEmployeeData: EmployeeData = {
-            id: authResponse.backoffice_user.id,
-            clientId: null,
-            email: authResponse.backoffice_user.email,
-            firstName: 'Backoffice',
-            lastName: 'Admin',
-            isSuperAdmin: true,
-            department: 'Management',
-            employeeType: 'admin',
-            client: null,
-            clientType: null
-          };
-          
-          dispatch(setEmployeeData(backofficeEmployeeData));
-          saveEmployeeDataToStorage(backofficeEmployeeData);
-          
-          // Set modules for backoffice user
-          const backofficeModules = [
-            {
-              id: 'dashboard-admin',
-              name: 'Dashboard',
-              key: 'dashboard',
-              icon: 'LayoutDashboard',
-              level: 'admin',
-              enabled: true,
-              accessLevel: {}
-            },
-            {
-              id: 'admin-settings',
-              name: 'Settings',
-              key: 'adminSettings',
-              icon: 'Settings',
-              level: 'admin',
-              enabled: true,
-              accessLevel: {}
-            }
-          ];
-          
-          dispatch(setConfiguredModules(backofficeModules));
-          
-          console.log("✅ Backoffice login completed successfully!");
-          setTimeout(() => setShowAuthLoading(false), 2000);
-          return true;
-
-        } catch (edgeFunctionError) {
-          console.error("💥 Edge function call failed:", edgeFunctionError);
-          dispatch(setAuthError(`Authentication service unavailable: ${edgeFunctionError.message}`));
-          setShowAuthLoading(false);
-          return false;
-        }
-      }
-
-      // STEP 2: If not a backoffice user, try regular user authentication
-      console.log("🔍 Not a backoffice user, trying regular user authentication...");
-      
+      // First try to login as a regular user
       const user = loginUser(email, password, users);
 
       if (user) {
-        console.log("✅ Regular user login successful");
+        console.log("Regular user login successful, setting current user");
         
         await setCurrentUserWithClientInfo(user);
         
@@ -466,15 +324,118 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       }
 
-      // STEP 3: If both methods fail, show error
-      console.log("❌ Both backoffice and regular authentication failed");
-      dispatch(setAuthError("Invalid email or password"));
+      // If regular login fails, try backoffice login
+      const { data, error } = await supabase.rpc('verify_password', { 
+        email, 
+        password_attempt: password 
+      });
+
+      if (error) {
+        dispatch(setAuthError("Invalid credentials"));
+        setShowAuthLoading(false);
+        return false;
+      }
+
+      if (data === true) {
+        // Fetch the backoffice user
+        const { data: backofficeUser, error: backofficeError } = await supabase
+          .from('backoffice_users')
+          .select('*')
+          .eq('email', email)
+          .single();
+          
+        if (backofficeError || !backofficeUser) {
+          dispatch(setAuthError("Error retrieving user data"));
+          setShowAuthLoading(false);
+          return false;
+        }
+        
+        // Update last_signed_in
+        await supabase
+          .from('backoffice_users')
+          .update({ last_signed_in: new Date().toISOString() })
+          .eq('id', backofficeUser.id);
+        
+        // Create a user object for the backoffice user
+        const saasUser: User = {
+          id: backofficeUser.id,
+          firstName: 'Backoffice',
+          lastName: 'Admin',
+          email: backofficeUser.email,
+          role: 'saas_owner',
+          isActive: true,
+          modulePermissions: {
+            superAdmin: true,
+            incidentReporting: true,
+            incidentAdmin: true,
+            assessmentUser: true,
+            assessmentsAdmin: true,
+            employeeVerificationAdmin: true,
+            grievancesAdmin: true,
+            transportSafetyAdmin: true,
+            eduSafeResourceAccess: true
+          },
+          createdAt: backofficeUser.created_at,
+          client: null,
+          clientType: null
+        };
+        
+        // Update Redux state
+        dispatch(setCurrentUser(saasUser));
+        dispatch(setBackofficeUser(true));
+        dispatch(setAuthStatus(true));
+        
+        // Create employee data for backoffice user
+        const backofficeEmployeeData: EmployeeData = {
+          id: backofficeUser.id,
+          clientId: null,
+          email: backofficeUser.email,
+          firstName: 'Backoffice',
+          lastName: 'Admin',
+          isSuperAdmin: true,
+          department: 'Management',
+          employeeType: 'admin',
+          client: null,
+          clientType: null
+        };
+        
+        dispatch(setEmployeeData(backofficeEmployeeData));
+        saveEmployeeDataToStorage(backofficeEmployeeData);
+        
+        // Set modules for backoffice user
+        const backofficeModules = [
+          {
+            id: 'dashboard-admin',
+            name: 'Dashboard',
+            key: 'dashboard',
+            icon: 'LayoutDashboard',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          },
+          {
+            id: 'admin-settings',
+            name: 'Settings',
+            key: 'adminSettings',
+            icon: 'Settings',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          }
+        ];
+        
+        dispatch(setConfiguredModules(backofficeModules));
+        
+        setTimeout(() => setShowAuthLoading(false), 2000);
+        return true;
+      }
+
+      dispatch(setAuthError("Invalid credentials"));
       setShowAuthLoading(false);
       return false;
-
     } catch (error) {
-      console.error("💥 Login error:", error);
-      dispatch(setAuthError("Login failed. Please try again."));
+      console.error("Login error:", error);
+      dispatch(setAuthError("Login failed"));
       toast.error("Login failed");
       setShowAuthLoading(false);
       return false;
@@ -495,6 +456,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logoutUser();
   };
 
+  // Add new user
   const handleAddUser = (userData: any): void => {
     const newUser: UserWithPassword = { 
       ...userData,
@@ -513,6 +475,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User added successfully");
   };
 
+  // Update user
   const handleUpdateUser = (id: string, updates: Partial<User & { password?: string }>): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
@@ -528,6 +491,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User updated successfully");
   };
 
+  // Delete user
   const handleDeleteUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.filter(user => user.id !== id);
@@ -538,6 +502,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User deleted successfully");
   };
 
+  // Deactivate user
   const handleDeactivateUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
@@ -553,6 +518,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User deactivated successfully");
   };
 
+  // Reactivate user
   const handleReactivateUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
@@ -568,6 +534,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User reactivated successfully");
   };
 
+  // Change password
   const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!currentUser) {
       toast.error("Not authenticated");

@@ -6,7 +6,6 @@ import MetricsCards from '@/components/backoffice/MetricsCards';
 import ClientsTable from '@/components/backoffice/ClientsTable';
 import ClientDialog from '@/components/backoffice/ClientDialog';
 import useClientManagement from '@/hooks/useClientManagement';
-import AuthDebugger from '@/components/debug/AuthDebugger';
 
 const BackofficeDashboard = () => {
   const { clients } = useClient();
@@ -55,9 +54,6 @@ const BackofficeDashboard = () => {
           <h1 className="text-3xl font-bold">Backoffice Dashboard</h1>
           <p className="text-gray-500 mt-1">Manage and monitor all client operations</p>
         </div>
-        
-        {/* Debug Component - Remove this after fixing the issue */}
-        <AuthDebugger />
         
         {/* Metrics Cards */}
         <MetricsCards 
