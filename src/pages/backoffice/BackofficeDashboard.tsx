@@ -1,88 +1,55 @@
 
-import { useState, useEffect } from 'react';
+import React from 'react';
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
-import { useClient } from '@/contexts/ClientContext';
 import MetricsCards from '@/components/backoffice/MetricsCards';
 import ClientsTable from '@/components/backoffice/ClientsTable';
+import { useClient } from '@/contexts/ClientContext';
+import { useState } from 'react';
 import ClientDialog from '@/components/backoffice/ClientDialog';
-import useClientManagement from '@/hooks/useClientManagement';
+import AuthDebugger from '@/components/debug/AuthDebugger';
 
 const BackofficeDashboard = () => {
-  const { clients } = useClient();
-  const [searchTerm, setSearchTerm] = useState('');
-  const {
-    formData,
-    setFormData,
-    isAddDialogOpen,
-    setIsAddDialogOpen,
-    handleAddClient,
-    resetForm
-  } = useClientManagement();
-  
-  // Sample metrics data (in a real app, this would come from an API)
-  const [metrics, setMetrics] = useState({
-    totalClients: 0,
-    activeClients: 0,
-    totalIncidents: 125,
-    recentLogins: 18
-  });
-  
-  useEffect(() => {
-    // Update metrics based on clients
-    setMetrics(prev => ({
-      ...prev,
-      totalClients: clients.length,
-      activeClients: clients.filter(c => c.active).length
-    }));
-  }, [clients]);
-  
-  const handleCancelAdd = () => {
-    setIsAddDialogOpen(false);
-    resetForm();
+  const { clients, filteredClients, searchTerm, setSearchTerm } = useClient();
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
+
+  const handleAddClient = () => {
+    setIsClientDialogOpen(true);
   };
-  
-  const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <BackofficeLayout>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Backoffice Dashboard</h1>
-          <p className="text-gray-500 mt-1">Manage and monitor all client operations</p>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Welcome to the SaaS platform backoffice. Monitor and manage your clients.
+          </p>
         </div>
+
+        {/* Temporary Debug Section */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-2">🐛 Debug Mode</h2>
+          <p className="text-yellow-700 text-sm mb-4">
+            This debug section will help us identify the authentication issue. Please check the results below.
+          </p>
+          <AuthDebugger />
+        </div>
+
+        <MetricsCards />
         
-        {/* Metrics Cards */}
-        <MetricsCards 
-          totalClients={metrics.totalClients}
-          activeClients={metrics.activeClients}
-          totalIncidents={metrics.totalIncidents}
-          recentLogins={metrics.recentLogins}
-        />
-        
-        {/* Clients Table */}
         <ClientsTable 
           clients={clients}
           filteredClients={filteredClients}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          onAddClient={() => setIsAddDialogOpen(true)}
+          onAddClient={handleAddClient}
+        />
+
+        <ClientDialog 
+          isOpen={isClientDialogOpen}
+          onOpenChange={setIsClientDialogOpen}
         />
       </div>
-      
-      {/* Add Client Dialog */}
-      <ClientDialog 
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        formData={formData}
-        setFormData={setFormData}
-        onSubmit={handleAddClient}
-        onCancel={handleCancelAdd}
-        isEdit={false}
-      />
     </BackofficeLayout>
   );
 };
