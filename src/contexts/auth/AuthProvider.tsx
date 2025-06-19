@@ -324,115 +324,108 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       }
 
-      // If regular login fails, try backoffice login
-      const { data, error } = await supabase.rpc('verify_password', { 
-        email, 
-        password_attempt: password 
+      // If regular login fails, try backoffice login with new auth flow
+      console.log("Attempting backoffice login with new auth flow");
+      
+      const { data: authResponse, error: authError } = await supabase.functions.invoke('backoffice-auth', {
+        body: { email, password }
       });
 
-      if (error) {
+      if (authError || !authResponse) {
+        console.error("Backoffice auth error:", authError);
         dispatch(setAuthError("Invalid credentials"));
         setShowAuthLoading(false);
         return false;
       }
 
-      if (data === true) {
-        // Fetch the backoffice user
-        const { data: backofficeUser, error: backofficeError } = await supabase
-          .from('backoffice_users')
-          .select('*')
-          .eq('email', email)
-          .single();
-          
-        if (backofficeError || !backofficeUser) {
-          dispatch(setAuthError("Error retrieving user data"));
-          setShowAuthLoading(false);
-          return false;
-        }
-        
-        // Update last_signed_in
-        await supabase
-          .from('backoffice_users')
-          .update({ last_signed_in: new Date().toISOString() })
-          .eq('id', backofficeUser.id);
-        
-        // Create a user object for the backoffice user
-        const saasUser: User = {
-          id: backofficeUser.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          email: backofficeUser.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUser.created_at,
-          client: null,
-          clientType: null
-        };
-        
-        // Update Redux state
-        dispatch(setCurrentUser(saasUser));
-        dispatch(setBackofficeUser(true));
-        dispatch(setAuthStatus(true));
-        
-        // Create employee data for backoffice user
-        const backofficeEmployeeData: EmployeeData = {
-          id: backofficeUser.id,
-          clientId: null,
-          email: backofficeUser.email,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin',
-          client: null,
-          clientType: null
-        };
-        
-        dispatch(setEmployeeData(backofficeEmployeeData));
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Set modules for backoffice user
-        const backofficeModules = [
-          {
-            id: 'dashboard-admin',
-            name: 'Dashboard',
-            key: 'dashboard',
-            icon: 'LayoutDashboard',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          },
-          {
-            id: 'admin-settings',
-            name: 'Settings',
-            key: 'adminSettings',
-            icon: 'Settings',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          }
-        ];
-        
-        dispatch(setConfiguredModules(backofficeModules));
-        
-        setTimeout(() => setShowAuthLoading(false), 2000);
-        return true;
+      // Set the session using the tokens from the edge function
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: authResponse.access_token,
+        refresh_token: authResponse.refresh_token
+      });
+
+      if (sessionError) {
+        console.error("Error setting session:", sessionError);
+        dispatch(setAuthError("Failed to establish session"));
+        setShowAuthLoading(false);
+        return false;
       }
 
-      dispatch(setAuthError("Invalid credentials"));
-      setShowAuthLoading(false);
-      return false;
+      console.log("Backoffice auth session established successfully");
+
+      // Create a user object for the backoffice user
+      const saasUser: User = {
+        id: authResponse.backoffice_user.id,
+        firstName: 'Backoffice',
+        lastName: 'Admin',
+        email: authResponse.backoffice_user.email,
+        role: 'saas_owner',
+        isActive: true,
+        modulePermissions: {
+          superAdmin: true,
+          incidentReporting: true,
+          incidentAdmin: true,
+          assessmentUser: true,
+          assessmentsAdmin: true,
+          employeeVerificationAdmin: true,
+          grievancesAdmin: true,
+          transportSafetyAdmin: true,
+          eduSafeResourceAccess: true
+        },
+        createdAt: authResponse.backoffice_user.created_at,
+        client: null,
+        clientType: null
+      };
+      
+      // Update Redux state
+      dispatch(setCurrentUser(saasUser));
+      dispatch(setBackofficeUser(true));
+      dispatch(setAuthStatus(true));
+      
+      // Create employee data for backoffice user
+      const backofficeEmployeeData: EmployeeData = {
+        id: authResponse.backoffice_user.id,
+        clientId: null,
+        email: authResponse.backoffice_user.email,
+        firstName: 'Backoffice',
+        lastName: 'Admin',
+        isSuperAdmin: true,
+        department: 'Management',
+        employeeType: 'admin',
+        client: null,
+        clientType: null
+      };
+      
+      dispatch(setEmployeeData(backofficeEmployeeData));
+      saveEmployeeDataToStorage(backofficeEmployeeData);
+      
+      // Set modules for backoffice user
+      const backofficeModules = [
+        {
+          id: 'dashboard-admin',
+          name: 'Dashboard',
+          key: 'dashboard',
+          icon: 'LayoutDashboard',
+          level: 'admin',
+          enabled: true,
+          accessLevel: {}
+        },
+        {
+          id: 'admin-settings',
+          name: 'Settings',
+          key: 'adminSettings',
+          icon: 'Settings',
+          level: 'admin',
+          enabled: true,
+          accessLevel: {}
+        }
+      ];
+      
+      dispatch(setConfiguredModules(backofficeModules));
+      
+      setTimeout(() => setShowAuthLoading(false), 2000);
+      return true;
+
     } catch (error) {
       console.error("Login error:", error);
       dispatch(setAuthError("Login failed"));

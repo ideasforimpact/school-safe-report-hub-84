@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,11 +36,18 @@ const AuthDebugger: React.FC = () => {
       console.log('Alternative auth result:', altAuthData);
       console.log('Alternative auth error:', altAuthError);
 
+      // NEW: Test current auth session details
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log('Current session:', session);
+      console.log('Session error:', sessionError);
+
       setDebugInfo({
         debugFunction: { data: debugData, error: debugError },
         clientsFetch: { data: clientsData, error: clientsError },
         alternativeAuth: { data: altAuthData, error: altAuthError },
-        currentEmployee: employeeData
+        currentEmployee: employeeData,
+        currentSession: { data: session, error: sessionError }
       });
 
     } catch (error) {
@@ -100,6 +106,13 @@ const AuthDebugger: React.FC = () => {
               <h4 className="font-semibold mb-2">Current Employee Context:</h4>
               <pre className="text-xs overflow-auto">
                 {JSON.stringify(debugInfo.currentEmployee, null, 2)}
+              </pre>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded">
+              <h4 className="font-semibold mb-2">Current Auth Session:</h4>
+              <pre className="text-xs overflow-auto">
+                {JSON.stringify(debugInfo.currentSession, null, 2)}
               </pre>
             </div>
           </div>
