@@ -79,7 +79,12 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
             uploadedAt: new Date().toISOString() // Convert to string format
           })) : []} 
           incidentId={incident.id}
-          onUpdate={onUpdate}
+          onDocumentDeleted={() => {
+            // Trigger parent update if callback is provided
+            if (onUpdate) {
+              onUpdate({});
+            }
+          }}
         />
       </TabsContent>
 
