@@ -14,6 +14,11 @@ interface IncidentTabsProps {
 }
 
 const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
+  console.log('=== INCIDENT TABS DEBUG ===');
+  console.log('IncidentTabs received incident:', incident);
+  console.log('Incident ID being passed to AuditTrail:', incident?.id);
+  console.log('=== END INCIDENT TABS DEBUG ===');
+
   // Helper function to format date
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -76,11 +81,10 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
             size: 0,
             url: doc.data || '',
             path: '',
-            uploadedAt: new Date().toISOString() // Convert to string format
+            uploadedAt: new Date().toISOString()
           })) : []} 
           incidentId={incident.id}
           onDocumentDeleted={() => {
-            // Trigger parent update if callback is provided
             if (onUpdate) {
               onUpdate({});
             }
@@ -93,7 +97,12 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
       </TabsContent>
 
       <TabsContent value="history" className="mt-6">
-        <AuditTrail incidentId={incident.id} maxHeight="500px" />
+        <div className="space-y-4">
+          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+            <strong>Debug:</strong> Rendering AuditTrail with incident ID: {incident.id}
+          </div>
+          <AuditTrail incidentId={incident.id} maxHeight="500px" />
+        </div>
       </TabsContent>
     </Tabs>
   );
