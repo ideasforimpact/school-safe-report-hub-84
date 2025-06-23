@@ -901,6 +901,53 @@ export type Database = {
           },
         ]
       }
+      incident_audit_log: {
+        Row: {
+          change_type: string
+          changed_at: string
+          changed_by: string
+          created_at: string
+          description: string | null
+          field_changed: string
+          id: string
+          incident_id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          change_type?: string
+          changed_at?: string
+          changed_by: string
+          created_at?: string
+          description?: string | null
+          field_changed: string
+          id?: string
+          incident_id: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_at?: string
+          changed_by?: string
+          created_at?: string
+          description?: string | null
+          field_changed?: string
+          id?: string
+          incident_id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_incident_audit_log_incident_id"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_categories: {
         Row: {
           client_id: string | null
@@ -1550,6 +1597,14 @@ export type Database = {
           end_time: string
         }[]
       }
+      debug_auth_info: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      debug_backoffice_auth: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       decrypt_document_number: {
         Args: { encrypted_doc_number: string }
         Returns: string
@@ -1570,7 +1625,23 @@ export type Database = {
         Args: { password: string }
         Returns: string
       }
+      insert_incident_audit_log: {
+        Args: {
+          p_incident_id: string
+          p_field_changed: string
+          p_changed_by: string
+          p_old_value?: string
+          p_new_value?: string
+          p_change_type?: string
+          p_description?: string
+        }
+        Returns: string
+      }
       is_backoffice_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_backoffice_admin_by_uid: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

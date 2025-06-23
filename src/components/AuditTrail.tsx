@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Activity } from '@/contexts/IncidentContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Clock, 
@@ -10,15 +9,21 @@ import {
   XCircle, 
   Trash2, 
   User,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  MessageSquare
 } from 'lucide-react';
+import { useIncidentAuditTrail } from '@/hooks/useIncidentAuditTrail';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface AuditTrailProps {
-  activities: Activity[];
+  incidentId?: string;
   maxHeight?: string;
 }
 
-const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
+const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
+  const { auditEntries, isLoading, error } = useIncidentAuditTrail(incidentId);
+
   // Format date to readable format
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('en-US', {
@@ -31,8 +36,12 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
   };
 
   // Get icon based on activity type and action
-  const getActivityIcon = (activity: Activity) => {
-    if (activity.activity === 'create') return <Plus className="h-4 w-4" />;
+  const getActivityIcon = (activity: any) => {
+    if (activity.activity === 'create') {
+      if (activity.type === 'comment') return <MessageSquare className="h-4 w-4" />;
+      if (activity.type === 'action') return <FileText className="h-4 w-4" />;
+      return <Plus className="h-4 w-4" />;
+    }
     if (activity.activity === 'update') return <Edit className="h-4 w-4" />;
     if (activity.activity === 'delete') return <Trash2 className="h-4 w-4" />;
     if (activity.activity === 'close') return <CheckCircle className="h-4 w-4" />;
@@ -41,7 +50,7 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
   };
 
   // Get color based on activity type
-  const getActivityColor = (activity: Activity) => {
+  const getActivityColor = (activity: any) => {
     switch (activity.type) {
       case 'incident':
         return activity.activity === 'create' 
@@ -55,18 +64,51 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
         return 'bg-purple-100 text-purple-800';
       case 'actionItem':
         return 'bg-indigo-100 text-indigo-800';
+      case 'comment':
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Format activity details to include creator information
-  const formatActivityDetails = (activity: Activity) => {
-    if (activity.activity === 'create' && activity.type === 'incident') {
-      return `Incident created by ${activity.user}`;
-    }
-    return activity.details;
-  };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="border rounded-md p-4">
+        <div className="flex items-center mb-4">
+          <Clock className="h-5 w-5 mr-2 text-gray-500" />
+          <h3 className="font-medium text-lg">Audit Trail</h3>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-start space-x-4">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="border rounded-md p-4">
+        <div className="flex items-center mb-4">
+          <Clock className="h-5 w-5 mr-2 text-gray-500" />
+          <h3 className="font-medium text-lg">Audit Trail</h3>
+        </div>
+        <div className="text-center py-4">
+          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border rounded-md p-4">
@@ -75,13 +117,13 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
         <h3 className="font-medium text-lg">Audit Trail</h3>
       </div>
       
-      {activities.length === 0 ? (
+      {auditEntries.length === 0 ? (
         <p className="text-gray-500 text-center py-4">No activity recorded yet</p>
       ) : (
         <ScrollArea className={`pr-4 ${maxHeight ? `max-h-[${maxHeight}]` : ''}`}>
           <div className="space-y-4">
-            {activities.map((activity, index) => (
-              <div key={index} className="border-l-2 border-gray-200 pl-4 pb-4 relative">
+            {auditEntries.map((activity, index) => (
+              <div key={activity.id || index} className="border-l-2 border-gray-200 pl-4 pb-4 relative">
                 <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-gray-300" />
                 <div className="flex items-start justify-between">
                   <div>
@@ -91,9 +133,11 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
                       </span>
                       <span className="font-medium">{activity.user}</span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-600">{formatActivityDetails(activity)}</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {activity.details || `${activity.activity} ${activity.entityTitle}`}
+                    </p>
                   </div>
-                  <time className="text-xs text-gray-500">{formatDate(new Date(activity.date))}</time>
+                  <time className="text-xs text-gray-500">{formatDate(activity.date)}</time>
                 </div>
               </div>
             ))}

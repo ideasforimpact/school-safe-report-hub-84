@@ -26,6 +26,7 @@ interface UpdateIncidentRequest {
     action_taken?: string
     contributing_factor?: any[]
   }
+  changedBy?: string
 }
 
 Deno.serve(async (req) => {
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
 
     console.log('User attempting to update incident:', user.id)
 
-    const { incidentId, updates }: UpdateIncidentRequest = await req.json()
+    const { incidentId, updates, changedBy }: UpdateIncidentRequest = await req.json()
 
     if (!incidentId) {
       throw new Error('Incident ID is required')
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
 
     console.log('Final update data:', updateData);
 
-    // Single optimized update query
+    // Single optimized update query - the trigger will automatically log changes
     const { data: updatedIncident, error: updateError } = await supabase
       .from('incidents')
       .update(updateData)
@@ -147,6 +148,36 @@ Deno.serve(async (req) => {
     }
 
     console.log('Successfully updated incident:', updatedIncident);
+
+    // Log manual audit entries for non-field updates (like comments, documents)
+    if (changedBy) {
+      try {
+        // Log document changes
+        if (updates.documents) {
+          await supabase.rpc('insert_incident_audit_log', {
+            p_incident_id: incidentId,
+            p_field_changed: 'documents',
+            p_changed_by: changedBy,
+            p_change_type: 'action',
+            p_description: 'Documents updated'
+          });
+        }
+
+        // Log people involved changes
+        if (updates.people_involved) {
+          await supabase.rpc('insert_incident_audit_log', {
+            p_incident_id: incidentId,
+            p_field_changed: 'people_involved',
+            p_changed_by: changedBy,
+            p_change_type: 'action',
+            p_description: 'People involved updated'
+          });
+        }
+      } catch (auditError) {
+        console.error('Error logging manual audit entries:', auditError);
+        // Don't fail the request if audit logging fails
+      }
+    }
 
     return new Response(
       JSON.stringify({ 
