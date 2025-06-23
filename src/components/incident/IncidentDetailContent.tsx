@@ -10,6 +10,7 @@ import IncidentDetails from './IncidentDetails';
 import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
 import SupportingDocuments from './SupportingDocuments';
+import AuditTrail from '@/components/AuditTrail';
 import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident';
 import { IncidentDocument } from '@/services/incident/incidentDocumentService';
 import { useIncidents } from '@/contexts/incident';
@@ -21,7 +22,6 @@ interface IncidentDetailContentProps {
   incident: Incident;
   statusUpdate: string;
   setStatusUpdate: (status: string) => void;
-  incidentActivities: any[];
   commentText: string;
   setCommentText: (text: string) => void;
   commentFiles: FileItem[];
@@ -49,7 +49,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   incident,
   statusUpdate,
   setStatusUpdate,
-  incidentActivities,
   commentText,
   setCommentText,
   commentFiles,
@@ -208,32 +207,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {incidentActivities && incidentActivities.length > 0 ? (
-                <div className="space-y-4">
-                  {incidentActivities.map((activity, index) => (
-                    <div key={index} className="flex items-start space-x-3 pb-4 border-b border-gray-200 last:border-b-0">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <AlertTriangle className="w-4 h-4 text-blue-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">{activity.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">{formatDateTime(activity.date)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-6">No activity history available</p>
-              )}
-            </CardContent>
-          </Card>
+          <AuditTrail incidentId={displayIncident.id} maxHeight="500px" />
         </TabsContent>
       </Tabs>
     </div>
