@@ -39,7 +39,8 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
       currentUser: state.currentUser,
       isAuthenticated: state.isAuthenticated,
       isBackofficeUser: state.isBackofficeUser,
-      authError: state.authError
+      authError: state.authError,
+      configuredModules: state.configuredModules
     };
 
     // Only save if we have a meaningful authentication state
@@ -49,7 +50,7 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
       // Clear persisted state if user is logged out
       clearPersistedAuthState();
     }
-  }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError]);
+  }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError, state.configuredModules]);
 
   return (
     <EmployeeContext.Provider value={{ state, dispatch }}>

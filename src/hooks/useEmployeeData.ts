@@ -42,11 +42,14 @@ export const useEmployeeData = () => {
       // Set the client ID in Redux store
       dispatch(setClientId(clientId));
 
-      // Check Redux store first - if modules are already loaded, don't fetch again
+      // Check Redux store first - if modules are already loaded, don't fetch again unless specifically needed
       if (state.configuredModules && state.configuredModules.length > 0) {
+        console.log("Modules already loaded in Redux, skipping fetch");
         dispatch(setLoading(false));
         return;
       }
+
+      console.log("Fetching modules for employee:", employeeId, "client:", clientId);
 
       // Add a minimum loading time to show the spinner
       const minimumLoadingTime = 1500; // 1.5 seconds
@@ -191,6 +194,7 @@ export const useEmployeeData = () => {
       const remainingTime = Math.max(0, minimumLoadingTime - elapsedTime);
       
       setTimeout(() => {
+        console.log("Setting configured modules:", configuredModules);
         dispatch(setConfiguredModules(configuredModules));
         dispatch(setLoading(false));
       }, remainingTime);
@@ -223,9 +227,10 @@ export const useEmployeeData = () => {
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
-      // Fetch modules if we have employeeId and clientId
+      // Fetch modules if we have employeeId and clientId, and modules are empty
       if (authEmployeeData.id && authEmployeeData.clientId &&
           (!state.configuredModules || state.configuredModules.length === 0)) {
+        console.log("Employee data available but modules empty, fetching modules");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
     } else {
@@ -267,8 +272,10 @@ export const useEmployeeData = () => {
                 dispatch(setClientId(data.client_id));
               }
               
-              // Fetch modules
-              if (data.id && data.client_id) {
+              // Fetch modules if modules are empty
+              if (data.id && data.client_id && 
+                  (!state.configuredModules || state.configuredModules.length === 0)) {
+                console.log("Fetched employee data but modules empty, fetching modules");
                 fetchConfiguredModules(data.id, data.client_id);
               }
             } else {
@@ -283,6 +290,19 @@ export const useEmployeeData = () => {
       }
     }
   }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
+
+  // Additional effect to handle page refresh scenario where user exists but modules are missing
+  useEffect(() => {
+    // If we have a current user and employee data but no modules, re-fetch modules
+    if (state.currentUser && state.employeeData && 
+        (!state.configuredModules || state.configuredModules.length === 0) &&
+        needsEmployeeData && !shouldSkipEmployeeData) {
+      console.log("Page refresh detected: user and employee data exist but modules missing, re-fetching");
+      if (state.employeeData.id && state.employeeData.clientId) {
+        fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
+      }
+    }
+  }, [state.currentUser, state.employeeData, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData]);
 
   return {
     employeeData: state.employeeData,
