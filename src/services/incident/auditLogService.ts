@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AuditLogEntry {
@@ -73,7 +72,24 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       throw new Error(`Failed to fetch audit log: ${error.message}`);
     }
 
-    return data || [];
+    // Transform the data to ensure proper types
+    const transformedData: AuditLogEntry[] = (data || []).map(entry => ({
+      id: entry.id,
+      incident_id: entry.incident_id,
+      client_id: entry.client_id,
+      field_changed: entry.field_changed,
+      old_value: entry.old_value,
+      new_value: entry.new_value,
+      changed_by: entry.changed_by,
+      changed_at: entry.changed_at,
+      change_type: entry.change_type,
+      description: entry.description,
+      changes: Array.isArray(entry.changes) ? entry.changes : 
+               (entry.changes ? [entry.changes] : null),
+      created_at: entry.created_at
+    }));
+
+    return transformedData;
   } catch (error) {
     console.error('Error in fetchIncidentAuditLog:', error);
     throw error;
