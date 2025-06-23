@@ -7,6 +7,7 @@ export interface PersistedAuthState {
   isAuthenticated: boolean;
   isBackofficeUser: boolean;
   authError: string | null;
+  configuredModules: any[] | null;
 }
 
 // Save authentication state to sessionStorage

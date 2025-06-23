@@ -9,7 +9,8 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
       isBackofficeUser: persistedState.isBackofficeUser,
-      authError: persistedState.authError
+      authError: persistedState.authError,
+      configuredModules: persistedState.configuredModules || []
     };
   }
   return {};
