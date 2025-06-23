@@ -906,6 +906,8 @@ export type Database = {
           change_type: string
           changed_at: string
           changed_by: string
+          changes: Json | null
+          client_id: string | null
           created_at: string
           description: string | null
           field_changed: string
@@ -918,6 +920,8 @@ export type Database = {
           change_type?: string
           changed_at?: string
           changed_by: string
+          changes?: Json | null
+          client_id?: string | null
           created_at?: string
           description?: string | null
           field_changed: string
@@ -930,6 +934,8 @@ export type Database = {
           change_type?: string
           changed_at?: string
           changed_by?: string
+          changes?: Json | null
+          client_id?: string | null
           created_at?: string
           description?: string | null
           field_changed?: string
@@ -944,6 +950,13 @@ export type Database = {
             columns: ["incident_id"]
             isOneToOne: false
             referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_audit_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1626,15 +1639,27 @@ export type Database = {
         Returns: string
       }
       insert_incident_audit_log: {
-        Args: {
-          p_incident_id: string
-          p_field_changed: string
-          p_changed_by: string
-          p_old_value?: string
-          p_new_value?: string
-          p_change_type?: string
-          p_description?: string
-        }
+        Args:
+          | {
+              p_incident_id: string
+              p_client_id: string
+              p_field_changed: string
+              p_changed_by: string
+              p_old_value?: string
+              p_new_value?: string
+              p_change_type?: string
+              p_description?: string
+              p_changes?: Json
+            }
+          | {
+              p_incident_id: string
+              p_field_changed: string
+              p_changed_by: string
+              p_old_value?: string
+              p_new_value?: string
+              p_change_type?: string
+              p_description?: string
+            }
         Returns: string
       }
       is_backoffice_admin: {

@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
         if (updates.documents) {
           await supabase.rpc('insert_incident_audit_log', {
             p_incident_id: incidentId,
+            p_client_id: employee.client_id,
             p_field_changed: 'documents',
             p_changed_by: changedBy,
             p_change_type: 'action',
@@ -167,6 +168,7 @@ Deno.serve(async (req) => {
         if (updates.people_involved) {
           await supabase.rpc('insert_incident_audit_log', {
             p_incident_id: incidentId,
+            p_client_id: employee.client_id,
             p_field_changed: 'people_involved',
             p_changed_by: changedBy,
             p_change_type: 'action',
