@@ -11,6 +11,7 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
   // Fetch audit trail for the incident
   const fetchAuditTrail = useCallback(async () => {
     if (!incidentId) {
+      console.log('No incident ID provided');
       setAuditEntries([]);
       return;
     }
@@ -73,6 +74,7 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
 
   // Fetch audit trail when incident ID changes
   useEffect(() => {
+    console.log('useIncidentAuditTrail effect triggered, incidentId:', incidentId);
     fetchAuditTrail();
   }, [fetchAuditTrail]);
 

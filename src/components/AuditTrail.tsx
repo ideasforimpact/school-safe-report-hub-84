@@ -24,6 +24,8 @@ interface AuditTrailProps {
 const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
   const { auditEntries, isLoading, error } = useIncidentAuditTrail(incidentId);
 
+  console.log('AuditTrail component rendered with:', { incidentId, auditEntries: auditEntries.length, isLoading, error });
+
   // Format date to readable format
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('en-US', {
@@ -115,6 +117,9 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
       <div className="flex items-center mb-4">
         <Clock className="h-5 w-5 mr-2 text-gray-500" />
         <h3 className="font-medium text-lg">Audit Trail</h3>
+        {auditEntries.length > 0 && (
+          <span className="ml-2 text-sm text-gray-500">({auditEntries.length} entries)</span>
+        )}
       </div>
       
       {auditEntries.length === 0 ? (

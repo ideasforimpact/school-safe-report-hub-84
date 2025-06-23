@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AuditLogEntry {
@@ -31,9 +32,12 @@ export interface FormattedAuditEntry {
 // Fetch audit log entries for a specific incident with client filtering
 export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLogEntry[]> => {
   try {
+    console.log('Fetching audit trail for incident:', incidentId);
+    
     // First get the current user's employee record to get client_id
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      console.error('User not authenticated');
       throw new Error('User not authenticated');
     }
 
@@ -44,8 +48,11 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       .single();
 
     if (employeeError || !employee) {
+      console.error('Employee not found:', employeeError);
       throw new Error('Employee not found');
     }
+
+    console.log('Employee client_id:', employee.client_id);
 
     const { data, error } = await supabase
       .from('incident_audit_log')
@@ -71,6 +78,9 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       console.error('Error fetching audit log:', error);
       throw new Error(`Failed to fetch audit log: ${error.message}`);
     }
+
+    console.log('Raw audit entries found:', data?.length || 0);
+    console.log('Raw audit entries:', data);
 
     // Transform the data to ensure proper types
     const transformedData: AuditLogEntry[] = (data || []).map(entry => ({
@@ -106,6 +116,7 @@ const getUserName = async (userId: string): Promise<string> => {
       .single();
 
     if (error || !employee) {
+      console.log('Employee not found for user ID:', userId, error);
       return 'Unknown User';
     }
 
@@ -140,10 +151,12 @@ const formatFieldName = (fieldName: string): string => {
 
 // Convert raw audit log entries to formatted activities
 export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<FormattedAuditEntry[]> => {
+  console.log('Formatting audit entries:', entries.length);
   const formattedEntries: FormattedAuditEntry[] = [];
 
   for (const entry of entries) {
     try {
+      console.log('Processing audit entry:', entry);
       const userName = await getUserName(entry.changed_by);
       
       // Determine activity type based on field and change type
@@ -193,7 +206,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
         }
       }
 
-      formattedEntries.push({
+      const formattedEntry: FormattedAuditEntry = {
         id: entry.id,
         type: entityType,
         activity: activityType,
@@ -204,13 +217,17 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
         date: new Date(entry.changed_at),
         details: details || undefined,
         changes: entry.changes || undefined
-      });
+      };
+
+      console.log('Formatted entry:', formattedEntry);
+      formattedEntries.push(formattedEntry);
     } catch (error) {
       console.error('Error formatting audit entry:', error);
       // Continue with next entry instead of failing completely
     }
   }
 
+  console.log('Total formatted entries:', formattedEntries.length);
   return formattedEntries;
 };
 
