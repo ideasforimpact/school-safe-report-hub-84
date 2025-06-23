@@ -24,7 +24,15 @@ interface AuditTrailProps {
 const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
   const { auditEntries, isLoading, error } = useIncidentAuditTrail(incidentId);
 
-  console.log('AuditTrail component rendered with:', { incidentId, auditEntries: auditEntries.length, isLoading, error });
+  console.log('=== AUDIT TRAIL COMPONENT DEBUG ===');
+  console.log('AuditTrail component rendered');
+  console.log('Props received - incidentId:', incidentId);
+  console.log('Props received - maxHeight:', maxHeight);
+  console.log('Hook state - auditEntries length:', auditEntries?.length || 0);
+  console.log('Hook state - auditEntries:', auditEntries);
+  console.log('Hook state - isLoading:', isLoading);
+  console.log('Hook state - error:', error);
+  console.log('=== END AUDIT TRAIL COMPONENT DEBUG ===');
 
   // Format date to readable format
   const formatDate = (date: Date) => {
@@ -75,6 +83,7 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
 
   // Loading state
   if (isLoading) {
+    console.log('AuditTrail showing loading state');
     return (
       <div className="border rounded-md p-4">
         <div className="flex items-center mb-4">
@@ -98,6 +107,7 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
 
   // Error state
   if (error) {
+    console.log('AuditTrail showing error state:', error);
     return (
       <div className="border rounded-md p-4">
         <div className="flex items-center mb-4">
@@ -107,11 +117,15 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
         <div className="text-center py-4">
           <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
           <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-gray-500 text-xs mt-1">Check console for detailed error information</p>
         </div>
       </div>
     );
   }
 
+  // Main render
+  console.log('AuditTrail rendering main content with', auditEntries.length, 'entries');
+  
   return (
     <div className="border rounded-md p-4">
       <div className="flex items-center mb-4">
@@ -122,8 +136,22 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
         )}
       </div>
       
+      {/* Debug information */}
+      <div className="mb-4 p-2 bg-gray-50 rounded text-xs text-gray-600">
+        <strong>Debug Info:</strong> Incident ID: {incidentId || 'undefined'}, 
+        Entries: {auditEntries.length}, 
+        Loading: {isLoading ? 'yes' : 'no'}, 
+        Error: {error || 'none'}
+      </div>
+      
       {auditEntries.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No activity recorded yet</p>
+        <div className="text-center py-4">
+          <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+          <p className="text-gray-500">No activity recorded yet</p>
+          <p className="text-gray-400 text-sm mt-1">
+            Check browser console for debugging information
+          </p>
+        </div>
       ) : (
         <ScrollArea className={`pr-4 ${maxHeight ? `max-h-[${maxHeight}]` : ''}`}>
           <div className="space-y-4">

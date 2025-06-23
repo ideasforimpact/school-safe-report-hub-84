@@ -10,8 +10,13 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
 
   // Fetch audit trail for the incident
   const fetchAuditTrail = useCallback(async () => {
+    console.log('=== FETCH AUDIT TRAIL HOOK DEBUG ===');
+    console.log('incidentId received in hook:', incidentId);
+    console.log('incidentId type:', typeof incidentId);
+    console.log('incidentId truthy:', !!incidentId);
+    
     if (!incidentId) {
-      console.log('No incident ID provided');
+      console.log('No incident ID provided to hook - setting empty entries');
       setAuditEntries([]);
       return;
     }
@@ -20,20 +25,23 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
     setError(null);
 
     try {
-      console.log('Fetching audit trail for incident:', incidentId);
+      console.log('Starting to fetch audit trail for incident:', incidentId);
       const rawEntries = await fetchIncidentAuditLog(incidentId);
-      console.log('Raw audit entries:', rawEntries);
+      console.log('Raw audit entries received in hook:', rawEntries);
       
       const formattedEntries = await formatAuditLogEntries(rawEntries);
-      console.log('Formatted audit entries:', formattedEntries);
+      console.log('Formatted audit entries received in hook:', formattedEntries);
       
+      console.log('Setting audit entries state with:', formattedEntries.length, 'entries');
       setAuditEntries(formattedEntries);
     } catch (err) {
-      console.error('Error fetching audit trail:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch audit trail');
+      console.error('Error fetching audit trail in hook:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch audit trail';
+      setError(errorMessage);
       toast.error('Failed to load audit trail');
     } finally {
       setIsLoading(false);
+      console.log('=== END FETCH AUDIT TRAIL HOOK DEBUG ===');
     }
   }, [incidentId]);
 
@@ -74,8 +82,14 @@ export const useIncidentAuditTrail = (incidentId?: string) => {
 
   // Fetch audit trail when incident ID changes
   useEffect(() => {
-    console.log('useIncidentAuditTrail effect triggered, incidentId:', incidentId);
+    console.log('=== AUDIT TRAIL HOOK EFFECT ===');
+    console.log('useIncidentAuditTrail effect triggered');
+    console.log('incidentId in effect:', incidentId);
+    console.log('fetchAuditTrail function:', typeof fetchAuditTrail);
+    
     fetchAuditTrail();
+    
+    console.log('=== END AUDIT TRAIL HOOK EFFECT ===');
   }, [fetchAuditTrail]);
 
   return {

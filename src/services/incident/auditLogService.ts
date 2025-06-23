@@ -32,6 +32,7 @@ export interface FormattedAuditEntry {
 // Fetch audit log entries for a specific incident with client filtering
 export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLogEntry[]> => {
   try {
+    console.log('=== AUDIT LOG SERVICE DEBUG ===');
     console.log('Fetching audit trail for incident:', incidentId);
     
     // First get the current user's employee record to get client_id
@@ -40,6 +41,7 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       console.error('User not authenticated');
       throw new Error('User not authenticated');
     }
+    console.log('Authenticated user ID:', user.id);
 
     const { data: employee, error: employeeError } = await supabase
       .from('employees')
@@ -54,6 +56,15 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
 
     console.log('Employee client_id:', employee.client_id);
 
+    // First, let's check if there are ANY audit log entries for this incident (without client filtering)
+    const { data: allEntries, error: allEntriesError } = await supabase
+      .from('incident_audit_log')
+      .select('*')
+      .eq('incident_id', incidentId);
+
+    console.log('All audit entries for incident (no client filter):', allEntries?.length || 0, allEntries);
+
+    // Now fetch with client filtering
     const { data, error } = await supabase
       .from('incident_audit_log')
       .select(`
@@ -79,8 +90,9 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       throw new Error(`Failed to fetch audit log: ${error.message}`);
     }
 
-    console.log('Raw audit entries found:', data?.length || 0);
-    console.log('Raw audit entries:', data);
+    console.log('Filtered audit entries found:', data?.length || 0);
+    console.log('Filtered audit entries:', data);
+    console.log('=== END AUDIT LOG SERVICE DEBUG ===');
 
     // Transform the data to ensure proper types
     const transformedData: AuditLogEntry[] = (data || []).map(entry => ({
@@ -151,13 +163,17 @@ const formatFieldName = (fieldName: string): string => {
 
 // Convert raw audit log entries to formatted activities
 export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<FormattedAuditEntry[]> => {
-  console.log('Formatting audit entries:', entries.length);
+  console.log('=== FORMATTING AUDIT ENTRIES ===');
+  console.log('Formatting audit entries count:', entries.length);
+  console.log('Raw entries to format:', entries);
+  
   const formattedEntries: FormattedAuditEntry[] = [];
 
   for (const entry of entries) {
     try {
       console.log('Processing audit entry:', entry);
       const userName = await getUserName(entry.changed_by);
+      console.log('User name for entry:', userName);
       
       // Determine activity type based on field and change type
       let activityType: FormattedAuditEntry['activity'] = 'update';
@@ -219,7 +235,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
         changes: entry.changes || undefined
       };
 
-      console.log('Formatted entry:', formattedEntry);
+      console.log('Formatted entry created:', formattedEntry);
       formattedEntries.push(formattedEntry);
     } catch (error) {
       console.error('Error formatting audit entry:', error);
@@ -228,6 +244,8 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
   }
 
   console.log('Total formatted entries:', formattedEntries.length);
+  console.log('Final formatted entries:', formattedEntries);
+  console.log('=== END FORMATTING AUDIT ENTRIES ===');
   return formattedEntries;
 };
 
