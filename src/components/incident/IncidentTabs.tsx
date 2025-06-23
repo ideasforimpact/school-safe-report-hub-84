@@ -14,6 +14,17 @@ interface IncidentTabsProps {
 }
 
 const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
+  // Helper function to format date
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <Tabs defaultValue="details" className="w-full">
       <TabsList className="grid w-full grid-cols-5">
@@ -37,26 +48,43 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
       </TabsList>
 
       <TabsContent value="details" className="mt-6">
-        <IncidentDetailsCard incident={incident} onUpdate={onUpdate} />
+        <IncidentDetailsCard incident={incident} formatDate={formatDate} />
       </TabsContent>
 
       <TabsContent value="comments" className="mt-6">
-        <CommentsList incidentId={incident.id} />
+        <CommentsList 
+          comments={incident.comments || []}
+          incident={{ id: incident.id }}
+          addComment={() => {}}
+          updateComment={() => {}}
+          deleteComment={() => {}}
+          formatDate={formatDate}
+          formatDateTime={formatDate}
+          getCommentStatusColor={() => 'bg-gray-100 text-gray-800'}
+          canEditComment={() => false}
+          userId=""
+          userName=""
+        />
       </TabsContent>
 
       <TabsContent value="documents" className="mt-6">
         <SupportingDocuments 
-          documents={incident.documents || []} 
+          documents={incident.documents ? incident.documents.map(doc => ({
+            id: doc.name || 'unknown',
+            name: doc.name || 'Unknown Document',
+            type: doc.type || 'application/octet-stream',
+            size: 0,
+            url: doc.data || '',
+            path: '',
+            uploadedAt: new Date()
+          })) : []} 
           incidentId={incident.id}
           onUpdate={onUpdate}
         />
       </TabsContent>
 
       <TabsContent value="people" className="mt-6">
-        <PeopleInvolved 
-          people={incident.peopleInvolved || []} 
-          onUpdate={(people) => onUpdate?.({ peopleInvolved: people })}
-        />
+        <PeopleInvolved people={incident.peopleInvolved || []} />
       </TabsContent>
 
       <TabsContent value="history" className="mt-6">

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface AuditLogEntry {
   id: string;
   incident_id: string;
+  client_id: string;
   field_changed: string;
   old_value: string | null;
   new_value: string | null;
@@ -11,6 +12,7 @@ export interface AuditLogEntry {
   changed_at: string;
   change_type: string;
   description: string | null;
+  changes: any[] | null;
   created_at: string;
 }
 
@@ -24,16 +26,34 @@ export interface FormattedAuditEntry {
   userId: string;
   date: Date;
   details?: string;
+  changes?: any[];
 }
 
-// Fetch audit log entries for a specific incident
+// Fetch audit log entries for a specific incident with client filtering
 export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLogEntry[]> => {
   try {
+    // First get the current user's employee record to get client_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('client_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (employeeError || !employee) {
+      throw new Error('Employee not found');
+    }
+
     const { data, error } = await supabase
       .from('incident_audit_log')
       .select(`
         id,
         incident_id,
+        client_id,
         field_changed,
         old_value,
         new_value,
@@ -41,9 +61,11 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
         changed_at,
         change_type,
         description,
+        changes,
         created_at
       `)
       .eq('incident_id', incidentId)
+      .eq('client_id', employee.client_id)
       .order('changed_at', { ascending: false });
 
     if (error) {
@@ -93,7 +115,8 @@ const formatFieldName = (fieldName: string): string => {
     'root_cause_analysis': 'Root Cause Analysis',
     'action_taken': 'Action Taken',
     'comments': 'Comments',
-    'documents': 'Documents'
+    'documents': 'Documents',
+    'multiple_fields': 'Multiple Fields'
   };
 
   return fieldMap[fieldName] || fieldName;
@@ -112,13 +135,16 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
       let entityType: FormattedAuditEntry['type'] = 'incident';
       
       if (entry.change_type === 'field_update') {
-        if (entry.field_changed === 'status_id') {
-          entityType = 'status';
-          // Check if status changed to closed
-          if (entry.new_value === 'closed') {
-            activityType = 'close';
-          } else if (entry.old_value === 'closed') {
-            activityType = 'reopen';
+        if (entry.field_changed === 'status_id' && entry.changes) {
+          // Check changes array for status updates
+          const statusChange = entry.changes.find((change: any) => change.field === 'status_id');
+          if (statusChange) {
+            entityType = 'status';
+            if (statusChange.new_value === 'closed') {
+              activityType = 'close';
+            } else if (statusChange.old_value === 'closed') {
+              activityType = 'reopen';
+            }
           }
         }
       } else if (entry.change_type === 'action') {
@@ -129,9 +155,16 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
         activityType = 'create';
       }
 
-      // Create description
+      // Create description from changes if available
       let details = entry.description;
-      if (!details && entry.change_type === 'field_update') {
+      if (!details && entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0) {
+        if (entry.changes.length === 1) {
+          const change = entry.changes[0];
+          details = change.description || `${formatFieldName(change.field)} updated`;
+        } else {
+          details = `Updated ${entry.changes.length} fields: ${entry.changes.map((c: any) => formatFieldName(c.field)).join(', ')}`;
+        }
+      } else if (!details && entry.change_type === 'field_update') {
         const fieldName = formatFieldName(entry.field_changed);
         if (entry.old_value && entry.new_value) {
           details = `${fieldName} changed from "${entry.old_value}" to "${entry.new_value}"`;
@@ -153,7 +186,8 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
         user: userName,
         userId: entry.changed_by,
         date: new Date(entry.changed_at),
-        details: details || undefined
+        details: details || undefined,
+        changes: entry.changes || undefined
       });
     } catch (error) {
       console.error('Error formatting audit entry:', error);
@@ -172,17 +206,36 @@ export const logAuditEntry = async (
   oldValue?: string,
   newValue?: string,
   changeType: string = 'action',
-  description?: string
+  description?: string,
+  changes?: any[]
 ): Promise<string | null> => {
   try {
+    // Get client_id from the current user's employee record
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('client_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (employeeError || !employee) {
+      throw new Error('Employee not found');
+    }
+
     const { data, error } = await supabase.rpc('insert_incident_audit_log', {
       p_incident_id: incidentId,
+      p_client_id: employee.client_id,
       p_field_changed: fieldChanged,
       p_changed_by: changedBy,
       p_old_value: oldValue || null,
       p_new_value: newValue || null,
       p_change_type: changeType,
-      p_description: description || null
+      p_description: description || null,
+      p_changes: changes ? JSON.stringify(changes) : null
     });
 
     if (error) {
