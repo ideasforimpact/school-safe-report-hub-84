@@ -76,7 +76,7 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
             size: 0,
             url: doc.data || '',
             path: '',
-            uploadedAt: new Date()
+            uploadedAt: new Date().toISOString() // Convert to string format
           })) : []} 
           incidentId={incident.id}
           onUpdate={onUpdate}
