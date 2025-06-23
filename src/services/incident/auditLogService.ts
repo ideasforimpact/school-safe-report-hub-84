@@ -118,13 +118,15 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
   }
 };
 
-// Helper function to get user name from employee data
+// Helper function to get user name from employee data using user_id
 const getUserName = async (userId: string): Promise<string> => {
   try {
+    console.log('Looking up user name for user_id:', userId);
+    
     const { data: employee, error } = await supabase
       .from('employees')
       .select('first_name, last_name')
-      .eq('id', userId)
+      .eq('user_id', userId)  // Changed from 'id' to 'user_id'
       .single();
 
     if (error || !employee) {
@@ -132,10 +134,83 @@ const getUserName = async (userId: string): Promise<string> => {
       return 'Unknown User';
     }
 
-    return `${employee.first_name} ${employee.last_name}`;
+    const fullName = `${employee.first_name} ${employee.last_name}`;
+    console.log('Found employee name:', fullName);
+    return fullName;
   } catch (error) {
     console.error('Error fetching user name:', error);
     return 'Unknown User';
+  }
+};
+
+// Helper function to resolve field values to human-readable names
+const resolveFieldValue = async (fieldName: string, value: string): Promise<string> => {
+  if (!value) return 'None';
+  
+  try {
+    switch (fieldName) {
+      case 'status_id':
+        const { data: status } = await supabase
+          .from('incident_status')
+          .select('name')
+          .eq('id', value)
+          .single();
+        return status?.name || value;
+        
+      case 'priority_id':
+        const { data: priority } = await supabase
+          .from('incident_priorities')
+          .select('name')
+          .eq('id', value)
+          .single();
+        return priority?.name || value;
+        
+      case 'category_id':
+        const { data: category } = await supabase
+          .from('incident_categories')
+          .select('name')
+          .eq('id', value)
+          .single();
+        return category?.name || value;
+        
+      case 'subcategory_id':
+        const { data: subcategory } = await supabase
+          .from('incident_subcategories')
+          .select('name')
+          .eq('id', value)
+          .single();
+        return subcategory?.name || value;
+        
+      case 'type_id':
+        const { data: type } = await supabase
+          .from('incident_report_types')
+          .select('name')
+          .eq('id', value)
+          .single();
+        return type?.name || value;
+        
+      case 'assigned_to':
+        const { data: assignee } = await supabase
+          .from('employees')
+          .select('first_name, last_name')
+          .eq('id', value)
+          .single();
+        return assignee ? `${assignee.first_name} ${assignee.last_name}` : value;
+        
+      case 'facility_id':
+        const { data: facility } = await supabase
+          .from('facilities')
+          .select('name')
+          .eq('id', value)
+          .single();
+        return facility?.name || value;
+        
+      default:
+        return value;
+    }
+  } catch (error) {
+    console.error(`Error resolving ${fieldName} value:`, error);
+    return value;
   }
 };
 
@@ -155,6 +230,7 @@ const formatFieldName = (fieldName: string): string => {
     'action_taken': 'Action Taken',
     'comments': 'Comments',
     'documents': 'Documents',
+    'people_involved': 'People Involved',
     'multiple_fields': 'Multiple Fields'
   };
 
@@ -200,23 +276,63 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
         activityType = 'create';
       }
 
-      // Create description from changes if available
+      // Create enhanced description from changes if available
       let details = entry.description;
-      if (!details && entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0) {
+      
+      if (entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0) {
+        console.log('Processing changes array:', entry.changes);
+        
         if (entry.changes.length === 1) {
           const change = entry.changes[0];
-          details = change.description || `${formatFieldName(change.field)} updated`;
+          const fieldName = formatFieldName(change.field);
+          
+          // Resolve old and new values to human-readable names
+          const oldValue = change.old_value ? await resolveFieldValue(change.field, change.old_value) : 'None';
+          const newValue = change.new_value ? await resolveFieldValue(change.field, change.new_value) : 'None';
+          
+          if (oldValue !== 'None' && newValue !== 'None') {
+            details = `${fieldName} changed from "${oldValue}" to "${newValue}"`;
+          } else if (newValue !== 'None') {
+            details = `${fieldName} set to "${newValue}"`;
+          } else if (oldValue !== 'None') {
+            details = `${fieldName} cleared (was "${oldValue}")`;
+          } else {
+            details = `${fieldName} updated`;
+          }
         } else {
-          details = `Updated ${entry.changes.length} fields: ${entry.changes.map((c: any) => formatFieldName(c.field)).join(', ')}`;
+          // Multiple changes - create a summary
+          const changeDescriptions = [];
+          const fieldNames = [];
+          
+          for (const change of entry.changes) {
+            const fieldName = formatFieldName(change.field);
+            fieldNames.push(fieldName);
+            
+            if (change.old_value && change.new_value) {
+              const oldValue = await resolveFieldValue(change.field, change.old_value);
+              const newValue = await resolveFieldValue(change.field, change.new_value);
+              changeDescriptions.push(`${fieldName}: "${oldValue}" → "${newValue}"`);
+            }
+          }
+          
+          if (changeDescriptions.length > 0) {
+            details = `Updated ${fieldNames.join(', ')}: ${changeDescriptions.join(', ')}`;
+          } else {
+            details = `Updated ${entry.changes.length} fields: ${fieldNames.join(', ')}`;
+          }
         }
       } else if (!details && entry.change_type === 'field_update') {
         const fieldName = formatFieldName(entry.field_changed);
         if (entry.old_value && entry.new_value) {
-          details = `${fieldName} changed from "${entry.old_value}" to "${entry.new_value}"`;
+          const oldValue = await resolveFieldValue(entry.field_changed, entry.old_value);
+          const newValue = await resolveFieldValue(entry.field_changed, entry.new_value);
+          details = `${fieldName} changed from "${oldValue}" to "${newValue}"`;
         } else if (entry.new_value) {
-          details = `${fieldName} set to "${entry.new_value}"`;
+          const newValue = await resolveFieldValue(entry.field_changed, entry.new_value);
+          details = `${fieldName} set to "${newValue}"`;
         } else if (entry.old_value) {
-          details = `${fieldName} removed (was "${entry.old_value}")`;
+          const oldValue = await resolveFieldValue(entry.field_changed, entry.old_value);
+          details = `${fieldName} removed (was "${oldValue}")`;
         } else {
           details = `${fieldName} updated`;
         }
