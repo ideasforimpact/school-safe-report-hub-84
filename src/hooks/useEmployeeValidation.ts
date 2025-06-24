@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 /**
  * Custom hook to validate employee access on page loads and visibility changes.
@@ -13,8 +14,10 @@ export const useEmployeeValidation = () => {
   const { employeeData, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { state } = useEmployeeStore();
   const lastValidationRef = useRef<number>(Date.now());
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isValidatingRef = useRef<boolean>(false);
 
   // Function to check if the current path is a backoffice path
   const isBackofficePath = () => {
@@ -23,6 +26,12 @@ export const useEmployeeValidation = () => {
 
   // Function to validate the employee
   const validateEmployee = async () => {
+    // Skip validation if logging out
+    if (state.isLoggingOut) {
+      console.log('Skipping validation: logout in progress');
+      return;
+    }
+
     // Skip validation for backoffice paths
     if (isBackofficePath()) {
       return;
@@ -32,6 +41,13 @@ export const useEmployeeValidation = () => {
     if (!employeeData?.id || !employeeData?.clientId) {
       return;
     }
+
+    // Prevent multiple simultaneous validations
+    if (isValidatingRef.current) {
+      return;
+    }
+
+    isValidatingRef.current = true;
     
     try {
       // Call the validate-employee edge function
@@ -42,12 +58,11 @@ export const useEmployeeValidation = () => {
         }
       });
       
-      // If validation fails, log out and redirect to login page
-      if (error || !data?.valid) {
+      // If validation fails and not already logging out, log out and redirect
+      if ((error || !data?.valid) && !state.isLoggingOut) {
         console.error('Employee validation failed:', error?.message || data?.message);
         toast.error('Your session has expired. Please log in again.');
         logout();
-        navigate('/login');
       }
       
       // Update last validation timestamp
@@ -55,18 +70,34 @@ export const useEmployeeValidation = () => {
       
     } catch (error) {
       console.error('Error during employee validation:', error);
+    } finally {
+      isValidatingRef.current = false;
     }
+  };
+
+  // Clean up function
+  const cleanup = () => {
+    if (validationTimeoutRef.current) {
+      clearInterval(validationTimeoutRef.current);
+      validationTimeoutRef.current = null;
+    }
+    isValidatingRef.current = false;
   };
 
   // Effect to set up validation on page loads and visibility changes
   useEffect(() => {
-    // Skip for backoffice paths
-    if (isBackofficePath()) {
+    // Skip for backoffice paths or if logging out
+    if (isBackofficePath() || state.isLoggingOut) {
+      cleanup();
       return;
     }
     
     // Function to handle page visibility changes
     const handleVisibilityChange = () => {
+      if (state.isLoggingOut) {
+        return;
+      }
+
       if (document.visibilityState === 'visible') {
         // Only validate if it's been more than 5 minutes since last validation
         const timeSinceLastValidation = Date.now() - lastValidationRef.current;
@@ -80,19 +111,28 @@ export const useEmployeeValidation = () => {
     validateEmployee();
     
     // Set up periodic validation (every 30 minutes)
-    validationTimeoutRef.current = setInterval(validateEmployee, 30 * 60 * 1000);
+    validationTimeoutRef.current = setInterval(() => {
+      if (!state.isLoggingOut) {
+        validateEmployee();
+      }
+    }, 30 * 60 * 1000);
     
     // Add visibility change listener
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Clean up
     return () => {
-      if (validationTimeoutRef.current) {
-        clearInterval(validationTimeoutRef.current);
-      }
+      cleanup();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [employeeData, location.pathname]);
+  }, [employeeData, location.pathname, state.isLoggingOut]);
+
+  // Clean up when logging out
+  useEffect(() => {
+    if (state.isLoggingOut) {
+      cleanup();
+    }
+  }, [state.isLoggingOut]);
 
   return { validateEmployee };
 };
