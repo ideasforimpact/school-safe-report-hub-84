@@ -63,8 +63,8 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     if (incident.is_voided) return false;
     
     const permissions = checkPermissions(
-      incident.reportedBy || '', 
-      incident.owner
+      incident.reportedById || '', 
+      incident.ownerId
     );
     
     return permissions.canEdit;

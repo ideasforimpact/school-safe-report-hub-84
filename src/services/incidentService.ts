@@ -15,10 +15,12 @@ export interface IncidentRecord {
   status: string;
   priority: string;
   reportedBy: string;
+  reportedById: string; // Add employee ID for permission checks
   owner?: string;
+  ownerId?: string; // Add employee ID for permission checks
   createdAt: Date;
   updatedAt: Date;
-  is_voided?: boolean; // Add the missing property
+  is_voided?: boolean;
 }
 
 export const incidentService = {
@@ -42,8 +44,8 @@ export const incidentService = {
           facilities:facility_id(name),
           incident_priorities:priority_id(name),
           incident_status:status_id(name),
-          created_by_employee:employees!created_by(first_name, last_name),
-          assigned_employee:employees!assigned_to(first_name, last_name)
+          created_by_employee:employees!created_by(id, first_name, last_name),
+          assigned_employee:employees!assigned_to(id, first_name, last_name)
         `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
@@ -68,9 +70,11 @@ export const incidentService = {
         reportedBy: inc.created_by_employee ? 
           `${inc.created_by_employee.first_name} ${inc.created_by_employee.last_name}` : 
           'Unknown',
+        reportedById: inc.created_by_employee?.id || '',
         owner: inc.assigned_employee ? 
           `${inc.assigned_employee.first_name} ${inc.assigned_employee.last_name}` : 
           undefined,
+        ownerId: inc.assigned_employee?.id || undefined,
         createdAt: new Date(inc.created_at),
         updatedAt: new Date(inc.updated_at)
       }));
