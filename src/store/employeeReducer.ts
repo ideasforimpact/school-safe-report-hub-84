@@ -13,7 +13,7 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
       configuredModules: persistedState.configuredModules || [],
-      employeeData: persistedState.employeeData || null // Restore employeeData
+      employeeData: persistedState.employeeData || null
     };
   }
   return {};
@@ -36,7 +36,8 @@ export const initialEmployeeState: EmployeeState = {
   configuredModules: restoredState.configuredModules || [],
   isLoading: false,
   error: null,
-  clientId: restoredState.employeeData?.clientId || null
+  clientId: restoredState.employeeData?.clientId || null,
+  isLoggingOut: false
 };
 
 export const employeeReducer = (
@@ -87,7 +88,7 @@ export const employeeReducer = (
         isBackofficeUser: false,
         authError: null,
         configuredModules: [],
-        employeeData: null // Clear employeeData on auth clear
+        employeeData: null
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
@@ -126,12 +127,20 @@ export const employeeReducer = (
         clientId: action.payload
       };
       
+    case EmployeeActionTypes.SET_LOGOUT_STATE:
+      console.log("Setting logout state in reducer:", action.payload);
+      return {
+        ...state,
+        isLoggingOut: action.payload
+      };
+      
     case EmployeeActionTypes.RESET_EMPLOYEE:
       console.log("Resetting employee state in reducer");
       return {
         ...initialEmployeeState,
         configuredModules: [],
-        employeeData: null
+        employeeData: null,
+        isLoggingOut: false
       };
       
     default:

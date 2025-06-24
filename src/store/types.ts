@@ -1,18 +1,18 @@
-import { EmployeeData, User, UserRole } from '@/contexts/auth/types';
 
-export interface Module {
+import { User } from '@/contexts/auth/types';
+
+export interface EmployeeData {
   id: string;
-  name: string;
-  key?: string;
-  icon?: string;
-  level: string;
-  enabled: boolean;
-  accessLevel?: Record<string, any>;
-  order?: number;
-  url?: string;
+  clientId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isSuperAdmin?: boolean;
+  department?: string;
+  employeeType?: string;
+  client?: any;
+  clientType?: any;
 }
-
-// Remove duplicate User interface since we're importing it from auth context
 
 export interface EmployeeState {
   // Authentication state
@@ -23,30 +23,31 @@ export interface EmployeeState {
   
   // Employee data
   employeeData: EmployeeData | null;
-  configuredModules: Module[];
+  configuredModules: any[];
   isLoading: boolean;
   error: string | null;
   clientId: string | null;
+  
+  // Add logout state
+  isLoggingOut: boolean;
 }
 
 export enum EmployeeActionTypes {
-  // Authentication actions
   SET_CURRENT_USER = 'SET_CURRENT_USER',
   SET_BACKOFFICE_USER = 'SET_BACKOFFICE_USER',
   SET_AUTH_STATUS = 'SET_AUTH_STATUS',
   SET_AUTH_ERROR = 'SET_AUTH_ERROR',
   CLEAR_AUTH = 'CLEAR_AUTH',
-  
-  // Employee data actions
   SET_EMPLOYEE_DATA = 'SET_EMPLOYEE_DATA',
   SET_CONFIGURED_MODULES = 'SET_CONFIGURED_MODULES',
   SET_LOADING = 'SET_LOADING',
   SET_ERROR = 'SET_ERROR',
+  SET_CLIENT_ID = 'SET_CLIENT_ID',
   RESET_EMPLOYEE = 'RESET_EMPLOYEE',
-  SET_CLIENT_ID = 'SET_CLIENT_ID'
+  SET_LOGOUT_STATE = 'SET_LOGOUT_STATE'
 }
 
-// Authentication action interfaces
+// Action interfaces
 export interface SetCurrentUserAction {
   type: EmployeeActionTypes.SET_CURRENT_USER;
   payload: User | null;
@@ -71,7 +72,6 @@ export interface ClearAuthAction {
   type: EmployeeActionTypes.CLEAR_AUTH;
 }
 
-// Existing action interfaces
 export interface SetEmployeeDataAction {
   type: EmployeeActionTypes.SET_EMPLOYEE_DATA;
   payload: EmployeeData | null;
@@ -79,7 +79,7 @@ export interface SetEmployeeDataAction {
 
 export interface SetConfiguredModulesAction {
   type: EmployeeActionTypes.SET_CONFIGURED_MODULES;
-  payload: Module[];
+  payload: any[];
 }
 
 export interface SetLoadingAction {
@@ -92,13 +92,18 @@ export interface SetErrorAction {
   payload: string | null;
 }
 
+export interface SetClientIdAction {
+  type: EmployeeActionTypes.SET_CLIENT_ID;
+  payload: string | null;
+}
+
 export interface ResetEmployeeAction {
   type: EmployeeActionTypes.RESET_EMPLOYEE;
 }
 
-export interface SetClientIdAction {
-  type: EmployeeActionTypes.SET_CLIENT_ID;
-  payload: string | null;
+export interface SetLogoutStateAction {
+  type: EmployeeActionTypes.SET_LOGOUT_STATE;
+  payload: boolean;
 }
 
 export type EmployeeAction = 
@@ -107,9 +112,10 @@ export type EmployeeAction =
   | SetAuthStatusAction
   | SetAuthErrorAction
   | ClearAuthAction
-  | SetEmployeeDataAction 
-  | SetConfiguredModulesAction 
-  | SetLoadingAction 
+  | SetEmployeeDataAction
+  | SetConfiguredModulesAction
+  | SetLoadingAction
   | SetErrorAction
+  | SetClientIdAction
   | ResetEmployeeAction
-  | SetClientIdAction;
+  | SetLogoutStateAction;
