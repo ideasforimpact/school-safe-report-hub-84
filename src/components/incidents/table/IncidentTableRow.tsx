@@ -9,6 +9,7 @@ import { getStatusBadgeClass } from '@/utils/statusUtils';
 import { getSimpleId } from '@/utils/ticketUtils';
 import { formatDate } from '@/utils/dateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIncidentPermissions } from '@/utils/incidentPermissions';
 
 interface IncidentTableRowProps {
   incident: Incident;
@@ -23,6 +24,17 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   onViewClick, 
   onEditClick 
 }) => {
+  const { checkPermissions } = useIncidentPermissions();
+  
+  // Check if current user can edit this incident
+  const permissions = checkPermissions(
+    incident.reportedBy?.id || '', 
+    incident.owner?.id
+  );
+  
+  // Show edit button only if user has edit permission AND incident is not voided
+  const canShowEditButton = permissions.canEdit && !incident.isVoided;
+  
   // Add debug logging to check incident ID
   console.log(`Rendering row for incident: ${incident.id}, ticketId: ${incident.ticketId}`);
   
@@ -105,16 +117,17 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
             <Eye className="h-4 w-4" />
             <span className="sr-only">View</span>
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={(e) => onEditClick(e, incident.id)}
-            disabled={incident.isVoided}
-          >
-            <Edit className="h-4 w-4" />
-            <span className="sr-only">Edit</span>
-          </Button>
+          {canShowEditButton && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={(e) => onEditClick(e, incident.id)}
+            >
+              <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>
