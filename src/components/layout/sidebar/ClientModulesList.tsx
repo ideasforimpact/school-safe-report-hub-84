@@ -41,14 +41,24 @@ interface ModuleItem {
 const ClientModulesList = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { state } = useEmployeeStore(); // Get state from Redux
-  const configuredModules = getConfiguredModules(state); // Use selector
-  const isLoading = getEmployeeLoadingState(state); // Use selector
+  const { state } = useEmployeeStore();
+  const configuredModules = getConfiguredModules(state);
+  const isLoading = getEmployeeLoadingState(state);
+  const isFetchingModules = state.isFetchingModules;
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-console.log(configuredModules,"configuredModules")
+  console.log(configuredModules, "configuredModules");
+  console.log("isFetchingModules:", isFetchingModules);
+  console.log("isLoading:", isLoading);
+
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
+    // Wait for modules to be fetched before rendering
+    if (isFetchingModules) {
+      console.log("Still fetching modules, waiting...");
+      return;
+    }
+
     if (configuredModules && configuredModules.length > 0) {
       console.log("Using modules from Redux store:", configuredModules);
       
@@ -70,9 +80,9 @@ console.log(configuredModules,"configuredModules")
       });
       
       setSidebarModules(modules);
-    } else {
-      // Fallback to dashboard if no modules are in the store
-      console.log("No modules in Redux store, using default dashboard");
+    } else if (!isFetchingModules && !isLoading) {
+      // Only show default dashboard if we're not fetching and have no modules
+      console.log("No modules found and not fetching, using default dashboard");
       setSidebarModules([{
         icon: LayoutDashboard,
         label: 'Dashboard',
@@ -81,7 +91,7 @@ console.log(configuredModules,"configuredModules")
         accessLevel: {}
       }]);
     }
-  }, [configuredModules]);
+  }, [configuredModules, isFetchingModules, isLoading]);
 
   // Determine if a path is active
   const isActive = (path: string) => {
@@ -90,10 +100,11 @@ console.log(configuredModules,"configuredModules")
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  if (isLoading) {
+  // Show loading state while fetching modules
+  if (isFetchingModules || isLoading) {
     return (
       <div className="flex-1 py-6 text-white flex justify-center items-center">
-        <span className="text-sm">Loading...</span>
+        <span className="text-sm">Loading modules...</span>
       </div>
     );
   }

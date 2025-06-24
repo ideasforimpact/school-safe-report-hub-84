@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId } from '@/store/employeeActions';
+import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId, setFetchingModules } from '@/store/employeeActions';
 import { supabase } from '@/integrations/supabase/client';
 import { Module } from '@/store/types';
 import { useLocation } from 'react-router-dom';
@@ -29,25 +29,26 @@ export const useEmployeeData = () => {
                                 location.pathname === '/support' ||
                                 location.pathname === '/blog';
 
-  // Fetch configured modules for the employee - now optimized to avoid unnecessary calls
+  // Fetch configured modules for the employee
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
+      // Prevent duplicate fetching
+      if (state.isFetchingModules) {
+        console.log("Already fetching modules, skipping");
+        return;
+      }
+
+      dispatch(setFetchingModules(true));
       dispatch(setLoading(true));
       
       if (!clientId) {
         dispatch(setError("Client ID is missing"));
+        dispatch(setFetchingModules(false));
         return;
       }
 
       // Set the client ID in Redux store
       dispatch(setClientId(clientId));
-
-      // Check Redux store first - if modules are already loaded, don't fetch again unless specifically needed
-      if (state.configuredModules && state.configuredModules.length > 0) {
-        console.log("Modules already loaded in Redux, skipping fetch");
-        dispatch(setLoading(false));
-        return;
-      }
 
       console.log("Fetching modules for employee:", employeeId, "client:", clientId);
 
@@ -65,6 +66,7 @@ export const useEmployeeData = () => {
       if (employeeError) {
         console.error('Error fetching employee:', employeeError);
         dispatch(setError(employeeError.message));
+        dispatch(setFetchingModules(false));
         return;
       }
 
@@ -89,6 +91,7 @@ export const useEmployeeData = () => {
         if (clientModulesError) {
           console.error('Error fetching client modules:', clientModulesError);
           dispatch(setError(clientModulesError.message));
+          dispatch(setFetchingModules(false));
           return;
         }
 
@@ -101,9 +104,9 @@ export const useEmployeeData = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level, // Using level as key
+            key: moduleObj.level,
             icon: moduleObj.icon || '',
-            level: moduleObj.level, // Include the level property
+            level: moduleObj.level,
             enabled: true,
             accessLevel: cm.access_level || {}
           };
@@ -125,6 +128,7 @@ export const useEmployeeData = () => {
         if (clientModulesError) {
           console.error('Error fetching client modules:', clientModulesError);
           dispatch(setError(clientModulesError.message));
+          dispatch(setFetchingModules(false));
           return;
         }
 
@@ -140,6 +144,7 @@ export const useEmployeeData = () => {
         if (employeeModulesError) {
           console.error('Error fetching employee modules:', employeeModulesError);
           dispatch(setError(employeeModulesError.message));
+          dispatch(setFetchingModules(false));
           return;
         }
 
@@ -158,7 +163,7 @@ export const useEmployeeData = () => {
           
           // Check if this module is assigned to the employee
           const hasAccess = employeeModules?.some(em => em.module_id === moduleObj.id) || 
-                          employeeModules?.length === 0; // If no modules specified, assume access to all
+                          employeeModules?.length === 0;
           
           if (!hasAccess && employeeModules?.length > 0) {
             return null;
@@ -167,9 +172,9 @@ export const useEmployeeData = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level, // Using level as key
+            key: moduleObj.level,
             icon: moduleObj.icon || '',
-            level: moduleObj.level, // Include the level property
+            level: moduleObj.level,
             enabled: true,
             accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {}
           };
@@ -203,6 +208,7 @@ export const useEmployeeData = () => {
       console.error('Error in fetchConfiguredModules:', error);
       dispatch(setError("Failed to fetch configured modules"));
       dispatch(setLoading(false));
+      dispatch(setFetchingModules(false));
     }
   };
 
@@ -227,15 +233,14 @@ export const useEmployeeData = () => {
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
-      // Fetch modules if we have employeeId and clientId, and modules are empty
-      if (authEmployeeData.id && authEmployeeData.clientId &&
-          (!state.configuredModules || state.configuredModules.length === 0)) {
-        console.log("Employee data available but modules empty, fetching modules");
+      // Always fetch modules when we have employee data and need it
+      if (authEmployeeData.id && authEmployeeData.clientId && !state.isFetchingModules) {
+        console.log("Employee data available, fetching modules");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
     } else {
       // If we have a user but no employee data, try to fetch employee data from the database
-      if (user && user.id) {
+      if (user && user.id && !state.isFetchingModules) {
         const fetchEmployeeDataFromDB = async () => {
           try {
             console.log('Fetching employee data for user:', user.id);
@@ -272,10 +277,9 @@ export const useEmployeeData = () => {
                 dispatch(setClientId(data.client_id));
               }
               
-              // Fetch modules if modules are empty
-              if (data.id && data.client_id && 
-                  (!state.configuredModules || state.configuredModules.length === 0)) {
-                console.log("Fetched employee data but modules empty, fetching modules");
+              // Fetch modules
+              if (data.id && data.client_id && !state.isFetchingModules) {
+                console.log("Fetched employee data, now fetching modules");
                 fetchConfiguredModules(data.id, data.client_id);
               }
             } else {
@@ -289,29 +293,17 @@ export const useEmployeeData = () => {
         fetchEmployeeDataFromDB();
       }
     }
-  }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
-
-  // Additional effect to handle page refresh scenario where user exists but modules are missing
-  useEffect(() => {
-    // If we have a current user and employee data but no modules, re-fetch modules
-    if (state.currentUser && state.employeeData && 
-        (!state.configuredModules || state.configuredModules.length === 0) &&
-        needsEmployeeData && !shouldSkipEmployeeData) {
-      console.log("Page refresh detected: user and employee data exist but modules missing, re-fetching");
-      if (state.employeeData.id && state.employeeData.clientId) {
-        fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
-      }
-    }
-  }, [state.currentUser, state.employeeData, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData]);
+  }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData, state.isFetchingModules]);
 
   return {
     employeeData: state.employeeData,
     configuredModules: state.configuredModules,
     isLoading: state.isLoading,
+    isFetchingModules: state.isFetchingModules,
     error: state.error,
-    clientId: state.clientId, // Include clientId in the return value
+    clientId: state.clientId,
     refetchModules: () => {
-      if (state.employeeData?.id && state.employeeData?.clientId) {
+      if (state.employeeData?.id && state.employeeData?.clientId && !state.isFetchingModules) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
       }
     }

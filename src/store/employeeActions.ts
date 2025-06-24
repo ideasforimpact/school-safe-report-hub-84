@@ -1,9 +1,9 @@
-
 import {
   EmployeeActionTypes,
   SetEmployeeDataAction,
   SetConfiguredModulesAction,
   SetLoadingAction,
+  SetFetchingModulesAction,
   SetErrorAction,
   ResetEmployeeAction,
   SetClientIdAction,
@@ -55,5 +55,13 @@ export const setClientId = (clientId: string | null): SetClientIdAction => {
   return {
     type: EmployeeActionTypes.SET_CLIENT_ID,
     payload: clientId
+  };
+};
+
+export const setFetchingModules = (isFetching: boolean): SetFetchingModulesAction => {
+  console.log("setFetchingModules action creator called with:", isFetching);
+  return {
+    type: EmployeeActionTypes.SET_FETCHING_MODULES,
+    payload: isFetching
   };
 };
