@@ -74,13 +74,47 @@ serve(async (req) => {
       )
     }
 
-    // Get current user from auth header (if available)
+    // Get current user from auth header
     const authHeader = req.headers.get('authorization')
     let currentUser = null
+    let currentUserName = 'System User' // fallback
+    let currentUserId = 'system'
     
     if (authHeader) {
       const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
       currentUser = user
+      
+      if (currentUser) {
+        currentUserId = currentUser.id
+        
+        // Try to get real name from employees table
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('first_name, last_name, email')
+          .eq('user_id', currentUser.id)
+          .single()
+        
+        if (employee && !employeeError) {
+          // Use real name from employees table
+          currentUserName = `${employee.first_name} ${employee.last_name}`.trim()
+          console.log('Found employee name:', currentUserName)
+        } else {
+          console.log('Employee not found, trying auth user metadata')
+          
+          // Fallback: try to get name from auth user metadata
+          const firstName = currentUser.user_metadata?.first_name || currentUser.user_metadata?.firstName
+          const lastName = currentUser.user_metadata?.last_name || currentUser.user_metadata?.lastName
+          
+          if (firstName || lastName) {
+            currentUserName = `${firstName || ''} ${lastName || ''}`.trim()
+          } else if (currentUser.email) {
+            // Last fallback: use email as display name
+            currentUserName = currentUser.email
+          }
+          
+          console.log('Using fallback name:', currentUserName)
+        }
+      }
     }
 
     // Create new comment object with file storage URLs instead of base64
@@ -88,9 +122,9 @@ serve(async (req) => {
       id: crypto.randomUUID(),
       description: comment.trim(),
       dueDate: new Date().toISOString(),
-      assignedTo: { id: currentUser?.id || 'system', name: 'System User' },
+      assignedTo: { id: currentUserId, name: currentUserName },
       status: 'Pending',
-      createdBy: { id: currentUser?.id || 'system', name: 'System User' },
+      createdBy: { id: currentUserId, name: currentUserName },
       files: (documents || []).map((doc: any) => ({
         id: crypto.randomUUID(),
         name: doc.name || doc,
@@ -102,6 +136,8 @@ serve(async (req) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
+
+    console.log('Creating comment with user name:', currentUserName)
 
     // Get existing comments and add the new one
     const existingComments = incident.comments || []
@@ -129,7 +165,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('Comment added successfully:', newComment.id)
+    console.log('Comment added successfully with real user name:', newComment.id)
 
     return new Response(
       JSON.stringify({ 
