@@ -3,9 +3,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X } from 'lucide-react';
+import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X, RotateCcw } from 'lucide-react';
 import { Incident, IncidentStatus } from '@/types/incident';
 import { useNavigate } from 'react-router-dom';
+import { useIncidentReopen } from '@/hooks/useIncidentReopen';
+import { useAuth } from '@/contexts/auth/AuthContext';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -15,6 +17,7 @@ interface IncidentHeaderProps {
   formatDate: (date: Date) => string;
   getStatusColor: (status: IncidentStatus) => string;
   onCloseButtonClick?: () => void;
+  onIncidentUpdate?: () => void;
 }
 
 const IncidentHeader: React.FC<IncidentHeaderProps> = ({
@@ -24,9 +27,12 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   onStatusChange,
   formatDate,
   getStatusColor,
-  onCloseButtonClick
+  onCloseButtonClick,
+  onIncidentUpdate
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { handleReopenIncident, isReopening } = useIncidentReopen();
 
   const handleEditClick = () => {
     console.log("Navigating to edit incident:", incident.id);
@@ -36,6 +42,61 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   const handleCloseIncident = () => {
     if (onCloseButtonClick) {
       onCloseButtonClick();
+    }
+  };
+
+  const handleReopenClick = async () => {
+    if (!user?.id) {
+      console.error('No user ID available for reopening incident');
+      return;
+    }
+
+    const success = await handleReopenIncident(
+      incident.id,
+      user.id,
+      () => {
+        // On success callback - refresh the incident data
+        if (onIncidentUpdate) {
+          onIncidentUpdate();
+        }
+      }
+    );
+
+    if (success) {
+      console.log('Incident reopened successfully');
+    }
+  };
+
+  // Enhanced status text to show reopened info
+  const getStatusText = () => {
+    const reopenCount = incident.reopen || 0;
+    if (incident.status === 'Open' && reopenCount > 0) {
+      return `Open (Reopened)`;
+    }
+    return incident.status;
+  };
+
+  // Enhanced status color with consistent background
+  const getEnhancedStatusColor = (status: IncidentStatus) => {
+    const reopenCount = incident.reopen || 0;
+    const baseColor = getStatusColor(status);
+    
+    switch(status) {
+      case 'Open':
+        if (reopenCount > 0) {
+          return 'bg-orange-500 text-white border-orange-500';
+        }
+        return 'bg-red-500 text-white border-red-500';
+      case 'In Progress':
+        return 'bg-yellow-500 text-white border-yellow-500';
+      case 'Closed':
+        return 'bg-green-500 text-white border-green-500';
+      case 'New':
+        return 'bg-blue-500 text-white border-blue-500';
+      case 'On Hold':
+        return 'bg-gray-500 text-white border-gray-500';
+      default:
+        return 'bg-gray-500 text-white border-gray-500';
     }
   };
 
@@ -50,9 +111,9 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               </CardTitle>
               <Badge 
                 variant="secondary" 
-                className={`${getStatusColor(incident.status)} text-white font-medium px-3 py-1`}
+                className={`${getEnhancedStatusColor(incident.status)} font-medium px-3 py-1`}
               >
-                {incident.status}
+                {getStatusText()}
               </Badge>
             </div>
             <p className="text-gray-600 font-medium">
@@ -66,6 +127,19 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
           </div>
           
           <div className="flex gap-2">
+            {/* Show Reopen button only if incident is Closed and not voided */}
+            {incident.status === 'Closed' && !incident.isVoided && (
+              <Button 
+                onClick={handleReopenClick}
+                disabled={isReopening}
+                size="sm"
+                className="bg-orange-600 hover:bg-orange-700 text-white flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                {isReopening ? 'Reopening...' : 'Reopen'}
+              </Button>
+            )}
+
             {/* Show Close button only if incident is Open and not voided */}
             {incident.status === 'Open' && !incident.isVoided && (
               <Button 
@@ -133,6 +207,15 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               <User className="h-4 w-4 text-gray-400" />
               <span className="text-gray-600">Owner:</span>
               <span className="font-medium">{incident.owner.name}</span>
+            </div>
+          )}
+
+          {/* Show reopen count if greater than 0 */}
+          {(incident.reopen || 0) > 0 && (
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-gray-400" />
+              <span className="text-gray-600">Reopened:</span>
+              <span className="font-medium">{incident.reopen} time{(incident.reopen || 0) > 1 ? 's' : ''}</span>
             </div>
           )}
         </div>
