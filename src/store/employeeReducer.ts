@@ -10,10 +10,7 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
       isAuthenticated: persistedState.isAuthenticated,
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
-      // Only restore modules if they actually contain data
-      configuredModules: persistedState.configuredModules && persistedState.configuredModules.length > 0 
-        ? persistedState.configuredModules 
-        : []
+      configuredModules: persistedState.configuredModules || []
     };
   }
   return {};
@@ -33,7 +30,6 @@ export const initialEmployeeState: EmployeeState = {
   employeeData: null,
   configuredModules: [],
   isLoading: false,
-  isFetchingModules: false,
   error: null,
   clientId: null
 };
@@ -99,8 +95,7 @@ export const employeeReducer = (
       console.log("Setting configured modules in reducer:", action.payload);
       return {
         ...state,
-        configuredModules: action.payload,
-        isFetchingModules: false
+        configuredModules: action.payload
       };
       
     case EmployeeActionTypes.SET_LOADING:
@@ -110,19 +105,11 @@ export const employeeReducer = (
         isLoading: action.payload
       };
       
-    case EmployeeActionTypes.SET_FETCHING_MODULES:
-      console.log("Setting fetching modules state in reducer:", action.payload);
-      return {
-        ...state,
-        isFetchingModules: action.payload
-      };
-      
     case EmployeeActionTypes.SET_ERROR:
       console.log("Setting error in reducer:", action.payload);
       return {
         ...state,
-        error: action.payload,
-        isFetchingModules: false
+        error: action.payload
       };
       
     case EmployeeActionTypes.SET_CLIENT_ID:
@@ -134,11 +121,7 @@ export const employeeReducer = (
       
     case EmployeeActionTypes.RESET_EMPLOYEE:
       console.log("Resetting employee state in reducer");
-      return {
-        ...initialEmployeeState,
-        configuredModules: [],
-        isFetchingModules: false
-      };
+      return initialEmployeeState;
       
     default:
       return state;

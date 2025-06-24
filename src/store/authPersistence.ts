@@ -13,17 +13,9 @@ export interface PersistedAuthState {
 // Save authentication state to sessionStorage
 export const saveAuthState = (state: PersistedAuthState): void => {
   try {
-    // Only save modules if they contain actual data
-    const stateToSave = {
-      ...state,
-      configuredModules: state.configuredModules && state.configuredModules.length > 0 
-        ? state.configuredModules 
-        : null
-    };
-    
-    const serializedState = JSON.stringify(stateToSave);
+    const serializedState = JSON.stringify(state);
     sessionStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-    console.log("Auth state saved to sessionStorage:", stateToSave);
+    console.log("Auth state saved to sessionStorage:", state);
   } catch (error) {
     console.error("Error saving auth state to sessionStorage:", error);
   }
@@ -38,12 +30,6 @@ export const loadAuthState = (): PersistedAuthState | null => {
       return null;
     }
     const parsedState = JSON.parse(serializedState);
-    
-    // Don't restore empty module arrays
-    if (parsedState.configuredModules && parsedState.configuredModules.length === 0) {
-      parsedState.configuredModules = null;
-    }
-    
     console.log("Auth state loaded from sessionStorage:", parsedState);
     return parsedState;
   } catch (error) {

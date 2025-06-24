@@ -25,7 +25,6 @@ export interface EmployeeState {
   employeeData: EmployeeData | null;
   configuredModules: Module[];
   isLoading: boolean;
-  isFetchingModules: boolean;
   error: string | null;
   clientId: string | null;
 }
@@ -42,7 +41,6 @@ export enum EmployeeActionTypes {
   SET_EMPLOYEE_DATA = 'SET_EMPLOYEE_DATA',
   SET_CONFIGURED_MODULES = 'SET_CONFIGURED_MODULES',
   SET_LOADING = 'SET_LOADING',
-  SET_FETCHING_MODULES = 'SET_FETCHING_MODULES',
   SET_ERROR = 'SET_ERROR',
   RESET_EMPLOYEE = 'RESET_EMPLOYEE',
   SET_CLIENT_ID = 'SET_CLIENT_ID'
@@ -89,11 +87,6 @@ export interface SetLoadingAction {
   payload: boolean;
 }
 
-export interface SetFetchingModulesAction {
-  type: EmployeeActionTypes.SET_FETCHING_MODULES;
-  payload: boolean;
-}
-
 export interface SetErrorAction {
   type: EmployeeActionTypes.SET_ERROR;
   payload: string | null;
@@ -117,7 +110,6 @@ export type EmployeeAction =
   | SetEmployeeDataAction 
   | SetConfiguredModulesAction 
   | SetLoadingAction 
-  | SetFetchingModulesAction
   | SetErrorAction
   | ResetEmployeeAction
   | SetClientIdAction;
