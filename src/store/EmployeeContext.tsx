@@ -34,29 +34,32 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
 
   // Persist authentication state changes to sessionStorage
   useEffect(() => {
-    // Only persist authentication-related state
+    // Include employeeData in the persisted auth state
     const authState = {
       currentUser: state.currentUser,
       isAuthenticated: state.isAuthenticated,
       isBackofficeUser: state.isBackofficeUser,
       authError: state.authError,
-      configuredModules: state.configuredModules
+      configuredModules: state.configuredModules,
+      employeeData: state.employeeData // Add employeeData to persistence
     };
 
     // Only save if we have a meaningful authentication state
     const hasValidAuthState = state.currentUser || 
                              state.isBackofficeUser || 
                              state.isAuthenticated || 
+                             state.employeeData || // Also check for employeeData
                              (state.configuredModules && state.configuredModules.length > 0);
 
     if (hasValidAuthState) {
-      console.log("Persisting auth state with modules:", state.configuredModules?.length || 0);
+      console.log("Persisting auth state with modules:", state.configuredModules?.length || 0, "and employee data:", !!state.employeeData);
       saveAuthState(authState);
     } else {
       // Only clear if we're explicitly logged out (not just initializing)
       const isExplicitLogout = !state.currentUser && 
                               !state.isBackofficeUser && 
                               !state.isAuthenticated && 
+                              !state.employeeData && // Also check employeeData
                               state.authError === null && // No auth error means intentional logout
                               (!state.configuredModules || state.configuredModules.length === 0);
       
@@ -68,7 +71,7 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
         }, 100);
       }
     }
-  }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError, state.configuredModules]);
+  }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError, state.configuredModules, state.employeeData]);
 
   return (
     <EmployeeContext.Provider value={{ state, dispatch }}>
