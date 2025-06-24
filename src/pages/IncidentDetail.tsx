@@ -1,4 +1,3 @@
-
 import Layout from '@/components/layout/Layout';
 import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 import IncidentHeader from '@/components/incident/IncidentHeader';
@@ -64,7 +63,11 @@ const IncidentDetail = () => {
         updatedAt: new Date(fetchedIncident.date),
         priority: fetchedIncident.priority.name,
         comments: Array.isArray(fetchedIncident.comments) ? fetchedIncident.comments : [],
-        reopen: fetchedIncident.reopen || 0 // Add reopen field
+        reopen: fetchedIncident.reopen || 0,
+        // Add closure-related fields for proper pre-population
+        rootCauseAnalysis: fetchedIncident.root_cause_analysis || '',
+        actionTaken: fetchedIncident.action_taken || '',
+        contributingFactor: Array.isArray(fetchedIncident.contributing_factor) ? fetchedIncident.contributing_factor : []
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
