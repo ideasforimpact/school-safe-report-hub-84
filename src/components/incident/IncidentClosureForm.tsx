@@ -35,27 +35,49 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   onClose,
   onSubmit,
 }) => {
-  // Initialize with existing data or fallbacks - using correct field names
+  // Initialize with existing data using correct field names with fallbacks
   const [rootCause, setRootCause] = useState(
     incident.rootCauseAnalysis || incident.rootCause || ''
   );
   
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(
-    incident.contributingFactor || incident.contributingFactors || []
-  );
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(() => {
+    // Try multiple field names for backward compatibility
+    const factors = incident.contributingFactor || incident.contributingFactors || [];
+    
+    // Ensure we have valid contributing factors with proper structure
+    if (Array.isArray(factors) && factors.length > 0) {
+      return factors.map((factor, index) => ({
+        id: factor.id || `existing-${index}`,
+        category: factor.category || 'Unknown',
+        description: factor.description || '',
+        weight: factor.weight || 'Medium' as 'Low' | 'Medium' | 'High'
+      }));
+    }
+    
+    return [];
+  });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { state } = useEmployeeStore();
   const navigate = useNavigate();
   
   // Initialize current action with existing actionTaken data
-  const [currentAction, setCurrentAction] = useState<Action>({
-    description: incident.actionTaken || 
-      (incident.actions && incident.actions.length > 0 
-        ? incident.actions.map(a => a.description).join('\n\n')
-        : ''),
-    responsiblePerson: '',
-    date: new Date(),
+  const [currentAction, setCurrentAction] = useState<Action>(() => {
+    // Get existing action taken text
+    let actionDescription = '';
+    
+    if (incident.actionTaken) {
+      actionDescription = incident.actionTaken;
+    } else if (incident.actions && incident.actions.length > 0) {
+      // Fallback to actions array if available
+      actionDescription = incident.actions.map(a => a.description).join('\n\n');
+    }
+    
+    return {
+      description: actionDescription,
+      responsiblePerson: '',
+      date: new Date(),
+    };
   });
 
   const handleSubmit = async () => {
@@ -145,6 +167,11 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           <DialogTitle>Close Incident - Final Analysis</DialogTitle>
           <DialogDescription>
             Complete a thorough analysis before closing the incident. All fields are required.
+            {(incident.rootCauseAnalysis || incident.actionTaken || (incident.contributingFactor && incident.contributingFactor.length > 0)) && (
+              <span className="block mt-2 text-blue-600 font-medium">
+                Previous closure data has been pre-populated. You can review and modify as needed.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
