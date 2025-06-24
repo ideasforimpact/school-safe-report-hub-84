@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
@@ -44,6 +43,15 @@ export const addEmployeeToApi = async (
             code: "DUPLICATE_EMAIL", 
             error: errorMessage 
           };
+        } 
+        // Check for duplicate employee ID error
+        else if (data.code === 'DUPLICATE_EMPLOYEE_ID') {
+          const errorMessage = data.error;
+          toast.error(errorMessage);
+          throw { 
+            code: "DUPLICATE_EMPLOYEE_ID", 
+            error: errorMessage 
+          };
         } else {
           // For other errors, show a generic message
           toast.error(data.error || "Failed to add employee");
@@ -68,8 +76,8 @@ export const addEmployeeToApi = async (
       // we'll log it and fall back to the direct Supabase API
       console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
       
-      // If this is a duplicate email error we already handled, re-throw it
-      if (edgeFunctionError.code === "DUPLICATE_EMAIL") {
+      // If this is a duplicate email or employee ID error we already handled, re-throw it
+      if (edgeFunctionError.code === "DUPLICATE_EMAIL" || edgeFunctionError.code === "DUPLICATE_EMPLOYEE_ID") {
         throw edgeFunctionError;
       }
       
@@ -104,6 +112,15 @@ export const addEmployeeToApi = async (
         toast.error(errorMessage);
         throw { 
           code: "DUPLICATE_EMAIL", 
+          error: errorMessage 
+        };
+      } 
+      // Check if the error message indicates a duplicate employee ID
+      else if (error.message.includes('duplicate') && error.message.includes('employee_id')) {
+        const errorMessage = `An employee with Employee ID ${employeeData.employeeId} already exists for this client.`;
+        toast.error(errorMessage);
+        throw { 
+          code: "DUPLICATE_EMPLOYEE_ID", 
           error: errorMessage 
         };
       } else {
@@ -208,8 +225,28 @@ export const updateEmployeeInApi = async (
       // Check if the response contains an error 
       if (data && data.error) {
         console.error("Error response from edge function:", data.error);
-        toast.error(data.error || "Failed to update employee");
-        throw data;
+        
+        // Check for duplicate email error
+        if (data.code === 'DUPLICATE_EMAIL') {
+          const errorMessage = data.error;
+          toast.error(errorMessage);
+          throw { 
+            code: "DUPLICATE_EMAIL", 
+            error: errorMessage 
+          };
+        } 
+        // Check for duplicate employee ID error
+        else if (data.code === 'DUPLICATE_EMPLOYEE_ID') {
+          const errorMessage = data.error;
+          toast.error(errorMessage);
+          throw { 
+            code: "DUPLICATE_EMPLOYEE_ID", 
+            error: errorMessage 
+          };
+        } else {
+          toast.error(data.error || "Failed to update employee");
+          throw data;
+        }
       }
       
       // If we got here, it means the operation was successful
@@ -224,6 +261,11 @@ export const updateEmployeeInApi = async (
     } catch (edgeFunctionError: any) {
       console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
       
+      // If this is a duplicate error we already handled, re-throw it
+      if (edgeFunctionError.code === "DUPLICATE_EMAIL" || edgeFunctionError.code === "DUPLICATE_EMPLOYEE_ID") {
+        throw edgeFunctionError;
+      }
+      
       // Fallback: Convert the updates to match the database schema
       const dbUpdates = mapEmployeeToDbRecord(updates);
 
@@ -236,7 +278,26 @@ export const updateEmployeeInApi = async (
 
       if (error) {
         console.error("Error updating employee:", error);
-        toast.error("Failed to update employee");
+        
+        // Check for duplicate errors in fallback
+        if (error.message.includes('duplicate') && error.message.includes('email')) {
+          const errorMessage = `An employee with email ${updates.email} already exists for this client.`;
+          toast.error(errorMessage);
+          throw { 
+            code: "DUPLICATE_EMAIL", 
+            error: errorMessage 
+          };
+        } else if (error.message.includes('duplicate') && error.message.includes('employee_id')) {
+          const errorMessage = `An employee with Employee ID ${updates.employeeId} already exists for this client.`;
+          toast.error(errorMessage);
+          throw { 
+            code: "DUPLICATE_EMPLOYEE_ID", 
+            error: errorMessage 
+          };
+        } else {
+          toast.error("Failed to update employee");
+        }
+        
         throw error;
       }
 
@@ -247,7 +308,12 @@ export const updateEmployeeInApi = async (
     }
   } catch (error) {
     console.error("Error in updateEmployeeInApi:", error);
-    toast.error("Failed to update employee");
+    
+    // Don't show duplicate error toast if already handled
+    if (!(error as any).code || !['DUPLICATE_EMAIL', 'DUPLICATE_EMPLOYEE_ID'].includes((error as any).code)) {
+      toast.error("Failed to update employee");
+    }
+    
     throw error;
   }
 };
