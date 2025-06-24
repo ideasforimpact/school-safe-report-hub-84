@@ -1517,7 +1517,6 @@ export type Database = {
           client_id: string | null
           created_at: string
           driver: string
-          employee_id: string | null
           id: string
           make: string
           model: string
@@ -1536,7 +1535,6 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           driver: string
-          employee_id?: string | null
           id?: string
           make: string
           model: string
@@ -1555,7 +1553,6 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           driver?: string
-          employee_id?: string | null
           id?: string
           make?: string
           model?: string
@@ -1575,13 +1572,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vehicles_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]

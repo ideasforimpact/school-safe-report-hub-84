@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { client_id, employee_id, is_super_admin } = await req.json()
+    const { client_id } = await req.json()
     
     if (!client_id) {
       return new Response(
@@ -30,7 +30,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('Fetching dashboard stats for client:', client_id, 'employee:', employee_id, 'is_super_admin:', is_super_admin)
+    console.log('Fetching dashboard stats for client:', client_id)
 
     // Get status IDs for "New" and "Open" incidents
     const { data: incidentStatuses } = await supabase
@@ -41,39 +41,23 @@ serve(async (req) => {
     const statusIds = incidentStatuses?.map(status => status.id) || []
     console.log('Status IDs found:', statusIds)
 
-    // Build incident filters based on employee permissions
-    let incidentQuery = supabase
+    // Get open incidents count (New and Open status)
+    const { data: openIncidents, error: openIncidentsError } = await supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
-
-    // For regular employees, filter by created_by only
-    if (!is_super_admin && employee_id) {
-      incidentQuery = incidentQuery.eq('created_by', employee_id)
-    }
-
-    // Get open incidents count (New and Open status)
-    const { data: openIncidents, error: openIncidentsError } = await incidentQuery
       .in('status_id', statusIds)
 
     if (openIncidentsError) {
       console.error('Error fetching open incidents:', openIncidentsError)
     }
 
-    // Build assessment filters based on employee permissions
-    let assessmentQuery = supabase
+    // Get active assessments count (only New status)
+    const { data: activeAssessments, error: activeAssessmentsError } = await supabase
       .from('assessments')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .eq('status', 'New')
-
-    // For regular employees, filter by created_by only
-    if (!is_super_admin && employee_id) {
-      assessmentQuery = assessmentQuery.eq('created_by', employee_id)
-    }
-
-    // Get active assessments count (only New status)
-    const { data: activeAssessments, error: activeAssessmentsError } = await assessmentQuery
 
     if (activeAssessmentsError) {
       console.error('Error fetching active assessments:', activeAssessmentsError)
@@ -107,47 +91,26 @@ serve(async (req) => {
     // Get unique employee IDs with documents
     const uniqueEmployeesWithDocs = new Set(employeesWithDocs?.map(doc => doc.employee_id) || [])
 
-    // Build vehicle filters based on employee permissions
-    let vehicleQuery = supabase
+    // Get total vehicles for the client
+    const { data: totalVehicles, error: totalVehiclesError } = await supabase
       .from('vehicles')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
-
-    // For regular employees, filter by employee_id
-    if (!is_super_admin && employee_id) {
-      vehicleQuery = vehicleQuery.eq('employee_id', employee_id)
-    }
-
-    // Get total vehicles for the client/employee
-    const { data: totalVehicles, error: totalVehiclesError } = await vehicleQuery
 
     if (totalVehiclesError) {
       console.error('Error fetching total vehicles:', totalVehiclesError)
     }
 
     // Get vehicles with documents
-    const vehicleIds = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('client_id', client_id)
-      .then(res => {
-        let ids = res.data?.map(vehicle => vehicle.id) || []
-        // For regular employees, filter vehicle IDs by employee_id
-        if (!is_super_admin && employee_id) {
-          return supabase
-            .from('vehicles')
-            .select('id')
-            .eq('client_id', client_id)
-            .eq('employee_id', employee_id)
-            .then(empRes => empRes.data?.map(vehicle => vehicle.id) || [])
-        }
-        return ids
-      })
-
     const { data: vehiclesWithDocs, error: vehiclesWithDocsError } = await supabase
       .from('vehicle_documents')
       .select('vehicle_id')
-      .in('vehicle_id', vehicleIds)
+      .in('vehicle_id', await supabase
+        .from('vehicles')
+        .select('id')
+        .eq('client_id', client_id)
+        .then(res => res.data?.map(vehicle => vehicle.id) || [])
+      )
 
     if (vehiclesWithDocsError) {
       console.error('Error fetching vehicles with documents:', vehiclesWithDocsError)
@@ -160,18 +123,11 @@ serve(async (req) => {
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
 
-    let lastMonthIncidentQuery = supabase
+    const { data: incidentsLastMonth, error: incidentsLastMonthError } = await supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .gte('created_at', oneMonthAgo.toISOString())
-
-    // For regular employees, filter by created_by only
-    if (!is_super_admin && employee_id) {
-      lastMonthIncidentQuery = lastMonthIncidentQuery.eq('created_by', employee_id)
-    }
-
-    const { data: incidentsLastMonth, error: incidentsLastMonthError } = await lastMonthIncidentQuery
 
     if (incidentsLastMonthError) {
       console.error('Error fetching incidents last month:', incidentsLastMonthError)
@@ -181,18 +137,11 @@ serve(async (req) => {
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
-    let last6MonthsIncidentQuery = supabase
+    const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .gte('created_at', sixMonthsAgo.toISOString())
-
-    // For regular employees, filter by created_by only
-    if (!is_super_admin && employee_id) {
-      last6MonthsIncidentQuery = last6MonthsIncidentQuery.eq('created_by', employee_id)
-    }
-
-    const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await last6MonthsIncidentQuery
 
     if (incidentsLast6MonthsError) {
       console.error('Error fetching incidents last 6 months:', incidentsLast6MonthsError)
@@ -214,19 +163,12 @@ serve(async (req) => {
       const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' })
 
       // Get all incidents for this month
-      let monthQuery = supabase
+      const { data: monthIncidents } = await supabase
         .from('incidents')
         .select('status_id')
         .eq('client_id', client_id)
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString())
-
-      // For regular employees, filter by created_by only
-      if (!is_super_admin && employee_id) {
-        monthQuery = monthQuery.eq('created_by', employee_id)
-      }
-
-      const { data: monthIncidents } = await monthQuery
 
       // Get closed status ID
       const { data: closedStatus } = await supabase
