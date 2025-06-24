@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,24 +71,6 @@ export const useIncidentData = () => {
       }
 
       if (!clientId) {
-        console.log('No client ID found');
-        setIncidents([]);
-        setPagination({
-          currentPage: 1,
-          totalPages: 0,
-          totalCount: 0,
-          hasMore: false,
-          pageSize: 10
-        });
-        return;
-      }
-
-      // Get employee data for filtering
-      const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
-      
-      // Early return if no employee data is available
-      if (!employeeDataForFiltering || !employeeDataForFiltering.id) {
-        console.log('⚠️ No employee data available, cannot fetch incidents');
         setIncidents([]);
         setPagination({
           currentPage: 1,
@@ -104,17 +85,14 @@ export const useIncidentData = () => {
       console.log('Fetching incidents for client:', clientId, 'page:', page, 'pageSize:', pageSize);
       console.log('User is super admin:', isSuperAdmin);
 
-      // Clear cache if force refresh
-      if (forceRefresh) {
-        incidentDataService.clearCache(clientId, employeeDataForFiltering.id);
-        console.log('🗑️ Cache cleared due to force refresh');
-      }
-
+      // Pass employee data with super admin status to the service
+      const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+      
       // Ensure the employee data includes the super admin status
-      const enhancedEmployeeData = {
+      const enhancedEmployeeData = employeeDataForFiltering ? {
         ...employeeDataForFiltering,
         isSuperAdmin: isSuperAdmin
-      };
+      } : null;
 
       console.log('Enhanced employee data for filtering:', enhancedEmployeeData);
 

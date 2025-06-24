@@ -177,32 +177,18 @@ class IncidentDataService {
   ): Promise<PaginatedResponse<IncidentRecord>> {
     const { page = 1, pageSize = 10 } = pagination;
     const limitedPageSize = 10;
-    
-    console.log(`🔄 fetchIncidentsForClientWithFilters called:`);
-    console.log(`   - Page: ${page}, PageSize: ${limitedPageSize}`);
-    console.log(`   - Filters:`, filters);
-    console.log(`   - Employee Data:`, employeeData);
-    console.log(`   - Force refresh: ${forceRefresh}`);
-
-    // Early return if no employee data is provided
-    if (!employeeData || !employeeData.id) {
-      console.log('⚠️ No employee data provided, returning empty results');
-      return {
-        data: [],
-        totalCount: 0,
-        hasMore: false,
-        currentPage: page,
-        totalPages: 0
-      };
-    }
-    
     const offset = (page - 1) * limitedPageSize;
     
     // Create cache key including filters and user-specific data
     const filterKey = JSON.stringify(filters);
-    const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}`;
+    const userKey = employeeData ? `${employeeData.id}_${employeeData.isSuperAdmin}` : 'anonymous';
     const cacheKey = `${clientId}_${userKey}_${page}_${limitedPageSize}_${filterKey}`;
     
+    console.log(`🔄 fetchIncidentsForClientWithFilters called:`);
+    console.log(`   - Page: ${page}, PageSize: ${limitedPageSize}, Offset: ${offset}`);
+    console.log(`   - Filters:`, filters);
+    console.log(`   - Employee Data:`, employeeData);
+    console.log(`   - Force refresh: ${forceRefresh}`);
     console.log(`   - Cache key: ${cacheKey}`);
     
     // Return cached data if available and not forcing refresh
@@ -272,15 +258,21 @@ class IncidentDataService {
 
       // Apply role-based filtering based on super admin status
       console.log('🔒 Applying role-based filtering:', { employeeData });
-      // Check if user is super admin - use consistent logic with frontend
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (!isSuperAdmin) {
-        // Non-super admin users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log(`   - Applied non-super admin filter for employee ${employeeData.id} (created_by OR assigned_to)`);
+      if (employeeData) {
+        // Check if user is super admin - use consistent logic with frontend
+        const isSuperAdmin = employeeData.isSuperAdmin === true;
+        
+        if (!isSuperAdmin) {
+          // Non-super admin users can only see incidents they created or are assigned to
+          query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+          console.log(`   - Applied non-super admin filter for employee ${employeeData.id} (created_by OR assigned_to)`);
+        } else {
+          console.log('   - Super admin: can see all incidents for this client');
+        }
       } else {
-        console.log('   - Super admin: can see all incidents for this client');
+        console.log('   - No employee data provided, applying restrictive filter');
+        // If no employee data, don't show any incidents (safety measure)
+        query = query.eq('created_by', 'non-existent-id');
       }
 
       // Apply server-side filters using foreign key IDs
@@ -449,12 +441,6 @@ class IncidentDataService {
     closed: number;
   }> {
     try {
-      // Early return if no employee data
-      if (!employeeData || !employeeData.id) {
-        console.log('⚠️ No employee data provided for stats, returning empty stats');
-        return { total: 0, open: 0, inProgress: 0, closed: 0 };
-      }
-
       let query = supabase
         .from('incidents')
         .select(`
@@ -466,13 +452,15 @@ class IncidentDataService {
         .eq('client_id', clientId);
 
       // Apply same filtering logic for stats
-      const isSuperAdmin = employeeData.isSuperAdmin === true;
-      
-      if (!isSuperAdmin) {
-        if (hasIncidentAdmin) {
-          query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        } else {
-          query = query.eq('created_by', employeeData.id);
+      if (employeeData) {
+        const isSuperAdmin = employeeData.isSuperAdmin === true;
+        
+        if (!isSuperAdmin) {
+          if (hasIncidentAdmin) {
+            query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+          } else {
+            query = query.eq('created_by', employeeData.id);
+          }
         }
       }
 

@@ -29,89 +29,6 @@ interface UpdateIncidentRequest {
   changedBy?: string
 }
 
-// Helper function to check incident permissions
-async function checkIncidentPermissions(
-  incidentId: string,
-  employeeId: string,
-  clientId: string
-): Promise<{ canEdit: boolean, incident: any }> {
-  // Get the incident details with creator and assigned user
-  const { data: incident, error: incidentError } = await supabase
-    .from('incidents')
-    .select('id, created_by, assigned_to, client_id, ticket_id')
-    .eq('id', incidentId)
-    .eq('client_id', clientId)
-    .single()
-
-  if (incidentError || !incident) {
-    console.error('Error fetching incident:', incidentError)
-    return { canEdit: false, incident: null }
-  }
-
-  // Get employee details to check admin status
-  const { data: employee, error: employeeError } = await supabase
-    .from('employees')
-    .select(`
-      id, 
-      is_super_admin, 
-      client_id,
-      employee_modules!inner(
-        level,
-        module:modules(name)
-      )
-    `)
-    .eq('id', employeeId)
-    .eq('client_id', clientId)
-    .single()
-
-  if (employeeError || !employee) {
-    console.error('Error fetching employee:', employeeError)
-    return { canEdit: false, incident }
-  }
-
-  // Check if user is super admin
-  if (employee.is_super_admin) {
-    console.log('User is super admin, allowing edit')
-    return { canEdit: true, incident }
-  }
-
-  // Check if user has incident admin access
-  const hasIncidentAdmin = employee.employee_modules?.some((empModule: any) => 
-    empModule.module?.name?.toLowerCase() === 'incidents' && 
-    empModule.level?.is_admin === true
-  )
-
-  console.log('Employee modules:', employee.employee_modules)
-  console.log('Has incident admin:', hasIncidentAdmin)
-
-  // Check if user created the incident
-  const isCreator = incident.created_by === employeeId
-  
-  // Check if user is assigned to the incident
-  const isAssigned = incident.assigned_to === employeeId
-
-  console.log('Permission check:', {
-    employeeId,
-    createdBy: incident.created_by,
-    assignedTo: incident.assigned_to,
-    isCreator,
-    isAssigned,
-    hasIncidentAdmin
-  })
-
-  let canEdit = false
-
-  if (hasIncidentAdmin) {
-    // Incident admin can edit own + assigned incidents
-    canEdit = isCreator || isAssigned
-  } else {
-    // Non-admin can only edit their own incidents
-    canEdit = isCreator
-  }
-
-  return { canEdit, incident }
-}
-
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -144,63 +61,78 @@ Deno.serve(async (req) => {
 
     console.log('Updating incident:', incidentId, 'with updates:', updates)
 
-    // Get employee data for permission checking
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('id, client_id')
-      .eq('user_id', user.id)
-      .single()
+    // Optimized: Get current incident and employee data in parallel
+    const [incidentResult, employeeResult] = await Promise.all([
+      supabase
+        .from('incidents')
+        .select('created_by, client_id')
+        .eq('id', incidentId)
+        .single(),
+      supabase
+        .from('employees')
+        .select('id, is_super_admin, employee_type, client_id')
+        .eq('user_id', user.id)
+        .single()
+    ]);
+
+    const { data: currentIncident, error: fetchError } = incidentResult;
+    const { data: employee, error: employeeError } = employeeResult;
+
+    if (fetchError || !currentIncident) {
+      console.error('Error fetching current incident:', fetchError);
+      throw new Error('Incident not found');
+    }
 
     if (employeeError || !employee) {
-      console.error('Error fetching employee data:', employeeError)
-      throw new Error('Employee not found')
+      console.error('Error fetching employee data:', employeeError);
+      throw new Error('Employee not found');
     }
 
-    // Check permissions before allowing the update
-    const { canEdit, incident } = await checkIncidentPermissions(
-      incidentId,
-      employee.id,
-      employee.client_id
-    )
+    console.log('Current incident:', currentIncident);
+    console.log('Employee data:', employee);
+
+    // Check permissions
+    const canEdit = employee.is_super_admin || 
+                   employee.employee_type === 'admin' ||
+                   currentIncident.created_by === employee.id ||
+                   (employee.client_id === currentIncident.client_id);
 
     if (!canEdit) {
-      console.log('Permission denied for user:', user.id, 'incident:', incidentId)
-      throw new Error('You do not have permission to edit this incident')
+      console.log('Permission denied for user:', user.id);
+      throw new Error('You do not have permission to edit this incident');
     }
-
-    console.log('Permission granted for update')
 
     // Prepare the update object efficiently
     const updateData: any = {
       updated_at: new Date().toISOString()
-    }
+    };
 
     // Only add fields that are provided
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        updateData[key] = value
+        updateData[key] = value;
       }
-    })
+    });
 
     // Handle status_id lookup if provided as string
     if (updates.status_id && typeof updates.status_id === 'string') {
-      console.log('Looking up status ID for name:', updates.status_id)
+      console.log('Looking up status ID for name:', updates.status_id);
       const { data: statusData, error: statusError } = await supabase
         .from('incident_status')
         .select('id')
         .eq('name', updates.status_id)
-        .single()
+        .single();
         
       if (statusError || !statusData) {
-        console.error('Error fetching status:', statusError)
-        throw new Error(`Status '${updates.status_id}' not found`)
+        console.error('Error fetching status:', statusError);
+        throw new Error(`Status '${updates.status_id}' not found`);
       }
       
-      console.log('Found status ID:', statusData.id)
-      updateData.status_id = statusData.id
+      console.log('Found status ID:', statusData.id);
+      updateData.status_id = statusData.id;
     }
 
-    console.log('Final update data:', updateData)
+    console.log('Final update data:', updateData);
 
     // Single optimized update query - the trigger will automatically log changes
     const { data: updatedIncident, error: updateError } = await supabase
@@ -208,14 +140,14 @@ Deno.serve(async (req) => {
       .update(updateData)
       .eq('id', incidentId)
       .select('id, ticket_id')
-      .single()
+      .single();
 
     if (updateError) {
-      console.error('Error updating incident:', updateError)
-      throw new Error(`Failed to update incident: ${updateError.message}`)
+      console.error('Error updating incident:', updateError);
+      throw new Error(`Failed to update incident: ${updateError.message}`);
     }
 
-    console.log('Successfully updated incident:', updatedIncident)
+    console.log('Successfully updated incident:', updatedIncident);
 
     // Log manual audit entries for non-field updates (like comments, documents)
     if (changedBy) {
@@ -229,7 +161,7 @@ Deno.serve(async (req) => {
             p_changed_by: changedBy,
             p_change_type: 'action',
             p_description: 'Documents updated'
-          })
+          });
         }
 
         // Log people involved changes
@@ -241,10 +173,10 @@ Deno.serve(async (req) => {
             p_changed_by: changedBy,
             p_change_type: 'action',
             p_description: 'People involved updated'
-          })
+          });
         }
       } catch (auditError) {
-        console.error('Error logging manual audit entries:', auditError)
+        console.error('Error logging manual audit entries:', auditError);
         // Don't fail the request if audit logging fails
       }
     }
@@ -260,10 +192,10 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json' 
         } 
       }
-    )
+    );
 
   } catch (error) {
-    console.error('Error in update-incident function:', error)
+    console.error('Error in update-incident function:', error);
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An error occurred while updating the incident' 
@@ -275,6 +207,6 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json' 
         } 
       }
-    )
+    );
   }
-})
+});
