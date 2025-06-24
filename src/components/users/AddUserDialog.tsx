@@ -1,15 +1,17 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, X } from 'lucide-react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
+import { checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -32,14 +34,42 @@ interface AddUserDialogProps {
   clientId?: string;
 }
 
+type EmployeeIdValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
+
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const { state } = useEmployeeStore();
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
+  const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
+  
+  // Debounce the employee ID to avoid excessive API calls
+  const debouncedEmployeeId = useDebounce(formData.employeeId || '', 500);
 
   // Log clientId for debugging
   console.log("AddUserDialog - ClientId from props:", clientId);
   console.log("AddUserDialog - ClientId in formData:", formData.clientId);
   console.log("AddUserDialog - Available configured modules:", state.configuredModules);
+
+  // Validate Employee ID when it changes
+  useEffect(() => {
+    const validateEmployeeId = async () => {
+      if (!debouncedEmployeeId || !clientId) {
+        setEmployeeIdValidation('idle');
+        return;
+      }
+
+      setEmployeeIdValidation('checking');
+      
+      try {
+        const exists = await checkEmployeeIdExists(debouncedEmployeeId, clientId);
+        setEmployeeIdValidation(exists ? 'exists' : 'available');
+      } catch (error) {
+        console.error('Error validating employee ID:', error);
+        setEmployeeIdValidation('error');
+      }
+    };
+
+    validateEmployeeId();
+  }, [debouncedEmployeeId, clientId]);
 
   // Module change handler that directly updates moduleAccessPayload
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
@@ -59,10 +89,16 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setIsOpen(false);
     resetForm();
     setSelectedModules([]);
+    setEmployeeIdValidation('idle');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent submission if employee ID already exists
+    if (employeeIdValidation === 'exists') {
+      return;
+    }
     
     // Ensure clientId is set before submission
     if (!formData.clientId && clientId) {
@@ -90,6 +126,50 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setTimeout(() => {
       onSubmit();
     }, 0);
+  };
+
+  // Helper function to get validation icon
+  const getEmployeeIdValidationIcon = () => {
+    switch (employeeIdValidation) {
+      case 'checking':
+        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+      case 'available':
+        return <Check className="h-4 w-4 text-green-500" />;
+      case 'exists':
+        return <X className="h-4 w-4 text-red-500" />;
+      case 'error':
+        return <X className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  // Helper function to get validation message
+  const getEmployeeIdValidationMessage = () => {
+    switch (employeeIdValidation) {
+      case 'checking':
+        return 'Checking availability...';
+      case 'available':
+        return 'Employee ID is available';
+      case 'exists':
+        return 'Employee ID already exists for this client';
+      case 'error':
+        return 'Error checking Employee ID';
+      default:
+        return '';
+    }
+  };
+
+  // Check if form is valid for submission
+  const isFormValid = () => {
+    return (
+      formData.firstName &&
+      formData.lastName &&
+      formData.email &&
+      formData.employeeId &&
+      employeeIdValidation === 'available' &&
+      !isLoading
+    );
   };
 
   return (
@@ -135,11 +215,29 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employeeId">Employee ID</Label>
-                <Input
-                  id="employeeId"
-                  value={formData.employeeId || ''}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                />
+                <div className="relative">
+                  <Input
+                    id="employeeId"
+                    value={formData.employeeId || ''}
+                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                    className={`pr-10 ${
+                      employeeIdValidation === 'exists' ? 'border-red-500 focus:border-red-500' :
+                      employeeIdValidation === 'available' ? 'border-green-500 focus:border-green-500' : ''
+                    }`}
+                    required
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {getEmployeeIdValidationIcon()}
+                  </div>
+                </div>
+                {employeeIdValidation !== 'idle' && (
+                  <p className={`text-xs ${
+                    employeeIdValidation === 'exists' || employeeIdValidation === 'error' ? 'text-red-500' :
+                    employeeIdValidation === 'available' ? 'text-green-500' : 'text-blue-500'
+                  }`}>
+                    {getEmployeeIdValidationMessage()}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="joiningDate">Joining Date</Label>
@@ -213,7 +311,10 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              disabled={!isFormValid() || employeeIdValidation === 'checking'}
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add User
             </Button>
