@@ -1,9 +1,9 @@
-
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
+import { checkEmployeeIdExists } from './employeeValidationService';
 
 // List of demo emails that can bypass authentication requirements
 const DEMO_EMAILS = [
@@ -29,8 +29,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
   console.log("Using clientId:", clientId); // Log clientId for debugging
   
   try {
-    // Prepare employee data
-    const employees = rawData.map((row, index) => {
+    // Pre-validate all Employee IDs to check for duplicates
+    console.log("Pre-validating Employee IDs for duplicates...");
+    const validationErrors: string[] = [];
+    const validEmployees: RawEmployeeData[] = [];
+    
+    for (let i = 0; i < rawData.length; i++) {
+      const row = rawData[i];
+      
       try {
         // Ensure all required fields are present
         const requiredFields = ['employeeId', 'firstName', 'lastName', 'email', 'employeeType', 'department', 'joiningDate', 'status'];
@@ -42,60 +48,93 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         });
         
         if (missingFields.length > 0) {
-          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+          validationErrors.push(`Row ${i + 2}: Missing required fields: ${missingFields.join(', ')}`);
+          continue;
         }
         
-        // Set default module permissions for all imported employees
-        const modulePermissions: ModulePermissions = {
-          superAdmin: false,
-          incidentReporting: true, 
-          incidentAdmin: false,
-          assessmentUser: false,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: true,
-          eduSafeResourceAccess: false
-        };
-        
-        // Create default module access payload with Dashboard module
-        const defaultModuleAccessPayload = [
-          {
-            name: "Dashboard",
-            key: "user",
-            module_id: "f84132f7-48e0-45f1-ad3a-59e794ac9a8d",
-            employeeId: String(row.employeeId).trim()
+        // Check if Employee ID already exists for this client
+        if (clientId) {
+          const employeeIdExists = await checkEmployeeIdExists(String(row.employeeId).trim(), clientId);
+          if (employeeIdExists) {
+            validationErrors.push(`Row ${i + 2}: Employee ID '${row.employeeId}' already exists for this client`);
+            continue;
           }
-        ];
+        }
         
-        // Add default module permissions to each employee record
-        // and normalize/validate employee data fields
-        return {
-          employeeId: String(row.employeeId).trim(),  // Ensure trimmed values for comparison
-          firstName: String(row.firstName),
-          lastName: String(row.lastName),
-          email: String(row.email),
-          phone: row.phone ? String(row.phone) : undefined,
-          employeeType: String(row.employeeType),
-          department: String(row.department),
-          joiningDate: String(row.joiningDate),
-          status: String(row.status),
-          clientId: clientId, // Ensure clientId is passed through
-          modulePermissions: modulePermissions,
-          moduleAccessPayload: defaultModuleAccessPayload // Add default module access payload
-        };
+        // If we get here, the employee data is valid
+        validEmployees.push(row);
+        
       } catch (error) {
-        console.error(`Error processing row ${index + 2}:`, error);
-        result.errors.push(`Row ${index + 2}: ${(error as Error).message || 'Unknown error'}`);
-        result.errorCount++;
-        return null;
+        console.error(`Error validating row ${i + 2}:`, error);
+        validationErrors.push(`Row ${i + 2}: ${(error as Error).message || 'Unknown validation error'}`);
       }
-    }).filter(Boolean); // Remove any null entries from errors
+    }
     
-    // If there are no valid employees after initial processing, return early
-    if (employees.length === 0) {
+    // Add validation errors to result
+    result.errors = validationErrors;
+    result.errorCount = validationErrors.length;
+    
+    // If there are validation errors, show them but continue with valid employees
+    if (validationErrors.length > 0) {
+      console.warn(`Found ${validationErrors.length} validation errors:`, validationErrors);
+      
+      if (validationErrors.length <= 5) {
+        validationErrors.forEach(error => toast.error(error));
+      } else {
+        toast.error(`Found ${validationErrors.length} validation errors. Check console for details.`);
+      }
+    }
+    
+    // If no valid employees after validation, return early
+    if (validEmployees.length === 0) {
+      toast.error("No valid employees found to import");
       return result;
     }
+    
+    console.log(`Processing ${validEmployees.length} valid employees after validation`);
+    
+    // Prepare employee data for the valid employees only
+    const employees = validEmployees.map((row, index) => {
+      // Set default module permissions for all imported employees
+      const modulePermissions: ModulePermissions = {
+        superAdmin: false,
+        incidentReporting: true, 
+        incidentAdmin: false,
+        assessmentUser: false,
+        assessmentsAdmin: false,
+        employeeVerificationAdmin: false,
+        grievancesAdmin: false,
+        transportSafetyAdmin: true,
+        eduSafeResourceAccess: false
+      };
+      
+      // Create default module access payload with Dashboard module
+      const defaultModuleAccessPayload = [
+        {
+          name: "Dashboard",
+          key: "user",
+          module_id: "f84132f7-48e0-45f1-ad3a-59e794ac9a8d",
+          employeeId: String(row.employeeId).trim()
+        }
+      ];
+      
+      // Add default module permissions to each employee record
+      // and normalize/validate employee data fields
+      return {
+        employeeId: String(row.employeeId).trim(),  // Ensure trimmed values for comparison
+        firstName: String(row.firstName),
+        lastName: String(row.lastName),
+        email: String(row.email),
+        phone: row.phone ? String(row.phone) : undefined,
+        employeeType: String(row.employeeType),
+        department: String(row.department),
+        joiningDate: String(row.joiningDate),
+        status: String(row.status),
+        clientId: clientId, // Ensure clientId is passed through
+        modulePermissions: modulePermissions,
+        moduleAccessPayload: defaultModuleAccessPayload // Add default module access payload
+      };
+    });
     
     console.log(`Sending ${employees.length} employees for bulk processing with clientId: ${clientId}`);
 
