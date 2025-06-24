@@ -24,7 +24,16 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   onViewClick, 
   onEditClick 
 }) => {
-  const { checkPermissions } = useIncidentPermissions();
+  const { checkPermissions, hasIncidentAdmin, isSuperAdmin, currentEmployeeId } = useIncidentPermissions();
+  
+  // Debug logging to identify permission issues
+  console.log('🔍 Permission Debug for incident:', incident.ticketId);
+  console.log('📋 Current user ID:', currentEmployeeId);
+  console.log('👤 Incident created by ID:', incident.reportedBy?.id);
+  console.log('👥 Incident assigned to ID:', incident.owner?.id);
+  console.log('🔑 User has incident admin:', hasIncidentAdmin);
+  console.log('⭐ User is super admin:', isSuperAdmin);
+  console.log('❌ Incident is voided:', incident.isVoided);
   
   // Check if current user can edit this incident
   const permissions = checkPermissions(
@@ -32,8 +41,12 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
     incident.owner?.id
   );
   
+  console.log('✅ Permission check result:', permissions);
+  
   // Show edit button only if user has edit permission AND incident is not voided
   const canShowEditButton = permissions.canEdit && !incident.isVoided;
+  
+  console.log('🎯 Final decision - Show edit button:', canShowEditButton);
   
   // Add debug logging to check incident ID
   console.log(`Rendering row for incident: ${incident.id}, ticketId: ${incident.ticketId}`);
