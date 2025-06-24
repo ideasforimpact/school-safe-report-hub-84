@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -373,9 +374,11 @@ class IncidentDataService {
         reportedBy: inc.created_by_employee ? 
           `${inc.created_by_employee.first_name} ${inc.created_by_employee.last_name}` : 
           'Unknown',
+        reportedById: inc.created_by_employee?.id || '',
         owner: inc.assigned_employee ? 
           `${inc.assigned_employee.first_name} ${inc.assigned_employee.last_name}` : 
           undefined,
+        ownerId: inc.assigned_employee?.id || undefined,
         createdAt: new Date(inc.created_at),
         updatedAt: new Date(inc.updated_at)
       }));
