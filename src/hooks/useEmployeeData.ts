@@ -6,6 +6,7 @@ import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientI
 import { supabase } from '@/integrations/supabase/client';
 import { Module } from '@/store/types';
 import { useLocation } from 'react-router-dom';
+import { loadAuthState } from '@/store/authPersistence';
 
 export const useEmployeeData = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
@@ -29,9 +30,27 @@ export const useEmployeeData = () => {
                                 location.pathname === '/support' ||
                                 location.pathname === '/blog';
 
+  // Check if modules exist in sessionStorage
+  const checkPersistedModules = (): Module[] | null => {
+    const persistedState = loadAuthState();
+    if (persistedState && persistedState.configuredModules && persistedState.configuredModules.length > 0) {
+      console.log("Found persisted modules in sessionStorage:", persistedState.configuredModules.length);
+      return persistedState.configuredModules;
+    }
+    return null;
+  };
+
   // Fetch configured modules for the employee
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
+      // First check if we have valid modules in sessionStorage
+      const persistedModules = checkPersistedModules();
+      if (persistedModules && persistedModules.length > 0) {
+        console.log("Using persisted modules instead of fetching");
+        dispatch(setConfiguredModules(persistedModules));
+        return;
+      }
+
       dispatch(setLoading(true));
       
       if (!clientId) {
@@ -223,11 +242,16 @@ export const useEmployeeData = () => {
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
-      // Always fetch modules if we have employeeId and clientId - even if they exist in state
-      // This ensures fresh data and resolves the DevTools refresh issue
-      if (authEmployeeData.id && authEmployeeData.clientId) {
-        console.log("Employee data available, fetching modules");
+      // Check if we already have valid modules before fetching
+      const hasValidModules = state.configuredModules && state.configuredModules.length > 0;
+      const persistedModules = checkPersistedModules();
+      
+      if (!hasValidModules && !persistedModules && authEmployeeData.id && authEmployeeData.clientId) {
+        console.log("No valid modules found, fetching from database");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
+      } else if (persistedModules && persistedModules.length > 0 && (!state.configuredModules || state.configuredModules.length === 0)) {
+        console.log("Restoring persisted modules to Redux state");
+        dispatch(setConfiguredModules(persistedModules));
       }
     } else {
       // If we have a user but no employee data, try to fetch employee data from the database
@@ -268,9 +292,13 @@ export const useEmployeeData = () => {
                 dispatch(setClientId(data.client_id));
               }
               
-              // Fetch modules
-              if (data.id && data.client_id) {
-                console.log("Fetched employee data, fetching modules");
+              // Check for persisted modules first
+              const persistedModules = checkPersistedModules();
+              if (persistedModules && persistedModules.length > 0) {
+                console.log("Using persisted modules for fetched employee data");
+                dispatch(setConfiguredModules(persistedModules));
+              } else if (data.id && data.client_id) {
+                console.log("Fetching modules for newly loaded employee data");
                 fetchConfiguredModules(data.id, data.client_id);
               }
             } else {
@@ -285,20 +313,6 @@ export const useEmployeeData = () => {
       }
     }
   }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
-
-  // Additional effect to handle when configuredModules are empty but we have employee data
-  useEffect(() => {
-    // If we have employee data but no modules, and we're on a route that needs them, fetch modules
-    if (state.employeeData && 
-        (!state.configuredModules || state.configuredModules.length === 0) &&
-        needsEmployeeData && !shouldSkipEmployeeData &&
-        !state.isLoading) {
-      console.log("Employee data exists but modules missing, re-fetching");
-      if (state.employeeData.id && state.employeeData.clientId) {
-        fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
-      }
-    }
-  }, [state.employeeData, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData, state.isLoading]);
 
   return {
     employeeData: state.employeeData,
