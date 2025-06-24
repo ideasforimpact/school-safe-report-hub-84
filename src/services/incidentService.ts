@@ -18,6 +18,7 @@ export interface IncidentRecord {
   owner?: string;
   createdAt: Date;
   updatedAt: Date;
+  is_voided?: boolean; // Add the missing property
 }
 
 export const incidentService = {
