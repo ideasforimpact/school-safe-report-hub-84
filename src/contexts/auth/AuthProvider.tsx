@@ -465,10 +465,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // For non-backoffice users, sign out from Supabase
-      // if (!isBackofficeUser) {
-      //   await supabase.auth.signOut();
-      //   console.log('✅ Signed out from Supabase');
-      // }
+      if (!isBackofficeUser) {
+        await supabase.auth.signOut();
+        console.log('✅ Signed out from Supabase');
+      }
       
       // Clear Redux state
       dispatch(clearAuth());
