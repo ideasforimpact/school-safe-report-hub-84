@@ -5,17 +5,15 @@ import { loadAuthState } from './authPersistence';
 const restorePersistedAuthState = (): Partial<EmployeeState> => {
   const persistedState = loadAuthState();
   if (persistedState) {
-    console.log("Restoring persisted auth state including modules:", persistedState.configuredModules?.length || 0);
     return {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
-      configuredModules: persistedState.configuredModules || [],
-      modulesRestored: !!(persistedState.configuredModules && persistedState.configuredModules.length > 0)
+      configuredModules: persistedState.configuredModules || []
     };
   }
-  return { modulesRestored: false };
+  return {};
 };
 
 export const initialEmployeeState: EmployeeState = {
@@ -31,7 +29,6 @@ export const initialEmployeeState: EmployeeState = {
   // Employee data
   employeeData: null,
   configuredModules: [],
-  modulesRestored: false,
   isLoading: false,
   error: null,
   clientId: null
@@ -98,8 +95,7 @@ export const employeeReducer = (
       console.log("Setting configured modules in reducer:", action.payload);
       return {
         ...state,
-        configuredModules: action.payload,
-        modulesRestored: true
+        configuredModules: action.payload
       };
       
     case EmployeeActionTypes.SET_LOADING:
@@ -125,10 +121,7 @@ export const employeeReducer = (
       
     case EmployeeActionTypes.RESET_EMPLOYEE:
       console.log("Resetting employee state in reducer");
-      return {
-        ...initialEmployeeState,
-        modulesRestored: false
-      };
+      return initialEmployeeState;
       
     default:
       return state;

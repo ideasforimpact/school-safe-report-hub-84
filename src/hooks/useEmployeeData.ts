@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -28,7 +29,7 @@ export const useEmployeeData = () => {
                                 location.pathname === '/support' ||
                                 location.pathname === '/blog';
 
-  // Fetch configured modules for the employee - now with proper race condition handling
+  // Fetch configured modules for the employee - now optimized to avoid unnecessary calls
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
       dispatch(setLoading(true));
@@ -41,21 +42,18 @@ export const useEmployeeData = () => {
       // Set the client ID in Redux store
       dispatch(setClientId(clientId));
 
-      // Check if modules are already restored from persistence
-      if (state.modulesRestored && state.configuredModules && state.configuredModules.length > 0) {
-        console.log("Modules already restored from persistence, skipping fetch");
+      // Check Redux store first - if modules are already loaded, don't fetch again unless specifically needed
+      if (state.configuredModules && state.configuredModules.length > 0) {
+        console.log("Modules already loaded in Redux, skipping fetch");
         dispatch(setLoading(false));
         return;
       }
 
       console.log("Fetching modules for employee:", employeeId, "client:", clientId);
 
-      // Add a minimum loading time and small delay for timing consistency
+      // Add a minimum loading time to show the spinner
       const minimumLoadingTime = 1500; // 1.5 seconds
       const startTime = Date.now();
-
-      // Small delay to ensure proper component mounting sequence
-      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
@@ -220,110 +218,98 @@ export const useEmployeeData = () => {
       return;
     }
 
-    // Add small delay to ensure Redux state restoration completes first
-    const timeoutId = setTimeout(() => {
-      if (authEmployeeData) {
-        // Set employee data in Redux store
-        dispatch(setEmployeeData(authEmployeeData));
-        
-        // Set client ID in Redux store
-        if (authEmployeeData.clientId) {
-          dispatch(setClientId(authEmployeeData.clientId));
-        }
-        
-        // Only fetch modules if they haven't been restored and are empty
-        if (authEmployeeData.id && authEmployeeData.clientId &&
-            !state.modulesRestored &&
-            (!state.configuredModules || state.configuredModules.length === 0)) {
-          console.log("Employee data available, modules not restored, fetching modules");
-          fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
-        }
-      } else {
-        // If we have a user but no employee data, try to fetch employee data from the database
-        if (user && user.id) {
-          const fetchEmployeeDataFromDB = async () => {
-            try {
-              console.log('Fetching employee data for user:', user.id);
-              
-              // Try to get employee data by user ID
-              const { data, error } = await supabase
-                .from('employees')
-                .select('id, client_id, first_name, last_name, email, is_super_admin')
-                .eq('user_id', user.id)
-                .maybeSingle();
-              
-              if (error) {
-                console.error('Error fetching employee data:', error);
-                return;
-              }
-              
-              if (data) {
-                const employeeData = {
-                  id: data.id,
-                  clientId: data.client_id,
-                  firstName: data.first_name,
-                  lastName: data.last_name,
-                  email: data.email,
-                  isSuperAdmin: data.is_super_admin
-                };
-                
-                console.log('Found employee data:', employeeData);
-                
-                // Set employee data in Redux store
-                dispatch(setEmployeeData(employeeData));
-                
-                // Set client ID in Redux store
-                if (data.client_id) {
-                  dispatch(setClientId(data.client_id));
-                }
-                
-                // Fetch modules if modules are empty
-                if (data.id && data.client_id && 
-                    (!state.configuredModules || state.configuredModules.length === 0)) {
-                  console.log("Fetched employee data but modules empty, fetching modules");
-                  fetchConfiguredModules(data.id, data.client_id);
-                }
-              } else {
-                console.log('No employee data found for user:', user.id);
-              }
-            } catch (fetchError) {
-              console.error('Error in fetchEmployeeDataFromDB:', fetchError);
-            }
-          };
-          
-          fetchEmployeeDataFromDB();
-        }
+    if (authEmployeeData) {
+      // Set employee data in Redux store
+      dispatch(setEmployeeData(authEmployeeData));
+      
+      // Set client ID in Redux store
+      if (authEmployeeData.clientId) {
+        dispatch(setClientId(authEmployeeData.clientId));
       }
-    }, 50); // Small delay to ensure proper timing
-
-    return () => clearTimeout(timeoutId);
-  }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData, state.modulesRestored]);
+      
+      // Fetch modules if we have employeeId and clientId, and modules are empty
+      if (authEmployeeData.id && authEmployeeData.clientId &&
+          (!state.configuredModules || state.configuredModules.length === 0)) {
+        console.log("Employee data available but modules empty, fetching modules");
+        fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
+      }
+    } else {
+      // If we have a user but no employee data, try to fetch employee data from the database
+      if (user && user.id) {
+        const fetchEmployeeDataFromDB = async () => {
+          try {
+            console.log('Fetching employee data for user:', user.id);
+            
+            // Try to get employee data by user ID
+            const { data, error } = await supabase
+              .from('employees')
+              .select('id, client_id, first_name, last_name, email, is_super_admin')
+              .eq('user_id', user.id)
+              .maybeSingle();
+              
+            if (error) {
+              console.error('Error fetching employee data:', error);
+              return;
+            }
+            
+            if (data) {
+              const employeeData = {
+                id: data.id,
+                clientId: data.client_id,
+                firstName: data.first_name,
+                lastName: data.last_name,
+                email: data.email,
+                isSuperAdmin: data.is_super_admin
+              };
+              
+              console.log('Found employee data:', employeeData);
+              
+              // Set employee data in Redux store
+              dispatch(setEmployeeData(employeeData));
+              
+              // Set client ID in Redux store
+              if (data.client_id) {
+                dispatch(setClientId(data.client_id));
+              }
+              
+              // Fetch modules if modules are empty
+              if (data.id && data.client_id && 
+                  (!state.configuredModules || state.configuredModules.length === 0)) {
+                console.log("Fetched employee data but modules empty, fetching modules");
+                fetchConfiguredModules(data.id, data.client_id);
+              }
+            } else {
+              console.log('No employee data found for user:', user.id);
+            }
+          } catch (fetchError) {
+            console.error('Error in fetchEmployeeDataFromDB:', fetchError);
+          }
+        };
+        
+        fetchEmployeeDataFromDB();
+      }
+    }
+  }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
 
   // Additional effect to handle page refresh scenario where user exists but modules are missing
   useEffect(() => {
-    // Only run after a small delay to ensure restoration is complete
-    const timeoutId = setTimeout(() => {
-      // If we have a current user and employee data but no modules and they haven't been restored, re-fetch modules
-      if (state.currentUser && state.employeeData && 
-          !state.modulesRestored &&
-          (!state.configuredModules || state.configuredModules.length === 0) &&
-          needsEmployeeData && !shouldSkipEmployeeData) {
-        console.log("Page refresh detected: user and employee data exist, modules not restored, re-fetching");
-        if (state.employeeData.id && state.employeeData.clientId) {
-          fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
-        }
+    // If we have a current user and employee data but no modules, re-fetch modules
+    if (state.currentUser && state.employeeData && 
+        (!state.configuredModules || state.configuredModules.length === 0) &&
+        needsEmployeeData && !shouldSkipEmployeeData) {
+      console.log("Page refresh detected: user and employee data exist but modules missing, re-fetching");
+      if (state.employeeData.id && state.employeeData.clientId) {
+        fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
       }
-    }, 200); // Longer delay for page refresh scenario
-
-    return () => clearTimeout(timeoutId);
-  }, [state.currentUser, state.employeeData, state.modulesRestored, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData]);
+    }
+  }, [state.currentUser, state.employeeData, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData]);
 
   return {
     employeeData: state.employeeData,
     configuredModules: state.configuredModules,
     isLoading: state.isLoading,
     error: state.error,
-    clientId: state.clientId,
+    clientId: state.clientId, // Include clientId in the return value
     refetchModules: () => {
       if (state.employeeData?.id && state.employeeData?.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
