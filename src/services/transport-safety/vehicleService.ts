@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle, VehicleType } from "@/types/transportSafety";
 
@@ -31,6 +32,7 @@ export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
       capacity: vehicle.capacity,
       status: vehicle.status as 'active' | 'maintenance' | 'inactive',
       clientId: vehicle.client_id,
+      employeeId: vehicle.employee_id, // Map employee_id to employeeId
       documents: [], // No documents yet as per request
       createdAt: vehicle.created_at,
       updatedAt: vehicle.updated_at,
@@ -86,6 +88,7 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
       capacity: data.capacity,
       status: data.status as 'active' | 'maintenance' | 'inactive',
       clientId: data.client_id,
+      employeeId: data.employee_id, // Map employee_id to employeeId
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -129,6 +132,7 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       capacity: capacity,
       status: vehicleData.status,
       client_id: vehicleData.clientId,
+      employee_id: vehicleData.employeeId || null, // Map employeeId to employee_id
       verification_status: vehicleData.verificationStatus,
       verification_date: vehicleData.verificationDate,
       // Convert verification_data to JSON compatible format for Supabase
@@ -170,6 +174,7 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       capacity: newVehicle.capacity,
       status: newVehicle.status as 'active' | 'maintenance' | 'inactive',
       clientId: newVehicle.client_id,
+      employeeId: newVehicle.employee_id, // Map employee_id to employeeId
       documents: [], // No documents yet as per request
       createdAt: newVehicle.created_at,
       updatedAt: newVehicle.updated_at,
@@ -206,6 +211,7 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity ? Number(updates.capacity) : null;
     if (updates.status) dbUpdates.status = updates.status;
     if (updates.clientId) dbUpdates.client_id = updates.clientId;
+    if (updates.employeeId !== undefined) dbUpdates.employee_id = updates.employeeId; // Handle employeeId updates
     if (updates.verificationStatus) dbUpdates.verification_status = updates.verificationStatus;
     if (updates.verificationDate) dbUpdates.verification_date = updates.verificationDate;
     
@@ -243,6 +249,7 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
       capacity: data.capacity,
       status: data.status as 'active' | 'maintenance' | 'inactive',
       clientId: data.client_id,
+      employeeId: data.employee_id, // Map employee_id to employeeId
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
       updatedAt: data.updated_at,

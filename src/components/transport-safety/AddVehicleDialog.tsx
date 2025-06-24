@@ -10,6 +10,7 @@ import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyC
 import { Vehicle } from '@/types/transportSafety';
 import { toast } from 'sonner';
 import { useClient } from '@/contexts/ClientContext';
+import { useEmployees } from '@/hooks/useEmployees';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -21,8 +22,9 @@ type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documen
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
   const { addVehicle } = useTransportSafety();
   const { client } = useClient();
+  const { employees, loading: employeesLoading } = useEmployees();
   
-  const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset } = useForm<VehicleFormData>({
+  const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset, setValue } = useForm<VehicleFormData>({
     defaultValues: {
       registrationNumber: '',
       type: 'bus',
@@ -33,7 +35,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
       driver: '',
       route: '',
       capacity: undefined,
-      clientId: client?.id
+      clientId: client?.id,
+      employeeId: undefined
     }
   });
 
@@ -53,7 +56,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
           ...data,
           year: yearValue,
           capacity: capacityValue,
-          clientId: client.id // Always use the current client's ID
+          clientId: client.id, // Always use the current client's ID
+          employeeId: data.employeeId || undefined // Include employeeId in the submission
         });
         reset();
         onClose();
@@ -207,6 +211,26 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               {errors.capacity && 
                 <p className="text-red-500 text-sm">{errors.capacity.message}</p>
               }
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="employee">Assigned Employee (optional)</Label>
+              <Select 
+                onValueChange={(value) => setValue('employeeId', value === 'none' ? undefined : value)}
+                disabled={employeesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={employeesLoading ? "Loading employees..." : "Select employee"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No assignment</SelectItem>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.first_name} {employee.last_name} ({employee.employee_id || 'No ID'})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
