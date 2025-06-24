@@ -35,19 +35,25 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const [rootCause, setRootCause] = useState(incident.rootCause || '');
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(
-    incident.contributingFactors || []
+  // Initialize with existing data or fallbacks - using correct field names
+  const [rootCause, setRootCause] = useState(
+    incident.rootCauseAnalysis || incident.rootCause || ''
   );
+  
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(
+    incident.contributingFactor || incident.contributingFactors || []
+  );
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { state } = useEmployeeStore();
   const navigate = useNavigate();
   
-  // Modified action state - now we'll just have a single action entry
+  // Initialize current action with existing actionTaken data
   const [currentAction, setCurrentAction] = useState<Action>({
-    description: incident.actions && incident.actions.length > 0 
-      ? incident.actions.map(a => a.description).join('\n\n')
-      : '',
+    description: incident.actionTaken || 
+      (incident.actions && incident.actions.length > 0 
+        ? incident.actions.map(a => a.description).join('\n\n')
+        : ''),
     responsiblePerson: '',
     date: new Date(),
   });
