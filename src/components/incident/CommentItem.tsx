@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Comment as IncidentComment } from '@/types/incident';
 import {
@@ -162,19 +163,11 @@ const CommentItem: React.FC<CommentItemProps> = ({
         </div>
       )}
 
-      {/* Comment metadata */}
+      {/* Comment metadata - Updated to show "Created By: Real Name" */}
       <div className="flex flex-wrap gap-2 items-center text-sm text-gray-600 mb-2">
-        <span className="font-medium">{comment.createdBy.name}</span>
+        <span className="font-medium">Created By: {comment.createdBy.name}</span>
         <span>•</span>
         <span>{formatDateTime(new Date(comment.createdAt))}</span>
-        {comment.status && (
-          <>
-            <span>•</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs ${getCommentStatusColor(comment.status)}`}>
-              {comment.status}
-            </span>
-          </>
-        )}
       </div>
 
       {/* Comment description - truncated if long */}
@@ -281,14 +274,6 @@ const CommentItem: React.FC<CommentItemProps> = ({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Assignment information */}
-      {comment.assignedTo && comment.assignedTo.name && (
-        <div className="mt-3 pt-2 border-t border-gray-200 text-sm">
-          <span className="text-gray-600">Assigned to: </span>
-          <span className="font-medium">{comment.assignedTo.name}</span>
         </div>
       )}
     </div>
