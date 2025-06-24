@@ -1,5 +1,4 @@
-
-import React, { createContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
   logoutUser, 
@@ -67,7 +66,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
-  const logoutCompletedRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -79,7 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
   // Helper function to fetch client and client type information
-  const fetchClientInfo = useCallback(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+  const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
     try {
       // Fetch client information with client type
       const { data: clientData, error: clientError } = await supabase
@@ -98,6 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .single();
 
       if (clientError || !clientData) {
+        console.error("Error fetching client data:", clientError);
         return { client: null, clientType: null };
       }
 
@@ -128,12 +127,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       return { client, clientType };
     } catch (error) {
+      console.error("Error in fetchClientInfo:", error);
       return { client: null, clientType: null };
     }
-  }, []);
+  };
 
   // Enhanced setCurrentUser function that ensures client info is included
-  const setCurrentUserWithClientInfo = useCallback(async (user: User | null) => {
+  const setCurrentUserWithClientInfo = async (user: User | null) => {
     if (!user) {
       dispatch(setCurrentUser(null));
       return;
@@ -160,6 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         dispatch(setCurrentUser(userWithClientInfo));
         setTimeout(() => setShowAuthLoading(false), 2000);
       } catch (error) {
+        console.error("Error fetching client info for user:", error);
         dispatch(setCurrentUser(user));
         setTimeout(() => setShowAuthLoading(false), 2000);
       }
@@ -167,50 +168,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch(setCurrentUser(user));
       setTimeout(() => setShowAuthLoading(false), 2000);
     }
-  }, [dispatch, fetchClientInfo]);
+  };
 
-  // Memoize useAuthHandlers to prevent recreating on every render
-  const memoizedSetUser = useCallback((user: User | null) => dispatch(setCurrentUser(user)), [dispatch]);
-  const memoizedSetAuthError = useCallback((error: string | null) => dispatch(setAuthError(error)), [dispatch]);
-  const memoizedSetEmployeeData = useCallback((employeeData: EmployeeData | null) => dispatch(setEmployeeData(employeeData)), [dispatch]);
-
-  // Import useAuthHandlers with memoized functions
+  // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
     users,
-    setUser: memoizedSetUser,
+    setUser: (user: User | null) => dispatch(setCurrentUser(user)),
     setUsers: setUsersState,
-    setAuthError: memoizedSetAuthError,
+    setAuthError: (error: string | null) => dispatch(setAuthError(error)),
     authInitCompleteRef,
-    setEmployeeData: memoizedSetEmployeeData,
+    setEmployeeData: (employeeData: EmployeeData | null) => dispatch(setEmployeeData(employeeData)),
     dispatch
   });
 
-  // Memoize handleUserAuthentication to prevent useEffect dependencies from changing
-  const memoizedHandleUserAuthentication = useCallback(handleUserAuthentication, [handleUserAuthentication]);
-
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
-    if (authListenerSetupRef.current || state.isLoggingOut || logoutCompletedRef.current) return;
+    if (authListenerSetupRef.current || state.isLoggingOut) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Skip processing if logging out or logout completed
-      if (state.isLoggingOut || logoutCompletedRef.current) {
+      // Skip processing if logging out
+      if (state.isLoggingOut) {
+        console.log("Auth state change ignored: logout in progress");
         return;
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
         try {
+          console.log("Auth state change - SIGNED_IN detected, calling handleUserAuthentication");
           setShowAuthLoading(true);
           setTimeout(async () => {
-            await memoizedHandleUserAuthentication(session.user);
+            await handleUserAuthentication(session.user);
             setTimeout(() => setShowAuthLoading(false), 2000);
           }, 0);
         } catch (error) {
+          console.error("Error in handleUserAuthentication:", error);
           toast.error("Authentication failed. Please try again.");
           setShowAuthLoading(false);
         }
-      } else if (event === 'SIGNED_OUT' && !state.isLoggingOut && !logoutCompletedRef.current) {
+      } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
+        console.log("Auth state change - SIGNED_OUT detected, clearing state");
         dispatch(clearAuth());
         dispatch(resetEmployee());
         clearPersistedAuthState();
@@ -225,23 +222,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [memoizedHandleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [handleUserAuthentication, dispatch, state.isLoggingOut]);
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
-    if (state.isLoggingOut || logoutCompletedRef.current) return;
+    if (state.isLoggingOut) return;
 
     const checkSupabaseAuth = async () => {
       try {
+        console.log("Checking authentication state...");
+        console.log("Current user from Redux:", currentUser);
+        console.log("Is backoffice user from Redux:", isBackofficeUser);
+        console.log("Is authenticated from Redux:", isAuthenticated);
+
         // If we have persisted backoffice user state, skip Supabase checks
         if (isBackofficeUser && currentUser) {
+          console.log("Backoffice user detected from persisted state, skipping Supabase auth check");
           setIsInitializing(false);
           return;
         }
 
         // If we have persisted regular user state, still validate with Supabase
         if (currentUser && !isBackofficeUser) {
-          // Validate with Supabase
+          console.log("Regular user detected from persisted state, validating with Supabase...");
         }
 
         const { data } = await supabase.auth.getSession();
@@ -250,13 +253,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (!currentUser) {
             setShowAuthLoading(true);
             setTimeout(async () => {
-              await memoizedHandleUserAuthentication(data.session?.user);
+              await handleUserAuthentication(data.session?.user);
               setTimeout(() => setShowAuthLoading(false), 2000);
             }, 0);
           }
         } else {
           // If no Supabase session and no persisted user (or not backoffice), clear everything
           if (!currentUser || (!isBackofficeUser && currentUser)) {
+            console.log("No valid session found, clearing auth state");
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
@@ -264,6 +268,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
       } catch (error) {
+        console.error("Error checking authentication status:", error);
         toast.error("Error checking authentication status");
       } finally {
         setIsInitializing(false);
@@ -271,10 +276,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [currentUser, isBackofficeUser, isAuthenticated, memoizedHandleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
   // Handle login
-  const handleLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
@@ -283,6 +288,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = loginUser(email, password, users);
 
       if (user) {
+        console.log("Regular user login successful, setting current user");
+        
         await setCurrentUserWithClientInfo(user);
         
         // Fetch employee data after successful login
@@ -321,6 +328,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           dispatch(setLoading(false));
         } catch (err) {
+          console.error("Error fetching employee data for regular user:", err);
           dispatch(setLoading(false));
         }
         
@@ -438,18 +446,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setShowAuthLoading(false);
       return false;
     } catch (error) {
+      console.error("Login error:", error);
       dispatch(setAuthError("Login failed"));
       toast.error("Login failed");
       setShowAuthLoading(false);
       return false;
     }
-  }, [dispatch, users, setCurrentUserWithClientInfo, fetchClientInfo]);
+  };
 
   // Handle logout with proper navigation and cleanup
-  const handleLogout = useCallback(async (): Promise<void> => {
+  const handleLogout = async (): Promise<void> => {
+    console.log('🚪 Starting centralized logout process');
+    
     // Set logout state immediately to prevent validation loops
     dispatch(setLogoutState(true));
-    logoutCompletedRef.current = true;
     
     try {
       // Determine where to redirect based on user type and current route
@@ -460,8 +470,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!isBackofficeUser) {
         try {
           await supabase.auth.signOut();
+          console.log('✅ Signed out from Supabase');
         } catch (supabaseError) {
-          // Silent error handling
+          console.error('Error signing out from Supabase:', supabaseError);
         }
       }
       
@@ -478,14 +489,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Navigate AFTER clearing state to prevent race conditions
       if (shouldRedirectToBackoffice) {
+        console.log('🚪 Redirecting backoffice user to /backoffice/login');
         navigate('/backoffice/login', { replace: true });
       } else {
+        console.log('🚪 Redirecting regular user to /login');
         navigate('/login', { replace: true });
       }
       
+      console.log('✅ Logout process completed');
       toast.success('You have been logged out successfully');
       
     } catch (error) {
+      console.error('❌ Error during logout:', error);
       toast.error('There was an error logging out');
       
       // Fallback navigation in case of error
@@ -496,16 +511,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         navigate('/login', { replace: true });
       }
     } finally {
-      // Reset logout state after a brief delay
-      setTimeout(() => {
-        dispatch(setLogoutState(false));
-        logoutCompletedRef.current = false;
-      }, 1000);
+      // Reset logout state
+      dispatch(setLogoutState(false));
     }
-  }, [dispatch, isBackofficeUser, location.pathname, navigate]);
+  };
 
-  // Memoize other handlers to prevent unnecessary re-renders
-  const handleAddUser = useCallback((userData: any): void => {
+  // Add new user
+  const handleAddUser = (userData: any): void => {
     const newUser: UserWithPassword = { 
       ...userData,
       id: Date.now().toString(), 
@@ -521,9 +533,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
     
     toast.success("User added successfully");
-  }, []);
+  };
 
-  const handleUpdateUser = useCallback((id: string, updates: Partial<User & { password?: string }>): void => {
+  // Update user
+  const handleUpdateUser = (id: string, updates: Partial<User & { password?: string }>): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
         if (user.id === id) {
@@ -536,9 +549,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return updatedUsers;
     });
     toast.success("User updated successfully");
-  }, []);
+  };
 
-  const handleDeleteUser = useCallback((id: string): void => {
+  // Delete user
+  const handleDeleteUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.filter(user => user.id !== id);
       setUsers(updatedUsers);
@@ -546,9 +560,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return updatedUsers;
     });
     toast.success("User deleted successfully");
-  }, []);
+  };
 
-  const handleDeactivateUser = useCallback((id: string): void => {
+  // Deactivate user
+  const handleDeactivateUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
         if (user.id === id) {
@@ -561,9 +576,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return updatedUsers;
     });
     toast.success("User deactivated successfully");
-  }, []);
+  };
 
-  const handleReactivateUser = useCallback((id: string): void => {
+  // Reactivate user
+  const handleReactivateUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
         if (user.id === id) {
@@ -576,9 +592,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return updatedUsers;
     });
     toast.success("User reactivated successfully");
-  }, []);
+  };
 
-  const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
+  // Change password
+  const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!currentUser) {
       toast.error("No user logged in");
       return false;
@@ -594,10 +611,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       toast.error("Current password is incorrect");
       return false;
     }
-  }, [currentUser, users]);
+  };
 
-  // Memoize context value to prevent unnecessary re-renders
-  const contextValue: AuthContextType = useMemo(() => ({
+  // Context value
+  const contextValue: AuthContextType = {
     user: currentUser,
     users: displayUsers,
     login: handleLogin,
@@ -611,25 +628,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     reactivateUser: handleReactivateUser,
     changePassword: handleChangePassword,
     authError,
-    handleUserAuthentication: memoizedHandleUserAuthentication,
+    handleUserAuthentication,
     employeeData: state.employeeData,
-  }), [
-    currentUser,
-    displayUsers,
-    handleLogin,
-    handleLogout,
-    isAdmin,
-    isSaasOwner,
-    handleAddUser,
-    handleUpdateUser,
-    handleDeleteUser,
-    handleDeactivateUser,
-    handleReactivateUser,
-    handleChangePassword,
-    authError,
-    memoizedHandleUserAuthentication,
-    state.employeeData
-  ]);
+  };
 
   if (isInitializing) {
     return <AuthLoadingOverlay isVisible={true} />;

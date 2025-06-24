@@ -18,7 +18,6 @@ export const useEmployeeValidation = () => {
   const lastValidationRef = useRef<number>(Date.now());
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isValidatingRef = useRef<boolean>(false);
-  const logoutCompletedRef = useRef<boolean>(false);
 
   // Function to check if the current path is a backoffice path
   const isBackofficePath = () => {
@@ -27,8 +26,9 @@ export const useEmployeeValidation = () => {
 
   // Function to validate the employee
   const validateEmployee = async () => {
-    // Skip validation if logging out or logout completed
-    if (state.isLoggingOut || logoutCompletedRef.current) {
+    // Skip validation if logging out
+    if (state.isLoggingOut) {
+      console.log('Skipping validation: logout in progress');
       return;
     }
 
@@ -59,9 +59,9 @@ export const useEmployeeValidation = () => {
       });
       
       // If validation fails and not already logging out, log out and redirect
-      if ((error || !data?.valid) && !state.isLoggingOut && !logoutCompletedRef.current) {
+      if ((error || !data?.valid) && !state.isLoggingOut) {
+        console.error('Employee validation failed:', error?.message || data?.message);
         toast.error('Your session has expired. Please log in again.');
-        logoutCompletedRef.current = true;
         logout();
       }
       
@@ -69,7 +69,7 @@ export const useEmployeeValidation = () => {
       lastValidationRef.current = Date.now();
       
     } catch (error) {
-      // Silent error handling to prevent console spam
+      console.error('Error during employee validation:', error);
     } finally {
       isValidatingRef.current = false;
     }
@@ -87,14 +87,14 @@ export const useEmployeeValidation = () => {
   // Effect to set up validation on page loads and visibility changes
   useEffect(() => {
     // Skip for backoffice paths or if logging out
-    if (isBackofficePath() || state.isLoggingOut || logoutCompletedRef.current) {
+    if (isBackofficePath() || state.isLoggingOut) {
       cleanup();
       return;
     }
     
     // Function to handle page visibility changes
     const handleVisibilityChange = () => {
-      if (state.isLoggingOut || logoutCompletedRef.current) {
+      if (state.isLoggingOut) {
         return;
       }
 
@@ -112,7 +112,7 @@ export const useEmployeeValidation = () => {
     
     // Set up periodic validation (every 30 minutes)
     validationTimeoutRef.current = setInterval(() => {
-      if (!state.isLoggingOut && !logoutCompletedRef.current) {
+      if (!state.isLoggingOut) {
         validateEmployee();
       }
     }, 30 * 60 * 1000);
@@ -131,16 +131,6 @@ export const useEmployeeValidation = () => {
   useEffect(() => {
     if (state.isLoggingOut) {
       cleanup();
-      logoutCompletedRef.current = true;
-    }
-  }, [state.isLoggingOut]);
-
-  // Reset logout completed flag when not logging out
-  useEffect(() => {
-    if (!state.isLoggingOut) {
-      setTimeout(() => {
-        logoutCompletedRef.current = false;
-      }, 2000);
     }
   }, [state.isLoggingOut]);
 
