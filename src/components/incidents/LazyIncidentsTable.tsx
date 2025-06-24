@@ -59,7 +59,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   // Check if user can edit a specific incident
   const canEditIncident = (incident: IncidentRecord) => {
-    // Don't show edit button for voided incidents
+    // Don't show edit button for voided incidents (if the property exists and is true)
     if (incident.is_voided) return false;
     
     const permissions = checkPermissions(
