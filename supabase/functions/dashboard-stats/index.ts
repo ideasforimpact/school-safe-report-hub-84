@@ -47,9 +47,9 @@ serve(async (req) => {
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
 
-    // For regular employees, filter by created_by OR assigned_to
+    // For regular employees, filter by created_by only
     if (!is_super_admin && employee_id) {
-      incidentQuery = incidentQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+      incidentQuery = incidentQuery.eq('created_by', employee_id)
     }
 
     // Get open incidents count (New and Open status)
@@ -67,7 +67,7 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .eq('status', 'New')
 
-    // For regular employees, filter by created_by only (as requested)
+    // For regular employees, filter by created_by only
     if (!is_super_admin && employee_id) {
       assessmentQuery = assessmentQuery.eq('created_by', employee_id)
     }
@@ -166,9 +166,9 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .gte('created_at', oneMonthAgo.toISOString())
 
-    // For regular employees, filter by created_by OR assigned_to
+    // For regular employees, filter by created_by only
     if (!is_super_admin && employee_id) {
-      lastMonthIncidentQuery = lastMonthIncidentQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+      lastMonthIncidentQuery = lastMonthIncidentQuery.eq('created_by', employee_id)
     }
 
     const { data: incidentsLastMonth, error: incidentsLastMonthError } = await lastMonthIncidentQuery
@@ -187,9 +187,9 @@ serve(async (req) => {
       .eq('client_id', client_id)
       .gte('created_at', sixMonthsAgo.toISOString())
 
-    // For regular employees, filter by created_by OR assigned_to
+    // For regular employees, filter by created_by only
     if (!is_super_admin && employee_id) {
-      last6MonthsIncidentQuery = last6MonthsIncidentQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+      last6MonthsIncidentQuery = last6MonthsIncidentQuery.eq('created_by', employee_id)
     }
 
     const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await last6MonthsIncidentQuery
@@ -221,9 +221,9 @@ serve(async (req) => {
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString())
 
-      // For regular employees, filter by created_by OR assigned_to
+      // For regular employees, filter by created_by only
       if (!is_super_admin && employee_id) {
-        monthQuery = monthQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+        monthQuery = monthQuery.eq('created_by', employee_id)
       }
 
       const { data: monthIncidents } = await monthQuery
