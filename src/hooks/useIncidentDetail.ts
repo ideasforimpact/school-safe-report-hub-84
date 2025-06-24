@@ -26,17 +26,21 @@ export const useIncidentDetail = () => {
     });
   };
 
-  // Get the appropriate color class for incident status badges
+  // Get the appropriate color class for incident status badges with consistent backgrounds
   const getStatusColor = (status: IncidentStatus) => {
     switch(status) {
+      case 'New':
+        return 'bg-blue-500 text-white border-blue-500';
       case 'Open':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500 text-white border-red-500';
       case 'In Progress':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500 text-white border-yellow-500';
       case 'Closed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500 text-white border-green-500';
+      case 'On Hold':
+        return 'bg-gray-500 text-white border-gray-500';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-500 text-white border-gray-500';
     }
   };
 

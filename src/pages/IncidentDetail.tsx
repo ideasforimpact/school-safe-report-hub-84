@@ -1,3 +1,4 @@
+
 import Layout from '@/components/layout/Layout';
 import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 import IncidentHeader from '@/components/incident/IncidentHeader';
@@ -62,7 +63,8 @@ const IncidentDetail = () => {
         createdAt: new Date(fetchedIncident.date),
         updatedAt: new Date(fetchedIncident.date),
         priority: fetchedIncident.priority.name,
-        comments: Array.isArray(fetchedIncident.comments) ? fetchedIncident.comments : []
+        comments: Array.isArray(fetchedIncident.comments) ? fetchedIncident.comments : [],
+        reopen: fetchedIncident.reopen || 0 // Add reopen field
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
@@ -218,7 +220,7 @@ const IncidentDetail = () => {
         </Button>
       </div>
       
-      {/* Single IncidentHeader component with Close and Edit buttons */}
+      {/* Single IncidentHeader component with Close, Reopen and Edit buttons */}
       <div className="container max-w-6xl pb-6">
         <IncidentHeader
           incident={incident}
@@ -228,6 +230,7 @@ const IncidentDetail = () => {
           formatDate={formatDate}
           getStatusColor={getStatusColor}
           onCloseButtonClick={handleCloseButtonClick}
+          onIncidentUpdate={handleRefreshIncident}
         />
       </div>
       

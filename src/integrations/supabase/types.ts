@@ -1171,6 +1171,7 @@ export type Database = {
           location_id: string | null
           people_involved: Json
           priority_id: string | null
+          reopen: number
           root_cause_analysis: string | null
           status_id: string
           subcategory_id: string | null
@@ -1195,6 +1196,7 @@ export type Database = {
           location_id?: string | null
           people_involved?: Json
           priority_id?: string | null
+          reopen?: number
           root_cause_analysis?: string | null
           status_id: string
           subcategory_id?: string | null
@@ -1219,6 +1221,7 @@ export type Database = {
           location_id?: string | null
           people_involved?: Json
           priority_id?: string | null
+          reopen?: number
           root_cause_analysis?: string | null
           status_id?: string
           subcategory_id?: string | null
