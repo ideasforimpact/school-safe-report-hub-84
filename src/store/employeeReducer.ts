@@ -6,13 +6,14 @@ import { loadAuthState } from './authPersistence';
 const restorePersistedAuthState = (): Partial<EmployeeState> => {
   const persistedState = loadAuthState();
   if (persistedState) {
-    console.log("Restoring persisted auth state with modules:", persistedState.configuredModules?.length || 0);
+    console.log("Restoring persisted auth state with modules:", persistedState.configuredModules?.length || 0, "and employee data:", !!persistedState.employeeData);
     return {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
-      configuredModules: persistedState.configuredModules || []
+      configuredModules: persistedState.configuredModules || [],
+      employeeData: persistedState.employeeData || null // Restore employeeData
     };
   }
   return {};
@@ -30,12 +31,12 @@ export const initialEmployeeState: EmployeeState = {
   // Apply restored state
   ...restoredState,
   
-  // Employee data - preserve restored modules or default to empty
-  employeeData: null,
+  // Employee data - preserve restored modules and employeeData or default to empty
+  employeeData: restoredState.employeeData || null,
   configuredModules: restoredState.configuredModules || [],
   isLoading: false,
   error: null,
-  clientId: null
+  clientId: restoredState.employeeData?.clientId || null
 };
 
 export const employeeReducer = (
@@ -85,7 +86,8 @@ export const employeeReducer = (
         isAuthenticated: false,
         isBackofficeUser: false,
         authError: null,
-        configuredModules: []
+        configuredModules: [],
+        employeeData: null // Clear employeeData on auth clear
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
@@ -128,7 +130,8 @@ export const employeeReducer = (
       console.log("Resetting employee state in reducer");
       return {
         ...initialEmployeeState,
-        configuredModules: []
+        configuredModules: [],
+        employeeData: null
       };
       
     default:
