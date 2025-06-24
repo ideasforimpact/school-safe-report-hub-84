@@ -103,9 +103,9 @@ export interface EmployeeData {
   firstName: string;
   lastName: string;
   email: string;
-  isSuperAdmin: boolean;
-  department: { id: string; name: string; } | null;
-  employeeType: { id: string; name: string; } | null;
+  isSuperAdmin?: boolean;
+  department?: string;
+  employeeType?: string;
   client?: Client | null;
   clientType?: ClientType | null;
 }
