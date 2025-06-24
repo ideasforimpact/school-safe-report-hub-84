@@ -19,6 +19,7 @@ import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAu
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -44,6 +45,9 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   // Get Redux state and dispatch
   const { state, dispatch } = useEmployeeStore();
   
@@ -442,18 +446,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout
-  const handleLogout = (): void => {
-    // Clear Redux state
-    dispatch(clearAuth());
-    dispatch(resetEmployee());
+  // Handle logout with proper navigation
+  const handleLogout = async (): Promise<void> => {
+    console.log('🚪 Starting centralized logout process');
     
-    // Clear persisted state
-    clearPersistedAuthState();
-    setShowAuthLoading(false);
-    
-    // Clear local storage
-    logoutUser();
+    try {
+      // Determine where to redirect based on user type and current route
+      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
+      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
+      
+      // Navigate BEFORE clearing state to prevent race conditions
+      if (shouldRedirectToBackoffice) {
+        console.log('🚪 Redirecting backoffice user to /backoffice/login');
+        navigate('/backoffice/login');
+      } else {
+        console.log('🚪 Redirecting regular user to /login');
+        navigate('/login');
+      }
+      
+      // For non-backoffice users, sign out from Supabase
+      if (!isBackofficeUser) {
+        await supabase.auth.signOut();
+        console.log('✅ Signed out from Supabase');
+      }
+      
+      // Clear Redux state
+      dispatch(clearAuth());
+      dispatch(resetEmployee());
+      
+      // Clear persisted state
+      clearPersistedAuthState();
+      setShowAuthLoading(false);
+      
+      // Clear local storage
+      logoutUser();
+      
+      console.log('✅ Logout process completed');
+      toast.success('You have been logged out successfully');
+      
+    } catch (error) {
+      console.error('❌ Error during logout:', error);
+      toast.error('There was an error logging out');
+      
+      // Fallback navigation in case of error
+      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
+      if (isCurrentlyBackoffice) {
+        navigate('/backoffice/login');
+      } else {
+        navigate('/login');
+      }
+    }
   };
 
   // Add new user

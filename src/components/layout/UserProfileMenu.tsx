@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -12,8 +13,6 @@ import {
 import { LogOut, User, Key } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { formatUserFullName } from '@/utils/userUtils';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -42,31 +41,9 @@ const UserProfileMenu = () => {
   };
 
   const handleLogout = async () => {
-    try {
-      console.log('🚪 Logging out user');
-      
-      // For backoffice users, don't sign out from Supabase
-      if (!isBackofficeUser) {
-        await supabase.auth.signOut();
-        console.log('✅ Signed out from Supabase');
-      }
-      
-      // Proceed with our app's logout
-      await logout();
-      console.log('✅ Local logout complete');
-      
-      // Redirect based on the current route
-      if (isBackofficeRoute) {
-        navigate('/backoffice/login');
-      } else {
-        navigate('/login');
-      }
-      
-      toast.success('You have been logged out successfully');
-    } catch (error) {
-      console.error('❌ Error during logout:', error);
-      toast.error('There was an error logging out');
-    }
+    console.log('🚪 UserProfileMenu logout clicked, calling centralized logout');
+    // Use the centralized logout which handles all navigation
+    await logout();
   };
 
   const handleProfileClick = () => {
