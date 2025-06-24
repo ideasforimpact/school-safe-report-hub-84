@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getConfiguredModules, getEmployeeLoadingState } from '@/store/employeeSelectors';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchConfiguredModules } from '@/services/moduleService';
 import SidebarMenuItem from './SidebarMenuItem';
 import { LucideIcon } from 'lucide-react';
 import { 
@@ -16,6 +16,7 @@ import {
   Users,
   Settings
 } from 'lucide-react';
+import { Module } from '@/store/types';
 
 // Map string icon names to Lucide components
 const iconMap: Record<string, any> = {
@@ -41,57 +42,75 @@ interface ModuleItem {
 const ClientModulesList = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { state } = useEmployeeStore();
-  const configuredModules = getConfiguredModules(state);
-  const isLoading = getEmployeeLoadingState(state);
-  const isFetchingModules = state.isFetchingModules;
+  const { employeeData } = useAuth();
+  
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingModules, setIsFetchingModules] = useState(false);
 
-  console.log(configuredModules, "configuredModules");
+  console.log("employeeData from auth:", employeeData);
   console.log("isFetchingModules:", isFetchingModules);
   console.log("isLoading:", isLoading);
 
-  // Transform Redux store modules into sidebar menu items
+  // Fetch modules when employeeData is available
   useEffect(() => {
-    // Wait for modules to be fetched before rendering
-    if (isFetchingModules) {
-      console.log("Still fetching modules, waiting...");
-      return;
-    }
+    const loadModules = async () => {
+      if (!employeeData?.id || !employeeData?.clientId || isFetchingModules) {
+        console.log("Cannot fetch modules - missing data or already fetching");
+        return;
+      }
 
-    if (configuredModules && configuredModules.length > 0) {
-      console.log("Using modules from Redux store:", configuredModules);
-      
-      // Map store modules to sidebar items
-      const modules = configuredModules.map(module => {
-        // Get icon component
-        const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+      try {
+        setIsFetchingModules(true);
+        setIsLoading(true);
         
-        // Use URL from database or create path from module name as fallback
-        const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        console.log("Fetching modules for employee:", employeeData.id, "client:", employeeData.clientId);
         
-        return {
-          icon: IconComponent,
-          label: module.name,
-          path,
+        const modules = await fetchConfiguredModules(
+          employeeData.id, 
+          employeeData.clientId,
+          !!employeeData.isSuperAdmin
+        );
+        
+        console.log("Fetched modules:", modules);
+        
+        // Transform modules into sidebar items
+        const sidebarItems = modules.map(module => {
+          // Get icon component
+          const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+          
+          // Use URL from database or create path from module name as fallback
+          const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+          
+          return {
+            icon: IconComponent,
+            label: module.name,
+            path,
+            allowed: true,
+            accessLevel: module.accessLevel || {}
+          };
+        });
+        
+        setSidebarModules(sidebarItems);
+        
+      } catch (error) {
+        console.error("Error fetching modules:", error);
+        // Fallback to default dashboard
+        setSidebarModules([{
+          icon: LayoutDashboard,
+          label: 'Dashboard',
+          path: '/dashboard',
           allowed: true,
-          accessLevel: module.accessLevel || {}
-        };
-      });
-      
-      setSidebarModules(modules);
-    } else if (!isFetchingModules && !isLoading) {
-      // Only show default dashboard if we're not fetching and have no modules
-      console.log("No modules found and not fetching, using default dashboard");
-      setSidebarModules([{
-        icon: LayoutDashboard,
-        label: 'Dashboard',
-        path: '/dashboard',
-        allowed: true,
-        accessLevel: {}
-      }]);
-    }
-  }, [configuredModules, isFetchingModules, isLoading]);
+          accessLevel: {}
+        }]);
+      } finally {
+        setIsLoading(false);
+        setIsFetchingModules(false);
+      }
+    };
+
+    loadModules();
+  }, [employeeData?.id, employeeData?.clientId, employeeData?.isSuperAdmin]);
 
   // Determine if a path is active
   const isActive = (path: string) => {
