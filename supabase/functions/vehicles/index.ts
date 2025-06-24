@@ -67,7 +67,8 @@ serve(async (req) => {
       const processedData = {
         ...vehicleData,
         year: vehicleData.year ? parseInt(vehicleData.year) : null,
-        capacity: vehicleData.capacity ? parseInt(vehicleData.capacity) : null
+        capacity: vehicleData.capacity ? parseInt(vehicleData.capacity) : null,
+        employee_id: vehicleData.employee_id || null // Handle employee_id field
       };
       
       // Remove undefined or empty string values for numeric fields
@@ -82,6 +83,24 @@ serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+
+      // Validate employee_id if provided
+      if (processedData.employee_id) {
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('id', processedData.employee_id)
+          .single();
+
+        if (employeeError || !employee) {
+          return new Response(JSON.stringify({ 
+            error: "Invalid employee_id provided" 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
       
       const { data, error } = await supabase
@@ -109,6 +128,11 @@ serve(async (req) => {
         capacity: updates.capacity ? parseInt(updates.capacity) : null
       };
       
+      // Handle employee_id updates
+      if (updates.employee_id !== undefined) {
+        processedUpdates.employee_id = updates.employee_id;
+      }
+      
       // Don't update undefined fields
       if (processedUpdates.year === undefined) {
         delete processedUpdates.year;
@@ -116,6 +140,24 @@ serve(async (req) => {
       
       if (processedUpdates.capacity === undefined || processedUpdates.capacity === '') {
         processedUpdates.capacity = null;
+      }
+
+      // Validate employee_id if provided
+      if (processedUpdates.employee_id) {
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('id', processedUpdates.employee_id)
+          .single();
+
+        if (employeeError || !employee) {
+          return new Response(JSON.stringify({ 
+            error: "Invalid employee_id provided" 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
       
       const { data, error } = await supabase

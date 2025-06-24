@@ -47,6 +47,7 @@ export interface Vehicle {
   documents: VehicleDocument[];
   status: 'active' | 'maintenance' | 'inactive';
   clientId?: string;
+  employeeId?: string; // Add employeeId field
   createdAt: string;
   updatedAt: string;
   verificationStatus?: string;
