@@ -29,7 +29,7 @@ export const useEmployeeData = () => {
                                 location.pathname === '/support' ||
                                 location.pathname === '/blog';
 
-  // Fetch configured modules for the employee - now optimized to avoid unnecessary calls
+  // Fetch configured modules for the employee
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
       dispatch(setLoading(true));
@@ -42,18 +42,7 @@ export const useEmployeeData = () => {
       // Set the client ID in Redux store
       dispatch(setClientId(clientId));
 
-      // Check Redux store first - if modules are already loaded, don't fetch again unless specifically needed
-      if (state.configuredModules && state.configuredModules.length > 0) {
-        console.log("Modules already loaded in Redux, skipping fetch");
-        dispatch(setLoading(false));
-        return;
-      }
-
       console.log("Fetching modules for employee:", employeeId, "client:", clientId);
-
-      // Add a minimum loading time to show the spinner
-      const minimumLoadingTime = 1500; // 1.5 seconds
-      const startTime = Date.now();
 
       // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
@@ -81,7 +70,7 @@ export const useEmployeeData = () => {
             module_id,
             enabled,
             access_level,
-            modules(id, name, icon, level)
+            modules(id, name, icon, level, order, url)
           `)
           .eq('client_id', clientId)
           .eq('enabled', true);
@@ -101,11 +90,13 @@ export const useEmployeeData = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level, // Using level as key
+            key: moduleObj.level,
             icon: moduleObj.icon || '',
-            level: moduleObj.level, // Include the level property
+            level: moduleObj.level,
             enabled: true,
-            accessLevel: cm.access_level || {}
+            accessLevel: cm.access_level || {},
+            order: moduleObj.order || 999,
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`
           };
         }).filter(Boolean) as Module[] || [];
       } else {
@@ -117,7 +108,7 @@ export const useEmployeeData = () => {
             module_id,
             enabled,
             access_level,
-            modules(id, name, icon, level)
+            modules(id, name, icon, level, order, url)
           `)
           .eq('client_id', clientId)
           .eq('enabled', true);
@@ -167,14 +158,23 @@ export const useEmployeeData = () => {
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level, // Using level as key
+            key: moduleObj.level,
             icon: moduleObj.icon || '',
-            level: moduleObj.level, // Include the level property
+            level: moduleObj.level,
             enabled: true,
-            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {}
+            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {},
+            order: moduleObj.order || 999,
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`
           };
         }).filter(Boolean) as Module[] || [];
       }
+
+      // Sort modules by order field
+      configuredModules.sort((a, b) => {
+        if (a.order === null || a.order === undefined) return 1;
+        if (b.order === null || b.order === undefined) return -1;
+        return a.order - b.order;
+      });
 
       // If no modules found, we should at least provide a dashboard
       if (configuredModules.length === 0) {
@@ -185,19 +185,15 @@ export const useEmployeeData = () => {
           icon: 'LayoutDashboard',
           level: 'client',
           enabled: true,
-          accessLevel: {}
+          accessLevel: {},
+          order: 1,
+          url: '/dashboard'
         }];
       }
 
-      // Ensure minimum loading time has passed
-      const elapsedTime = Date.now() - startTime;
-      const remainingTime = Math.max(0, minimumLoadingTime - elapsedTime);
-      
-      setTimeout(() => {
-        console.log("Setting configured modules:", configuredModules);
-        dispatch(setConfiguredModules(configuredModules));
-        dispatch(setLoading(false));
-      }, remainingTime);
+      console.log("Setting configured modules:", configuredModules);
+      dispatch(setConfiguredModules(configuredModules));
+      dispatch(setLoading(false));
 
     } catch (error) {
       console.error('Error in fetchConfiguredModules:', error);
@@ -227,10 +223,10 @@ export const useEmployeeData = () => {
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
-      // Fetch modules if we have employeeId and clientId, and modules are empty
-      if (authEmployeeData.id && authEmployeeData.clientId &&
-          (!state.configuredModules || state.configuredModules.length === 0)) {
-        console.log("Employee data available but modules empty, fetching modules");
+      // Always fetch modules if we have employeeId and clientId - even if they exist in state
+      // This ensures fresh data and resolves the DevTools refresh issue
+      if (authEmployeeData.id && authEmployeeData.clientId) {
+        console.log("Employee data available, fetching modules");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
     } else {
@@ -272,10 +268,9 @@ export const useEmployeeData = () => {
                 dispatch(setClientId(data.client_id));
               }
               
-              // Fetch modules if modules are empty
-              if (data.id && data.client_id && 
-                  (!state.configuredModules || state.configuredModules.length === 0)) {
-                console.log("Fetched employee data but modules empty, fetching modules");
+              // Fetch modules
+              if (data.id && data.client_id) {
+                console.log("Fetched employee data, fetching modules");
                 fetchConfiguredModules(data.id, data.client_id);
               }
             } else {
@@ -291,25 +286,26 @@ export const useEmployeeData = () => {
     }
   }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
 
-  // Additional effect to handle page refresh scenario where user exists but modules are missing
+  // Additional effect to handle when configuredModules are empty but we have employee data
   useEffect(() => {
-    // If we have a current user and employee data but no modules, re-fetch modules
-    if (state.currentUser && state.employeeData && 
+    // If we have employee data but no modules, and we're on a route that needs them, fetch modules
+    if (state.employeeData && 
         (!state.configuredModules || state.configuredModules.length === 0) &&
-        needsEmployeeData && !shouldSkipEmployeeData) {
-      console.log("Page refresh detected: user and employee data exist but modules missing, re-fetching");
+        needsEmployeeData && !shouldSkipEmployeeData &&
+        !state.isLoading) {
+      console.log("Employee data exists but modules missing, re-fetching");
       if (state.employeeData.id && state.employeeData.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
       }
     }
-  }, [state.currentUser, state.employeeData, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData]);
+  }, [state.employeeData, state.configuredModules, needsEmployeeData, shouldSkipEmployeeData, state.isLoading]);
 
   return {
     employeeData: state.employeeData,
     configuredModules: state.configuredModules,
     isLoading: state.isLoading,
     error: state.error,
-    clientId: state.clientId, // Include clientId in the return value
+    clientId: state.clientId,
     refetchModules: () => {
       if (state.employeeData?.id && state.employeeData?.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);

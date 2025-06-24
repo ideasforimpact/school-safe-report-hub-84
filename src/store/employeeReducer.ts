@@ -1,3 +1,4 @@
+
 import { EmployeeState, EmployeeAction, EmployeeActionTypes } from './types';
 import { loadAuthState } from './authPersistence';
 
@@ -80,7 +81,8 @@ export const employeeReducer = (
         currentUser: null,
         isAuthenticated: false,
         isBackofficeUser: false,
-        authError: null
+        authError: null,
+        configuredModules: []
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
@@ -121,7 +123,10 @@ export const employeeReducer = (
       
     case EmployeeActionTypes.RESET_EMPLOYEE:
       console.log("Resetting employee state in reducer");
-      return initialEmployeeState;
+      return {
+        ...initialEmployeeState,
+        configuredModules: []
+      };
       
     default:
       return state;
