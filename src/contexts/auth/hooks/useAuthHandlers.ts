@@ -5,8 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
 import { EmployeeActionTypes } from '@/store/types';
-import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
+import { fetchConfiguredModules } from '@/services/moduleService';
 
 // Define the SupabaseUser type that's missing
 interface SupabaseUser {
@@ -103,158 +103,6 @@ export const useAuthHandlers = ({
       return { client: null, clientType: null };
     }
   }, []);
-  
-  // New function to fetch configured modules for an employee
-  const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
-    try {
-      console.log("Fetching configured modules during authentication for", { employeeId, clientId, isSuperAdmin });
-      
-      if (!clientId) {
-        console.error("Client ID is missing, cannot fetch modules");
-        if (dispatch) dispatch(setError("Client ID is missing"));
-        return [];
-      }
-      
-      let configuredModules: Module[] = [];
-      
-      if (isSuperAdmin) {
-        console.log("Fetching modules for super admin");
-        // For super admins, fetch all modules enabled for the client
-        const { data: clientModules, error: clientModulesError } = await supabase
-          .from('client_modules')
-          .select(`
-            id,
-            module_id,
-            enabled,
-            access_level,
-            modules(id, name, icon, level, order, url)
-          `)
-          .eq('client_id', clientId)
-          .eq('enabled', true);
-
-        if (clientModulesError) {
-          console.error("Error fetching client modules during auth:", clientModulesError);
-          if (dispatch) dispatch(setError(clientModulesError.message));
-          return [];
-        }
-
-        // Convert client modules to the expected format and sort by order
-        configuredModules = clientModules?.map(cm => {
-          const moduleObj = cm.modules;
-          if (!moduleObj) return null;
-          return {
-            id: moduleObj.id,
-            name: moduleObj.name,
-            key: moduleObj.level, // Using level as key
-            icon: moduleObj.icon || '',
-            level: moduleObj.level, // Include the level property
-            enabled: true,
-            accessLevel: cm.access_level || {},
-            order: moduleObj.order || 999, // Use order from modules table
-            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use URL from modules table or generate from name
-          };
-        }).filter(Boolean) as Module[] || [];
-        
-      } else {
-        console.log("Fetching modules for regular employee");
-        // First fetch all client modules to understand what's available
-        const { data: clientModules, error: clientModulesError } = await supabase
-          .from('client_modules')
-          .select(`
-            id,
-            module_id,
-            enabled,
-            access_level,
-            modules(id, name, icon, level, order, url)
-          `)
-          .eq('client_id', clientId)
-          .eq('enabled', true);
-
-        if (clientModulesError) {
-          console.error("Error fetching client modules for employee during auth:", clientModulesError);
-          if (dispatch) dispatch(setError(clientModulesError.message));
-          return [];
-        }
-
-        // Then fetch employee-specific module permissions
-        const { data: employeeModules, error: employeeModulesError } = await supabase
-          .from('employee_modules')
-          .select(`
-            module_id,
-            level
-          `)
-          .eq('employee_id', employeeId);
-
-        if (employeeModulesError) {
-          console.error("Error fetching employee modules during auth:", employeeModulesError);
-          if (dispatch) dispatch(setError(employeeModulesError.message));
-          return [];
-        }
-
-        // Create a map of employee module permissions for quick lookup
-        const employeeModuleMap = new Map();
-        employeeModules?.forEach(em => {
-          employeeModuleMap.set(em.module_id, em.level);
-        });
-
-        // Combine client modules with employee-specific permissions
-        configuredModules = clientModules?.map(cm => {
-          const moduleObj = cm.modules;
-          if (!moduleObj) return null;
-          
-          // Check if this module is assigned to the employee
-          const hasAccess = employeeModules?.some(em => em.module_id === moduleObj.id) || 
-                           employeeModules?.length === 0; // If no modules specified, assume access to all
-          
-          if (!hasAccess && employeeModules?.length > 0) {
-            return null;
-          }
-          
-          return {
-            id: moduleObj.id,
-            name: moduleObj.name,
-            key: moduleObj.level,
-            icon: moduleObj.icon || '',
-            level: moduleObj.level,
-            enabled: true,
-            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {},
-            order: moduleObj.order || 999, // Use order from modules table
-            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use URL from modules table or generate from name
-          };
-        }).filter(Boolean) as Module[] || [];
-      }
-
-      // Sort modules by order field (nulls last)
-      configuredModules.sort((a, b) => {
-        if (a.order === null || a.order === undefined) return 1;
-        if (b.order === null || b.order === undefined) return -1;
-        return a.order - b.order;
-      });
-
-      // If no modules found, provide a dashboard
-      if (configuredModules.length === 0) {
-        configuredModules = [{
-          id: 'dashboard-default',
-          name: 'Dashboard',
-          key: 'dashboard',
-          icon: 'LayoutDashboard',
-          level: 'client',
-          enabled: true,
-          accessLevel: {},
-          order: 1,
-          url: '/dashboard'
-        }];
-      }
-      
-      // Only log the modules length since employeeModules might be undefined or out of scope here
-      console.log("Modules fetched during auth:", configuredModules.length);
-      return configuredModules;
-      
-    } catch (error) {
-      console.error("Error in fetchConfiguredModules during auth:", error);
-      return [];
-    }
-  }, [dispatch]);
 
   // Function to check if domain is allowed for a client
   const validateDomain = useCallback(async (email: string | undefined, clientId: string | null): Promise<boolean> => {
@@ -536,7 +384,7 @@ export const useAuthHandlers = ({
         console.log("useAuthHandlers - Fetching modules during authentication process");
         dispatch(setLoading(true));
         
-        // Get configured modules based on super admin status
+        // Get configured modules using the extracted service
         const modules = await fetchConfiguredModules(
           employeeData.id, 
           employeeData.clientId,
@@ -586,7 +434,7 @@ export const useAuthHandlers = ({
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, dispatch, validateDomain, users, setUsers, fetchClientInfo]);
 
   return {
     handleUserAuthentication
