@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getEmployeeData, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 interface DashboardStats {
   openIncidents: number;
@@ -38,15 +36,7 @@ export const useDashboardStats = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, employeeData } = useAuth();
-  const { state } = useEmployeeStore();
-  
-  // Get employee data and super admin status from Redux
-  const reduxEmployeeData = getEmployeeData(state);
-  const isSuperAdmin = isEmployeeSuperAdmin(state);
-  
-  // Use employee data from Redux if available, fallback to auth context
-  const activeEmployeeData = reduxEmployeeData || employeeData;
-  const clientId = activeEmployeeData?.clientId || user?.clientId;
+  const clientId = employeeData?.clientId || user?.clientId;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -59,14 +49,10 @@ export const useDashboardStats = () => {
         setLoading(true);
         setError(null);
 
-        console.log('Fetching dashboard stats for client:', clientId, 'employee:', activeEmployeeData?.id, 'is_super_admin:', isSuperAdmin);
+        console.log('Fetching dashboard stats for client:', clientId);
 
         const { data, error } = await supabase.functions.invoke('dashboard-stats', {
-          body: { 
-            client_id: clientId,
-            employee_id: activeEmployeeData?.id,
-            is_super_admin: isSuperAdmin
-          }
+          body: { client_id: clientId }
         });
 
         if (error) {
@@ -85,7 +71,7 @@ export const useDashboardStats = () => {
     };
 
     fetchStats();
-  }, [clientId, activeEmployeeData?.id, isSuperAdmin]);
+  }, [clientId]);
 
   return {
     stats,
