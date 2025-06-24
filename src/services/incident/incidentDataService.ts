@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -167,7 +166,7 @@ class IncidentDataService {
     }
   }
 
-  // Method with server-side filtering support
+  // Method with server-side filtering support and role-based access control
   async fetchIncidentsForClientWithFilters(
     clientId: string, 
     forceRefresh = false, 
@@ -180,13 +179,15 @@ class IncidentDataService {
     const limitedPageSize = 10;
     const offset = (page - 1) * limitedPageSize;
     
-    // Create cache key including filters
+    // Create cache key including filters and user-specific data
     const filterKey = JSON.stringify(filters);
-    const cacheKey = `${clientId}_${employeeData?.id || 'unknown'}_${page}_${limitedPageSize}_${filterKey}`;
+    const userKey = employeeData ? `${employeeData.id}_${employeeData.isSuperAdmin}` : 'anonymous';
+    const cacheKey = `${clientId}_${userKey}_${page}_${limitedPageSize}_${filterKey}`;
     
     console.log(`🔄 fetchIncidentsForClientWithFilters called:`);
     console.log(`   - Page: ${page}, PageSize: ${limitedPageSize}, Offset: ${offset}`);
     console.log(`   - Filters:`, filters);
+    console.log(`   - Employee Data:`, employeeData);
     console.log(`   - Force refresh: ${forceRefresh}`);
     console.log(`   - Cache key: ${cacheKey}`);
     
@@ -211,7 +212,7 @@ class IncidentDataService {
     this.isLoading = true;
 
     try {
-      console.log('🚀 Making server request for incidents with filters...');
+      console.log('🚀 Making server request for incidents with filters and role-based access...');
       
       // Perform parallel ID lookups for filters
       const [statusId, categoryId, subcategoryId, priorityId, locationId, facilityId] = await Promise.all([
@@ -255,22 +256,23 @@ class IncidentDataService {
         `, { count: 'exact' })
         .eq('client_id', clientId);
 
-      // Apply role-based filtering
-      console.log('🔒 Applying role-based filtering:', { employeeData, hasIncidentAdmin });
+      // Apply role-based filtering based on super admin status
+      console.log('🔒 Applying role-based filtering:', { employeeData });
       if (employeeData) {
+        // Check if user is super admin - use consistent logic with frontend
         const isSuperAdmin = employeeData.isSuperAdmin === true;
         
         if (!isSuperAdmin) {
-          if (hasIncidentAdmin) {
-            query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-            console.log(`   - Applied incident admin filter for employee ${employeeData.id}`);
-          } else {
-            query = query.eq('created_by', employeeData.id);
-            console.log(`   - Applied regular user filter for employee ${employeeData.id}`);
-          }
+          // Non-super admin users can only see incidents they created or are assigned to
+          query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+          console.log(`   - Applied non-super admin filter for employee ${employeeData.id} (created_by OR assigned_to)`);
         } else {
-          console.log('   - Super admin: no additional filtering');
+          console.log('   - Super admin: can see all incidents for this client');
         }
+      } else {
+        console.log('   - No employee data provided, applying restrictive filter');
+        // If no employee data, don't show any incidents (safety measure)
+        query = query.eq('created_by', 'non-existent-id');
       }
 
       // Apply server-side filters using foreign key IDs
@@ -382,13 +384,14 @@ class IncidentDataService {
         totalPages
       };
 
-      console.log(`📋 Server-side pagination result with filters:`);
+      console.log(`📋 Server-side pagination result with role-based access and filters:`);
       console.log(`   - Page ${page}/${totalPages}`);
       console.log(`   - Records: ${transformedIncidents.length}`);
       console.log(`   - Total: ${totalCount}`);
       console.log(`   - Has more: ${hasMore}`);
+      console.log(`   - User access level: ${employeeData?.isSuperAdmin ? 'Super Admin' : 'Regular User'}`);
 
-      // Cache the results with page-specific key including filters
+      // Cache the results with page-specific key including filters and user context
       this.incidentCache.set(cacheKey, response);
       console.log(`💾 Cached result with key: ${cacheKey}`);
       
@@ -492,7 +495,7 @@ class IncidentDataService {
     if (clientId && employeeId) {
       // Clear all cache entries for this client and employee
       const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => 
-        key.startsWith(`${clientId}_${employeeId}_`)
+        key.includes(`${clientId}_${employeeId}`)
       );
       keysToDelete.forEach(key => this.incidentCache.delete(key));
       console.log(`🗑️ Cleared cache for client ${clientId} and employee ${employeeId} (${keysToDelete.length} entries)`);
