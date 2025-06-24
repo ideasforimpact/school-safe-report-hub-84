@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,8 +31,10 @@ export const useIncidentData = () => {
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
 
-  // Check if user has incident admin access by finding incidents module
+  // Check if user has super admin access
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  
+  // Check if user has incident admin access by finding incidents module
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
@@ -82,15 +83,24 @@ export const useIncidentData = () => {
       }
 
       console.log('Fetching incidents for client:', clientId, 'page:', page, 'pageSize:', pageSize);
+      console.log('User is super admin:', isSuperAdmin);
 
-      // Pass employee data and incident admin access for role-based filtering
+      // Pass employee data with super admin status to the service
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+      
+      // Ensure the employee data includes the super admin status
+      const enhancedEmployeeData = employeeDataForFiltering ? {
+        ...employeeDataForFiltering,
+        isSuperAdmin: isSuperAdmin
+      } : null;
 
-      // Use the centralized service with pagination
+      console.log('Enhanced employee data for filtering:', enhancedEmployeeData);
+
+      // Use the centralized service with pagination and role-based filtering
       const response = await incidentDataService.fetchIncidentsForClient(
         clientId, 
         forceRefresh, 
-        employeeDataForFiltering,
+        enhancedEmployeeData,
         hasIncidentAdmin,
         { page, pageSize }
       );
@@ -133,6 +143,7 @@ export const useIncidentData = () => {
       });
 
       console.log(`Successfully fetched ${transformedIncidents.length} incidents (page ${response.currentPage} of ${response.totalPages})`);
+      console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : 'Regular User (filtered incidents)'}`);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
@@ -141,7 +152,7 @@ export const useIncidentData = () => {
     } finally {
       setLoading(false);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, isSuperAdmin]);
 
   const refetchIncidents = useCallback(async () => {
     await fetchIncidents(true, pagination.currentPage, pagination.pageSize); // Force refresh
@@ -173,6 +184,7 @@ export const useIncidentData = () => {
     loadNextPage,
     goToPage,
     changePageSize,
-    hasIncidentAdmin
+    hasIncidentAdmin,
+    isSuperAdmin
   };
 };
