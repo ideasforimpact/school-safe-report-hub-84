@@ -23,31 +23,34 @@ serve(async (req) => {
     const rawBody = await req.text();
     console.log("Raw request body:", rawBody);
 
-    const { operation, employee, id } = JSON.parse(rawBody);
-    console.log("Request body parsed successfully:", { operation, employee, id });
-    console.log("Employee object:", JSON.stringify(employee, null, 2));
+    const requestData = JSON.parse(rawBody);
+    const { operation, employee, id, employees, clientId } = requestData;
+    
+    console.log("Request data parsed successfully:", { operation, employee, id, employees: employees?.length, clientId });
 
     console.log("Handling operation:", operation);
 
     // Validate client exists for operations that need it
-    if (operation === 'create' || operation === 'update') {
+    if (operation === 'create' || operation === 'update' || operation === 'bulk_import') {
       // Extract clientId from different possible locations
-      let clientId = null;
+      let validationClientId = null;
       
-      if (employee?.clientId) {
-        clientId = employee.clientId;
+      if (clientId) {
+        validationClientId = clientId;
+      } else if (employee?.clientId) {
+        validationClientId = employee.clientId;
       } else if (employee?.client_id) {
-        clientId = employee.client_id;
+        validationClientId = employee.client_id;
       }
       
-      console.log("Extracted clientId:", clientId);
+      console.log("Extracted clientId for validation:", validationClientId);
       
-      if (!clientId) {
-        console.error("No client ID found in employee object:", employee);
+      if (!validationClientId) {
+        console.error("No client ID found for operation:", operation);
         return new Response(
           JSON.stringify({ 
             error: "Client ID is required",
-            details: "No clientId or client_id found in employee data"
+            details: `No clientId found for operation: ${operation}`
           }),
           { 
             status: 400, 
@@ -56,12 +59,12 @@ serve(async (req) => {
         );
       }
 
-      console.log("Validating client with ID:", clientId);
+      console.log("Validating client with ID:", validationClientId);
 
       const { data: client, error: clientError } = await supabaseClient
         .from('clients')
         .select('id')
-        .eq('id', clientId)
+        .eq('id', validationClientId)
         .single();
 
       if (clientError || !client) {
@@ -69,7 +72,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             error: "Invalid client ID",
-            details: `Client with ID ${clientId} not found`
+            details: `Client with ID ${validationClientId} not found`
           }),
           { 
             status: 400, 
@@ -78,7 +81,7 @@ serve(async (req) => {
         );
       }
       
-      console.log("Client validation successful for:", clientId);
+      console.log("Client validation successful for:", validationClientId);
     }
 
     switch (operation) {
@@ -92,9 +95,15 @@ serve(async (req) => {
         return await handleDeactivate(supabaseClient, id);
       case 'reactivate':
         return await handleReactivate(supabaseClient, id);
+      case 'bulk_import':
+        return await handleBulkImport(supabaseClient, employees, clientId);
       default:
+        console.error("Invalid operation received:", operation);
         return new Response(
-          JSON.stringify({ error: "Invalid operation" }),
+          JSON.stringify({ 
+            error: "Invalid operation",
+            details: `Operation '${operation}' is not supported. Supported operations: create, update, delete, deactivate, reactivate, bulk_import`
+          }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -104,7 +113,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in employee-management function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: "Internal server error",
+        details: error.message 
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -112,6 +124,117 @@ serve(async (req) => {
     );
   }
 });
+
+async function handleBulkImport(supabaseClient: any, employees: any[], clientId: string) {
+  console.log("Processing bulk import for", employees?.length, "employees with clientId:", clientId);
+  
+  if (!employees || !Array.isArray(employees) || employees.length === 0) {
+    return new Response(
+      JSON.stringify({ 
+        error: "Invalid employees data",
+        details: "Employees array is required and must not be empty"
+      }),
+      { 
+        status: 400, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  const result = {
+    success: true,
+    created: 0,
+    updated: 0,
+    errors: [],
+    employees: []
+  };
+
+  // Process employees in batches to avoid overwhelming the database
+  const batchSize = 50;
+  for (let i = 0; i < employees.length; i += batchSize) {
+    const batch = employees.slice(i, i + batchSize);
+    console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(employees.length/batchSize)}`);
+    
+    for (const emp of batch) {
+      try {
+        // Check for duplicate email within the same client
+        const { data: existingEmailEmployee } = await supabaseClient
+          .from('employees')
+          .select('id')
+          .eq('email', emp.email)
+          .eq('client_id', clientId)
+          .maybeSingle();
+
+        if (existingEmailEmployee) {
+          result.errors.push(`Employee with email ${emp.email} already exists`);
+          continue;
+        }
+
+        // Check for duplicate Employee ID within the same client
+        const { data: existingEmployeeIdEmployee } = await supabaseClient
+          .from('employees')
+          .select('id')
+          .eq('employee_id', emp.employeeId)
+          .eq('client_id', clientId)
+          .maybeSingle();
+
+        if (existingEmployeeIdEmployee) {
+          result.errors.push(`Employee with ID ${emp.employeeId} already exists`);
+          continue;
+        }
+
+        // Create employee record
+        const employeeData = {
+          employee_id: emp.employeeId,
+          first_name: emp.firstName,
+          last_name: emp.lastName,
+          email: emp.email,
+          employee_type: emp.employeeType,
+          department: emp.department,
+          joining_date: emp.joiningDate,
+          status: true,
+          client_id: clientId,
+          user_id: emp.user_id || null,
+          is_super_admin: emp.is_super_admin || false
+        };
+
+        const { data: newEmployee, error: createError } = await supabaseClient
+          .from('employees')
+          .insert(employeeData)
+          .select('*')
+          .single();
+
+        if (createError) {
+          console.error("Error creating employee:", createError);
+          result.errors.push(`Failed to create employee ${emp.employeeId}: ${createError.message}`);
+          continue;
+        }
+
+        result.created++;
+        result.employees.push(newEmployee);
+
+        // Handle module access if provided
+        if (emp.moduleAccessPayload && Array.isArray(emp.moduleAccessPayload)) {
+          await handleEmployeeModuleAccess(supabaseClient, newEmployee.id, emp.moduleAccessPayload);
+        }
+
+      } catch (empError) {
+        console.error("Error processing employee:", empError);
+        result.errors.push(`Error processing employee ${emp.employeeId}: ${empError.message}`);
+      }
+    }
+  }
+
+  console.log("Bulk import completed:", result);
+
+  return new Response(
+    JSON.stringify(result),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
 
 async function handleCreate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
