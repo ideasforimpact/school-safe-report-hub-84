@@ -633,12 +633,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   if (isInitializing) {
-    return <AuthLoadingOverlay />;
+    return <AuthLoadingOverlay isVisible={true} />;
   }
 
   return (
     <AuthContext.Provider value={contextValue}>
-      {showAuthLoading && <AuthLoadingOverlay />}
+      {showAuthLoading && <AuthLoadingOverlay isVisible={showAuthLoading} />}
       {children}
     </AuthContext.Provider>
   );

@@ -14,6 +14,18 @@ export interface EmployeeData {
   clientType?: any;
 }
 
+export interface Module {
+  id: string;
+  name: string;
+  key: string;
+  icon: string;
+  level: string;
+  enabled: boolean;
+  accessLevel: any;
+  order?: number;
+  url?: string;
+}
+
 export interface EmployeeState {
   // Authentication state
   currentUser: User | null;
@@ -23,7 +35,7 @@ export interface EmployeeState {
   
   // Employee data
   employeeData: EmployeeData | null;
-  configuredModules: any[];
+  configuredModules: Module[];
   isLoading: boolean;
   error: string | null;
   clientId: string | null;
