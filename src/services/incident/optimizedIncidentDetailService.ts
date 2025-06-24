@@ -26,7 +26,7 @@ export const fetchIncidentWithRelationsOptimized = async (incidentId: string): P
         type:incident_report_types(id, name),
         category:incident_categories(id, name),
         subcategory:incident_subcategories(id, name),
-        location:incident_locations(id, name),
+        location:campuses(id, name),
         status:incident_status(id, name),
         priority:incident_priorities(id, name),
         facility:facilities(id, name),
@@ -46,8 +46,35 @@ export const fetchIncidentWithRelationsOptimized = async (incidentId: string): P
       return null;
     }
 
-    console.log('Successfully fetched optimized incident detail:', incident);
-    return incident as IncidentDetail;
+    // Transform the data to ensure it matches the IncidentDetail interface
+    const transformedIncident: IncidentDetail = {
+      id: incident.id,
+      ticket_id: incident.ticket_id,
+      description: incident.description || '',
+      date: incident.date,
+      people_involved: incident.people_involved as any[] || [],
+      created_at: incident.created_at,
+      updated_at: incident.updated_at,
+      client_id: incident.client_id,
+      root_cause_analysis: incident.root_cause_analysis,
+      action_taken: incident.action_taken,
+      contributing_factor: incident.contributing_factor || [],
+      documents: incident.documents as any[] || [],
+      comments: incident.comments as any[] || [],
+      reopen: incident.reopen || 0,
+      type: incident.type || { id: '', name: 'Unknown' },
+      category: incident.category || { id: '', name: 'Unknown' },
+      subcategory: incident.subcategory || { id: '', name: 'Unknown' },
+      location: incident.location || { id: '', name: 'Unknown' },
+      status: incident.status || { id: '', name: 'Unknown' },
+      priority: incident.priority || { id: '', name: 'Medium' },
+      facility: incident.facility || { id: '', name: 'Unknown' },
+      created_by: incident.created_by || { id: '', first_name: 'Unknown', last_name: 'User' },
+      assigned_to: incident.assigned_to || undefined
+    };
+
+    console.log('Successfully fetched optimized incident detail:', transformedIncident);
+    return transformedIncident;
 
   } catch (error) {
     console.error('Unexpected error in optimized fetch:', error);
