@@ -15,6 +15,86 @@ interface CloseIncidentRequest {
   contributing_factor: any[]
 }
 
+// Helper function to check incident close permissions
+async function checkClosePermissions(
+  incidentId: string,
+  employeeId: string,
+  clientId: string
+): Promise<{ canClose: boolean, incident: any }> {
+  // Get the incident details with creator and assigned user
+  const { data: incident, error: incidentError } = await supabase
+    .from('incidents')
+    .select('id, created_by, assigned_to, client_id, ticket_id, status_id')
+    .eq('id', incidentId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (incidentError || !incident) {
+    console.error('Error fetching incident:', incidentError)
+    return { canClose: false, incident: null }
+  }
+
+  // Get employee details to check admin status
+  const { data: employee, error: employeeError } = await supabase
+    .from('employees')
+    .select(`
+      id, 
+      is_super_admin, 
+      client_id,
+      employee_modules!inner(
+        level,
+        module:modules(name)
+      )
+    `)
+    .eq('id', employeeId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (employeeError || !employee) {
+    console.error('Error fetching employee:', employeeError)
+    return { canClose: false, incident }
+  }
+
+  // Check if user is super admin
+  if (employee.is_super_admin) {
+    console.log('User is super admin, allowing close')
+    return { canClose: true, incident }
+  }
+
+  // Check if user has incident admin access
+  const hasIncidentAdmin = employee.employee_modules?.some((empModule: any) => 
+    empModule.module?.name?.toLowerCase() === 'incidents' && 
+    empModule.level?.is_admin === true
+  )
+
+  // Check if user created the incident
+  const isCreator = incident.created_by === employeeId
+  
+  // Check if user is assigned to the incident
+  const isAssigned = incident.assigned_to === employeeId
+
+  console.log('Close permission check:', {
+    employeeId,
+    createdBy: incident.created_by,
+    assignedTo: incident.assigned_to,
+    isCreator,
+    isAssigned,
+    hasIncidentAdmin
+  })
+
+  let canClose = false
+
+  if (hasIncidentAdmin) {
+    // Incident admin can close own + assigned incidents
+    canClose = isCreator || isAssigned
+  } else {
+    // Non-admin can only close their own incidents
+    canClose = isCreator
+  }
+
+  return { canClose, incident }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -64,16 +144,34 @@ Deno.serve(async (req) => {
 
     console.log('Closing incident with payload:', requestBody)
 
-    // Verify the incident exists and belongs to the client
-    const { data: incident, error: fetchError } = await supabase
-      .from('incidents')
-      .select('id, client_id, status_id, ticket_id')
-      .eq('id', requestBody.incident_id)
-      .eq('client_id', requestBody.client_id)
+    // Get employee data for permission checking
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('id, client_id')
+      .eq('user_id', user.id)
       .single()
 
-    if (fetchError || !incident) {
-      console.error('Error fetching incident:', fetchError)
+    if (employeeError || !employee) {
+      console.error('Error fetching employee data:', employeeError)
+      throw new Error('Employee not found')
+    }
+
+    // Check permissions before allowing the close
+    const { canClose, incident } = await checkClosePermissions(
+      requestBody.incident_id,
+      employee.id,
+      requestBody.client_id
+    )
+
+    if (!canClose) {
+      console.log('Permission denied for user:', user.id, 'to close incident:', requestBody.incident_id)
+      throw new Error('You do not have permission to close this incident')
+    }
+
+    console.log('Permission granted for close')
+
+    // Verify the incident exists and belongs to the client
+    if (!incident) {
       throw new Error('Incident not found or access denied')
     }
 
