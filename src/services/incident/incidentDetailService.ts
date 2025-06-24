@@ -57,6 +57,21 @@ export interface IncidentDetail {
   reopen: number;
 }
 
+// Helper functions for safe type conversion
+const safeArrayCast = <T>(value: any, fallback: T[] = []): T[] => {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+  return fallback;
+};
+
+const safeObjectCast = <T>(value: any, fallback: T): T => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as T;
+  }
+  return fallback;
+};
+
 export const fetchIncidentDetail = async (incidentId: string): Promise<IncidentDetail | null> => {
   try {
     console.log('Fetching incident detail for ID:', incidentId);
@@ -101,31 +116,31 @@ export const fetchIncidentDetail = async (incidentId: string): Promise<IncidentD
       return null;
     }
 
-    // Transform the data to ensure it matches the IncidentDetail interface
+    // Transform the data to ensure it matches the IncidentDetail interface with safe casting
     const transformedIncident: IncidentDetail = {
       id: incident.id,
       ticket_id: incident.ticket_id,
       description: incident.description || '',
       date: incident.date,
-      people_involved: incident.people_involved as Person[] || [],
+      people_involved: safeArrayCast<Person>(incident.people_involved, []),
       created_at: incident.created_at,
       updated_at: incident.updated_at,
       client_id: incident.client_id,
       root_cause_analysis: incident.root_cause_analysis,
       action_taken: incident.action_taken,
-      contributing_factor: incident.contributing_factor || [],
-      documents: incident.documents as Document[] || [],
-      comments: incident.comments as Comment[] || [],
+      contributing_factor: safeArrayCast(incident.contributing_factor, []),
+      documents: safeArrayCast<Document>(incident.documents, []),
+      comments: safeArrayCast<Comment>(incident.comments, []),
       reopen: incident.reopen || 0,
-      type: incident.type || { id: '', name: 'Unknown' },
-      category: incident.category || { id: '', name: 'Unknown' },
-      subcategory: incident.subcategory || { id: '', name: 'Unknown' },
-      location: incident.location || { id: '', name: 'Unknown' },
-      status: incident.status || { id: '', name: 'Unknown' },
-      priority: incident.priority || { id: '', name: 'Medium' },
-      facility: incident.facility || { id: '', name: 'Unknown' },
-      created_by: incident.created_by || { id: '', first_name: 'Unknown', last_name: 'User' },
-      assigned_to: incident.assigned_to || undefined
+      type: safeObjectCast(incident.type, { id: '', name: 'Unknown' }),
+      category: safeObjectCast(incident.category, { id: '', name: 'Unknown' }),
+      subcategory: safeObjectCast(incident.subcategory, { id: '', name: 'Unknown' }),
+      location: safeObjectCast(incident.location, { id: '', name: 'Unknown' }),
+      status: safeObjectCast(incident.status, { id: '', name: 'Unknown' }),
+      priority: safeObjectCast(incident.priority, { id: '', name: 'Medium' }),
+      facility: safeObjectCast(incident.facility, { id: '', name: 'Unknown' }),
+      created_by: safeObjectCast(incident.created_by, { id: '', first_name: 'Unknown', last_name: 'User' }),
+      assigned_to: incident.assigned_to ? safeObjectCast(incident.assigned_to, undefined) : undefined
     };
 
     console.log('Successfully fetched incident detail:', transformedIncident);
