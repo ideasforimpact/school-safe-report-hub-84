@@ -44,10 +44,11 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
     };
 
     // Only save if we have a meaningful authentication state
-    if (state.currentUser || state.isBackofficeUser || state.isAuthenticated) {
+    if (state.currentUser || state.isBackofficeUser || state.isAuthenticated || (state.configuredModules && state.configuredModules.length > 0)) {
+      console.log("Persisting auth state with modules:", state.configuredModules?.length || 0);
       saveAuthState(authState);
-    } else if (!state.currentUser && !state.isBackofficeUser && !state.isAuthenticated) {
-      // Clear persisted state if user is logged out
+    } else if (!state.currentUser && !state.isBackofficeUser && !state.isAuthenticated && (!state.configuredModules || state.configuredModules.length === 0)) {
+      // Clear persisted state if user is logged out and no modules
       clearPersistedAuthState();
     }
   }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError, state.configuredModules]);
