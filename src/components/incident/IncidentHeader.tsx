@@ -8,6 +8,7 @@ import { Incident, IncidentStatus } from '@/types/incident';
 import { useNavigate } from 'react-router-dom';
 import { useIncidentReopen } from '@/hooks/useIncidentReopen';
 import { useAuth } from '@/contexts/auth/AuthContext';
+import { useIncidentPermissions } from '@/utils/incidentPermissions';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -33,6 +34,17 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { handleReopenIncident, isReopening } = useIncidentReopen();
+  const { checkPermissions } = useIncidentPermissions();
+
+  // Get permissions for this specific incident
+  const permissions = React.useMemo(() => {
+    if (!incident.reportedBy?.id) return { canEdit: false, canClose: false, canReopen: false };
+    
+    return checkPermissions(
+      incident.reportedBy.id,
+      incident.owner?.id
+    );
+  }, [incident.reportedBy?.id, incident.owner?.id, checkPermissions]);
 
   const handleEditClick = () => {
     console.log("Navigating to edit incident:", incident.id);
@@ -127,8 +139,8 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
           </div>
           
           <div className="flex gap-2">
-            {/* Show Reopen button only if incident is Closed and not voided */}
-            {incident.status === 'Closed' && !incident.isVoided && (
+            {/* Show Reopen button only if incident is Closed, not voided, and user has permission */}
+            {incident.status === 'Closed' && !incident.isVoided && permissions.canReopen && (
               <Button 
                 onClick={handleReopenClick}
                 disabled={isReopening}
@@ -140,8 +152,8 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               </Button>
             )}
 
-            {/* Show Close button only if incident is Open and not voided */}
-            {incident.status === 'Open' && !incident.isVoided && (
+            {/* Show Close button only if incident is Open, not voided, and user has permission */}
+            {incident.status === 'Open' && !incident.isVoided && permissions.canClose && (
               <Button 
                 onClick={handleCloseIncident}
                 size="sm"
@@ -152,8 +164,8 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               </Button>
             )}
             
-            {/* Always show Edit button (unless voided) */}
-            {!incident.isVoided && (
+            {/* Show Edit button only if not voided and user has permission */}
+            {!incident.isVoided && permissions.canEdit && (
               <Button 
                 variant="outline" 
                 size="sm"
