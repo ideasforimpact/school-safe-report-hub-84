@@ -15,6 +15,7 @@ import {
   PaginationPrevious 
 } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useIncidentPermissions } from '@/utils/incidentPermissions';
 
 interface PaginationInfo {
   currentPage: number;
@@ -40,6 +41,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   onPageSizeChange 
 }) => {
   const navigate = useNavigate();
+  const { checkPermissions } = useIncidentPermissions();
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -53,6 +55,19 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const handleEditClick = (e: React.MouseEvent, incidentId: string) => {
     e.stopPropagation();
     navigate(`/incident/${incidentId}/edit`);
+  };
+
+  // Check if user can edit a specific incident
+  const canEditIncident = (incident: IncidentRecord) => {
+    // Don't show edit button for voided incidents
+    if (incident.is_voided) return false;
+    
+    const permissions = checkPermissions(
+      incident.reportedBy || '', 
+      incident.owner
+    );
+    
+    return permissions.canEdit;
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -304,15 +319,17 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                       <Eye className="h-4 w-4" />
                       <span className="sr-only">View</span>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={(e) => handleEditClick(e, incident.id)}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
+                    {canEditIncident(incident) && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => handleEditClick(e, incident.id)}
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
