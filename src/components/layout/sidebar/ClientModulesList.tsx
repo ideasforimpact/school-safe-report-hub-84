@@ -16,6 +16,7 @@ import {
   Users,
   Settings
 } from 'lucide-react';
+import { loadAuthState } from '@/store/authPersistence';
 
 // Map string icon names to Lucide components
 const iconMap: Record<string, any> = {
@@ -46,11 +47,25 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-console.log(configuredModules,"configuredModules")
+  console.log(configuredModules,"configuredModules")
+
+  // Check sessionStorage for persisted modules
+  const checkSessionStorageModules = () => {
+    const persistedState = loadAuthState();
+    if (persistedState && persistedState.configuredModules) {
+      console.log("SessionStorage modules check:", persistedState.configuredModules.length);
+      return persistedState.configuredModules;
+    }
+    return null;
+  };
+
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
+    console.log("ClientModulesList effect - configuredModules:", configuredModules?.length || 0);
+    
+    // First check Redux state
     if (configuredModules && configuredModules.length > 0) {
-      console.log("Using modules from Redux store:", configuredModules);
+      console.log("Using modules from Redux state:", configuredModules);
       
       // Map store modules to sidebar items
       const modules = configuredModules.map(module => {
@@ -70,9 +85,34 @@ console.log(configuredModules,"configuredModules")
       });
       
       setSidebarModules(modules);
-    } else {
-      // Fallback to dashboard if no modules are in the store
-      console.log("No modules in Redux store, using default dashboard");
+      return;
+    }
+
+    // If no modules in Redux, check sessionStorage
+    const sessionStorageModules = checkSessionStorageModules();
+    if (sessionStorageModules && sessionStorageModules.length > 0) {
+      console.log("Using modules from sessionStorage:", sessionStorageModules);
+      
+      const modules = sessionStorageModules.map((module: any) => {
+        const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+        const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        return {
+          icon: IconComponent,
+          label: module.name,
+          path,
+          allowed: true,
+          accessLevel: module.accessLevel || {}
+        };
+      });
+      
+      setSidebarModules(modules);
+      return;
+    }
+
+    // If sessionStorage explicitly has empty modules array, show only dashboard
+    if (sessionStorageModules && Array.isArray(sessionStorageModules) && sessionStorageModules.length === 0) {
+      console.log("SessionStorage has empty modules array, showing dashboard only");
       setSidebarModules([{
         icon: LayoutDashboard,
         label: 'Dashboard',
@@ -80,7 +120,18 @@ console.log(configuredModules,"configuredModules")
         allowed: true,
         accessLevel: {}
       }]);
+      return;
     }
+
+    // Final fallback to dashboard if no modules are available anywhere
+    console.log("No modules found anywhere, using default dashboard");
+    setSidebarModules([{
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      path: '/dashboard',
+      allowed: true,
+      accessLevel: {}
+    }]);
   }, [configuredModules]);
 
   // Determine if a path is active

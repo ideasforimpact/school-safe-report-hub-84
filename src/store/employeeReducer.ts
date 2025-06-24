@@ -6,6 +6,7 @@ import { loadAuthState } from './authPersistence';
 const restorePersistedAuthState = (): Partial<EmployeeState> => {
   const persistedState = loadAuthState();
   if (persistedState) {
+    console.log("Restoring persisted auth state with modules:", persistedState.configuredModules?.length || 0);
     return {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
@@ -17,19 +18,21 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
   return {};
 };
 
+const restoredState = restorePersistedAuthState();
+
 export const initialEmployeeState: EmployeeState = {
   // Authentication state - try to restore from persistence first
-  ...{
-    currentUser: null,
-    isAuthenticated: false,
-    isBackofficeUser: false,
-    authError: null,
-  },
-  ...restorePersistedAuthState(),
+  currentUser: null,
+  isAuthenticated: false,
+  isBackofficeUser: false,
+  authError: null,
   
-  // Employee data
+  // Apply restored state
+  ...restoredState,
+  
+  // Employee data - preserve restored modules or default to empty
   employeeData: null,
-  configuredModules: [],
+  configuredModules: restoredState.configuredModules || [],
   isLoading: false,
   error: null,
   clientId: null
@@ -94,7 +97,7 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
-      console.log("Setting configured modules in reducer:", action.payload);
+      console.log("Setting configured modules in reducer:", action.payload?.length || 0, "modules");
       return {
         ...state,
         configuredModules: action.payload

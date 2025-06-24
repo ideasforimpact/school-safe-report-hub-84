@@ -44,12 +44,29 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
     };
 
     // Only save if we have a meaningful authentication state
-    if (state.currentUser || state.isBackofficeUser || state.isAuthenticated || (state.configuredModules && state.configuredModules.length > 0)) {
+    const hasValidAuthState = state.currentUser || 
+                             state.isBackofficeUser || 
+                             state.isAuthenticated || 
+                             (state.configuredModules && state.configuredModules.length > 0);
+
+    if (hasValidAuthState) {
       console.log("Persisting auth state with modules:", state.configuredModules?.length || 0);
       saveAuthState(authState);
-    } else if (!state.currentUser && !state.isBackofficeUser && !state.isAuthenticated && (!state.configuredModules || state.configuredModules.length === 0)) {
-      // Clear persisted state if user is logged out and no modules
-      clearPersistedAuthState();
+    } else {
+      // Only clear if we're explicitly logged out (not just initializing)
+      const isExplicitLogout = !state.currentUser && 
+                              !state.isBackofficeUser && 
+                              !state.isAuthenticated && 
+                              state.authError === null && // No auth error means intentional logout
+                              (!state.configuredModules || state.configuredModules.length === 0);
+      
+      if (isExplicitLogout) {
+        console.log("Clearing persisted auth state due to explicit logout");
+        // Add a small delay to prevent race conditions during initialization
+        setTimeout(() => {
+          clearPersistedAuthState();
+        }, 100);
+      }
     }
   }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError, state.configuredModules]);
 
