@@ -214,25 +214,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [handleUserAuthentication, dispatch]);
 
-  // Check Supabase auth on initialization and handle persisted state
+  // Check Supabase auth on initialization - LESS AGGRESSIVE
   useEffect(() => {
     const checkSupabaseAuth = async () => {
       try {
         console.log("Checking authentication state...");
-        console.log("Current user from Redux:", currentUser);
-        console.log("Is backoffice user from Redux:", isBackofficeUser);
-        console.log("Is authenticated from Redux:", isAuthenticated);
-
+        
         // If we have persisted backoffice user state, skip Supabase checks
         if (isBackofficeUser && currentUser) {
-          console.log("Backoffice user detected from persisted state, skipping Supabase auth check");
+          console.log("Backoffice user detected, skipping Supabase auth check");
           setIsInitializing(false);
           return;
-        }
-
-        // If we have persisted regular user state, still validate with Supabase
-        if (currentUser && !isBackofficeUser) {
-          console.log("Regular user detected from persisted state, validating with Supabase...");
         }
 
         const { data } = await supabase.auth.getSession();
@@ -246,9 +238,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }, 0);
           }
         } else {
-          // If no Supabase session and no persisted user (or not backoffice), clear everything
-          if (!currentUser || (!isBackofficeUser && currentUser)) {
-            console.log("No valid session found, clearing auth state");
+          // Only clear if we don't have a backoffice user
+          if (!isBackofficeUser) {
+            console.log("No valid session found and not backoffice user, clearing auth state");
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
@@ -264,7 +256,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch]);
+  }, [handleUserAuthentication, dispatch]);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
@@ -300,8 +292,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department, 
-              employeeType: employeeData.employee_type,
+              department: employeeData.department ? { id: employeeData.department.id, name: employeeData.department.name } : null,
+              employeeType: employeeData.employee_type ? { id: employeeData.employee_type.id, name: employeeData.employee_type.name } : null,
               client: client,
               clientType: clientType
             };
@@ -393,8 +385,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           firstName: 'Backoffice',
           lastName: 'Admin',
           isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin',
+          department: { id: 'management', name: 'Management' },
+          employeeType: { id: 'admin', name: 'Admin' },
           client: null,
           clientType: null
         };

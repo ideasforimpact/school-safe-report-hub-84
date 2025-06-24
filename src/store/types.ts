@@ -1,4 +1,3 @@
-import { Module } from "@/types";
 
 export interface UserRole {
   id: string;
@@ -27,19 +26,6 @@ export interface DepartmentType {
   name: string;
 }
 
-export interface EmployeeData {
-  id: string;
-  clientId: string | null;
-  email: string;
-  firstName: string;
-  lastName: string;
-  isSuperAdmin: boolean;
-  department: DepartmentType | null;
-  employeeType: EmployeeType | null;
-  client?: Client | null;
-  clientType?: ClientType | null;
-}
-
 export interface ClientType {
   id: string;
   name: string;
@@ -63,6 +49,29 @@ export interface Client {
   institution_type: string;
   logo: string;
   client_type: ClientType | null;
+}
+
+export interface Module {
+  id: string;
+  name: string;
+  key: string;
+  icon: string;
+  level: string;
+  enabled: boolean;
+  accessLevel: any;
+}
+
+export interface EmployeeData {
+  id: string;
+  clientId: string | null;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isSuperAdmin: boolean;
+  department: DepartmentType | null;
+  employeeType: EmployeeType | null;
+  client?: Client | null;
+  clientType?: ClientType | null;
 }
 
 export interface User {
@@ -108,7 +117,7 @@ export interface EmployeeState {
   // Employee data
   employeeData: any | null;
   configuredModules: Module[];
-  modulesRestored: boolean; // New flag to track module restoration
+  modulesRestored: boolean;
   isLoading: boolean;
   error: string | null;
   clientId: string | null;
@@ -129,27 +138,27 @@ export enum EmployeeActionTypes {
   RESET_EMPLOYEE = 'RESET_EMPLOYEE',
 }
 
-interface SetCurrentUserAction {
+export interface SetCurrentUserAction {
   type: EmployeeActionTypes.SET_CURRENT_USER;
   payload: any;
 }
 
-interface SetBackofficeUserAction {
+export interface SetBackofficeUserAction {
   type: EmployeeActionTypes.SET_BACKOFFICE_USER;
   payload: boolean;
 }
 
-interface SetAuthStatusAction {
+export interface SetAuthStatusAction {
   type: EmployeeActionTypes.SET_AUTH_STATUS;
   payload: boolean;
 }
 
-interface SetAuthErrorAction {
+export interface SetAuthErrorAction {
   type: EmployeeActionTypes.SET_AUTH_ERROR;
   payload: string | null;
 }
 
-interface ClearAuthAction {
+export interface ClearAuthAction {
   type: EmployeeActionTypes.CLEAR_AUTH;
 }
 
