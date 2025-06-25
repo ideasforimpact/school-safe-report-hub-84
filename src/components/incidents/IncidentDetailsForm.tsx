@@ -187,6 +187,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
               name="date"
               value={formData.date}
               onChange={onChange}
+              max={new Date().toISOString().split('T')[0]}
               className="h-11 bg-white border-gray-300"
               required
             />
