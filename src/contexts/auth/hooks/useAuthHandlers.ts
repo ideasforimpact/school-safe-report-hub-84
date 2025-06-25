@@ -44,9 +44,6 @@ export const useAuthHandlers = ({
   dispatch
 }: UseAuthHandlersProps) => {
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-  
-  // Debug log to check if dispatch is available in useAuthHandlers
-  console.log("useAuthHandlers - dispatch available:", !!dispatch);
 
   // Helper function to fetch client and client type information
   const fetchClientInfo = useCallback(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
@@ -107,10 +104,7 @@ export const useAuthHandlers = ({
   // New function to fetch configured modules for an employee
   const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
     try {
-      console.log("Fetching configured modules during authentication for", { employeeId, clientId, isSuperAdmin });
-      
       if (!clientId) {
-        console.error("Client ID is missing, cannot fetch modules");
         if (dispatch) dispatch(setError("Client ID is missing"));
         return [];
       }
@@ -118,7 +112,6 @@ export const useAuthHandlers = ({
       let configuredModules: Module[] = [];
       
       if (isSuperAdmin) {
-        console.log("Fetching modules for super admin");
         // For super admins, fetch all modules enabled for the client
         const { data: clientModules, error: clientModulesError } = await supabase
           .from('client_modules')
@@ -156,7 +149,6 @@ export const useAuthHandlers = ({
         }).filter(Boolean) as Module[] || [];
         
       } else {
-        console.log("Fetching modules for regular employee");
         // First fetch all client modules to understand what's available
         const { data: clientModules, error: clientModulesError } = await supabase
           .from('client_modules')
@@ -246,8 +238,6 @@ export const useAuthHandlers = ({
         }];
       }
       
-      // Only log the modules length since employeeModules might be undefined or out of scope here
-      console.log("Modules fetched during auth:", configuredModules.length);
       return configuredModules;
       
     } catch (error) {
@@ -292,7 +282,7 @@ export const useAuthHandlers = ({
     }
   }, []);
 
-  // Handle user authentication from various providers (Google, etc.)
+  // Handle user authentication from various providers (Google, etc.) - MEMOIZED
   const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
     if (!supabaseUser || isProcessingAuth) {
       // If no user provided or already processing, return early
@@ -306,7 +296,6 @@ export const useAuthHandlers = ({
         
         // Clear Redux state if dispatch is available
         if (dispatch) {
-          console.log("useAuthHandlers - Dispatching resetEmployee for null user");
           dispatch(resetEmployee());
         }
       }
@@ -315,12 +304,9 @@ export const useAuthHandlers = ({
     
     try {
       setIsProcessingAuth(true);
-
-      console.log("useAuthHandlers - Processing authentication for user:", supabaseUser.email);
       
       // STEP 1: Check if employee exists FIRST before proceeding
       if (!supabaseUser.email) {
-        console.log("useAuthHandlers - No email provided in authentication");
         setAuthError("No email found in authentication data. Please contact support.");
         toast.error("No email found in authentication data. Please contact support.");
         
@@ -331,8 +317,6 @@ export const useAuthHandlers = ({
       }
 
       // STEP 2: Look for employee record by email (this is the gatekeeper)
-      console.log("useAuthHandlers - Checking for employee record with email:", supabaseUser.email);
-      
       const { data: employeeRecord, error: employeeError } = await supabase
         .from('employees')
         .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
@@ -341,7 +325,6 @@ export const useAuthHandlers = ({
 
       // STEP 3: If no employee record found, reject authentication immediately
       if (employeeError || !employeeRecord) {
-        console.log("useAuthHandlers - No employee record found for email:", supabaseUser.email);
         setAuthError("Your email is not registered as an employee. Please contact your administrator to register your account first.");
         toast.error("Your email is not registered as an employee. Please contact your administrator.");
         
@@ -370,7 +353,6 @@ export const useAuthHandlers = ({
 
       // STEP 4: Check if employee is active
       if (employeeRecord.status !== true) {
-        console.log("useAuthHandlers - Employee account is inactive");
         setAuthError("Your employee account has been deactivated. Please contact support.");
         toast.error("Your employee account has been deactivated. Please contact support.");
         await supabase.auth.signOut();
@@ -383,7 +365,6 @@ export const useAuthHandlers = ({
         const isDomainValid = await validateDomain(supabaseUser.email, employeeRecord.client_id);
         
         if (!isDomainValid) {
-          console.log("useAuthHandlers - User email domain not authorized for this client");
           setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
           toast.error("Your email domain is not authorized for this application.");
           
@@ -413,15 +394,13 @@ export const useAuthHandlers = ({
 
       // STEP 6: If employee exists and is valid, link user_id if not already linked
       if (!employeeRecord.user_id) {
-        console.log("useAuthHandlers - Linking user_id to employee record for first-time login");
-        
         const { error: updateError } = await supabase
           .from('employees')
           .update({ user_id: supabaseUser.id })
           .eq('id', employeeRecord.id);
 
         if (updateError) {
-          console.error("useAuthHandlers - Error linking user_id to employee:", updateError);
+          console.error("Error linking user_id to employee:", updateError);
           setAuthError("Failed to link your account. Please contact support.");
           toast.error("Failed to link your account. Please contact support.");
           await supabase.auth.signOut();
@@ -431,7 +410,6 @@ export const useAuthHandlers = ({
 
         // Update the employee record with the new user_id for further processing
         employeeRecord.user_id = supabaseUser.id;
-        console.log("useAuthHandlers - Successfully linked user_id to employee record");
       }
 
       // STEP 7: Create user and employee data objects
@@ -511,12 +489,8 @@ export const useAuthHandlers = ({
       setUser(newUser);
       saveUserToStorage(newUser);
       
-      // Save employee data to localStorage, context, and Redux
-      console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
-      
       // Store employee data in Redux - MANUAL DISPATCH FORMAT
       if (dispatch) {
-        console.log("useAuthHandlers - Manually dispatching SET_EMPLOYEE_DATA to Redux during auth:", employeeData);
         dispatch({
           type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
           payload: employeeData
@@ -524,16 +498,12 @@ export const useAuthHandlers = ({
         
         // Also set clientId in Redux
         if (employeeData.clientId) {
-          console.log("useAuthHandlers - Dispatching setClientId to Redux during auth:", employeeData.clientId);
           dispatch(setClientId(employeeData.clientId));
         }
-      } else {
-        console.error("useAuthHandlers - dispatch is not available, cannot set employee data in Redux");
       }
       
       // FETCH MODULES HERE if employee is a super admin or has a client ID
       if (dispatch && employeeData.id && employeeData.clientId) {
-        console.log("useAuthHandlers - Fetching modules during authentication process");
         dispatch(setLoading(true));
         
         // Get configured modules based on super admin status
@@ -544,7 +514,6 @@ export const useAuthHandlers = ({
         );
         
         // Store modules in Redux
-        console.log("useAuthHandlers - Storing modules in Redux during auth:", modules.length);
         dispatch(setConfiguredModules(modules));
         dispatch(setLoading(false));
       }
@@ -556,13 +525,10 @@ export const useAuthHandlers = ({
       // Clear any auth errors
       setAuthError(null);
       
-      console.log("useAuthHandlers - Authentication successful for employee:", employeeData.email);
-      // toast.success(`Welcome back, ${employeeData.firstName}!`);
-      
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;
     } catch (error) {
-      console.error('useAuthHandlers - Authentication processing error:', error);
+      console.error('Authentication processing error:', error);
       setAuthError('Failed to process authentication');
       toast.error('Authentication failed. Please try again.');
       
