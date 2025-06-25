@@ -50,6 +50,7 @@ const IncidentDateTimeSection: React.FC<IncidentDateTimeSectionProps> = ({
               mode="single"
               selected={date}
               onSelect={(date) => onChange(date)}
+              disabled={(date) => date > new Date()}
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />

@@ -217,7 +217,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
           {incident.owner && (
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-600">Owner:</span>
+              <span className="text-gray-600">Assigned to:</span>
               <span className="font-medium">{incident.owner.name}</span>
             </div>
           )}
