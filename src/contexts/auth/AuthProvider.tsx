@@ -66,6 +66,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
+  const authCheckInProgressRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -77,7 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
   // Helper function to fetch client and client type information
-  const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+  const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
     try {
       // Fetch client information with client type
       const { data: clientData, error: clientError } = await supabase
@@ -130,10 +131,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error("Error in fetchClientInfo:", error);
       return { client: null, clientType: null };
     }
-  };
+  }).current;
 
   // Enhanced setCurrentUser function that ensures client info is included
-  const setCurrentUserWithClientInfo = async (user: User | null) => {
+  const setCurrentUserWithClientInfo = useRef(async (user: User | null) => {
     if (!user) {
       dispatch(setCurrentUser(null));
       return;
@@ -168,7 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch(setCurrentUser(user));
       setTimeout(() => setShowAuthLoading(false), 2000);
     }
-  };
+  }).current;
 
   // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
@@ -189,13 +190,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       // Skip processing if logging out
       if (state.isLoggingOut) {
-        console.log("Auth state change ignored: logout in progress");
         return;
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
         try {
-          console.log("Auth state change - SIGNED_IN detected, calling handleUserAuthentication");
           setShowAuthLoading(true);
           setTimeout(async () => {
             await handleUserAuthentication(session.user);
@@ -207,7 +206,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setShowAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
-        console.log("Auth state change - SIGNED_OUT detected, clearing state");
         dispatch(clearAuth());
         dispatch(resetEmployee());
         clearPersistedAuthState();
@@ -226,25 +224,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
-    if (state.isLoggingOut) return;
+    if (state.isLoggingOut || authCheckInProgressRef.current) return;
 
     const checkSupabaseAuth = async () => {
+      if (authCheckInProgressRef.current) return;
+      authCheckInProgressRef.current = true;
+      
       try {
-        console.log("Checking authentication state...");
-        console.log("Current user from Redux:", currentUser);
-        console.log("Is backoffice user from Redux:", isBackofficeUser);
-        console.log("Is authenticated from Redux:", isAuthenticated);
-
         // If we have persisted backoffice user state, skip Supabase checks
         if (isBackofficeUser && currentUser) {
-          console.log("Backoffice user detected from persisted state, skipping Supabase auth check");
           setIsInitializing(false);
           return;
         }
 
         // If we have persisted regular user state, still validate with Supabase
         if (currentUser && !isBackofficeUser) {
-          console.log("Regular user detected from persisted state, validating with Supabase...");
+          // User exists, just validate
         }
 
         const { data } = await supabase.auth.getSession();
@@ -260,7 +255,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           // If no Supabase session and no persisted user (or not backoffice), clear everything
           if (!currentUser || (!isBackofficeUser && currentUser)) {
-            console.log("No valid session found, clearing auth state");
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
@@ -272,6 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         toast.error("Error checking authentication status");
       } finally {
         setIsInitializing(false);
+        authCheckInProgressRef.current = false;
       }
     };
 
@@ -288,8 +283,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = loginUser(email, password, users);
 
       if (user) {
-        console.log("Regular user login successful, setting current user");
-        
         await setCurrentUserWithClientInfo(user);
         
         // Fetch employee data after successful login
@@ -456,8 +449,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
-    console.log('🚪 Starting centralized logout process');
-    
     // Set logout state immediately to prevent validation loops
     dispatch(setLogoutState(true));
     
@@ -470,7 +461,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!isBackofficeUser) {
         try {
           await supabase.auth.signOut();
-          console.log('✅ Signed out from Supabase');
         } catch (supabaseError) {
           console.error('Error signing out from Supabase:', supabaseError);
         }
@@ -489,18 +479,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Navigate AFTER clearing state to prevent race conditions
       if (shouldRedirectToBackoffice) {
-        console.log('🚪 Redirecting backoffice user to /backoffice/login');
         navigate('/backoffice/login', { replace: true });
       } else {
-        console.log('🚪 Redirecting regular user to /login');
         navigate('/login', { replace: true });
       }
       
-      console.log('✅ Logout process completed');
       toast.success('You have been logged out successfully');
       
     } catch (error) {
-      console.error('❌ Error during logout:', error);
+      console.error('Error during logout:', error);
       toast.error('There was an error logging out');
       
       // Fallback navigation in case of error

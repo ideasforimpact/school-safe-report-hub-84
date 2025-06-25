@@ -28,7 +28,6 @@ export const useEmployeeValidation = () => {
   const validateEmployee = async () => {
     // Skip validation if logging out
     if (state.isLoggingOut) {
-      console.log('Skipping validation: logout in progress');
       return;
     }
 
@@ -125,7 +124,7 @@ export const useEmployeeValidation = () => {
       cleanup();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [employeeData, location.pathname, state.isLoggingOut]);
+  }, [employeeData?.id, employeeData?.clientId, location.pathname, state.isLoggingOut]);
 
   // Clean up when logging out
   useEffect(() => {

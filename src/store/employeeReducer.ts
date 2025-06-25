@@ -6,7 +6,6 @@ import { loadAuthState } from './authPersistence';
 const restorePersistedAuthState = (): Partial<EmployeeState> => {
   const persistedState = loadAuthState();
   if (persistedState) {
-    console.log("Restoring persisted auth state with modules:", persistedState.configuredModules?.length || 0, "and employee data:", !!persistedState.employeeData);
     return {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
@@ -46,11 +45,8 @@ export const employeeReducer = (
 ): EmployeeState => {
   if (!action) return state;
 
-  console.log("REDUCER CALLED:", action.type);
-
   switch (action.type) {
     case EmployeeActionTypes.SET_CURRENT_USER:
-      console.log("Setting current user in reducer:", action.payload);
       return {
         ...state,
         currentUser: action.payload,
@@ -59,28 +55,24 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_BACKOFFICE_USER:
-      console.log("Setting backoffice user in reducer:", action.payload);
       return {
         ...state,
         isBackofficeUser: action.payload
       };
       
     case EmployeeActionTypes.SET_AUTH_STATUS:
-      console.log("Setting auth status in reducer:", action.payload);
       return {
         ...state,
         isAuthenticated: action.payload
       };
       
     case EmployeeActionTypes.SET_AUTH_ERROR:
-      console.log("Setting auth error in reducer:", action.payload);
       return {
         ...state,
         authError: action.payload
       };
       
     case EmployeeActionTypes.CLEAR_AUTH:
-      console.log("Clearing auth state in reducer");
       return {
         ...state,
         currentUser: null,
@@ -92,7 +84,6 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
-      console.log("Setting employee data in reducer:", action.payload);
       return {
         ...state,
         employeeData: action.payload,
@@ -100,42 +91,36 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
-      console.log("Setting configured modules in reducer:", action.payload?.length || 0, "modules");
       return {
         ...state,
         configuredModules: action.payload
       };
       
     case EmployeeActionTypes.SET_LOADING:
-      console.log("Setting loading state in reducer:", action.payload);
       return {
         ...state,
         isLoading: action.payload
       };
       
     case EmployeeActionTypes.SET_ERROR:
-      console.log("Setting error in reducer:", action.payload);
       return {
         ...state,
         error: action.payload
       };
       
     case EmployeeActionTypes.SET_CLIENT_ID:
-      console.log("Setting client ID in reducer:", action.payload);
       return {
         ...state,
         clientId: action.payload
       };
       
     case EmployeeActionTypes.SET_LOGOUT_STATE:
-      console.log("Setting logout state in reducer:", action.payload);
       return {
         ...state,
         isLoggingOut: action.payload
       };
       
     case EmployeeActionTypes.RESET_EMPLOYEE:
-      console.log("Resetting employee state in reducer");
       return {
         ...initialEmployeeState,
         configuredModules: [],
