@@ -107,14 +107,18 @@ export const useEmployeeValidation = () => {
     };
     
     // Validate on initial load
-    validateEmployee();
+    if (!state.isLoggingOut) {
+      validateEmployee();
+    }
     
     // Set up periodic validation (every 30 minutes)
-    validationTimeoutRef.current = setInterval(() => {
-      if (!state.isLoggingOut) {
-        validateEmployee();
-      }
-    }, 30 * 60 * 1000);
+    if (!state.isLoggingOut) {
+      validationTimeoutRef.current = setInterval(() => {
+        if (!state.isLoggingOut) {
+          validateEmployee();
+        }
+      }, 30 * 60 * 1000);
+    }
     
     // Add visibility change listener
     document.addEventListener('visibilitychange', handleVisibilityChange);

@@ -449,15 +449,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
-    // Set logout state immediately to prevent validation loops
+    // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
     
     try {
-      // Determine where to redirect based on user type and current route
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
+      // Clear Redux state immediately
+      dispatch(clearAuth());
+      dispatch(resetEmployee());
       
-      // For non-backoffice users, sign out from Supabase first
+      // Clear persisted state
+      clearPersistedAuthState();
+      
+      // Clear local storage
+      logoutUser();
+      
+      // For non-backoffice users, sign out from Supabase
       if (!isBackofficeUser) {
         try {
           await supabase.auth.signOut();
@@ -466,18 +472,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      // Clear Redux state immediately
-      dispatch(clearAuth());
-      dispatch(resetEmployee());
+      // Determine where to redirect based on user type and current route
+      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
+      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
       
-      // Clear persisted state
-      clearPersistedAuthState();
-      setShowAuthLoading(false);
-      
-      // Clear local storage
-      logoutUser();
-      
-      // Navigate AFTER clearing state to prevent race conditions
+      // Navigate immediately after clearing state
       if (shouldRedirectToBackoffice) {
         navigate('/backoffice/login', { replace: true });
       } else {
@@ -498,8 +497,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         navigate('/login', { replace: true });
       }
     } finally {
-      // Reset logout state
-      dispatch(setLogoutState(false));
+      // Reset logout state after a short delay
+      setTimeout(() => {
+        dispatch(setLogoutState(false));
+      }, 1000);
     }
   };
 
