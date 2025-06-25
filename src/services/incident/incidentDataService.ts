@@ -182,6 +182,7 @@ class IncidentDataService {
     console.log(`   - Page: ${page}, PageSize: ${pageSize}`);
     console.log(`   - Filters:`, filters);
     console.log(`   - Employee Data:`, employeeData);
+    console.log(`   - Has Incident Admin:`, hasIncidentAdmin);
     console.log(`   - Force refresh: ${forceRefresh}`);
 
     // Early return if no employee data is provided
@@ -198,7 +199,7 @@ class IncidentDataService {
     
     // Create cache key including filters and user-specific data (no page info)
     const filterKey = JSON.stringify(filters);
-    const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}`;
+    const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}_${hasIncidentAdmin}`;
     const cacheKey = `${clientId}_${userKey}_${filterKey}`;
     
     console.log(`   - Cache key: ${cacheKey}`);
@@ -288,16 +289,25 @@ class IncidentDataService {
         `)
         .eq('client_id', clientId);
 
-      // Apply role-based filtering based on super admin status
-      console.log('🔒 Applying role-based filtering:', { employeeData });
+      // Apply role-based filtering with improved logic
+      console.log('🔒 Applying role-based filtering:', { 
+        employeeData, 
+        hasIncidentAdmin,
+        isSuperAdmin: employeeData.isSuperAdmin 
+      });
+      
       const isSuperAdmin = employeeData.isSuperAdmin === true;
       
-      if (!isSuperAdmin) {
-        // Non-super admin users can only see incidents they created or are assigned to
-        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        console.log(`   - Applied non-super admin filter for employee ${employeeData.id} (created_by OR assigned_to)`);
-      } else {
+      if (isSuperAdmin) {
+        // Super admin can see all incidents for the client
         console.log('   - Super admin: can see all incidents for this client');
+      } else if (hasIncidentAdmin) {
+        // Incident admin can see all incidents for the client
+        console.log('   - Incident admin: can see all incidents for this client');
+      } else {
+        // Regular users can only see incidents they created or are assigned to
+        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+        console.log(`   - Regular user: applied filter for employee ${employeeData.id} (created_by OR assigned_to)`);
       }
 
       // Apply server-side filters using foreign key IDs
@@ -420,7 +430,7 @@ class IncidentDataService {
       console.log(`   - Records on this page: ${paginatedData.length}`);
       console.log(`   - Total records cached: ${transformedIncidents.length}`);
       console.log(`   - Has more: ${hasMore}`);
-      console.log(`   - User access level: ${employeeData?.isSuperAdmin ? 'Super Admin' : 'Regular User'}`);
+      console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
       
       return response;
 
@@ -484,15 +494,19 @@ class IncidentDataService {
         `)
         .eq('client_id', clientId);
 
-      // Apply same filtering logic for stats
+      // Apply same improved filtering logic for stats
       const isSuperAdmin = employeeData.isSuperAdmin === true;
       
-      if (!isSuperAdmin) {
-        if (hasIncidentAdmin) {
-          query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
-        } else {
-          query = query.eq('created_by', employeeData.id);
-        }
+      if (isSuperAdmin) {
+        // Super admin can see all incidents
+        console.log('Stats: Super admin access - all incidents');
+      } else if (hasIncidentAdmin) {
+        // Incident admin can see all incidents for the client
+        console.log('Stats: Incident admin access - all incidents');
+      } else {
+        // Regular users can only see incidents they created or are assigned to
+        query = query.or(`created_by.eq.${employeeData.id},assigned_to.eq.${employeeData.id}`);
+        console.log('Stats: Regular user access - filtered incidents');
       }
 
       const { data, error } = await query;
