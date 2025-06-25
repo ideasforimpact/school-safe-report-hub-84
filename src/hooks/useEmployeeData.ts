@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId } from '@/store/employeeActions';
@@ -12,28 +11,35 @@ export const useEmployeeData = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const { state, dispatch } = useEmployeeStore();
   const location = useLocation();
+  
+  // Use refs to track operation states and prevent multiple simultaneous operations
+  const isInitializedRef = useRef(false);
+  const isFetchingModulesRef = useRef(false);
+  const isFetchingEmployeeDataRef = useRef(false);
 
-  // Check if we're on a route that needs employee data
-  const needsEmployeeData = location.pathname === '/dashboard' || 
-                           location.pathname.includes('/employee-verification') ||
-                           location.pathname.includes('/settings') ||
-                           location.pathname.includes('/assessment') ||
-                           location.pathname.includes('/incident') ||
-                           location.pathname.includes('/transport') ||
-                           location.pathname.includes('/edusafe') ||
-                           location.pathname.includes('/grievances');
+  // Memoize computed values to prevent re-renders
+  const needsEmployeeData = useMemo(() => {
+    return location.pathname === '/dashboard' || 
+           location.pathname.includes('/employee-verification') ||
+           location.pathname.includes('/settings') ||
+           location.pathname.includes('/assessment') ||
+           location.pathname.includes('/incident') ||
+           location.pathname.includes('/transport') ||
+           location.pathname.includes('/edusafe') ||
+           location.pathname.includes('/grievances');
+  }, [location.pathname]);
 
-  // Don't fetch employee data on home page or other non-relevant routes
-  const shouldSkipEmployeeData = location.pathname === '/' || 
-                                location.pathname === '/home' ||
-                                location.pathname === '/login' ||
-                                location.pathname === '/pricing' ||
-                                location.pathname === '/support' ||
-                                location.pathname === '/blog';
+  const shouldSkipEmployeeData = useMemo(() => {
+    return location.pathname === '/' || 
+           location.pathname === '/home' ||
+           location.pathname === '/login' ||
+           location.pathname === '/pricing' ||
+           location.pathname === '/support' ||
+           location.pathname === '/blog';
+  }, [location.pathname]);
 
-  // Check if modules exist in sessionStorage
-  const checkPersistedModules = (): Module[] | null => {
-    // Skip this check entirely on login/home routes
+  // Memoize the persisted modules check
+  const checkPersistedModules = useCallback((): Module[] | null => {
     if (shouldSkipEmployeeData) {
       return null;
     }
@@ -43,17 +49,19 @@ export const useEmployeeData = () => {
       return persistedState.configuredModules;
     }
     return null;
-  };
+  }, [shouldSkipEmployeeData]);
 
-  // Fetch configured modules for the employee
-  const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
+  // Memoize the configured modules fetching function
+  const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null) => {
+    // Prevent multiple simultaneous fetches
+    if (isFetchingModulesRef.current || shouldSkipEmployeeData) {
+      return;
+    }
+
     try {
-      // Skip entirely on login/home routes
-      if (shouldSkipEmployeeData) {
-        return;
-      }
+      isFetchingModulesRef.current = true;
 
-      // First check if we have valid modules in sessionStorage
+      // First check if we have valid modules in persistence
       const persistedModules = checkPersistedModules();
       if (persistedModules && persistedModules.length > 0) {
         dispatch(setConfiguredModules(persistedModules));
@@ -141,7 +149,7 @@ export const useEmployeeData = () => {
           .eq('enabled', true);
 
         if (clientModulesError) {
-          console.error('Error fetching client modules:', clientModulesError);
+          console.error('Error fetching client modules for employee:', clientModulesError);
           dispatch(setError(clientModulesError.message));
           return;
         }
@@ -203,7 +211,7 @@ export const useEmployeeData = () => {
         return a.order - b.order;
       });
 
-      // If no modules found, we should at least provide a dashboard
+      // If no modules found, provide a dashboard
       if (configuredModules.length === 0) {
         configuredModules = [{
           id: 'dashboard-default',
@@ -225,10 +233,63 @@ export const useEmployeeData = () => {
       console.error('Error in fetchConfiguredModules:', error);
       dispatch(setError("Failed to fetch configured modules"));
       dispatch(setLoading(false));
+    } finally {
+      isFetchingModulesRef.current = false;
     }
-  };
+  }, [shouldSkipEmployeeData, checkPersistedModules, dispatch]);
 
-  // Set employee data from auth context and fetch modules when available
+  // Memoize the employee data fetching function
+  const fetchEmployeeDataFromDB = useCallback(async (userId: string) => {
+    if (isFetchingEmployeeDataRef.current || shouldSkipEmployeeData) {
+      return;
+    }
+
+    try {
+      isFetchingEmployeeDataRef.current = true;
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select('id, client_id, first_name, last_name, email, is_super_admin')
+        .eq('user_id', userId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error fetching employee data:', error);
+        return;
+      }
+      
+      if (data) {
+        const employeeData = {
+          id: data.id,
+          clientId: data.client_id,
+          firstName: data.first_name,
+          lastName: data.last_name,
+          email: data.email,
+          isSuperAdmin: data.is_super_admin
+        };
+        
+        dispatch(setEmployeeData(employeeData));
+        
+        if (data.client_id) {
+          dispatch(setClientId(data.client_id));
+        }
+        
+        // Check for persisted modules first
+        const persistedModules = checkPersistedModules();
+        if (persistedModules && persistedModules.length > 0) {
+          dispatch(setConfiguredModules(persistedModules));
+        } else if (data.id && data.client_id && !isFetchingModulesRef.current) {
+          await fetchConfiguredModules(data.id, data.client_id);
+        }
+      }
+    } catch (fetchError) {
+      console.error('Error in fetchEmployeeDataFromDB:', fetchError);
+    } finally {
+      isFetchingEmployeeDataRef.current = false;
+    }
+  }, [shouldSkipEmployeeData, dispatch, checkPersistedModules, fetchConfiguredModules]);
+
+  // Main effect for setting employee data from auth context
   useEffect(() => {
     // Skip employee data processing on routes that don't need it
     if (shouldSkipEmployeeData) {
@@ -237,6 +298,11 @@ export const useEmployeeData = () => {
 
     // Only process employee data if we're on a route that needs it
     if (!needsEmployeeData) {
+      return;
+    }
+
+    // Skip if already initialized
+    if (isInitializedRef.current) {
       return;
     }
 
@@ -253,63 +319,44 @@ export const useEmployeeData = () => {
       const hasValidModules = state.configuredModules && state.configuredModules.length > 0;
       const persistedModules = checkPersistedModules();
       
-      if (!hasValidModules && !persistedModules && authEmployeeData.id && authEmployeeData.clientId) {
+      if (!hasValidModules && !persistedModules && authEmployeeData.id && authEmployeeData.clientId && !isFetchingModulesRef.current) {
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       } else if (persistedModules && persistedModules.length > 0 && (!state.configuredModules || state.configuredModules.length === 0)) {
         dispatch(setConfiguredModules(persistedModules));
       }
-    } else {
+      
+      isInitializedRef.current = true;
+    } else if (user && user.id && !isFetchingEmployeeDataRef.current) {
       // If we have a user but no employee data, try to fetch employee data from the database
-      if (user && user.id && !shouldSkipEmployeeData) {
-        const fetchEmployeeDataFromDB = async () => {
-          try {
-            // Try to get employee data by user ID
-            const { data, error } = await supabase
-              .from('employees')
-              .select('id, client_id, first_name, last_name, email, is_super_admin')
-              .eq('user_id', user.id)
-              .maybeSingle();
-              
-            if (error) {
-              console.error('Error fetching employee data:', error);
-              return;
-            }
-            
-            if (data) {
-              const employeeData = {
-                id: data.id,
-                clientId: data.client_id,
-                firstName: data.first_name,
-                lastName: data.last_name,
-                email: data.email,
-                isSuperAdmin: data.is_super_admin
-              };
-              
-              // Set employee data in Redux store
-              dispatch(setEmployeeData(employeeData));
-              
-              // Set client ID in Redux store
-              if (data.client_id) {
-                dispatch(setClientId(data.client_id));
-              }
-              
-              // Check for persisted modules first
-              const persistedModules = checkPersistedModules();
-              if (persistedModules && persistedModules.length > 0) {
-                dispatch(setConfiguredModules(persistedModules));
-              } else if (data.id && data.client_id) {
-                fetchConfiguredModules(data.id, data.client_id);
-              }
-            }
-          } catch (fetchError) {
-            console.error('Error in fetchEmployeeDataFromDB:', fetchError);
-          }
-        };
-        
-        fetchEmployeeDataFromDB();
-      }
+      fetchEmployeeDataFromDB(user.id);
+      isInitializedRef.current = true;
     }
-  }, [authEmployeeData, user, needsEmployeeData, shouldSkipEmployeeData]);
+  }, [
+    authEmployeeData, 
+    user, 
+    needsEmployeeData, 
+    shouldSkipEmployeeData, 
+    dispatch, 
+    checkPersistedModules, 
+    fetchConfiguredModules, 
+    fetchEmployeeDataFromDB,
+    state.configuredModules
+  ]);
+
+  // Reset initialization flag when route changes to non-employee routes
+  useEffect(() => {
+    if (shouldSkipEmployeeData) {
+      isInitializedRef.current = false;
+      isFetchingModulesRef.current = false;
+      isFetchingEmployeeDataRef.current = false;
+    }
+  }, [shouldSkipEmployeeData]);
+
+  const refetchModules = useCallback(() => {
+    if (!shouldSkipEmployeeData && state.employeeData?.id && state.employeeData?.clientId && !isFetchingModulesRef.current) {
+      fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
+    }
+  }, [shouldSkipEmployeeData, state.employeeData?.id, state.employeeData?.clientId, fetchConfiguredModules]);
 
   return {
     employeeData: state.employeeData,
@@ -317,10 +364,6 @@ export const useEmployeeData = () => {
     isLoading: state.isLoading,
     error: state.error,
     clientId: state.clientId,
-    refetchModules: () => {
-      if (!shouldSkipEmployeeData && state.employeeData?.id && state.employeeData?.clientId) {
-        fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
-      }
-    }
+    refetchModules
   };
 };
