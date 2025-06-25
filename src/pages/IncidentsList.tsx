@@ -36,7 +36,6 @@ interface ServerFilters {
 
 const IncidentsList = () => {
   const [incidents, setIncidents] = useState<IncidentRecord[]>([]);
-  const [allIncidents, setAllIncidents] = useState<IncidentRecord[]>([]); // Store all records for client-side pagination
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -82,40 +81,16 @@ const IncidentsList = () => {
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules]);
 
-  // Client-side pagination function
-  const applyClientSidePagination = useCallback((
-    allRecords: IncidentRecord[],
-    page: number,
-    pageSize: number
-  ) => {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedData = allRecords.slice(startIndex, endIndex);
-    
-    const totalCount = allRecords.length;
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const hasMore = page < totalPages;
-    
-    setIncidents(paginatedData);
-    setPagination({
-      currentPage: page,
-      totalPages,
-      totalCount,
-      hasMore,
-      pageSize
-    });
-
-    console.log(`📄 Client-side pagination applied: Page ${page}/${totalPages}, showing ${paginatedData.length}/${totalCount} records`);
-  }, []);
-
-  // Main fetch function with server-side filtering (eager loading)
+  // Main fetch function with server-side filtering
   const fetchIncidents = useCallback(async (
+    page = 1,
+    pageSize = 10,
     serverFilters: ServerFilters = {},
     forceRefresh = false
   ) => {
     try {
       setLoading(true);
-      console.log(`🔄 Fetching incidents (EAGER LOADING) - filters:`, serverFilters);
+      console.log(`🔄 Fetching incidents - page: ${page}, filters:`, serverFilters);
 
       // Get client ID
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
@@ -134,7 +109,6 @@ const IncidentsList = () => {
 
       if (!clientId) {
         console.log('No client ID found');
-        setAllIncidents([]);
         setIncidents([]);
         setPagination({
           currentPage: 1,
@@ -155,23 +129,27 @@ const IncidentsList = () => {
 
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Call the service to get ALL records with filters (eager loading)
+      // Call the service with server-side filters
       const response = await incidentDataService.fetchIncidentsForClientWithFilters(
         clientId,
         forceRefresh,
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page: 1, pageSize: 10 }, // This won't be used for server pagination anymore
+        { page, pageSize },
         serverFilters
       );
 
-      console.log(`✅ Eager loading completed: ${response.totalCount} total records fetched`);
+      console.log(`✅ Server returned ${response.data.length} incidents for page ${page}`);
+      console.log(`📊 Total count: ${response.totalCount}, Total pages: ${response.totalPages}`);
       
-      // Store all records for client-side operations
-      setAllIncidents(response.data);
-      
-      // Apply client-side pagination to display first page
-      applyClientSidePagination(response.data, 1, pagination.pageSize);
+      setIncidents(response.data);
+      setPagination({
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        totalCount: response.totalCount,
+        hasMore: response.hasMore,
+        pageSize
+      });
 
     } catch (error: any) {
       console.error('❌ Error fetching incidents:', error);
@@ -183,20 +161,20 @@ const IncidentsList = () => {
     } finally {
       setLoading(false);
     }
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, pagination.pageSize, applyClientSidePagination]);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
-  // Handle filter changes (triggers new API call)
+  // Handle filter changes
   const handleFilterChange = useCallback((field: string, value: any) => {
     const newFilters = { ...filters, [field]: value };
     setFilters(newFilters);
     
-    console.log(`🔧 Filter changed: ${field} = ${value} (will trigger new API call)`);
+    console.log(`🔧 Filter changed: ${field} = ${value}`);
     
-    // Fetch with new filters (this will be an API call)
-    fetchIncidents(newFilters, false);
-  }, [filters, fetchIncidents]);
+    // Fetch with new filters, reset to page 1
+    fetchIncidents(1, pagination.pageSize, newFilters, false);
+  }, [filters, pagination.pageSize, fetchIncidents]);
 
-  // Clear all filters (triggers new API call)
+  // Clear all filters
   const clearFilters = useCallback(() => {
     const emptyFilters = {
       search: '',
@@ -210,22 +188,22 @@ const IncidentsList = () => {
       dateTo: ''
     };
     setFilters(emptyFilters);
-    console.log('🧹 All filters cleared (will trigger new API call)');
-    fetchIncidents(emptyFilters, false);
-  }, [fetchIncidents]);
+    console.log('🧹 All filters cleared');
+    fetchIncidents(1, pagination.pageSize, emptyFilters, false);
+  }, [pagination.pageSize, fetchIncidents]);
 
-  // Client-side pagination handlers (NO API CALLS)
-  const goToPage = useCallback((page: number) => {
+  // Server-side pagination handlers
+  const goToPage = useCallback(async (page: number) => {
     if (page >= 1 && page <= pagination.totalPages && !loading) {
-      console.log(`📄 Client-side navigation to page ${page} (no API call)`);
-      applyClientSidePagination(allIncidents, page, pagination.pageSize);
+      console.log(`📄 Navigating to page ${page}`);
+      await fetchIncidents(page, pagination.pageSize, filters, false);
     }
-  }, [pagination.totalPages, pagination.pageSize, loading, allIncidents, applyClientSidePagination]);
+  }, [fetchIncidents, pagination.totalPages, pagination.pageSize, filters, loading]);
 
-  const changePageSize = useCallback((newPageSize: number) => {
-    console.log(`📏 Changing page size to ${newPageSize} (client-side only)`);
-    applyClientSidePagination(allIncidents, 1, newPageSize); // Reset to page 1 with new page size
-  }, [allIncidents, applyClientSidePagination]);
+  const changePageSize = useCallback(async (newPageSize: number) => {
+    console.log(`📏 Changing page size to ${newPageSize}`);
+    await fetchIncidents(1, newPageSize, filters, false);
+  }, [fetchIncidents, filters]);
 
   // Initial fetch and navigation handling with improved logic
   useEffect(() => {
@@ -233,7 +211,7 @@ const IncidentsList = () => {
                        employeeState.configuredModules;
 
     if (shouldFetch) {
-      console.log('🚀 Initial fetch triggered (eager loading)');
+      console.log('🚀 Initial fetch triggered');
       console.log('📍 Current location:', location.pathname);
       console.log('🔑 Has admin access:', hasIncidentAdmin);
       
@@ -255,7 +233,7 @@ const IncidentsList = () => {
       };
       
       setFilters(initialFilters);
-      fetchIncidents(initialFilters, forceRefresh);
+      fetchIncidents(1, 10, initialFilters, forceRefresh);
     } else {
       console.log('⏳ Waiting for employee data or configured modules...');
     }
@@ -268,8 +246,8 @@ const IncidentsList = () => {
     location.pathname // Re-run when location changes
   ]);
 
-  console.log('📋 IncidentsList render (EAGER LOADING) - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
-  console.log('📊 Total incidents loaded:', allIncidents.length, 'Current incidents shown:', incidents.length);
+  console.log('📋 IncidentsList render - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
+  console.log('📊 Total incidents:', pagination.totalCount, 'Current incidents shown:', incidents.length);
   console.log('🔍 Active filters:', filters);
 
   return (
