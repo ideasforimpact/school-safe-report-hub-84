@@ -31,7 +31,7 @@ interface PaginatedResponse<T> {
 
 class IncidentDataService {
   private static instance: IncidentDataService;
-  private incidentCache: Map<string, PaginatedResponse<IncidentRecord>> = new Map();
+  private incidentCache: Map<string, IncidentRecord[]> = new Map();
   private isLoading = false;
 
   static getInstance(): IncidentDataService {
@@ -167,7 +167,7 @@ class IncidentDataService {
     }
   }
 
-  // Method with server-side filtering support and role-based access control
+  // Method with server-side filtering but client-side pagination
   async fetchIncidentsForClientWithFilters(
     clientId: string, 
     forceRefresh = false, 
@@ -177,10 +177,9 @@ class IncidentDataService {
     filters: ServerFilters = {}
   ): Promise<PaginatedResponse<IncidentRecord>> {
     const { page = 1, pageSize = 10 } = pagination;
-    const limitedPageSize = 10;
     
-    console.log(`🔄 fetchIncidentsForClientWithFilters called:`);
-    console.log(`   - Page: ${page}, PageSize: ${limitedPageSize}`);
+    console.log(`🔄 fetchIncidentsForClientWithFilters called (EAGER LOADING):`);
+    console.log(`   - Page: ${page}, PageSize: ${pageSize}`);
     console.log(`   - Filters:`, filters);
     console.log(`   - Employee Data:`, employeeData);
     console.log(`   - Force refresh: ${forceRefresh}`);
@@ -197,37 +196,55 @@ class IncidentDataService {
       };
     }
     
-    const offset = (page - 1) * limitedPageSize;
-    
-    // Create cache key including filters and user-specific data
+    // Create cache key including filters and user-specific data (no page info)
     const filterKey = JSON.stringify(filters);
     const userKey = `${employeeData.id}_${employeeData.isSuperAdmin}`;
-    const cacheKey = `${clientId}_${userKey}_${page}_${limitedPageSize}_${filterKey}`;
+    const cacheKey = `${clientId}_${userKey}_${filterKey}`;
     
     console.log(`   - Cache key: ${cacheKey}`);
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
-      console.log(`✅ Returning cached data for page ${page} with filters`);
-      return this.incidentCache.get(cacheKey)!;
+      console.log(`✅ Returning cached data with client-side pagination`);
+      const allIncidents = this.incidentCache.get(cacheKey)!;
+      
+      // Apply client-side pagination
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedData = allIncidents.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(allIncidents.length / pageSize);
+      
+      return {
+        data: paginatedData,
+        totalCount: allIncidents.length,
+        hasMore: page < totalPages,
+        currentPage: page,
+        totalPages
+      };
     }
 
     // Prevent multiple simultaneous requests
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
-      return this.incidentCache.get(cacheKey) || {
-        data: [],
-        totalCount: 0,
-        hasMore: false,
+      const cachedData = this.incidentCache.get(cacheKey) || [];
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedData = cachedData.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(cachedData.length / pageSize);
+      
+      return {
+        data: paginatedData,
+        totalCount: cachedData.length,
+        hasMore: page < totalPages,
         currentPage: page,
-        totalPages: 0
+        totalPages
       };
     }
 
     this.isLoading = true;
 
     try {
-      console.log('🚀 Making server request for incidents with filters and role-based access...');
+      console.log('🚀 Making server request for ALL incidents with filters and role-based access...');
       
       // Perform parallel ID lookups for filters
       const [statusId, categoryId, subcategoryId, priorityId, locationId, facilityId] = await Promise.all([
@@ -268,12 +285,11 @@ class IncidentDataService {
           incident_status!status_id(id, name),
           created_by_employee:employees!created_by(id, first_name, last_name),
           assigned_employee:employees!assigned_to(id, first_name, last_name)
-        `, { count: 'exact' })
+        `)
         .eq('client_id', clientId);
 
       // Apply role-based filtering based on super admin status
       console.log('🔒 Applying role-based filtering:', { employeeData });
-      // Check if user is super admin - use consistent logic with frontend
       const isSuperAdmin = employeeData.isSuperAdmin === true;
       
       if (!isSuperAdmin) {
@@ -342,22 +358,19 @@ class IncidentDataService {
         console.log(`   - Applied date to filter: ${filters.dateTo}`);
       }
 
-      // Apply server-side pagination
-      query = query
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limitedPageSize - 1);
+      // Order by created_at but NO PAGINATION - fetch ALL records
+      query = query.order('created_at', { ascending: false });
 
-      console.log(`📊 Server query: fetching range ${offset} to ${offset + limitedPageSize - 1}`);
+      console.log(`📊 Server query: fetching ALL incidents matching filters`);
 
-      const { data: incidents, error, count } = await query;
+      const { data: incidents, error } = await query;
 
       if (error) {
         console.error('❌ Database query error:', error);
         throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
 
-      console.log(`✅ Server returned ${incidents?.length || 0} incidents for page ${page}`);
-      console.log(`📈 Total count from database: ${count}`);
+      console.log(`✅ Server returned ${incidents?.length || 0} incidents (ALL matching records)`);
 
       const transformedIncidents: IncidentRecord[] = (incidents || []).map((inc: any) => ({
         id: inc.id,
@@ -383,28 +396,31 @@ class IncidentDataService {
         updatedAt: new Date(inc.updated_at)
       }));
 
-      const totalCount = count || 0;
-      const totalPages = Math.ceil(totalCount / limitedPageSize);
+      // Cache ALL the results
+      this.incidentCache.set(cacheKey, transformedIncidents);
+      console.log(`💾 Cached ${transformedIncidents.length} incidents with key: ${cacheKey}`);
+
+      // Apply client-side pagination
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedData = transformedIncidents.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(transformedIncidents.length / pageSize);
       const hasMore = page < totalPages;
 
       const response: PaginatedResponse<IncidentRecord> = {
-        data: transformedIncidents,
-        totalCount,
+        data: paginatedData,
+        totalCount: transformedIncidents.length,
         hasMore,
         currentPage: page,
         totalPages
       };
 
-      console.log(`📋 Server-side pagination result with role-based access and filters:`);
+      console.log(`📋 Client-side pagination result with role-based access and filters:`);
       console.log(`   - Page ${page}/${totalPages}`);
-      console.log(`   - Records: ${transformedIncidents.length}`);
-      console.log(`   - Total: ${totalCount}`);
+      console.log(`   - Records on this page: ${paginatedData.length}`);
+      console.log(`   - Total records cached: ${transformedIncidents.length}`);
       console.log(`   - Has more: ${hasMore}`);
       console.log(`   - User access level: ${employeeData?.isSuperAdmin ? 'Super Admin' : 'Regular User'}`);
-
-      // Cache the results with page-specific key including filters and user context
-      this.incidentCache.set(cacheKey, response);
-      console.log(`💾 Cached result with key: ${cacheKey}`);
       
       return response;
 
