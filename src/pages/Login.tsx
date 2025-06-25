@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,16 @@ const Login = () => {
   const { authError, user, handleUserAuthentication } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Use refs to prevent multiple redirects
+  const hasRedirectedRef = useRef(false);
+  const hasCheckedErrorRef = useRef(false);
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    if (user) {
+    if (user && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
 
@@ -38,7 +44,8 @@ const Login = () => {
 
   // Listen for auth errors from context
   useEffect(() => {
-    if (authError) {
+    if (authError && !hasCheckedErrorRef.current) {
+      hasCheckedErrorRef.current = true;
       setError(authError);
       setIsLoading(false);
       setGoogleLoading(false);
@@ -65,7 +72,7 @@ const Login = () => {
         window.history.replaceState({}, document.title, newUrl);
       }
     }
-  }, [location]);
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {
