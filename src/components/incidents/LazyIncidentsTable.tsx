@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IncidentRecord } from '@/services/incidentService';
@@ -339,9 +338,24 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
         </Table>
       </div>
       
-      {/* Pagination - Show whenever pagination data exists and handlers are provided */}
+      {/* Pagination - Always show when pagination data exists and handlers are provided */}
       {pagination && onPageChange && (
         <div className="py-4 border-t">
+          {/* Page info - Always show current page context */}
+          <div className="flex items-center justify-between px-6 mb-3">
+            <div className="text-sm text-gray-600">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </div>
+            {pagination.totalPages === 1 && (
+              <div className="text-sm text-gray-500">
+                {pagination.totalCount === pagination.pageSize ? 
+                  `All ${pagination.totalCount} records displayed` : 
+                  `Showing all ${pagination.totalCount} records on 1 page`
+                }
+              </div>
+            )}
+          </div>
+          
           <Pagination>
             <PaginationContent>
               <PaginationItem>
