@@ -150,14 +150,15 @@ const IncidentsList = () => {
 
       const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
       
-      // Call the service to fetch ALL matching incidents (no server-side pagination)
+      // Call the service to fetch ALL matching incidents (returnAllData = true)
       const response = await incidentDataService.fetchIncidentsForClientWithFilters(
         clientId,
         forceRefresh,
         employeeDataForFiltering,
         hasIncidentAdmin,
-        { page: 1, pageSize: pagination.pageSize }, // This will be used only for initial client-side pagination
-        serverFilters
+        { page: 1, pageSize: pagination.pageSize }, // Not used when returnAllData = true
+        serverFilters,
+        true // returnAllData = true - get ALL incidents for client-side pagination
       );
 
       console.log(`✅ Server returned ${response.totalCount} total incidents (ALL matching records)`);
