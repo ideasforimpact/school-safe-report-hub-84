@@ -18,7 +18,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { client_id } = await req.json()
+    const { client_id, employee_id, is_super_admin } = await req.json()
     
     if (!client_id) {
       return new Response(
@@ -30,7 +30,10 @@ serve(async (req) => {
       )
     }
 
-    console.log('Fetching dashboard stats for client:', client_id)
+    console.log('Fetching dashboard stats for client:', client_id, 'employee:', employee_id, 'is_super_admin:', is_super_admin)
+
+    // Determine if we should apply employee filtering (default to super admin behavior if not specified)
+    const shouldFilterByEmployee = is_super_admin === false && employee_id;
 
     // Get status IDs for "New" and "Open" incidents
     const { data: incidentStatuses } = await supabase
@@ -41,29 +44,41 @@ serve(async (req) => {
     const statusIds = incidentStatuses?.map(status => status.id) || []
     console.log('Status IDs found:', statusIds)
 
-    // Get open incidents count (New and Open status)
-    const { data: openIncidents, error: openIncidentsError } = await supabase
+    // Get open incidents count with role-based filtering
+    let openIncidentsQuery = supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .in('status_id', statusIds)
 
+    if (shouldFilterByEmployee) {
+      openIncidentsQuery = openIncidentsQuery.eq('created_by', employee_id)
+    }
+
+    const { data: openIncidents, error: openIncidentsError } = await openIncidentsQuery
+
     if (openIncidentsError) {
       console.error('Error fetching open incidents:', openIncidentsError)
     }
 
-    // Get active assessments count (only New status)
-    const { data: activeAssessments, error: activeAssessmentsError } = await supabase
+    // Get active assessments count with role-based filtering
+    let activeAssessmentsQuery = supabase
       .from('assessments')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .eq('status', 'New')
 
+    if (shouldFilterByEmployee) {
+      activeAssessmentsQuery = activeAssessmentsQuery.eq('created_by', employee_id)
+    }
+
+    const { data: activeAssessments, error: activeAssessmentsError } = await activeAssessmentsQuery
+
     if (activeAssessmentsError) {
       console.error('Error fetching active assessments:', activeAssessmentsError)
     }
 
-    // Get total employees for the client
+    // Get total employees for the client (always client-wide)
     const { data: totalEmployees, error: totalEmployeesError } = await supabase
       .from('employees')
       .select('id', { count: 'exact' })
@@ -73,7 +88,7 @@ serve(async (req) => {
       console.error('Error fetching total employees:', totalEmployeesError)
     }
 
-    // Get employees with documents (verified employees)
+    // Get employees with documents (always client-wide for team visibility)
     const { data: employeesWithDocs, error: employeesWithDocsError } = await supabase
       .from('employee_documents')
       .select('employee_id')
@@ -91,26 +106,38 @@ serve(async (req) => {
     // Get unique employee IDs with documents
     const uniqueEmployeesWithDocs = new Set(employeesWithDocs?.map(doc => doc.employee_id) || [])
 
-    // Get total vehicles for the client
-    const { data: totalVehicles, error: totalVehiclesError } = await supabase
+    // Get total vehicles with role-based filtering
+    let totalVehiclesQuery = supabase
       .from('vehicles')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
+
+    if (shouldFilterByEmployee) {
+      totalVehiclesQuery = totalVehiclesQuery.eq('employee_id', employee_id)
+    }
+
+    const { data: totalVehicles, error: totalVehiclesError } = await totalVehiclesQuery
 
     if (totalVehiclesError) {
       console.error('Error fetching total vehicles:', totalVehiclesError)
     }
 
-    // Get vehicles with documents
+    // Get vehicles with documents with role-based filtering
+    let vehicleIdsQuery = supabase
+      .from('vehicles')
+      .select('id')
+      .eq('client_id', client_id)
+
+    if (shouldFilterByEmployee) {
+      vehicleIdsQuery = vehicleIdsQuery.eq('employee_id', employee_id)
+    }
+
+    const vehicleIds = await vehicleIdsQuery.then(res => res.data?.map(vehicle => vehicle.id) || [])
+
     const { data: vehiclesWithDocs, error: vehiclesWithDocsError } = await supabase
       .from('vehicle_documents')
       .select('vehicle_id')
-      .in('vehicle_id', await supabase
-        .from('vehicles')
-        .select('id')
-        .eq('client_id', client_id)
-        .then(res => res.data?.map(vehicle => vehicle.id) || [])
-      )
+      .in('vehicle_id', vehicleIds)
 
     if (vehiclesWithDocsError) {
       console.error('Error fetching vehicles with documents:', vehiclesWithDocsError)
@@ -119,35 +146,47 @@ serve(async (req) => {
     // Get unique vehicle IDs with documents
     const uniqueVehiclesWithDocs = new Set(vehiclesWithDocs?.map(doc => doc.vehicle_id) || [])
 
-    // Get incidents from last month
+    // Get incidents from last month with role-based filtering
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
 
-    const { data: incidentsLastMonth, error: incidentsLastMonthError } = await supabase
+    let incidentsLastMonthQuery = supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .gte('created_at', oneMonthAgo.toISOString())
 
+    if (shouldFilterByEmployee) {
+      incidentsLastMonthQuery = incidentsLastMonthQuery.eq('created_by', employee_id)
+    }
+
+    const { data: incidentsLastMonth, error: incidentsLastMonthError } = await incidentsLastMonthQuery
+
     if (incidentsLastMonthError) {
       console.error('Error fetching incidents last month:', incidentsLastMonthError)
     }
 
-    // Get incidents from last 6 months
+    // Get incidents from last 6 months with role-based filtering
     const sixMonthsAgo = new Date()
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
 
-    const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await supabase
+    let incidentsLast6MonthsQuery = supabase
       .from('incidents')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .gte('created_at', sixMonthsAgo.toISOString())
 
+    if (shouldFilterByEmployee) {
+      incidentsLast6MonthsQuery = incidentsLast6MonthsQuery.eq('created_by', employee_id)
+    }
+
+    const { data: incidentsLast6Months, error: incidentsLast6MonthsError } = await incidentsLast6MonthsQuery
+
     if (incidentsLast6MonthsError) {
       console.error('Error fetching incidents last 6 months:', incidentsLast6MonthsError)
     }
 
-    // Get monthly incidents data for chart
+    // Get monthly incidents data for chart with role-based filtering
     const monthlyIncidentsData = []
     for (let i = 5; i >= 0; i--) {
       const monthStart = new Date()
@@ -162,13 +201,19 @@ serve(async (req) => {
 
       const monthName = monthStart.toLocaleDateString('en-US', { month: 'short' })
 
-      // Get all incidents for this month
-      const { data: monthIncidents } = await supabase
+      // Get all incidents for this month with role-based filtering
+      let monthIncidentsQuery = supabase
         .from('incidents')
         .select('status_id')
         .eq('client_id', client_id)
         .gte('created_at', monthStart.toISOString())
         .lte('created_at', monthEnd.toISOString())
+
+      if (shouldFilterByEmployee) {
+        monthIncidentsQuery = monthIncidentsQuery.eq('created_by', employee_id)
+      }
+
+      const { data: monthIncidents } = await monthIncidentsQuery
 
       // Get closed status ID
       const { data: closedStatus } = await supabase

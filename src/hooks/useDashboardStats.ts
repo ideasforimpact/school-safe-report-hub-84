@@ -51,8 +51,17 @@ export const useDashboardStats = () => {
 
         console.log('Fetching dashboard stats for client:', clientId);
 
+        // Prepare request body with employee information for role-based filtering
+        const requestBody = {
+          client_id: clientId,
+          employee_id: employeeData?.id || null,
+          is_super_admin: employeeData?.isSuperAdmin || false
+        };
+
+        console.log('Dashboard stats request:', requestBody);
+
         const { data, error } = await supabase.functions.invoke('dashboard-stats', {
-          body: { client_id: clientId }
+          body: requestBody
         });
 
         if (error) {
@@ -71,7 +80,7 @@ export const useDashboardStats = () => {
     };
 
     fetchStats();
-  }, [clientId]);
+  }, [clientId, employeeData?.id, employeeData?.isSuperAdmin]);
 
   return {
     stats,
