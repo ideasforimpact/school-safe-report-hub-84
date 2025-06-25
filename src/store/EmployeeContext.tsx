@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useRef } from 'react';
 import { employeeReducer, initialEmployeeState } from './employeeReducer';
 import { EmployeeState, EmployeeAction } from './types';
 import { saveAuthState, clearPersistedAuthState } from './authPersistence';
@@ -31,47 +31,68 @@ interface EmployeeProviderProps {
 
 export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(employeeReducer, initialEmployeeState);
+  
+  // Refs to track persistence state and prevent infinite loops
+  const hasClearedRef = useRef(false);
+  const lastPersistedStateRef = useRef<string>('');
+  const isInitializedRef = useRef(false);
 
   // Persist authentication state changes to sessionStorage
   useEffect(() => {
-    // Include employeeData in the persisted auth state
+    // Skip during initial render to prevent unnecessary operations
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      return;
+    }
+
+    // Create current auth state
     const authState = {
       currentUser: state.currentUser,
       isAuthenticated: state.isAuthenticated,
       isBackofficeUser: state.isBackofficeUser,
       authError: state.authError,
       configuredModules: state.configuredModules,
-      employeeData: state.employeeData // Add employeeData to persistence
+      employeeData: state.employeeData
     };
 
-    // Only save if we have a meaningful authentication state
+    // Create a hash of the current state to compare changes
+    const currentStateHash = JSON.stringify(authState);
+    
+    // Skip if state hasn't actually changed
+    if (currentStateHash === lastPersistedStateRef.current) {
+      return;
+    }
+
+    // Check if we have a meaningful authentication state
     const hasValidAuthState = state.currentUser || 
                              state.isBackofficeUser || 
                              state.isAuthenticated || 
-                             state.employeeData || // Also check for employeeData
+                             state.employeeData || 
                              (state.configuredModules && state.configuredModules.length > 0);
 
     if (hasValidAuthState) {
-      console.log("Persisting auth state with modules:", state.configuredModules?.length || 0, "and employee data:", !!state.employeeData);
+      // Save the state and update our tracking
       saveAuthState(authState);
+      lastPersistedStateRef.current = currentStateHash;
+      hasClearedRef.current = false; // Reset clear flag when we have valid state
     } else {
-      // Only clear if we're explicitly logged out (not just initializing)
-      const isExplicitLogout = !state.currentUser && 
-                              !state.isBackofficeUser && 
-                              !state.isAuthenticated && 
-                              !state.employeeData && // Also check employeeData
-                              state.authError === null && // No auth error means intentional logout
-                              (!state.configuredModules || state.configuredModules.length === 0);
+      // Only clear if we haven't already cleared and we previously had valid state
+      const hadValidState = lastPersistedStateRef.current !== '' && lastPersistedStateRef.current !== '{}';
       
-      if (isExplicitLogout) {
-        console.log("Clearing persisted auth state due to explicit logout");
-        // Add a small delay to prevent race conditions during initialization
-        setTimeout(() => {
-          clearPersistedAuthState();
-        }, 100);
+      if (!hasClearedRef.current && hadValidState) {
+        clearPersistedAuthState();
+        hasClearedRef.current = true;
+        lastPersistedStateRef.current = currentStateHash;
       }
     }
-  }, [state.currentUser, state.isAuthenticated, state.isBackofficeUser, state.authError, state.configuredModules, state.employeeData]);
+  }, [
+    state.currentUser, 
+    state.isAuthenticated, 
+    state.isBackofficeUser, 
+    state.authError, 
+    state.configuredModules, 
+    state.employeeData
+  ]);
 
   return (
     <EmployeeContext.Provider value={{ state, dispatch }}>
