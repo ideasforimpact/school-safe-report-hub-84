@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { IncidentRecord } from '@/services/incidentService';
 
@@ -167,19 +166,21 @@ class IncidentDataService {
     }
   }
 
-  // Method with server-side filtering but client-side pagination
+  // Method with server-side filtering but optional client-side pagination
   async fetchIncidentsForClientWithFilters(
     clientId: string, 
     forceRefresh = false, 
     employeeData?: any, 
     hasIncidentAdmin?: boolean,
     pagination: PaginationParams = { page: 1, pageSize: 10 },
-    filters: ServerFilters = {}
+    filters: ServerFilters = {},
+    returnAllData = false // New parameter to control pagination behavior
   ): Promise<PaginatedResponse<IncidentRecord>> {
     const { page = 1, pageSize = 10 } = pagination;
     
     console.log(`🔄 fetchIncidentsForClientWithFilters called (EAGER LOADING):`);
     console.log(`   - Page: ${page}, PageSize: ${pageSize}`);
+    console.log(`   - Return All Data: ${returnAllData}`);
     console.log(`   - Filters:`, filters);
     console.log(`   - Employee Data:`, employeeData);
     console.log(`   - Has Incident Admin:`, hasIncidentAdmin);
@@ -206,40 +207,62 @@ class IncidentDataService {
     
     // Return cached data if available and not forcing refresh
     if (!forceRefresh && this.incidentCache.has(cacheKey)) {
-      console.log(`✅ Returning cached data with client-side pagination`);
+      console.log(`✅ Returning cached data with ${returnAllData ? 'NO' : 'client-side'} pagination`);
       const allIncidents = this.incidentCache.get(cacheKey)!;
       
-      // Apply client-side pagination
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = allIncidents.slice(startIndex, endIndex);
-      const totalPages = Math.ceil(allIncidents.length / pageSize);
-      
-      return {
-        data: paginatedData,
-        totalCount: allIncidents.length,
-        hasMore: page < totalPages,
-        currentPage: page,
-        totalPages
-      };
+      if (returnAllData) {
+        // Return ALL incidents without pagination for client-side handling
+        return {
+          data: allIncidents,
+          totalCount: allIncidents.length,
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1
+        };
+      } else {
+        // Apply client-side pagination (for backward compatibility)
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = allIncidents.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(allIncidents.length / pageSize);
+        
+        return {
+          data: paginatedData,
+          totalCount: allIncidents.length,
+          hasMore: page < totalPages,
+          currentPage: page,
+          totalPages
+        };
+      }
     }
 
     // Prevent multiple simultaneous requests
     if (this.isLoading) {
       console.log('⚠️ Request already in progress, returning cached or empty data');
       const cachedData = this.incidentCache.get(cacheKey) || [];
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = cachedData.slice(startIndex, endIndex);
-      const totalPages = Math.ceil(cachedData.length / pageSize);
       
-      return {
-        data: paginatedData,
-        totalCount: cachedData.length,
-        hasMore: page < totalPages,
-        currentPage: page,
-        totalPages
-      };
+      if (returnAllData) {
+        return {
+          data: cachedData,
+          totalCount: cachedData.length,
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1
+        };
+      } else {
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = cachedData.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(cachedData.length / pageSize);
+        
+        return {
+          data: paginatedData,
+          totalCount: cachedData.length,
+          hasMore: page < totalPages,
+          currentPage: page,
+          totalPages
+        };
+      }
     }
 
     this.isLoading = true;
@@ -410,29 +433,46 @@ class IncidentDataService {
       this.incidentCache.set(cacheKey, transformedIncidents);
       console.log(`💾 Cached ${transformedIncidents.length} incidents with key: ${cacheKey}`);
 
-      // Apply client-side pagination
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedData = transformedIncidents.slice(startIndex, endIndex);
-      const totalPages = Math.ceil(transformedIncidents.length / pageSize);
-      const hasMore = page < totalPages;
+      if (returnAllData) {
+        // Return ALL incidents without pagination for client-side handling
+        const response: PaginatedResponse<IncidentRecord> = {
+          data: transformedIncidents,
+          totalCount: transformedIncidents.length,
+          hasMore: false,
+          currentPage: 1,
+          totalPages: 1
+        };
 
-      const response: PaginatedResponse<IncidentRecord> = {
-        data: paginatedData,
-        totalCount: transformedIncidents.length,
-        hasMore,
-        currentPage: page,
-        totalPages
-      };
+        console.log(`📋 Returning ALL ${transformedIncidents.length} incidents for client-side pagination:`);
+        console.log(`   - Total records: ${transformedIncidents.length}`);
+        console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
+        
+        return response;
+      } else {
+        // Apply client-side pagination (for backward compatibility)
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = transformedIncidents.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(transformedIncidents.length / pageSize);
+        const hasMore = page < totalPages;
 
-      console.log(`📋 Client-side pagination result with role-based access and filters:`);
-      console.log(`   - Page ${page}/${totalPages}`);
-      console.log(`   - Records on this page: ${paginatedData.length}`);
-      console.log(`   - Total records cached: ${transformedIncidents.length}`);
-      console.log(`   - Has more: ${hasMore}`);
-      console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
-      
-      return response;
+        const response: PaginatedResponse<IncidentRecord> = {
+          data: paginatedData,
+          totalCount: transformedIncidents.length,
+          hasMore,
+          currentPage: page,
+          totalPages
+        };
+
+        console.log(`📋 Client-side pagination result with role-based access and filters:`);
+        console.log(`   - Page ${page}/${totalPages}`);
+        console.log(`   - Records on this page: ${paginatedData.length}`);
+        console.log(`   - Total records cached: ${transformedIncidents.length}`);
+        console.log(`   - Has more: ${hasMore}`);
+        console.log(`   - User access level: ${isSuperAdmin ? 'Super Admin' : hasIncidentAdmin ? 'Incident Admin' : 'Regular User'}`);
+        
+        return response;
+      }
 
     } catch (error) {
       console.error('❌ Error in incidentDataService.fetchIncidentsForClientWithFilters:', error);
@@ -450,14 +490,15 @@ class IncidentDataService {
     hasIncidentAdmin?: boolean,
     pagination: PaginationParams = { page: 1, pageSize: 10 }
   ): Promise<PaginatedResponse<IncidentRecord>> {
-    // Delegate to the new method with empty filters
+    // Delegate to the new method with empty filters and pagination enabled
     return this.fetchIncidentsForClientWithFilters(
       clientId,
       forceRefresh,
       employeeData,
       hasIncidentAdmin,
       pagination,
-      {}
+      {},
+      false // Keep pagination for backward compatibility
     );
   }
 
