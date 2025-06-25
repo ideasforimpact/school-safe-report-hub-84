@@ -25,6 +25,7 @@ export const useEmployeeData = () => {
 
   // Don't fetch employee data on home page or other non-relevant routes
   const shouldSkipEmployeeData = location.pathname === '/' || 
+                                location.pathname === '/home' ||
                                 location.pathname === '/login' ||
                                 location.pathname === '/pricing' ||
                                 location.pathname === '/support' ||
@@ -32,9 +33,13 @@ export const useEmployeeData = () => {
 
   // Check if modules exist in sessionStorage
   const checkPersistedModules = (): Module[] | null => {
+    // Skip this check entirely on login/home routes
+    if (shouldSkipEmployeeData) {
+      return null;
+    }
+    
     const persistedState = loadAuthState();
     if (persistedState && persistedState.configuredModules && persistedState.configuredModules.length > 0) {
-      console.log("Found persisted modules in sessionStorage:", persistedState.configuredModules.length);
       return persistedState.configuredModules;
     }
     return null;
@@ -43,10 +48,14 @@ export const useEmployeeData = () => {
   // Fetch configured modules for the employee
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
+      // Skip entirely on login/home routes
+      if (shouldSkipEmployeeData) {
+        return;
+      }
+
       // First check if we have valid modules in sessionStorage
       const persistedModules = checkPersistedModules();
       if (persistedModules && persistedModules.length > 0) {
-        console.log("Using persisted modules instead of fetching");
         dispatch(setConfiguredModules(persistedModules));
         return;
       }
@@ -60,8 +69,6 @@ export const useEmployeeData = () => {
 
       // Set the client ID in Redux store
       dispatch(setClientId(clientId));
-
-      console.log("Fetching modules for employee:", employeeId, "client:", clientId);
 
       // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
@@ -118,6 +125,7 @@ export const useEmployeeData = () => {
             url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`
           };
         }).filter(Boolean) as Module[] || [];
+        
       } else {
         // First fetch all client modules to understand what's available
         const { data: clientModules, error: clientModulesError } = await supabase
@@ -210,7 +218,6 @@ export const useEmployeeData = () => {
         }];
       }
 
-      console.log("Setting configured modules:", configuredModules);
       dispatch(setConfiguredModules(configuredModules));
       dispatch(setLoading(false));
 
@@ -247,19 +254,15 @@ export const useEmployeeData = () => {
       const persistedModules = checkPersistedModules();
       
       if (!hasValidModules && !persistedModules && authEmployeeData.id && authEmployeeData.clientId) {
-        console.log("No valid modules found, fetching from database");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       } else if (persistedModules && persistedModules.length > 0 && (!state.configuredModules || state.configuredModules.length === 0)) {
-        console.log("Restoring persisted modules to Redux state");
         dispatch(setConfiguredModules(persistedModules));
       }
     } else {
       // If we have a user but no employee data, try to fetch employee data from the database
-      if (user && user.id) {
+      if (user && user.id && !shouldSkipEmployeeData) {
         const fetchEmployeeDataFromDB = async () => {
           try {
-            console.log('Fetching employee data for user:', user.id);
-            
             // Try to get employee data by user ID
             const { data, error } = await supabase
               .from('employees')
@@ -282,8 +285,6 @@ export const useEmployeeData = () => {
                 isSuperAdmin: data.is_super_admin
               };
               
-              console.log('Found employee data:', employeeData);
-              
               // Set employee data in Redux store
               dispatch(setEmployeeData(employeeData));
               
@@ -295,14 +296,10 @@ export const useEmployeeData = () => {
               // Check for persisted modules first
               const persistedModules = checkPersistedModules();
               if (persistedModules && persistedModules.length > 0) {
-                console.log("Using persisted modules for fetched employee data");
                 dispatch(setConfiguredModules(persistedModules));
               } else if (data.id && data.client_id) {
-                console.log("Fetching modules for newly loaded employee data");
                 fetchConfiguredModules(data.id, data.client_id);
               }
-            } else {
-              console.log('No employee data found for user:', user.id);
             }
           } catch (fetchError) {
             console.error('Error in fetchEmployeeDataFromDB:', fetchError);
@@ -321,7 +318,7 @@ export const useEmployeeData = () => {
     error: state.error,
     clientId: state.clientId,
     refetchModules: () => {
-      if (state.employeeData?.id && state.employeeData?.clientId) {
+      if (!shouldSkipEmployeeData && state.employeeData?.id && state.employeeData?.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
       }
     }
