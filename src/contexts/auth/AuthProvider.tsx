@@ -447,11 +447,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with sessionStorage flag
+  // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
-    // Set sessionStorage flag to prevent redirects during logout
-    sessionStorage.setItem('isLoggingOut', 'true');
-    
     // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
     
@@ -500,10 +497,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         navigate('/login', { replace: true });
       }
     } finally {
-      // Reset logout state after a short delay and clear sessionStorage flag
+      // Reset logout state after a short delay
       setTimeout(() => {
         dispatch(setLogoutState(false));
-        sessionStorage.removeItem('isLoggingOut');
       }, 1000);
     }
   };
