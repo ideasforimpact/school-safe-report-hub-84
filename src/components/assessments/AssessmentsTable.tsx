@@ -78,13 +78,16 @@ const AssessmentsTable: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching assessments with role-based access control');
-      console.log('Has assessment admin:', hasAssessmentAdmin);
-      console.log('Current user employee ID:', currentUserEmployeeId);
-      console.log('Using client_id:', clientId);
+      console.log('🔄 ASSESSMENT FETCH DEBUG - Starting fetch with role-based filtering');
+      console.log('🎯 Access Control Status:', {
+        hasAssessmentAdmin,
+        currentUserEmployeeId,
+        clientId,
+        willApplyUserFilter: !hasAssessmentAdmin
+      });
       
       if (!clientId) {
-        console.log('No client ID available - cannot fetch assessments');
+        console.log('❌ No client ID available - cannot fetch assessments');
         setAssessments([]);
         setFilteredAssessments([]);
         setLoading(false);
@@ -92,7 +95,7 @@ const AssessmentsTable: React.FC = () => {
       }
 
       if (!currentUserEmployeeId) {
-        console.log('No employee ID available - cannot fetch assessments');
+        console.log('❌ No employee ID available - cannot fetch assessments');
         setAssessments([]);
         setFilteredAssessments([]);
         setLoading(false);
@@ -121,20 +124,35 @@ const AssessmentsTable: React.FC = () => {
         `)
         .eq('client_id', clientId);
 
+      console.log('🔍 Base query created for client_id:', clientId);
+
       // Apply role-based filtering
       if (!hasAssessmentAdmin) {
-        // Regular users can only see assessments they created or are assigned to
+        console.log('🚫 User is NOT admin - applying role-based filter');
+        console.log('🎯 Filtering for assessments where:');
+        console.log(`   - created_by = ${currentUserEmployeeId} OR`);
+        console.log(`   - assigned_to = ${currentUserEmployeeId}`);
+        
         query = query.or(`created_by.eq.${currentUserEmployeeId},assigned_to.eq.${currentUserEmployeeId}`);
-        console.log('Applied role-based filter for regular user');
       } else {
-        console.log('Admin user - showing all assessments for client');
+        console.log('👑 User IS admin - showing all assessments for client');
       }
 
       query = query.order('created_at', { ascending: false });
 
+      console.log('📡 Executing database query...');
       const { data: assessmentsData, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database query error:', error);
+        throw error;
+      }
+
+      console.log('✅ Database query successful');
+      console.log('📊 Raw data received:', {
+        totalRecords: assessmentsData?.length || 0,
+        sampleRecord: assessmentsData?.[0] || 'No records'
+      });
 
       const formattedAssessments = assessmentsData?.map(assessment => ({
         ...assessment,
@@ -150,11 +168,29 @@ const AssessmentsTable: React.FC = () => {
         } : undefined
       })) || [];
 
-      console.log('Fetched assessments:', formattedAssessments);
+      console.log('🎯 Formatted assessments for current user:', {
+        totalCount: formattedAssessments.length,
+        createdByUser: formattedAssessments.filter(a => a.created_by === currentUserEmployeeId).length,
+        assignedToUser: formattedAssessments.filter(a => a.assigned_to === currentUserEmployeeId).length,
+        shouldSeeAll: hasAssessmentAdmin
+      });
+
+      // Additional verification for non-admin users
+      if (!hasAssessmentAdmin) {
+        const invalidRecords = formattedAssessments.filter(a => 
+          a.created_by !== currentUserEmployeeId && a.assigned_to !== currentUserEmployeeId
+        );
+        if (invalidRecords.length > 0) {
+          console.error('🚨 SECURITY ISSUE: Non-admin user received assessments they should not see:', invalidRecords);
+        } else {
+          console.log('✅ Security check passed: All records are properly filtered for non-admin user');
+        }
+      }
+
       setAssessments(formattedAssessments);
       setFilteredAssessments(formattedAssessments);
     } catch (error) {
-      console.error('Error fetching assessments:', error);
+      console.error('❌ Error fetching assessments:', error);
       setError('Failed to fetch assessments');
       toast.error('Failed to fetch assessments');
     } finally {
