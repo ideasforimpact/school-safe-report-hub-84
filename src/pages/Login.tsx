@@ -30,6 +30,13 @@ const Login = () => {
 
   // CRITICAL: Enhanced user redirect logic with logout protection
   useEffect(() => {
+    // IMMEDIATE CHECK: Skip if user is null (which happens during logout)
+    if (!user) {
+      console.log('🚫 Login redirect blocked - no user found');
+      hasRedirectedRef.current = false;
+      return;
+    }
+
     // Skip if logout is in progress or recently completed
     if (state.isLoggingOut || logoutDetectedRef.current) {
       console.log('🚫 Login redirect blocked - logout in progress', {
@@ -50,9 +57,9 @@ const Login = () => {
     if (user && isOnLoginPage) {
       // Add a small delay to ensure logout state has time to propagate
       const redirectTimer = setTimeout(() => {
-        // Double-check logout state before redirecting
-        if (state.isLoggingOut || logoutDetectedRef.current) {
-          console.log('🚫 Login redirect canceled - logout detected during delay');
+        // Triple-check: user still exists and no logout in progress
+        if (!user || state.isLoggingOut || logoutDetectedRef.current) {
+          console.log('🚫 Login redirect canceled - user cleared or logout detected during delay');
           return;
         }
 
@@ -73,7 +80,7 @@ const Login = () => {
         else{
           navigate('/dashboard', { replace: true });
         }
-      }, 100); // Small delay to allow state propagation
+      }, 50); // Smaller delay for faster response
 
       return () => clearTimeout(redirectTimer);
     }
