@@ -173,12 +173,36 @@ async function handleGetStudent(id: string, corsHeaders: Record<string, string>,
 }
 
 async function handleCreateStudent(body: any, corsHeaders: Record<string, string>) {
-  // Validate required fields
   const requiredFields = ["studentId", "name", "grade", "section", "campus"];
   for (const field of requiredFields) {
     if (!body[field]) {
       return new Response(
         JSON.stringify({ error: `${field} is required` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+
+  // Check if student ID already exists for this client
+  if (body.client_id) {
+    const { data: existingStudent, error: checkError } = await supabaseClient
+      .from("students")
+      .select("id")
+      .eq("student_id", body.studentId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Error checking existing student ID:", checkError);
+      return new Response(
+        JSON.stringify({ error: "Error validating student ID" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (existingStudent) {
+      return new Response(
+        JSON.stringify({ error: "Student ID already exists for this client" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -441,6 +465,32 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
 }
 
 async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>) {
+  // Check if student ID already exists for this client (if student ID is being updated)
+  if (body.studentId && body.client_id) {
+    const { data: existingStudent, error: checkError } = await supabaseClient
+      .from("students")
+      .select("id")
+      .eq("student_id", body.studentId)
+      .eq("client_id", body.client_id)
+      .neq("id", id) // Exclude the current student being updated
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Error checking existing student ID:", checkError);
+      return new Response(
+        JSON.stringify({ error: "Error validating student ID" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (existingStudent) {
+      return new Response(
+        JSON.stringify({ error: "Student ID already exists for this client" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   // Validate campus, grade, and section if they are being updated
   if (body.campus && body.grade && body.section) {
     const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
@@ -466,7 +516,6 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     .update(updates)
     .eq("id", id);
 
-  // Filter by client_id if provided
   if (body.client_id) {
     query = query.eq("client_id", body.client_id);
   }
@@ -507,7 +556,6 @@ async function handleDeleteStudent(id: string, corsHeaders: Record<string, strin
     .delete()
     .eq("id", id);
 
-  // Filter by client_id if provided
   if (body.client_id) {
     query = query.eq("client_id", body.client_id);
   }

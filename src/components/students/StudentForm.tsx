@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -22,7 +21,10 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { checkStudentIdExists } from '@/services/student/studentValidationService';
+import { useAuth } from '@/contexts/auth';
 
 interface Campus {
   id: string;
@@ -72,6 +74,15 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
   const [filteredGrades, setFilteredGrades] = useState<Grade[]>([]);
   const [filteredSections, setFilteredSections] = useState<Section[]>([]);
   
+  // Student ID validation states
+  const [studentIdInput, setStudentIdInput] = useState<string>(defaultValues?.studentId || '');
+  const [isCheckingStudentId, setIsCheckingStudentId] = useState<boolean>(false);
+  const [studentIdExists, setStudentIdExists] = useState<boolean>(false);
+  const [studentIdValidationMessage, setStudentIdValidationMessage] = useState<string>('');
+  
+  const debouncedStudentId = useDebounce(studentIdInput, 500);
+  const { employeeData } = useAuth();
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues || {
@@ -82,6 +93,46 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
       section: ''
     }
   });
+
+  // Student ID validation effect
+  useEffect(() => {
+    const validateStudentId = async () => {
+      if (!debouncedStudentId || !employeeData?.clientId) {
+        setStudentIdExists(false);
+        setStudentIdValidationMessage('');
+        return;
+      }
+
+      // Skip validation if this is an edit form and the student ID hasn't changed
+      if (defaultValues?.studentId && debouncedStudentId === defaultValues.studentId) {
+        setStudentIdExists(false);
+        setStudentIdValidationMessage('');
+        return;
+      }
+
+      setIsCheckingStudentId(true);
+      try {
+        const exists = await checkStudentIdExists(debouncedStudentId, employeeData.clientId);
+        setStudentIdExists(exists);
+        setStudentIdValidationMessage(
+          exists ? 'Student ID already exists' : 'Student ID is available'
+        );
+      } catch (error) {
+        console.error('Error validating student ID:', error);
+        setStudentIdValidationMessage('Error checking student ID');
+      } finally {
+        setIsCheckingStudentId(false);
+      }
+    };
+
+    validateStudentId();
+  }, [debouncedStudentId, employeeData?.clientId, defaultValues?.studentId]);
+
+  // Handle student ID input change
+  const handleStudentIdChange = (value: string) => {
+    setStudentIdInput(value);
+    form.setValue('studentId', value);
+  };
 
   // Fetch campuses, grades, and sections from Supabase
   useEffect(() => {
@@ -192,6 +243,15 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
     }
   }, [selectedGrade, grades, sections, form, defaultValues]);
 
+  // Custom form submission handler
+  const handleFormSubmit = (data: FormValues) => {
+    if (studentIdExists) {
+      toast.error('Cannot save student with duplicate Student ID');
+      return;
+    }
+    onSubmit(data);
+  };
+
   if (dataLoading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -203,7 +263,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="studentId"
@@ -211,8 +271,34 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
             <FormItem>
               <FormLabel>Student ID</FormLabel>
               <FormControl>
-                <Input placeholder="Enter student ID" {...field} />
+                <div className="relative">
+                  <Input 
+                    placeholder="Enter student ID" 
+                    value={studentIdInput}
+                    onChange={(e) => handleStudentIdChange(e.target.value)}
+                    className={`pr-10 ${studentIdExists ? 'border-red-500' : ''}`}
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {isCheckingStudentId && (
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                    )}
+                    {!isCheckingStudentId && studentIdInput && (
+                      <>
+                        {studentIdExists ? (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
               </FormControl>
+              {studentIdValidationMessage && (
+                <p className={`text-sm ${studentIdExists ? 'text-red-500' : 'text-green-500'}`}>
+                  {studentIdValidationMessage}
+                </p>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -318,7 +404,11 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isSubmitting || studentIdExists || isCheckingStudentId}
+        >
           {isSubmitting ? 'Processing...' : 'Save Student'}
         </Button>
       </form>
