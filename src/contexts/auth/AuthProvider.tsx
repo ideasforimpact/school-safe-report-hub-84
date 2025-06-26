@@ -67,6 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
+  const manualLogoutInProgressRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -188,8 +189,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current || state.isLoggingOut) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state change:', event, 'Manual logout in progress:', manualLogoutInProgressRef.current);
+      
+      // Skip processing if manual logout is in progress
+      if (manualLogoutInProgressRef.current) {
+        console.log('⏸️ Skipping auth state change - manual logout in progress');
+        return;
+      }
+
       // Skip processing if logging out
       if (state.isLoggingOut) {
+        console.log('⏸️ Skipping auth state change - already logging out');
         return;
       }
 
@@ -205,13 +215,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           toast.error("Authentication failed. Please try again.");
           setShowAuthLoading(false);
         }
-      } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
-        dispatch(clearAuth());
-        dispatch(resetEmployee());
-        clearPersistedAuthState();
-        setShowAuthLoading(false);
-        toast.info("You have been logged out");
-        logoutUser();
+      } else if (event === 'SIGNED_OUT') {
+        console.log('🚪 Automatic logout detected (session expired or external logout)');
+        
+        // Only handle automatic logout if not manual logout
+        if (!manualLogoutInProgressRef.current) {
+          dispatch(clearAuth());
+          dispatch(resetEmployee());
+          clearPersistedAuthState();
+          setShowAuthLoading(false);
+          toast.info("You have been logged out");
+          logoutUser();
+          
+          // Navigate to login page
+          const targetLoginPage = location.pathname.startsWith('/backoffice') ? '/backoffice/login' : '/login';
+          navigate(targetLoginPage, { replace: true });
+        }
       }
     });
     
@@ -220,7 +239,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [handleUserAuthentication, dispatch, state.isLoggingOut, location.pathname, navigate]);
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
@@ -447,9 +466,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with improved navigation and cleanup
+  // Handle logout with improved state coordination
   const handleLogout = async (): Promise<void> => {
-    // Set logout state immediately to prevent any redirects
+    console.log('🚪 Manual logout initiated');
+    
+    // Set manual logout flag immediately to prevent race conditions
+    manualLogoutInProgressRef.current = true;
     dispatch(setLogoutState(true));
     
     // Determine target login page based on current route path
@@ -459,14 +481,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // For non-backoffice users, sign out from Supabase FIRST
       if (!isBackofficeUser) {
+        console.log('🔐 Signing out from Supabase...');
         try {
           await supabase.auth.signOut();
+          console.log('✅ Supabase signout completed');
         } catch (supabaseError) {
-          console.error('Error signing out from Supabase:', supabaseError);
+          console.error('❌ Error signing out from Supabase:', supabaseError);
         }
       }
       
       // Clear all state after Supabase signout
+      console.log('🧹 Clearing auth state...');
       dispatch(clearAuth());
       dispatch(resetEmployee());
       clearPersistedAuthState();
@@ -476,19 +501,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Navigate to appropriate login page
+      console.log('🔄 Navigating to:', targetLoginPage);
       navigate(targetLoginPage, { replace: true });
       
       toast.success('You have been logged out successfully');
       
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('❌ Error during logout:', error);
       toast.error('There was an error logging out');
       
       // Fallback navigation in case of error
       navigate(targetLoginPage, { replace: true });
     } finally {
-      // Reset logout state after navigation
+      // Reset logout flags after navigation with delay
       setTimeout(() => {
+        console.log('🏁 Resetting logout flags');
+        manualLogoutInProgressRef.current = false;
         dispatch(setLogoutState(false));
       }, 500);
     }
