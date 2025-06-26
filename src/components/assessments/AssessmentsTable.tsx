@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,7 +10,7 @@ import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter } fro
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth';
+import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentViewDialog from './view/AssessmentViewDialog';
 
 interface AssessmentTemplate {
@@ -38,7 +37,8 @@ interface Assessment {
 
 const AssessmentsTable: React.FC = () => {
   const navigate = useNavigate();
-  const { user, employeeData } = useAuth();
+  const { hasAssessmentAdmin, currentUserEmployeeId, clientId } = useAssessmentAccess();
+  
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,12 +51,6 @@ const AssessmentsTable: React.FC = () => {
   const [targetDateTo, setTargetDateTo] = useState<Date | undefined>(undefined);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
-
-  // Get client_id from either employeeData or user context
-  const clientId = employeeData?.clientId || user?.clientId;
-  
-  // Get current user's employee ID for checking assignment
-  const currentUserEmployeeId = employeeData?.id;
 
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
@@ -84,20 +78,32 @@ const AssessmentsTable: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching assessments with user:', user);
-      console.log('Employee data:', employeeData);
-      console.log('Using client_id:', clientId);
+      console.log('🔄 ASSESSMENT FETCH DEBUG - Starting fetch with role-based filtering');
+      console.log('🎯 Access Control Status:', {
+        hasAssessmentAdmin,
+        currentUserEmployeeId,
+        clientId,
+        willApplyUserFilter: !hasAssessmentAdmin
+      });
       
       if (!clientId) {
-        console.log('No client ID available - cannot fetch assessments');
+        console.log('❌ No client ID available - cannot fetch assessments');
+        setAssessments([]);
+        setFilteredAssessments([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!currentUserEmployeeId) {
+        console.log('❌ No employee ID available - cannot fetch assessments');
         setAssessments([]);
         setFilteredAssessments([]);
         setLoading(false);
         return;
       }
       
-      // Fetch assessments with employee names and template data for the specific client
-      const { data: assessmentsData, error } = await supabase
+      // Build query with role-based filtering
+      let query = supabase
         .from('assessments')
         .select(`
           id,
@@ -116,10 +122,37 @@ const AssessmentsTable: React.FC = () => {
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
           template:assessment_templates(questions)
         `)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+        .eq('client_id', clientId);
 
-      if (error) throw error;
+      console.log('🔍 Base query created for client_id:', clientId);
+
+      // Apply role-based filtering
+      if (!hasAssessmentAdmin) {
+        console.log('🚫 User is NOT admin - applying role-based filter');
+        console.log('🎯 Filtering for assessments where:');
+        console.log(`   - created_by = ${currentUserEmployeeId} OR`);
+        console.log(`   - assigned_to = ${currentUserEmployeeId}`);
+        
+        query = query.or(`created_by.eq.${currentUserEmployeeId},assigned_to.eq.${currentUserEmployeeId}`);
+      } else {
+        console.log('👑 User IS admin - showing all assessments for client');
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      console.log('📡 Executing database query...');
+      const { data: assessmentsData, error } = await query;
+
+      if (error) {
+        console.error('❌ Database query error:', error);
+        throw error;
+      }
+
+      console.log('✅ Database query successful');
+      console.log('📊 Raw data received:', {
+        totalRecords: assessmentsData?.length || 0,
+        sampleRecord: assessmentsData?.[0] || 'No records'
+      });
 
       const formattedAssessments = assessmentsData?.map(assessment => ({
         ...assessment,
@@ -135,11 +168,29 @@ const AssessmentsTable: React.FC = () => {
         } : undefined
       })) || [];
 
-      console.log('Fetched assessments:', formattedAssessments);
+      console.log('🎯 Formatted assessments for current user:', {
+        totalCount: formattedAssessments.length,
+        createdByUser: formattedAssessments.filter(a => a.created_by === currentUserEmployeeId).length,
+        assignedToUser: formattedAssessments.filter(a => a.assigned_to === currentUserEmployeeId).length,
+        shouldSeeAll: hasAssessmentAdmin
+      });
+
+      // Additional verification for non-admin users
+      if (!hasAssessmentAdmin) {
+        const invalidRecords = formattedAssessments.filter(a => 
+          a.created_by !== currentUserEmployeeId && a.assigned_to !== currentUserEmployeeId
+        );
+        if (invalidRecords.length > 0) {
+          console.error('🚨 SECURITY ISSUE: Non-admin user received assessments they should not see:', invalidRecords);
+        } else {
+          console.log('✅ Security check passed: All records are properly filtered for non-admin user');
+        }
+      }
+
       setAssessments(formattedAssessments);
       setFilteredAssessments(formattedAssessments);
     } catch (error) {
-      console.error('Error fetching assessments:', error);
+      console.error('❌ Error fetching assessments:', error);
       setError('Failed to fetch assessments');
       toast.error('Failed to fetch assessments');
     } finally {
@@ -167,12 +218,12 @@ const AssessmentsTable: React.FC = () => {
   };
 
   useEffect(() => {
-    if (clientId) {
+    if (clientId && currentUserEmployeeId) {
       fetchAssessments();
     } else {
       setLoading(false);
     }
-  }, [user, employeeData, clientId]);
+  }, [clientId, currentUserEmployeeId, hasAssessmentAdmin]);
 
   useEffect(() => {
     let filtered = assessments;
@@ -332,6 +383,11 @@ const AssessmentsTable: React.FC = () => {
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Assessments
+            {!hasAssessmentAdmin && (
+              <Badge variant="outline" className="ml-2">
+                Your Assessments Only
+              </Badge>
+            )}
           </CardTitle>
           
           {/* Enhanced Filters */}
@@ -427,7 +483,9 @@ const AssessmentsTable: React.FC = () => {
               <p className="text-gray-500">
                 {searchTerm || statusFilter !== 'all' || createdByFilter !== 'all' || assignedToFilter !== 'all' || targetDateFrom || targetDateTo
                   ? 'No assessments match your current filters.' 
-                  : 'No assessments have been created yet.'}
+                  : hasAssessmentAdmin 
+                    ? 'No assessments have been created yet.'
+                    : 'You have no assessments created by you or assigned to you.'}
               </p>
             </div>
           ) : (

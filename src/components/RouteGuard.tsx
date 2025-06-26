@@ -32,8 +32,18 @@ const RouteGuard = ({
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // If currently logging out, don't redirect - let the logout process complete
+  console.log('🛡️ RouteGuard check:', {
+    currentPath: location.pathname,
+    isLoggingOut: state.isLoggingOut,
+    requireAuth,
+    hasUser: !!currentUser,
+    isBackofficeUser,
+    shouldBlockAccess: state.isLoggingOut || (!currentUser && requireAuth)
+  });
+
+  // CRITICAL: If currently logging out, show loading state and prevent any navigation
   if (state.isLoggingOut) {
+    console.log('⏸️ RouteGuard blocking - logout in progress');
     return <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -42,23 +52,36 @@ const RouteGuard = ({
     </div>;
   }
 
+  // CRITICAL: Block ALL dashboard access when no authenticated user
+  if (!currentUser && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard'))) {
+    console.log('🚫 RouteGuard preventing dashboard access - no authenticated user');
+    const targetLoginPage = location.pathname.startsWith('/backoffice') ? '/backoffice/login' : '/login';
+    return <Navigate to={targetLoginPage} state={{ from: location }} replace />;
+  }
+
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    console.log('🔐 RouteGuard redirecting to login - authentication required but no user');
+    const targetLoginPage = isBackoffice ? '/backoffice/login' : '/login';
+    return <Navigate to={targetLoginPage} state={{ from: location }} replace />;
   }
 
   // If admin access is required and user is not admin, redirect to dashboard
   if (requireAdmin && currentUser && !isAdmin) {
+    console.log('🚫 RouteGuard redirecting to dashboard - insufficient admin privileges');
     toast.error("Admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 
   // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
   if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
+    console.log('🚫 RouteGuard redirecting to dashboard - insufficient owner privileges');
     toast.error("Owner privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log('✅ RouteGuard allowing access');
+  
   // Return children if provided, otherwise return Outlet for nested routes
   return children ? <>{children}</> : <Outlet />;
 };

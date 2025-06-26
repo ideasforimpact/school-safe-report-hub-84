@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -14,14 +15,18 @@ import BulkAssignForm from '@/components/assessments/assignments/BulkAssignForm'
 import AssignmentsList from '@/components/assessments/assignments/AssignmentsList';
 import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics';
 import { summaryData, assessmentTypes, recentAssessments } from '@/components/assessments/data/mockData';
+import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 
 const AssessmentsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { hasAssessmentAdmin } = useAssessmentAccess();
+  
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
   
   console.log("Current location:", location.pathname);
+  console.log("Has assessment admin access:", hasAssessmentAdmin);
   
   // Handle assessment creation button click
   const handleCreateAssessment = () => {

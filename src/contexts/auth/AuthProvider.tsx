@@ -67,6 +67,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
+  const manualLogoutInProgressRef = useRef<boolean>(false);
+  const logoutCompleteRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -171,6 +173,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }).current;
 
+  // Clear all auth state function - now synchronous and immediate
+  const clearAllAuthState = useRef(() => {
+    console.log('🧹 Immediately clearing all auth state...');
+    // Clear Redux state synchronously
+    dispatch(clearAuth());
+    dispatch(resetEmployee());
+    // Clear persisted state synchronously
+    clearPersistedAuthState();
+    // Clear local auth service
+    logoutUser();
+    setShowAuthLoading(false);
+  }).current;
+
   // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
@@ -185,15 +200,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
-    if (authListenerSetupRef.current || state.isLoggingOut) return;
+    if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Skip processing if logging out
-      if (state.isLoggingOut) {
-        return;
-      }
-
+      console.log('🔄 Auth state change:', event, {
+        manualLogoutInProgress: manualLogoutInProgressRef.current,
+        logoutComplete: logoutCompleteRef.current,
+        isLoggingOut: state.isLoggingOut
+      });
+      
       if (event === 'SIGNED_IN' && session?.user) {
+        // Skip if we're in logout process
+        if (manualLogoutInProgressRef.current || state.isLoggingOut || logoutCompleteRef.current) {
+          console.log('⏸️ Skipping SIGNED_IN - logout in progress');
+          return;
+        }
+
         try {
           setShowAuthLoading(true);
           setTimeout(async () => {
@@ -205,13 +227,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           toast.error("Authentication failed. Please try again.");
           setShowAuthLoading(false);
         }
-      } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
-        dispatch(clearAuth());
-        dispatch(resetEmployee());
-        clearPersistedAuthState();
-        setShowAuthLoading(false);
-        toast.info("You have been logged out");
-        logoutUser();
+      } else if (event === 'SIGNED_OUT') {
+        console.log('🚪 SIGNED_OUT event received - always clearing auth state');
+        
+        // Always clear auth state immediately when signed out
+        clearAllAuthState();
+        
+        // Only handle navigation if it's NOT a manual logout
+        if (!manualLogoutInProgressRef.current) {
+          console.log('🔄 Automatic logout - navigating to login');
+          toast.info("You have been logged out");
+          
+          // Navigate to login page for automatic logout
+          const targetLoginPage = location.pathname.startsWith('/backoffice') ? '/backoffice/login' : '/login';
+          navigate(targetLoginPage, { replace: true });
+        } else {
+          console.log('⏸️ Manual logout - skipping automatic navigation');
+        }
       }
     });
     
@@ -220,45 +252,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [handleUserAuthentication, dispatch, state.isLoggingOut, location.pathname, navigate, clearAllAuthState]);
 
-  // Check Supabase auth on initialization and handle persisted state
+  // Check Supabase auth on initialization - improved logic
   useEffect(() => {
-    if (state.isLoggingOut || authCheckInProgressRef.current) return;
+    if (state.isLoggingOut || authCheckInProgressRef.current || logoutCompleteRef.current) {
+      console.log('⏸️ Skipping auth check - logout in progress or already complete');
+      return;
+    }
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
       authCheckInProgressRef.current = true;
       
       try {
-        // If we have persisted backoffice user state, skip Supabase checks
+        console.log('🔍 Checking Supabase auth state...', {
+          hasPersistedBackofficeUser: isBackofficeUser && currentUser,
+          hasPersistedRegularUser: currentUser && !isBackofficeUser
+        });
+
+        // If we have persisted backoffice user state, skip Supabase checks completely
         if (isBackofficeUser && currentUser) {
+          console.log('✅ Using persisted backoffice user - skipping Supabase check');
           setIsInitializing(false);
           return;
         }
 
-        // If we have persisted regular user state, still validate with Supabase
-        if (currentUser && !isBackofficeUser) {
-          // User exists, just validate
-        }
-
+        // Check Supabase session
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
+          console.log('🔐 Found Supabase session');
           if (!currentUser) {
+            console.log('🆕 No current user - authenticating from session');
             setShowAuthLoading(true);
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
               setTimeout(() => setShowAuthLoading(false), 2000);
             }, 0);
+          } else {
+            console.log('✅ Current user already exists - keeping existing auth');
           }
         } else {
-          // If no Supabase session and no persisted user (or not backoffice), clear everything
-          if (!currentUser || (!isBackofficeUser && currentUser)) {
-            dispatch(clearAuth());
-            dispatch(resetEmployee());
-            clearPersistedAuthState();
-            logoutUser();
+          console.log('❌ No Supabase session found');
+          // Only clear if we don't have a backoffice user
+          if (!isBackofficeUser) {
+            console.log('🧹 Clearing auth state - no session and not backoffice user');
+            clearAllAuthState();
           }
         }
       } catch (error) {
@@ -271,7 +311,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut, clearAllAuthState]);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
@@ -447,60 +487,66 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with proper navigation and cleanup
+  // Enhanced logout with immediate auth state clearing
   const handleLogout = async (): Promise<void> => {
-    // Set logout state immediately to prevent validation loops and redirects
+    console.log('🚪 Enhanced manual logout initiated');
+    
+    // Set manual logout flag and logout state immediately
+    manualLogoutInProgressRef.current = true;
+    logoutCompleteRef.current = false;
     dispatch(setLogoutState(true));
     
+    // Determine target login page based on current route path
+    const currentPath = location.pathname;
+    const targetLoginPage = currentPath.startsWith('/backoffice') ? '/backoffice/login' : '/login';
+    
     try {
-      // Clear Redux state immediately
-      dispatch(clearAuth());
-      dispatch(resetEmployee());
+      console.log('🧹 Step 1: Immediately clearing all auth state SYNCHRONOUSLY');
       
-      // Clear persisted state
-      clearPersistedAuthState();
+      // CRITICAL: Clear auth state IMMEDIATELY and SYNCHRONOUSLY first
+      clearAllAuthState();
       
-      // Clear local storage
-      logoutUser();
+      console.log('⏸️ Step 2: Small delay to ensure state propagation');
+      // Small delay to ensure all components see the cleared state
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // For non-backoffice users, sign out from Supabase
+      console.log('🔐 Step 3: Signing out from Supabase (if needed)');
+      // For non-backoffice users, sign out from Supabase AFTER clearing local state
       if (!isBackofficeUser) {
         try {
           await supabase.auth.signOut();
+          console.log('✅ Supabase signout completed');
         } catch (supabaseError) {
-          console.error('Error signing out from Supabase:', supabaseError);
+          console.error('❌ Error signing out from Supabase:', supabaseError);
         }
       }
       
-      // Determine where to redirect based on user type and current route
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
-      
-      // Navigate immediately after clearing state
-      if (shouldRedirectToBackoffice) {
-        navigate('/backoffice/login', { replace: true });
-      } else {
-        navigate('/login', { replace: true });
-      }
+      console.log('🔄 Step 4: Navigating to login page:', targetLoginPage);
+      // Navigate to appropriate login page
+      navigate(targetLoginPage, { replace: true });
       
       toast.success('You have been logged out successfully');
       
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('❌ Error during logout:', error);
       toast.error('There was an error logging out');
       
-      // Fallback navigation in case of error
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      if (isCurrentlyBackoffice) {
-        navigate('/backoffice/login', { replace: true });
-      } else {
-        navigate('/login', { replace: true });
-      }
+      // Fallback: ensure auth is still cleared and navigate
+      clearAllAuthState();
+      navigate(targetLoginPage, { replace: true });
     } finally {
-      // Reset logout state after a short delay
+      // Reset logout flags after navigation with delay
       setTimeout(() => {
+        console.log('🏁 Resetting logout flags');
+        logoutCompleteRef.current = true;
+        manualLogoutInProgressRef.current = false;
         dispatch(setLogoutState(false));
-      }, 1000);
+        
+        // Reset logout complete flag after additional delay
+        setTimeout(() => {
+          logoutCompleteRef.current = false;
+        }, 1000);
+      }, 500);
     }
   };
 
