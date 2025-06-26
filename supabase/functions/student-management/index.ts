@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 
@@ -274,71 +273,124 @@ async function validateEducationalStructure(campus: string, grade: string, secti
     return { valid: false, error: "Campus, grade and section are all required" };
   }
   
-  // Check if campus exists
+  // Normalize input strings by trimming and converting to consistent case
+  const normalizedCampus = campus.trim();
+  const normalizedGrade = grade.trim();
+  const normalizedSection = section.trim();
+  
+  console.log(`Validating educational structure:`, {
+    campus: normalizedCampus,
+    grade: normalizedGrade,
+    section: normalizedSection,
+    clientId
+  });
+  
+  // Check if campus exists with enhanced matching
   let campusQuery = supabaseClient
     .from("campuses")
-    .select("id")
-    .ilike("name", campus);
+    .select("id, name");
 
   if (clientId) {
     campusQuery = campusQuery.eq("client_id", clientId);
   }
 
-  const { data: campusData, error: campusError } = await campusQuery.maybeSingle();
+  const { data: allCampuses, error: campusError } = await campusQuery;
   
   if (campusError) {
     console.error("Error checking campus:", campusError);
     return { valid: false, error: "Database error while validating campus" };
   }
   
-  if (!campusData) {
-    return { valid: false, error: `Campus "${campus}" does not exist in the system` };
+  console.log("Available campuses:", allCampuses);
+  
+  // Find matching campus with flexible matching
+  const matchingCampus = allCampuses?.find(c => {
+    const campusName = c.name.trim();
+    return campusName.toLowerCase() === normalizedCampus.toLowerCase() ||
+           campusName === normalizedCampus;
+  });
+  
+  if (!matchingCampus) {
+    const availableCampuses = allCampuses?.map(c => c.name).join(", ") || "none";
+    return { 
+      valid: false, 
+      error: `Campus "${normalizedCampus}" does not exist in the system. Available campuses: ${availableCampuses}` 
+    };
   }
+  
+  console.log("Found matching campus:", matchingCampus);
   
   // Check if grade exists and belongs to the campus
   let gradeQuery = supabaseClient
     .from("grades")
-    .select("id")
-    .ilike("name", grade)
-    .eq("campus_id", campusData.id);
+    .select("id, name, campus_id")
+    .eq("campus_id", matchingCampus.id);
 
   if (clientId) {
     gradeQuery = gradeQuery.eq("client_id", clientId);
   }
 
-  const { data: gradeData, error: gradeError } = await gradeQuery.maybeSingle();
+  const { data: allGrades, error: gradeError } = await gradeQuery;
   
   if (gradeError) {
     console.error("Error checking grade:", gradeError);
     return { valid: false, error: "Database error while validating grade" };
   }
   
-  if (!gradeData) {
-    return { valid: false, error: `Grade "${grade}" does not exist for campus "${campus}"` };
+  console.log("Available grades for campus:", allGrades);
+  
+  // Find matching grade with flexible matching
+  const matchingGrade = allGrades?.find(g => {
+    const gradeName = g.name.trim();
+    return gradeName.toLowerCase() === normalizedGrade.toLowerCase() ||
+           gradeName === normalizedGrade;
+  });
+  
+  if (!matchingGrade) {
+    const availableGrades = allGrades?.map(g => g.name).join(", ") || "none";
+    return { 
+      valid: false, 
+      error: `Grade "${normalizedGrade}" does not exist for campus "${normalizedCampus}". Available grades: ${availableGrades}` 
+    };
   }
+  
+  console.log("Found matching grade:", matchingGrade);
   
   // Check if section exists and belongs to the grade
   let sectionQuery = supabaseClient
     .from("sections")
-    .select("id")
-    .ilike("name", section)
-    .eq("grade_id", gradeData.id);
+    .select("id, name, grade_id")
+    .eq("grade_id", matchingGrade.id);
 
   if (clientId) {
     sectionQuery = sectionQuery.eq("client_id", clientId);
   }
 
-  const { data: sectionData, error: sectionError } = await sectionQuery.maybeSingle();
+  const { data: allSections, error: sectionError } = await sectionQuery;
   
   if (sectionError) {
     console.error("Error checking section:", sectionError);
     return { valid: false, error: "Database error while validating section" };
   }
   
-  if (!sectionData) {
-    return { valid: false, error: `Section "${section}" does not exist for grade "${grade}"` };
+  console.log("Available sections for grade:", allSections);
+  
+  // Find matching section with flexible matching
+  const matchingSection = allSections?.find(s => {
+    const sectionName = s.name.trim();
+    return sectionName.toLowerCase() === normalizedSection.toLowerCase() ||
+           sectionName === normalizedSection;
+  });
+  
+  if (!matchingSection) {
+    const availableSections = allSections?.map(s => s.name).join(", ") || "none";
+    return { 
+      valid: false, 
+      error: `Section "${normalizedSection}" does not exist for grade "${normalizedGrade}". Available sections: ${availableSections}` 
+    };
   }
   
+  console.log("Validation successful - all structures found");
   return { valid: true, error: null };
 }
 
