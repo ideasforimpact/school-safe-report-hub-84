@@ -84,6 +84,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          rework_comments: string | null
           score: number | null
           status: string
           target_completion_date: string | null
@@ -103,6 +104,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          rework_comments?: string | null
           score?: number | null
           status?: string
           target_completion_date?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          rework_comments?: string | null
           score?: number | null
           status?: string
           target_completion_date?: string | null
