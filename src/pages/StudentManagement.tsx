@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
@@ -94,32 +93,14 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
 
   const content = (
     <div className="space-y-6">
-      {!embedded && (
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
-            <p className="text-muted-foreground">
-              Manage students in your institution
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
+          <p className="text-muted-foreground">
+            Manage students in your institution
+          </p>
         </div>
-      )}
-
-      {embedded && (
-        <div className="flex justify-end gap-2">
+        <div className="flex gap-2">
           <Button 
             onClick={() => setIsImportDialogOpen(true)}
             className="flex items-center gap-2"
@@ -132,7 +113,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
             <PlusCircle className="mr-2 h-4 w-4" /> Add Student
           </Button>
         </div>
-      )}
+      </div>
 
       {/* Search and filter */}
       <div className="flex items-center space-x-2">
