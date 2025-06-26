@@ -35,24 +35,22 @@ const Login = () => {
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
     // // Don't redirect if logout is in progress
-    // if (sessionStorage.getItem('is_logout_initiated') === 'true') {
-    //   return;
-    // }
+   
 
-    // if (user && !hasRedirectedRef.current) {
-    //   hasRedirectedRef.current = true;
+    if (user && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
 
-    //   console.log(user,"user");
-    //   // Get the intended destination from location state or use dashboard as default
-    //   const from = location.state?.from?.pathname || "/dashboard";
+      console.log(user,"user");
+      // Get the intended destination from location state or use dashboard as default
+      const from = location.state?.from?.pathname || "/dashboard";
 
-    //   if(user?.role === "saas_owner"){
-    //      navigate("/backoffice/dashboard");
-    //   }
-    //   else{
-    //     navigate('/dashboard', { replace: true });
-    //   }
-    // }
+      if(user?.role === "saas_owner"){
+         navigate("/backoffice/dashboard");
+      }
+      else{
+        navigate('/dashboard', { replace: true });
+      }
+    }
   }, [user, navigate, location.state]);
 
   // Listen for auth errors from context
