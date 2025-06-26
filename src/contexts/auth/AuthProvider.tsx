@@ -449,6 +449,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
+    // Set logout flag immediately to prevent redirect loops
+    sessionStorage.setItem('is_logout_initiated', 'true');
+    
     // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
     
