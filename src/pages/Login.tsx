@@ -29,7 +29,8 @@ const Login = () => {
   useEffect(() => {
     if (user && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
-      
+
+      console.log(user,"user");
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
 
