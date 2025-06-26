@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { providerConfigs } from "@/utils/authProviders";
-import { useEmployeeStore } from "@/store/EmployeeContext";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,87 +18,29 @@ const Login = () => {
   const [zohoLoading, setZohoLoading] = useState(false);
   const [error, setError] = useState("");
   const { authError, user, handleUserAuthentication } = useAuth();
-  const { state } = useEmployeeStore();
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Use refs to prevent multiple redirects and track logout state
+  // Use refs to prevent multiple redirects
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
-  const logoutDetectedRef = useRef(false);
 
-  // CRITICAL: Enhanced user redirect logic with logout protection
+  // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    // IMMEDIATE CHECK: Skip if user is null (which happens during logout)
-    if (!user) {
-      console.log('🚫 Login redirect blocked - no user found');
-      hasRedirectedRef.current = false;
-      return;
-    }
+    if (user && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      
+      // Get the intended destination from location state or use dashboard as default
+      const from = location.state?.from?.pathname || "/dashboard";
 
-    // Skip if logout is in progress or recently completed
-    if (state.isLoggingOut || logoutDetectedRef.current) {
-      console.log('🚫 Login redirect blocked - logout in progress', {
-        isLoggingOut: state.isLoggingOut,
-        logoutDetected: logoutDetectedRef.current
-      });
-      return;
-    }
-
-    // Skip if already redirected
-    if (hasRedirectedRef.current) {
-      return;
-    }
-
-    // Only redirect if we're on the login page AND have a valid user
-    const isOnLoginPage = location.pathname === '/login' || location.pathname === '/backoffice/login';
-    
-    if (user && isOnLoginPage) {
-      // Add a small delay to ensure logout state has time to propagate
-      const redirectTimer = setTimeout(() => {
-        // Triple-check: user still exists and no logout in progress
-        if (!user || state.isLoggingOut || logoutDetectedRef.current) {
-          console.log('🚫 Login redirect canceled - user cleared or logout detected during delay');
-          return;
-        }
-
-        hasRedirectedRef.current = true;
-        
-        console.log('🔄 Login page - user already authenticated, redirecting', {
-          userRole: user.role,
-          isLoggingOut: state.isLoggingOut,
-          currentPath: location.pathname
-        });
-        
-        // Get the intended destination from location state or use dashboard as default
-        const from = location.state?.from?.pathname || "/dashboard";
-
-        if(user?.role === "saas_owner"){
-           navigate("/backoffice/dashboard");
-        }
-        else{
-          navigate('/dashboard', { replace: true });
-        }
-      }, 50); // Smaller delay for faster response
-
-      return () => clearTimeout(redirectTimer);
-    }
-  }, [user, navigate, location.state, location.pathname, state.isLoggingOut]);
-
-  // Reset redirect flag when user becomes null (during logout)
-  useEffect(() => {
-    if (!user) {
-      hasRedirectedRef.current = false;
-      // Set logout detected flag to prevent immediate redirects
-      if (state.isLoggingOut) {
-        logoutDetectedRef.current = true;
-        // Clear the logout detection flag after a delay
-        setTimeout(() => {
-          logoutDetectedRef.current = false;
-        }, 2000);
+      if(user?.role === "saas_owner"){
+         navigate("/backoffice/dashboard");
+      }
+      else{
+        navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, state.isLoggingOut]);
+  }, [user, navigate, location.state]);
 
   // Listen for auth errors from context
   useEffect(() => {
