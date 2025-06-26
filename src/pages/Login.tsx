@@ -25,31 +25,50 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
 
-  // Clear logout flag when login page loads
+  // Clear logout flag when login page loads and add user state logging
   useEffect(() => {
+    console.log('🔍 Login: Component mounted/updated');
+    console.log('👤 Login: Current user state:', user);
+    console.log('❓ Login: User is null?', user === null);
+    console.log('❓ Login: User exists?', !!user);
+    
     if (sessionStorage.getItem('is_logout_initiated') === 'true') {
+      console.log('🧹 Login: Clearing logout flag from sessionStorage');
       sessionStorage.removeItem('is_logout_initiated');
     }
-  }, []);
+  }, [user]);
 
-  // Check if user is already logged in, redirect if they are
+  // Check if user is already logged in, redirect if they are (with logout flag check)
   useEffect(() => {
-    // // Don't redirect if logout is in progress
-   
+    console.log('🔄 Login: User redirect effect triggered');
+    console.log('👤 Login: User in redirect effect:', user);
+    console.log('🚪 Login: Logout initiated?', sessionStorage.getItem('is_logout_initiated') === 'true');
+    console.log('🔄 Login: Has redirected?', hasRedirectedRef.current);
+
+    // Don't redirect if logout is in progress
+    if (sessionStorage.getItem('is_logout_initiated') === 'true') {
+      console.log('⏸️ Login: Blocking redirect - logout in progress');
+      return;
+    }
 
     if (user && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
-
-      console.log(user,"user");
+      console.log('✅ Login: User exists, redirecting...');
+      console.log('👤 Login: User details:', user);
+      
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
 
       if(user?.role === "saas_owner"){
-         navigate("/backoffice/dashboard");
+        console.log('🏢 Login: Redirecting to backoffice dashboard');
+        navigate("/backoffice/dashboard");
       }
       else{
+        console.log('🏠 Login: Redirecting to regular dashboard');
         navigate('/dashboard', { replace: true });
       }
+    } else if (!user) {
+      console.log('❌ Login: No user, staying on login page');
     }
   }, [user, navigate, location.state]);
 

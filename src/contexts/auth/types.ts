@@ -1,21 +1,21 @@
-
 // Update the AuthContextType to include the employeeData property
 export interface AuthContextType {
   user: User | null;
   users: User[];
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAdmin: boolean;
   isSaasOwner: boolean;
   addUser: (userData: any) => void;
-  updateUser: (id: string, updates: Partial<User>) => void;
+  updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
-  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
+  handleUserAuthentication: (user: any) => Promise<void>;
   employeeData: EmployeeData | null;
+  setUser: (user: User | null) => void; // Add setUser function
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';

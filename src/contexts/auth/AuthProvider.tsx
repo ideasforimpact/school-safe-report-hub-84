@@ -171,6 +171,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }).current;
 
+  // Add setUser function that can be called directly
+  const handleSetUser = (user: User | null) => {
+    console.log('🔄 AuthProvider: Setting user to:', user);
+    dispatch(setCurrentUser(user));
+  };
+
   // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
@@ -449,8 +455,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
+    console.log('🚪 AuthProvider: Starting logout process');
+    
     // Set logout flag immediately to prevent redirect loops
     sessionStorage.setItem('is_logout_initiated', 'true');
+    console.log('🏁 AuthProvider: Set logout flag in sessionStorage');
     
     // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
@@ -621,6 +630,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authError,
     handleUserAuthentication,
     employeeData: state.employeeData,
+    setUser: handleSetUser, // Add setUser to context
   };
 
   if (isInitializing) {
