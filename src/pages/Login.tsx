@@ -20,14 +20,15 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Use refs to prevent multiple redirects
+  // Use refs to prevent multiple redirects and store redirect path
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
+  const redirectPathRef = useRef(location.state?.from?.pathname || "/dashboard");
 
   // Enhanced sessionStorage flag management with detailed logging
   useEffect(() => {
-    console.log('🔍 Login: Component mounted/updated');
-    console.log('🕐 Login: Component effect at:', new Date().toISOString());
+    const timestamp = new Date().toISOString();
+    console.log('🔍 Login: Component mounted/updated at:', timestamp);
     console.log('👤 Login: Current user state:', user);
     console.log('❓ Login: User is null?', user === null);
     console.log('❓ Login: User exists?', !!user);
@@ -36,7 +37,7 @@ const Login = () => {
     // Check and clear logout flag
     const logoutFlag = sessionStorage.getItem('is_logout_initiated');
     if (logoutFlag === 'true') {
-      console.log('🧹 Login: Clearing logout flag from sessionStorage');
+      console.log('🧹 Login: Clearing logout flag from sessionStorage at:', timestamp);
       sessionStorage.removeItem('is_logout_initiated');
       console.log('✅ Login: Logout flag cleared, blocking redirect for now');
     }
@@ -44,8 +45,8 @@ const Login = () => {
 
   // Enhanced user redirect effect with better timing and sessionStorage checks
   useEffect(() => {
-    console.log('🔄 Login: User redirect effect triggered');
-    console.log('🕐 Login: Redirect effect at:', new Date().toISOString());
+    const timestamp = new Date().toISOString();
+    console.log('🔄 Login: User redirect effect triggered at:', timestamp);
     console.log('👤 Login: User in redirect effect:', user);
     console.log('🚪 Login: Logout initiated?', sessionStorage.getItem('is_logout_initiated') === 'true');
     console.log('🔄 Login: Has redirected?', hasRedirectedRef.current);
@@ -53,7 +54,7 @@ const Login = () => {
     // Primary guard: Don't redirect if logout is in progress
     const isLogoutInProgress = sessionStorage.getItem('is_logout_initiated') === 'true';
     if (isLogoutInProgress) {
-      console.log('⏸️ Login: Blocking redirect - logout in progress');
+      console.log('⏸️ Login: Blocking redirect - logout in progress at:', timestamp);
       return;
     }
 
@@ -62,30 +63,32 @@ const Login = () => {
       // Add a small delay to ensure all state has propagated
       setTimeout(() => {
         const currentLogoutFlag = sessionStorage.getItem('is_logout_initiated');
+        const delayTimestamp = new Date().toISOString();
+        
         if (currentLogoutFlag === 'true') {
-          console.log('⏸️ Login: Blocking delayed redirect - logout flag detected');
+          console.log('⏸️ Login: Blocking delayed redirect - logout flag detected at:', delayTimestamp);
           return;
         }
 
         hasRedirectedRef.current = true;
-        console.log('✅ Login: User exists and safe to redirect');
+        console.log('✅ Login: User exists and safe to redirect at:', delayTimestamp);
         console.log('👤 Login: User details for redirect:', user);
         
-        // Get the intended destination from location state or use dashboard as default
-        const from = location.state?.from?.pathname || "/dashboard";
+        // Use the stored redirect path
+        const redirectTo = redirectPathRef.current;
 
         if(user?.role === "saas_owner"){
-          console.log('🏢 Login: Redirecting to backoffice dashboard');
-          navigate("/backoffice/dashboard");
+          console.log('🏢 Login: Redirecting to backoffice dashboard at:', delayTimestamp);
+          navigate("/backoffice/dashboard", { replace: true });
         } else {
-          console.log('🏠 Login: Redirecting to regular dashboard');
-          navigate('/dashboard', { replace: true });
+          console.log('🏠 Login: Redirecting to:', redirectTo, 'at:', delayTimestamp);
+          navigate(redirectTo, { replace: true });
         }
       }, 200); // Small delay to allow state propagation
     } else if (!user) {
-      console.log('❌ Login: No user, staying on login page');
+      console.log('❌ Login: No user, staying on login page at:', timestamp);
     }
-  }, [user, navigate, location.state]);
+  }, [user, navigate]); // Simplified dependencies - removed location.state
 
   // Listen for auth errors from context
   useEffect(() => {
