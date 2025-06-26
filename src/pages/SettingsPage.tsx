@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -150,7 +149,7 @@ const SettingsPage = () => {
                 <CardDescription>Manage users and their permissions in your institution</CardDescription>
               </CardHeader>
               <CardContent>
-                <UserManagement />
+                <UserManagement embedded={true} />
               </CardContent>
             </Card>
           </TabsContent>
