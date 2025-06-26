@@ -487,11 +487,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Enhanced logout with immediate auth state clearing
+  // CRITICAL: Enhanced logout with IMMEDIATE auth state clearing
   const handleLogout = async (): Promise<void> => {
-    console.log('🚪 Enhanced manual logout initiated');
+    console.log('🚪 Enhanced manual logout initiated - IMMEDIATELY clearing user state');
     
-    // Set manual logout flag and logout state immediately
+    // STEP 1: IMMEDIATELY clear the user state FIRST
+    console.log('🧹 Step 1: Immediately clearing user state to prevent redirects');
+    dispatch(setCurrentUser(null));
+    dispatch(setAuthStatus(false));
+    
+    // Set logout flags
     manualLogoutInProgressRef.current = true;
     logoutCompleteRef.current = false;
     dispatch(setLogoutState(true));
@@ -501,16 +506,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const targetLoginPage = currentPath.startsWith('/backoffice') ? '/backoffice/login' : '/login';
     
     try {
-      console.log('🧹 Step 1: Immediately clearing all auth state SYNCHRONOUSLY');
-      
-      // CRITICAL: Clear auth state IMMEDIATELY and SYNCHRONOUSLY first
+      console.log('🧹 Step 2: Clearing remaining auth state');
+      // Clear all remaining auth state
       clearAllAuthState();
       
-      console.log('⏸️ Step 2: Small delay to ensure state propagation');
+      console.log('⏸️ Step 3: Small delay to ensure state propagation');
       // Small delay to ensure all components see the cleared state
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      console.log('🔐 Step 3: Signing out from Supabase (if needed)');
+      console.log('🔐 Step 4: Signing out from Supabase (if needed)');
       // For non-backoffice users, sign out from Supabase AFTER clearing local state
       if (!isBackofficeUser) {
         try {
@@ -521,7 +525,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      console.log('🔄 Step 4: Navigating to login page:', targetLoginPage);
+      console.log('🔄 Step 5: Navigating to login page:', targetLoginPage);
       // Navigate to appropriate login page
       navigate(targetLoginPage, { replace: true });
       
