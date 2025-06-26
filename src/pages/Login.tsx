@@ -26,10 +26,18 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
 
+  // Clear logout flag when login page loads successfully
+  useEffect(() => {
+    sessionStorage.removeItem('isLoggingOut');
+  }, []);
+
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    // Don't redirect if user is currently logging out
-    if (user && !hasRedirectedRef.current && !state.isLoggingOut) {
+    // Check sessionStorage flag first - don't redirect if logging out
+    const isLoggingOut = sessionStorage.getItem('isLoggingOut') === 'true';
+    
+    // Don't redirect if user is currently logging out or if we've already redirected
+    if (user && !hasRedirectedRef.current && !isLoggingOut && !state.isLoggingOut) {
       hasRedirectedRef.current = true;
       
       // Get the intended destination from location state or use dashboard as default
