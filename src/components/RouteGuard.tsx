@@ -38,10 +38,10 @@ const RouteGuard = ({
     requireAuth,
     hasUser: !!currentUser,
     isBackofficeUser,
-    shouldBlockDashboardRedirect: state.isLoggingOut && location.pathname === '/dashboard'
+    shouldBlockAccess: state.isLoggingOut || (!currentUser && requireAuth)
   });
 
-  // If currently logging out, show loading state and prevent any navigation
+  // CRITICAL: If currently logging out, show loading state and prevent any navigation
   if (state.isLoggingOut) {
     console.log('⏸️ RouteGuard blocking - logout in progress');
     return <div className="flex items-center justify-center min-h-screen">
@@ -52,16 +52,16 @@ const RouteGuard = ({
     </div>;
   }
 
-  // Prevent dashboard redirects during logout for unauthenticated state
-  if (!currentUser && location.pathname === '/dashboard') {
-    console.log('🚫 RouteGuard preventing dashboard access without auth');
+  // CRITICAL: Block ALL dashboard access when no authenticated user
+  if (!currentUser && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard'))) {
+    console.log('🚫 RouteGuard preventing dashboard access - no authenticated user');
     const targetLoginPage = location.pathname.startsWith('/backoffice') ? '/backoffice/login' : '/login';
     return <Navigate to={targetLoginPage} state={{ from: location }} replace />;
   }
 
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
-    console.log('🔐 RouteGuard redirecting to login - no authenticated user');
+    console.log('🔐 RouteGuard redirecting to login - authentication required but no user');
     const targetLoginPage = isBackoffice ? '/backoffice/login' : '/login';
     return <Navigate to={targetLoginPage} state={{ from: location }} replace />;
   }
