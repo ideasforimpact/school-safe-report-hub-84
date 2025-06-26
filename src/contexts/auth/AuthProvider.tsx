@@ -68,6 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
   const manualLogoutInProgressRef = useRef<boolean>(false);
+  const logoutCompleteRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -172,6 +173,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }).current;
 
+  // Clear all auth state function
+  const clearAllAuthState = useRef(() => {
+    console.log('🧹 Clearing all auth state...');
+    dispatch(clearAuth());
+    dispatch(resetEmployee());
+    clearPersistedAuthState();
+    logoutUser();
+    setShowAuthLoading(false);
+  }).current;
+
   // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
@@ -186,24 +197,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
-    if (authListenerSetupRef.current || state.isLoggingOut) return;
+    if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state change:', event, 'Manual logout in progress:', manualLogoutInProgressRef.current);
+      console.log('🔄 Auth state change:', event, {
+        manualLogoutInProgress: manualLogoutInProgressRef.current,
+        logoutComplete: logoutCompleteRef.current,
+        isLoggingOut: state.isLoggingOut
+      });
       
-      // Skip processing if manual logout is in progress
-      if (manualLogoutInProgressRef.current) {
-        console.log('⏸️ Skipping auth state change - manual logout in progress');
-        return;
-      }
-
-      // Skip processing if logging out
-      if (state.isLoggingOut) {
-        console.log('⏸️ Skipping auth state change - already logging out');
-        return;
-      }
-
       if (event === 'SIGNED_IN' && session?.user) {
+        // Skip if we're in logout process
+        if (manualLogoutInProgressRef.current || state.isLoggingOut || logoutCompleteRef.current) {
+          console.log('⏸️ Skipping SIGNED_IN - logout in progress');
+          return;
+        }
+
         try {
           setShowAuthLoading(true);
           setTimeout(async () => {
@@ -216,20 +225,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setShowAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
-        console.log('🚪 Automatic logout detected (session expired or external logout)');
+        console.log('🚪 SIGNED_OUT event received');
         
-        // Only handle automatic logout if not manual logout
+        // Always clear auth state when signed out, regardless of manual logout
+        clearAllAuthState();
+        
+        // Only handle navigation if it's NOT a manual logout
         if (!manualLogoutInProgressRef.current) {
-          dispatch(clearAuth());
-          dispatch(resetEmployee());
-          clearPersistedAuthState();
-          setShowAuthLoading(false);
+          console.log('🔄 Automatic logout - navigating to login');
           toast.info("You have been logged out");
-          logoutUser();
           
-          // Navigate to login page
+          // Navigate to login page for automatic logout
           const targetLoginPage = location.pathname.startsWith('/backoffice') ? '/backoffice/login' : '/login';
           navigate(targetLoginPage, { replace: true });
+        } else {
+          console.log('⏸️ Manual logout - skipping automatic navigation');
         }
       }
     });
@@ -239,11 +249,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication, dispatch, state.isLoggingOut, location.pathname, navigate]);
+  }, [handleUserAuthentication, dispatch, state.isLoggingOut, location.pathname, navigate, clearAllAuthState]);
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
-    if (state.isLoggingOut || authCheckInProgressRef.current) return;
+    if (state.isLoggingOut || authCheckInProgressRef.current || logoutCompleteRef.current) return;
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
@@ -274,10 +284,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           // If no Supabase session and no persisted user (or not backoffice), clear everything
           if (!currentUser || (!isBackofficeUser && currentUser)) {
-            dispatch(clearAuth());
-            dispatch(resetEmployee());
-            clearPersistedAuthState();
-            logoutUser();
+            clearAllAuthState();
           }
         }
       } catch (error) {
@@ -290,7 +297,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut, clearAllAuthState]);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
@@ -470,8 +477,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = async (): Promise<void> => {
     console.log('🚪 Manual logout initiated');
     
-    // Set manual logout flag immediately to prevent race conditions
+    // Set manual logout flag and logout state immediately
     manualLogoutInProgressRef.current = true;
+    logoutCompleteRef.current = false;
     dispatch(setLogoutState(true));
     
     // Determine target login page based on current route path
@@ -479,7 +487,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const targetLoginPage = currentPath.startsWith('/backoffice') ? '/backoffice/login' : '/login';
     
     try {
-      // For non-backoffice users, sign out from Supabase FIRST
+      console.log('🧹 Clearing auth state BEFORE Supabase signOut...');
+      
+      // Clear auth state FIRST, before calling Supabase signOut
+      clearAllAuthState();
+      
+      // Small delay to ensure state clearing is processed
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // For non-backoffice users, sign out from Supabase AFTER clearing local state
       if (!isBackofficeUser) {
         console.log('🔐 Signing out from Supabase...');
         try {
@@ -490,14 +506,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      // Clear all state after Supabase signout
-      console.log('🧹 Clearing auth state...');
-      dispatch(clearAuth());
-      dispatch(resetEmployee());
-      clearPersistedAuthState();
-      logoutUser();
-      
-      // Small delay to ensure state is cleared before navigation
+      // Small delay to ensure signout is processed
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Navigate to appropriate login page
@@ -510,14 +519,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Error during logout:', error);
       toast.error('There was an error logging out');
       
-      // Fallback navigation in case of error
+      // Fallback: ensure auth is still cleared and navigate
+      clearAllAuthState();
       navigate(targetLoginPage, { replace: true });
     } finally {
       // Reset logout flags after navigation with delay
       setTimeout(() => {
         console.log('🏁 Resetting logout flags');
+        logoutCompleteRef.current = true;
         manualLogoutInProgressRef.current = false;
         dispatch(setLogoutState(false));
+        
+        // Reset logout complete flag after additional delay
+        setTimeout(() => {
+          logoutCompleteRef.current = false;
+        }, 1000);
       }, 500);
     }
   };
