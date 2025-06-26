@@ -64,47 +64,99 @@ export const useAssessmentAccess = () => {
       return false;
     }
     
-    // Check for admin access in different possible data structures
-    // Handle both object and string types for level property
+    // Enhanced admin access detection with multiple strategies
     let hasAdmin = false;
+    const adminChecks = [];
     
-    // Check accessLevel first (if it's an object)
+    // Strategy 1: Check accessLevel.is_admin
     if (assessmentsModule.accessLevel && typeof assessmentsModule.accessLevel === 'object') {
       hasAdmin = assessmentsModule.accessLevel.is_admin === true;
-      console.log('🔍 Checking accessLevel object:', {
-        accessLevel: assessmentsModule.accessLevel,
-        is_admin: assessmentsModule.accessLevel.is_admin,
-        hasAdmin
+      adminChecks.push({
+        strategy: 'accessLevel.is_admin',
+        value: assessmentsModule.accessLevel.is_admin,
+        result: hasAdmin
       });
     }
     
-    // Check level property (handle both string and object types)
-    if (!hasAdmin && assessmentsModule.level) {
-      if (typeof assessmentsModule.level === 'object' && assessmentsModule.level.is_admin) {
-        hasAdmin = assessmentsModule.level.is_admin === true;
-        console.log('🔍 Checking level object:', {
-          level: assessmentsModule.level,
-          is_admin: assessmentsModule.level.is_admin,
-          hasAdmin
-        });
-      } else if (typeof assessmentsModule.level === 'string') {
-        // If level is a string, check if it indicates admin access
-        hasAdmin = assessmentsModule.level.toLowerCase().includes('admin');
-        console.log('🔍 Checking level string:', {
-          level: assessmentsModule.level,
-          levelLower: assessmentsModule.level.toLowerCase(),
-          includesAdmin: assessmentsModule.level.toLowerCase().includes('admin'),
-          hasAdmin
+    // Strategy 2: Check level object for is_admin
+    if (!hasAdmin && assessmentsModule.level && typeof assessmentsModule.level === 'object') {
+      if (assessmentsModule.level.is_admin === true) {
+        hasAdmin = true;
+        adminChecks.push({
+          strategy: 'level.is_admin',
+          value: assessmentsModule.level.is_admin,
+          result: hasAdmin
         });
       }
     }
     
-    // Check direct is_admin property
-    if (!hasAdmin && assessmentsModule.is_admin === true) {
-      hasAdmin = true;
-      console.log('🔍 Found direct is_admin property:', assessmentsModule.is_admin);
+    // Strategy 3: Check level string for admin patterns
+    if (!hasAdmin && assessmentsModule.level && typeof assessmentsModule.level === 'string') {
+      const levelStr = assessmentsModule.level.toLowerCase();
+      const adminPatterns = ['admin', 'administrator', 'admin (admin)'];
+      
+      for (const pattern of adminPatterns) {
+        if (levelStr.includes(pattern.toLowerCase())) {
+          hasAdmin = true;
+          adminChecks.push({
+            strategy: 'level string pattern',
+            pattern: pattern,
+            levelValue: assessmentsModule.level,
+            result: hasAdmin
+          });
+          break;
+        }
+      }
     }
     
+    // Strategy 4: Check accessLevel string for admin patterns
+    if (!hasAdmin && assessmentsModule.accessLevel && typeof assessmentsModule.accessLevel === 'string') {
+      const accessLevelStr = assessmentsModule.accessLevel.toLowerCase();
+      const adminPatterns = ['admin', 'administrator', 'admin (admin)'];
+      
+      for (const pattern of adminPatterns) {
+        if (accessLevelStr.includes(pattern.toLowerCase())) {
+          hasAdmin = true;
+          adminChecks.push({
+            strategy: 'accessLevel string pattern',
+            pattern: pattern,
+            accessLevelValue: assessmentsModule.accessLevel,
+            result: hasAdmin
+          });
+          break;
+        }
+      }
+    }
+    
+    // Strategy 5: Check direct is_admin property
+    if (!hasAdmin && assessmentsModule.is_admin === true) {
+      hasAdmin = true;
+      adminChecks.push({
+        strategy: 'direct is_admin',
+        value: assessmentsModule.is_admin,
+        result: hasAdmin
+      });
+    }
+    
+    // Strategy 6: Check for any property containing admin info
+    if (!hasAdmin) {
+      const moduleKeys = Object.keys(assessmentsModule);
+      for (const key of moduleKeys) {
+        const value = assessmentsModule[key];
+        if (typeof value === 'string' && value.toLowerCase().includes('admin')) {
+          hasAdmin = true;
+          adminChecks.push({
+            strategy: 'property scan',
+            key: key,
+            value: value,
+            result: hasAdmin
+          });
+          break;
+        }
+      }
+    }
+    
+    console.log('🔍 Admin access detection strategies used:', adminChecks);
     console.log('🎯 Final assessment admin check result:', {
       hasAdmin,
       moduleFound: !!assessmentsModule,
@@ -112,7 +164,10 @@ export const useAssessmentAccess = () => {
       accessLevel: assessmentsModule?.accessLevel,
       level: assessmentsModule?.level,
       levelType: typeof assessmentsModule?.level,
-      is_admin: assessmentsModule?.is_admin
+      accessLevelType: typeof assessmentsModule?.accessLevel,
+      is_admin: assessmentsModule?.is_admin,
+      strategiesUsed: adminChecks.length,
+      successfulStrategy: adminChecks.find(check => check.result)?.strategy || 'none'
     });
     
     return hasAdmin;
