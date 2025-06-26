@@ -50,6 +50,7 @@ interface AssessmentData {
   completed_by_name?: string;
   completed_on?: string | null;
   closure_comments?: string | null;
+  rework_comments?: string | null;
   created_by?: string;
   template?: {
     title: string;
@@ -94,6 +95,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
           answers,
           completed_on,
           closure_comments,
+          rework_comments,
           created_by,
           creator:employees!assessments_created_by_fkey(first_name, last_name),
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
@@ -200,6 +202,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
         .from('assessments')
         .update({ 
           status: 'Draft',
+          rework_comments: reworkComments.trim() || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', assessment.id)
@@ -209,7 +212,8 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
       setAssessment(prev => prev ? { 
         ...prev, 
-        status: 'Draft'
+        status: 'Draft',
+        rework_comments: reworkComments.trim() || null
       } : null);
       
       toast.success(`Assessment has been reworked and status changed to Draft${reworkComments ? ' with comments' : ''}`);
@@ -407,6 +411,27 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                           </div>
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {assessment.status === 'Draft' && assessment.rework_comments && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <RotateCcw className="h-5 w-5 text-orange-600" />
+                        Rework Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">Rework Comments:</span>
+                          <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                            <p className="text-sm text-gray-700">{assessment.rework_comments}</p>
+                          </div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
