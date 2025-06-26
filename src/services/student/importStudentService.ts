@@ -4,14 +4,20 @@ import { parseExcelFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processStudentData, showImportResultNotifications } from './importProcessingService';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth';
 
 /**
  * Process and import students from Excel/CSV file
  * Handles both new student insertion and existing student updates
  * Uses bulk operations for better performance
+ * Now includes client-specific duplicate checking
  */
-export const processStudentExcel = async (file: File): Promise<Student[]> => {
+export const processStudentExcel = async (file: File, clientId?: string): Promise<Student[]> => {
   try {
+    if (!clientId) {
+      throw new Error('Client information not available. Please ensure you are logged in properly.');
+    }
+
     // Parse the Excel/CSV file
     const rawData = await parseExcelFile(file);
     
@@ -20,8 +26,8 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
       toast.info(`Processing ${rawData.length} records. This may take a moment...`);
     }
     
-    // Validate the data before processing
-    const validationErrors = await validateExcelData(rawData);
+    // Validate the data before processing (includes client-specific duplicate checking)
+    const validationErrors = await validateExcelData(rawData, clientId);
     if (validationErrors.length > 0) {
       toast.error(`Validation failed with ${validationErrors.length} errors`);
       console.error('Validation errors:', validationErrors);
@@ -30,7 +36,7 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
     
     // Process the data and add/update students using bulk operations
     console.time('Bulk import processing');
-    const result = await processStudentData(rawData);
+    const result = await processStudentData(rawData, clientId);
     console.timeEnd('Bulk import processing');
     
     // Show notifications
@@ -46,14 +52,19 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
 /**
  * Validate Excel/CSV file without importing
  * This function can be used to verify the data before actual import
+ * Now includes client-specific duplicate checking
  */
-export const validateStudentExcel = async (file: File): Promise<string[]> => {
+export const validateStudentExcel = async (file: File, clientId?: string): Promise<string[]> => {
   try {
+    if (!clientId) {
+      return ['Client information not available. Please ensure you are logged in properly.'];
+    }
+
     // Parse the Excel/CSV file
     const rawData = await parseExcelFile(file);
     
-    // Validate the data
-    const errors = await validateExcelData(rawData);
+    // Validate the data (includes client-specific duplicate checking)
+    const errors = await validateExcelData(rawData, clientId);
     return errors;
   } catch (error) {
     console.error('Error in validateStudentExcel:', error);

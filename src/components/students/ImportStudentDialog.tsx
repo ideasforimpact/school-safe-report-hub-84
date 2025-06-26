@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Upload, FileUp, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
 import { useStudents } from '@/contexts/StudentContext';
+import { useAuth } from '@/contexts/auth';
 import { Progress } from '@/components/ui/progress';
 
 interface ImportStudentDialogProps {
@@ -16,6 +18,7 @@ interface ImportStudentDialogProps {
 
 const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStudentDialogProps) => {
   const { students } = useStudents();
+  const { employeeData } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -42,6 +45,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       return;
     }
 
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available. Please ensure you are logged in properly.');
+      return;
+    }
+
     // Check if file is CSV or Excel
     const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
     if (!validTypes.includes(selectedFile.type)) {
@@ -58,12 +66,12 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
         toast.info('Validating a large file. This might take a moment...');
       }
       
-      const errors = await validateStudentExcel(selectedFile);
+      // Pass client ID for client-specific validation
+      const errors = await validateStudentExcel(selectedFile, employeeData.clientId);
       setValidationErrors(errors);
       
       // Estimate number of records from file size or extract it during validation
       try {
-        // This is simplified - in a real app would be more accurate
         const data = await parseExcelForCount(selectedFile);
         setRecordCount(data);
       } catch (e) {
@@ -72,9 +80,18 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       
       if (errors.length === 0) {
         setIsValidated(true);
-        toast.success('File validated successfully');
+        toast.success('File validated successfully - no duplicate student IDs found');
       } else {
         setIsValidated(false);
+        // Show specific duplicate errors in toast
+        const duplicateErrors = errors.filter(error => error.includes('already exists'));
+        if (duplicateErrors.length > 0) {
+          if (duplicateErrors.length <= 3) {
+            duplicateErrors.forEach(error => toast.error(error));
+          } else {
+            toast.error(`Found ${duplicateErrors.length} duplicate student IDs. Please check the error list below.`);
+          }
+        }
       }
     } catch (error) {
       console.error('Validation error:', error);
@@ -108,6 +125,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       return;
     }
 
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available. Please ensure you are logged in properly.');
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -116,7 +138,8 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
         toast.info(`Processing ${recordCount} records. This may take a moment...`);
       }
       
-      await onImportStudents(file);
+      // Use the enhanced import function with client-specific processing
+      await processStudentExcel(file, employeeData.clientId);
       handleDialogClose();
     } catch (error) {
       console.error('Import error:', error);
@@ -140,11 +163,23 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
         <DialogHeader>
           <DialogTitle>Import Students</DialogTitle>
           <DialogDescription>
-            Upload a CSV or Excel file containing student information. The file should have columns for Student ID, Name, Grade, Section, and Campus.
+            Upload a CSV or Excel file containing student information. The file should have columns for Student ID, Name, Grade, Section, and Campus. 
+            <br />
+            <strong>Note:</strong> Student IDs must be unique within your organization.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Show client info for debugging */}
+          {!employeeData?.clientId && (
+            <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">
+              <p className="text-destructive text-sm">
+                <AlertCircle className="h-4 w-4 inline mr-1" />
+                Client information not available. Please ensure you are logged in properly.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="file" className="text-sm font-medium">
               Select File
@@ -169,6 +204,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
                     className="sr-only"
                     onChange={handleFileChange}
                     accept=".csv,.xls,.xlsx"
+                    disabled={!employeeData?.clientId}
                   />
                 </div>
               </div>
@@ -179,7 +215,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">
               <h3 className="font-medium flex items-center text-destructive mb-2">
                 <AlertCircle className="h-4 w-4 mr-1" />
-                Validation Errors
+                Validation Errors ({validationErrors.length} found)
               </h3>
               <div className="max-h-40 overflow-y-auto text-sm">
                 <ul className="list-disc pl-5 space-y-1">
@@ -202,7 +238,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             <div className="border border-green-500/50 rounded-md p-3 bg-green-500/10">
               <p className="text-green-600 flex items-center">
                 <Check className="h-4 w-4 mr-1" />
-                File is valid and ready to import
+                File is valid and ready to import - no duplicate student IDs found
                 {recordCount && ` (${recordCount} records)`}
               </p>
             </div>
@@ -234,7 +270,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             </Button>
             <Button
               onClick={() => handleValidateFile()}
-              disabled={!file || isValidating}
+              disabled={!file || isValidating || !employeeData?.clientId}
               variant="outline"
             >
               {isValidating ? (
@@ -250,7 +286,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!isValidated || isUploading}
+              disabled={!isValidated || isUploading || !employeeData?.clientId}
               className="gap-1"
             >
               {isUploading ? (
