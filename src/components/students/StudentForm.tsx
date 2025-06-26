@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -134,49 +135,62 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
     form.setValue('studentId', value);
   };
 
-  // Fetch campuses, grades, and sections from Supabase
+  // Fetch campuses, grades, and sections from Supabase - filtered by client_id
   useEffect(() => {
     const fetchEducationalStructure = async () => {
+      if (!employeeData?.clientId) {
+        console.log('No client ID available, skipping data fetch');
+        setDataLoading(false);
+        return;
+      }
+
       setDataLoading(true);
       try {
-        // Fetch campuses
+        console.log('Fetching educational structure for client:', employeeData.clientId);
+        
+        // Fetch campuses filtered by client_id
         const { data: campusData, error: campusError } = await supabase
           .from('campuses')
-          .select('id, name');
+          .select('id, name')
+          .eq('client_id', employeeData.clientId);
         
         if (campusError) throw campusError;
         
-        // Fetch grades (classes)
+        // Fetch grades filtered by client_id
         const { data: gradeData, error: gradeError } = await supabase
           .from('grades')
-          .select('id, name, campus_id');
+          .select('id, name, campus_id')
+          .eq('client_id', employeeData.clientId);
         
         if (gradeError) throw gradeError;
         
-        // Fetch sections
+        // Fetch sections filtered by client_id
         const { data: sectionData, error: sectionError } = await supabase
           .from('sections')
-          .select('id, name, grade_id');
+          .select('id, name, grade_id')
+          .eq('client_id', employeeData.clientId);
         
         if (sectionError) throw sectionError;
         
+        console.log('Fetched data:', { campusData, gradeData, sectionData });
+        
         // Transform and set data
-        setCampuses(campusData);
-        setGrades(gradeData.map(g => ({
+        setCampuses(campusData || []);
+        setGrades((gradeData || []).map(g => ({
           id: g.id,
           name: g.name,
           campusId: g.campus_id
         })));
-        setSections(sectionData.map(s => ({
+        setSections((sectionData || []).map(s => ({
           id: s.id,
           name: s.name,
           classId: s.grade_id
         })));
 
         // Handle pre-selected values for edit mode
-        if (defaultValues?.campus) {
+        if (defaultValues?.campus && campusData) {
           const selectedCampusId = campusData.find(c => c.name === defaultValues.campus)?.id;
-          if (selectedCampusId) {
+          if (selectedCampusId && gradeData) {
             const campusGrades = gradeData
               .filter(g => g.campus_id === selectedCampusId)
               .map(g => ({ id: g.id, name: g.name, campusId: g.campus_id }));
@@ -184,7 +198,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
             
             if (defaultValues.grade) {
               const selectedGradeId = campusGrades.find(g => g.name === defaultValues.grade)?.id;
-              if (selectedGradeId) {
+              if (selectedGradeId && sectionData) {
                 setFilteredSections(sectionData
                   .filter(s => s.grade_id === selectedGradeId)
                   .map(s => ({ id: s.id, name: s.name, classId: s.grade_id }))
@@ -203,7 +217,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
     };
     
     fetchEducationalStructure();
-  }, [defaultValues]);
+  }, [employeeData?.clientId, defaultValues]);
 
   // Filter grades based on selected campus
   useEffect(() => {
@@ -257,6 +271,15 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
       <div className="flex justify-center items-center py-8">
         <Loader2 className="h-8 w-8 animate-spin mr-2" />
         <span>Loading educational structure data...</span>
+      </div>
+    );
+  }
+
+  // Show message if no client data is available
+  if (!employeeData?.clientId) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <span className="text-muted-foreground">Unable to load form - client information not available</span>
       </div>
     );
   }
