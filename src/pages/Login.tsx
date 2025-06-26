@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { providerConfigs } from "@/utils/authProviders";
-import { useEmployeeStore } from "@/store/EmployeeContext";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,7 +18,6 @@ const Login = () => {
   const [zohoLoading, setZohoLoading] = useState(false);
   const [error, setError] = useState("");
   const { authError, user, handleUserAuthentication } = useAuth();
-  const { state } = useEmployeeStore();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -27,15 +25,10 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
 
-  // CRITICAL: Check if user is already logged in, redirect if they are (unless logging out)
+  // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    if (user && !hasRedirectedRef.current && !state.isLoggingOut) {
+    if (user && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
-      
-      console.log('🔄 Login page - user already authenticated, redirecting', {
-        userRole: user.role,
-        isLoggingOut: state.isLoggingOut
-      });
       
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
@@ -47,14 +40,7 @@ const Login = () => {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, navigate, location.state, state.isLoggingOut]);
-
-  // Reset redirect flag when user becomes null (during logout)
-  useEffect(() => {
-    if (!user) {
-      hasRedirectedRef.current = false;
-    }
-  }, [user]);
+  }, [user, navigate, location.state]);
 
   // Listen for auth errors from context
   useEffect(() => {
