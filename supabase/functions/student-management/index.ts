@@ -183,7 +183,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     }
   }
 
-  // Check if student ID already exists for this client
+  // Enhanced duplicate checking with client-specific validation
   if (body.client_id) {
     const { data: existingStudent, error: checkError } = await supabaseClient
       .from("students")
@@ -202,19 +202,21 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
 
     if (existingStudent) {
       return new Response(
-        JSON.stringify({ error: "Student ID already exists for this client" }),
+        JSON.stringify({ error: `Student ID "${body.studentId}" already exists in your organization` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
   }
   
-  // Validate campus, grade, and section exist in the database
-  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
-  if (!isValid.valid) {
-    return new Response(
-      JSON.stringify({ error: isValid.error }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+  // Validate campus, grade, and section if they are being updated
+  if (body.campus && body.grade && body.section) {
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+    if (!isValid.valid) {
+      return new Response(
+        JSON.stringify({ error: isValid.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   }
   
   // Transform data to match database schema
@@ -343,11 +345,53 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  if (!clientId) {
+    return new Response(
+      JSON.stringify({ error: "Client ID is required for validation" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
   
   const errors: string[] = [];
-  const validEntries: Record<string, boolean> = {};
   
-  // Get all distinct campuses, grades, and sections from the import data
+  // First, check for duplicate student IDs within this client
+  const studentIds = students.map(s => s.studentId).filter(id => id);
+  if (studentIds.length > 0) {
+    const { data: existingStudents, error: duplicateError } = await supabaseClient
+      .from("students")
+      .select("student_id")
+      .eq("client_id", clientId)
+      .in("student_id", studentIds);
+
+    if (duplicateError) {
+      return new Response(
+        JSON.stringify({ error: "Database error while checking for duplicate student IDs" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (existingStudents && existingStudents.length > 0) {
+      existingStudents.forEach(existing => {
+        const rowIndex = students.findIndex(s => s.studentId === existing.student_id);
+        const rowNumber = rowIndex >= 0 ? rowIndex + 2 : 'Unknown';
+        errors.push(`Row ${rowNumber}: Student ID "${existing.student_id}" already exists in your organization`);
+      });
+    }
+  }
+
+  // If there are duplicate errors, return them immediately
+  if (errors.length > 0) {
+    return new Response(
+      JSON.stringify({
+        valid: false,
+        errors: errors
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Continue with educational structure validation
   const uniqueCampuses = new Set(students.map(s => s.campus?.toLowerCase()));
   const uniqueGrades = new Set(students.map(s => s.grade?.toLowerCase()));
   const uniqueSections = new Set(students.map(s => s.section?.toLowerCase()));

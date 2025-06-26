@@ -1,14 +1,15 @@
-
 import { toast } from 'sonner';
 import { Student } from '@/types/student';
 import { RawStudentData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
+import { checkBulkStudentIdDuplicates } from './studentValidationService';
 
 /**
  * Process the raw student data from Excel/CSV and add valid students to the system
  * Handles both new student insertion and existing student updates
+ * Now includes client-specific duplicate checking
  */
-export const processStudentData = async (rawData: RawStudentData[]): Promise<ImportResult> => {
+export const processStudentData = async (rawData: RawStudentData[], clientId?: string): Promise<ImportResult> => {
   const result: ImportResult = {
     addedStudents: [],
     successCount: 0,
@@ -19,15 +20,54 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
 
   console.log("Processing student data:", rawData);
   
+  if (!clientId) {
+    result.errors.push('Client information not available. Please ensure you are logged in properly.');
+    result.errorCount = 1;
+    return result;
+  }
+
   try {
-    // First, identify existing students by student_id for bulk processing
-    const studentIds = rawData.map(row => String(row.studentId));
+    // Pre-validate for duplicates with client-specific checking
+    const studentIds = rawData.map(row => String(row.studentId).trim());
+    const { duplicates, errors: duplicateErrors } = await checkBulkStudentIdDuplicates(studentIds, clientId);
     
-    // Fetch all existing students matching these IDs in a single query
+    if (duplicateErrors.length > 0) {
+      result.errors.push(...duplicateErrors);
+      result.errorCount += duplicateErrors.length;
+    }
+
+    // Filter out rows with duplicate student IDs
+    const validData = rawData.filter(row => {
+      const studentId = String(row.studentId).trim();
+      return !duplicates.includes(studentId);
+    });
+
+    // Report duplicate student IDs found
+    if (duplicates.length > 0) {
+      duplicates.forEach(duplicateId => {
+        result.errors.push(`Student ID "${duplicateId}" already exists in your organization and will be skipped`);
+      });
+      result.errorCount += duplicates.length;
+    }
+
+    // If no valid data after filtering duplicates, return early
+    if (validData.length === 0) {
+      if (duplicates.length > 0) {
+        toast.error(`All ${rawData.length} students have duplicate IDs and cannot be imported`);
+      } else {
+        toast.error("No valid students found to import");
+      }
+      return result;
+    }
+
+    console.log(`Processing ${validData.length} valid students after duplicate filtering`);
+
+    // Fetch existing students for update detection (should be none after duplicate check, but keeping for safety)
     const { data: existingStudents, error: fetchError } = await supabase
       .from('students')
       .select('id, student_id')
-      .in('student_id', studentIds);
+      .eq('client_id', clientId)
+      .in('student_id', validData.map(row => String(row.studentId).trim()));
       
     if (fetchError) {
       console.error('Error fetching existing students:', fetchError);
@@ -47,8 +87,8 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
     const studentsToUpdate: any[] = [];
     const rowErrors: string[] = [];
     
-    // Process each row and sort into create/update arrays
-    rawData.forEach((row, index) => {
+    // Process each valid row
+    validData.forEach((row, index) => {
       try {
         // Ensure all required fields are present and not empty
         const requiredFields = ['studentId', 'name', 'grade', 'section', 'campus'];
@@ -64,20 +104,21 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
           return;
         }
         
-        // Prepare student data
+        // Prepare student data with client_id
         const studentData = {
-          student_id: String(row.studentId),
+          student_id: String(row.studentId).trim(),
           name: String(row.name),
           grade: String(row.grade),
           section: String(row.section),
-          campus: String(row.campus)
+          campus: String(row.campus),
+          client_id: clientId
         };
         
         const studentIdLower = studentData.student_id.toLowerCase();
         const existingId = existingStudentsMap.get(studentIdLower);
         
         if (existingId) {
-          // Add to update array
+          // Add to update array (though this should be rare after duplicate filtering)
           studentsToUpdate.push({
             ...studentData,
             id: existingId
@@ -92,8 +133,8 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
       }
     });
     
-    result.errors = rowErrors;
-    result.errorCount = rowErrors.length;
+    result.errors.push(...rowErrors);
+    result.errorCount += rowErrors.length;
     
     // Execute bulk create operation if needed
     if (studentsToCreate.length > 0) {
@@ -118,12 +159,12 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
     
     // Execute bulk update operation if needed
     if (studentsToUpdate.length > 0) {
-      // Supabase doesn't support bulk upserts with multiple ids, so we need to use the edge function
       const { data: updatedData, error: updateError } = await supabase.functions.invoke('student-management', {
         method: 'POST',
-        headers: { path: 'bulk-update' },
+        headers: { path: 'bulk-update', 'client-id': clientId },
         body: {
-          students: studentsToUpdate
+          students: studentsToUpdate,
+          client_id: clientId
         }
       });
         
