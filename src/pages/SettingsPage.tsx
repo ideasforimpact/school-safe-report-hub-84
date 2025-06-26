@@ -126,7 +126,7 @@ const SettingsPage = () => {
                 <CardDescription>Create and manage assessment templates with yes/no questions</CardDescription>
               </CardHeader>
               <CardContent>
-                <AssessmentConfigurationContent />
+                <AssessmentConfigurationContent embedded={true} />
               </CardContent>
             </Card>
           </TabsContent>
