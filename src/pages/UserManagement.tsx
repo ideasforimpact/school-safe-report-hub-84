@@ -73,8 +73,12 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   // No need to explicitly define role here since we're extending from User
 }
 
+interface UserManagementProps {
+  embedded?: boolean;
+}
+
 // Main UserManagement component
-const UserManagement = () => {
+const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const { user } = useAuth();
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const { state } = useEmployeeStore();
@@ -521,26 +525,34 @@ const UserManagement = () => {
 
   // If no clientId is available, show a warning message
   if (!clientId) {
+    const warningContent = (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Client Context Available</h2>
+          <p className="text-gray-600 text-center max-w-md">
+            Unable to load user management. Please ensure you have a valid client context or contact your administrator.
+          </p>
+        </CardContent>
+      </Card>
+    );
+
+    if (embedded) {
+      return warningContent;
+    }
+
     return (
       <Layout>
         <div className="container mx-auto py-6 max-w-7xl">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No Client Context Available</h2>
-              <p className="text-gray-600 text-center max-w-md">
-                Unable to load user management. Please ensure you have a valid client context or contact your administrator.
-              </p>
-            </CardContent>
-          </Card>
+          {warningContent}
         </div>
       </Layout>
     );
   }
 
-  return (
-    <Layout>
-      <div className="space-y-6">
+  const content = (
+    <div className="space-y-6">
+      {!embedded && (
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">User Management</h1>
           {hasUserManagementAdminAccess && (
@@ -564,84 +576,107 @@ const UserManagement = () => {
             </div>
           )}
         </div>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Users</CardTitle>
-              <CardDescription>
-                Manage system users and their permissions
-              </CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={fetchEmployeesList}
+      {embedded && hasUserManagementAdminAccess && (
+        <div className="flex justify-end items-center">
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setIsImportDialogOpen(true)}
+              className="flex items-center gap-2"
+              variant="secondary"
               disabled={isLoading}
-              title="Refresh employee list"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <FileUp className="h-4 w-4" />
+              <span>Import Employees</span>
             </Button>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <UserList 
-                users={employeeUsers.length > 0 ? employeeUsers : []}
-                onEditClick={(user) => {
-                  setCurrentUser(user);
-                  setFormData({
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    employeeId: user.employeeId,
-                    employeeType: user.employeeType,
-                    department: user.department,
-                    joiningDate: user.joiningDate,
-                    clientId: user.clientId || clientId,
-                    moduleAccessPayload: user.moduleAccessPayload || []
-                  });
-                  setIsEditDialogOpen(true);
-                }}
-                onDeleteUser={async (id) => {
-                  try {
-                    await deleteExistingUser([] as any, id);
-                    await refreshEmployeesList();
-                    toast.success("User deleted successfully");
-                  } catch (error) {
-                    console.error("Error deleting user:", error);
-                    toast.error("Failed to delete user");
-                  }
-                }}
-                onDeactivateUser={async (id) => {
-                  try {
-                    await deactivateExistingUser([] as any, id);
-                    await refreshEmployeesList();
-                    toast.success("User deactivated successfully");
-                  } catch (error) {
-                    console.error("Error deactivating user:", error);
-                    toast.error("Failed to deactivate user");
-                  }
-                }}
-                onReactivateUser={async (id) => {
-                  try {
-                    await reactivateExistingUser([] as any, id);
-                    await refreshEmployeesList();
-                    toast.success("User reactivated successfully");
-                  } catch (error) {
-                    console.error("Error reactivating user:", error);
-                    toast.error("Failed to reactivate user");
-                  }
-                }}
-                hasAdminAccess={hasUserManagementAdminAccess}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              disabled={isLoading}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Users</CardTitle>
+            <CardDescription>
+              Manage system users and their permissions
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchEmployeesList}
+            disabled={isLoading}
+            title="Refresh employee list"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <UserList 
+              users={employeeUsers.length > 0 ? employeeUsers : []}
+              onEditClick={(user) => {
+                setCurrentUser(user);
+                setFormData({
+                  firstName: user.firstName,
+                  lastName: user.lastName,
+                  email: user.email,
+                  employeeId: user.employeeId,
+                  employeeType: user.employeeType,
+                  department: user.department,
+                  joiningDate: user.joiningDate,
+                  clientId: user.clientId || clientId,
+                  moduleAccessPayload: user.moduleAccessPayload || []
+                });
+                setIsEditDialogOpen(true);
+              }}
+              onDeleteUser={async (id) => {
+                try {
+                  await deleteExistingUser([] as any, id);
+                  await refreshEmployeesList();
+                  toast.success("User deleted successfully");
+                } catch (error) {
+                  console.error("Error deleting user:", error);
+                  toast.error("Failed to delete user");
+                }
+              }}
+              onDeactivateUser={async (id) => {
+                try {
+                  await deactivateExistingUser([] as any, id);
+                  await refreshEmployeesList();
+                  toast.success("User deactivated successfully");
+                } catch (error) {
+                  console.error("Error deactivating user:", error);
+                  toast.error("Failed to deactivate user");
+                }
+              }}
+              onReactivateUser={async (id) => {
+                try {
+                  await reactivateExistingUser([] as any, id);
+                  await refreshEmployeesList();
+                  toast.success("User reactivated successfully");
+                } catch (error) {
+                  console.error("Error reactivating user:", error);
+                  toast.error("Failed to reactivate user");
+                }
+              }}
+              hasAdminAccess={hasUserManagementAdminAccess}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add User Dialog - Only render if user has admin access */}
       {hasUserManagementAdminAccess && (
@@ -678,6 +713,16 @@ const UserManagement = () => {
           clientId={clientId}
         />
       )}
+    </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <Layout>
+      {content}
     </Layout>
   );
 };
