@@ -8,10 +8,11 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
+import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle, AlertTriangle, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
+import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 
 interface AssessmentViewDialogProps {
   open: boolean;
@@ -61,9 +62,13 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
   const [assessment, setAssessment] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [reworking, setReworking] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showReworkDialog, setShowReworkDialog] = useState(false);
   const [completionComments, setCompletionComments] = useState('');
+  const [reworkComments, setReworkComments] = useState('');
   const { user, employeeData } = useAuth();
+  const { hasAssessmentAdmin, isSuperAdmin } = useAssessmentAccess();
   const clientId = employeeData?.clientId || user?.clientId;
 
   useEffect(() => {
@@ -182,6 +187,48 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
     }
   };
 
+  const handleReworkAssessment = async () => {
+    if (!assessment || !clientId || !employeeData?.id) {
+      toast.error('Assessment or employee information is missing');
+      return;
+    }
+
+    try {
+      setReworking(true);
+      
+      const { error } = await supabase
+        .from('assessments')
+        .update({ 
+          status: 'Draft',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', assessment.id)
+        .eq('client_id', clientId);
+
+      if (error) throw error;
+
+      setAssessment(prev => prev ? { 
+        ...prev, 
+        status: 'Draft'
+      } : null);
+      
+      toast.success(`Assessment has been reworked and status changed to Draft${reworkComments ? ' with comments' : ''}`);
+      setShowReworkDialog(false);
+      setReworkComments('');
+      
+      onOpenChange(false);
+      
+      if (onAssessmentUpdated) {
+        onAssessmentUpdated();
+      }
+    } catch (error) {
+      console.error('Error reworking assessment:', error);
+      toast.error('Failed to rework assessment. Please try again.');
+    } finally {
+      setReworking(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusColors = {
       'New': 'bg-blue-100 text-blue-800',
@@ -242,6 +289,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
   const isCurrentUserCreator = assessment?.created_by === employeeData?.id;
   const isCompleteButtonEnabled = assessment?.status === 'Submitted' && isCurrentUserCreator;
+  const isReworkButtonEnabled = (hasAssessmentAdmin || isSuperAdmin) && assessment?.status !== 'Draft';
 
   if (!open) return null;
 
@@ -492,61 +540,121 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
               </div>
             </ScrollArea>
 
-            {isCompleteButtonEnabled && (
+            {(isCompleteButtonEnabled || isReworkButtonEnabled) && (
               <div className="border-t pt-4 mt-4">
-                <div className="flex justify-end">
-                  <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        disabled={completing}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        Complete Assessment
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-lg">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <CheckCircle className="h-5 w-5 text-blue-600" />
-                          Complete Assessment
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-4">
-                          <p>You are about to complete this assessment. Please add any completion comments below:</p>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="completion-comments">Completion Comments</Label>
-                            <Textarea
-                              id="completion-comments"
-                              placeholder="Enter any comments about the assessment completion..."
-                              value={completionComments}
-                              onChange={(e) => setCompletionComments(e.target.value)}
-                              rows={4}
-                              className="resize-none"
-                            />
-                          </div>
-                          
-                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                            <p className="text-sm text-amber-800">
-                              <strong>Note:</strong> Once completed, this assessment cannot be modified.
-                            </p>
-                          </div>
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setCompletionComments('')}>
-                          Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleCompleteAssessment}
-                          disabled={completing}
-                          className="bg-blue-600 hover:bg-blue-700"
+                <div className="flex justify-end gap-2">
+                  {/* Rework Assessment Button */}
+                  {isReworkButtonEnabled && (
+                    <AlertDialog open={showReworkDialog} onOpenChange={setShowReworkDialog}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          disabled={reworking}
+                          className="flex items-center gap-2 text-orange-600 hover:text-orange-700 border-orange-200 hover:bg-orange-50"
                         >
-                          {completing ? 'Completing...' : 'Complete Assessment'}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <RotateCcw className="h-4 w-4" />
+                          Rework Assessment
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="max-w-lg">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <RotateCcw className="h-5 w-5 text-orange-600" />
+                            Rework Assessment
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-4">
+                            <p>You are about to rework this assessment. The status will be changed to "Draft" and it can be answered again.</p>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="rework-comments">Rework Comments (Optional)</Label>
+                              <Textarea
+                                id="rework-comments"
+                                placeholder="Enter any comments about why this assessment needs to be reworked..."
+                                value={reworkComments}
+                                onChange={(e) => setReworkComments(e.target.value)}
+                                rows={4}
+                                className="resize-none"
+                              />
+                            </div>
+                            
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <p className="text-sm text-amber-800">
+                                <strong>Note:</strong> This will change the assessment status to "Draft" and allow it to be answered again.
+                              </p>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setReworkComments('')}>
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleReworkAssessment}
+                            disabled={reworking}
+                            className="bg-orange-600 hover:bg-orange-700"
+                          >
+                            {reworking ? 'Reworking...' : 'Rework Assessment'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+
+                  {/* Complete Assessment Button */}
+                  {isCompleteButtonEnabled && (
+                    <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          disabled={completing}
+                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Complete Assessment
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="max-w-lg">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-blue-600" />
+                            Complete Assessment
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-4">
+                            <p>You are about to complete this assessment. Please add any completion comments below:</p>
+                            
+                            <div className="space-y-2">
+                              <Label htmlFor="completion-comments">Completion Comments</Label>
+                              <Textarea
+                                id="completion-comments"
+                                placeholder="Enter any comments about the assessment completion..."
+                                value={completionComments}
+                                onChange={(e) => setCompletionComments(e.target.value)}
+                                rows={4}
+                                className="resize-none"
+                              />
+                            </div>
+                            
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                              <p className="text-sm text-amber-800">
+                                <strong>Note:</strong> Once completed, this assessment cannot be modified.
+                              </p>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setCompletionComments('')}>
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleCompleteAssessment}
+                            disabled={completing}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            {completing ? 'Completing...' : 'Complete Assessment'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
             )}
