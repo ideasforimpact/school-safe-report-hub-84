@@ -447,25 +447,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with proper navigation and cleanup
+  // Handle logout with improved navigation and cleanup
   const handleLogout = async (): Promise<void> => {
-    console.log('🚪 Starting logout process');
-    
-    // Set logout state immediately to prevent validation loops and redirects
+    // Set logout state immediately to prevent any redirects
     dispatch(setLogoutState(true));
     
     // Determine target login page based on current route path
     const currentPath = location.pathname;
     const targetLoginPage = currentPath.startsWith('/backoffice') ? '/backoffice/login' : '/login';
     
-    console.log('🎯 Target login page:', targetLoginPage);
-    console.log('📍 Current path:', currentPath);
-    
     try {
       // For non-backoffice users, sign out from Supabase FIRST
       if (!isBackofficeUser) {
         try {
-          console.log('🔐 Signing out from Supabase');
           await supabase.auth.signOut();
         } catch (supabaseError) {
           console.error('Error signing out from Supabase:', supabaseError);
@@ -473,14 +467,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Clear all state after Supabase signout
-      console.log('🧹 Clearing authentication state');
       dispatch(clearAuth());
       dispatch(resetEmployee());
       clearPersistedAuthState();
       logoutUser();
       
+      // Small delay to ensure state is cleared before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Navigate to appropriate login page
-      console.log('🚀 Navigating to:', targetLoginPage);
       navigate(targetLoginPage, { replace: true });
       
       toast.success('You have been logged out successfully');
@@ -492,11 +487,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Fallback navigation in case of error
       navigate(targetLoginPage, { replace: true });
     } finally {
-      // Reset logout state after a short delay
+      // Reset logout state after navigation
       setTimeout(() => {
-        console.log('✅ Logout process completed');
         dispatch(setLogoutState(false));
-      }, 1000);
+      }, 500);
     }
   };
 
