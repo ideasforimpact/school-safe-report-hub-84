@@ -119,7 +119,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       )}
 
       {embedded && (
-        <div className="flex justify-between items-center">
+        <div className="flex justify-end items-center">
           <div className="flex gap-2">
             <Button 
               onClick={() => setIsImportDialogOpen(true)}
