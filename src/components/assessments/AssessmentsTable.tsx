@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter } from 'lucide-react';
+import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter, UserCheck } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentViewDialog from './view/AssessmentViewDialog';
+import ReassignAssessmentDialog from './ReassignAssessmentDialog';
 
 interface AssessmentTemplate {
   questions: any;
@@ -51,6 +52,12 @@ const AssessmentsTable: React.FC = () => {
   const [targetDateTo, setTargetDateTo] = useState<Date | undefined>(undefined);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
+  const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const [selectedAssessmentForReassign, setSelectedAssessmentForReassign] = useState<{
+    id: number;
+    assignedTo: string | null;
+    assigneeName: string;
+  } | null>(null);
 
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
@@ -332,6 +339,25 @@ const AssessmentsTable: React.FC = () => {
     fetchAssessments();
   };
 
+  const handleReassign = (assessment: Assessment) => {
+    setSelectedAssessmentForReassign({
+      id: assessment.assessment_id,
+      assignedTo: assessment.assigned_to,
+      assigneeName: assessment.assignee_name || 'Unassigned'
+    });
+    setReassignDialogOpen(true);
+  };
+
+  const handleReassignSuccess = () => {
+    // Refetch assessments after successful reassignment
+    fetchAssessments();
+  };
+
+  // Check if user can reassign this assessment (admin + created by user)
+  const canReassignAssessment = (assessment: Assessment) => {
+    return hasAssessmentAdmin && assessment.created_by === currentUserEmployeeId;
+  };
+
   if (!clientId) {
     return (
       <Card>
@@ -555,6 +581,19 @@ const AssessmentsTable: React.FC = () => {
                             Answer
                           </Button>
                         )}
+                        
+                        {/* Show Reassign button only for admins and their own assessments */}
+                        {canReassignAssessment(assessment) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReassign(assessment)}
+                            className="text-purple-600 hover:text-purple-700"
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+                        
                         <Button
                           variant="outline"
                           size="sm"
@@ -580,6 +619,18 @@ const AssessmentsTable: React.FC = () => {
         assessmentId={selectedAssessmentId || 0}
         onAssessmentUpdated={handleAssessmentUpdated}
       />
+
+      {/* Reassign Assessment Dialog */}
+      {selectedAssessmentForReassign && (
+        <ReassignAssessmentDialog
+          open={reassignDialogOpen}
+          onOpenChange={setReassignDialogOpen}
+          assessmentId={selectedAssessmentForReassign.id}
+          currentAssigneeId={selectedAssessmentForReassign.assignedTo}
+          currentAssigneeName={selectedAssessmentForReassign.assigneeName}
+          onReassignSuccess={handleReassignSuccess}
+        />
+      )}
     </>
   );
 };
