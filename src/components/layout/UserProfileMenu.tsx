@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -42,6 +41,7 @@ const UserProfileMenu = () => {
 
   const handleLogout = async () => {
     console.log('🚪 UserProfileMenu: Logout clicked');
+    console.log('🕐 UserProfileMenu: Logout initiated at:', new Date().toISOString());
     console.log('🔍 UserProfileMenu: Current user before setting to null:', user);
     
     // Set user to null first as requested
@@ -49,8 +49,13 @@ const UserProfileMenu = () => {
     setUser(null);
     console.log('✅ UserProfileMenu: User set to null, now calling logout');
     
-    // Use the centralized logout which handles all navigation
-    await logout();
+    // Add a small delay to ensure state propagation
+    setTimeout(async () => {
+      console.log('⏰ UserProfileMenu: Delayed logout call starting');
+      // Use the centralized logout which handles all navigation
+      await logout();
+      console.log('🏁 UserProfileMenu: Logout process completed');
+    }, 50);
   };
 
   const handleProfileClick = () => {
