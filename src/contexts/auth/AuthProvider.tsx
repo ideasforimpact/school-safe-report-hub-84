@@ -449,39 +449,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
+    console.log('🚪 Starting logout process');
+    
     // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
     
+    // Determine target login page based on current route path
+    const currentPath = location.pathname;
+    const targetLoginPage = currentPath.startsWith('/backoffice') ? '/backoffice/login' : '/login';
+    
+    console.log('🎯 Target login page:', targetLoginPage);
+    console.log('📍 Current path:', currentPath);
+    
     try {
-      // Clear Redux state immediately
-      dispatch(clearAuth());
-      dispatch(resetEmployee());
-      
-      // Clear persisted state
-      clearPersistedAuthState();
-      
-      // Clear local storage
-      logoutUser();
-      
-      // For non-backoffice users, sign out from Supabase
+      // For non-backoffice users, sign out from Supabase FIRST
       if (!isBackofficeUser) {
         try {
+          console.log('🔐 Signing out from Supabase');
           await supabase.auth.signOut();
         } catch (supabaseError) {
           console.error('Error signing out from Supabase:', supabaseError);
         }
       }
       
-      // Determine where to redirect based on user type and current route
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
+      // Clear all state after Supabase signout
+      console.log('🧹 Clearing authentication state');
+      dispatch(clearAuth());
+      dispatch(resetEmployee());
+      clearPersistedAuthState();
+      logoutUser();
       
-      // Navigate immediately after clearing state
-      if (shouldRedirectToBackoffice) {
-        navigate('/backoffice/login', { replace: true });
-      } else {
-        navigate('/login', { replace: true });
-      }
+      // Navigate to appropriate login page
+      console.log('🚀 Navigating to:', targetLoginPage);
+      navigate(targetLoginPage, { replace: true });
       
       toast.success('You have been logged out successfully');
       
@@ -490,15 +490,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       toast.error('There was an error logging out');
       
       // Fallback navigation in case of error
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      if (isCurrentlyBackoffice) {
-        navigate('/backoffice/login', { replace: true });
-      } else {
-        navigate('/login', { replace: true });
-      }
+      navigate(targetLoginPage, { replace: true });
     } finally {
       // Reset logout state after a short delay
       setTimeout(() => {
+        console.log('✅ Logout process completed');
         dispatch(setLogoutState(false));
       }, 1000);
     }
