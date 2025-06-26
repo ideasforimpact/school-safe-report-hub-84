@@ -5,7 +5,11 @@ import { Plus } from 'lucide-react';
 import CreateTemplateForm from '@/components/assessments/templates/CreateTemplateForm';
 import TemplatesList from '@/components/assessments/templates/TemplatesList';
 
-const AssessmentConfigurationContent = () => {
+interface AssessmentConfigurationContentProps {
+  embedded?: boolean;
+}
+
+const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigurationContentProps) => {
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
@@ -36,12 +40,14 @@ const AssessmentConfigurationContent = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold">Assessment Templates</h2>
-          <p className="text-gray-600 mt-1">Manage assessment templates for your organization</p>
+      {!embedded && (
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold">Assessment Templates</h2>
+            <p className="text-gray-600 mt-1">Manage assessment templates for your organization</p>
+          </div>
         </div>
-      </div>
+      )}
       
       <TemplatesList 
         onCreateTemplate={handleCreateTemplate}
