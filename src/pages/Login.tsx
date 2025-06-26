@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,48 +24,64 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
 
-  // Clear logout flag when login page loads and add user state logging
+  // Enhanced sessionStorage flag management with detailed logging
   useEffect(() => {
     console.log('🔍 Login: Component mounted/updated');
+    console.log('🕐 Login: Component effect at:', new Date().toISOString());
     console.log('👤 Login: Current user state:', user);
     console.log('❓ Login: User is null?', user === null);
     console.log('❓ Login: User exists?', !!user);
+    console.log('🚪 Login: Logout flag in sessionStorage:', sessionStorage.getItem('is_logout_initiated'));
     
-    if (sessionStorage.getItem('is_logout_initiated') === 'true') {
+    // Check and clear logout flag
+    const logoutFlag = sessionStorage.getItem('is_logout_initiated');
+    if (logoutFlag === 'true') {
       console.log('🧹 Login: Clearing logout flag from sessionStorage');
       sessionStorage.removeItem('is_logout_initiated');
+      console.log('✅ Login: Logout flag cleared, blocking redirect for now');
     }
   }, [user]);
 
-  // Check if user is already logged in, redirect if they are (with logout flag check)
+  // Enhanced user redirect effect with better timing and sessionStorage checks
   useEffect(() => {
     console.log('🔄 Login: User redirect effect triggered');
+    console.log('🕐 Login: Redirect effect at:', new Date().toISOString());
     console.log('👤 Login: User in redirect effect:', user);
     console.log('🚪 Login: Logout initiated?', sessionStorage.getItem('is_logout_initiated') === 'true');
     console.log('🔄 Login: Has redirected?', hasRedirectedRef.current);
 
-    // Don't redirect if logout is in progress
-    if (sessionStorage.getItem('is_logout_initiated') === 'true') {
+    // Primary guard: Don't redirect if logout is in progress
+    const isLogoutInProgress = sessionStorage.getItem('is_logout_initiated') === 'true';
+    if (isLogoutInProgress) {
       console.log('⏸️ Login: Blocking redirect - logout in progress');
       return;
     }
 
+    // Secondary guard: Check if user exists and we haven't redirected yet
     if (user && !hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
-      console.log('✅ Login: User exists, redirecting...');
-      console.log('👤 Login: User details:', user);
-      
-      // Get the intended destination from location state or use dashboard as default
-      const from = location.state?.from?.pathname || "/dashboard";
+      // Add a small delay to ensure all state has propagated
+      setTimeout(() => {
+        const currentLogoutFlag = sessionStorage.getItem('is_logout_initiated');
+        if (currentLogoutFlag === 'true') {
+          console.log('⏸️ Login: Blocking delayed redirect - logout flag detected');
+          return;
+        }
 
-      if(user?.role === "saas_owner"){
-        console.log('🏢 Login: Redirecting to backoffice dashboard');
-        navigate("/backoffice/dashboard");
-      }
-      else{
-        console.log('🏠 Login: Redirecting to regular dashboard');
-        navigate('/dashboard', { replace: true });
-      }
+        hasRedirectedRef.current = true;
+        console.log('✅ Login: User exists and safe to redirect');
+        console.log('👤 Login: User details for redirect:', user);
+        
+        // Get the intended destination from location state or use dashboard as default
+        const from = location.state?.from?.pathname || "/dashboard";
+
+        if(user?.role === "saas_owner"){
+          console.log('🏢 Login: Redirecting to backoffice dashboard');
+          navigate("/backoffice/dashboard");
+        } else {
+          console.log('🏠 Login: Redirecting to regular dashboard');
+          navigate('/dashboard', { replace: true });
+        }
+      }, 200); // Small delay to allow state propagation
     } else if (!user) {
       console.log('❌ Login: No user, staying on login page');
     }
