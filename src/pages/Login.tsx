@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEmployeeStore } from "@/store/EmployeeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,7 +18,6 @@ const Login = () => {
   const [zohoLoading, setZohoLoading] = useState(false);
   const [error, setError] = useState("");
   const { authError, user, handleUserAuthentication } = useAuth();
-  const { state } = useEmployeeStore();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -26,18 +25,9 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
 
-  // Clear logout flag when login page loads successfully
-  useEffect(() => {
-    sessionStorage.removeItem('isLoggingOut');
-  }, []);
-
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    // Check sessionStorage flag first - don't redirect if logging out
-    const isLoggingOut = sessionStorage.getItem('isLoggingOut') === 'true';
-    
-    // Don't redirect if user is currently logging out or if we've already redirected
-    if (user && !hasRedirectedRef.current && !isLoggingOut && !state.isLoggingOut) {
+    if (user && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
       
       // Get the intended destination from location state or use dashboard as default
@@ -50,14 +40,7 @@ const Login = () => {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, navigate, location.state, state.isLoggingOut]);
-
-  // Reset hasRedirectedRef when user logs out
-  useEffect(() => {
-    if (!user && hasRedirectedRef.current) {
-      hasRedirectedRef.current = false;
-    }
-  }, [user]);
+  }, [user, navigate, location.state]);
 
   // Listen for auth errors from context
   useEffect(() => {
