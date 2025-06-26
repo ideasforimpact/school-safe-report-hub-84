@@ -20,7 +20,7 @@ import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/
 import { getIsBackofficeUser } from '@/store/authSelectors';
 
 const UserProfileMenu = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -41,7 +41,14 @@ const UserProfileMenu = () => {
   };
 
   const handleLogout = async () => {
-    console.log('🚪 UserProfileMenu logout clicked, calling centralized logout');
+    console.log('🚪 UserProfileMenu: Logout clicked');
+    console.log('🔍 UserProfileMenu: Current user before setting to null:', user);
+    
+    // Set user to null first as requested
+    console.log('🔄 UserProfileMenu: Setting user to null before logout');
+    setUser(null);
+    console.log('✅ UserProfileMenu: User set to null, now calling logout');
+    
     // Use the centralized logout which handles all navigation
     await logout();
   };
