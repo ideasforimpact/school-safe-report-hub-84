@@ -25,8 +25,20 @@ const Login = () => {
   const hasRedirectedRef = useRef(false);
   const hasCheckedErrorRef = useRef(false);
 
+  // Clear logout flag when login page loads
+  useEffect(() => {
+    if (sessionStorage.getItem('is_logout_initiated') === 'true') {
+      sessionStorage.removeItem('is_logout_initiated');
+    }
+  }, []);
+
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
+    // Don't redirect if logout is in progress
+    if (sessionStorage.getItem('is_logout_initiated') === 'true') {
+      return;
+    }
+
     if (user && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
 
