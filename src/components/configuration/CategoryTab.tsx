@@ -31,6 +31,7 @@ export const CategoryTab = ({
 }: CategoryTabProps) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleCategoryAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,17 +49,31 @@ export const CategoryTab = ({
     deleteCategory(id);
   };
 
-  const handleCategoryUpdate = () => {
-    if (!editingCategory || !editingCategory.name.trim()) {
+  const handleEditOpen = (category: CategoryItem) => {
+    console.log("Opening edit dialog for category:", category);
+    setEditingCategory({
+      id: category.id,
+      name: category.name
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSave = (updatedName: string) => {
+    if (!updatedName.trim()) {
       toast.error("Category name cannot be empty");
       return;
     }
     
-    updateCategory(editingCategory.id, editingCategory.name.trim());
-    setEditingCategory(null);
+    if (editingCategory) {
+      console.log("Updating category:", editingCategory.id, "with name:", updatedName.trim());
+      updateCategory(editingCategory.id, updatedName.trim());
+      handleEditClose();
+    }
   };
 
   const handleEditClose = () => {
+    console.log("Closing edit dialog");
+    setIsEditDialogOpen(false);
     setEditingCategory(null);
   };
 
@@ -100,27 +115,13 @@ export const CategoryTab = ({
                   <TableCell>{category.name}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Category"
-                        description="Update the category name below"
-                        fieldLabel="Category name"
-                        value={editingCategory?.id === category.id ? editingCategory.name : category.name}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingCategory({id: category.id, name: category.name});
-                          } else if (!open && editingCategory) {
-                            setEditingCategory(null);
-                          }
-                        }}
-                        onChange={(value) => setEditingCategory(prev => prev ? {...prev, name: value} : null)}
-                        onSave={handleCategoryUpdate}
-                        onClose={handleEditClose}
-                        triggerButton={
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEditOpen(category)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       
                       <Button 
                         variant="ghost" 
@@ -136,6 +137,23 @@ export const CategoryTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Edit Dialog */}
+        {editingCategory && (
+          <EditDialog
+            title="Edit Category"
+            description="Update the category name below"
+            fieldLabel="Category name"
+            value={editingCategory.name}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onChange={(value) => {
+              setEditingCategory(prev => prev ? { ...prev, name: value } : null);
+            }}
+            onSave={handleEditSave}
+            onClose={handleEditClose}
+          />
+        )}
       </CardContent>
     </Card>
   );
