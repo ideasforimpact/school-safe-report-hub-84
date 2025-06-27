@@ -404,7 +404,7 @@ const AssessmentsTable: React.FC = () => {
 
   return (
     <>
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -501,9 +501,9 @@ const AssessmentsTable: React.FC = () => {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-0">
           {filteredAssessments.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="text-center py-8 px-6">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No Assessments Found</h3>
               <p className="text-gray-500">
@@ -515,99 +515,107 @@ const AssessmentsTable: React.FC = () => {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Assessment ID</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Percentage Completed</TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Target Date
-                    </div>
-                  </TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      Assigned To
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAssessments.map((assessment) => (
-                  <TableRow key={assessment.assessment_id}>
-                    <TableCell className="font-mono text-sm">
-                      #{assessment.assessment_id}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {assessment.name}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(assessment.status)}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium">{calculateCompletionPercentage(assessment)}%</span>
-                    </TableCell>
-                    <TableCell>
-                      {formatDate(assessment.target_completion_date)}
-                    </TableCell>
-                    <TableCell>
-                      {assessment.creator_name}
-                    </TableCell>
-                    <TableCell>
-                      {assessment.assignee_name}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {/* Only show Answer button if user is assigned to this assessment */}
-                        {isAssignedToCurrentUser(assessment.assigned_to) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAnswerQuestions(assessment.assessment_id)}
-                            disabled={!isAnswerButtonEnabled(assessment.status)}
-                            className={`${
-                              isAnswerButtonEnabled(assessment.status)
-                                ? 'text-blue-600 hover:text-blue-700'
-                                : 'text-gray-400 cursor-not-allowed opacity-50'
-                            }`}
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            Answer
-                          </Button>
-                        )}
-                        
-                        {/* Show Reassign button only for admins and their own assessments */}
-                        {canReassignAssessment(assessment) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReassign(assessment)}
-                            className="text-purple-600 hover:text-purple-700"
-                          >
-                            <UserCheck className="h-4 w-4" />
-                          </Button>
-                        )}
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleView(assessment.assessment_id)}
-                          className="text-green-600 hover:text-green-700"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+            <div className="w-full overflow-x-auto">
+              <Table className="w-full min-w-[1200px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[120px]">Assessment ID</TableHead>
+                    <TableHead className="min-w-[200px]">Title</TableHead>
+                    <TableHead className="w-[130px]">Status</TableHead>
+                    <TableHead className="w-[140px]">Percentage Completed</TableHead>
+                    <TableHead className="w-[140px]">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
+                        Target Date
                       </div>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead className="min-w-[150px]">Created By</TableHead>
+                    <TableHead className="min-w-[150px]">
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4" />
+                        Assigned To
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[180px] text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredAssessments.map((assessment) => (
+                    <TableRow key={assessment.assessment_id}>
+                      <TableCell className="font-mono text-sm">
+                        #{assessment.assessment_id}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="max-w-[200px] truncate" title={assessment.name}>
+                          {assessment.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(assessment.status)}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{calculateCompletionPercentage(assessment)}%</span>
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(assessment.target_completion_date)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[150px] truncate" title={assessment.creator_name}>
+                          {assessment.creator_name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[150px] truncate" title={assessment.assignee_name}>
+                          {assessment.assignee_name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {/* Only show Answer button if user is assigned to this assessment */}
+                          {isAssignedToCurrentUser(assessment.assigned_to) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAnswerQuestions(assessment.assessment_id)}
+                              disabled={!isAnswerButtonEnabled(assessment.status)}
+                              className={`${
+                                isAnswerButtonEnabled(assessment.status)
+                                  ? 'text-blue-600 hover:text-blue-700'
+                                  : 'text-gray-400 cursor-not-allowed opacity-50'
+                              }`}
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              Answer
+                            </Button>
+                          )}
+                          
+                          {/* Show Reassign button only for admins and their own assessments */}
+                          {canReassignAssessment(assessment) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReassign(assessment)}
+                              className="text-purple-600 hover:text-purple-700"
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </Button>
+                          )}
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleView(assessment.assessment_id)}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
