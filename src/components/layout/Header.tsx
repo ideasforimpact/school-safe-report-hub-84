@@ -43,11 +43,11 @@ const Header = () => {
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner';
 
-  // Check if user is authenticated - prioritize Redux state for backoffice users
+  // Check if user is authenticated - prioritize current user state and SaaS owner status
   const isAuthenticated = Boolean(
     state.currentUser || 
     user || 
-    (isBackoffice && (isSaasOwner || isSuperAdmin))
+    (isBackoffice && isSaasOwner)
   );
 
   return (
