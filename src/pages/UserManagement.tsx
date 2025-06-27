@@ -526,7 +526,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // If no clientId is available, show a warning message
   if (!clientId) {
     const warningContent = (
-      <Card>
+      <Card className="mx-6">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No Client Context Available</h2>
@@ -543,7 +543,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     return (
       <Layout>
-        <div className="container mx-auto py-6 max-w-7xl">
+        <div className="w-full py-6">
           {warningContent}
         </div>
       </Layout>
@@ -553,7 +553,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const content = (
     <div className="space-y-6">
       {!embedded && (
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mx-6">
           <h1 className="text-2xl font-bold">User Management</h1>
           {hasUserManagementAdminAccess && (
             <div className="flex gap-2">
@@ -601,7 +601,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         </div>
       )}
 
-      <Card>
+      <Card className="mx-6">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Users</CardTitle>
@@ -722,7 +722,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
   return (
     <Layout>
-      {content}
+      <div className="w-full py-6">
+        {content}
+      </div>
     </Layout>
   );
 };
