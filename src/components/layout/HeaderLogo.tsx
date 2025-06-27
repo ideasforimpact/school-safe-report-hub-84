@@ -17,11 +17,11 @@ const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps)
           <img 
             src={userClient.logo} 
             alt={`${userClient.name} logo`}
-            className="h-10 w-auto"
+            className="h-14 w-auto"
           />
         ) : (
-          <div className="h-10 w-10 bg-primary-100 rounded-md flex items-center justify-center">
-            <ShieldCheck className="h-6 w-6 text-primary-600" />
+          <div className="h-14 w-14 bg-primary-100 rounded-md flex items-center justify-center">
+            <ShieldCheck className="h-8 w-8 text-primary-600" />
           </div>
         )}
         
