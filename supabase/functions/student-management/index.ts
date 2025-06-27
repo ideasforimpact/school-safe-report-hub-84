@@ -98,6 +98,22 @@ serve(async (req) => {
   }
 });
 
+// Helper function to normalize strings for comparison
+function normalizeString(str: string): string {
+  if (!str) return "";
+  return str.trim().toLowerCase();
+}
+
+// Helper function to create a case-insensitive comparison map
+function createNormalizedMap<T>(items: T[], keySelector: (item: T) => string, valueSelector: (item: T) => any): Map<string, any> {
+  const map = new Map();
+  items.forEach(item => {
+    const normalizedKey = normalizeString(keySelector(item));
+    map.set(normalizedKey, valueSelector(item));
+  });
+  return map;
+}
+
 // Handler functions for different operations
 
 async function handleListStudents(req: Request, corsHeaders: Record<string, string>, body: any) {
@@ -273,15 +289,14 @@ async function validateEducationalStructure(campus: string, grade: string, secti
     return { valid: false, error: "Campus, grade and section are all required" };
   }
   
-  // Normalize input strings by trimming and converting to consistent case
-  const normalizedCampus = campus.trim();
-  const normalizedGrade = grade.trim();
-  const normalizedSection = section.trim();
+  // Normalize input strings
+  const normalizedCampus = normalizeString(campus);
+  const normalizedGrade = normalizeString(grade);
+  const normalizedSection = normalizeString(section);
   
   console.log(`Validating educational structure:`, {
-    campus: normalizedCampus,
-    grade: normalizedGrade,
-    section: normalizedSection,
+    original: { campus, grade, section },
+    normalized: { campus: normalizedCampus, grade: normalizedGrade, section: normalizedSection },
     clientId
   });
   
@@ -303,18 +318,17 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   
   console.log("Available campuses:", allCampuses);
   
-  // Find matching campus with flexible matching
+  // Find matching campus with case-insensitive matching
   const matchingCampus = allCampuses?.find(c => {
-    const campusName = c.name.trim();
-    return campusName.toLowerCase() === normalizedCampus.toLowerCase() ||
-           campusName === normalizedCampus;
+    const normalizedCampusName = normalizeString(c.name);
+    return normalizedCampusName === normalizedCampus;
   });
   
   if (!matchingCampus) {
-    const availableCampuses = allCampuses?.map(c => c.name).join(", ") || "none";
+    const availableCampuses = Array.from(validCampuses.keys()).join(", ") || "none";
     return { 
       valid: false, 
-      error: `Campus "${normalizedCampus}" does not exist in the system. Available campuses: ${availableCampuses}` 
+      error: `Campus "${campus}" does not exist in the system. Available: ${availableCampuses}` 
     };
   }
   
@@ -339,18 +353,20 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   
   console.log("Available grades for campus:", allGrades);
   
-  // Find matching grade with flexible matching
+  // Find matching grade with case-insensitive matching
   const matchingGrade = allGrades?.find(g => {
-    const gradeName = g.name.trim();
-    return gradeName.toLowerCase() === normalizedGrade.toLowerCase() ||
-           gradeName === normalizedGrade;
+    const normalizedGradeName = normalizeString(g.name);
+    return normalizedGradeName === normalizedGrade;
   });
   
   if (!matchingGrade) {
-    const availableGrades = allGrades?.map(g => g.name).join(", ") || "none";
+    const availableGrades = Array.from(validGrades.keys())
+      .filter(key => key.startsWith(`${campusId}:`))
+      .map(key => key.split(':')[1])
+      .join(", ") || "none";
     return { 
       valid: false, 
-      error: `Grade "${normalizedGrade}" does not exist for campus "${normalizedCampus}". Available grades: ${availableGrades}` 
+      error: `Grade "${grade}" does not exist for campus "${campus}". Available: ${availableGrades}` 
     };
   }
   
@@ -375,18 +391,20 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   
   console.log("Available sections for grade:", allSections);
   
-  // Find matching section with flexible matching
+  // Find matching section with case-insensitive matching
   const matchingSection = allSections?.find(s => {
-    const sectionName = s.name.trim();
-    return sectionName.toLowerCase() === normalizedSection.toLowerCase() ||
-           sectionName === normalizedSection;
+    const normalizedSectionName = normalizeString(s.name);
+    return normalizedSectionName === normalizedSection;
   });
   
   if (!matchingSection) {
-    const availableSections = allSections?.map(s => s.name).join(", ") || "none";
+    const availableSections = Array.from(validSections.keys())
+      .filter(key => key.startsWith(`${gradeId}:`))
+      .map(key => key.split(':')[1])
+      .join(", ") || "none";
     return { 
       valid: false, 
-      error: `Section "${normalizedSection}" does not exist for grade "${normalizedGrade}". Available sections: ${availableSections}` 
+      error: `Section "${section}" does not exist for grade "${grade}". Available: ${availableSections}` 
     };
   }
   
@@ -411,6 +429,8 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  console.log(`Starting validation for ${students.length} students with client ID: ${clientId}`);
   
   const errors: string[] = [];
   
@@ -450,11 +470,6 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
     );
   }
 
-  // Continue with educational structure validation
-  const uniqueCampuses = new Set(students.map(s => s.campus?.toLowerCase()));
-  const uniqueGrades = new Set(students.map(s => s.grade?.toLowerCase()));
-  const uniqueSections = new Set(students.map(s => s.section?.toLowerCase()));
-  
   // Fetch all valid campuses, grades and sections for this client
   let campusQuery = supabaseClient.from("campuses").select("id, name");
   if (clientId) {
@@ -494,22 +509,34 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  console.log("Fetched data:", {
+    campuses: campusData?.length || 0,
+    grades: gradeData?.length || 0,
+    sections: sectionData?.length || 0
+  });
   
-  // Create validation maps
-  const validCampuses = new Map(campusData.map(c => [c.name.toLowerCase(), c.id]));
+  // Create normalized validation maps for case-insensitive matching
+  const validCampuses = createNormalizedMap(campusData || [], c => c.name, c => c.id);
   const validGrades = new Map();
   const validSections = new Map();
   
-  // Build grade validation map (keyed by campus_id + grade_name)
-  gradeData.forEach(g => {
-    const key = `${g.campus_id}:${g.name.toLowerCase()}`;
+  // Build grade validation map (keyed by campus_id + normalized grade_name)
+  (gradeData || []).forEach(g => {
+    const key = `${g.campus_id}:${normalizeString(g.name)}`;
     validGrades.set(key, g.id);
   });
   
-  // Build section validation map (keyed by grade_id + section_name)
-  sectionData.forEach(s => {
-    const key = `${s.grade_id}:${s.name.toLowerCase()}`;
+  // Build section validation map (keyed by grade_id + normalized section_name)
+  (sectionData || []).forEach(s => {
+    const key = `${s.grade_id}:${normalizeString(s.name)}`;
     validSections.set(key, s.id);
+  });
+
+  console.log("Created validation maps:", {
+    campusKeys: Array.from(validCampuses.keys()),
+    gradeKeys: Array.from(validGrades.keys()),
+    sectionKeys: Array.from(validSections.keys())
   });
   
   // Validate each student record
@@ -531,32 +558,54 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
       return;
     }
     
+    // Normalize student data for comparison
+    const normalizedCampus = normalizeString(student.campus);
+    const normalizedGrade = normalizeString(student.grade);
+    const normalizedSection = normalizeString(student.section);
+
+    console.log(`Validating student ${rowNumber}:`, {
+      original: { campus: student.campus, grade: student.grade, section: student.section },
+      normalized: { campus: normalizedCampus, grade: normalizedGrade, section: normalizedSection }
+    });
+    
     // Check campus exists
-    const campusLower = student.campus.toLowerCase();
-    const campusId = validCampuses.get(campusLower);
+    const campusId = validCampuses.get(normalizedCampus);
     if (!campusId) {
-      errors.push(`Row ${rowNumber}: Campus "${student.campus}" does not exist in the system`);
+      const availableCampuses = Array.from(validCampuses.keys()).join(", ") || "none";
+      errors.push(`Row ${rowNumber}: Campus "${student.campus}" does not exist in the system. Available: ${availableCampuses}`);
       return;
     }
     
     // Check grade exists and belongs to the campus
-    const gradeKey = `${campusId}:${student.grade.toLowerCase()}`;
+    const gradeKey = `${campusId}:${normalizedGrade}`;
     const gradeId = validGrades.get(gradeKey);
     
     if (!gradeId) {
-      errors.push(`Row ${rowNumber}: Grade "${student.grade}" does not exist for campus "${student.campus}"`);
+      const availableGrades = Array.from(validGrades.keys())
+        .filter(key => key.startsWith(`${campusId}:`))
+        .map(key => key.split(':')[1])
+        .join(", ") || "none";
+      errors.push(`Row ${rowNumber}: Grade "${student.grade}" does not exist for campus "${student.campus}". Available: ${availableGrades}`);
       return;
     }
     
     // Check section exists and belongs to the grade
-    const sectionKey = `${gradeId}:${student.section.toLowerCase()}`;
+    const sectionKey = `${gradeId}:${normalizedSection}`;
     const sectionValid = validSections.has(sectionKey);
     
     if (!sectionValid) {
-      errors.push(`Row ${rowNumber}: Section "${student.section}" does not exist for grade "${student.grade}"`);
+      const availableSections = Array.from(validSections.keys())
+        .filter(key => key.startsWith(`${gradeId}:`))
+        .map(key => key.split(':')[1])
+        .join(", ") || "none";
+      errors.push(`Row ${rowNumber}: Section "${student.section}" does not exist for grade "${student.grade}". Available: ${availableSections}`);
       return;
     }
+
+    console.log(`Student ${rowNumber} validation successful`);
   });
+  
+  console.log(`Validation complete. Found ${errors.length} errors.`);
   
   return new Response(
     JSON.stringify({
