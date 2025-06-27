@@ -24,15 +24,6 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
 
-  // Log user and Redux state for debugging
-  console.log("User from Auth Context:", user);
-  console.log("Employee Data from Redux Store:", employeeData);
-  console.log("Is Admin from Redux:", isAdmin);
-  console.log("Is Super Admin from Redux:", isSuperAdmin);
-  console.log("Department:", employeeData?.department);
-  console.log("Employee Type:", employeeData?.employeeType);
-  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
-  
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   
@@ -52,6 +43,9 @@ const Header = () => {
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner';
 
+  // Check if user is authenticated - use Redux state as primary source
+  const isAuthenticated = Boolean(state.currentUser || user);
+
   return (
     <div className="w-full h-16 bg-white shadow-sm">
       <div className="w-full h-full px-4">
@@ -67,11 +61,11 @@ const Header = () => {
           {isHomePage && <HeaderNavLinks />}
           
           {/* User Menu */}
-          {user ? (
+          {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && (
+              {(state.currentUser || user) && (
                 <UserRoleBadge 
                   isSaasOwner={isSaasOwner} 
                   isAdmin={isAdmin && !isSuperAdmin && !isSaasOwner} 
