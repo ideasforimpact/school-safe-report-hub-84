@@ -27,6 +27,9 @@ const SidebarContent = () => {
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
   
+  // Check if user is backoffice user from Redux state
+  const isBackofficeUser = employeeState.isBackofficeUser || (user?.role === 'saas_owner');
+  
   // Auto-redirect SaaS owners to backoffice when they're at root path
   useEffect(() => {
     if (isSaasOwner && user?.role === 'saas_owner' && location.pathname === '/') {
@@ -45,9 +48,9 @@ const SidebarContent = () => {
     
     const loadModules = async () => {
       try {
-        // PRIORITY 1: Backoffice users on backoffice routes - ALWAYS use database modules
-        if (isSaasOwner && user?.role === 'saas_owner' && isBackofficeRoute) {
-          console.log('Loading backoffice modules from database for SaaS owner');
+        // PRIORITY 1: Backoffice users - ALWAYS use database modules first
+        if (isBackofficeUser && isBackofficeRoute) {
+          console.log('Loading backoffice modules from database for backoffice user');
           const modules = await fetchModules(true, user);
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);
@@ -96,7 +99,7 @@ const SidebarContent = () => {
     
     loadModules();
     
-  }, [isSaasOwner, isBackofficeRoute, user?.role, isProviderAuthenticated, hasInitialized]);
+  }, [isBackofficeUser, isBackofficeRoute, user?.role, isProviderAuthenticated, hasInitialized]);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
