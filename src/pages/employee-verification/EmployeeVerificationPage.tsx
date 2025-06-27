@@ -21,8 +21,8 @@ const EmployeeVerificationPage = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 max-w-7xl">
-        <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
+      <div className="w-full py-6">
+        <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
           <div className="flex items-center space-x-4">
             <FileCheck className="h-8 w-8 text-primary" />
             <div>
@@ -48,7 +48,7 @@ const EmployeeVerificationPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <h2 className="text-lg font-medium mb-4 text-left">Employees</h2>
           <EmployeesList />
         </div>
