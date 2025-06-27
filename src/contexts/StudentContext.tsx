@@ -27,18 +27,21 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const fetchStudents = useCallback(async () => {
     if (!employeeData?.clientId) {
       console.log('No client ID available, skipping student fetch');
+      setStudents([]);
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
     try {
+      console.log('Fetching students for client ID:', employeeData.clientId);
       const studentData = await fetchStudentsByClientId(employeeData.clientId);
       setStudents(studentData);
       console.log('Successfully fetched students:', studentData.length);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
+      setStudents([]);
     } finally {
       setIsLoading(false);
     }
@@ -46,13 +49,15 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   // Public refresh method
   const refreshStudents = useCallback(async () => {
+    console.log('Refreshing students...');
     await fetchStudents();
   }, [fetchStudents]);
 
   // Fetch students when clientId becomes available or changes
   useEffect(() => {
+    console.log('StudentContext useEffect triggered, clientId:', employeeData?.clientId);
     fetchStudents();
-  }, [fetchStudents]);
+  }, [fetchStudents, employeeData?.clientId]);
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -72,10 +77,16 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
 
+      // Update local state immediately
       setStudents(prev => [data, ...prev]);
+      toast.success('Student added successfully');
+      
+      // Refresh to ensure consistency
+      await refreshStudents();
       return data;
     } catch (error) {
       console.error('Error adding student:', error);
+      toast.error('Failed to add student');
       throw error;
     }
   };
@@ -98,14 +109,20 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
 
+      // Update local state immediately
       setStudents(prev => 
         prev.map(student => 
           student.id === id ? data : student
         )
       );
+      toast.success('Student updated successfully');
+      
+      // Refresh to ensure consistency
+      await refreshStudents();
       return data;
     } catch (error) {
       console.error('Error updating student:', error);
+      toast.error('Failed to update student');
       throw error;
     }
   };
@@ -127,9 +144,12 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
 
+      // Update local state immediately
       setStudents(prev => prev.filter(student => student.id !== id));
+      toast.success('Student deleted successfully');
     } catch (error) {
       console.error('Error deleting student:', error);
+      toast.error('Failed to delete student');
       throw error;
     }
   };

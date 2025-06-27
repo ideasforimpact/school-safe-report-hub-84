@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
@@ -56,10 +55,8 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       setIsDeleting(true);
       try {
         await deleteStudent(studentToDelete);
-        toast.success('Student deleted successfully');
       } catch (error) {
         console.error('Delete error:', error);
-        toast.error('Failed to delete student. Please try again.');
       } finally {
         setIsDeleteAlertOpen(false);
         setStudentToDelete(null);
@@ -75,12 +72,15 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         return;
       }
 
+      console.log('Starting import process...');
       await processStudentExcel(file, employeeData.clientId);
       
       // Refresh the students list after successful import
+      console.log('Import completed, refreshing student list...');
       await refreshStudents();
       
       toast.success("Students imported successfully");
+      setIsImportDialogOpen(false);
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error("Failed to process student import");
