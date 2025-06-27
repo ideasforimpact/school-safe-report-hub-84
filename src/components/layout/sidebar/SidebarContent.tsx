@@ -34,16 +34,10 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Fetch modules dynamically - stabilized version
+  // Fetch modules dynamically - prioritize backoffice users
   useEffect(() => {
     // Skip if already initialized to prevent re-fetching
     if (hasInitialized) {
-      return;
-    }
-
-    if (isProviderAuthenticated && !isBackofficeRoute) {
-      // Use ClientModulesList component for provider-authenticated users
-      setHasInitialized(true);
       return;
     }
     
@@ -51,12 +45,21 @@ const SidebarContent = () => {
     
     const loadModules = async () => {
       try {
+        // PRIORITY 1: Backoffice users on backoffice routes - always use database modules
         if (isSaasOwner && isBackofficeRoute) {
-          // For backoffice, fetch modules from database
           const modules = await fetchModules(true, user);
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);
-        } else if (configuredModules.length > 0) {
+        }
+        // PRIORITY 2: Provider-authenticated users on client routes - use ClientModulesList
+        else if (isProviderAuthenticated && !isBackofficeRoute) {
+          // ClientModulesList component will handle this case
+          setHasInitialized(true);
+          setIsLoading(false);
+          return;
+        }
+        // PRIORITY 3: Regular client users with configured modules
+        else if (configuredModules.length > 0) {
           // Convert Redux store modules to sidebar format
           const items = configuredModules.map(module => {
             const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
@@ -69,8 +72,9 @@ const SidebarContent = () => {
           });
           
           setDynamicMenuItems(items);
-        } else {
-          // Fallback to API call for client modules
+        }
+        // PRIORITY 4: Fallback to API call for client modules
+        else {
           const modules = await fetchModules(false, user);
           const items = convertModulesToSidebarItems(modules, {});
           setDynamicMenuItems(items);
