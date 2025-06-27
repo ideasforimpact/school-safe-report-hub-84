@@ -46,6 +46,7 @@ export const ClassTab = ({
   const [newClass, setNewClass] = useState('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingClass, setEditingClass] = useState<{id: string, name: string, campusId: string} | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleClassAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,19 +78,45 @@ export const ClassTab = ({
     toast.success("Grade deleted successfully");
   };
 
-  const handleClassUpdate = () => {
-    if (!editingClass || !editingClass.name.trim()) {
+  const handleEditOpen = (cls: ClassItem) => {
+    console.log("Opening edit dialog for class:", cls);
+    setEditingClass({
+      id: cls.id,
+      name: cls.name,
+      campusId: cls.campusId
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSave = (updatedName: string) => {
+    if (!updatedName.trim()) {
       toast.error("Grade name cannot be empty");
       return;
     }
     
-    if (!editingClass.campusId) {
-      toast.error("Please select a campus for this grade");
-      return;
+    if (editingClass) {
+      if (!editingClass.campusId) {
+        toast.error("Please select a campus for this grade");
+        return;
+      }
+      
+      console.log("Updating class:", editingClass.id, editingClass.campusId, updatedName.trim());
+      updateClass(editingClass.id, editingClass.campusId, updatedName.trim());
+      handleEditClose();
+      toast.success("Grade updated successfully");
     }
-    
-    console.log("Updating class:", editingClass.id, editingClass.campusId, editingClass.name.trim());
-    updateClass(editingClass.id, editingClass.campusId, editingClass.name.trim());
+  };
+
+  const handleEditClose = () => {
+    console.log("Closing edit dialog");
+    setIsEditDialogOpen(false);
+    setEditingClass(null);
+  };
+
+  const handleCampusChange = (campusId: string) => {
+    if (editingClass) {
+      setEditingClass(prev => prev ? { ...prev, campusId } : null);
+    }
   };
 
   const getCampusName = (campusId: string) => {
@@ -177,46 +204,14 @@ export const ClassTab = ({
                   <TableCell>{getCampusName(cls.campusId)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Grade"
-                        description="Update the grade details below"
-                        fieldLabel="Grade name"
-                        value={cls.name}
-                        extraFields={[
-                          {
-                            type: "select",
-                            label: "Campus",
-                            options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                            value: editingClass?.id === cls.id ? editingClass.campusId : cls.campusId,
-                            onChange: (value) => {
-                              setEditingClass(prev => 
-                                prev && prev.id === cls.id ? {...prev, campusId: value} : 
-                                { id: cls.id, name: cls.name, campusId: value }
-                              );
-                            }
-                          }
-                        ]}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingClass({
-                              id: cls.id, 
-                              name: cls.name, 
-                              campusId: cls.campusId
-                            });
-                          }
-                        }}
-                        onChange={(value) => {
-                          setEditingClass(prev => 
-                            prev && prev.id === cls.id ? {...prev, name: value} : prev
-                          );
-                        }}
-                        onSave={handleClassUpdate}
-                        triggerButton={
-                          <Button variant="ghost" size="icon" disabled={loading}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditOpen(cls)}
+                        disabled={loading}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       
                       <Button 
                         variant="ghost" 
@@ -233,6 +228,32 @@ export const ClassTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Edit Dialog */}
+        {editingClass && (
+          <EditDialog
+            title="Edit Grade"
+            description="Update the grade details below"
+            fieldLabel="Grade name"
+            value={editingClass.name}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onChange={(value) => {
+              setEditingClass(prev => prev ? { ...prev, name: value } : null);
+            }}
+            onSave={handleEditSave}
+            onClose={handleEditClose}
+            extraFields={[
+              {
+                type: "select",
+                label: "Campus",
+                options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
+                value: editingClass.campusId,
+                onChange: handleCampusChange
+              }
+            ]}
+          />
+        )}
       </CardContent>
     </Card>
   );
