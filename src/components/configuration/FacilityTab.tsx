@@ -44,6 +44,7 @@ export const FacilityTab = ({
   const [newFacility, setNewFacility] = useState('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingFacility, setEditingFacility] = useState<{id: string, name: string, campusId: string} | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleFacilityAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,25 +62,53 @@ export const FacilityTab = ({
     addFacility(newFacility.trim(), selectedCampusId);
     setNewFacility('');
     setSelectedCampusId('');
+    toast.success("Facility added successfully");
   };
 
   const handleFacilityDelete = (id: string) => {
     deleteFacility(id);
+    toast.success("Facility deleted successfully");
   };
 
-  const handleFacilityUpdate = () => {
-    if (!editingFacility || !editingFacility.name.trim()) {
+  const handleEditOpen = (facility: any) => {
+    console.log("Opening edit dialog for facility:", facility);
+    setEditingFacility({
+      id: facility.id,
+      name: facility.name,
+      campusId: facility.campusId || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSave = (updatedName: string) => {
+    if (!updatedName.trim()) {
       toast.error("Facility name cannot be empty");
       return;
     }
     
-    if (!editingFacility.campusId) {
-      toast.error("Please select a campus for this facility");
-      return;
+    if (editingFacility) {
+      if (!editingFacility.campusId) {
+        toast.error("Please select a campus for this facility");
+        return;
+      }
+      
+      console.log("Updating facility:", editingFacility.id, updatedName.trim(), editingFacility.campusId);
+      updateFacility(editingFacility.id, updatedName.trim(), editingFacility.campusId);
+      handleEditClose();
+      toast.success("Facility updated successfully");
     }
-    
-    console.log("Updating facility:", editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
-    updateFacility(editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
+  };
+
+  const handleEditClose = () => {
+    console.log("Closing edit dialog");
+    setIsEditDialogOpen(false);
+    setEditingFacility(null);
+  };
+
+  const handleCampusChange = (campusId: string) => {
+    if (editingFacility) {
+      setEditingFacility(prev => prev ? { ...prev, campusId } : null);
+    }
   };
 
   const getCampusName = (campusId: string) => {
@@ -169,46 +198,14 @@ export const FacilityTab = ({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Facility"
-                        description="Update the facility name below"
-                        fieldLabel="Facility name"
-                        value={facility.name}
-                        extraFields={[
-                          {
-                            type: "select",
-                            label: "Campus",
-                            options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                            value: editingFacility?.id === facility.id ? editingFacility.campusId : facility.campusId || "",
-                            onChange: (value) => {
-                              setEditingFacility(prev => 
-                                prev && prev.id === facility.id ? {...prev, campusId: value} : 
-                                { id: facility.id, name: facility.name, campusId: value }
-                              );
-                            }
-                          }
-                        ]}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingFacility({
-                              id: facility.id, 
-                              name: facility.name,
-                              campusId: facility.campusId || ""
-                            });
-                          }
-                        }}
-                        onChange={(value) => {
-                          setEditingFacility(prev => 
-                            prev && prev.id === facility.id ? {...prev, name: value} : prev
-                          );
-                        }}
-                        onSave={handleFacilityUpdate}
-                        triggerButton={
-                          <Button variant="ghost" size="icon" disabled={loading}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditOpen(facility)}
+                        disabled={loading}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       
                       <Button 
                         variant="ghost" 
@@ -225,6 +222,32 @@ export const FacilityTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Edit Dialog */}
+        {editingFacility && (
+          <EditDialog
+            title="Edit Facility"
+            description="Update the facility details below"
+            fieldLabel="Facility name"
+            value={editingFacility.name}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onChange={(value) => {
+              setEditingFacility(prev => prev ? { ...prev, name: value } : null);
+            }}
+            onSave={handleEditSave}
+            onClose={handleEditClose}
+            extraFields={[
+              {
+                type: "select",
+                label: "Campus",
+                options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
+                value: editingFacility.campusId,
+                onChange: handleCampusChange
+              }
+            ]}
+          />
+        )}
       </CardContent>
     </Card>
   );
