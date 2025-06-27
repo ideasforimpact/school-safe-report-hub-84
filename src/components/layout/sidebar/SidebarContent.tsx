@@ -19,6 +19,7 @@ const SidebarContent = () => {
   const configuredModules = getConfiguredModules(employeeState);
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
@@ -33,10 +34,16 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Fetch modules dynamically
+  // Fetch modules dynamically - stabilized version
   useEffect(() => {
+    // Skip if already initialized to prevent re-fetching
+    if (hasInitialized) {
+      return;
+    }
+
     if (isProviderAuthenticated && !isBackofficeRoute) {
       // Use ClientModulesList component for provider-authenticated users
+      setHasInitialized(true);
       return;
     }
     
@@ -46,7 +53,6 @@ const SidebarContent = () => {
       try {
         if (isSaasOwner && isBackofficeRoute) {
           // For backoffice, fetch modules from database
-          console.log('Loading backoffice modules from database');
           const modules = await fetchModules(true, user);
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);
@@ -74,12 +80,13 @@ const SidebarContent = () => {
         setDynamicMenuItems([]);
       } finally {
         setIsLoading(false);
+        setHasInitialized(true);
       }
     };
     
     loadModules();
     
-  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
+  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules, hasInitialized]);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
