@@ -111,12 +111,18 @@ const AssessmentsPage = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 md:space-y-8 w-full">
-        {/* Header Section with Create Assessment Button */}
-        <AssessmentsHeader onCreateTemplate={handleCreateAssessment} />
-        
-        {/* Main Content */}
-        {renderMainContent()}
+      <div className="container mx-auto py-6 max-w-7xl">
+        {/* Gradient Header Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg mb-8 text-white">
+          <div className="p-8">
+            <AssessmentsHeader onCreateTemplate={handleCreateAssessment} />
+          </div>
+        </div>
+
+        {/* Main Content Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          {renderMainContent()}
+        </div>
       </div>
     </Layout>
   );
