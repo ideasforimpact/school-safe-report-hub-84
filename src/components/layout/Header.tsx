@@ -24,15 +24,6 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
 
-  // Log user and Redux state for debugging
-  console.log("User from Auth Context:", user);
-  console.log("Employee Data from Redux Store:", employeeData);
-  console.log("Is Admin from Redux:", isAdmin);
-  console.log("Is Super Admin from Redux:", isSuperAdmin);
-  console.log("Department:", employeeData?.department);
-  console.log("Employee Type:", employeeData?.employeeType);
-  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
-  
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   
@@ -52,6 +43,18 @@ const Header = () => {
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner';
 
+  // Determine if user is authenticated - check both user and authentication state
+  const isAuthenticated = Boolean(user && (user.id || user.email));
+
+  console.log('Header - Authentication State:', {
+    user: user,
+    isAuthenticated,
+    isSaasOwner,
+    isBackoffice,
+    userRole: user?.role,
+    currentPath: location.pathname
+  });
+
   return (
     <div className="w-full h-16 bg-white shadow-sm">
       <div className="w-full h-full px-4">
@@ -66,8 +69,8 @@ const Header = () => {
           {/* Navigation links for home page */}
           {isHomePage && <HeaderNavLinks />}
           
-          {/* User Menu */}
-          {user ? (
+          {/* User Menu - Only show Sign In button if truly not authenticated */}
+          {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
