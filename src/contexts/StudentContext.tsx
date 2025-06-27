@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+
+import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,6 +12,7 @@ interface StudentContextType {
   updateStudent: (id: string, student: Partial<Student>) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
   getStudent: (id: string) => Student | undefined;
+  refreshStudents: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -21,12 +23,8 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { employeeData } = useAuth();
 
-  // Fetch students using the new fetch service on component mount
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  const fetchStudents = async () => {
+  // Fetch students function
+  const fetchStudents = useCallback(async () => {
     if (!employeeData?.clientId) {
       console.log('No client ID available, skipping student fetch');
       setIsLoading(false);
@@ -37,13 +35,24 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     try {
       const studentData = await fetchStudentsByClientId(employeeData.clientId);
       setStudents(studentData);
+      console.log('Successfully fetched students:', studentData.length);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
+
+  // Public refresh method
+  const refreshStudents = useCallback(async () => {
+    await fetchStudents();
+  }, [fetchStudents]);
+
+  // Fetch students when clientId becomes available or changes
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -135,6 +144,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     updateStudent,
     deleteStudent,
     getStudent,
+    refreshStudents,
     isLoading
   };
 
