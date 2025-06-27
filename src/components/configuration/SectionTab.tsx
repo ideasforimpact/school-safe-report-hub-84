@@ -47,6 +47,7 @@ export const SectionTab = ({
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingSection, setEditingSection] = useState<{id: string, name: string, classId: string, campusId: string} | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [filteredClasses, setFilteredClasses] = useState<ClassItem[]>([]);
 
@@ -92,30 +93,70 @@ export const SectionTab = ({
     deleteSection(id);
   };
 
-  const handleSectionUpdate = () => {
-    if (!editingSection || !editingSection.name.trim()) {
+  const handleEditOpen = (section: SectionItem) => {
+    console.log("Opening edit dialog for section:", section);
+    setEditingSection({
+      id: section.id,
+      name: section.name,
+      classId: section.classId,
+      campusId: section.campusId || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSave = (updatedName: string) => {
+    if (!updatedName.trim()) {
       toast.error("Section name cannot be empty");
       return;
     }
     
-    if (!editingSection.classId) {
-      toast.error("Please select a grade for this section");
-      return;
-    }
+    if (editingSection) {
+      if (!editingSection.classId) {
+        toast.error("Please select a grade for this section");
+        return;
+      }
 
-    if (!editingSection.campusId) {
-      toast.error("Please select a campus for this section");
-      return;
+      if (!editingSection.campusId) {
+        toast.error("Please select a campus for this section");
+        return;
+      }
+      
+      console.log("Updating section:", editingSection.id, editingSection.classId, editingSection.campusId, updatedName.trim());
+      updateSection(
+        editingSection.id, 
+        editingSection.classId, 
+        editingSection.campusId, 
+        updatedName.trim()
+      );
+      handleEditClose();
+      toast.success("Section updated successfully");
     }
-    
-    console.log("Updating section:", editingSection);
-    updateSection(
-      editingSection.id, 
-      editingSection.classId, 
-      editingSection.campusId, 
-      editingSection.name.trim()
-    );
+  };
+
+  const handleEditClose = () => {
+    console.log("Closing edit dialog");
+    setIsEditDialogOpen(false);
     setEditingSection(null);
+  };
+
+  const handleCampusChange = (campusId: string) => {
+    if (editingSection) {
+      const classStillValid = classes.some(
+        cls => cls.id === editingSection.classId && cls.campusId === campusId
+      );
+      
+      setEditingSection(prev => prev ? {
+        ...prev,
+        campusId,
+        classId: classStillValid ? prev.classId : ''
+      } : null);
+    }
+  };
+
+  const handleClassChange = (classId: string) => {
+    if (editingSection) {
+      setEditingSection(prev => prev ? { ...prev, classId } : null);
+    }
   };
 
   const getClassName = (classId: string) => {
@@ -242,94 +283,14 @@ export const SectionTab = ({
                   <TableCell>{section.campusId ? getCampusName(section.campusId) : 'Not assigned'}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Section"
-                        description="Update the section details below"
-                        fieldLabel="Section name"
-                        value={editingSection?.id === section.id ? editingSection.name : section.name}
-                        extraFields={[
-                          {
-                            type: "select",
-                            label: "Campus",
-                            options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                            value: editingSection?.id === section.id ? editingSection.campusId : section.campusId || '',
-                            onChange: (value) => {
-                              const newCampusId = value;
-                              setEditingSection(prev => {
-                                if (!prev || prev.id !== section.id) {
-                                  return { 
-                                    id: section.id, 
-                                    name: section.name, 
-                                    campusId: newCampusId,
-                                    classId: section.classId 
-                                  };
-                                }
-                                
-                                const classStillValid = classes.some(
-                                  cls => cls.id === prev.classId && cls.campusId === newCampusId
-                                );
-                                
-                                return {
-                                  ...prev,
-                                  campusId: newCampusId,
-                                  classId: classStillValid ? prev.classId : ''
-                                };
-                              });
-                            }
-                          },
-                          {
-                            type: "select",
-                            label: "Grade",
-                            options: editingSection?.campusId 
-                              ? classes
-                                  .filter(cls => cls.campusId === (
-                                    editingSection.id === section.id 
-                                      ? editingSection.campusId 
-                                      : section.campusId
-                                  ))
-                                  .map(cls => ({ value: cls.id, label: cls.name }))
-                              : [],
-                            value: editingSection?.id === section.id ? editingSection.classId : section.classId,
-                            disabled: !editingSection?.campusId,
-                            onChange: (value) => {
-                              setEditingSection(prev => 
-                                prev && prev.id === section.id ? {...prev, classId: value} : 
-                                { 
-                                  id: section.id, 
-                                  name: section.name, 
-                                  classId: value,
-                                  campusId: section.campusId || '' 
-                                }
-                              );
-                            }
-                          }
-                        ]}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingSection({
-                              id: section.id, 
-                              name: section.name, 
-                              classId: section.classId,
-                              campusId: section.campusId || ''
-                            });
-                          }
-                        }}
-                        onChange={(value) => {
-                          setEditingSection(prev => 
-                            prev && prev.id === section.id ? {...prev, name: value} : prev
-                          );
-                        }}
-                        onSave={handleSectionUpdate}
-                        triggerButton={
-                          <Button variant="ghost" size="icon" disabled={loading}>
-                            {loading && editingSection?.id === section.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Pencil className="h-4 w-4" />
-                            )}
-                          </Button>
-                        }
-                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditOpen(section)}
+                        disabled={loading}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       
                       <Button 
                         variant="ghost" 
@@ -350,6 +311,44 @@ export const SectionTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Edit Dialog */}
+        {editingSection && (
+          <EditDialog
+            title="Edit Section"
+            description="Update the section details below"
+            fieldLabel="Section name"
+            value={editingSection.name}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onChange={(value) => {
+              setEditingSection(prev => prev ? { ...prev, name: value } : null);
+            }}
+            onSave={handleEditSave}
+            onClose={handleEditClose}
+            extraFields={[
+              {
+                type: "select",
+                label: "Campus",
+                options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
+                value: editingSection.campusId,
+                onChange: handleCampusChange
+              },
+              {
+                type: "select",
+                label: "Grade",
+                options: editingSection.campusId 
+                  ? classes
+                      .filter(cls => cls.campusId === editingSection.campusId)
+                      .map(cls => ({ value: cls.id, label: cls.name }))
+                  : [],
+                value: editingSection.classId,
+                disabled: !editingSection.campusId,
+                onChange: handleClassChange
+              }
+            ]}
+          />
+        )}
       </CardContent>
     </Card>
   );
