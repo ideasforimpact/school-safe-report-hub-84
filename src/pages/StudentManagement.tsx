@@ -30,7 +30,7 @@ interface StudentManagementProps {
 }
 
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
-  const { students, deleteStudent, isLoading } = useStudents();
+  const { students, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -76,6 +76,10 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       }
 
       await processStudentExcel(file, employeeData.clientId);
+      
+      // Refresh the students list after successful import
+      await refreshStudents();
+      
       toast.success("Students imported successfully");
     } catch (error) {
       console.error("Import process failed:", error);

@@ -4,7 +4,6 @@ import { parseExcelFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processStudentData, showImportResultNotifications } from './importProcessingService';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth';
 
 /**
  * Process and import students from Excel/CSV file
@@ -18,8 +17,11 @@ export const processStudentExcel = async (file: File, clientId?: string): Promis
       throw new Error('Client information not available. Please ensure you are logged in properly.');
     }
 
+    console.log('Starting import process for client:', clientId);
+
     // Parse the Excel/CSV file
     const rawData = await parseExcelFile(file);
+    console.log('Parsed data:', rawData.length, 'records');
     
     // Show status message for large imports
     if (rawData.length > 100) {
@@ -34,10 +36,14 @@ export const processStudentExcel = async (file: File, clientId?: string): Promis
       throw new Error('Data validation failed');
     }
     
+    console.log('Validation passed, processing student data...');
+    
     // Process the data and add/update students using bulk operations
     console.time('Bulk import processing');
     const result = await processStudentData(rawData, clientId);
     console.timeEnd('Bulk import processing');
+    
+    console.log('Import completed:', result);
     
     // Show notifications
     showImportResultNotifications(result);
