@@ -5,7 +5,6 @@ import { useClient } from '@/contexts/ClientContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import HeaderLogo from './HeaderLogo';
-import HeaderSearch from './HeaderSearch';
 import HeaderNavLinks from './HeaderNavLinks';
 import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
@@ -63,9 +62,6 @@ const Header = () => {
             isSaasOwner={isSuperAdmin || isSaasOwner} 
             dashboardPath={dashboardPath} 
           />
-          
-          {/* Search Bar - Only for logged-in users */}
-          {user && !isHomePage && <HeaderSearch />}
           
           {/* Navigation links for home page */}
           {isHomePage && <HeaderNavLinks />}

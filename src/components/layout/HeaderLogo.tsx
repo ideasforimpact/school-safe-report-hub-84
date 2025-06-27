@@ -11,21 +11,21 @@ interface HeaderLogoProps {
 
 const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps) => {
   return (
-    <div className="flex items-center whitespace-nowrap">
-      <Link to={dashboardPath} className="flex items-center">
+    <div className="flex items-center space-x-3">
+      <Link to={dashboardPath} className="flex items-center space-x-3">
         {userClient?.logo ? (
           <img 
             src={userClient.logo} 
             alt={`${userClient.name} logo`}
-            className="h-8 w-auto ml-0"
+            className="h-10 w-auto"
           />
         ) : (
-          <div className="h-8 w-8 bg-primary-100 rounded-md flex items-center justify-center ml-0">
-            <ShieldCheck className="h-5 w-5 text-primary-600" />
+          <div className="h-10 w-10 bg-primary-100 rounded-md flex items-center justify-center">
+            <ShieldCheck className="h-6 w-6 text-primary-600" />
           </div>
         )}
         
-        <h1 className="text-lg font-bold text-gray-800 ml-2 truncate">
+        <h1 className="text-xl font-bold text-gray-800">
           Safe School
         </h1>
       </Link>
