@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ interface EditDialogProps {
   // Fields for direct form handling
   fields?: Field[];
   initialValues?: Record<string, string>;
-  onSave: (formData: Record<string, string>) => void;
+  onSave: (formData?: Record<string, string>) => void;
   onCancel?: () => void;
   
   // Fields for controlled usage (from other components)
@@ -68,11 +68,12 @@ export const EditDialog: React.FC<EditDialogProps> = ({
 }) => {
   const [formData, setFormData] = React.useState<Record<string, string>>(initialValues);
   const [isOpen, setIsOpen] = React.useState(false);
-  const [localValue, setLocalValue] = React.useState(value || '');
+  const [localValue, setLocalValue] = React.useState('');
 
   // Handle controlled vs. uncontrolled open state
   const dialogOpen = open !== undefined ? open : isOpen;
   const setDialogOpen = (newOpen: boolean) => {
+    console.log("Dialog open state changing to:", newOpen);
     if (onOpenChange) {
       onOpenChange(newOpen);
     } else {
@@ -80,42 +81,50 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     }
   };
 
-  React.useEffect(() => {
-    if (value !== undefined) {
-      setLocalValue(value);
-    }
+  // Update local value when external value changes
+  useEffect(() => {
+    console.log("EditDialog: value prop changed to:", value);
+    setLocalValue(value || '');
   }, [value]);
 
-  React.useEffect(() => {
+  // Reset local value when dialog closes
+  useEffect(() => {
     if (!dialogOpen) {
+      console.log("Dialog closed, resetting local value");
       setLocalValue('');
+    } else {
+      console.log("Dialog opened, setting local value to:", value);
+      setLocalValue(value || '');
     }
-  }, [dialogOpen]);
+  }, [dialogOpen, value]);
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFieldChange = (value: string) => {
-    setLocalValue(value);
+  const handleFieldChange = (newValue: string) => {
+    console.log("Field value changing to:", newValue);
+    setLocalValue(newValue);
     if (onChange) {
-      onChange(value);
+      onChange(newValue);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted");
     
     if (fields) {
       onSave(formData);
     } else {
-      onSave({});
+      onSave();
     }
     
     setDialogOpen(false);
   };
 
   const handleCancel = () => {
+    console.log("Edit canceled");
     if (onCancel) {
       onCancel();
     } else if (onClose) {
@@ -175,6 +184,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                     value={localValue}
                     onChange={(e) => handleFieldChange(e.target.value)}
                     className="w-full"
+                    autoFocus
                   />
                 </div>
               </div>
@@ -256,35 +266,18 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     );
   }
 
-  // For directly rendered component
+  // For directly controlled dialog
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-4 py-4">
-        {fields?.map((field) => (
-          <div className="grid grid-cols-4 items-center gap-4" key={field.name}>
-            <label htmlFor={field.name} className="text-right text-sm font-medium col-span-1">
-              {field.label}{field.required && <span className="text-red-500">*</span>}
-            </label>
-            <div className="col-span-3">
-              <Input
-                id={field.name}
-                name={field.name}
-                type={field.type || 'text'}
-                value={formData[field.name] || ''}
-                onChange={(e) => handleChange(field.name, e.target.value)}
-                required={field.required}
-                className="w-full"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={handleCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">Save</Button>
-      </DialogFooter>
-    </form>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogContent>
+        {title && (
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            {description && <DialogDescription>{description}</DialogDescription>}
+          </DialogHeader>
+        )}
+        {renderDialogContent()}
+      </DialogContent>
+    </Dialog>
   );
 };

@@ -34,7 +34,8 @@ export const CampusTab = ({
   loading = false
 }: CampusTabProps) => {
   const [newCampus, setNewCampus] = useState('');
-  const [editingCampus, setEditingCampus] = useState<{id: string, name: string} | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const handleCampusAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +45,7 @@ export const CampusTab = ({
       return;
     }
     
-    console.log("Adding campus:", newCampus.trim()); // Debug log
+    console.log("Adding campus:", newCampus.trim());
     addCampus(newCampus.trim());
     setNewCampus('');
   };
@@ -60,14 +61,30 @@ export const CampusTab = ({
     deleteCampus(id);
   };
 
-  const handleCampusUpdate = () => {
-    if (!editingCampus || !editingCampus.name.trim()) {
+  const handleEditOpen = (campus: CampusItem) => {
+    console.log("Opening edit dialog for campus:", campus);
+    setEditValue(campus.name);
+    setEditDialogOpen(campus.id);
+  };
+
+  const handleEditSave = () => {
+    if (!editValue.trim()) {
       toast.error("Campus name cannot be empty");
       return;
     }
     
-    console.log("Updating campus:", editingCampus.id, editingCampus.name.trim());
-    updateCampus(editingCampus.id, editingCampus.name.trim());
+    if (editDialogOpen) {
+      console.log("Updating campus:", editDialogOpen, "with name:", editValue.trim());
+      updateCampus(editDialogOpen, editValue.trim());
+      setEditDialogOpen(null);
+      setEditValue('');
+    }
+  };
+
+  const handleEditCancel = () => {
+    console.log("Canceling edit dialog");
+    setEditDialogOpen(null);
+    setEditValue('');
   };
 
   return (
@@ -129,31 +146,14 @@ export const CampusTab = ({
                   <TableCell>{campus.name}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Campus"
-                        description="Update the campus name below"
-                        fieldLabel="Campus name"
-                        value={campus.name}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingCampus({
-                              id: campus.id, 
-                              name: campus.name
-                            });
-                          }
-                        }}
-                        onChange={(value) => {
-                          setEditingCampus(prev => 
-                            prev && prev.id === campus.id ? {...prev, name: value} : prev
-                          );
-                        }}
-                        onSave={handleCampusUpdate}
-                        triggerButton={
-                          <Button variant="ghost" size="icon" disabled={loading}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditOpen(campus)}
+                        disabled={loading}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       
                       <Button 
                         variant="ghost" 
@@ -170,6 +170,23 @@ export const CampusTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Edit Dialog */}
+        <EditDialog
+          title="Edit Campus"
+          description="Update the campus name below"
+          fieldLabel="Campus name"
+          value={editValue}
+          open={editDialogOpen !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              handleEditCancel();
+            }
+          }}
+          onChange={setEditValue}
+          onSave={handleEditSave}
+          onClose={handleEditCancel}
+        />
       </CardContent>
     </Card>
   );
