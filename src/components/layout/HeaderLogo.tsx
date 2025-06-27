@@ -11,7 +11,7 @@ interface HeaderLogoProps {
 
 const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps) => {
   return (
-    <div className="flex items-center space-x-3">
+    <div className="flex items-center space-x-3 flex-shrink-0">
       <Link to={dashboardPath} className="flex items-center space-x-3">
         {userClient?.logo ? (
           <img 
@@ -25,7 +25,7 @@ const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps)
           </div>
         )}
         
-        <h1 className="text-xl font-bold text-gray-800">
+        <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap">
           Safe School
         </h1>
       </Link>

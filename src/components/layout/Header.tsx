@@ -54,9 +54,9 @@ const Header = () => {
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
-      <div className="w-full h-full px-0">
-        <div className="container mx-auto h-full flex items-center justify-between">
-          {/* Logo Section */}
+      <div className="w-full h-full px-4">
+        <div className="w-full h-full flex items-center justify-between">
+          {/* Logo Section - Positioned at absolute left */}
           <HeaderLogo 
             userClient={userClient} 
             isSaasOwner={isSuperAdmin || isSaasOwner} 
