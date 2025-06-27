@@ -32,7 +32,18 @@ const RouteGuard = ({
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // If currently logging out, don't redirect - let the logout process complete
+  console.log('RouteGuard - Authentication Check:', {
+    currentUser: currentUser,
+    isBackofficeUser,
+    requireAuth,
+    requireSaasOwner,
+    isBackoffice,
+    currentPath: location.pathname,
+    userRole: currentUser?.role,
+    isLoggingOut: state.isLoggingOut
+  });
+
+  // If currently logging out, show loading state
   if (state.isLoggingOut) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
@@ -42,19 +53,24 @@ const RouteGuard = ({
     </div>;
   }
 
-  // If authentication is required and user is not logged in, redirect to login
-  if (requireAuth && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Enhanced authentication check - consider both regular and backoffice users
+  const isAuthenticated = Boolean(currentUser && (currentUser.id || currentUser.email));
+
+  // If authentication is required and user is not logged in, redirect to appropriate login
+  if (requireAuth && !isAuthenticated) {
+    const loginPath = isBackoffice ? '/backoffice/login' : '/login';
+    console.log('RouteGuard - Redirecting to login:', loginPath);
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // If admin access is required and user is not admin, redirect to dashboard
-  if (requireAdmin && currentUser && !isAdmin) {
+  if (requireAdmin && isAuthenticated && !isAdmin) {
     toast.error("Admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 
   // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
-  if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
+  if (requireSaasOwner && isAuthenticated && !isSuperAdmin && !isBackofficeUser) {
     toast.error("Owner privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
