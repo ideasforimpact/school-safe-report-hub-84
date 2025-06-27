@@ -36,6 +36,7 @@ export const SubcategoryTab = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string, categoryId: string} | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { employeeData } = useAuth();
   
   const handleAddSubcategory = (e: React.FormEvent) => {
@@ -60,24 +61,36 @@ export const SubcategoryTab = ({
     deleteSubcategory(categoryId, subcategoryId);
   };
   
-  const handleUpdateSubcategory = () => {
-    if (!editingSubcategory) return;
-    
-    if (!editingSubcategory.name.trim()) {
+  const handleEditOpen = (subcategory: SubcategoryItem) => {
+    console.log("Opening edit dialog for subcategory:", subcategory);
+    setEditingSubcategory({
+      id: subcategory.id,
+      name: subcategory.name,
+      categoryId: selectedCategoryId
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSave = (updatedName: string) => {
+    if (!updatedName.trim()) {
       toast.error("Subcategory name cannot be empty");
       return;
     }
     
-    updateSubcategory(
-      editingSubcategory.categoryId, 
-      editingSubcategory.id, 
-      editingSubcategory.name.trim()
-    );
-    
-    setEditingSubcategory(null);
+    if (editingSubcategory) {
+      console.log("Updating subcategory:", editingSubcategory.id, "with name:", updatedName.trim());
+      updateSubcategory(
+        editingSubcategory.categoryId, 
+        editingSubcategory.id, 
+        updatedName.trim()
+      );
+      handleEditClose();
+    }
   };
 
   const handleEditClose = () => {
+    console.log("Closing edit dialog");
+    setIsEditDialogOpen(false);
     setEditingSubcategory(null);
   };
   
@@ -150,33 +163,13 @@ export const SubcategoryTab = ({
                     <TableCell>{subcategory.name}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <EditDialog
-                          title="Edit Subcategory"
-                          description="Update the subcategory name below"
-                          fieldLabel="Subcategory name"
-                          value={editingSubcategory?.id === subcategory.id ? editingSubcategory.name : subcategory.name}
-                          onOpenChange={(open) => {
-                            if (open) {
-                              setEditingSubcategory({
-                                id: subcategory.id,
-                                name: subcategory.name,
-                                categoryId: selectedCategoryId
-                              });
-                            } else if (!open && editingSubcategory) {
-                              setEditingSubcategory(null);
-                            }
-                          }}
-                          onChange={(value) => setEditingSubcategory(prev => 
-                            prev ? {...prev, name: value} : null
-                          )}
-                          onSave={handleUpdateSubcategory}
-                          onClose={handleEditClose}
-                          triggerButton={
-                            <Button variant="ghost" size="icon">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          }
-                        />
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleEditOpen(subcategory)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         
                         <Button 
                           variant="ghost" 
@@ -198,6 +191,23 @@ export const SubcategoryTab = ({
           <div className="text-center py-6 bg-gray-50 rounded-md">
             <p className="text-gray-500">Select a category to manage its subcategories</p>
           </div>
+        )}
+
+        {/* Edit Dialog */}
+        {editingSubcategory && (
+          <EditDialog
+            title="Edit Subcategory"
+            description="Update the subcategory name below"
+            fieldLabel="Subcategory name"
+            value={editingSubcategory.name}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onChange={(value) => {
+              setEditingSubcategory(prev => prev ? { ...prev, name: value } : null);
+            }}
+            onSave={handleEditSave}
+            onClose={handleEditClose}
+          />
         )}
       </CardContent>
     </Card>
