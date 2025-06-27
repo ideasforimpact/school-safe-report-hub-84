@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
+import { getCurrentUser, getIsBackofficeUser, getIsAuthenticated } from '@/store/authSelectors';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -29,8 +29,19 @@ const RouteGuard = ({
   // Get authentication and employee state from Redux
   const currentUser = getCurrentUser(state);
   const isBackofficeUser = getIsBackofficeUser(state);
+  const isAuthenticated = getIsAuthenticated(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
+
+  // Log route guard state for debugging
+  console.log("RouteGuard - Authentication State:", {
+    currentUser: currentUser,
+    isAuthenticated: isAuthenticated,
+    isBackofficeUser: isBackofficeUser,
+    requireAuth: requireAuth,
+    requireSaasOwner: requireSaasOwner,
+    location: location.pathname
+  });
 
   // If currently logging out, don't redirect - let the logout process complete
   if (state.isLoggingOut) {
@@ -42,13 +53,14 @@ const RouteGuard = ({
     </div>;
   }
 
-  // If authentication is required and user is not logged in, redirect to login
-  if (requireAuth && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // If authentication is required and user is not authenticated, redirect to appropriate login
+  if (requireAuth && !isAuthenticated) {
+    const loginPath = isBackoffice ? '/backoffice/login' : '/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // If admin access is required and user is not admin, redirect to dashboard
-  if (requireAdmin && currentUser && !isAdmin) {
+  if (requireAdmin && currentUser && !isAdmin && !isBackofficeUser) {
     toast.error("Admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
@@ -56,7 +68,8 @@ const RouteGuard = ({
   // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
   if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
     toast.error("Owner privileges required to access this page");
-    return <Navigate to="/dashboard" replace />;
+    const redirectPath = isBackofficeUser ? "/backoffice/dashboard" : "/dashboard";
+    return <Navigate to={redirectPath} replace />;
   }
 
   // Return children if provided, otherwise return Outlet for nested routes
