@@ -110,8 +110,8 @@ const EduSafeResourcesContent = () => {
   };
   
   return (
-    <div className="container mx-auto py-6 max-w-7xl">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+    <div className="w-full py-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 mx-6">
         <div>
           <h1 className="text-3xl font-bold text-left">EduSafe Resources</h1>
           <p className="text-gray-500 mt-1 text-left">Browse and download safety resources</p>
@@ -125,7 +125,7 @@ const EduSafeResourcesContent = () => {
         </Button>
       </div>
       
-      <div className="mb-6">
+      <div className="mb-6 mx-6">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="w-full md:w-1/2">
             <div className="relative">
@@ -161,7 +161,7 @@ const EduSafeResourcesContent = () => {
         />
       </div>
       
-      <Card className="p-6 mb-8">
+      <Card className="p-6 mb-8 mx-6">
         <ResourceList 
           resources={filteredResources}
           onViewResource={handleViewResource}
