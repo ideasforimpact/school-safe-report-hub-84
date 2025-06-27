@@ -32,31 +32,85 @@ const RouteGuard = ({
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // If currently logging out, don't redirect - let the logout process complete
+  // Enhanced logging for debugging
+  useEffect(() => {
+    console.log('🛡️ RouteGuard: Route check', {
+      path: location.pathname,
+      requireAuth,
+      requireAdmin,
+      requireSaasOwner,
+      isBackoffice,
+      currentUser: currentUser?.email,
+      isBackofficeUser,
+      isAdmin,
+      isSuperAdmin,
+      userRole: currentUser?.role,
+      isLoggingOut: state.isLoggingOut
+    });
+  }, [location.pathname, currentUser, isBackofficeUser, isAdmin, isSuperAdmin, state.isLoggingOut]);
+
+  // If currently logging out, show loading state instead of redirecting
   if (state.isLoggingOut) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">Logging out...</p>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-sm text-gray-600">Logging out...</p>
+        </div>
       </div>
-    </div>;
+    );
   }
 
-  // If authentication is required and user is not logged in, redirect to login
-  if (requireAuth && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Special handling for backoffice routes
+  if (isBackoffice) {
+    // If this is a backoffice route but user is not a backoffice user, redirect
+    if (currentUser && !isBackofficeUser && currentUser.role !== 'saas_owner') {
+      console.log('🚫 RouteGuard: Non-backoffice user trying to access backoffice, redirecting to dashboard');
+      toast.error("You don't have access to the backoffice");
+      return <Navigate to="/dashboard" replace />;
+    }
+    
+    // If backoffice route requires auth and no user, redirect to backoffice login
+    if (requireAuth && !currentUser) {
+      console.log('🔐 RouteGuard: Backoffice route requires auth, redirecting to login');
+      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
+    }
+  } else {
+    // Regular routes - if authentication is required and user is not logged in, redirect to login
+    if (requireAuth && !currentUser) {
+      console.log('🔐 RouteGuard: Regular route requires auth, redirecting to login');
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    
+    // If user is backoffice user trying to access regular routes, redirect to backoffice
+    if (currentUser && isBackofficeUser && currentUser.role === 'saas_owner') {
+      console.log('🏢 RouteGuard: Backoffice user accessing regular route, redirecting to backoffice');
+      return <Navigate to="/backoffice" replace />;
+    }
   }
 
-  // If admin access is required and user is not admin, redirect to dashboard
-  if (requireAdmin && currentUser && !isAdmin) {
+  // If admin access is required and user is not admin, redirect appropriately
+  if (requireAdmin && currentUser && !isAdmin && !isSuperAdmin) {
+    console.log('🚫 RouteGuard: Admin access required but user is not admin');
     toast.error("Admin privileges required to access this page");
-    return <Navigate to="/dashboard" replace />;
+    
+    if (isBackofficeUser) {
+      return <Navigate to="/backoffice" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
-  // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
+  // If owner access is required and user is not super admin or backoffice user, redirect
   if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
+    console.log('🚫 RouteGuard: SaaS owner access required but user is not owner');
     toast.error("Owner privileges required to access this page");
-    return <Navigate to="/dashboard" replace />;
+    
+    if (isBackofficeUser) {
+      return <Navigate to="/backoffice" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   // Return children if provided, otherwise return Outlet for nested routes
