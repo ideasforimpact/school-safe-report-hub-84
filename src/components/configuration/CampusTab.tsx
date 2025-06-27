@@ -34,8 +34,8 @@ export const CampusTab = ({
   loading = false
 }: CampusTabProps) => {
   const [newCampus, setNewCampus] = useState('');
-  const [editDialogOpen, setEditDialogOpen] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+  const [editingCampus, setEditingCampus] = useState<CampusItem | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleCampusAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,33 +58,33 @@ export const CampusTab = ({
       return;
     }
     
+    console.log("Deleting campus:", id);
     deleteCampus(id);
   };
 
   const handleEditOpen = (campus: CampusItem) => {
     console.log("Opening edit dialog for campus:", campus);
-    setEditValue(campus.name);
-    setEditDialogOpen(campus.id);
+    setEditingCampus(campus);
+    setIsEditDialogOpen(true);
   };
 
-  const handleEditSave = () => {
-    if (!editValue.trim()) {
+  const handleEditSave = (updatedName: string) => {
+    if (!updatedName.trim()) {
       toast.error("Campus name cannot be empty");
       return;
     }
     
-    if (editDialogOpen) {
-      console.log("Updating campus:", editDialogOpen, "with name:", editValue.trim());
-      updateCampus(editDialogOpen, editValue.trim());
-      setEditDialogOpen(null);
-      setEditValue('');
+    if (editingCampus) {
+      console.log("Updating campus:", editingCampus.id, "with name:", updatedName.trim());
+      updateCampus(editingCampus.id, updatedName.trim());
+      handleEditClose();
     }
   };
 
-  const handleEditCancel = () => {
-    console.log("Canceling edit dialog");
-    setEditDialogOpen(null);
-    setEditValue('');
+  const handleEditClose = () => {
+    console.log("Closing edit dialog");
+    setIsEditDialogOpen(false);
+    setEditingCampus(null);
   };
 
   return (
@@ -172,21 +172,19 @@ export const CampusTab = ({
         </Table>
 
         {/* Edit Dialog */}
-        <EditDialog
-          title="Edit Campus"
-          description="Update the campus name below"
-          fieldLabel="Campus name"
-          value={editValue}
-          open={editDialogOpen !== null}
-          onOpenChange={(open) => {
-            if (!open) {
-              handleEditCancel();
-            }
-          }}
-          onChange={setEditValue}
-          onSave={handleEditSave}
-          onClose={handleEditCancel}
-        />
+        {editingCampus && (
+          <EditDialog
+            title="Edit Campus"
+            description="Update the campus name below"
+            fieldLabel="Campus name"
+            value={editingCampus.name}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onChange={() => {}} // Not needed for this pattern
+            onSave={() => handleEditSave}
+            onClose={handleEditClose}
+          />
+        )}
       </CardContent>
     </Card>
   );

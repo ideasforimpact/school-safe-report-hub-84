@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ interface EditDialogProps {
   // Fields for direct form handling
   fields?: Field[];
   initialValues?: Record<string, string>;
-  onSave: (formData?: Record<string, string>) => void;
+  onSave: (formData?: Record<string, string>) => void | ((value: string) => void);
   onCancel?: () => void;
   
   // Fields for controlled usage (from other components)
@@ -68,7 +68,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
 }) => {
   const [formData, setFormData] = React.useState<Record<string, string>>(initialValues);
   const [isOpen, setIsOpen] = React.useState(false);
-  const [localValue, setLocalValue] = React.useState('');
+  const [localValue, setLocalValue] = useState('');
 
   // Handle controlled vs. uncontrolled open state
   const dialogOpen = open !== undefined ? open : isOpen;
@@ -81,20 +81,14 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     }
   };
 
-  // Update local value when external value changes
+  // Initialize local value when dialog opens with the provided value
   useEffect(() => {
-    console.log("EditDialog: value prop changed to:", value);
-    setLocalValue(value || '');
-  }, [value]);
-
-  // Reset local value when dialog closes
-  useEffect(() => {
-    if (!dialogOpen) {
+    if (dialogOpen && value) {
+      console.log("Dialog opened, initializing with value:", value);
+      setLocalValue(value);
+    } else if (!dialogOpen) {
       console.log("Dialog closed, resetting local value");
       setLocalValue('');
-    } else {
-      console.log("Dialog opened, setting local value to:", value);
-      setLocalValue(value || '');
     }
   }, [dialogOpen, value]);
 
@@ -117,7 +111,10 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     if (fields) {
       onSave(formData);
     } else {
-      onSave();
+      // For single field dialogs, pass the local value
+      if (typeof onSave === 'function') {
+        (onSave as (value: string) => void)(localValue);
+      }
     }
     
     setDialogOpen(false);
