@@ -31,7 +31,7 @@ interface EditDialogProps {
   // Fields for direct form handling
   fields?: Field[];
   initialValues?: Record<string, string>;
-  onSave: (formData?: Record<string, string>) => void | ((value: string) => void);
+  onSave: ((formData: Record<string, string>) => void) | ((value: string) => void);
   onCancel?: () => void;
   
   // Fields for controlled usage (from other components)
@@ -109,12 +109,11 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     console.log("Form submitted");
     
     if (fields) {
-      onSave(formData);
+      // For multi-field forms, pass the form data
+      (onSave as (formData: Record<string, string>) => void)(formData);
     } else {
       // For single field dialogs, pass the local value
-      if (typeof onSave === 'function') {
-        (onSave as (value: string) => void)(localValue);
-      }
+      (onSave as (value: string) => void)(localValue);
     }
     
     setDialogOpen(false);
