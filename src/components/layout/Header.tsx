@@ -32,9 +32,10 @@ const Header = () => {
   const dashboardPath = isBackofficeUser || user?.role === 'saas_owner' ? "/backoffice/dashboard" : "/dashboard";
   
   // Find the client for logo display (only for non-backoffice users)
-  // Fix the TypeScript error by properly mapping the client properties
+  // Fix the TypeScript error by properly mapping all required client properties
   const userClient = !isBackofficeUser && employeeData?.client ? {
     ...employeeData.client,
+    email: employeeData.client.email || '',
     contactPerson: employeeData.client.contact_person || '',
     creationDate: employeeData.client.creation_date || new Date().toISOString()
   } : null;
