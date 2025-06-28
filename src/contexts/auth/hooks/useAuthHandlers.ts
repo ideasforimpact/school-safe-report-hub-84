@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData, Client, ClientType, DepartmentType, EmployeeType } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -7,6 +8,7 @@ import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId 
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
+import { saveAuthState } from '@/store/authPersistence';
 
 // Define the SupabaseUser type that's missing
 interface SupabaseUser {
@@ -489,72 +491,81 @@ export const useAuthHandlers = ({
       setUser(newUser);
       saveUserToStorage(newUser);
       
-      // Store employee data in Redux - MANUAL DISPATCH FORMAT
+      // STEP 9: Fetch and store configured modules in Redux
+      console.log('🔄 Loading configured modules for employee:', employeeRecord.id);
+      const configuredModules = await fetchConfiguredModules(
+        employeeRecord.id, 
+        employeeRecord.client_id, 
+        employeeRecord.is_super_admin
+      );
+      
+      console.log('✅ Configured modules loaded:', configuredModules.length);
+      
+      // Store employee data in Redux
       if (dispatch) {
         dispatch({
           type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
           payload: employeeData
         });
         
-        // Also set clientId in Redux
-        if (employeeData.clientId) {
-          dispatch(setClientId(employeeData.clientId));
-        }
+        dispatch({
+          type: EmployeeActionTypes.SET_CLIENT_ID,
+          payload: employeeRecord.client_id
+        });
+        
+        dispatch({
+          type: EmployeeActionTypes.SET_CONFIGURED_MODULES,
+          payload: configuredModules
+        });
+        
+        // Save to sessionStorage for persistence
+        saveAuthState({
+          employeeData,
+          clientId: employeeRecord.client_id,
+          configuredModules,
+          loading: false,
+          error: null
+        });
       }
       
-      // FETCH MODULES HERE if employee is a super admin or has a client ID
-      if (dispatch && employeeData.id && employeeData.clientId) {
-        dispatch(setLoading(true));
-        
-        // Get configured modules based on super admin status
-        const modules = await fetchConfiguredModules(
-          employeeData.id, 
-          employeeData.clientId,
-          !!employeeData.isSuperAdmin
-        );
-        
-        // Store modules in Redux
-        dispatch(setConfiguredModules(modules));
-        dispatch(setLoading(false));
-      }
-      
-      // Also update context and localStorage for backward compatibility
+      // Store employee data in auth context
       setEmployeeData(employeeData);
       saveEmployeeDataToStorage(employeeData);
-
-      // Clear any auth errors
+      
+      console.log('✅ SSO Authentication completed successfully for:', supabaseUser.email);
+      
+      // Clear any previous auth errors
       setAuthError(null);
       
-      // Mark auth initialization as complete
-      authInitCompleteRef.current = true;
     } catch (error) {
-      console.error('Authentication processing error:', error);
-      setAuthError('Failed to process authentication');
-      toast.error('Authentication failed. Please try again.');
+      console.error("Error in handleUserAuthentication:", error);
+      setAuthError("Authentication failed. Please try again.");
+      toast.error("Authentication failed. Please try again.");
       
-      // Ensure user is logged out on error
-      await supabase.auth.signOut();
-      
-      // Clear all local state
+      // Clear state on error
       setUser(null);
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
       
-      // Clear Redux state if dispatch is available
       if (dispatch) {
         dispatch(resetEmployee());
-      }
-      
-      // Force redirect to login page on error
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
       }
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo]);
+  }, [
+    isProcessingAuth,
+    setUser,
+    setEmployeeData,
+    setAuthError,
+    dispatch,
+    fetchClientInfo,
+    fetchConfiguredModules,
+    validateDomain
+  ]);
 
   return {
-    handleUserAuthentication
+    handleUserAuthentication,
+    isProcessingAuth
   };
 };
