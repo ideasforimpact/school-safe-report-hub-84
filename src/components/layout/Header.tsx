@@ -36,6 +36,7 @@ const Header = () => {
   const userClient = !isBackofficeUser && employeeData?.client ? {
     ...employeeData.client,
     email: employeeData.client.email || '',
+    phone: employeeData.client.phone || '',
     contactPerson: employeeData.client.contact_person || '',
     creationDate: employeeData.client.creation_date || new Date().toISOString()
   } : null;
