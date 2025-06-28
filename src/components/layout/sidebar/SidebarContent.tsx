@@ -8,44 +8,38 @@ import {
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getConfiguredModules } from '@/store/employeeSelectors';
-import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
 
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { state: employeeState } = useEmployeeStore();
+  const { user, employeeData, isSaasOwner } = useAuth();
   
-  // Get authentication state from Redux
-  const currentUser = getCurrentUser(employeeState);
-  const isBackofficeUser = getIsBackofficeUser(employeeState);
-  
-  const configuredModules = getConfiguredModules(employeeState);
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
   
+  // Determine if user is backoffice user
+  const isBackofficeUser = user?.role === 'saas_owner' || isSaasOwner;
+  
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
   
   // Log sidebar state for debugging
   console.log("SidebarContent - State:", {
-    currentUser: currentUser,
+    user: user,
     isBackofficeUser: isBackofficeUser,
     isBackofficeRoute: isBackofficeRoute,
-    configuredModules: configuredModules?.length || 0
+    employeeData: employeeData
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
   useEffect(() => {
-    if (isBackofficeUser && currentUser?.role === 'saas_owner' && location.pathname === '/') {
+    if (isBackofficeUser && user?.role === 'saas_owner' && location.pathname === '/') {
       navigate('/backoffice');
     }
-  }, [isBackofficeUser, currentUser, location.pathname, navigate]);
+  }, [isBackofficeUser, user, location.pathname, navigate]);
   
   // Fetch modules dynamically
   useEffect(() => {
@@ -56,7 +50,7 @@ const SidebarContent = () => {
       const loadBackofficeModules = async () => {
         try {
           console.log('Loading backoffice modules from database');
-          const modules = await fetchModules(true, currentUser || user);
+          const modules = await fetchModules(true, user);
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);
         } catch (error) {
@@ -76,28 +70,12 @@ const SidebarContent = () => {
       return;
     }
     
-    // Priority 3: Use configured modules from Redux store
-    if (configuredModules.length > 0) {
-      const items = configuredModules.map(module => {
-        const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-        return {
-          icon: null, // Will be resolved in ClientModulesList
-          label: module.name,
-          path,
-          allowed: true
-        };
-      });
-      
-      setDynamicMenuItems(items);
-      return;
-    }
-    
-    // Priority 4: Fallback to API call for client modules
+    // Priority 3: Fallback to API call for client modules
     setIsLoading(true);
     
     const loadClientModules = async () => {
       try {
-        const modules = await fetchModules(false, currentUser || user);
+        const modules = await fetchModules(false, user, employeeData);
         const items = convertModulesToSidebarItems(modules, {});
         setDynamicMenuItems(items);
       } catch (error) {
@@ -110,7 +88,7 @@ const SidebarContent = () => {
     
     loadClientModules();
     
-  }, [isBackofficeUser, isBackofficeRoute, currentUser, user, isProviderAuthenticated, configuredModules]);
+  }, [isBackofficeUser, isBackofficeRoute, user, employeeData, isProviderAuthenticated]);
 
   // Determine if a path is active
   const isActive = (path: string) => {
