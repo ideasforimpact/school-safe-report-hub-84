@@ -178,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 100);
   };
 
-  // Restore backoffice state from storage on initialization
+  // FIXED: Restore backoffice state from storage on initialization with proper state setting
   useEffect(() => {
     if (backofficeStateRestoredRef.current) return;
     
@@ -217,9 +217,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         console.log('✅ AuthProvider: Restoring backoffice user:', backofficeUser);
+        
+        // Set ALL backoffice state atomically and immediately
         setUser(backofficeUser);
         setEmployeeData(parsedEmployeeData);
         setIsBackofficeUser(true);
+        
+        console.log('🔧 AuthProvider: Backoffice state restored completely');
       }
     } catch (error) {
       console.error('❌ AuthProvider: Error restoring backoffice state:', error);
@@ -283,18 +287,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [handleUserAuthentication, isBackofficeUser]);
 
-  // Modified Supabase auth check that preserves backoffice state
+  // FIXED: Modified Supabase auth check that properly preserves backoffice state
   useEffect(() => {
-    if (authCheckInProgressRef.current || backofficeStateRestoredRef.current === false) return;
+    if (authCheckInProgressRef.current || !backofficeStateRestoredRef.current) return;
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
       authCheckInProgressRef.current = true;
       
       try {
-        // If we have a backoffice user, skip Supabase checks entirely
+        // CRITICAL FIX: Check for backoffice user FIRST and skip entirely if found
         if (isBackofficeUser && user) {
-          console.log('✅ AuthProvider: Backoffice user detected, skipping Supabase auth check');
+          console.log('✅ AuthProvider: Backoffice user detected, skipping Supabase auth check entirely');
+          setIsInitializing(false);
+          return;
+        }
+
+        // Also check sessionStorage for backoffice state as backup
+        const savedIsBackoffice = sessionStorage.getItem('isBackofficeUser');
+        if (savedIsBackoffice === 'true') {
+          console.log('✅ AuthProvider: Backoffice user detected in storage, skipping Supabase auth check');
           setIsInitializing(false);
           return;
         }
@@ -310,7 +322,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }, 0);
           }
         } else {
-          // Only clear if we don't have a backoffice user
+          // Only clear if we don't have a backoffice user and no regular user
           if (!isBackofficeUser && !user) {
             console.log('🧹 AuthProvider: No Supabase session and no backoffice user, clearing state');
             setUser(null);
@@ -439,10 +451,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
-        console.log('🔧 AuthProvider: Setting backoffice user:', saasUser);
-        setUser(saasUser);
-        setIsBackofficeUser(true);
-        
         // Create employee data for backoffice user
         const backofficeEmployeeData: EmployeeData = {
           id: backofficeUser.id,
@@ -457,7 +465,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
-        console.log('🔧 AuthProvider: Setting employee data:', backofficeEmployeeData);
+        // Set ALL state atomically to prevent race conditions
+        console.log('🔧 AuthProvider: Setting complete backoffice state');
+        setUser(saasUser);
+        setIsBackofficeUser(true);
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
@@ -465,6 +476,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionStorage.setItem('isBackofficeUser', 'true');
         sessionStorage.setItem('employeeData', JSON.stringify(backofficeEmployeeData));
         
+        console.log('✅ AuthProvider: Backoffice login completed successfully');
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
