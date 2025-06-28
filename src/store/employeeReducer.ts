@@ -1,4 +1,3 @@
-
 import { EmployeeState, EmployeeAction, EmployeeActionTypes } from './types';
 import { loadAuthState } from './authPersistence';
 
@@ -13,7 +12,8 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
       configuredModules: persistedState.configuredModules || [],
-      employeeData: persistedState.employeeData || null
+      employeeData: persistedState.employeeData || null,
+      clientId: persistedState.clientId || null // Add clientId restoration
     };
   }
   console.log('🔄 employeeReducer: No persisted state found');
@@ -37,7 +37,7 @@ export const initialEmployeeState: EmployeeState = {
   configuredModules: restoredState.configuredModules || [],
   isLoading: false,
   error: null,
-  clientId: restoredState.employeeData?.clientId || null,
+  clientId: restoredState.clientId || null,
   isLoggingOut: false
 };
 
