@@ -28,20 +28,38 @@ const RouteGuard = ({
   // Determine if user is backoffice user
   const isActualBackofficeUser = isBackofficeUser || user?.role === 'saas_owner';
 
+  // Check if this is a backoffice route by URL path
+  const isBackofficeRoute = location.pathname.startsWith('/backoffice');
+
   console.log("RouteGuard - Authentication State:", {
     user: !!user,
     isAuthenticated: isAuthenticated,
     isBackofficeUser: isBackofficeUser,
     isActualBackofficeUser: isActualBackofficeUser,
+    isBackofficeRoute: isBackofficeRoute,
     requireAuth: requireAuth,
     requireSaasOwner: requireSaasOwner,
     location: location.pathname,
     userRole: user?.role
   });
 
+  // Special handling for backoffice routes
+  if (isBackofficeRoute || isBackoffice) {
+    // If not authenticated, redirect to backoffice login
+    if (!isAuthenticated) {
+      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
+    }
+    
+    // If authenticated but not backoffice authorized, deny access
+    if (!isActualBackofficeUser) {
+      toast.error("Backoffice access required to view this page");
+      return <Navigate to="/login" replace />;
+    }
+  }
+
   // If authentication is required and user is not authenticated, redirect to appropriate login
   if (requireAuth && !isAuthenticated) {
-    const loginPath = isBackoffice ? '/backoffice/login' : '/login';
+    const loginPath = isBackoffice || isBackofficeRoute ? '/backoffice/login' : '/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
