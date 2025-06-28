@@ -7,7 +7,6 @@ import {
   convertModulesToSidebarItems
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
-import ClientModulesList from './ClientModulesList';
 
 const SidebarContent = () => {
   const location = useLocation();
@@ -34,7 +33,8 @@ const SidebarContent = () => {
     isBackofficeRoute: isBackofficeRoute,
     employeeData: !!employeeData,
     userRole: user?.role,
-    location: location.pathname
+    location: location.pathname,
+    isProviderAuthenticated: isProviderAuthenticated
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
@@ -69,30 +69,33 @@ const SidebarContent = () => {
       return;
     }
     
-    // Priority 2: For provider-authenticated users on client routes, use ClientModulesList
-    if (isProviderAuthenticated && !isBackofficeRoute) {
+    // Priority 2: For all authenticated users (including SSO), fetch their employee modules
+    if (user && !isBackofficeRoute) {
+      setIsLoading(true);
+      
+      const loadEmployeeModules = async () => {
+        try {
+          console.log('Loading employee modules for user:', user.email);
+          const modules = await fetchModules(false, user, employeeData);
+          const items = convertModulesToSidebarItems(modules, {});
+          console.log('✅ SidebarContent: Loaded employee modules:', items.length);
+          setDynamicMenuItems(items);
+        } catch (error) {
+          console.error('Error loading employee modules:', error);
+          setDynamicMenuItems([]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadEmployeeModules();
       return;
     }
     
-    // Priority 3: Fallback to API call for client modules
-    setIsLoading(true);
+    // Priority 3: If no user, clear modules
+    setDynamicMenuItems([]);
     
-    const loadClientModules = async () => {
-      try {
-        const modules = await fetchModules(false, user, employeeData);
-        const items = convertModulesToSidebarItems(modules, {});
-        setDynamicMenuItems(items);
-      } catch (error) {
-        console.error('Error loading client modules:', error);
-        setDynamicMenuItems([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadClientModules();
-    
-  }, [isActualBackofficeUser, isBackofficeRoute, user, employeeData, isProviderAuthenticated]);
+  }, [isActualBackofficeUser, isBackofficeRoute, user, employeeData]);
 
   // Determine if a path is active
   const isActive = (path: string) => {
@@ -112,11 +115,6 @@ const SidebarContent = () => {
     }
     return path;
   };
-
-  // For provider-authenticated users on client routes, use the dedicated component
-  if (isProviderAuthenticated && !isBackofficeRoute && !isActualBackofficeUser) {
-    return <ClientModulesList />;
-  }
 
   if (isLoading) {
     return (
