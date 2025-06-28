@@ -12,7 +12,7 @@ import ClientModulesList from './ClientModulesList';
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, employeeData, isSaasOwner } = useAuth();
+  const { user, employeeData, isBackofficeUser, isSaasOwner } = useAuth();
   
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,31 +20,34 @@ const SidebarContent = () => {
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
   
-  // Determine if user is backoffice user
-  const isBackofficeUser = user?.role === 'saas_owner' || isSaasOwner;
+  // Determine if user is backoffice user from useAuth
+  const isActualBackofficeUser = isBackofficeUser || user?.role === 'saas_owner';
   
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
   
   // Log sidebar state for debugging
   console.log("SidebarContent - State:", {
-    user: user,
+    user: !!user,
     isBackofficeUser: isBackofficeUser,
+    isActualBackofficeUser: isActualBackofficeUser,
     isBackofficeRoute: isBackofficeRoute,
-    employeeData: employeeData
+    employeeData: !!employeeData,
+    userRole: user?.role,
+    location: location.pathname
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
   useEffect(() => {
-    if (isBackofficeUser && user?.role === 'saas_owner' && location.pathname === '/') {
+    if (isActualBackofficeUser && user?.role === 'saas_owner' && location.pathname === '/') {
       navigate('/backoffice');
     }
-  }, [isBackofficeUser, user, location.pathname, navigate]);
+  }, [isActualBackofficeUser, user, location.pathname, navigate]);
   
   // Fetch modules dynamically
   useEffect(() => {
     // Priority 1: If we're a backoffice user or on backoffice route, always load backoffice modules
-    if (isBackofficeUser || isBackofficeRoute) {
+    if (isActualBackofficeUser || isBackofficeRoute) {
       setIsLoading(true);
       
       const loadBackofficeModules = async () => {
@@ -52,6 +55,7 @@ const SidebarContent = () => {
           console.log('Loading backoffice modules from database');
           const modules = await fetchModules(true, user);
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
+          console.log('✅ SidebarContent: Loaded backoffice modules:', items.length);
           setDynamicMenuItems(items);
         } catch (error) {
           console.error('Error loading backoffice modules:', error);
@@ -88,7 +92,7 @@ const SidebarContent = () => {
     
     loadClientModules();
     
-  }, [isBackofficeUser, isBackofficeRoute, user, employeeData, isProviderAuthenticated]);
+  }, [isActualBackofficeUser, isBackofficeRoute, user, employeeData, isProviderAuthenticated]);
 
   // Determine if a path is active
   const isActive = (path: string) => {
@@ -100,7 +104,7 @@ const SidebarContent = () => {
   // Process paths for backoffice users - add /backoffice prefix if not already present
   const getProcessedPath = (path: string) => {
     // If user is backoffice user and path doesn't already start with /backoffice, add it
-    if ((isBackofficeUser || isBackofficeRoute)) {
+    if ((isActualBackofficeUser || isBackofficeRoute)) {
       if (path === '/') {
         return '/backoffice';
       }
@@ -110,7 +114,7 @@ const SidebarContent = () => {
   };
 
   // For provider-authenticated users on client routes, use the dedicated component
-  if (isProviderAuthenticated && !isBackofficeRoute && !isBackofficeUser) {
+  if (isProviderAuthenticated && !isBackofficeRoute && !isActualBackofficeUser) {
     return <ClientModulesList />;
   }
 

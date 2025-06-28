@@ -24,6 +24,7 @@ export const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   isAdmin: false,
   isSaasOwner: false,
+  isBackofficeUser: false,
   addUser: () => {},
   updateUser: () => {},
   deleteUser: () => {},
@@ -34,7 +35,6 @@ export const AuthContext = createContext<AuthContextType>({
   handleUserAuthentication: async () => {},
   employeeData: null,
   setUser: () => {},
-  isBackofficeUser: false,
 });
 
 interface AuthProviderProps {
@@ -56,9 +56,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
+  
+  // Refs to control initialization flow
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
+  const backofficeStateRestoredRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -175,6 +178,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 100);
   };
 
+  // Restore backoffice state from storage on initialization
+  useEffect(() => {
+    if (backofficeStateRestoredRef.current) return;
+    
+    console.log('🔄 AuthProvider: Restoring backoffice state from storage');
+    
+    // Try to restore backoffice user state from sessionStorage
+    try {
+      const savedEmployeeData = sessionStorage.getItem('employeeData');
+      const savedIsBackoffice = sessionStorage.getItem('isBackofficeUser');
+      
+      if (savedEmployeeData && savedIsBackoffice === 'true') {
+        console.log('📦 AuthProvider: Found saved backoffice state');
+        const parsedEmployeeData = JSON.parse(savedEmployeeData);
+        
+        // Reconstruct backoffice user
+        const backofficeUser: User = {
+          id: parsedEmployeeData.id,
+          firstName: parsedEmployeeData.firstName || 'Backoffice',
+          lastName: parsedEmployeeData.lastName || 'Admin',
+          email: parsedEmployeeData.email,
+          role: 'saas_owner',
+          isActive: true,
+          modulePermissions: {
+            superAdmin: true,
+            incidentReporting: true,
+            incidentAdmin: true,
+            assessmentUser: true,
+            assessmentsAdmin: true,
+            employeeVerificationAdmin: true,
+            grievancesAdmin: true,
+            transportSafetyAdmin: true,
+            eduSafeResourceAccess: true
+          },
+          client: null,
+          clientType: null
+        };
+        
+        console.log('✅ AuthProvider: Restoring backoffice user:', backofficeUser);
+        setUser(backofficeUser);
+        setEmployeeData(parsedEmployeeData);
+        setIsBackofficeUser(true);
+      }
+    } catch (error) {
+      console.error('❌ AuthProvider: Error restoring backoffice state:', error);
+    }
+    
+    backofficeStateRestoredRef.current = true;
+  }, []);
+
   // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
     user: user,
@@ -192,6 +245,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Only handle non-backoffice users here
+      if (isBackofficeUser) {
+        console.log('⏸️ AuthProvider: Skipping Supabase auth change - backoffice user active');
+        return;
+      }
+      
       if (event === 'SIGNED_IN' && session?.user) {
         try {
           setShowAuthLoading(true);
@@ -205,13 +264,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setShowAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setEmployeeData(null);
-        setIsBackofficeUser(false);
-        setAuthError(null);
-        setShowAuthLoading(false);
-        toast.info("You have been logged out");
-        logoutUser();
+        // Only clear state if not a backoffice user
+        if (!isBackofficeUser) {
+          setUser(null);
+          setEmployeeData(null);
+          setAuthError(null);
+          setShowAuthLoading(false);
+          toast.info("You have been logged out");
+          logoutUser();
+        }
       }
     });
     
@@ -220,19 +281,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication]);
+  }, [handleUserAuthentication, isBackofficeUser]);
 
-  // Check Supabase auth on initialization
+  // Modified Supabase auth check that preserves backoffice state
   useEffect(() => {
-    if (authCheckInProgressRef.current) return;
+    if (authCheckInProgressRef.current || backofficeStateRestoredRef.current === false) return;
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
       authCheckInProgressRef.current = true;
       
       try {
-        // If we have persisted backoffice user state, skip Supabase checks
+        // If we have a backoffice user, skip Supabase checks entirely
         if (isBackofficeUser && user) {
+          console.log('✅ AuthProvider: Backoffice user detected, skipping Supabase auth check');
           setIsInitializing(false);
           return;
         }
@@ -248,8 +310,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }, 0);
           }
         } else {
-          // If no Supabase session and no backoffice user, clear everything
-          if (!isBackofficeUser) {
+          // Only clear if we don't have a backoffice user
+          if (!isBackofficeUser && !user) {
+            console.log('🧹 AuthProvider: No Supabase session and no backoffice user, clearing state');
             setUser(null);
             setEmployeeData(null);
             setAuthError(null);
@@ -266,7 +329,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [user, isBackofficeUser, handleUserAuthentication]);
+  }, [user, isBackofficeUser, handleUserAuthentication, backofficeStateRestoredRef.current]);
 
   // Handle login with improved state management
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
@@ -398,6 +461,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
+        // Persist backoffice state to sessionStorage
+        sessionStorage.setItem('isBackofficeUser', 'true');
+        sessionStorage.setItem('employeeData', JSON.stringify(backofficeEmployeeData));
+        
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
@@ -430,6 +497,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('💾 AuthProvider: Clearing local storage');
       logoutUser();
       
+      // Clear backoffice-specific storage
+      sessionStorage.removeItem('isBackofficeUser');
+      sessionStorage.removeItem('employeeData');
+      
       // For non-backoffice users, sign out from Supabase
       if (!isBackofficeUser) {
         try {
@@ -442,7 +513,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Determine where to redirect
       const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
+      const shouldRedirectToBackoffice = isCurrentlyBackoffice;
       
       // Navigate immediately after clearing state
       console.log('🧭 AuthProvider: Navigating to login page');
@@ -573,6 +644,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout: handleLogout,
     isAdmin,
     isSaasOwner,
+    isBackofficeUser,
     addUser: handleAddUser,
     updateUser: handleUpdateUser,
     deleteUser: handleDeleteUser,
@@ -583,7 +655,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     handleUserAuthentication,
     employeeData: employeeData,
     setUser: handleSetUser,
-    isBackofficeUser: isBackofficeUser,
   };
 
   if (isInitializing) {

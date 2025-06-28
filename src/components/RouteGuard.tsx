@@ -19,22 +19,24 @@ const RouteGuard = ({
   requireSaasOwner = false,
   isBackoffice = false
 }: RouteGuardProps) => {
-  const { user, isAdmin, isSaasOwner, employeeData } = useAuth();
+  const { user, isAdmin, isSaasOwner, employeeData, isBackofficeUser } = useAuth();
   const location = useLocation();
   
   // Determine if user is authenticated
   const isAuthenticated = !!user;
   
   // Determine if user is backoffice user
-  const isBackofficeUser = user?.role === 'saas_owner' || isSaasOwner;
+  const isActualBackofficeUser = isBackofficeUser || user?.role === 'saas_owner';
 
   console.log("RouteGuard - Authentication State:", {
-    user: user,
+    user: !!user,
     isAuthenticated: isAuthenticated,
     isBackofficeUser: isBackofficeUser,
+    isActualBackofficeUser: isActualBackofficeUser,
     requireAuth: requireAuth,
     requireSaasOwner: requireSaasOwner,
-    location: location.pathname
+    location: location.pathname,
+    userRole: user?.role
   });
 
   // If authentication is required and user is not authenticated, redirect to appropriate login
@@ -44,15 +46,15 @@ const RouteGuard = ({
   }
 
   // If admin access is required and user is not admin, redirect to dashboard
-  if (requireAdmin && user && !isAdmin && !isBackofficeUser) {
+  if (requireAdmin && user && !isAdmin && !isActualBackofficeUser) {
     toast.error("Admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 
   // If owner access is required and user is not owner, redirect to dashboard
-  if (requireSaasOwner && user && !isSaasOwner && !isBackofficeUser) {
+  if (requireSaasOwner && user && !isSaasOwner && !isActualBackofficeUser) {
     toast.error("Owner privileges required to access this page");
-    const redirectPath = isBackofficeUser ? "/backoffice/dashboard" : "/dashboard";
+    const redirectPath = isActualBackofficeUser ? "/backoffice/dashboard" : "/dashboard";
     return <Navigate to={redirectPath} replace />;
   }
 
