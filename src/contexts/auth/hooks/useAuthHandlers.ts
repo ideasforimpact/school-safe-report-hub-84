@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData, Client, ClientType, DepartmentType, EmployeeType } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -520,11 +519,13 @@ export const useAuthHandlers = ({
         
         // Save to sessionStorage for persistence
         saveAuthState({
+          currentUser: newUser,
+          isAuthenticated: true,
+          isBackofficeUser: false,
+          authError: null,
           employeeData,
           clientId: employeeRecord.client_id,
-          configuredModules,
-          loading: false,
-          error: null
+          configuredModules
         });
       }
       
