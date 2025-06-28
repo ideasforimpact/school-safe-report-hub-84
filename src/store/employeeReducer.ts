@@ -47,7 +47,7 @@ export const employeeReducer = (
 ): EmployeeState => {
   if (!action) return state;
 
-  console.log('🔧 employeeReducer: Processing action:', action.type, action.payload);
+  console.log('🔧 employeeReducer: Processing action:', action.type, 'payload' in action ? action.payload : 'no payload');
 
   switch (action.type) {
     case EmployeeActionTypes.SET_CURRENT_USER:
