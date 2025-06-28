@@ -37,11 +37,12 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
   const lastPersistedStateRef = useRef<string>('');
   const isInitializedRef = useRef(false);
 
-  // Persist authentication state changes to sessionStorage
+  // Persist authentication state changes to sessionStorage with improved logic
   useEffect(() => {
     // Skip during initial render to prevent unnecessary operations
     if (!isInitializedRef.current) {
       isInitializedRef.current = true;
+      console.log('🚀 EmployeeContext: Initial render, skipping persistence');
       return;
     }
 
@@ -63,6 +64,13 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
       return;
     }
 
+    console.log('💾 EmployeeContext: State changed, persisting:', {
+      hasUser: !!state.currentUser,
+      isAuthenticated: state.isAuthenticated,
+      isBackofficeUser: state.isBackofficeUser,
+      hasEmployeeData: !!state.employeeData
+    });
+
     // Check if we have a meaningful authentication state
     const hasValidAuthState = state.currentUser || 
                              state.isBackofficeUser || 
@@ -72,6 +80,7 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
 
     if (hasValidAuthState) {
       // Save the state and update our tracking
+      console.log('✅ EmployeeContext: Saving valid auth state to sessionStorage');
       saveAuthState(authState);
       lastPersistedStateRef.current = currentStateHash;
       hasClearedRef.current = false; // Reset clear flag when we have valid state
@@ -80,6 +89,7 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
       const hadValidState = lastPersistedStateRef.current !== '' && lastPersistedStateRef.current !== '{}';
       
       if (!hasClearedRef.current && hadValidState) {
+        console.log('🧹 EmployeeContext: Clearing persisted auth state');
         clearPersistedAuthState();
         hasClearedRef.current = true;
         lastPersistedStateRef.current = currentStateHash;

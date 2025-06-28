@@ -6,6 +6,7 @@ import { loadAuthState } from './authPersistence';
 const restorePersistedAuthState = (): Partial<EmployeeState> => {
   const persistedState = loadAuthState();
   if (persistedState) {
+    console.log('🔄 employeeReducer: Restoring persisted state:', persistedState);
     return {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
@@ -15,6 +16,7 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
       employeeData: persistedState.employeeData || null
     };
   }
+  console.log('🔄 employeeReducer: No persisted state found');
   return {};
 };
 
@@ -45,8 +47,11 @@ export const employeeReducer = (
 ): EmployeeState => {
   if (!action) return state;
 
+  console.log('🔧 employeeReducer: Processing action:', action.type, action.payload);
+
   switch (action.type) {
     case EmployeeActionTypes.SET_CURRENT_USER:
+      console.log('✅ employeeReducer: Setting current user:', action.payload);
       return {
         ...state,
         currentUser: action.payload,
@@ -55,12 +60,14 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_BACKOFFICE_USER:
+      console.log('✅ employeeReducer: Setting backoffice user status:', action.payload);
       return {
         ...state,
         isBackofficeUser: action.payload
       };
       
     case EmployeeActionTypes.SET_AUTH_STATUS:
+      console.log('✅ employeeReducer: Setting auth status:', action.payload);
       return {
         ...state,
         isAuthenticated: action.payload
@@ -73,6 +80,7 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.CLEAR_AUTH:
+      console.log('🧹 employeeReducer: Clearing auth state');
       return {
         ...state,
         currentUser: null,
@@ -84,6 +92,7 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
+      console.log('✅ employeeReducer: Setting employee data:', action.payload);
       return {
         ...state,
         employeeData: action.payload,
@@ -91,6 +100,7 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
+      console.log('✅ employeeReducer: Setting configured modules:', action.payload?.length || 0, 'modules');
       return {
         ...state,
         configuredModules: action.payload
@@ -121,6 +131,7 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.RESET_EMPLOYEE:
+      console.log('🔄 employeeReducer: Resetting employee state');
       return {
         ...initialEmployeeState,
         configuredModules: [],

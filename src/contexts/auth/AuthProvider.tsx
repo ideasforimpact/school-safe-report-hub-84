@@ -286,7 +286,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // Handle login
+  // Handle login with improved Redux state management
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
@@ -296,6 +296,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = loginUser(email, password, users);
 
       if (user) {
+        console.log('✅ AuthProvider: Regular user login successful:', user.email);
         await setCurrentUserWithClientInfo(user);
         
         // Fetch employee data after successful login
@@ -343,18 +344,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // If regular login fails, try backoffice login
+      console.log('🔄 AuthProvider: Attempting backoffice login for:', email);
       const { data, error } = await supabase.rpc('verify_password', { 
         email, 
         password_attempt: password 
       });
 
       if (error) {
+        console.error('❌ AuthProvider: Backoffice login error:', error);
         dispatch(setAuthError("Invalid credentials"));
         setShowAuthLoading(false);
         return false;
       }
 
       if (data === true) {
+        console.log('✅ AuthProvider: Backoffice login successful for:', email);
         // Fetch the backoffice user
         const { data: backofficeUser, error: backofficeError } = await supabase
           .from('backoffice_users')
@@ -363,6 +367,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .single();
           
         if (backofficeError || !backofficeUser) {
+          console.error('❌ AuthProvider: Error fetching backoffice user:', backofficeError);
           dispatch(setAuthError("Error retrieving user data"));
           setShowAuthLoading(false);
           return false;
@@ -398,7 +403,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
-        // Update Redux state
+        console.log('🔧 AuthProvider: Dispatching backoffice user to Redux:', saasUser);
+        
+        // Update Redux state with detailed logging
         dispatch(setCurrentUser(saasUser));
         dispatch(setBackofficeUser(true));
         dispatch(setAuthStatus(true));
@@ -417,6 +424,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
+        console.log('🔧 AuthProvider: Dispatching employee data to Redux:', backofficeEmployeeData);
         dispatch(setEmployeeData(backofficeEmployeeData));
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
@@ -442,6 +450,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
+        console.log('🔧 AuthProvider: Dispatching configured modules to Redux:', backofficeModules.length, 'modules');
         dispatch(setConfiguredModules(backofficeModules));
         
         setTimeout(() => setShowAuthLoading(false), 2000);

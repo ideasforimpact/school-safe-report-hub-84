@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
@@ -30,13 +31,18 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state) || user?.isSuperAdmin;
 
-  // Log authentication state for debugging
-  console.log("Header - Authentication State:", {
+  // Memoized authentication state to prevent continuous logging
+  const authState = React.useMemo(() => ({
     user: user,
     isAuthenticated: isAuthenticated,
     isBackofficeUser: isBackofficeUser,
     employeeData: employeeData
-  });
+  }), [user, isAuthenticated, isBackofficeUser, employeeData]);
+
+  // Log authentication state for debugging only when it changes
+  React.useEffect(() => {
+    console.log("Header - Authentication State:", authState);
+  }, [authState]);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -57,6 +63,9 @@ const Header = () => {
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner' || isBackofficeUser;
 
+  // Determine if user is truly authenticated (has user AND is authenticated)
+  const isUserAuthenticated = isAuthenticated && user;
+
   return (
     <div className="w-full h-16 bg-white shadow-sm">
       <div className="w-full h-full px-4">
@@ -72,7 +81,7 @@ const Header = () => {
           {isHomePage && <HeaderNavLinks />}
           
           {/* User Menu */}
-          {isAuthenticated && user ? (
+          {isUserAuthenticated ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
