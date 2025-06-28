@@ -10,39 +10,12 @@ import HeaderNavLinks from './HeaderNavLinks';
 import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
 import UserRoleBadge from './UserRoleBadge';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 
 const Header = () => {
-  const { logout } = useAuth();
+  const { user, employeeData, isSaasOwner } = useAuth();
   const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
-  const { state } = useEmployeeStore();
-  
-  // Get authentication state from Redux store
-  const user = getCurrentUser(state);
-  const isAuthenticated = getIsAuthenticated(state);
-  const isBackofficeUser = getIsBackofficeUser(state);
-  
-  // Get employee data and admin status from Redux store
-  const employeeData = getEmployeeData(state);
-  const isAdmin = isEmployeeAdmin(state);
-  const isSuperAdmin = isEmployeeSuperAdmin(state) || user?.isSuperAdmin;
-
-  // Memoized authentication state to prevent continuous logging
-  const authState = React.useMemo(() => ({
-    user: user,
-    isAuthenticated: isAuthenticated,
-    isBackofficeUser: isBackofficeUser,
-    employeeData: employeeData
-  }), [user, isAuthenticated, isBackofficeUser, employeeData]);
-
-  // Log authentication state for debugging only when it changes
-  React.useEffect(() => {
-    console.log("Header - Authentication State:", authState);
-  }, [authState]);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -50,7 +23,7 @@ const Header = () => {
   // Check if we're in the backoffice
   const isBackoffice = location.pathname.startsWith('/backoffice');
   
-  // Find the client associated with the current user - Use employeeData.clientId from Redux if available
+  // Find the client associated with the current user
   const userClient = employeeData?.clientId 
     ? clients.find(c => c.id === employeeData.clientId) 
     : user?.clientId 
@@ -60,11 +33,12 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Determine if the user is a SaaS Owner (backoffice user)
-  const isSaasOwner = user?.role === 'saas_owner' || isBackofficeUser;
-
-  // Determine if user is truly authenticated (has user AND is authenticated)
-  const isUserAuthenticated = isAuthenticated && user;
+  // Determine if user is authenticated
+  const isAuthenticated = !!user;
+  
+  // Determine admin status from user or employee data
+  const isAdmin = user?.role === 'admin' || user?.modulePermissions?.superAdmin || !!employeeData;
+  const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -81,7 +55,7 @@ const Header = () => {
           {isHomePage && <HeaderNavLinks />}
           
           {/* User Menu */}
-          {isUserAuthenticated ? (
+          {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
 

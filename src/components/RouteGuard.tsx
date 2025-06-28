@@ -1,11 +1,8 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { getCurrentUser, getIsBackofficeUser, getIsAuthenticated } from '@/store/authSelectors';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -22,36 +19,23 @@ const RouteGuard = ({
   requireSaasOwner = false,
   isBackoffice = false
 }: RouteGuardProps) => {
-  const { authError } = useAuth();
+  const { user, isAdmin, isSaasOwner, employeeData } = useAuth();
   const location = useLocation();
-  const { state } = useEmployeeStore();
   
-  // Get authentication and employee state from Redux
-  const currentUser = getCurrentUser(state);
-  const isBackofficeUser = getIsBackofficeUser(state);
-  const isAuthenticated = getIsAuthenticated(state);
-  const isAdmin = isEmployeeAdmin(state);
-  const isSuperAdmin = isEmployeeSuperAdmin(state);
+  // Determine if user is authenticated
+  const isAuthenticated = !!user;
+  
+  // Determine if user is backoffice user
+  const isBackofficeUser = user?.role === 'saas_owner' || isSaasOwner;
 
-  // Log route guard state for debugging
   console.log("RouteGuard - Authentication State:", {
-    currentUser: currentUser,
+    user: user,
     isAuthenticated: isAuthenticated,
     isBackofficeUser: isBackofficeUser,
     requireAuth: requireAuth,
     requireSaasOwner: requireSaasOwner,
     location: location.pathname
   });
-
-  // If currently logging out, don't redirect - let the logout process complete
-  if (state.isLoggingOut) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">Logging out...</p>
-      </div>
-    </div>;
-  }
 
   // If authentication is required and user is not authenticated, redirect to appropriate login
   if (requireAuth && !isAuthenticated) {
@@ -60,13 +44,13 @@ const RouteGuard = ({
   }
 
   // If admin access is required and user is not admin, redirect to dashboard
-  if (requireAdmin && currentUser && !isAdmin && !isBackofficeUser) {
+  if (requireAdmin && user && !isAdmin && !isBackofficeUser) {
     toast.error("Admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 
-  // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
-  if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
+  // If owner access is required and user is not owner, redirect to dashboard
+  if (requireSaasOwner && user && !isSaasOwner && !isBackofficeUser) {
     toast.error("Owner privileges required to access this page");
     const redirectPath = isBackofficeUser ? "/backoffice/dashboard" : "/dashboard";
     return <Navigate to={redirectPath} replace />;
