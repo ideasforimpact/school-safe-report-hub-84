@@ -3,7 +3,7 @@ import { User, UserRole, EmployeeData, Client, ClientType, DepartmentType, Emplo
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
+import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId, setEmployeeData } from '@/store/employeeActions';
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
@@ -437,18 +437,17 @@ export const useAuthHandlers = ({
         
         console.log('✅ useAuthHandlers: Created backoffice employee data:', backofficeEmployeeData);
         
-        // Store employee data in Redux and context
+        // Store employee data in Redux and context using proper action creators
         if (dispatch) {
-          dispatch({
-            type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
-            payload: backofficeEmployeeData
-          });
+          console.log('🔄 useAuthHandlers: Dispatching employee data to Redux');
+          dispatch(setEmployeeData(backofficeEmployeeData));
         }
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
         // Fetch and set backoffice modules
         if (dispatch) {
+          console.log('🔄 useAuthHandlers: Fetching and setting backoffice modules');
           dispatch(setLoading(true));
           const backofficeModules = await fetchBackofficeModules();
           console.log('✅ useAuthHandlers: Setting backoffice modules:', backofficeModules);
@@ -641,10 +640,7 @@ export const useAuthHandlers = ({
       
       // Store employee data in Redux
       if (dispatch) {
-        dispatch({
-          type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
-          payload: employeeData
-        });
+        dispatch(setEmployeeData(employeeData));
         
         if (employeeData.clientId) {
           dispatch(setClientId(employeeData.clientId));
