@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
@@ -78,51 +77,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Compute roles from Redux state
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
-
-  // Helper function to fetch backoffice modules
-  const fetchBackofficeModules = async () => {
-    try {
-      console.log('🔄 AuthProvider: Fetching backoffice modules');
-      
-      const { data: modules, error } = await supabase
-        .from('modules')
-        .select('*')
-        .eq('active', true)
-        .eq('level', 'backoffice')
-        .order('order', { ascending: true, nullsFirst: false });
-
-      if (error) {
-        console.error('Error fetching backoffice modules:', error);
-        return [];
-      }
-
-      if (!modules || modules.length === 0) {
-        console.log('⚠️ AuthProvider: No backoffice modules found in database');
-        return [];
-      }
-
-      console.log('✅ AuthProvider: Fetched modules:', modules);
-
-      // Convert modules to the format expected by the application
-      const formattedModules = modules.map(module => ({
-        id: module.id,
-        name: module.name,
-        key: module.name.toLowerCase().replace(/\s+/g, '_'), // Generate key from name
-        icon: module.icon || 'Settings',
-        level: 'admin',
-        enabled: module.active, // Map 'active' to 'enabled'
-        accessLevel: {},
-        order: module.order || 999,
-        url: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`
-      }));
-
-      console.log('🔄 AuthProvider: Formatted modules:', formattedModules);
-      return formattedModules;
-    } catch (error) {
-      console.error('Error in fetchBackofficeModules:', error);
-      return [];
-    }
-  };
 
   // Helper function to fetch client and client type information
   const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
@@ -230,7 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 100);
   };
 
-  // Import useAuthHandlers
+  // Import useAuthHandlers with UNIFIED authentication
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
     users,
@@ -256,7 +210,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           setShowAuthLoading(true);
           setTimeout(async () => {
-            await handleUserAuthentication(session.user);
+            // Use unified handler for SSO authentication
+            await handleUserAuthentication(session.user, false);
             setTimeout(() => setShowAuthLoading(false), 2000);
           }, 0);
         } catch (error) {
@@ -307,7 +262,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (!currentUser) {
             setShowAuthLoading(true);
             setTimeout(async () => {
-              await handleUserAuthentication(data.session?.user);
+              // Use unified handler for session restoration
+              await handleUserAuthentication(data.session?.user, false);
               setTimeout(() => setShowAuthLoading(false), 2000);
             }, 0);
           }
@@ -332,7 +288,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // Handle login
+  // Handle login - UPDATED TO USE UNIFIED HANDLER FOR BACKOFFICE
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
@@ -424,125 +380,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .update({ last_signed_in: new Date().toISOString() })
           .eq('id', backofficeUser.id);
         
-        // Create a user object for the backoffice user
-        const saasUser: User = {
-          id: backofficeUser.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          email: backofficeUser.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUser.created_at,
-          client: null,
-          clientType: null
-        };
+        // CRITICAL: Use unified authentication handler for backoffice login
+        console.log('✅ AuthProvider: Using unified handler for backoffice authentication');
         
-        console.log('✅ AuthProvider: Created backoffice user:', saasUser);
-        
-        // Update Redux state - CRITICAL: Set these in correct order
-        dispatch(setCurrentUser(saasUser));
+        // Set Redux state for backoffice user BEFORE calling handler
         dispatch(setBackofficeUser(true));
         dispatch(setAuthStatus(true));
         
-        // Create employee data for backoffice user - CRITICAL: Proper structure
-        const backofficeEmployeeData: EmployeeData = {
-          id: backofficeUser.id,
-          clientId: null, // Backoffice users don't have a client
-          email: backofficeUser.email,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin',
-          client: null,
-          clientType: null
-        };
+        // Call the unified authentication handler with backoffice flag
+        await handleUserAuthentication(null, true, backofficeUser);
         
-        console.log('✅ AuthProvider: Created backoffice employee data:', backofficeEmployeeData);
-        
-        // CRITICAL: Dispatch employee data to Redux using proper action creator
-        dispatch(setEmployeeData(backofficeEmployeeData));
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Fetch and set modules for backoffice user - CRITICAL: This was missing proper dispatch
-        console.log('🔄 AuthProvider: Fetching backoffice modules');
-        const backofficeModules = await fetchBackofficeModules();
-        
-        if (backofficeModules.length > 0) {
-          console.log('✅ AuthProvider: Setting backoffice modules:', backofficeModules);
-          // CRITICAL: Use proper action creator for modules
-          dispatch(setConfiguredModules(backofficeModules));
-        } else {
-          console.log('⚠️ AuthProvider: No modules found, setting default modules');
-          // Set default modules if none found
-          const defaultModules = [
-            {
-              id: 'dashboard-admin',
-              name: 'Dashboard',
-              key: 'dashboard',
-              icon: 'LayoutDashboard',
-              level: 'admin',
-              enabled: true,
-              accessLevel: {},
-              order: 1,
-              url: '/dashboard'
-            },
-            {
-              id: 'clients-admin',
-              name: 'Clients',
-              key: 'clients',
-              icon: 'Building2',
-              level: 'admin',
-              enabled: true,
-              accessLevel: {},
-              order: 2,
-              url: '/clients'
-            },
-            {
-              id: 'modules-admin',
-              name: 'Modules',
-              key: 'modules',
-              icon: 'Package',
-              level: 'admin',
-              enabled: true,
-              accessLevel: {},
-              order: 3,
-              url: '/modules'
-            },
-            {
-              id: 'settings-admin',
-              name: 'Settings',
-              key: 'settings',
-              icon: 'Settings',
-              level: 'admin',
-              enabled: true,
-              accessLevel: {},
-              order: 4,
-              url: '/settings'
-            }
-          ];
-          
-          dispatch(setConfiguredModules(defaultModules));
-        }
-        
-        console.log('✅ AuthProvider: Backoffice login completed successfully');
-        console.log('🔍 AuthProvider: Final Redux state:', {
-          currentUser: saasUser,
-          isBackofficeUser: true,
-          employeeData: backofficeEmployeeData,
-          modules: backofficeModules.length > 0 ? backofficeModules : 'default modules'
-        });
+        console.log('✅ AuthProvider: Backoffice login completed successfully via unified handler');
         
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
