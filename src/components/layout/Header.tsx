@@ -11,7 +11,7 @@ import HeaderIcons from './HeaderIcons';
 import UserRoleBadge from './UserRoleBadge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, isUserSaasOwner } from '@/store/authSelectors';
+import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 
 const Header = () => {
   const { logout } = useAuth();
@@ -27,7 +27,6 @@ const Header = () => {
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
-  const isSaasOwner = isUserSaasOwner(state);
 
   // Debug logging to track Redux state
   console.log('Header Redux State:', {
@@ -36,8 +35,7 @@ const Header = () => {
     isBackofficeUser,
     employeeData,
     isAdmin,
-    isSuperAdmin,
-    isSaasOwner
+    isSuperAdmin
   });
 
   // Check if we're on the home page
@@ -53,22 +51,19 @@ const Header = () => {
       ? clients.find(c => c.id === currentUser.clientId) 
       : null;
 
-  // Set dashboard path based on user type
-  const dashboardPath = isSaasOwner ? "/backoffice/dashboard" : "/dashboard";
+  // Set dashboard path to /dashboard for all users
+  const dashboardPath = "/dashboard";
+  
+  // Determine if the user is a SaaS Owner (backoffice user) - Use Redux state only
+  const isSaasOwner = currentUser?.role === 'saas_owner' || isBackofficeUser;
 
   // Final authentication check - Use Redux state only
   const finalIsAuthenticated = Boolean(
     isAuthenticated || 
     currentUser || 
     employeeData ||
-    (isBackoffice && isSaasOwner)
+    (isBackoffice && (isSaasOwner || isSuperAdmin))
   );
-
-  // For backoffice users, show the appropriate user data
-  const displayUser = currentUser || employeeData;
-  const displayName = displayUser ? 
-    `${displayUser.firstName || 'Backoffice'} ${displayUser.lastName || 'Admin'}` : 
-    '';
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -77,7 +72,7 @@ const Header = () => {
           {/* Logo Section - Positioned at absolute left */}
           <HeaderLogo 
             userClient={userClient} 
-            isSaasOwner={isSaasOwner} 
+            isSaasOwner={isSuperAdmin || isSaasOwner} 
             dashboardPath={dashboardPath} 
           />
           
@@ -89,7 +84,7 @@ const Header = () => {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {displayUser && (
+              {(currentUser || employeeData) && (
                 <UserRoleBadge 
                   isSaasOwner={isSaasOwner} 
                   isAdmin={isAdmin && !isSuperAdmin && !isSaasOwner} 
