@@ -7,9 +7,6 @@ export const getIsAuthenticated = (state: EmployeeState) => state.isAuthenticate
 export const getIsBackofficeUser = (state: EmployeeState) => state.isBackofficeUser;
 export const getAuthError = (state: EmployeeState) => state.authError;
 
-// Employee data selector
-export const getEmployeeData = (state: EmployeeState) => state.employeeData;
-
 // Helper function to determine if user is admin (based on current user)
 export const isUserAdmin = (state: EmployeeState) => {
   const user = state.currentUser;
