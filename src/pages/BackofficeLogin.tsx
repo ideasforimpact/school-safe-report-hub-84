@@ -1,27 +1,22 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ShieldCheck, Lock, Mail } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useEmployeeStore } from "@/store/EmployeeContext";
-import { setCurrentUser, setBackofficeUser, setAuthStatus } from "@/store/authActions";
+import { useBackofficeAuth } from "@/hooks/useBackofficeAuth";
 
 const BackofficeLogin = () => {
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-  const { login } = useAuth();
-  const { dispatch } = useEmployeeStore();
+  const { login, isLoading } = useBackofficeAuth();
   const navigate = useNavigate();
 
   // Handle form input changes
@@ -42,30 +37,11 @@ const BackofficeLogin = () => {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Use the existing login function to authenticate with backoffice credentials
-      const success = await login(formData.email, formData.password);
-
-      if (success) {
-        // After successful login, ensure Redux state is properly set for backoffice
-        dispatch(setBackofficeUser(true));
-        dispatch(setAuthStatus(true));
-        
-        console.log("Backoffice login successful, Redux state updated");
-        toast.success("Login successful! Redirecting to dashboard...");
-        navigate("/backoffice/dashboard");
-      } else {
-        setError("Invalid credentials. Please try again.");
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred during login. Please try again.");
-      toast.error("Login failed. Please check your credentials.");
-    } finally {
-      setIsLoading(false);
+    setError(null);
+    const success = await login(formData.email, formData.password);
+    
+    if (!success) {
+      setError("Invalid credentials. Please try again.");
     }
   };
 

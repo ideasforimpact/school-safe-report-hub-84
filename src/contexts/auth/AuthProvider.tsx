@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useEffect, useState, useRef, useMemo } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
   logoutUser, 
@@ -26,7 +26,7 @@ export const AuthContext = createContext<AuthContextType>({
   user: null,
   users: [],
   login: async () => false,
-  logout: async () => {}, // Fix: Make this async to match the type
+  logout: async () => {},
   isAdmin: false,
   isSaasOwner: false,
   addUser: () => {},
@@ -74,12 +74,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setDisplayUsers(users.map(({ password, ...user }) => user));
   }, [users]);
 
-  // Compute roles from Redux state
-  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
-  const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
+  // Compute roles from Redux state with useMemo for proper reactivity
+  const isAdmin = useMemo(() => 
+    Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin),
+    [currentUser]
+  );
+  
+  const isSaasOwner = useMemo(() => 
+    Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser),
+    [currentUser, isBackofficeUser]
+  );
 
   // Helper function to fetch client and client type information
   const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+    // ... keep existing code (fetchClientInfo implementation)
     try {
       // Fetch client information with client type
       const { data: clientData, error: clientError } = await supabase
@@ -286,13 +294,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // Handle login
+  // Handle regular client login (NOT backoffice)
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
     try {
-      // First try to login as a regular user
+      // Only try regular user login - backoffice login is handled separately
       const user = loginUser(email, password, users);
 
       if (user) {
@@ -337,112 +345,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error("Error fetching employee data for regular user:", err);
           dispatch(setLoading(false));
         }
-        
-        setTimeout(() => setShowAuthLoading(false), 2000);
-        return true;
-      }
-
-      // If regular login fails, try backoffice login
-      const { data, error } = await supabase.rpc('verify_password', { 
-        email, 
-        password_attempt: password 
-      });
-
-      if (error) {
-        dispatch(setAuthError("Invalid credentials"));
-        setShowAuthLoading(false);
-        return false;
-      }
-
-      if (data === true) {
-        // Fetch the backoffice user
-        const { data: backofficeUser, error: backofficeError } = await supabase
-          .from('backoffice_users')
-          .select('*')
-          .eq('email', email)
-          .single();
-          
-        if (backofficeError || !backofficeUser) {
-          dispatch(setAuthError("Error retrieving user data"));
-          setShowAuthLoading(false);
-          return false;
-        }
-        
-        // Update last_signed_in
-        await supabase
-          .from('backoffice_users')
-          .update({ last_signed_in: new Date().toISOString() })
-          .eq('id', backofficeUser.id);
-        
-        // Create a user object for the backoffice user
-        const saasUser: User = {
-          id: backofficeUser.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          email: backofficeUser.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUser.created_at,
-          client: null,
-          clientType: null
-        };
-        
-        // Update Redux state
-        dispatch(setCurrentUser(saasUser));
-        dispatch(setBackofficeUser(true));
-        dispatch(setAuthStatus(true));
-        
-        // Create employee data for backoffice user
-        const backofficeEmployeeData: EmployeeData = {
-          id: backofficeUser.id,
-          clientId: null,
-          email: backofficeUser.email,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin',
-          client: null,
-          clientType: null
-        };
-        
-        dispatch(setEmployeeData(backofficeEmployeeData));
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Set modules for backoffice user
-        const backofficeModules = [
-          {
-            id: 'dashboard-admin',
-            name: 'Dashboard',
-            key: 'dashboard',
-            icon: 'LayoutDashboard',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          },
-          {
-            id: 'admin-settings',
-            name: 'Settings',
-            key: 'adminSettings',
-            icon: 'Settings',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          }
-        ];
-        
-        dispatch(setConfiguredModules(backofficeModules));
         
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
@@ -628,8 +530,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Context value
-  const contextValue: AuthContextType = {
+  // Memoize context value for proper reactivity
+  const contextValue: AuthContextType = useMemo(() => ({
     user: currentUser,
     users: displayUsers,
     login: handleLogin,
@@ -645,8 +547,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authError,
     handleUserAuthentication,
     employeeData: state.employeeData,
-    setUser: handleSetUser, // Enhanced setUser with logging
-  };
+    setUser: handleSetUser,
+  }), [
+    currentUser,
+    displayUsers,
+    isAdmin,
+    isSaasOwner,
+    authError,
+    state.employeeData,
+    handleUserAuthentication
+  ]);
 
   if (isInitializing) {
     return <AuthLoadingOverlay isVisible={true} />;
