@@ -288,13 +288,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // Handle login - UPDATED TO USE UNIFIED HANDLER FOR BACKOFFICE
+  // Handle login - SIMPLIFIED TO ONLY HANDLE REGULAR USERS
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
     try {
-      // First try to login as a regular user
+      // Only try to login as a regular user (backoffice login is handled separately)
       const user = loginUser(email, password, users);
 
       console.log(user,"Login via email and password");
@@ -341,56 +341,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error("Error fetching employee data for regular user:", err);
           dispatch(setLoading(false));
         }
-        
-        setTimeout(() => setShowAuthLoading(false), 2000);
-        return true;
-      }
-
-      // If regular login fails, try backoffice login
-      const { data, error } = await supabase.rpc('verify_password', { 
-        email, 
-        password_attempt: password 
-      });
-
-      if (error) {
-        dispatch(setAuthError("Invalid credentials"));
-        setShowAuthLoading(false);
-        return false;
-      }
-
-      if (data === true) {
-        console.log('🔄 AuthProvider: Starting backoffice login process');
-        
-        // Fetch the backoffice user
-        const { data: backofficeUser, error: backofficeError } = await supabase
-          .from('backoffice_users')
-          .select('*')
-          .eq('email', email)
-          .single();
-          
-        if (backofficeError || !backofficeUser) {
-          dispatch(setAuthError("Error retrieving user data"));
-          setShowAuthLoading(false);
-          return false;
-        }
-        
-        // Update last_signed_in
-        await supabase
-          .from('backoffice_users')
-          .update({ last_signed_in: new Date().toISOString() })
-          .eq('id', backofficeUser.id);
-        
-        // CRITICAL: Use unified authentication handler for backoffice login
-        console.log('✅ AuthProvider: Using unified handler for backoffice authentication');
-        
-        // Set Redux state for backoffice user BEFORE calling handler
-        dispatch(setBackofficeUser(true));
-        dispatch(setAuthStatus(true));
-        
-        // Call the unified authentication handler with backoffice flag
-        await handleUserAuthentication(null, true, backofficeUser);
-        
-        console.log('✅ AuthProvider: Backoffice login completed successfully via unified handler');
         
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
