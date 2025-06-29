@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
@@ -110,7 +111,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         icon: module.icon || 'Settings',
         level: 'admin',
         enabled: module.active, // Map 'active' to 'enabled'
-        accessLevel: {}
+        accessLevel: {},
+        order: module.order || 999,
+        url: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`
       }));
 
       console.log('🔄 AuthProvider: Formatted modules:', formattedModules);
@@ -445,15 +448,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         console.log('✅ AuthProvider: Created backoffice user:', saasUser);
         
-        // Update Redux state
+        // Update Redux state - CRITICAL: Set these in correct order
         dispatch(setCurrentUser(saasUser));
         dispatch(setBackofficeUser(true));
         dispatch(setAuthStatus(true));
         
-        // Create employee data for backoffice user
+        // Create employee data for backoffice user - CRITICAL: Proper structure
         const backofficeEmployeeData: EmployeeData = {
           id: backofficeUser.id,
-          clientId: null,
+          clientId: null, // Backoffice users don't have a client
           email: backofficeUser.email,
           firstName: 'Backoffice',
           lastName: 'Admin',
@@ -466,15 +469,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         console.log('✅ AuthProvider: Created backoffice employee data:', backofficeEmployeeData);
         
+        // CRITICAL: Dispatch employee data to Redux using proper action creator
         dispatch(setEmployeeData(backofficeEmployeeData));
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Fetch and set modules for backoffice user
+        // Fetch and set modules for backoffice user - CRITICAL: This was missing proper dispatch
         console.log('🔄 AuthProvider: Fetching backoffice modules');
         const backofficeModules = await fetchBackofficeModules();
         
         if (backofficeModules.length > 0) {
           console.log('✅ AuthProvider: Setting backoffice modules:', backofficeModules);
+          // CRITICAL: Use proper action creator for modules
           dispatch(setConfiguredModules(backofficeModules));
         } else {
           console.log('⚠️ AuthProvider: No modules found, setting default modules');
@@ -487,7 +492,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               icon: 'LayoutDashboard',
               level: 'admin',
               enabled: true,
-              accessLevel: {}
+              accessLevel: {},
+              order: 1,
+              url: '/dashboard'
             },
             {
               id: 'clients-admin',
@@ -496,7 +503,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               icon: 'Building2',
               level: 'admin',
               enabled: true,
-              accessLevel: {}
+              accessLevel: {},
+              order: 2,
+              url: '/clients'
             },
             {
               id: 'modules-admin',
@@ -505,7 +514,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               icon: 'Package',
               level: 'admin',
               enabled: true,
-              accessLevel: {}
+              accessLevel: {},
+              order: 3,
+              url: '/modules'
             },
             {
               id: 'settings-admin',
@@ -514,7 +525,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               icon: 'Settings',
               level: 'admin',
               enabled: true,
-              accessLevel: {}
+              accessLevel: {},
+              order: 4,
+              url: '/settings'
             }
           ];
           
@@ -522,6 +535,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         console.log('✅ AuthProvider: Backoffice login completed successfully');
+        console.log('🔍 AuthProvider: Final Redux state:', {
+          currentUser: saasUser,
+          isBackofficeUser: true,
+          employeeData: backofficeEmployeeData,
+          modules: backofficeModules.length > 0 ? backofficeModules : 'default modules'
+        });
+        
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
