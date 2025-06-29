@@ -4,6 +4,7 @@ import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId, setEmployeeData } from '@/store/employeeActions';
+import { setBackofficeUser, setAuthStatus, setCurrentUser } from '@/store/authActions';
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
@@ -30,7 +31,7 @@ interface UseAuthHandlersProps {
   setAuthError: (error: string | null) => void;
   authInitCompleteRef: React.MutableRefObject<boolean>;
   setEmployeeData: (employeeData: EmployeeData | null) => void;
-  dispatch?: any; // Add dispatch prop for Redux actions
+  dispatch?: any;
 }
 
 export const useAuthHandlers = ({
@@ -372,30 +373,27 @@ export const useAuthHandlers = ({
     }
   }, []);
 
-  // Handle user authentication from various sources (SSO, backoffice) - ENHANCED WITH BACKOFFICE SUPPORT
+  // Handle user authentication from various sources (SSO, backoffice) - FIXED FOR BACKOFFICE
   const handleUserAuthentication = useCallback(async (
     supabaseUser: SupabaseUser | null, 
     isBackofficeAuth: boolean = false,
     backofficeUserData?: any
   ) => {
     if (isProcessingAuth) {
-      console.log('🔄 useAuthHandlers: Already processing auth, skipping...');
       return;
     }
     
     try {
       setIsProcessingAuth(true);
-      console.log('🔄 useAuthHandlers: Starting authentication process', { isBackofficeAuth, hasSupabaseUser: !!supabaseUser });
       
-      // HANDLE BACKOFFICE AUTHENTICATION
-      if (isBackofficeAuth && backofficeUserData) {
-        console.log('🏢 useAuthHandlers: Processing backoffice authentication');
+      // HANDLE BACKOFFICE AUTHENTICATION - FIXED REDUX DISPATCH
+      if (isBackofficeAuth && backofficeUserData && dispatch) {
         
         // Create backoffice user object
         const backofficeUser: User = {
           id: backofficeUserData.id,
           firstName: 'Backoffice',
-          lastName: 'Admin',
+          lastName: 'Admin', 
           email: backofficeUserData.email,
           role: 'saas_owner' as UserRole,
           isActive: true,
@@ -415,7 +413,10 @@ export const useAuthHandlers = ({
           clientType: null
         };
         
-        console.log('✅ useAuthHandlers: Created backoffice user:', backofficeUser);
+        // PROPERLY DISPATCH REDUX ACTIONS
+        dispatch(setCurrentUser(backofficeUser));
+        dispatch(setBackofficeUser(true));
+        dispatch(setAuthStatus(true));
         
         // Set user in context and localStorage
         setUser(backofficeUser);
@@ -435,23 +436,19 @@ export const useAuthHandlers = ({
           clientType: null
         };
         
-        console.log('✅ useAuthHandlers: Created backoffice employee data:', backofficeEmployeeData);
-        
-        // Store employee data in Redux and context using proper action creators
-        if (dispatch) {
-          console.log('🔄 useAuthHandlers: Dispatching employee data to Redux');
-          dispatch(setEmployeeData(backofficeEmployeeData));
-        }
+        // PROPERLY DISPATCH EMPLOYEE DATA
+        dispatch(setEmployeeData(backofficeEmployeeData));
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
         // Fetch and set backoffice modules
-        if (dispatch) {
-          console.log('🔄 useAuthHandlers: Fetching and setting backoffice modules');
-          dispatch(setLoading(true));
+        dispatch(setLoading(true));
+        try {
           const backofficeModules = await fetchBackofficeModules();
-          console.log('✅ useAuthHandlers: Setting backoffice modules:', backofficeModules);
           dispatch(setConfiguredModules(backofficeModules));
+        } catch (moduleError) {
+          console.error('Error fetching backoffice modules:', moduleError);
+        } finally {
           dispatch(setLoading(false));
         }
         
@@ -459,7 +456,6 @@ export const useAuthHandlers = ({
         setAuthError(null);
         authInitCompleteRef.current = true;
         
-        console.log('✅ useAuthHandlers: Backoffice authentication completed successfully');
         return;
       }
       
@@ -695,7 +691,7 @@ export const useAuthHandlers = ({
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo, fetchBackofficeModules]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, dispatch, validateDomain, users, setUsers, fetchClientInfo, fetchBackofficeModules, fetchConfiguredModules]);
 
   return {
     handleUserAuthentication
