@@ -19,7 +19,6 @@ const SidebarContent = () => {
   const configuredModules = getConfiguredModules(employeeState);
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
@@ -34,10 +33,10 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Fetch modules dynamically - prioritize backoffice users
+  // Fetch modules dynamically
   useEffect(() => {
-    // Skip if already initialized to prevent re-fetching
-    if (hasInitialized) {
+    if (isProviderAuthenticated && !isBackofficeRoute) {
+      // Use ClientModulesList component for provider-authenticated users
       return;
     }
     
@@ -45,21 +44,34 @@ const SidebarContent = () => {
     
     const loadModules = async () => {
       try {
-        // PRIORITY 1: Backoffice users on backoffice routes - always use database modules
         if (isSaasOwner && isBackofficeRoute) {
-          const modules = await fetchModules(true, user);
-          const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
-          setDynamicMenuItems(items);
-        }
-        // PRIORITY 2: Provider-authenticated users on client routes - use ClientModulesList
-        else if (isProviderAuthenticated && !isBackofficeRoute) {
-          // ClientModulesList component will handle this case
-          setHasInitialized(true);
-          setIsLoading(false);
-          return;
-        }
-        // PRIORITY 3: Regular client users with configured modules
-        else if (configuredModules.length > 0) {
+          console.log('🔄 SidebarContent: Loading backoffice modules');
+          console.log('📦 SidebarContent: Configured modules from Redux:', configuredModules);
+          
+          if (configuredModules && configuredModules.length > 0) {
+            // Use modules from Redux store
+            const items = configuredModules.map(module => {
+              const path = `/${module.key.toLowerCase()}`;
+              return {
+                icon: module.icon || 'Settings',
+                label: module.name,
+                path,
+                allowed: true,
+                accessLevel: module.accessLevel || {}
+              };
+            });
+            
+            console.log('✅ SidebarContent: Using Redux modules:', items);
+            setDynamicMenuItems(items);
+          } else {
+            // Fallback: fetch modules from database
+            console.log('⚠️ SidebarContent: No Redux modules, fetching from database');
+            const modules = await fetchModules(true, user);
+            const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
+            console.log('✅ SidebarContent: Fetched modules from database:', items);
+            setDynamicMenuItems(items);
+          }
+        } else if (configuredModules.length > 0) {
           // Convert Redux store modules to sidebar format
           const items = configuredModules.map(module => {
             const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
@@ -72,9 +84,8 @@ const SidebarContent = () => {
           });
           
           setDynamicMenuItems(items);
-        }
-        // PRIORITY 4: Fallback to API call for client modules
-        else {
+        } else {
+          // Fallback to API call for client modules
           const modules = await fetchModules(false, user);
           const items = convertModulesToSidebarItems(modules, {});
           setDynamicMenuItems(items);
@@ -84,13 +95,12 @@ const SidebarContent = () => {
         setDynamicMenuItems([]);
       } finally {
         setIsLoading(false);
-        setHasInitialized(true);
       }
     };
     
     loadModules();
     
-  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules, hasInitialized]);
+  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
@@ -124,6 +134,8 @@ const SidebarContent = () => {
       </div>
     );
   }
+
+  console.log('🎯 SidebarContent: Rendering with items:', dynamicMenuItems);
 
   return (
     <div className="flex-1 py-6">
