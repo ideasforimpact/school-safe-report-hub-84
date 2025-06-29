@@ -1,7 +1,6 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,6 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthHandlers } from "@/contexts/auth/hooks/useAuthHandlers";
+import { useEmployeeStore } from "@/store/EmployeeContext";
+import { setAuthError } from "@/store/authActions";
 
 const BackofficeLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,8 +21,20 @@ const BackofficeLogin = () => {
     email: "",
     password: "",
   });
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { state, dispatch } = useEmployeeStore();
+
+  // Get the unified authentication handler
+  const { handleUserAuthentication } = useAuthHandlers({
+    user: null,
+    users: [],
+    setUser: () => {},
+    setUsers: () => {},
+    setAuthError: (error: string | null) => dispatch(setAuthError(error)),
+    authInitCompleteRef: { current: false },
+    setEmployeeData: () => {},
+    dispatch
+  });
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,7 +45,7 @@ const BackofficeLogin = () => {
     }));
   };
 
-  // Handle form submission
+  // Handle form submission with unified authentication
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -43,17 +58,49 @@ const BackofficeLogin = () => {
       setIsLoading(true);
       setError(null);
 
-      // Use the existing login function to authenticate with backoffice credentials
-      const success = await login(formData.email, formData.password);
+      // Verify backoffice credentials using Supabase RPC
+      const { data, error: rpcError } = await supabase.rpc('verify_password', { 
+        email: formData.email, 
+        password_attempt: formData.password 
+      });
 
-      if (success) {
-        toast.success("Login successful! Redirecting to dashboard...");
-        navigate("/backoffice/dashboard");
-      } else {
-        setError("Invalid credentials. Please try again.");
+      if (rpcError) {
+        setError("Invalid credentials");
+        return;
       }
+
+      if (data !== true) {
+        setError("Invalid credentials");
+        return;
+      }
+
+      // Fetch the backoffice user data
+      const { data: backofficeUser, error: backofficeError } = await supabase
+        .from('backoffice_users')
+        .select('*')
+        .eq('email', formData.email)
+        .single();
+        
+      if (backofficeError || !backofficeUser) {
+        setError("Error retrieving user data");
+        return;
+      }
+
+      // Update last_signed_in
+      await supabase
+        .from('backoffice_users')
+        .update({ last_signed_in: new Date().toISOString() })
+        .eq('id', backofficeUser.id);
+
+      // Use the unified authentication handler for backoffice login
+      console.log('🔄 BackofficeLogin: Using unified authentication handler');
+      await handleUserAuthentication(null, true, backofficeUser);
+
+      toast.success("Login successful! Redirecting to dashboard...");
+      navigate("/backoffice/dashboard");
+
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Backoffice login error:", err);
       setError("An error occurred during login. Please try again.");
       toast.error("Login failed. Please check your credentials.");
     } finally {
