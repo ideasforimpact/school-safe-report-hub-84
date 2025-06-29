@@ -13,18 +13,22 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
+import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
+import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
+import { clearPersistedAuthState } from '@/store/authPersistence';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-// Create the context with async logout and isInitializing property
+// Create the context with async logout
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   users: [],
   login: async () => false,
-  logout: async () => {},
+  logout: async () => {}, // Fix: Make this async to match the type
   isAdmin: false,
   isSaasOwner: false,
-  isBackofficeUser: false,
   addUser: () => {},
   updateUser: () => {},
   deleteUser: () => {},
@@ -35,7 +39,6 @@ export const AuthContext = createContext<AuthContextType>({
   handleUserAuthentication: async () => {},
   employeeData: null,
   setUser: () => {},
-  isInitializing: true, // Add the missing isInitializing property
 });
 
 interface AuthProviderProps {
@@ -46,32 +49,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Local state for authentication
-  const [user, setUser] = useState<User | null>(null);
+  // Get Redux state and dispatch
+  const { state, dispatch } = useEmployeeStore();
+  
+  // Get authentication state from Redux
+  const currentUser = getCurrentUser(state);
+  const isAuthenticated = getIsAuthenticated(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
+  const authError = getAuthError(state);
+  
+  // Local state for users management and initialization
   const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
   );
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
-  const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
-  
-  // Refs to control initialization flow
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
-  const backofficeStateRestoredRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
     setDisplayUsers(users.map(({ password, ...user }) => user));
   }, [users]);
 
-  // Compute roles from current user
-  const isAdmin = Boolean(user?.role === 'admin' || user?.modulePermissions?.superAdmin || employeeData);
-  const isSaasOwner = Boolean(user?.role === 'saas_owner' || isBackofficeUser);
+  // Compute roles from Redux state
+  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
+  const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
   // Helper function to fetch client and client type information
   const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
@@ -129,10 +134,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }).current;
 
-  // Enhanced setUser function that ensures client info is included
+  // Enhanced setCurrentUser function that ensures client info is included
   const setCurrentUserWithClientInfo = useRef(async (user: User | null) => {
     if (!user) {
-      setUser(null);
+      dispatch(setCurrentUser(null));
       return;
     }
 
@@ -140,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // If user already has client info, use it directly
     if (user.client !== undefined && user.clientType !== undefined) {
-      setUser(user);
+      dispatch(setCurrentUser(user));
       setTimeout(() => setShowAuthLoading(false), 2000);
       return;
     }
@@ -154,15 +159,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           client,
           clientType
         };
-        setUser(userWithClientInfo);
+        dispatch(setCurrentUser(userWithClientInfo));
         setTimeout(() => setShowAuthLoading(false), 2000);
       } catch (error) {
         console.error("Error fetching client info for user:", error);
-        setUser(user);
+        dispatch(setCurrentUser(user));
         setTimeout(() => setShowAuthLoading(false), 2000);
       }
     } else {
-      setUser(user);
+      dispatch(setCurrentUser(user));
       setTimeout(() => setShowAuthLoading(false), 2000);
     }
   }).current;
@@ -171,91 +176,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleSetUser = (user: User | null) => {
     console.log('🔄 AuthProvider: Setting user to:', user);
     console.log('🕐 AuthProvider: setUser called at:', new Date().toISOString());
-    setUser(user);
+    dispatch(setCurrentUser(user));
     
     // Add a small delay to verify state propagation
     setTimeout(() => {
-      console.log('✅ AuthProvider: User state after setUser:', user);
+      console.log('✅ AuthProvider: User state after setUser:', currentUser);
     }, 100);
   };
 
-  // FIXED: Restore backoffice state from storage on initialization with proper state setting
-  useEffect(() => {
-    if (backofficeStateRestoredRef.current) return;
-    
-    console.log('🔄 AuthProvider: Restoring backoffice state from storage');
-    
-    // Try to restore backoffice user state from sessionStorage
-    try {
-      const savedEmployeeData = sessionStorage.getItem('employeeData');
-      const savedIsBackoffice = sessionStorage.getItem('isBackofficeUser');
-      
-      if (savedEmployeeData && savedIsBackoffice === 'true') {
-        console.log('📦 AuthProvider: Found saved backoffice state');
-        const parsedEmployeeData = JSON.parse(savedEmployeeData);
-        
-        // Reconstruct backoffice user
-        const backofficeUser: User = {
-          id: parsedEmployeeData.id,
-          firstName: parsedEmployeeData.firstName || 'Backoffice',
-          lastName: parsedEmployeeData.lastName || 'Admin',
-          email: parsedEmployeeData.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          client: null,
-          clientType: null
-        };
-        
-        console.log('✅ AuthProvider: Restoring backoffice user:', backofficeUser);
-        
-        // Set ALL backoffice state atomically and immediately
-        setUser(backofficeUser);
-        setEmployeeData(parsedEmployeeData);
-        setIsBackofficeUser(true);
-        
-        console.log('🔧 AuthProvider: Backoffice state restored completely');
-      }
-    } catch (error) {
-      console.error('❌ AuthProvider: Error restoring backoffice state:', error);
-    }
-    
-    backofficeStateRestoredRef.current = true;
-  }, []);
-
   // Import useAuthHandlers
   const { handleUserAuthentication } = useAuthHandlers({
-    user: user,
+    user: currentUser,
     users,
-    setUser: (user: User | null) => setUser(user),
+    setUser: (user: User | null) => dispatch(setCurrentUser(user)),
     setUsers: setUsersState,
-    setAuthError: (error: string | null) => setAuthError(error),
+    setAuthError: (error: string | null) => dispatch(setAuthError(error)),
     authInitCompleteRef,
-    setEmployeeData: (employeeData: EmployeeData | null) => setEmployeeData(employeeData),
-    dispatch: () => {} // No longer using dispatch
+    setEmployeeData: (employeeData: EmployeeData | null) => dispatch(setEmployeeData(employeeData)),
+    dispatch
   });
 
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
-    if (authListenerSetupRef.current) return;
+    if (authListenerSetupRef.current || state.isLoggingOut) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only handle non-backoffice users here
-      if (isBackofficeUser) {
-        console.log('⏸️ AuthProvider: Skipping Supabase auth change - backoffice user active');
+      // Skip processing if logging out
+      if (state.isLoggingOut) {
         return;
       }
-      
+
       if (event === 'SIGNED_IN' && session?.user) {
         try {
           setShowAuthLoading(true);
@@ -268,16 +218,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           toast.error("Authentication failed. Please try again.");
           setShowAuthLoading(false);
         }
-      } else if (event === 'SIGNED_OUT') {
-        // Only clear state if not a backoffice user
-        if (!isBackofficeUser) {
-          setUser(null);
-          setEmployeeData(null);
-          setAuthError(null);
-          setShowAuthLoading(false);
-          toast.info("You have been logged out");
-          logoutUser();
-        }
+      } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
+        dispatch(clearAuth());
+        dispatch(resetEmployee());
+        clearPersistedAuthState();
+        setShowAuthLoading(false);
+        toast.info("You have been logged out");
+        logoutUser();
       }
     });
     
@@ -286,36 +233,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication, isBackofficeUser]);
+  }, [handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // FIXED: Modified Supabase auth check that properly preserves backoffice state
+  // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
-    if (authCheckInProgressRef.current || !backofficeStateRestoredRef.current) return;
+    if (state.isLoggingOut || authCheckInProgressRef.current) return;
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
       authCheckInProgressRef.current = true;
       
       try {
-        // CRITICAL FIX: Check for backoffice user FIRST and skip entirely if found
-        if (isBackofficeUser && user) {
-          console.log('✅ AuthProvider: Backoffice user detected, skipping Supabase auth check entirely');
+        // If we have persisted backoffice user state, skip Supabase checks
+        if (isBackofficeUser && currentUser) {
           setIsInitializing(false);
           return;
         }
 
-        // Also check sessionStorage for backoffice state as backup
-        const savedIsBackoffice = sessionStorage.getItem('isBackofficeUser');
-        if (savedIsBackoffice === 'true') {
-          console.log('✅ AuthProvider: Backoffice user detected in storage, skipping Supabase auth check');
-          setIsInitializing(false);
-          return;
+        // If we have persisted regular user state, still validate with Supabase
+        if (currentUser && !isBackofficeUser) {
+          // User exists, just validate
         }
 
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
-          if (!user) {
+          if (!currentUser) {
             setShowAuthLoading(true);
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
@@ -323,12 +266,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }, 0);
           }
         } else {
-          // Only clear if we don't have a backoffice user and no regular user
-          if (!isBackofficeUser && !user) {
-            console.log('🧹 AuthProvider: No Supabase session and no backoffice user, clearing state');
-            setUser(null);
-            setEmployeeData(null);
-            setAuthError(null);
+          // If no Supabase session and no persisted user (or not backoffice), clear everything
+          if (!currentUser || (!isBackofficeUser && currentUser)) {
+            dispatch(clearAuth());
+            dispatch(resetEmployee());
+            clearPersistedAuthState();
             logoutUser();
           }
         }
@@ -342,50 +284,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, [user, isBackofficeUser, handleUserAuthentication, backofficeStateRestoredRef.current]);
+  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // Handle login with improved state management
+  // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
-    setAuthError(null);
+    dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
     try {
       // First try to login as a regular user
-      const regularUser = loginUser(email, password, users);
+      const user = loginUser(email, password, users);
 
-      if (regularUser) {
-        console.log('✅ AuthProvider: Regular user login successful:', regularUser.email);
-        await setCurrentUserWithClientInfo(regularUser);
+      if (user) {
+        await setCurrentUserWithClientInfo(user);
         
         // Fetch employee data after successful login
         try {
-          const { data: employeeDataResponse, error } = await supabase
+          dispatch(setLoading(true));
+          
+          const { data: employeeData, error } = await supabase
             .from('employees')
             .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type')
             .eq('email', email.toLowerCase())
             .single();
           
-          if (employeeDataResponse && !error) {
-            const { client, clientType } = await fetchClientInfo(employeeDataResponse.client_id);
+          if (employeeData && !error) {
+            const { client, clientType } = await fetchClientInfo(employeeData.client_id);
 
             const employee: EmployeeData = {
-              id: employeeDataResponse.id,
-              clientId: employeeDataResponse.client_id,
-              email: employeeDataResponse.email,
-              firstName: employeeDataResponse.first_name,
-              lastName: employeeDataResponse.last_name,
-              isSuperAdmin: employeeDataResponse.is_super_admin,
-              department: employeeDataResponse.department, 
-              employeeType: employeeDataResponse.employee_type,
+              id: employeeData.id,
+              clientId: employeeData.client_id,
+              email: employeeData.email,
+              firstName: employeeData.first_name,
+              lastName: employeeData.last_name,
+              isSuperAdmin: employeeData.is_super_admin,
+              department: employeeData.department, 
+              employeeType: employeeData.employee_type,
               client: client,
               clientType: clientType
             };
             
-            setEmployeeData(employee);
+            dispatch(setEmployeeData(employee));
             saveEmployeeDataToStorage(employee);
+            
+            if (employee.clientId) {
+              dispatch(setClientId(employee.clientId));
+            }
           }
+          
+          dispatch(setLoading(false));
         } catch (err) {
           console.error("Error fetching employee data for regular user:", err);
+          dispatch(setLoading(false));
         }
         
         setTimeout(() => setShowAuthLoading(false), 2000);
@@ -393,21 +343,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // If regular login fails, try backoffice login
-      console.log('🔄 AuthProvider: Attempting backoffice login for:', email);
       const { data, error } = await supabase.rpc('verify_password', { 
         email, 
         password_attempt: password 
       });
 
       if (error) {
-        console.error('❌ AuthProvider: Backoffice login error:', error);
-        setAuthError("Invalid credentials");
+        dispatch(setAuthError("Invalid credentials"));
         setShowAuthLoading(false);
         return false;
       }
 
       if (data === true) {
-        console.log('✅ AuthProvider: Backoffice login successful for:', email);
         // Fetch the backoffice user
         const { data: backofficeUser, error: backofficeError } = await supabase
           .from('backoffice_users')
@@ -416,8 +363,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .single();
           
         if (backofficeError || !backofficeUser) {
-          console.error('❌ AuthProvider: Error fetching backoffice user:', backofficeError);
-          setAuthError("Error retrieving user data");
+          dispatch(setAuthError("Error retrieving user data"));
           setShowAuthLoading(false);
           return false;
         }
@@ -452,6 +398,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
+        // Update Redux state
+        dispatch(setCurrentUser(saasUser));
+        dispatch(setBackofficeUser(true));
+        dispatch(setAuthStatus(true));
+        
         // Create employee data for backoffice user
         const backofficeEmployeeData: EmployeeData = {
           id: backofficeUser.id,
@@ -466,28 +417,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
-        // Set ALL state atomically to prevent race conditions
-        console.log('🔧 AuthProvider: Setting complete backoffice state');
-        setUser(saasUser);
-        setIsBackofficeUser(true);
-        setEmployeeData(backofficeEmployeeData);
+        dispatch(setEmployeeData(backofficeEmployeeData));
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Persist backoffice state to sessionStorage
-        sessionStorage.setItem('isBackofficeUser', 'true');
-        sessionStorage.setItem('employeeData', JSON.stringify(backofficeEmployeeData));
+        // Set modules for backoffice user
+        const backofficeModules = [
+          {
+            id: 'dashboard-admin',
+            name: 'Dashboard',
+            key: 'dashboard',
+            icon: 'LayoutDashboard',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          },
+          {
+            id: 'admin-settings',
+            name: 'Settings',
+            key: 'adminSettings',
+            icon: 'Settings',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          }
+        ];
         
-        console.log('✅ AuthProvider: Backoffice login completed successfully');
+        dispatch(setConfiguredModules(backofficeModules));
+        
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
 
-      setAuthError("Invalid credentials");
+      dispatch(setAuthError("Invalid credentials"));
       setShowAuthLoading(false);
       return false;
     } catch (error) {
       console.error("Login error:", error);
-      setAuthError("Login failed");
+      dispatch(setAuthError("Login failed"));
       toast.error("Login failed");
       setShowAuthLoading(false);
       return false;
@@ -497,22 +463,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
     console.log('🚪 AuthProvider: Starting logout process');
+    console.log('🕐 AuthProvider: Logout started at:', new Date().toISOString());
+    
+    // Set logout flag immediately to prevent redirect loops
+    sessionStorage.setItem('is_logout_initiated', 'true');
+    console.log('🏁 AuthProvider: Set logout flag in sessionStorage');
+    
+    // Set logout state immediately to prevent validation loops and redirects
+    dispatch(setLogoutState(true));
+    console.log('🔒 AuthProvider: Set logout state to true');
     
     try {
-      // Clear state immediately
-      console.log('🧹 AuthProvider: Clearing authentication state');
-      setUser(null);
-      setEmployeeData(null);
-      setIsBackofficeUser(false);
-      setAuthError(null);
+      // Clear Redux state immediately
+      console.log('🧹 AuthProvider: Clearing Redux state');
+      dispatch(clearAuth());
+      dispatch(resetEmployee());
+      
+      // Clear persisted state
+      console.log('🗑️ AuthProvider: Clearing persisted state');
+      clearPersistedAuthState();
       
       // Clear local storage
       console.log('💾 AuthProvider: Clearing local storage');
       logoutUser();
-      
-      // Clear backoffice-specific storage
-      sessionStorage.removeItem('isBackofficeUser');
-      sessionStorage.removeItem('employeeData');
       
       // For non-backoffice users, sign out from Supabase
       if (!isBackofficeUser) {
@@ -524,9 +497,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      // Determine where to redirect
+      // Determine where to redirect based on user type and current route
       const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      const shouldRedirectToBackoffice = isCurrentlyBackoffice;
+      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
       
       // Navigate immediately after clearing state
       console.log('🧭 AuthProvider: Navigating to login page');
@@ -549,6 +522,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         navigate('/login', { replace: true });
       }
+    } finally {
+      // Reset logout state after a short delay
+      setTimeout(() => {
+        console.log('🔓 AuthProvider: Resetting logout state to false');
+        dispatch(setLogoutState(false));
+      }, 1000);
     }
   };
 
@@ -632,12 +611,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Change password
   const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    if (!user) {
+    if (!currentUser) {
       toast.error("No user logged in");
       return false;
     }
 
-    const updatedUsers = changeUserPassword(users, user.id, currentPassword, newPassword);
+    const updatedUsers = changeUserPassword(users, currentUser.id, currentPassword, newPassword);
     
     if (updatedUsers) {
       setUsersState(updatedUsers);
@@ -651,13 +630,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Context value
   const contextValue: AuthContextType = {
-    user: user,
+    user: currentUser,
     users: displayUsers,
     login: handleLogin,
     logout: handleLogout,
     isAdmin,
     isSaasOwner,
-    isBackofficeUser,
     addUser: handleAddUser,
     updateUser: handleUpdateUser,
     deleteUser: handleDeleteUser,
@@ -666,9 +644,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    employeeData: employeeData,
-    setUser: handleSetUser,
-    isInitializing: isInitializing, // Add this line
+    employeeData: state.employeeData,
+    setUser: handleSetUser, // Enhanced setUser with logging
   };
 
   if (isInitializing) {

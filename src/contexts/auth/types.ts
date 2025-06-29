@@ -6,9 +6,8 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isSaasOwner: boolean;
-  isBackofficeUser: boolean;
   addUser: (userData: any) => void;
-  updateUser: (id: string, updates: Partial<User>) => void;
+  updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
@@ -16,8 +15,7 @@ export interface AuthContextType {
   authError: string | null;
   handleUserAuthentication: (user: any) => Promise<void>;
   employeeData: EmployeeData | null;
-  setUser: (user: User | null) => void;
-  isInitializing: boolean; // Add this new property
+  setUser: (user: User | null) => void; // Add setUser function
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';

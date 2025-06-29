@@ -8,8 +8,7 @@ export interface PersistedAuthState {
   isBackofficeUser: boolean;
   authError: string | null;
   configuredModules: any[] | null;
-  employeeData: any | null;
-  clientId?: string | null; // Add clientId to the interface
+  employeeData: any | null; // Add employeeData to persisted state
 }
 
 // Save authentication state to sessionStorage

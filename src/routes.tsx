@@ -1,8 +1,6 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import RouteGuard from './components/RouteGuard';
-import BackofficeRouteGuard from './components/BackofficeRouteGuard';
 import ModuleGuard from './components/ModuleGuard';
 
 // Import pages
@@ -105,59 +103,52 @@ const AppRoutes = () => {
       <Route path="/public-grievance-form" element={<PublicGrievanceForm />} />
       <Route path="/grievance-thank-you" element={<ThankYouPage />} />
       
-      {/* PROTECTED Backoffice routes */}
+      {/* Backoffice routes */}
       <Route path="/backoffice/login" element={<BackofficeLogin />} />
-      
-      {/* All backoffice routes are now properly protected */}
       <Route path="/backoffice" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeDashboard />
-        </BackofficeRouteGuard>
-      } />
-      <Route path="/backoffice/dashboard" element={
-        <BackofficeRouteGuard>
-          <BackofficeDashboard />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/clients" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <ClientManagement />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/modules" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <ModulesPage />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/employee-verification" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeEmployeeVerificationPage />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/employee-verification/employee/:employeeId" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeEmployeeDocumentsPage />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/settings" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeSettings />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/analytics" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeAnalytics />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/assessment-templates" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <AssessmentTemplatesManagementPage />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
       <Route path="/backoffice/edusafe-resources" element={
-        <BackofficeRouteGuard>
+        <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeEduSafeResourcesPage />
-        </BackofficeRouteGuard>
+        </RouteGuard>
       } />
 
       {/* Protected routes */}

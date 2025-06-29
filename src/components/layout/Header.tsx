@@ -1,7 +1,7 @@
 
-import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
+import { useClient } from '@/contexts/ClientContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import HeaderLogo from './HeaderLogo';
@@ -9,11 +9,29 @@ import HeaderNavLinks from './HeaderNavLinks';
 import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
 import UserRoleBadge from './UserRoleBadge';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 const Header = () => {
-  const { user, employeeData, isBackofficeUser, isSaasOwner } = useAuth();
+  const { user, logout } = useAuth();
+  const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const { state } = useEmployeeStore();
+  
+  // Get employee data and admin status from Redux store
+  const employeeData = getEmployeeData(state);
+  const isAdmin = isEmployeeAdmin(state);
+  const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
+
+  // Log user and Redux state for debugging
+  console.log("User from Auth Context:", user);
+  console.log("Employee Data from Redux Store:", employeeData);
+  console.log("Is Admin from Redux:", isAdmin);
+  console.log("Is Super Admin from Redux:", isSuperAdmin);
+  console.log("Department:", employeeData?.department);
+  console.log("Employee Type:", employeeData?.employeeType);
+  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -21,33 +39,18 @@ const Header = () => {
   // Check if we're in the backoffice
   const isBackoffice = location.pathname.startsWith('/backoffice');
   
-  // Determine if user is authenticated
-  const isAuthenticated = !!user;
-  
-  // Determine admin status from user or employee data
-  const isAdmin = user?.role === 'admin' || user?.modulePermissions?.superAdmin || !!employeeData;
-  const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin || isBackofficeUser;
+  // Find the client associated with the current user - Use employeeData.clientId from Redux if available
+  const userClient = employeeData?.clientId 
+    ? clients.find(c => c.id === employeeData.clientId) 
+    : user?.clientId 
+      ? clients.find(c => c.id === user.clientId) 
+      : null;
 
-  // Set dashboard path based on user type
-  const dashboardPath = isBackofficeUser || user?.role === 'saas_owner' ? "/backoffice/dashboard" : "/dashboard";
+  // Set dashboard path to /dashboard for all users
+  const dashboardPath = "/dashboard";
   
-  // Find the client for logo display (only for non-backoffice users)
-  // Fix the TypeScript error by properly mapping all required client properties
-  const userClient = !isBackofficeUser && employeeData?.client ? {
-    ...employeeData.client,
-    email: employeeData.client.email || '',
-    phone: employeeData.client.phone || '',
-    contactPerson: employeeData.client.contact_person || '',
-    creationDate: employeeData.client.creation_date || new Date().toISOString()
-  } : null;
-
-  console.log('🎯 Header: Render state:', {
-    user: !!user,
-    isAuthenticated,
-    isBackofficeUser,
-    userEmail: user?.email,
-    location: location.pathname
-  });
+  // Determine if the user is a SaaS Owner (backoffice user)
+  const isSaasOwner = user?.role === 'saas_owner';
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -56,7 +59,7 @@ const Header = () => {
           {/* Logo Section - Positioned at absolute left */}
           <HeaderLogo 
             userClient={userClient} 
-            isSaasOwner={isSuperAdmin || isBackofficeUser} 
+            isSaasOwner={isSuperAdmin || isSaasOwner} 
             dashboardPath={dashboardPath} 
           />
           
@@ -64,14 +67,14 @@ const Header = () => {
           {isHomePage && <HeaderNavLinks />}
           
           {/* User Menu */}
-          {isAuthenticated ? (
+          {user ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
               {user && (
                 <UserRoleBadge 
-                  isSaasOwner={isBackofficeUser || isSaasOwner} 
-                  isAdmin={isAdmin && !isSuperAdmin && !isBackofficeUser} 
+                  isSaasOwner={isSaasOwner} 
+                  isAdmin={isAdmin && !isSuperAdmin && !isSaasOwner} 
                   isSuperAdmin={isSuperAdmin} 
                   department={employeeData?.department} 
                 />
