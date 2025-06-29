@@ -4,6 +4,7 @@ import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId, setEmployeeData } from '@/store/employeeActions';
+import { setBackofficeUser, setAuthStatus } from '@/store/authActions';
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
@@ -439,8 +440,10 @@ export const useAuthHandlers = ({
         
         // Store employee data in Redux and context using proper action creators
         if (dispatch) {
-          console.log('🔄 useAuthHandlers: Dispatching employee data to Redux');
+          console.log('🔄 useAuthHandlers: Dispatching Redux actions for backoffice user');
           dispatch(setEmployeeData(backofficeEmployeeData));
+          dispatch(setBackofficeUser(true));
+          dispatch(setAuthStatus(true));
         }
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
