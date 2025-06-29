@@ -78,6 +78,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
+  // Helper function to fetch backoffice modules
+  const fetchBackofficeModules = useRef(async () => {
+    try {
+      console.log('🔄 AuthProvider: Fetching backoffice modules');
+      
+      const { data: modules, error } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('enabled', true)
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching backoffice modules:', error);
+        return [];
+      }
+
+      if (!modules || modules.length === 0) {
+        console.log('⚠️ AuthProvider: No modules found in database');
+        return [];
+      }
+
+      console.log('✅ AuthProvider: Fetched modules:', modules);
+
+      // Convert modules to the format expected by the application
+      const formattedModules = modules.map(module => ({
+        id: module.id,
+        name: module.name,
+        key: module.key,
+        icon: module.icon || 'Settings',
+        level: 'admin',
+        enabled: module.enabled,
+        accessLevel: {}
+      }));
+
+      console.log('🔄 AuthProvider: Formatted modules:', formattedModules);
+      return formattedModules;
+    } catch (error) {
+      console.error('Error in fetchBackofficeModules:', error);
+      return [];
+    }
+  }).current;
+
   // Helper function to fetch client and client type information
   const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
     try {
@@ -355,6 +397,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data === true) {
+        console.log('🔄 AuthProvider: Starting backoffice login process');
+        
         // Fetch the backoffice user
         const { data: backofficeUser, error: backofficeError } = await supabase
           .from('backoffice_users')
@@ -398,6 +442,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
+        console.log('✅ AuthProvider: Created backoffice user:', saasUser);
+        
         // Update Redux state
         dispatch(setCurrentUser(saasUser));
         dispatch(setBackofficeUser(true));
@@ -417,33 +463,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType: null
         };
         
+        console.log('✅ AuthProvider: Created backoffice employee data:', backofficeEmployeeData);
+        
         dispatch(setEmployeeData(backofficeEmployeeData));
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Set modules for backoffice user
-        const backofficeModules = [
-          {
-            id: 'dashboard-admin',
-            name: 'Dashboard',
-            key: 'dashboard',
-            icon: 'LayoutDashboard',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          },
-          {
-            id: 'admin-settings',
-            name: 'Settings',
-            key: 'adminSettings',
-            icon: 'Settings',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          }
-        ];
+        // Fetch and set modules for backoffice user
+        console.log('🔄 AuthProvider: Fetching backoffice modules');
+        const backofficeModules = await fetchBackofficeModules();
         
-        dispatch(setConfiguredModules(backofficeModules));
+        if (backofficeModules.length > 0) {
+          console.log('✅ AuthProvider: Setting backoffice modules:', backofficeModules);
+          dispatch(setConfiguredModules(backofficeModules));
+        } else {
+          console.log('⚠️ AuthProvider: No modules found, setting default modules');
+          // Set default modules if none found
+          const defaultModules = [
+            {
+              id: 'dashboard-admin',
+              name: 'Dashboard',
+              key: 'dashboard',
+              icon: 'LayoutDashboard',
+              level: 'admin',
+              enabled: true,
+              accessLevel: {}
+            },
+            {
+              id: 'clients-admin',
+              name: 'Clients',
+              key: 'clients',
+              icon: 'Building2',
+              level: 'admin',
+              enabled: true,
+              accessLevel: {}
+            },
+            {
+              id: 'modules-admin',
+              name: 'Modules',
+              key: 'modules',
+              icon: 'Package',
+              level: 'admin',
+              enabled: true,
+              accessLevel: {}
+            },
+            {
+              id: 'settings-admin',
+              name: 'Settings',
+              key: 'settings',
+              icon: 'Settings',
+              level: 'admin',
+              enabled: true,
+              accessLevel: {}
+            }
+          ];
+          
+          dispatch(setConfiguredModules(defaultModules));
+        }
         
+        console.log('✅ AuthProvider: Backoffice login completed successfully');
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
