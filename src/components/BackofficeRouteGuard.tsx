@@ -4,14 +4,20 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 
 interface BackofficeRouteGuardProps {
   children: React.ReactNode;
 }
 
 const BackofficeRouteGuard = ({ children }: BackofficeRouteGuardProps) => {
-  const { user, isBackofficeUser } = useAuth();
+  const { user, isBackofficeUser, isInitializing } = useAuth();
   const location = useLocation();
+  
+  // Show loading overlay while authentication is initializing
+  if (isInitializing) {
+    return <AuthLoadingOverlay isVisible={true} />;
+  }
   
   // Check if user is authenticated
   const isAuthenticated = !!user;
@@ -24,7 +30,8 @@ const BackofficeRouteGuard = ({ children }: BackofficeRouteGuardProps) => {
     isBackofficeUser,
     isBackofficeAuthorized,
     userRole: user?.role,
-    location: location.pathname
+    location: location.pathname,
+    isInitializing: isInitializing
   });
 
   // If not authenticated, redirect to backoffice login
