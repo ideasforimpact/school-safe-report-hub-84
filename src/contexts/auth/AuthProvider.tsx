@@ -16,7 +16,7 @@ import { useAuthHandlers } from './hooks/useAuthHandlers';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-// Create the context with async logout
+// Create the context with async logout and isInitializing property
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   users: [],
@@ -35,6 +35,7 @@ export const AuthContext = createContext<AuthContextType>({
   handleUserAuthentication: async () => {},
   employeeData: null,
   setUser: () => {},
+  isInitializing: true, // Add the missing isInitializing property
 });
 
 interface AuthProviderProps {
