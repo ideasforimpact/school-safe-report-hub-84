@@ -47,9 +47,20 @@ const iconMap: Record<string, any> = {
 let cachedBackofficeModules: Module[] | null = null;
 let cachedClientModules: Module[] | null = null;
 
+// Add function to clear cache when needed
+export const clearModuleCache = () => {
+  cachedBackofficeModules = null;
+  cachedClientModules = null;
+};
+
 export const fetchModules = async (isBackoffice: boolean, user?: any, employeeData?: any): Promise<Module[]> => {
   try {
-    // Check cache first
+    // For backoffice, clear cache to ensure fresh data
+    if (isBackoffice) {
+      cachedBackofficeModules = null;
+    }
+    
+    // Check cache first (but skip for backoffice as we cleared it)
     if (isBackoffice && cachedBackofficeModules) {
       return cachedBackofficeModules;
     } else if (!isBackoffice && cachedClientModules) {
