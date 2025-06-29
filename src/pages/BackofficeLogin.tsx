@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useEmployeeStore } from "@/store/EmployeeContext";
+import { setCurrentUser, setBackofficeUser, setAuthStatus } from "@/store/employeeActions";
 
 const BackofficeLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +21,7 @@ const BackofficeLogin = () => {
     password: "",
   });
   const { login } = useAuth();
+  const { dispatch } = useEmployeeStore();
   const navigate = useNavigate();
 
   // Handle form input changes
@@ -47,6 +50,11 @@ const BackofficeLogin = () => {
       const success = await login(formData.email, formData.password);
 
       if (success) {
+        // After successful login, ensure Redux state is properly set for backoffice
+        dispatch(setBackofficeUser(true));
+        dispatch(setAuthStatus(true));
+        
+        console.log("Backoffice login successful, Redux state updated");
         toast.success("Login successful! Redirecting to dashboard...");
         navigate("/backoffice/dashboard");
       } else {

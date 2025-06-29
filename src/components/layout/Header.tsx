@@ -11,18 +11,32 @@ import HeaderIcons from './HeaderIcons';
 import UserRoleBadge from './UserRoleBadge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 
 const Header = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useEmployeeStore();
   
-  // Get employee data and admin status from Redux store
+  // Get all authentication data from Redux store only
+  const currentUser = getCurrentUser(state);
+  const isAuthenticated = getIsAuthenticated(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
-  const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
+
+  // Debug logging to track Redux state
+  console.log('Header Redux State:', {
+    currentUser,
+    isAuthenticated,
+    isBackofficeUser,
+    employeeData,
+    isAdmin,
+    isSuperAdmin
+  });
 
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -33,20 +47,21 @@ const Header = () => {
   // Find the client associated with the current user - Use employeeData.clientId from Redux if available
   const userClient = employeeData?.clientId 
     ? clients.find(c => c.id === employeeData.clientId) 
-    : user?.clientId 
-      ? clients.find(c => c.id === user.clientId) 
+    : currentUser?.clientId 
+      ? clients.find(c => c.id === currentUser.clientId) 
       : null;
 
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Determine if the user is a SaaS Owner (backoffice user)
-  const isSaasOwner = user?.role === 'saas_owner';
+  // Determine if the user is a SaaS Owner (backoffice user) - Use Redux state only
+  const isSaasOwner = currentUser?.role === 'saas_owner' || isBackofficeUser;
 
-  // Check if user is authenticated - prioritize Redux state for backoffice users
-  const isAuthenticated = Boolean(
-    state.currentUser || 
-    user || 
+  // Final authentication check - Use Redux state only
+  const finalIsAuthenticated = Boolean(
+    isAuthenticated || 
+    currentUser || 
+    employeeData ||
     (isBackoffice && (isSaasOwner || isSuperAdmin))
   );
 
@@ -65,16 +80,16 @@ const Header = () => {
           {isHomePage && <HeaderNavLinks />}
           
           {/* User Menu */}
-          {isAuthenticated ? (
+          {finalIsAuthenticated ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {(state.currentUser || user) && (
+              {(currentUser || employeeData) && (
                 <UserRoleBadge 
                   isSaasOwner={isSaasOwner} 
                   isAdmin={isAdmin && !isSuperAdmin && !isSaasOwner} 
                   isSuperAdmin={isSuperAdmin} 
-                  department={employeeData?.department} 
+                  department={employeeData?.department || currentUser?.department} 
                 />
               )}
 

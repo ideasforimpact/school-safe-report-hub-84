@@ -18,3 +18,10 @@ export const isUserSaasOwner = (state: EmployeeState) => {
   const user = state.currentUser;
   return user?.role === 'saas_owner' || state.isBackofficeUser || false;
 };
+
+// Helper function to determine if user is super admin (from current user or employee data)
+export const isUserSuperAdmin = (state: EmployeeState) => {
+  const user = state.currentUser;
+  const employeeData = state.employeeData;
+  return user?.isSuperAdmin === true || employeeData?.isSuperAdmin === true;
+};
