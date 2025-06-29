@@ -3,8 +3,7 @@ import { User, UserRole, EmployeeData, Client, ClientType, DepartmentType, Emplo
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId, setEmployeeData } from '@/store/employeeActions';
-import { setBackofficeUser, setAuthStatus, setCurrentUser } from '@/store/authActions';
+import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
@@ -31,7 +30,7 @@ interface UseAuthHandlersProps {
   setAuthError: (error: string | null) => void;
   authInitCompleteRef: React.MutableRefObject<boolean>;
   setEmployeeData: (employeeData: EmployeeData | null) => void;
-  dispatch?: any;
+  dispatch?: any; // Add dispatch prop for Redux actions
 }
 
 export const useAuthHandlers = ({
@@ -99,96 +98,6 @@ export const useAuthHandlers = ({
     } catch (error) {
       console.error("Error in fetchClientInfo:", error);
       return { client: null, clientType: null };
-    }
-  }, []);
-
-  // Helper function to fetch backoffice modules
-  const fetchBackofficeModules = useCallback(async () => {
-    try {
-      console.log('🔄 useAuthHandlers: Fetching backoffice modules');
-      
-      const { data: modules, error } = await supabase
-        .from('modules')
-        .select('*')
-        .eq('active', true)
-        .eq('level', 'backoffice')
-        .order('order', { ascending: true, nullsFirst: false });
-
-      if (error) {
-        console.error('Error fetching backoffice modules:', error);
-        return [];
-      }
-
-      if (!modules || modules.length === 0) {
-        console.log('⚠️ useAuthHandlers: No backoffice modules found, using default modules');
-        return [
-          {
-            id: 'dashboard-admin',
-            name: 'Dashboard',
-            key: 'dashboard',
-            icon: 'LayoutDashboard',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {},
-            order: 1,
-            url: '/dashboard'
-          },
-          {
-            id: 'clients-admin',
-            name: 'Clients',
-            key: 'clients',
-            icon: 'Building2',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {},
-            order: 2,
-            url: '/clients'
-          },
-          {
-            id: 'modules-admin',
-            name: 'Modules',
-            key: 'modules',
-            icon: 'Package',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {},
-            order: 3,
-            url: '/modules'
-          },
-          {
-            id: 'settings-admin',
-            name: 'Settings',
-            key: 'settings',
-            icon: 'Settings',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {},
-            order: 4,
-            url: '/settings'
-          }
-        ];
-      }
-
-      console.log('✅ useAuthHandlers: Fetched modules:', modules);
-
-      // Convert modules to the format expected by the application
-      const formattedModules = modules.map(module => ({
-        id: module.id,
-        name: module.name,
-        key: module.name.toLowerCase().replace(/\s+/g, '_'),
-        icon: module.icon || 'Settings',
-        level: 'admin',
-        enabled: module.active,
-        accessLevel: {},
-        order: module.order || 999,
-        url: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`
-      }));
-
-      console.log('🔄 useAuthHandlers: Formatted modules:', formattedModules);
-      return formattedModules;
-    } catch (error) {
-      console.error('Error in fetchBackofficeModules:', error);
-      return [];
     }
   }, []);
   
@@ -373,106 +282,29 @@ export const useAuthHandlers = ({
     }
   }, []);
 
-  // Handle user authentication from various sources (SSO, backoffice) - FIXED FOR BACKOFFICE
-  const handleUserAuthentication = useCallback(async (
-    supabaseUser: SupabaseUser | null, 
-    isBackofficeAuth: boolean = false,
-    backofficeUserData?: any
-  ) => {
-    if (isProcessingAuth) {
+  // Handle user authentication from various providers (Google, etc.) - MEMOIZED
+  const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
+    if (!supabaseUser || isProcessingAuth) {
+      // If no user provided or already processing, return early
+      if (!supabaseUser) {
+        toast.error("Authentication failed. Please login again.");
+        // Clear any existing auth data to ensure clean state
+        setUser(null);
+        setEmployeeData(null);
+        saveEmployeeDataToStorage(null);
+        setAuthError(null);
+        
+        // Clear Redux state if dispatch is available
+        if (dispatch) {
+          dispatch(resetEmployee());
+        }
+      }
       return;
     }
     
     try {
       setIsProcessingAuth(true);
       
-      // HANDLE BACKOFFICE AUTHENTICATION - FIXED REDUX DISPATCH
-      if (isBackofficeAuth && backofficeUserData && dispatch) {
-        
-        // Create backoffice user object
-        const backofficeUser: User = {
-          id: backofficeUserData.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin', 
-          email: backofficeUserData.email,
-          role: 'saas_owner' as UserRole,
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUserData.created_at,
-          client: null,
-          clientType: null
-        };
-        
-        // PROPERLY DISPATCH REDUX ACTIONS
-        dispatch(setCurrentUser(backofficeUser));
-        dispatch(setBackofficeUser(true));
-        dispatch(setAuthStatus(true));
-        
-        // Set user in context and localStorage
-        setUser(backofficeUser);
-        saveUserToStorage(backofficeUser);
-        
-        // Create backoffice employee data
-        const backofficeEmployeeData: EmployeeData = {
-          id: backofficeUserData.id,
-          clientId: null,
-          email: backofficeUserData.email,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin',
-          client: null,
-          clientType: null
-        };
-        
-        // PROPERLY DISPATCH EMPLOYEE DATA
-        dispatch(setEmployeeData(backofficeEmployeeData));
-        setEmployeeData(backofficeEmployeeData);
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Fetch and set backoffice modules
-        dispatch(setLoading(true));
-        try {
-          const backofficeModules = await fetchBackofficeModules();
-          dispatch(setConfiguredModules(backofficeModules));
-        } catch (moduleError) {
-          console.error('Error fetching backoffice modules:', moduleError);
-        } finally {
-          dispatch(setLoading(false));
-        }
-        
-        // Clear any auth errors
-        setAuthError(null);
-        authInitCompleteRef.current = true;
-        
-        return;
-      }
-      
-      // HANDLE SSO/REGULAR AUTHENTICATION (existing logic)
-      if (!supabaseUser) {
-        toast.error("Authentication failed. Please login again.");
-        setUser(null);
-        setEmployeeData(null);
-        saveEmployeeDataToStorage(null);
-        setAuthError(null);
-        
-        if (dispatch) {
-          dispatch(resetEmployee());
-        }
-        return;
-      }
-
       // STEP 1: Check if employee exists FIRST before proceeding
       if (!supabaseUser.email) {
         setAuthError("No email found in authentication data. Please contact support.");
@@ -480,6 +312,7 @@ export const useAuthHandlers = ({
         
         // Sign out the user from Supabase since we can't proceed
         await supabase.auth.signOut();
+        setIsProcessingAuth(false);
         return;
       }
 
@@ -495,15 +328,22 @@ export const useAuthHandlers = ({
         setAuthError("Your email is not registered as an employee. Please contact your administrator to register your account first.");
         toast.error("Your email is not registered as an employee. Please contact your administrator.");
         
+        // Sign out the user from Supabase
         await supabase.auth.signOut();
+        
+        // Clear local state
         setUser(null);
         setEmployeeData(null);
         saveEmployeeDataToStorage(null);
         
+        // Clear Redux state if dispatch is available
         if (dispatch) {
           dispatch(resetEmployee());
         }
         
+        setIsProcessingAuth(false);
+        
+        // Force redirect to login page
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
@@ -516,6 +356,7 @@ export const useAuthHandlers = ({
         setAuthError("Your employee account has been deactivated. Please contact support.");
         toast.error("Your employee account has been deactivated. Please contact support.");
         await supabase.auth.signOut();
+        setIsProcessingAuth(false);
         return;
       }
 
@@ -527,15 +368,22 @@ export const useAuthHandlers = ({
           setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
           toast.error("Your email domain is not authorized for this application.");
           
+          // Sign out the user from Supabase
           await supabase.auth.signOut();
+          
+          // Clear local state
           setUser(null);
           setEmployeeData(null);
           saveEmployeeDataToStorage(null);
           
+          // Clear Redux state if dispatch is available
           if (dispatch) {
             dispatch(resetEmployee());
           }
           
+          setIsProcessingAuth(false);
+          
+          // Force redirect to login page
           if (typeof window !== 'undefined') {
             window.location.href = '/login';
           }
@@ -556,29 +404,36 @@ export const useAuthHandlers = ({
           setAuthError("Failed to link your account. Please contact support.");
           toast.error("Failed to link your account. Please contact support.");
           await supabase.auth.signOut();
+          setIsProcessingAuth(false);
           return;
         }
 
+        // Update the employee record with the new user_id for further processing
         employeeRecord.user_id = supabaseUser.id;
       }
 
       // STEP 7: Create user and employee data objects
+      // Extract auth provider from user metadata or email
       let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
       
+      // If email is present but no provider is specified, assume direct sign-in
       if (supabaseUser.email && !provider) {
         provider = 'email';
       }
       
+      // Construct a name from available information
       const name = supabaseUser.user_metadata?.full_name || 
                   supabaseUser.user_metadata?.name || 
                   supabaseUser.email?.split('@')[0] || 
                   'User';
       
+      // Try to split the name into first and last name
       const nameParts = name.split(' ');
       const firstName = nameParts[0] || 'User';
       const lastName = nameParts.slice(1).join(' ') || '';
       
-      let employeeRole: UserRole = 'user';
+      // Convert employee_type string to UserRole
+      let employeeRole: UserRole = 'user'; // Default role
       switch (employeeRecord.employee_type) {
         case 'admin':
           employeeRole = 'admin';
@@ -634,10 +489,14 @@ export const useAuthHandlers = ({
       setUser(newUser);
       saveUserToStorage(newUser);
       
-      // Store employee data in Redux
+      // Store employee data in Redux - MANUAL DISPATCH FORMAT
       if (dispatch) {
-        dispatch(setEmployeeData(employeeData));
+        dispatch({
+          type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
+          payload: employeeData
+        });
         
+        // Also set clientId in Redux
         if (employeeData.clientId) {
           dispatch(setClientId(employeeData.clientId));
         }
@@ -647,12 +506,14 @@ export const useAuthHandlers = ({
       if (dispatch && employeeData.id && employeeData.clientId) {
         dispatch(setLoading(true));
         
+        // Get configured modules based on super admin status
         const modules = await fetchConfiguredModules(
           employeeData.id, 
           employeeData.clientId,
           !!employeeData.isSuperAdmin
         );
         
+        // Store modules in Redux
         dispatch(setConfiguredModules(modules));
         dispatch(setLoading(false));
       }
@@ -663,23 +524,23 @@ export const useAuthHandlers = ({
 
       // Clear any auth errors
       setAuthError(null);
-      authInitCompleteRef.current = true;
       
+      // Mark auth initialization as complete
+      authInitCompleteRef.current = true;
     } catch (error) {
       console.error('Authentication processing error:', error);
       setAuthError('Failed to process authentication');
       toast.error('Authentication failed. Please try again.');
       
       // Ensure user is logged out on error
-      if (!isBackofficeAuth) {
-        await supabase.auth.signOut();
-      }
+      await supabase.auth.signOut();
       
       // Clear all local state
       setUser(null);
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
       
+      // Clear Redux state if dispatch is available
       if (dispatch) {
         dispatch(resetEmployee());
       }
@@ -691,7 +552,7 @@ export const useAuthHandlers = ({
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, dispatch, validateDomain, users, setUsers, fetchClientInfo, fetchBackofficeModules, fetchConfiguredModules]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo]);
 
   return {
     handleUserAuthentication
