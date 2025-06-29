@@ -57,13 +57,17 @@ const Header = () => {
   // Determine if the user is a SaaS Owner (backoffice user) - Use Redux state only
   const isSaasOwner = currentUser?.role === 'saas_owner' || isBackofficeUser;
 
-  // Final authentication check - Use Redux state only
+  // Final authentication check - Use Redux state only with proper null checks
   const finalIsAuthenticated = Boolean(
-    isAuthenticated || 
-    currentUser || 
-    employeeData ||
-    (isBackoffice && (isSaasOwner || isSuperAdmin))
+    isAuthenticated && (currentUser || employeeData)
   );
+
+  console.log('Header Final Auth State:', {
+    finalIsAuthenticated,
+    isSaasOwner,
+    hasCurrentUser: !!currentUser,
+    hasEmployeeData: !!employeeData
+  });
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">

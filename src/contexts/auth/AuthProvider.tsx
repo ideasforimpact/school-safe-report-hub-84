@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useEffect, useState, useRef, useMemo } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
   logoutUser, 
@@ -286,13 +286,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
 
-  // Handle login
+  // Handle login - REMOVED backoffice logic, now only handles regular users and SSO
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     dispatch(setAuthError(null));
     setShowAuthLoading(true);
     
     try {
-      // First try to login as a regular user
+      // Only try to login as a regular user (no backoffice logic here)
       const user = loginUser(email, password, users);
 
       if (user) {
@@ -342,115 +342,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       }
 
-      // If regular login fails, try backoffice login
-      const { data, error } = await supabase.rpc('verify_password', { 
-        email, 
-        password_attempt: password 
-      });
-
-      if (error) {
-        dispatch(setAuthError("Invalid credentials"));
-        setShowAuthLoading(false);
-        return false;
-      }
-
-      if (data === true) {
-        // Fetch the backoffice user
-        const { data: backofficeUser, error: backofficeError } = await supabase
-          .from('backoffice_users')
-          .select('*')
-          .eq('email', email)
-          .single();
-          
-        if (backofficeError || !backofficeUser) {
-          dispatch(setAuthError("Error retrieving user data"));
-          setShowAuthLoading(false);
-          return false;
-        }
-        
-        // Update last_signed_in
-        await supabase
-          .from('backoffice_users')
-          .update({ last_signed_in: new Date().toISOString() })
-          .eq('id', backofficeUser.id);
-        
-        // Create a user object for the backoffice user
-        const saasUser: User = {
-          id: backofficeUser.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          email: backofficeUser.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUser.created_at,
-          client: null,
-          clientType: null
-        };
-        
-        // Update Redux state
-        dispatch(setCurrentUser(saasUser));
-        dispatch(setBackofficeUser(true));
-        dispatch(setAuthStatus(true));
-        
-        // Create employee data for backoffice user
-        const backofficeEmployeeData: EmployeeData = {
-          id: backofficeUser.id,
-          clientId: null,
-          email: backofficeUser.email,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin',
-          client: null,
-          clientType: null
-        };
-        
-        dispatch(setEmployeeData(backofficeEmployeeData));
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Set modules for backoffice user
-        const backofficeModules = [
-          {
-            id: 'dashboard-admin',
-            name: 'Dashboard',
-            key: 'dashboard',
-            icon: 'LayoutDashboard',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          },
-          {
-            id: 'admin-settings',
-            name: 'Settings',
-            key: 'adminSettings',
-            icon: 'Settings',
-            level: 'admin',
-            enabled: true,
-            accessLevel: {}
-          }
-        ];
-        
-        dispatch(setConfiguredModules(backofficeModules));
-        
-        setTimeout(() => setShowAuthLoading(false), 2000);
-        return true;
-      }
-
+      // If regular login fails, return false (no more backoffice fallback here)
       dispatch(setAuthError("Invalid credentials"));
       setShowAuthLoading(false);
       return false;
+      
     } catch (error) {
       console.error("Login error:", error);
       dispatch(setAuthError("Login failed"));
@@ -628,8 +524,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Context value
-  const contextValue: AuthContextType = {
+  // Context value with useMemo to ensure updates when Redux state changes
+  const contextValue: AuthContextType = useMemo(() => ({
     user: currentUser,
     users: displayUsers,
     login: handleLogin,
@@ -645,8 +541,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authError,
     handleUserAuthentication,
     employeeData: state.employeeData,
-    setUser: handleSetUser, // Enhanced setUser with logging
-  };
+    setUser: handleSetUser,
+  }), [
+    currentUser,
+    displayUsers, 
+    isAdmin,
+    isSaasOwner,
+    authError,
+    state.employeeData
+  ]);
 
   if (isInitializing) {
     return <AuthLoadingOverlay isVisible={true} />;
