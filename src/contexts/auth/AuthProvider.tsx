@@ -79,15 +79,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
   // Helper function to fetch backoffice modules
-  const fetchBackofficeModules = useRef(async () => {
+  const fetchBackofficeModules = async () => {
     try {
       console.log('🔄 AuthProvider: Fetching backoffice modules');
       
       const { data: modules, error } = await supabase
         .from('modules')
         .select('*')
-        .eq('enabled', true)
-        .order('name');
+        .eq('active', true)
+        .eq('level', 'backoffice')
+        .order('order', { ascending: true, nullsFirst: false });
 
       if (error) {
         console.error('Error fetching backoffice modules:', error);
@@ -95,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (!modules || modules.length === 0) {
-        console.log('⚠️ AuthProvider: No modules found in database');
+        console.log('⚠️ AuthProvider: No backoffice modules found in database');
         return [];
       }
 
@@ -105,10 +106,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const formattedModules = modules.map(module => ({
         id: module.id,
         name: module.name,
-        key: module.key,
+        key: module.name.toLowerCase().replace(/\s+/g, '_'), // Generate key from name
         icon: module.icon || 'Settings',
         level: 'admin',
-        enabled: module.enabled,
+        enabled: module.active, // Map 'active' to 'enabled'
         accessLevel: {}
       }));
 
@@ -118,10 +119,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Error in fetchBackofficeModules:', error);
       return [];
     }
-  }).current;
+  };
 
   // Helper function to fetch client and client type information
-  const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+  const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
     try {
       // Fetch client information with client type
       const { data: clientData, error: clientError } = await supabase
@@ -174,10 +175,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error("Error in fetchClientInfo:", error);
       return { client: null, clientType: null };
     }
-  }).current;
+  };
 
   // Enhanced setCurrentUser function that ensures client info is included
-  const setCurrentUserWithClientInfo = useRef(async (user: User | null) => {
+  const setCurrentUserWithClientInfo = async (user: User | null) => {
     if (!user) {
       dispatch(setCurrentUser(null));
       return;
@@ -212,7 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       dispatch(setCurrentUser(user));
       setTimeout(() => setShowAuthLoading(false), 2000);
     }
-  }).current;
+  };
 
   // Add setUser function that can be called directly with enhanced logging
   const handleSetUser = (user: User | null) => {
