@@ -16,7 +16,7 @@ import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
-import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
+import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError, getEmployeeData } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAuthenticated = getIsAuthenticated(state);
   const isBackofficeUser = getIsBackofficeUser(state);
   const authError = getAuthError(state);
+  const reduxEmployeeData = getEmployeeData(state);
   
   // Local state for users management and initialization
   const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
@@ -65,9 +66,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
+  const [localEmployeeData, setLocalEmployeeData] = useState<EmployeeData | null>(null);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
+
+  // Sync Redux employee data with local state
+  useEffect(() => {
+    console.log('🔄 AuthProvider: Syncing Redux employee data with local state');
+    console.log('Redux Employee Data:', reduxEmployeeData);
+    setLocalEmployeeData(reduxEmployeeData);
+  }, [reduxEmployeeData]);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -184,6 +193,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }, 100);
   };
 
+  // Enhanced setEmployeeData function that updates both Redux and local state
+  const handleSetEmployeeData = (employeeData: EmployeeData | null) => {
+    console.log('🔄 AuthProvider: Setting employee data to:', employeeData);
+    dispatch(setEmployeeData(employeeData));
+    setLocalEmployeeData(employeeData);
+    if (employeeData) {
+      saveEmployeeDataToStorage(employeeData);
+    }
+  };
+
   // Import useAuthHandlers with UNIFIED authentication
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
@@ -192,7 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsers: setUsersState,
     setAuthError: (error: string | null) => dispatch(setAuthError(error)),
     authInitCompleteRef,
-    setEmployeeData: (employeeData: EmployeeData | null) => dispatch(setEmployeeData(employeeData)),
+    setEmployeeData: handleSetEmployeeData, // Use the enhanced function
     dispatch
   });
 
@@ -328,8 +347,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               clientType: clientType
             };
             
-            dispatch(setEmployeeData(employee));
-            saveEmployeeDataToStorage(employee);
+            handleSetEmployeeData(employee);
             
             if (employee.clientId) {
               dispatch(setClientId(employee.clientId));
@@ -385,6 +403,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('💾 AuthProvider: Clearing local storage');
       logoutUser();
       
+      // Clear local employee data
+      setLocalEmployeeData(null);
+      
       // For non-backoffice users, sign out from Supabase
       if (!isBackofficeUser) {
         try {
@@ -429,7 +450,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Add new user
+  // User management functions
   const handleAddUser = (userData: any): void => {
     const newUser: UserWithPassword = { 
       ...userData,
@@ -448,7 +469,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User added successfully");
   };
 
-  // Update user
   const handleUpdateUser = (id: string, updates: Partial<User & { password?: string }>): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
@@ -464,7 +484,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User updated successfully");
   };
 
-  // Delete user
   const handleDeleteUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.filter(user => user.id !== id);
@@ -475,7 +494,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User deleted successfully");
   };
 
-  // Deactivate user
   const handleDeactivateUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
@@ -491,7 +509,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User deactivated successfully");
   };
 
-  // Reactivate user
   const handleReactivateUser = (id: string): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
@@ -507,7 +524,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.success("User reactivated successfully");
   };
 
-  // Change password
   const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!currentUser) {
       toast.error("No user logged in");
@@ -542,8 +558,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    employeeData: state.employeeData,
-    setUser: handleSetUser, // Enhanced setUser with logging
+    employeeData: localEmployeeData, // Use the synced local state
+    setUser: handleSetUser,
   };
 
   if (isInitializing) {
