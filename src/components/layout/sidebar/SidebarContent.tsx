@@ -45,11 +45,32 @@ const SidebarContent = () => {
     const loadModules = async () => {
       try {
         if (isSaasOwner && isBackofficeRoute) {
-          // For backoffice, fetch modules from database
-          console.log('Loading backoffice modules from database');
-          const modules = await fetchModules(true, user);
-          const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
-          setDynamicMenuItems(items);
+          console.log('🔄 SidebarContent: Loading backoffice modules');
+          console.log('📦 SidebarContent: Configured modules from Redux:', configuredModules);
+          
+          if (configuredModules && configuredModules.length > 0) {
+            // Use modules from Redux store
+            const items = configuredModules.map(module => {
+              const path = `/${module.key.toLowerCase()}`;
+              return {
+                icon: module.icon || 'Settings',
+                label: module.name,
+                path,
+                allowed: true,
+                accessLevel: module.accessLevel || {}
+              };
+            });
+            
+            console.log('✅ SidebarContent: Using Redux modules:', items);
+            setDynamicMenuItems(items);
+          } else {
+            // Fallback: fetch modules from database
+            console.log('⚠️ SidebarContent: No Redux modules, fetching from database');
+            const modules = await fetchModules(true, user);
+            const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
+            console.log('✅ SidebarContent: Fetched modules from database:', items);
+            setDynamicMenuItems(items);
+          }
         } else if (configuredModules.length > 0) {
           // Convert Redux store modules to sidebar format
           const items = configuredModules.map(module => {
@@ -113,6 +134,8 @@ const SidebarContent = () => {
       </div>
     );
   }
+
+  console.log('🎯 SidebarContent: Rendering with items:', dynamicMenuItems);
 
   return (
     <div className="flex-1 py-6">
