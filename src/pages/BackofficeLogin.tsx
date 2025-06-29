@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEmployeeStore } from "@/store/EmployeeContext";
-import { setCurrentUser, setBackofficeUser, setAuthStatus } from "@/store/employeeActions";
+import { setCurrentUser, setBackofficeUser, setAuthStatus } from "@/store/authActions";
 
 const BackofficeLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
