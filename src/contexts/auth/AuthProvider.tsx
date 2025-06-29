@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAuthenticated = getIsAuthenticated(state);
   const isBackofficeUser = getIsBackofficeUser(state);
   const authError = getAuthError(state);
-  const employeeData = getEmployeeData(state); // Direct from Redux
+  const employeeData = getEmployeeData(state);
   
   // Local state only for users management and initialization
   const [users, setUsersState] = React.useState(getUsersFromStorage());
@@ -72,14 +72,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef(false);
   const authCheckInProgressRef = useRef(false);
 
+  // Debug logging for Redux state changes
+  useEffect(() => {
+    console.log('🔄 AuthProvider: Redux state changed', {
+      currentUser: !!currentUser,
+      isAuthenticated,
+      isBackofficeUser,
+      employeeData: !!employeeData,
+      authError
+    });
+  }, [currentUser, isAuthenticated, isBackofficeUser, employeeData, authError]);
+
   // Update display users whenever users changes
   useEffect(() => {
     setDisplayUsers(users.map(({ password, ...user }) => user));
   }, [users]);
 
-  // Compute roles directly from Redux state
-  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
-  const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
+  // Compute roles directly from Redux state - ensure these update when Redux state changes
+  const isAdmin = React.useMemo(() => {
+    return Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
+  }, [currentUser]);
+
+  const isSaasOwner = React.useMemo(() => {
+    return Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
+  }, [currentUser, isBackofficeUser]);
 
   // Helper function to fetch client and client type information
   const fetchClientInfo = async (clientId: string) => {
@@ -250,6 +266,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // If we have persisted backoffice user state, skip Supabase checks
         if (isBackofficeUser && currentUser) {
+          console.log('✅ AuthProvider: Found persisted backoffice user, skipping Supabase check');
           setIsInitializing(false);
           return;
         }
@@ -499,8 +516,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Context value - using Redux state directly
-  const contextValue: AuthContextType = {
+  // Context value - using Redux state directly with memoization to ensure updates
+  const contextValue: AuthContextType = React.useMemo(() => ({
     user: currentUser,
     users: displayUsers,
     login: handleLogin,
@@ -515,9 +532,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    employeeData, // Direct from Redux
+    employeeData,
     setUser: handleSetUser,
-  };
+  }), [
+    currentUser, 
+    displayUsers, 
+    isAdmin, 
+    isSaasOwner, 
+    authError, 
+    employeeData,
+    handleUserAuthentication
+  ]);
 
   if (isInitializing) {
     return <AuthLoadingOverlay isVisible={true} />;
