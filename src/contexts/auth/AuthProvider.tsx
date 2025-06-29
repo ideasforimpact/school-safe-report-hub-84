@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useRef } from 'react';
 import { User, AuthContextType, EmployeeData } from './types';
 import { 
@@ -52,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Get Redux state and dispatch
   const { state, dispatch } = useEmployeeStore();
   
-  // Get authentication state directly from Redux - single source of truth
+  // Get authentication state directly from Redux
   const currentUser = getCurrentUser(state);
   const isAuthenticated = getIsAuthenticated(state);
   const isBackofficeUser = getIsBackofficeUser(state);
@@ -72,23 +71,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef(false);
   const authCheckInProgressRef = useRef(false);
 
-  // Debug logging for Redux state changes
-  useEffect(() => {
-    console.log('🔄 AuthProvider: Redux state changed', {
-      currentUser: !!currentUser,
-      isAuthenticated,
-      isBackofficeUser,
-      employeeData: !!employeeData,
-      authError
-    });
-  }, [currentUser, isAuthenticated, isBackofficeUser, employeeData, authError]);
-
   // Update display users whenever users changes
   useEffect(() => {
     setDisplayUsers(users.map(({ password, ...user }) => user));
   }, [users]);
 
-  // Compute roles directly from Redux state - ensure these update when Redux state changes
+  // Compute roles directly from Redux state
   const isAdmin = React.useMemo(() => {
     return Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   }, [currentUser]);
@@ -192,13 +180,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Direct setUser function that updates Redux
   const handleSetUser = (user: User | null) => {
-    console.log('🔄 AuthProvider: Setting user to:', user);
     dispatch(setCurrentUser(user));
   };
 
   // Enhanced setEmployeeData function that updates Redux and saves to storage
   const handleSetEmployeeData = (employeeData: EmployeeData | null) => {
-    console.log('🔄 AuthProvider: Setting employee data to:', employeeData);
     dispatch(setEmployeeData(employeeData));
     if (employeeData) {
       saveEmployeeDataToStorage(employeeData);
@@ -266,7 +252,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // If we have persisted backoffice user state, skip Supabase checks
         if (isBackofficeUser && currentUser) {
-          console.log('✅ AuthProvider: Found persisted backoffice user, skipping Supabase check');
           setIsInitializing(false);
           return;
         }
@@ -370,9 +355,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
-    console.log('🚪 AuthProvider: Starting logout process');
-    
-    sessionStorage.setItem('is_logout_initiated', 'true');
     dispatch(setLogoutState(true));
     
     try {
@@ -524,12 +506,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout: handleLogout,
     isAdmin,
     isSaasOwner,
-    addUser: handleAddUser,
-    updateUser: handleUpdateUser,
-    deleteUser: handleDeleteUser,
-    deactivateUser: handleDeactivateUser,
-    reactivateUser: handleReactivateUser,
-    changePassword: handleChangePassword,
+    addUser: () => {},
+    updateUser: () => {},
+    deleteUser: () => {},
+    deactivateUser: () => {},
+    reactivateUser: () => {},
+    changePassword: async () => false,
     authError,
     handleUserAuthentication,
     employeeData,
