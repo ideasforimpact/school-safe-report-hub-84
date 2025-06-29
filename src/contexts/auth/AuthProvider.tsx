@@ -667,6 +667,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     handleUserAuthentication,
     employeeData: employeeData,
     setUser: handleSetUser,
+    isInitializing: isInitializing, // Add this line
   };
 
   if (isInitializing) {

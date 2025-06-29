@@ -3,6 +3,7 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -19,8 +20,13 @@ const RouteGuard = ({
   requireSaasOwner = false,
   isBackoffice = false
 }: RouteGuardProps) => {
-  const { user, isAdmin, isSaasOwner, employeeData, isBackofficeUser } = useAuth();
+  const { user, isAdmin, isSaasOwner, employeeData, isBackofficeUser, isInitializing } = useAuth();
   const location = useLocation();
+  
+  // Show loading overlay while authentication is initializing
+  if (isInitializing) {
+    return <AuthLoadingOverlay isVisible={true} />;
+  }
   
   // Determine if user is authenticated
   const isAuthenticated = !!user;
@@ -40,7 +46,8 @@ const RouteGuard = ({
     requireAuth: requireAuth,
     requireSaasOwner: requireSaasOwner,
     location: location.pathname,
-    userRole: user?.role
+    userRole: user?.role,
+    isInitializing: isInitializing
   });
 
   // Special handling for backoffice routes
