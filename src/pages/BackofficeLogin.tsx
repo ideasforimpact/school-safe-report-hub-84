@@ -45,7 +45,7 @@ const BackofficeLogin = () => {
     }));
   };
 
-  // Handle form submission with unified authentication
+  // Handle form submission with FIXED authentication flow
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -64,12 +64,7 @@ const BackofficeLogin = () => {
         password_attempt: formData.password 
       });
 
-      if (rpcError) {
-        setError("Invalid credentials");
-        return;
-      }
-
-      if (data !== true) {
+      if (rpcError || data !== true) {
         setError("Invalid credentials");
         return;
       }
@@ -92,8 +87,7 @@ const BackofficeLogin = () => {
         .update({ last_signed_in: new Date().toISOString() })
         .eq('id', backofficeUser.id);
 
-      // Use the unified authentication handler for backoffice login
-      console.log('🔄 BackofficeLogin: Using unified authentication handler');
+      // Use the FIXED unified authentication handler for backoffice login
       await handleUserAuthentication(null, true, backofficeUser);
 
       toast.success("Login successful! Redirecting to dashboard...");
