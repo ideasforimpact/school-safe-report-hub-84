@@ -341,6 +341,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // First try to login as a regular user
       const user = loginUser(email, password, users);
 
+      console.log(user,"Login via email and password");
+
       if (user) {
         await setCurrentUserWithClientInfo(user);
         
