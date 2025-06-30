@@ -386,6 +386,9 @@ export const useClient = (): ClientContextType => {
   return context;
 };
 
+// Export the context for use in useSafeClient
+export { ClientContext };
+
 // Export types
 export type { ClientContextType };
 
