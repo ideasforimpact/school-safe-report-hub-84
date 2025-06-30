@@ -15,7 +15,6 @@ import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store
 
 const Header = () => {
   const { logout } = useAuth();
-  const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useEmployeeStore();
@@ -28,6 +27,14 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
+  // Only use client context if we're in backoffice and user is authenticated
+  const isBackofficeRoute = location.pathname.startsWith('/backoffice');
+  const shouldUseClientContext = isBackofficeRoute && isAuthenticated && isBackofficeUser;
+  
+  // Conditionally use client context to prevent unauthorized API calls
+  const clientContextData = shouldUseClientContext ? useClient() : { clients: [] };
+  const { clients } = clientContextData;
+
   // Debug logging to track Redux state
   console.log('Header Redux State:', {
     currentUser,
@@ -35,7 +42,8 @@ const Header = () => {
     isBackofficeUser,
     employeeData,
     isAdmin,
-    isSuperAdmin
+    isSuperAdmin,
+    shouldUseClientContext
   });
 
   // Check if we're on the home page
