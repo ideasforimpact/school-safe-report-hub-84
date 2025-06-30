@@ -174,7 +174,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Add setUser function that can be called directly with enhanced logging
   const handleSetUser = (user: User | null) => {
+    console.log('🔄 AuthProvider: Setting user to:', user);
+    console.log('🕐 AuthProvider: setUser called at:', new Date().toISOString());
     dispatch(setCurrentUser(user));
+    
+    // Add a small delay to verify state propagation
+    setTimeout(() => {
+      console.log('✅ AuthProvider: User state after setUser:', currentUser);
+    }, 100);
   };
 
   // Import useAuthHandlers
@@ -194,7 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current || state.isLoggingOut) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Skip processing if logging out - prevents conflicts during manual logout
+      // Skip processing if logging out
       if (state.isLoggingOut) {
         return;
       }
@@ -212,7 +219,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setShowAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
-        // Only process SIGNED_OUT if it's not a manual logout
         dispatch(clearAuth());
         dispatch(resetEmployee());
         clearPersistedAuthState();
@@ -350,25 +356,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with immediate state clearing and navigation
+  // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
-    // Set logout flag immediately to prevent conflicts
+    console.log('🚪 AuthProvider: Starting logout process');
+    console.log('🕐 AuthProvider: Logout started at:', new Date().toISOString());
+    
+    // Set logout flag immediately to prevent redirect loops
+    sessionStorage.setItem('is_logout_initiated', 'true');
+    console.log('🏁 AuthProvider: Set logout flag in sessionStorage');
+    
+    // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
+    console.log('🔒 AuthProvider: Set logout state to true');
     
     try {
       // Clear Redux state immediately
+      console.log('🧹 AuthProvider: Clearing Redux state');
       dispatch(clearAuth());
       dispatch(resetEmployee());
       
       // Clear persisted state
+      console.log('🗑️ AuthProvider: Clearing persisted state');
       clearPersistedAuthState();
       
       // Clear local storage
+      console.log('💾 AuthProvider: Clearing local storage');
       logoutUser();
       
       // For non-backoffice users, sign out from Supabase
       if (!isBackofficeUser) {
         try {
+          console.log('🔐 AuthProvider: Signing out from Supabase');
           await supabase.auth.signOut();
         } catch (supabaseError) {
           console.error('Error signing out from Supabase:', supabaseError);
@@ -380,6 +398,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
       
       // Navigate immediately after clearing state
+      console.log('🧭 AuthProvider: Navigating to login page');
       if (shouldRedirectToBackoffice) {
         navigate('/backoffice/login', { replace: true });
       } else {
@@ -400,10 +419,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         navigate('/login', { replace: true });
       }
     } finally {
-      // Reset logout state after a brief delay
+      // Reset logout state after a short delay
       setTimeout(() => {
+        console.log('🔓 AuthProvider: Resetting logout state to false');
         dispatch(setLogoutState(false));
-      }, 500);
+      }, 1000);
     }
   };
 
