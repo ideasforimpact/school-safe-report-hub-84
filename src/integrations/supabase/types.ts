@@ -1646,6 +1646,10 @@ export type Database = {
         Args: { doc_number: string }
         Returns: string
       }
+      get_current_user_client_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_masked_document_number: {
         Args: { encrypted_doc_number: string }
         Returns: string
@@ -1683,6 +1687,10 @@ export type Database = {
         Returns: boolean
       }
       is_backoffice_admin_by_uid: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_current_user_backoffice_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
