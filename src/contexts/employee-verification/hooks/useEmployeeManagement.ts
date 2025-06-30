@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
@@ -40,33 +39,20 @@ export const useEmployeeManagement = () => {
       console.log('Fetching employees for client:', clientId);
       
       // SECURITY: Always pass clientId to ensure proper filtering
+      // The enhanced API now includes document summaries
       const employeesData = await getAllEmployeesFromApi(clientId, false);
       
-      // Map to our Employee interface
-      const mappedEmployees: Employee[] = employeesData.map(emp => ({
-        id: emp.id,
-        employeeId: emp.employeeId,
-        name: emp.name,
-        firstName: emp.firstName,
-        lastName: emp.lastName,
-        email: emp.email,
-        phone: emp.phone || '',
-        dateOfBirth: emp.dateOfBirth || '',
-        address: emp.address || '',
-        joiningDate: emp.joiningDate,
-        department: emp.department,
-        position: emp.position || '',
-        employeeType: emp.employeeType,
-        status: emp.status,
-        createdAt: emp.createdAt,
-        updatedAt: emp.updatedAt,
-        clientId: emp.clientId,
-        documents: emp.documents || []
-      }));
+      console.log(`Successfully loaded ${employeesData.length} employees with documents for client: ${clientId}`);
+      
+      // Log document counts for debugging
+      employeesData.forEach(emp => {
+        const docCount = emp.documents?.length || 0;
+        const verifiedCount = emp.documents?.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed').length || 0;
+        console.log(`Employee ${emp.name}: ${docCount} documents, ${verifiedCount} verified`);
+      });
 
-      setEmployees(mappedEmployees);
-      console.log(`Successfully loaded ${mappedEmployees.length} employees for client: ${clientId}`);
-      return mappedEmployees;
+      setEmployees(employeesData);
+      return employeesData;
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');

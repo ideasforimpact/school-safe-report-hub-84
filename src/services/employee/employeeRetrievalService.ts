@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
@@ -21,7 +20,18 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
     // SECURITY: Always filter by client_id to prevent cross-client data access
     const { data, error } = await supabase
       .from('employees')
-      .select('*')
+      .select(`
+        *,
+        employee_documents (
+          id,
+          verification_status,
+          document_type_id,
+          document_url,
+          document_number,
+          created_at,
+          updated_at
+        )
+      `)
       .eq('client_id', clientId); // MANDATORY client_id filter
 
     if (error) {
@@ -35,6 +45,23 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
     
     // Map the database records to our Employee model
     const employees = (data || []).map(record => {
+      // Map employee documents to our VerificationDocument interface
+      const documents: VerificationDocument[] = (record.employee_documents || []).map(doc => ({
+        id: doc.id,
+        employeeId: record.id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: 'Unknown', // Will be populated by the component if needed
+        documentNumber: doc.document_number || '',
+        documentImage: doc.document_url || '',
+        verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
+        verificationMethod: 'manual' as const,
+        employee_docs_log: [],
+        params: {},
+        cronActivate: false,
+        createdAt: doc.created_at || new Date().toISOString(),
+        updatedAt: doc.updated_at || new Date().toISOString()
+      }));
+
       const employee: Employee = {
         id: record.id,
         employeeId: record.employee_id || '',
@@ -53,7 +80,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
         isSuperAdmin: record?.is_super_admin,
-        documents: [],
+        documents: documents,
         clientId: record.client_id
       };
       return employee;
