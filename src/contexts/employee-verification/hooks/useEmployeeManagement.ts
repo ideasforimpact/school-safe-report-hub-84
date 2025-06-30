@@ -1,295 +1,103 @@
+
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Employee } from '../types';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth';
-import { useLocation } from 'react-router-dom';
+import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { Employee } from '../types';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
+import { useSafeClient } from '@/hooks/useSafeClient';
 
 export const useEmployeeManagement = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const { user, employeeData } = useAuth();
-  const location = useLocation();
+  const { state } = useEmployeeStore();
+  const { client } = useSafeClient();
+  
+  // Get authentication state from Redux
+  const currentUser = getCurrentUser(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
 
-  // Get client_id from either employeeData or user context
-  const clientId = employeeData?.clientId || user?.clientId;
-
-  // Check if we're on an employee verification route
-  const isEmployeeVerificationRoute = location.pathname.includes('/employee-verification');
+  // Determine the client ID to use
+  const getClientId = useCallback(() => {
+    // For backoffice users, use the selected client from context
+    if (isBackofficeUser && client?.id) {
+      return client.id;
+    }
+    
+    // For regular users, use their own client ID
+    return currentUser?.clientId || null;
+  }, [isBackofficeUser, client?.id, currentUser?.clientId]);
 
   const fetchEmployees = useCallback(async () => {
-    // Only fetch if we're on employee verification route and have clientId
-    if (!isEmployeeVerificationRoute || !clientId) {
-      console.log('Skipping employee fetch - not on employee verification route or no client ID');
-      setEmployees([]);
-      return [];
-    }
-
-    setIsLoading(true);
     try {
-      console.log('Fetching employees with documents for client:', clientId);
+      const clientId = getClientId();
       
-      // First fetch employees for the client
-      const { data: employeesData, error: employeesError } = await supabase
-        .from('employees')
-        .select(`
-          id,
-          employee_id,
-          first_name,
-          last_name,
-          email,
-          employee_type,
-          department,
-          status,
-          client_id,
-          is_super_admin,
-          user_id,
-          joining_date,
-          created_at,
-          updated_at
-        `)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
-
-      if (employeesError) {
-        console.error('Error fetching employees:', employeesError);
-        toast.error('Failed to fetch employees');
-        return [];
-      }
-
-      if (!employeesData || employeesData.length === 0) {
-        console.log('No employees found for client:', clientId);
+      if (!clientId) {
+        console.log('No client ID available, skipping employee fetch');
         setEmployees([]);
-        return [];
+        return;
       }
 
-      // Get all employee IDs to fetch documents
-      const employeeIds = employeesData.map(emp => emp.id);
+      console.log('Fetching employees for client:', clientId);
+      
+      // SECURITY: Always pass clientId to ensure proper filtering
+      const employeesData = await getAllEmployeesFromApi(clientId, false);
+      
+      // Map to our Employee interface
+      const mappedEmployees: Employee[] = employeesData.map(emp => ({
+        id: emp.id,
+        employeeId: emp.employeeId,
+        name: emp.name,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        phone: emp.phone || '',
+        dateOfBirth: emp.dateOfBirth || '',
+        address: emp.address || '',
+        joiningDate: emp.joiningDate,
+        department: emp.department,
+        position: emp.position || '',
+        employeeType: emp.employeeType,
+        status: emp.status,
+        createdAt: emp.createdAt,
+        updatedAt: emp.updatedAt,
+        clientId: emp.clientId,
+        documents: emp.documents || []
+      }));
 
-      // Fetch documents for all employees
-      const { data: documentsData, error: documentsError } = await supabase
-        .from('employee_documents')
-        .select(`
-          id,
-          employee_id,
-          document_type_id,
-          document_status_id,
-          document_url,
-          document_number,
-          verification_status,
-          params,
-          employee_docs_log,
-          last_otp_generated,
-          created_at,
-          updated_at,
-          document_type:employee_document_type(name, description),
-          document_status:document_status(name, description)
-        `)
-        .in('employee_id', employeeIds);
-
-      if (documentsError) {
-        console.error('Error fetching employee documents:', documentsError);
-        // Continue without documents rather than failing completely
-      }
-
-      // Map employees and attach their documents
-      const mappedEmployees: Employee[] = employeesData.map(emp => {
-        // Find documents for this employee
-        const employeeDocuments = (documentsData || [])
-          .filter(doc => doc.employee_id === emp.id)
-          .map(doc => {
-            let documentUrl = doc.document_url;
-            
-            // If document_url is a storage path, convert to full URL
-            if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-              documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
-            }
-            
-            return {
-              id: doc.id,
-              employeeId: doc.employee_id,
-              documentTypeId: doc.document_type_id || '',
-              documentTypeName: doc.document_type?.name || 'Unknown',
-              documentNumber: doc.document_number || '',
-              documentImage: documentUrl,
-              verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
-              documentStatusId: doc.document_status_id,
-              documentStatusName: doc.document_status?.name,
-              verificationDate: null,
-              verificationNotes: '',
-              verificationMethod: 'manual' as const, // Fix: Explicitly set as 'manual'
-              employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
-                timestamp: string;
-                action: string;
-                response: any;
-                notes?: string;
-              }> : [],
-              params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
-              createdAt: doc.created_at,
-              updatedAt: doc.updated_at
-            };
-          });
-
-        return {
-          id: emp.id,
-          employeeId: emp.employee_id || '',
-          name: `${emp.first_name} ${emp.last_name}`,
-          firstName: emp.first_name,
-          lastName: emp.last_name,
-          email: emp.email,
-          phone: '',
-          dateOfBirth: '',
-          address: '',
-          joiningDate: emp.joining_date || new Date().toISOString(),
-          department: emp.department || '',
-          position: emp.employee_type || '',
-          employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
-          status: emp.status === true,
-          createdAt: emp.created_at || new Date().toISOString(),
-          updatedAt: emp.updated_at || new Date().toISOString(),
-          clientId: emp.client_id,
-          isSuperAdmin: emp.is_super_admin,
-          documents: employeeDocuments
-        };
-      });
-
-      console.log(`Fetched ${mappedEmployees.length} employees with their documents`);
       setEmployees(mappedEmployees);
-      return mappedEmployees;
+      console.log(`Successfully loaded ${mappedEmployees.length} employees for client: ${clientId}`);
     } catch (error) {
-      console.error('Error in fetchEmployees:', error);
-      toast.error('Failed to fetch employees');
-      return [];
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching employees:', error);
+      toast.error('Failed to load employees');
+      setEmployees([]);
     }
-  }, [clientId, isEmployeeVerificationRoute]);
+  }, [getClientId]);
 
   const addEmployee = useCallback(async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!clientId) {
-      toast.error('No client context available');
-      throw new Error('No client context available');
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('employees')
-        .insert([{
-          employee_id: employeeData.employeeId,
-          first_name: employeeData.name.split(' ')[0],
-          last_name: employeeData.name.split(' ').slice(1).join(' '),
-          email: employeeData.email,
-          department: employeeData.department,
-          employee_type: employeeData.employeeType,
-          joining_date: employeeData.joiningDate,
-          status: employeeData.status,
-          client_id: clientId
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newEmployee: Employee = {
-        id: data.id,
-        employeeId: data.employee_id,
-        name: `${data.first_name} ${data.last_name}`,
-        department: data.department,
-        employeeType: data.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
-        joiningDate: data.joining_date,
-        status: data.status,
-        clientId: data.client_id,
-        email: data.email,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      };
-
-      setEmployees(prev => [newEmployee, ...prev]);
-      toast.success('Employee added successfully');
-      return newEmployee;
-    } catch (error) {
-      console.error('Error adding employee:', error);
-      toast.error('Failed to add employee');
-      throw error;
-    }
-  }, [clientId]);
+    // Implementation for adding employees would go here
+    // This would need to be implemented based on your specific requirements
+    console.log('Add employee not implemented yet:', employeeData);
+    throw new Error('Add employee functionality not implemented');
+  }, []);
 
   const updateEmployee = useCallback(async (id: string, updates: Partial<Employee>) => {
-    try {
-      const dbUpdates: any = {};
-      
-      if (updates.name) {
-        const nameParts = updates.name.split(' ');
-        dbUpdates.first_name = nameParts[0];
-        dbUpdates.last_name = nameParts.slice(1).join(' ');
-      }
-      if (updates.email) dbUpdates.email = updates.email;
-      if (updates.department) dbUpdates.department = updates.department;
-      if (updates.employeeType) dbUpdates.employee_type = updates.employeeType;
-      if (updates.joiningDate) dbUpdates.joining_date = updates.joiningDate;
-      if (updates.status !== undefined) dbUpdates.status = updates.status;
-
-      const { data, error } = await supabase
-        .from('employees')
-        .update(dbUpdates)
-        .eq('id', id)
-        .eq('client_id', clientId) // Ensure we only update employees from current client
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const updatedEmployee: Employee = {
-        id: data.id,
-        employeeId: data.employee_id,
-        name: `${data.first_name} ${data.last_name}`,
-        department: data.department,
-        employeeType: data.employee_type as 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern',
-        joiningDate: data.joining_date,
-        status: data.status,
-        clientId: data.client_id,
-        email: data.email,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      };
-
-      setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
-      toast.success('Employee updated successfully');
-      return updatedEmployee;
-    } catch (error) {
-      console.error('Error updating employee:', error);
-      toast.error('Failed to update employee');
-      throw error;
-    }
-  }, [clientId]);
+    // Implementation for updating employees would go here
+    console.log('Update employee not implemented yet:', id, updates);
+    throw new Error('Update employee functionality not implemented');
+  }, []);
 
   const deleteEmployee = useCallback(async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('employees')
-        .delete()
-        .eq('id', id)
-        .eq('client_id', clientId); // Ensure we only delete employees from current client
+    // Implementation for deleting employees would go here
+    console.log('Delete employee not implemented yet:', id);
+    throw new Error('Delete employee functionality not implemented');
+  }, []);
 
-      if (error) throw error;
-
-      setEmployees(prev => prev.filter(emp => emp.id !== id));
-      toast.success('Employee deleted successfully');
-      return true;
-    } catch (error) {
-      console.error('Error deleting employee:', error);
-      toast.error('Failed to delete employee');
-      return false;
-    }
-  }, [clientId]);
-
-  const getEmployee = useCallback((id: string) => {
+  const getEmployee = useCallback((id: string): Employee | undefined => {
     return employees.find(emp => emp.id === id);
   }, [employees]);
 
   return {
     employees,
-    isLoading,
     fetchEmployees,
     addEmployee,
     updateEmployee,
