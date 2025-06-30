@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
-import { useLocation } from 'react-router-dom';
 
 export type InstitutionType = 'CBSE' | 'IB' | 'IGCSE' | 'ICSE' | 'Matric' | 'Combined Campus' | 'Other';
 
@@ -56,30 +55,14 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { state } = useEmployeeStore();
-  const location = useLocation();
   
   // Get authentication state from Redux
   const currentUser = getCurrentUser(state);
   const isAuthenticated = getIsAuthenticated(state);
   const isBackofficeUser = getIsBackofficeUser(state);
 
-  // Check if we should allow API calls
-  const shouldAllowApiCalls = () => {
-    const isBackofficeRoute = location.pathname.startsWith('/backoffice');
-    const hasValidAuth = isAuthenticated && (currentUser || state.employeeData);
-    const isValidBackofficeUser = isBackofficeUser || currentUser?.role === 'saas_owner';
-    
-    return isBackofficeRoute && hasValidAuth && isValidBackofficeUser;
-  };
-
-  // Extracted fetchClients function with authentication guards
+  // Extracted fetchClients function - now simplified since context is only used when appropriate
   const fetchClients = async () => {
-    // Guard: Only fetch if user is authenticated backoffice user on backoffice routes
-    if (!shouldAllowApiCalls()) {
-      console.log('ClientProvider: Skipping API call - not authorized or not on backoffice route');
-      return;
-    }
-
     setLoading(true);
     try {
       console.log('ClientProvider: Fetching clients data...');
@@ -139,17 +122,12 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Load clients from Supabase only when conditions are met
+  // Load clients from Supabase on mount - context is now only used when appropriate
   useEffect(() => {
-    if (shouldAllowApiCalls()) {
+    if (isAuthenticated && (isBackofficeUser || currentUser?.role === 'saas_owner')) {
       fetchClients();
-    } else {
-      // Clear clients data if not authorized
-      setClients([]);
-      setClient(null);
-      setLoading(false);
     }
-  }, [isAuthenticated, isBackofficeUser, currentUser, location.pathname, state.employeeData]);
+  }, [isAuthenticated, isBackofficeUser, currentUser, state.employeeData]);
 
   const mapModulesToPermissions = (clientModules: any[]): Partial<ModulePermissions> => {
     const permissions: Partial<ModulePermissions> = {
@@ -213,11 +191,6 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Add a new client - with authentication guard
   const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => {
-    if (!shouldAllowApiCalls()) {
-      toast.error('Unauthorized to perform this action');
-      return null;
-    }
-
     setLoading(true);
     try {
       const { modules, ...rest } = clientData;
@@ -286,11 +259,6 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Update an existing client - with authentication guard
   const updateClient = async (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => {
-    if (!shouldAllowApiCalls()) {
-      toast.error('Unauthorized to perform this action');
-      return;
-    }
-
     setLoading(true);
     try {
       const { modules, ...clientUpdates } = updates;
@@ -350,11 +318,6 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Delete a client - with authentication guard
   const deleteClient = async (id: string) => {
-    if (!shouldAllowApiCalls()) {
-      toast.error('Unauthorized to perform this action');
-      return;
-    }
-
     setLoading(true);
     try {
       const { error: employeeError } = await supabase
@@ -422,6 +385,9 @@ export const useClient = (): ClientContextType => {
   }
   return context;
 };
+
+// Export the context for use in useSafeClient
+export { ClientContext };
 
 // Export types
 export type { ClientContextType };

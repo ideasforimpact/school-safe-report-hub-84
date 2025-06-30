@@ -1,7 +1,7 @@
 
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
-import { useClient } from '@/contexts/ClientContext';
+import { useSafeClient } from '@/hooks/useSafeClient';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import HeaderLogo from './HeaderLogo';
@@ -31,9 +31,8 @@ const Header = () => {
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
   const shouldUseClientContext = isBackofficeRoute && isAuthenticated && isBackofficeUser;
   
-  // Conditionally use client context to prevent unauthorized API calls
-  const clientContextData = shouldUseClientContext ? useClient() : { clients: [] };
-  const { clients } = clientContextData;
+  // Use safe client hook that handles missing context gracefully
+  const { clients } = useSafeClient();
 
   // Debug logging to track Redux state
   console.log('Header Redux State:', {
