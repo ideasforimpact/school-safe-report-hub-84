@@ -7,31 +7,31 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
   try {
     console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
     
-    // If no clientId and we should skip, return empty array
-    if (!clientId && skipIfNoClient) {
-      console.log("No clientId provided and skipIfNoClient is true, returning empty array");
-      return [];
+    // SECURITY: Always require clientId - never fetch without it
+    if (!clientId) {
+      if (skipIfNoClient) {
+        console.log("No clientId provided - returning empty array for security");
+        return [];
+      } else {
+        console.error("SECURITY WARNING: getAllEmployeesFromApi called without clientId");
+        throw new Error("Client ID is required for security");
+      }
     }
     
-    // Simple query to employees table
-    const query = supabase.from('employees').select('*');
-    
-    // Apply client_id filter if provided
-    if (clientId) {
-      query.eq('client_id', clientId);
-      console.log(`Filtering employees by client_id: ${clientId}`);
-    }
-    
-    const { data, error } = await query;
+    // SECURITY: Always filter by client_id to prevent cross-client data access
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('client_id', clientId); // MANDATORY client_id filter
 
     if (error) {
       console.error("Error fetching employees:", error);
-      // Don't show toast error for this, just log it
+      // Don't show toast error for this, just log it and return empty array
       console.log("Failed to fetch employees, returning empty array");
       return [];
     }
 
-    console.log(`Successfully fetched ${data?.length || 0} employees from API`);
+    console.log(`Successfully fetched ${data?.length || 0} employees from API for client: ${clientId}`);
     
     // Map the database records to our Employee model
     const employees = (data || []).map(record => {
@@ -67,14 +67,20 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
   }
 };
 
-export const getEmployeeByIdFromApi = async (id: string): Promise<Employee | null> => {
+export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Promise<Employee | null> => {
   try {
-    // Use maybeSingle to avoid errors when no employee is found
-    const { data, error } = await supabase
+    // Build query with mandatory client_id filter if provided
+    let query = supabase
       .from('employees')
       .select('*')
-      .eq('id', id)
-      .maybeSingle();
+      .eq('id', id);
+    
+    // SECURITY: Add client_id filter if provided
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       console.error("Error fetching employee:", error);
@@ -104,7 +110,8 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee | nul
       status: data.status === true,
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
-      documents: []
+      documents: [],
+      clientId: data.client_id
     };
     
     return employee;
@@ -125,7 +132,7 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
 
     console.log('Fetching employee by user ID:', userId);
     
-    // Use maybeSingle to avoid errors when no employee is found
+    // SECURITY: Query will be automatically filtered by RLS policies
     const { data, error } = await supabase
       .from('employees')
       .select('*')
@@ -162,7 +169,8 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
       status: data.status === true,
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
-      documents: []
+      documents: [],
+      clientId: data.client_id
     };
   } catch (error) {
     console.error("Error in getEmployeeByUserIdFromApi:", error);
