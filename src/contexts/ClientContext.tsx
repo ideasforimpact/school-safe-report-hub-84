@@ -4,9 +4,6 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
-import { useLocation } from 'react-router-dom';
 
 export type InstitutionType = 'CBSE' | 'IB' | 'IGCSE' | 'ICSE' | 'Matric' | 'Combined Campus' | 'Other';
 
@@ -54,36 +51,12 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined);
 export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [client, setClient] = useState<Client | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const { state } = useEmployeeStore();
-  const location = useLocation();
-  
-  // Get authentication state from Redux
-  const currentUser = getCurrentUser(state);
-  const isAuthenticated = getIsAuthenticated(state);
-  const isBackofficeUser = getIsBackofficeUser(state);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Check if we should allow API calls
-  const shouldAllowApiCalls = () => {
-    const isBackofficeRoute = location.pathname.startsWith('/backoffice');
-    const hasValidAuth = isAuthenticated && (currentUser || state.employeeData);
-    const isValidBackofficeUser = isBackofficeUser || currentUser?.role === 'saas_owner';
-    
-    return isBackofficeRoute && hasValidAuth && isValidBackofficeUser;
-  };
-
-  // Extracted fetchClients function with authentication guards
+  // Extracted fetchClients function to be reusable
   const fetchClients = async () => {
-    // Guard: Only fetch if user is authenticated backoffice user on backoffice routes
-    if (!shouldAllowApiCalls()) {
-      console.log('ClientProvider: Skipping API call - not authorized or not on backoffice route');
-      return;
-    }
-
     setLoading(true);
     try {
-      console.log('ClientProvider: Fetching clients data...');
-      
       // Get all clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
@@ -129,8 +102,6 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (mappedClients.length > 0 && !client) {
         setClient(mappedClients[0]);
       }
-      
-      console.log('ClientProvider: Successfully fetched clients data');
     } catch (error) {
       console.error('Error fetching clients:', error);
       toast.error('Failed to load clients');
@@ -139,17 +110,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Load clients from Supabase only when conditions are met
+  // Load clients from Supabase on initial render
   useEffect(() => {
-    if (shouldAllowApiCalls()) {
-      fetchClients();
-    } else {
-      // Clear clients data if not authorized
-      setClients([]);
-      setClient(null);
-      setLoading(false);
-    }
-  }, [isAuthenticated, isBackofficeUser, currentUser, location.pathname, state.employeeData]);
+    fetchClients();
+  }, []);
 
   const mapModulesToPermissions = (clientModules: any[]): Partial<ModulePermissions> => {
     const permissions: Partial<ModulePermissions> = {
@@ -211,15 +175,11 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     );
   };
 
-  // Add a new client - with authentication guard
+  // Add a new client
   const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => {
-    if (!shouldAllowApiCalls()) {
-      toast.error('Unauthorized to perform this action');
-      return null;
-    }
-
     setLoading(true);
     try {
+      // Extract modules from clientData
       const { modules, ...rest } = clientData;
       
       // First save the client data
@@ -284,15 +244,11 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Update an existing client - with authentication guard
+  // Update an existing client
   const updateClient = async (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => {
-    if (!shouldAllowApiCalls()) {
-      toast.error('Unauthorized to perform this action');
-      return;
-    }
-
     setLoading(true);
     try {
+      // Extract modules from updates
       const { modules, ...clientUpdates } = updates;
       
       // First get the existing client to merge with updates
@@ -348,15 +304,11 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Delete a client - with authentication guard
+  // Delete a client
   const deleteClient = async (id: string) => {
-    if (!shouldAllowApiCalls()) {
-      toast.error('Unauthorized to perform this action');
-      return;
-    }
-
     setLoading(true);
     try {
+      // First delete super admin employees
       const { error: employeeError } = await supabase
         .from('employees')
         .delete()
