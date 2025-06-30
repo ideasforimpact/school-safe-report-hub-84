@@ -1,7 +1,7 @@
 
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
-import { useClient } from '@/contexts/ClientContext';
+import { useSafeClient } from '@/hooks/useSafeClient';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import HeaderLogo from './HeaderLogo';
@@ -15,7 +15,6 @@ import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store
 
 const Header = () => {
   const { logout } = useAuth();
-  const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useEmployeeStore();
@@ -28,6 +27,13 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
+  // Only use client context if we're in backoffice and user is authenticated
+  const isBackofficeRoute = location.pathname.startsWith('/backoffice');
+  const shouldUseClientContext = isBackofficeRoute && isAuthenticated && isBackofficeUser;
+  
+  // Use safe client hook that handles missing context gracefully
+  const { clients } = useSafeClient();
+
   // Debug logging to track Redux state
   console.log('Header Redux State:', {
     currentUser,
@@ -35,7 +41,8 @@ const Header = () => {
     isBackofficeUser,
     employeeData,
     isAdmin,
-    isSuperAdmin
+    isSuperAdmin,
+    shouldUseClientContext
   });
 
   // Check if we're on the home page

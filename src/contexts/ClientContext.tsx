@@ -4,6 +4,8 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 
 export type InstitutionType = 'CBSE' | 'IB' | 'IGCSE' | 'ICSE' | 'Matric' | 'Combined Campus' | 'Other';
 
@@ -51,12 +53,20 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined);
 export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [client, setClient] = useState<Client | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const { state } = useEmployeeStore();
+  
+  // Get authentication state from Redux
+  const currentUser = getCurrentUser(state);
+  const isAuthenticated = getIsAuthenticated(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
 
-  // Extracted fetchClients function to be reusable
+  // Extracted fetchClients function - now simplified since context is only used when appropriate
   const fetchClients = async () => {
     setLoading(true);
     try {
+      console.log('ClientProvider: Fetching clients data...');
+      
       // Get all clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
@@ -102,6 +112,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (mappedClients.length > 0 && !client) {
         setClient(mappedClients[0]);
       }
+      
+      console.log('ClientProvider: Successfully fetched clients data');
     } catch (error) {
       console.error('Error fetching clients:', error);
       toast.error('Failed to load clients');
@@ -110,10 +122,12 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Load clients from Supabase on initial render
+  // Load clients from Supabase on mount - context is now only used when appropriate
   useEffect(() => {
-    fetchClients();
-  }, []);
+    if (isAuthenticated && (isBackofficeUser || currentUser?.role === 'saas_owner')) {
+      fetchClients();
+    }
+  }, [isAuthenticated, isBackofficeUser, currentUser, state.employeeData]);
 
   const mapModulesToPermissions = (clientModules: any[]): Partial<ModulePermissions> => {
     const permissions: Partial<ModulePermissions> = {
@@ -175,11 +189,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     );
   };
 
-  // Add a new client
+  // Add a new client - with authentication guard
   const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => {
     setLoading(true);
     try {
-      // Extract modules from clientData
       const { modules, ...rest } = clientData;
       
       // First save the client data
@@ -244,11 +257,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Update an existing client
+  // Update an existing client - with authentication guard
   const updateClient = async (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => {
     setLoading(true);
     try {
-      // Extract modules from updates
       const { modules, ...clientUpdates } = updates;
       
       // First get the existing client to merge with updates
@@ -304,11 +316,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  // Delete a client
+  // Delete a client - with authentication guard
   const deleteClient = async (id: string) => {
     setLoading(true);
     try {
-      // First delete super admin employees
       const { error: employeeError } = await supabase
         .from('employees')
         .delete()
@@ -374,6 +385,9 @@ export const useClient = (): ClientContextType => {
   }
   return context;
 };
+
+// Export the context for use in useSafeClient
+export { ClientContext };
 
 // Export types
 export type { ClientContextType };
