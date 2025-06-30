@@ -27,14 +27,14 @@ export const useEmployeeManagement = () => {
     return currentUser?.clientId || null;
   }, [isBackofficeUser, client?.id, currentUser?.clientId]);
 
-  const fetchEmployees = useCallback(async () => {
+  const fetchEmployees = useCallback(async (): Promise<Employee[]> => {
     try {
       const clientId = getClientId();
       
       if (!clientId) {
         console.log('No client ID available, skipping employee fetch');
         setEmployees([]);
-        return;
+        return [];
       }
 
       console.log('Fetching employees for client:', clientId);
@@ -66,10 +66,12 @@ export const useEmployeeManagement = () => {
 
       setEmployees(mappedEmployees);
       console.log(`Successfully loaded ${mappedEmployees.length} employees for client: ${clientId}`);
+      return mappedEmployees;
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
       setEmployees([]);
+      return [];
     }
   }, [getClientId]);
 
