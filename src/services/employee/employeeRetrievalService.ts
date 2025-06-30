@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
@@ -17,36 +18,44 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
       }
     }
     
-    // SECURITY: Always filter by client_id to prevent cross-client data access
-    const { data, error } = await supabase
+    // First, fetch employees
+    const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select(`
-        *,
-        employee_documents (
-          id,
-          verification_status,
-          document_type_id,
-          document_url,
-          document_number,
-          created_at,
-          updated_at
-        )
-      `)
+      .select('*')
       .eq('client_id', clientId); // MANDATORY client_id filter
 
-    if (error) {
-      console.error("Error fetching employees:", error);
-      // Don't show toast error for this, just log it and return empty array
+    if (employeesError) {
+      console.error("Error fetching employees:", employeesError);
       console.log("Failed to fetch employees, returning empty array");
       return [];
     }
 
-    console.log(`Successfully fetched ${data?.length || 0} employees from API for client: ${clientId}`);
+    if (!employeesData || employeesData.length === 0) {
+      console.log("No employees found for client:", clientId);
+      return [];
+    }
+
+    // Then, fetch documents for all employees
+    const employeeIds = employeesData.map(emp => emp.id);
+    const { data: documentsData, error: documentsError } = await supabase
+      .from('employee_documents')
+      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, created_at, updated_at')
+      .in('employee_id', employeeIds);
+
+    if (documentsError) {
+      console.error("Error fetching employee documents:", documentsError);
+      // Continue without documents if there's an error
+    }
+
+    console.log(`Successfully fetched ${employeesData.length} employees from API for client: ${clientId}`);
     
     // Map the database records to our Employee model
-    const employees = (data || []).map(record => {
+    const employees = employeesData.map(record => {
+      // Find documents for this employee
+      const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
+      
       // Map employee documents to our VerificationDocument interface
-      const documents: VerificationDocument[] = (record.employee_documents || []).map(doc => ({
+      const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
         id: doc.id,
         employeeId: record.id,
         documentTypeId: doc.document_type_id || '',
