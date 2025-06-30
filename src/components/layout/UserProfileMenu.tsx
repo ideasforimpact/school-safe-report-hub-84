@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -20,7 +19,7 @@ import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/
 import { getIsBackofficeUser } from '@/store/authSelectors';
 
 const UserProfileMenu = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -43,10 +42,20 @@ const UserProfileMenu = () => {
   const handleLogout = async () => {
     console.log('🚪 UserProfileMenu: Logout clicked');
     console.log('🕐 UserProfileMenu: Logout initiated at:', new Date().toISOString());
+    console.log('🔍 UserProfileMenu: Current user before setting to null:', user);
     
-    // Call logout directly without any delays or state manipulation
-    await logout();
-    console.log('🏁 UserProfileMenu: Logout process completed');
+    // Set user to null first as requested
+    console.log('🔄 UserProfileMenu: Setting user to null before logout');
+    setUser(null);
+    console.log('✅ UserProfileMenu: User set to null, now calling logout');
+    
+    // Add a small delay to ensure state propagation
+    setTimeout(async () => {
+      console.log('⏰ UserProfileMenu: Delayed logout call starting');
+      // Use the centralized logout which handles all navigation
+      await logout();
+      console.log('🏁 UserProfileMenu: Logout process completed');
+    }, 50);
   };
 
   const handleProfileClick = () => {
