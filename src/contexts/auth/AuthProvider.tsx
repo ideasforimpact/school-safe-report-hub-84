@@ -201,9 +201,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current || state.isLoggingOut) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Skip processing if logging out to prevent conflicts
+      // Skip processing if logging out
       if (state.isLoggingOut) {
-        console.log('🚫 AuthProvider: Skipping auth state change during logout');
         return;
       }
 
@@ -220,8 +219,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setShowAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
-        // Only process SIGNED_OUT if it's not from manual logout
-        console.log('🔄 AuthProvider: Processing automatic sign out');
         dispatch(clearAuth());
         dispatch(resetEmployee());
         clearPersistedAuthState();
@@ -359,7 +356,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with immediate state clearing and navigation
+  // Handle logout with proper navigation and cleanup
   const handleLogout = async (): Promise<void> => {
     console.log('🚪 AuthProvider: Starting logout process');
     console.log('🕐 AuthProvider: Logout started at:', new Date().toISOString());
@@ -400,8 +397,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
       const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
       
-      // Navigate immediately after clearing state - no delays
-      console.log('🧭 AuthProvider: Navigating to login page immediately');
+      // Navigate immediately after clearing state
+      console.log('🧭 AuthProvider: Navigating to login page');
       if (shouldRedirectToBackoffice) {
         navigate('/backoffice/login', { replace: true });
       } else {
@@ -422,9 +419,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         navigate('/login', { replace: true });
       }
     } finally {
-      // Reset logout state immediately - no delay
-      console.log('🔓 AuthProvider: Resetting logout state to false');
-      dispatch(setLogoutState(false));
+      // Reset logout state after a short delay
+      setTimeout(() => {
+        console.log('🔓 AuthProvider: Resetting logout state to false');
+        dispatch(setLogoutState(false));
+      }, 1000);
     }
   };
 
