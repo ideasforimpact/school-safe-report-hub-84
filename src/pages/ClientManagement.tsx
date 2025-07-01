@@ -1,6 +1,7 @@
 
 import React from 'react';
 import Layout from '@/components/layout/Layout';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import ClientStatusFilter from '@/components/clients/ClientStatusFilter';
 import { Loader2 } from 'lucide-react';
 
 const ClientManagement = () => {
+  const { isAdmin } = useAuth();
   const {
     clients,
     loading,
@@ -35,6 +37,20 @@ const ClientManagement = () => {
     statusFilter,
     setStatusFilter
   } = useClientManagement();
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p>You don't have permission to access this page.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
