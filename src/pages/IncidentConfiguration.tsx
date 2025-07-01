@@ -46,7 +46,7 @@ const IncidentConfiguration = () => {
       }
 
       try {
-        const types = await reportTypeService.getReportTypes(employeeData.clientId);
+        const types = await reportTypeService.getReportTypes(true);
         setReportTypes(types);
       } catch (error) {
         console.error('Exception fetching report types:', error);
@@ -66,7 +66,7 @@ const IncidentConfiguration = () => {
       }
 
       try {
-        const items = await priorityService.getPriorities(employeeData.clientId);
+        const items = await priorityService.getPriorities();
         setPriorities(items);
       } catch (error) {
         console.error('Exception fetching priorities:', error);
@@ -84,7 +84,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const newType = await reportTypeService.addReportType(name, description, employeeData.clientId);
+      const newType = await reportTypeService.addReportType(name, description);
       setReportTypes([...reportTypes, newType]);
       toast.success('Report type added successfully');
     } catch (error) {
@@ -99,7 +99,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const updatedType = await reportTypeService.updateReportType(id, name, description, employeeData.clientId);
+      const updatedType = await reportTypeService.updateReportType(id, name, description);
       setReportTypes(
         reportTypes.map(type =>
           type.id === id ? updatedType : type
@@ -118,7 +118,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      await reportTypeService.deleteReportType(id, employeeData.clientId);
+      await reportTypeService.deleteReportType(id);
       setReportTypes(reportTypes.filter(type => type.id !== id));
       toast.success('Report type deleted successfully');
     } catch (error) {
@@ -133,7 +133,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const updatedType = await reportTypeService.toggleReportTypeStatus(id, isActive, employeeData.clientId);
+      const updatedType = await reportTypeService.toggleReportTypeStatus(id, isActive);
       setReportTypes(
         reportTypes.map(type =>
           type.id === id ? updatedType : type
@@ -153,7 +153,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const newPriority = await priorityService.addPriority(name, description, color, weight, employeeData.clientId);
+      const newPriority = await priorityService.addPriority(name, description, color, weight);
       setPriorities([...priorities, newPriority]);
       toast.success('Priority added successfully');
     } catch (error) {
@@ -168,7 +168,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const updatedPriority = await priorityService.updatePriority(id, name, description, color, weight, employeeData.clientId);
+      const updatedPriority = await priorityService.updatePriority(id, name, description, color, weight);
       setPriorities(
         priorities.map(priority =>
           priority.id === id ? updatedPriority : priority
@@ -187,7 +187,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      await priorityService.deletePriority(id, employeeData.clientId);
+      await priorityService.deletePriority(id);
       setPriorities(priorities.filter(priority => priority.id !== id));
       toast.success('Priority deleted successfully');
     } catch (error) {
@@ -202,7 +202,7 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const updatedPriority = await priorityService.togglePriorityStatus(id, isActive, employeeData.clientId);
+      const updatedPriority = await priorityService.togglePriorityStatus(id, isActive);
       setPriorities(
         priorities.map(priority =>
           priority.id === id ? updatedPriority : priority
