@@ -42,23 +42,6 @@ const RouteGuard = ({
     </div>;
   }
 
-  // Handle backoffice routes specifically
-  if (isBackoffice) {
-    // If no user is authenticated, redirect to backoffice login
-    if (!currentUser) {
-      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
-    }
-    
-    // If user is authenticated but not a backoffice user, redirect to backoffice login with error
-    if (!isBackofficeUser) {
-      toast.error("Backoffice access required. Please login with backoffice credentials.");
-      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
-    }
-    
-    // User is authenticated and is a backoffice user - allow access
-    return children ? <>{children}</> : <Outlet />;
-  }
-
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
