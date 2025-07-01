@@ -21,6 +21,7 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   priority,
   onSelectChange,
 }) => {
+  // RLS handles client filtering automatically - no manual client checks needed
   const { priorities, loading: prioritiesLoading } = usePriorities();
   const { reportTypes, loading: reportTypesLoading } = useReportTypes();
 
