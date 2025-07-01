@@ -12,19 +12,12 @@ export interface PriorityItem {
 }
 
 export const priorityService = {
-  // Get priorities
-  getPriorities: async (clientId?: string, activeOnly: boolean = false) => {
+  // Get priorities - RLS handles client filtering automatically
+  getPriorities: async (activeOnly: boolean = false) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for fetching priorities');
-        toast.error('Client information is required');
-        return [];
-      }
-
       let query = supabase
         .from('incident_priorities')
-        .select('*')
-        .eq('client_id', clientId);
+        .select('*');
         
       if (activeOnly) {
         query = query.eq('is_active', true);
@@ -46,13 +39,23 @@ export const priorityService = {
     }
   },
 
-  // Add priority
-  addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string) => {
+  // Add priority - RLS handles client validation automatically
+  addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for adding priority');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
+      // Get client_id from current user's employee record for data attribution
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('client_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (employeeError || !employee) {
+        throw new Error('Employee record not found');
       }
       
       const { data, error } = await supabase
@@ -63,7 +66,7 @@ export const priorityService = {
             description: description || null, 
             color: color || null,
             weight: weight || 0,
-            client_id: clientId 
+            client_id: employee.client_id 
           }
         ])
         .select()
@@ -83,15 +86,9 @@ export const priorityService = {
     }
   },
 
-  // Update priority
-  updatePriority: async (id: string, name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string) => {
+  // Update priority - RLS handles client validation automatically
+  updatePriority: async (id: string, name: string, description: string | null = null, color: string | null = null, weight: number | null = 0) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for updating priority');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
-      }
-
       const { data, error } = await supabase
         .from('incident_priorities')
         .update({ 
@@ -101,7 +98,6 @@ export const priorityService = {
           weight: weight || 0
         })
         .eq('id', id)
-        .eq('client_id', clientId)
         .select()
         .single();
 
@@ -126,20 +122,13 @@ export const priorityService = {
     }
   },
 
-  // Delete priority
-  deletePriority: async (id: string, clientId?: string) => {
+  // Delete priority - RLS handles client validation automatically
+  deletePriority: async (id: string) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for deleting priority');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
-      }
-
       const { error } = await supabase
         .from('incident_priorities')
         .delete()
-        .eq('id', id)
-        .eq('client_id', clientId);
+        .eq('id', id);
 
       if (error) {
         console.error('Error deleting priority:', error);
@@ -155,22 +144,15 @@ export const priorityService = {
     }
   },
 
-  // Toggle priority status
-  togglePriorityStatus: async (id: string, isActive: boolean, clientId?: string) => {
+  // Toggle priority status - RLS handles client validation automatically
+  togglePriorityStatus: async (id: string, isActive: boolean) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for toggling priority status');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
-      }
-
       const { data, error } = await supabase
         .from('incident_priorities')
         .update({ 
           is_active: isActive 
         })
         .eq('id', id)
-        .eq('client_id', clientId)
         .select()
         .single();
 

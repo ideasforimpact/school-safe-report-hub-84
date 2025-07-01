@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Table,
@@ -13,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { EditDialog } from '@/components/configuration/EditDialog';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth/useAuth';
 import { priorityService } from '@/services/incident/priorityService';
 import { usePriorities } from '@/hooks/usePriorities';
 
@@ -35,11 +35,7 @@ interface PriorityTabProps {
 }
 
 export const PriorityTab: React.FC<PriorityTabProps> = ({
-  priorities: propPriorities,
-  addPriority: propAddPriority,
-  updatePriority: propUpdatePriority,
-  deletePriority: propDeletePriority,
-  togglePriorityStatus: propTogglePriorityStatus
+  // Ignore props and use hook data with RLS
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -52,28 +48,18 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   const [editPriorityDescription, setEditPriorityDescription] = useState('');
   const [editPriorityColor, setEditPriorityColor] = useState('#10B981');
   const [editPriorityWeight, setEditPriorityWeight] = useState('0');
-  const { employeeData } = useAuth();
   
-  // Use the hook to get priorities with proper client_id validation
-  const { priorities: hookPriorities, loading, refetch } = usePriorities();
-  
-  // Use hook data, ignoring props data
-  const priorities = hookPriorities;
+  // Use the hook to get priorities with RLS - no manual client validation needed
+  const { priorities, loading, refetch } = usePriorities();
 
   const handleAddPriority = async () => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     if (newPriorityName.trim()) {
       try {
         await priorityService.addPriority(
           newPriorityName.trim(), 
           newPriorityDescription.trim(), 
           newPriorityColor, 
-          parseInt(newPriorityWeight) || 0,
-          employeeData.clientId
+          parseInt(newPriorityWeight) || 0
         );
         setNewPriorityName('');
         setNewPriorityDescription('');
@@ -93,11 +79,6 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   };
 
   const handleEditPriority = async () => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     if (selectedPriority && editPriorityName.trim()) {
       try {
         await priorityService.updatePriority(
@@ -105,8 +86,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           editPriorityName.trim(), 
           editPriorityDescription.trim(), 
           editPriorityColor, 
-          parseInt(editPriorityWeight) || 0,
-          employeeData.clientId
+          parseInt(editPriorityWeight) || 0
         );
         setIsEditDialogOpen(false);
         setSelectedPriority(null);
@@ -132,14 +112,9 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   };
 
   const handleToggleStatus = async (priority: PriorityItem) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     const newStatus = !priority.is_active;
     try {
-      await priorityService.togglePriorityStatus(priority.id, newStatus, employeeData.clientId);
+      await priorityService.togglePriorityStatus(priority.id, newStatus);
       // Refresh data immediately
       await refetch();
       toast.success(`Priority ${newStatus ? 'activated' : 'deactivated'} successfully`);
@@ -150,14 +125,9 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   };
 
   const handleDeletePriority = async (id: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     if (confirm('Are you sure you want to delete this priority?')) {
       try {
-        await priorityService.deletePriority(id, employeeData.clientId);
+        await priorityService.deletePriority(id);
         // Refresh data immediately
         await refetch();
         toast.success('Priority deleted successfully');
@@ -178,15 +148,6 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       display: 'inline-block'
     };
   };
-
-  if (!employeeData?.clientId) {
-    return (
-      <div className="text-center p-8 border rounded-md bg-gray-50">
-        <p className="text-gray-500 text-lg">Client information not available</p>
-        <p className="text-gray-400 text-sm mt-2">Please contact your administrator to resolve this issue.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
