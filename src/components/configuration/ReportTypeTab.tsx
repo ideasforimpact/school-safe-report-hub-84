@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil } from 'lucide-react';
 import { EditDialog } from './EditDialog';
@@ -14,7 +14,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth/useAuth';
 import { reportTypeService } from '@/services/incident/reportTypeService';
 import { useReportTypes } from '@/hooks/useReportTypes';
 
@@ -34,11 +33,7 @@ interface ReportTypeTabProps {
 }
 
 export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
-  reportTypes: propReportTypes,
-  addReportType: propAddReportType,
-  updateReportType: propUpdateReportType,
-  deleteReportType: propDeleteReportType,
-  toggleReportTypeStatus: propToggleReportTypeStatus
+  // Ignore props and use hook data with RLS
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -47,27 +42,18 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [editTypeName, setEditTypeName] = useState('');
   const [editTypeDescription, setEditTypeDescription] = useState('');
-  const { employeeData } = useAuth();
   
-  // Use the hook to get report types with proper client_id validation
-  const { reportTypes: hookReportTypes, loading, fetchReportTypes } = useReportTypes();
-  
-  // Use hook data, ignoring props data
-  const reportTypes = hookReportTypes;
+  // Use the hook to get report types with RLS - no manual client validation needed
+  const { reportTypes, loading, fetchReportTypes } = useReportTypes();
 
   const handleAddReportType = async () => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     if (newTypeName.trim()) {
       try {
-        await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim(), employeeData.clientId);
+        await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim());
         setNewTypeName('');
         setNewTypeDescription('');
         setIsAddDialogOpen(false);
-        // Refresh the data
+        // Refresh data immediately
         await fetchReportTypes();
         toast.success('Report type added successfully');
       } catch (error) {
@@ -80,17 +66,12 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   };
 
   const handleEditReportType = async () => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     if (selectedType && editTypeName.trim()) {
       try {
-        await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim(), employeeData.clientId);
+        await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
         setIsEditDialogOpen(false);
         setSelectedType(null);
-        // Refresh the data
+        // Refresh data immediately
         await fetchReportTypes();
         toast.success('Report type updated successfully');
       } catch (error) {
@@ -110,15 +91,10 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   };
 
   const handleToggleStatus = async (type: ReportType) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     const newStatus = !type.is_active;
     try {
-      await reportTypeService.toggleReportTypeStatus(type.id, newStatus, employeeData.clientId);
-      // Refresh the data
+      await reportTypeService.toggleReportTypeStatus(type.id, newStatus);
+      // Refresh data immediately
       await fetchReportTypes();
       toast.success(`Report type ${newStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
@@ -128,30 +104,18 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   };
 
   const handleDeleteReportType = async (id: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
-    try {
-      await reportTypeService.deleteReportType(id, employeeData.clientId);
-      // Refresh the data
-      await fetchReportTypes();
-      toast.success('Report type deleted successfully');
-    } catch (error) {
-      console.error('Error deleting report type:', error);
-      toast.error('Failed to delete report type');
+    if (confirm('Are you sure you want to delete this report type?')) {
+      try {
+        await reportTypeService.deleteReportType(id);
+        // Refresh data immediately
+        await fetchReportTypes();
+        toast.success('Report type deleted successfully');
+      } catch (error) {
+        console.error('Error deleting report type:', error);
+        toast.error('Failed to delete report type');
+      }
     }
   };
-
-  if (!employeeData?.clientId) {
-    return (
-      <div className="text-center p-8 border rounded-md bg-gray-50">
-        <p className="text-gray-500 text-lg">Client information not available</p>
-        <p className="text-gray-400 text-sm mt-2">Please contact your administrator to resolve this issue.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">

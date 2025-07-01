@@ -10,19 +10,12 @@ export interface ReportTypeItem {
 }
 
 export const reportTypeService = {
-  // Get report types
-  getReportTypes: async (clientId?: string, activeOnly: boolean = false) => {
+  // Get report types - RLS handles client filtering automatically
+  getReportTypes: async (activeOnly: boolean = false) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for fetching report types');
-        toast.error('Client information is required');
-        return [];
-      }
-
       let query = supabase
         .from('incident_report_types')
-        .select('*')
-        .eq('client_id', clientId);
+        .select('*');
         
       if (activeOnly) {
         query = query.eq('is_active', true);
@@ -44,13 +37,23 @@ export const reportTypeService = {
     }
   },
 
-  // Add report type
-  addReportType: async (name: string, description: string | null = null, clientId?: string) => {
+  // Add report type - RLS handles client validation automatically
+  addReportType: async (name: string, description: string | null = null) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for adding report type');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
+      // Get client_id from current user's employee record for data attribution
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('client_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (employeeError || !employee) {
+        throw new Error('Employee record not found');
       }
       
       const { data, error } = await supabase
@@ -59,7 +62,7 @@ export const reportTypeService = {
           { 
             name, 
             description: description || null, 
-            client_id: clientId 
+            client_id: employee.client_id 
           }
         ])
         .select()
@@ -79,15 +82,9 @@ export const reportTypeService = {
     }
   },
 
-  // Update report type
-  updateReportType: async (id: string, name: string, description: string | null = null, clientId?: string) => {
+  // Update report type - RLS handles client validation automatically
+  updateReportType: async (id: string, name: string, description: string | null = null) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for updating report type');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
-      }
-
       const { data, error } = await supabase
         .from('incident_report_types')
         .update({ 
@@ -95,7 +92,6 @@ export const reportTypeService = {
           description: description || null
         })
         .eq('id', id)
-        .eq('client_id', clientId)
         .select()
         .single();
 
@@ -120,20 +116,13 @@ export const reportTypeService = {
     }
   },
 
-  // Delete report type
-  deleteReportType: async (id: string, clientId?: string) => {
+  // Delete report type - RLS handles client validation automatically
+  deleteReportType: async (id: string) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for deleting report type');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
-      }
-
       const { error } = await supabase
         .from('incident_report_types')
         .delete()
-        .eq('id', id)
-        .eq('client_id', clientId);
+        .eq('id', id);
 
       if (error) {
         console.error('Error deleting report type:', error);
@@ -149,22 +138,15 @@ export const reportTypeService = {
     }
   },
 
-  // Toggle report type status
-  toggleReportTypeStatus: async (id: string, isActive: boolean, clientId?: string) => {
+  // Toggle report type status - RLS handles client validation automatically
+  toggleReportTypeStatus: async (id: string, isActive: boolean) => {
     try {
-      if (!clientId) {
-        console.error('Client ID is required for toggling report type status');
-        toast.error('Client information is required');
-        throw new Error('Client ID is required');
-      }
-
       const { data, error } = await supabase
         .from('incident_report_types')
         .update({ 
           is_active: isActive 
         })
         .eq('id', id)
-        .eq('client_id', clientId)
         .select()
         .single();
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -37,15 +38,11 @@ const IncidentConfiguration = () => {
     }
   }, [searchParams]);
 
-  // Fetch report types using the new service
+  // Fetch report types using the new service with RLS
   useEffect(() => {
     async function fetchReportTypes() {
-      if (!employeeData?.clientId) {
-        return;
-      }
-
       try {
-        const types = await reportTypeService.getReportTypes(employeeData.clientId, true);
+        const types = await reportTypeService.getReportTypes(true);
         setReportTypes(types);
       } catch (error) {
         console.error('Exception fetching report types:', error);
@@ -55,15 +52,11 @@ const IncidentConfiguration = () => {
     }
 
     fetchReportTypes();
-  }, [employeeData?.clientId]);
+  }, []);
 
   // Fetch priorities using the new service
   useEffect(() => {
     async function fetchPriorities() {
-      if (!employeeData?.clientId) {
-        return;
-      }
-
       try {
         const items = await priorityService.getPriorities();
         setPriorities(items);
@@ -73,15 +66,10 @@ const IncidentConfiguration = () => {
     }
 
     fetchPriorities();
-  }, [employeeData?.clientId]);
+  }, []);
 
-  // Handle report types operations using the new service
+  // Handle report types operations using the new service with RLS
   const handleAddReportType = async (name: string, description: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       const newType = await reportTypeService.addReportType(name, description);
       setReportTypes([...reportTypes, newType]);
@@ -92,11 +80,6 @@ const IncidentConfiguration = () => {
   };
 
   const handleUpdateReportType = async (id: string, name: string, description: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       const updatedType = await reportTypeService.updateReportType(id, name, description);
       setReportTypes(
@@ -111,11 +94,6 @@ const IncidentConfiguration = () => {
   };
 
   const handleDeleteReportType = async (id: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       await reportTypeService.deleteReportType(id);
       setReportTypes(reportTypes.filter(type => type.id !== id));
@@ -126,11 +104,6 @@ const IncidentConfiguration = () => {
   };
 
   const handleToggleReportTypeStatus = async (id: string, isActive: boolean) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       const updatedType = await reportTypeService.toggleReportTypeStatus(id, isActive);
       setReportTypes(
@@ -146,11 +119,6 @@ const IncidentConfiguration = () => {
 
   // Handle priorities operations using the new service
   const handleAddPriority = async (name: string, description: string, color: string, weight: number) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       const newPriority = await priorityService.addPriority(name, description, color, weight);
       setPriorities([...priorities, newPriority]);
@@ -161,11 +129,6 @@ const IncidentConfiguration = () => {
   };
 
   const handleUpdatePriority = async (id: string, name: string, description: string, color: string, weight: number) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       const updatedPriority = await priorityService.updatePriority(id, name, description, color, weight);
       setPriorities(
@@ -180,11 +143,6 @@ const IncidentConfiguration = () => {
   };
 
   const handleDeletePriority = async (id: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       await priorityService.deletePriority(id);
       setPriorities(priorities.filter(priority => priority.id !== id));
@@ -195,11 +153,6 @@ const IncidentConfiguration = () => {
   };
 
   const handleTogglePriorityStatus = async (id: string, isActive: boolean) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
     try {
       const updatedPriority = await priorityService.togglePriorityStatus(id, isActive);
       setPriorities(
