@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -46,7 +45,7 @@ const IncidentConfiguration = () => {
       }
 
       try {
-        const types = await reportTypeService.getReportTypes(true);
+        const types = await reportTypeService.getReportTypes(employeeData.clientId, true);
         setReportTypes(types);
       } catch (error) {
         console.error('Exception fetching report types:', error);
