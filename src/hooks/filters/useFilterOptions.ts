@@ -45,8 +45,8 @@ export const useFilterOptions = () => {
         setSubcategoryOptions(subcategories.map(sub => sub.name));
         console.log('Subcategories loaded:', subcategories.length);
 
-        // Fetch priorities
-        const priorities = await priorityService.getPriorities(state.employeeData.clientId, true);
+        // Fetch priorities - RLS handles client filtering automatically
+        const priorities = await priorityService.getPriorities(true);
         setPriorityOptions(priorities.map(priority => priority.name));
         console.log('Priorities loaded:', priorities.length);
 
