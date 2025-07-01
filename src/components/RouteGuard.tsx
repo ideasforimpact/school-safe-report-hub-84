@@ -42,6 +42,14 @@ const RouteGuard = ({
     </div>;
   }
 
+  // Handle backoffice route protection specifically
+  if (isBackoffice) {
+    // For backoffice routes, check if user is authenticated AND is a backoffice user
+    if (!currentUser || !isBackofficeUser) {
+      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
+    }
+  }
+
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
