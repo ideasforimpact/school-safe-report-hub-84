@@ -29,42 +29,13 @@ export interface FormattedAuditEntry {
   changes?: any[];
 }
 
-// Fetch audit log entries for a specific incident with client filtering
+// Fetch audit log entries for a specific incident (RLS handles client filtering automatically)
 export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLogEntry[]> => {
   try {
     console.log('=== AUDIT LOG SERVICE DEBUG ===');
     console.log('Fetching audit trail for incident:', incidentId);
     
-    // First get the current user's employee record to get client_id
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('User not authenticated');
-      throw new Error('User not authenticated');
-    }
-    console.log('Authenticated user ID:', user.id);
-
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('client_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (employeeError || !employee) {
-      console.error('Employee not found:', employeeError);
-      throw new Error('Employee not found');
-    }
-
-    console.log('Employee client_id:', employee.client_id);
-
-    // First, let's check if there are ANY audit log entries for this incident (without client filtering)
-    const { data: allEntries, error: allEntriesError } = await supabase
-      .from('incident_audit_log')
-      .select('*')
-      .eq('incident_id', incidentId);
-
-    console.log('All audit entries for incident (no client filter):', allEntries?.length || 0, allEntries);
-
-    // Now fetch with client filtering
+    // RLS policies now handle client filtering automatically - no need for manual checks
     const { data, error } = await supabase
       .from('incident_audit_log')
       .select(`
@@ -82,7 +53,6 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
         created_at
       `)
       .eq('incident_id', incidentId)
-      .eq('client_id', employee.client_id)
       .order('changed_at', { ascending: false });
 
     if (error) {
@@ -90,8 +60,8 @@ export const fetchIncidentAuditLog = async (incidentId: string): Promise<AuditLo
       throw new Error(`Failed to fetch audit log: ${error.message}`);
     }
 
-    console.log('Filtered audit entries found:', data?.length || 0);
-    console.log('Filtered audit entries:', data);
+    console.log('Audit entries found:', data?.length || 0);
+    console.log('Audit entries:', data);
     console.log('=== END AUDIT LOG SERVICE DEBUG ===');
 
     // Transform the data to ensure proper types
@@ -365,7 +335,7 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
   return formattedEntries;
 };
 
-// Log a manual audit entry (for comments, documents, etc.)
+// Log a manual audit entry (for comments, documents, etc.) - RLS handles client_id automatically
 export const logAuditEntry = async (
   incidentId: string,
   fieldChanged: string,
