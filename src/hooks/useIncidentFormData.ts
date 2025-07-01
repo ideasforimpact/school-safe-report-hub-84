@@ -39,12 +39,11 @@ export function useIncidentFormData() {
       try {
         console.log('Fetching incident form data for client:', employeeData.clientId);
 
-        // Fetch report types filtered by client_id
+        // Fetch report types - RLS handles client filtering automatically
         const { data: reportTypes, error: reportTypesError } = await supabase
           .from('incident_report_types')
           .select('id, name, description')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
+          .eq('is_active', true);
           
         if (reportTypesError) throw reportTypesError;
         
@@ -82,12 +81,11 @@ export function useIncidentFormData() {
           
         if (facilitiesError) throw facilitiesError;
         
-        // Fetch priorities filtered by client_id
+        // Fetch priorities - RLS handles client filtering automatically
         const { data: priorities, error: prioritiesError } = await supabase
           .from('incident_priorities')
           .select('id, name, color, weight')
           .eq('is_active', true)
-          .eq('client_id', employeeData.clientId)
           .order('weight', { ascending: true });
           
         if (prioritiesError) throw prioritiesError;
