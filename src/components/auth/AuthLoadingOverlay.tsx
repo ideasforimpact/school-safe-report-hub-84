@@ -45,7 +45,7 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
               <div className="absolute inset-0 bg-primary-400/20 rounded-2xl blur-xl animate-pulse"></div>
               
               {clientLogo ? (
-                <div className="relative z-10 w-full h-full bg-white rounded-2xl shadow-lg p-3 animate-float-slow">
+                <div className="relative z-10 w-full h-full bg-white rounded-2xl shadow-lg p-3">
                   <img 
                     src={clientLogo} 
                     alt={`${clientName} logo`}
@@ -53,7 +53,7 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
                   />
                 </div>
               ) : (
-                <div className="relative z-10 w-full h-full bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-lg flex items-center justify-center animate-float-slow">
+                <div className="relative z-10 w-full h-full bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-lg flex items-center justify-center">
                   <div className="w-10 h-10 bg-white rounded-lg shadow-inner flex items-center justify-center">
                     <div className="w-6 h-6 bg-primary-600 rounded"></div>
                   </div>
