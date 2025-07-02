@@ -53,7 +53,7 @@ const IncidentCreationOverlay = ({ isVisible }: IncidentCreationOverlayProps) =>
               <div className="absolute inset-0 bg-primary-400/30 rounded-2xl blur-lg animate-pulse"></div>
               
               {clientLogo ? (
-                <div className="relative z-10 w-full h-full bg-white rounded-2xl shadow-xl p-2 animate-float-slow border border-gray-100">
+                <div className="relative z-10 w-full h-full bg-white rounded-2xl shadow-xl p-2 border border-gray-100">
                   <img 
                     src={clientLogo} 
                     alt={`${clientName} logo`}
@@ -61,7 +61,7 @@ const IncidentCreationOverlay = ({ isVisible }: IncidentCreationOverlayProps) =>
                   />
                 </div>
               ) : (
-                <div className="relative z-10 w-full h-full bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-xl flex items-center justify-center animate-float-slow">
+                <div className="relative z-10 w-full h-full bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-xl flex items-center justify-center">
                   <div className="w-8 h-8 bg-white rounded-lg shadow-inner flex items-center justify-center">
                     <div className="w-4 h-4 bg-primary-600 rounded"></div>
                   </div>
