@@ -45,7 +45,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData);
+  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData, isEdit);
 
   // Reset step when dialog opens/closes
   useEffect(() => {
