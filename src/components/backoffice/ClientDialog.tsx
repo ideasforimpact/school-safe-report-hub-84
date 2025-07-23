@@ -45,7 +45,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData, isEdit);
+  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData);
 
   // Reset step when dialog opens/closes
   useEffect(() => {
@@ -180,11 +180,6 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     }
   };
 
-  // Button logic: For edit mode, show submit button when canSubmit is true (regardless of step)
-  // For create mode, show submit button only on the last step
-  const showSubmitButton = isEdit ? canSubmit : (currentStep === steps.length - 1);
-  const showNextButton = !showSubmitButton && (currentStep < steps.length - 1);
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -243,8 +238,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               </Button>
             )}
 
-            {/* Next Button - Only show if not showing submit button */}
-            {showNextButton && (
+            {/* Next Button */}
+            {currentStep < steps.length - 1 ? (
               <Button
                 type="button"
                 onClick={handleNext}
@@ -253,10 +248,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
-            )}
-
-            {/* Submit Button - Show when conditions are met */}
-            {showSubmitButton && (
+            ) : (
+              /* Submit Button - Only this button should trigger submission */
               <Button 
                 type="button"
                 onClick={handleSubmit}
