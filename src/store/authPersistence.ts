@@ -8,7 +8,9 @@ export interface PersistedAuthState {
   isBackofficeUser: boolean;
   authError: string | null;
   configuredModules: any[] | null;
-  employeeData: any | null; // Add employeeData to persisted state
+  employeeData: any | null;
+  jwtToken?: string; // JWT token for backoffice authentication
+  expiresAt?: number; // Token expiration timestamp
 }
 
 // Save authentication state to sessionStorage
@@ -29,6 +31,17 @@ export const loadAuthState = (): PersistedAuthState | null => {
       return null;
     }
     const parsedState = JSON.parse(serializedState);
+    
+    // Check if JWT token has expired
+    if (parsedState.jwtToken && parsedState.expiresAt) {
+      const currentTime = Date.now();
+      if (currentTime > parsedState.expiresAt) {
+        console.log('JWT token has expired, clearing auth state');
+        clearPersistedAuthState();
+        return null;
+      }
+    }
+    
     return parsedState;
   } catch (error) {
     console.error("Error loading auth state from sessionStorage:", error);

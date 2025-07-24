@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
+import { validateBackofficeSession } from '@/utils/sessionValidation';
+import { clearAuth } from '@/store/authActions';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -24,13 +26,25 @@ const RouteGuard = ({
 }: RouteGuardProps) => {
   const { authError } = useAuth();
   const location = useLocation();
-  const { state } = useEmployeeStore();
+  const { state, dispatch } = useEmployeeStore();
   
   // Get authentication and employee state from Redux
   const currentUser = getCurrentUser(state);
   const isBackofficeUser = getIsBackofficeUser(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
+
+  // Handle backoffice route protection with JWT validation
+  if (isBackoffice) {
+    const isValidSession = validateBackofficeSession();
+    
+    if (requireAuth && !isValidSession) {
+      // Clear any stale auth state and redirect to backoffice login
+      dispatch(clearAuth());
+      toast.error("Your session has expired. Please login again.");
+      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
+    }
+  }
 
   // If currently logging out, don't redirect - let the logout process complete
   if (state.isLoggingOut) {
