@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { ClientFormData } from './useClientManagement';
 
-export const useStepValidation = (formData: ClientFormData, isEdit: boolean = false) => {
+export const useStepValidation = (formData: ClientFormData) => {
   const validateStep1 = useMemo(() => {
     return !!(
       formData.name &&
@@ -62,6 +62,6 @@ export const useStepValidation = (formData: ClientFormData, isEdit: boolean = fa
     isStepValid,
     getCompletedSteps,
     canProceedToNext: (currentStep: number) => isStepValid(currentStep),
-    canSubmit: isEdit ? validateStep1 : (validateStep1 && validateStep2 && validateStep3)
+    canSubmit: validateStep1 && validateStep2 && validateStep3
   };
 };
