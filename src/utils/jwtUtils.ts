@@ -34,41 +34,67 @@ export const generateBackofficeToken = (userId: string, email: string): string =
 };
 
 export const verifyBackofficeToken = (token: string): BackofficeTokenPayload | null => {
+  console.log('🔑 verifyBackofficeToken: Starting verification', { tokenLength: token?.length });
   try {
     const [tokenData, signature] = token.split('.');
     
     if (!tokenData || !signature) {
+      console.log('🔑 verifyBackofficeToken: Invalid token format - missing data or signature');
       return null;
     }
 
     const payload = JSON.parse(atob(tokenData)) as BackofficeTokenPayload;
+    console.log('🔑 verifyBackofficeToken: Token payload decoded', { 
+      userId: payload.userId, 
+      email: payload.email, 
+      expiresAt: new Date(payload.expiresAt).toISOString(),
+      issuedAt: new Date(payload.issuedAt).toISOString()
+    });
     
     // Verify the token hasn't expired
-    if (Date.now() > payload.expiresAt) {
+    const now = Date.now();
+    if (now > payload.expiresAt) {
+      console.log('🔑 verifyBackofficeToken: Token has expired', { 
+        now: new Date(now).toISOString(), 
+        expiresAt: new Date(payload.expiresAt).toISOString() 
+      });
       return null;
     }
 
     // Basic signature verification
     const expectedSignature = btoa(`${payload.userId}-${payload.email}-${payload.issuedAt}`);
     if (signature !== expectedSignature) {
+      console.log('🔑 verifyBackofficeToken: Signature verification failed');
       return null;
     }
 
+    console.log('🔑 verifyBackofficeToken: Token verification successful');
     return payload;
   } catch (error) {
-    console.error('Token verification failed:', error);
+    console.error('🔑 verifyBackofficeToken: Token verification failed:', error);
     return null;
   }
 };
 
 export const isTokenExpired = (token: string): boolean => {
+  console.log('🔑 isTokenExpired: Checking token expiration');
   try {
     const [tokenData] = token.split('.');
-    if (!tokenData) return true;
+    if (!tokenData) {
+      console.log('🔑 isTokenExpired: No token data found');
+      return true;
+    }
     
     const payload = JSON.parse(atob(tokenData)) as BackofficeTokenPayload;
-    return Date.now() > payload.expiresAt;
+    const isExpired = Date.now() > payload.expiresAt;
+    console.log('🔑 isTokenExpired: Token expiration check', { 
+      isExpired, 
+      expiresAt: new Date(payload.expiresAt).toISOString(),
+      now: new Date().toISOString()
+    });
+    return isExpired;
   } catch (error) {
+    console.log('🔑 isTokenExpired: Error checking expiration:', error);
     return true;
   }
 };

@@ -248,11 +248,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Skip session validation on login routes to prevent errors
         const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
         
+        console.log('🔄 AuthProvider: Initialization check', { 
+          pathname: location.pathname,
+          isOnLoginRoute,
+          isBackofficeUser,
+          hasCurrentUser: !!currentUser
+        });
+        
         // If we have persisted backoffice user state, validate session (but not on login routes)
         if (isBackofficeUser && currentUser && !isOnLoginRoute) {
+          console.log('🔄 AuthProvider: Validating backoffice session during init');
           const isValidSession = validateBackofficeSession();
           if (!isValidSession) {
-            console.log('Backoffice session expired during initialization');
+            console.log('🔄 AuthProvider: Backoffice session expired during initialization');
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
