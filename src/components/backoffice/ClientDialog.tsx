@@ -180,6 +180,46 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     }
   };
 
+  const renderAllTabsContent = () => {
+    return (
+      <div className="space-y-8">
+        {/* Basic Information Section */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 border-b pb-2">Basic Information</h3>
+          <BasicInfoTab 
+            formData={safeFormData} 
+            setFormData={setFormData} 
+            handleLogoUpload={() => {}}
+          />
+        </div>
+
+        {/* Module Access Section */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 border-b pb-2">Module Access</h3>
+          <ModuleAccessTab 
+            formData={safeFormData}
+            onModuleInfoChange={handleModuleInfoChange}
+            isEdit={isEdit}
+            preloadedModules={!isEdit && formData.moduleInfoArray ? formData.moduleInfoArray : undefined}
+          />
+        </div>
+
+        {/* Authentication Section */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 border-b pb-2">Authentication</h3>
+          <AuthTab 
+            formData={safeFormData}
+            onAddDomain={addDomain}
+            onRemoveDomain={removeDomain}
+            onAddSuperAdminDomain={addSuperAdminDomain}
+            onRemoveSuperAdminDomain={removeSuperAdminDomain}
+            onProviderChange={handleAuthProviderChange}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -190,13 +230,15 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Progress Indicator */}
-        <WizardProgress 
-          steps={steps}
-          currentStep={currentStep}
-          completedSteps={getCompletedSteps()}
-          onStepClick={handleStepClick}
-        />
+        {/* Progress Indicator - Only show for new client creation */}
+        {!isEdit && (
+          <WizardProgress 
+            steps={steps}
+            currentStep={currentStep}
+            completedSteps={getCompletedSteps()}
+            onStepClick={handleStepClick}
+          />
+        )}
 
         {/* Show loading message when modules are loading for new client */}
         {!isEdit && modulesLoading && currentStep === 1 && (
@@ -208,7 +250,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
 
         {/* Step Content - No form wrapper to prevent auto-submission */}
         <div className="min-h-[400px] py-4">
-          {renderStepContent()}
+          {isEdit ? renderAllTabsContent() : renderStepContent()}
         </div>
 
         {/* Navigation Footer */}
@@ -225,31 +267,54 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           </div>
 
           <div className="flex gap-2">
-            {/* Previous Button */}
-            {currentStep > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={isProcessing}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
+            {/* Navigation buttons - only show for create mode */}
+            {!isEdit && (
+              <>
+                {/* Previous Button */}
+                {currentStep > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePrevious}
+                    disabled={isProcessing}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                )}
+
+                {/* Next Button */}
+                {currentStep < steps.length - 1 ? (
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={isProcessing || !canProceedToNext(currentStep) || (currentStep === 1 && modulesLoading)}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                ) : (
+                  /* Submit Button for create mode */
+                  <Button 
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isProcessing || !canSubmit}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {modulesLoading ? 'Loading modules...' : 'Creating...'}
+                      </>
+                    ) : (
+                      'Create Client'
+                    )}
+                  </Button>
+                )}
+              </>
             )}
 
-            {/* Next Button */}
-            {currentStep < steps.length - 1 ? (
-              <Button
-                type="button"
-                onClick={handleNext}
-                disabled={isProcessing || !canProceedToNext(currentStep) || (currentStep === 1 && modulesLoading)}
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            ) : (
-              /* Submit Button - Only this button should trigger submission */
+            {/* Submit Button for edit mode */}
+            {isEdit && (
               <Button 
                 type="button"
                 onClick={handleSubmit}
@@ -258,10 +323,10 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {modulesLoading ? 'Loading modules...' : (isEdit ? 'Updating...' : 'Creating...')}
+                    Updating...
                   </>
                 ) : (
-                  isEdit ? 'Update Client' : 'Create Client'
+                  'Update Client'
                 )}
               </Button>
             )}
