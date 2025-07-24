@@ -69,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
+  const initializationCompleteRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -238,25 +239,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
-    if (state.isLoggingOut || authCheckInProgressRef.current) return;
+    // Prevent infinite loops by only running initialization once
+    if (initializationCompleteRef.current || state.isLoggingOut || authCheckInProgressRef.current) {
+      console.log('🔄 AuthProvider: Skipping initialization', { 
+        initComplete: initializationCompleteRef.current,
+        isLoggingOut: state.isLoggingOut,
+        inProgress: authCheckInProgressRef.current
+      });
+      return;
+    }
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
       authCheckInProgressRef.current = true;
+      initializationCompleteRef.current = true; // Mark as complete immediately to prevent re-runs
       
       try {
         // Skip session validation on login routes to prevent errors
         const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
         
-        console.log('🔄 AuthProvider: Initialization check', { 
+        console.log('🔄 AuthProvider: Starting one-time initialization check', { 
           pathname: location.pathname,
           isOnLoginRoute,
           isBackofficeUser,
           hasCurrentUser: !!currentUser
         });
         
+        // Skip all validation and clearing on login routes
+        if (isOnLoginRoute) {
+          console.log('🔄 AuthProvider: On login route, skipping validation');
+          setIsInitializing(false);
+          return;
+        }
+        
         // If we have persisted backoffice user state, validate session (but not on login routes)
-        if (isBackofficeUser && currentUser && !isOnLoginRoute) {
+        if (isBackofficeUser && currentUser) {
           console.log('🔄 AuthProvider: Validating backoffice session during init');
           const isValidSession = validateBackofficeSession();
           if (!isValidSession) {
@@ -264,24 +281,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
-            // Only show error toast if not on login route
-            if (!isOnLoginRoute) {
-              toast.error("Your session has expired. Please login again.");
-            }
+            toast.error("Your session has expired. Please login again.");
           }
           setIsInitializing(false);
           return;
         }
 
-        // If we have persisted regular user state, still validate with Supabase
+        // If we have persisted regular user state, validate with Supabase
         if (currentUser && !isBackofficeUser) {
-          // User exists, just validate
+          console.log('🔄 AuthProvider: Regular user found, checking Supabase session');
         }
 
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
           if (!currentUser) {
+            console.log('🔄 AuthProvider: Supabase session found, no current user, authenticating');
             setShowAuthLoading(true);
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
@@ -291,6 +306,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           // If no Supabase session and no persisted user (or not backoffice), clear everything
           if (!currentUser || (!isBackofficeUser && currentUser)) {
+            console.log('🔄 AuthProvider: No session, clearing auth state');
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
@@ -301,13 +317,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error("Error checking authentication status:", error);
         toast.error("Error checking authentication status");
       } finally {
+        console.log('🔄 AuthProvider: Initialization complete');
         setIsInitializing(false);
         authCheckInProgressRef.current = false;
       }
     };
 
     checkSupabaseAuth();
-  }, [currentUser, isBackofficeUser, isAuthenticated, handleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, []); // Empty dependency array to run only once
 
   // Handle login - REMOVED backoffice logic, now only handles regular users and SSO
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
