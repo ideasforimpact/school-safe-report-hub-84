@@ -48,7 +48,18 @@ const RouteGuard = ({
 
   // Handle backoffice route protection with JWT validation (but not on login routes)
   if (isBackoffice && requireAuth && !isOnLoginRoute) {
-    console.log('🛡️ RouteGuard: Validating backoffice session');
+    console.log('🛡️ RouteGuard: Validating backoffice session', { 
+      hasCurrentUser: !!currentUser, 
+      isBackofficeUser 
+    });
+    
+    // First check if user exists at all
+    if (!currentUser) {
+      console.log('🛡️ RouteGuard: No current user, redirecting to login');
+      return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
+    }
+    
+    // Then validate the session for backoffice users
     const isValidSession = validateBackofficeSession();
     
     if (!isValidSession) {
