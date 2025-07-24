@@ -7,7 +7,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setCurrentUser, setBackofficeUser, setAuthStatus } from '@/store/authActions';
 import { setEmployeeData, setConfiguredModules } from '@/store/employeeActions';
 import { User, EmployeeData } from '@/contexts/auth/types';
-import { generateBackofficeJWT } from '@/utils/jwtUtils';
+import { generateBackofficeToken } from '@/utils/jwtUtils';
 import { saveAuthState } from '@/store/authPersistence';
 
 export const useBackofficeAuth = () => {
@@ -111,8 +111,8 @@ export const useBackofficeAuth = () => {
         }));
       }
 
-      // Step 7: Generate JWT token with 24-hour expiration
-      const jwtToken = generateBackofficeJWT(backofficeUser.id, backofficeUser.email);
+      // Step 7: Generate browser-compatible token with 24-hour expiration
+      const jwtToken = generateBackofficeToken(backofficeUser.id, backofficeUser.email);
       const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
 
       // Step 8: Update Redux state with all necessary data
