@@ -1,5 +1,5 @@
 import { loadAuthState, clearPersistedAuthState } from '@/store/authPersistence';
-import { verifyBackofficeJWT, isJWTExpired } from './jwtUtils';
+import { verifyBackofficeToken, isTokenExpired } from './jwtUtils';
 
 export const validateBackofficeSession = (): boolean => {
   const authState = loadAuthState();
@@ -10,13 +10,13 @@ export const validateBackofficeSession = (): boolean => {
 
   // Check if JWT token exists and is valid
   if (authState.jwtToken) {
-    if (isJWTExpired(authState.jwtToken)) {
+    if (isTokenExpired(authState.jwtToken)) {
       console.log('JWT token has expired');
       clearPersistedAuthState();
       return false;
     }
 
-    const decodedToken = verifyBackofficeJWT(authState.jwtToken);
+    const decodedToken = verifyBackofficeToken(authState.jwtToken);
     if (!decodedToken) {
       console.log('JWT token verification failed');
       clearPersistedAuthState();

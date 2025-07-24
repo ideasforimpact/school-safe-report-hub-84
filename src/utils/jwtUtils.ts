@@ -1,55 +1,85 @@
-import jwt from 'jsonwebtoken';
+// Browser-compatible token utilities for backoffice authentication
+// Using simple token generation with timestamps and basic encoding
 
-// Secret key for JWT signing - in production, this should be from environment variables
-const JWT_SECRET = 'backoffice-secret-key-change-in-production';
-const JWT_EXPIRATION = '24h';
-
-export interface BackofficeJWTPayload {
+export interface BackofficeTokenPayload {
   userId: string;
   email: string;
   role: 'saas_owner';
   isBackofficeUser: boolean;
-  iat?: number;
-  exp?: number;
+  issuedAt: number;
+  expiresAt: number;
 }
 
-export const generateBackofficeJWT = (userId: string, email: string): string => {
-  const payload: BackofficeJWTPayload = {
+// Generate a simple token with 24-hour expiration
+export const generateBackofficeToken = (userId: string, email: string): string => {
+  const now = Date.now();
+  const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours from now
+  
+  const payload: BackofficeTokenPayload = {
     userId,
     email,
     role: 'saas_owner',
-    isBackofficeUser: true
+    isBackofficeUser: true,
+    issuedAt: now,
+    expiresAt
   };
 
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
+  // Simple base64 encoding for browser compatibility
+  const tokenData = btoa(JSON.stringify(payload));
+  
+  // Add a simple signature using timestamp and user data
+  const signature = btoa(`${userId}-${email}-${now}`);
+  
+  return `${tokenData}.${signature}`;
 };
 
-export const verifyBackofficeJWT = (token: string): BackofficeJWTPayload | null => {
+export const verifyBackofficeToken = (token: string): BackofficeTokenPayload | null => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as BackofficeJWTPayload;
-    return decoded;
+    const [tokenData, signature] = token.split('.');
+    
+    if (!tokenData || !signature) {
+      return null;
+    }
+
+    const payload = JSON.parse(atob(tokenData)) as BackofficeTokenPayload;
+    
+    // Verify the token hasn't expired
+    if (Date.now() > payload.expiresAt) {
+      return null;
+    }
+
+    // Basic signature verification
+    const expectedSignature = btoa(`${payload.userId}-${payload.email}-${payload.issuedAt}`);
+    if (signature !== expectedSignature) {
+      return null;
+    }
+
+    return payload;
   } catch (error) {
-    console.error('JWT verification failed:', error);
+    console.error('Token verification failed:', error);
     return null;
   }
 };
 
-export const isJWTExpired = (token: string): boolean => {
+export const isTokenExpired = (token: string): boolean => {
   try {
-    const decoded = jwt.decode(token) as BackofficeJWTPayload;
-    if (!decoded || !decoded.exp) return true;
+    const [tokenData] = token.split('.');
+    if (!tokenData) return true;
     
-    const currentTime = Math.floor(Date.now() / 1000);
-    return decoded.exp < currentTime;
+    const payload = JSON.parse(atob(tokenData)) as BackofficeTokenPayload;
+    return Date.now() > payload.expiresAt;
   } catch (error) {
     return true;
   }
 };
 
-export const getJWTExpirationTime = (token: string): number | null => {
+export const getTokenExpirationTime = (token: string): number | null => {
   try {
-    const decoded = jwt.decode(token) as BackofficeJWTPayload;
-    return decoded?.exp ? decoded.exp * 1000 : null; // Convert to milliseconds
+    const [tokenData] = token.split('.');
+    if (!tokenData) return null;
+    
+    const payload = JSON.parse(atob(tokenData)) as BackofficeTokenPayload;
+    return payload.expiresAt;
   } catch (error) {
     return null;
   }
