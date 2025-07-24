@@ -34,7 +34,7 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Fetch modules dynamically - prioritize backoffice users
+  // Use cached modules from Redux store instead of fetching every time
   useEffect(() => {
     // Skip if already initialized to prevent re-fetching
     if (hasInitialized) {
@@ -43,52 +43,75 @@ const SidebarContent = () => {
     
     setIsLoading(true);
     
-    const loadModules = async () => {
-      try {
-        // PRIORITY 1: Backoffice users on backoffice routes - always use database modules
-        if (isSaasOwner && isBackofficeRoute) {
-          const modules = await fetchModules(true, user);
-          const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
-          setDynamicMenuItems(items);
-        }
-        // PRIORITY 2: Provider-authenticated users on client routes - use ClientModulesList
-        else if (isProviderAuthenticated && !isBackofficeRoute) {
-          // ClientModulesList component will handle this case
-          setHasInitialized(true);
-          setIsLoading(false);
-          return;
-        }
-        // PRIORITY 3: Regular client users with configured modules
-        else if (configuredModules.length > 0) {
-          // Convert Redux store modules to sidebar format
-          const items = configuredModules.map(module => {
-            const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-            return {
-              icon: null, // Will be resolved in ClientModulesList
-              label: module.name,
-              path,
-              allowed: true
-            };
-          });
-          
-          setDynamicMenuItems(items);
-        }
-        // PRIORITY 4: Fallback to API call for client modules
-        else {
-          const modules = await fetchModules(false, user);
-          const items = convertModulesToSidebarItems(modules, {});
-          setDynamicMenuItems(items);
-        }
-      } catch (error) {
-        console.error('Error loading modules:', error);
-        setDynamicMenuItems([]);
-      } finally {
+    try {
+      // PRIORITY 1: Backoffice users - use cached modules from Redux store
+      if (isSaasOwner && isBackofficeRoute && configuredModules.length > 0) {
+        const items = convertModulesToSidebarItems(configuredModules, {}, '/backoffice');
+        setDynamicMenuItems(items);
         setIsLoading(false);
         setHasInitialized(true);
+        return;
       }
-    };
-    
-    loadModules();
+      
+      // PRIORITY 2: Provider-authenticated users on client routes - use ClientModulesList
+      if (isProviderAuthenticated && !isBackofficeRoute) {
+        // ClientModulesList component will handle this case
+        setHasInitialized(true);
+        setIsLoading(false);
+        return;
+      }
+      
+      // PRIORITY 3: Regular client users with configured modules from Redux store
+      if (configuredModules.length > 0) {
+        // Convert Redux store modules to sidebar format
+        const items = configuredModules.map(module => {
+          const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+          return {
+            icon: module.icon || 'LayoutDashboard',
+            label: module.name,
+            path,
+            allowed: true,
+            accessLevel: module.accessLevel || {}
+          };
+        });
+        
+        setDynamicMenuItems(items);
+        setIsLoading(false);
+        setHasInitialized(true);
+        return;
+      }
+      
+      // PRIORITY 4: Fallback - show loading or empty state
+      // Only fetch from API if no cached modules available
+      if (!user || !configuredModules || configuredModules.length === 0) {
+        const loadModulesFromAPI = async () => {
+          try {
+            const modules = await fetchModules(isSaasOwner && isBackofficeRoute, user);
+            const basePath = isSaasOwner && isBackofficeRoute ? '/backoffice' : '';
+            const items = convertModulesToSidebarItems(modules, {}, basePath);
+            setDynamicMenuItems(items);
+          } catch (error) {
+            console.error('Error loading modules from API:', error);
+            setDynamicMenuItems([]);
+          } finally {
+            setIsLoading(false);
+            setHasInitialized(true);
+          }
+        };
+        
+        loadModulesFromAPI();
+        return;
+      }
+      
+      setIsLoading(false);
+      setHasInitialized(true);
+      
+    } catch (error) {
+      console.error('Error processing cached modules:', error);
+      setDynamicMenuItems([]);
+      setIsLoading(false);
+      setHasInitialized(true);
+    }
     
   }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules, hasInitialized]);
 
