@@ -245,15 +245,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       authCheckInProgressRef.current = true;
       
       try {
-        // If we have persisted backoffice user state, validate session
-        if (isBackofficeUser && currentUser) {
+        // Skip session validation on login routes to prevent errors
+        const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
+        
+        // If we have persisted backoffice user state, validate session (but not on login routes)
+        if (isBackofficeUser && currentUser && !isOnLoginRoute) {
           const isValidSession = validateBackofficeSession();
           if (!isValidSession) {
             console.log('Backoffice session expired during initialization');
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
-            toast.error("Your session has expired. Please login again.");
+            // Only show error toast if not on login route
+            if (!isOnLoginRoute) {
+              toast.error("Your session has expired. Please login again.");
+            }
           }
           setIsInitializing(false);
           return;
