@@ -45,7 +45,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData);
+  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData, isEdit);
 
   // Reset step when dialog opens/closes
   useEffect(() => {
@@ -238,8 +238,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               </Button>
             )}
 
-            {/* Next Button */}
-            {currentStep < steps.length - 1 ? (
+            {/* Next Button - Hide in edit mode when can submit */}
+            {currentStep < steps.length - 1 && !(isEdit && canSubmit) ? (
               <Button
                 type="button"
                 onClick={handleNext}
@@ -248,8 +248,10 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
                 Next
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
-            ) : (
-              /* Submit Button - Only this button should trigger submission */
+            ) : null}
+
+            {/* Submit Button - Show on last step for create mode, or when canSubmit for edit mode */}
+            {(currentStep === steps.length - 1 && !isEdit) || (isEdit && canSubmit) ? (
               <Button 
                 type="button"
                 onClick={handleSubmit}
@@ -264,7 +266,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
                   isEdit ? 'Update Client' : 'Create Client'
                 )}
               </Button>
-            )}
+            ) : null}
           </div>
         </DialogFooter>
       </DialogContent>
