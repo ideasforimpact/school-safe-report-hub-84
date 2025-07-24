@@ -45,7 +45,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData, isEdit);
+  const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData);
 
   // Reset step when dialog opens/closes
   useEffect(() => {
@@ -225,8 +225,31 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           </div>
 
           <div className="flex gap-2">
-            {/* Show Update Client button directly in edit mode when canSubmit is true */}
-            {isEdit && canSubmit ? (
+            {/* Previous Button */}
+            {currentStep > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={isProcessing}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </Button>
+            )}
+
+            {/* Next Button */}
+            {currentStep < steps.length - 1 ? (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={isProcessing || !canProceedToNext(currentStep) || (currentStep === 1 && modulesLoading)}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              /* Submit Button - Only this button should trigger submission */
               <Button 
                 type="button"
                 onClick={handleSubmit}
@@ -235,55 +258,12 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {modulesLoading ? 'Loading modules...' : 'Updating...'}
+                    {modulesLoading ? 'Loading modules...' : (isEdit ? 'Updating...' : 'Creating...')}
                   </>
                 ) : (
-                  'Update Client'
+                  isEdit ? 'Update Client' : 'Create Client'
                 )}
               </Button>
-            ) : (
-              <>
-                {/* Previous Button */}
-                {currentStep > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePrevious}
-                    disabled={isProcessing}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
-                  </Button>
-                )}
-
-                {/* Next Button */}
-                {currentStep < steps.length - 1 ? (
-                  <Button
-                    type="button"
-                    onClick={handleNext}
-                    disabled={isProcessing || !canProceedToNext(currentStep) || (currentStep === 1 && modulesLoading)}
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                ) : (
-                  /* Submit Button - Only for create mode when on last step */
-                  <Button 
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isProcessing || !canSubmit}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {modulesLoading ? 'Loading modules...' : 'Creating...'}
-                      </>
-                    ) : (
-                      'Create Client'
-                    )}
-                  </Button>
-                )}
-              </>
             )}
           </div>
         </DialogFooter>
