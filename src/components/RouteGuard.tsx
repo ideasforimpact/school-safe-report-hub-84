@@ -34,16 +34,31 @@ const RouteGuard = ({
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // Handle backoffice route protection with JWT validation
-  if (isBackoffice && requireAuth) {
+  // Skip session validation on login routes
+  const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
+  
+  console.log('🛡️ RouteGuard: Route protection check', { 
+    pathname: location.pathname,
+    isBackoffice, 
+    requireAuth, 
+    isOnLoginRoute,
+    hasCurrentUser: !!currentUser,
+    isBackofficeUser 
+  });
+
+  // Handle backoffice route protection with JWT validation (but not on login routes)
+  if (isBackoffice && requireAuth && !isOnLoginRoute) {
+    console.log('🛡️ RouteGuard: Validating backoffice session');
     const isValidSession = validateBackofficeSession();
     
     if (!isValidSession) {
+      console.log('🛡️ RouteGuard: Session invalid, redirecting to login');
       // Clear any stale auth state and redirect to backoffice login
       dispatch(clearAuth());
       toast.error("Your session has expired. Please login again.");
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
+    console.log('🛡️ RouteGuard: Session valid, allowing access');
   }
 
   // If currently logging out, don't redirect - let the logout process complete
