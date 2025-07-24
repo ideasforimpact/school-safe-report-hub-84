@@ -7,6 +7,8 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setCurrentUser, setBackofficeUser, setAuthStatus } from '@/store/authActions';
 import { setEmployeeData, setConfiguredModules } from '@/store/employeeActions';
 import { User, EmployeeData } from '@/contexts/auth/types';
+import { generateBackofficeJWT } from '@/utils/jwtUtils';
+import { saveAuthState } from '@/store/authPersistence';
 
 export const useBackofficeAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -109,12 +111,28 @@ export const useBackofficeAuth = () => {
         }));
       }
 
-      // Step 7: Update Redux state with all necessary data
+      // Step 7: Generate JWT token with 24-hour expiration
+      const jwtToken = generateBackofficeJWT(backofficeUser.id, backofficeUser.email);
+      const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
+
+      // Step 8: Update Redux state with all necessary data
       dispatch(setCurrentUser(saasUser));
       dispatch(setBackofficeUser(true));
       dispatch(setAuthStatus(true));
       dispatch(setEmployeeData(backofficeEmployeeData));
       dispatch(setConfiguredModules(backofficeModules));
+
+      // Step 9: Save auth state with JWT token to sessionStorage
+      saveAuthState({
+        currentUser: saasUser,
+        isAuthenticated: true,
+        isBackofficeUser: true,
+        authError: null,
+        configuredModules: backofficeModules,
+        employeeData: backofficeEmployeeData,
+        jwtToken,
+        expiresAt
+      });
 
       console.log('Backoffice authentication successful:', {
         user: saasUser,

@@ -192,35 +192,131 @@ function App() {
                   <Route path="/employee-verification/:employeeId/upload-document" element={<RouteGuard requireAuth={true}><UploadDocumentPage /></RouteGuard>} />
                   <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><VerificationDashboardPage /></RouteGuard>} />
 
-                  {/* Backoffice routes - wrapped with BackofficeClientProvider */}
-                  <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
-                  <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
-                  <Route path="/backoffice/settings" element={<BackofficeWrapper component={SettingsPage} />} />
-                  <Route path="/backoffice/modules" element={<ModulesPage />} />
-                  <Route path="/backoffice/profile" element={<BackofficeWrapper component={ProfilePage} />} />
-                  <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/templates" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/templates/:templateId" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/templates/new" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/templates/:templateId/edit" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/templates/:templateId/assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                  <Route path="/backoffice/assessment/answer/:assessmentId" element={<BackofficeWrapper component={AssessmentAnswerPage} />} />
-                  <Route path="/backoffice/assessments/answer/:assessmentId" element={<BackofficeWrapper component={AnswerAssessmentPage} />} />
-                  <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
-                  <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
-                  <Route path="/backoffice/edusafe-resources" element={<BackofficeWrapper component={BackofficeEduSafeResourcesPage} />} />
+                  {/* Backoffice routes - protected with RouteGuard and wrapped with BackofficeClientProvider */}
+                  <Route path="/backoffice/dashboard" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={Dashboard} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/clients" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={ClientManagement} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/settings" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={SettingsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/modules" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <ModulesPage />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/profile" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={ProfilePage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/templates" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/templates/:templateId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/templates/new" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/templates/:templateId/edit" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/templates/:templateId/assign" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/assignments" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/results" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessment/answer/:assessmentId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentAnswerPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/answer/:assessmentId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AnswerAssessmentPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/response/:assessmentId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentResponsePage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/assessments/respond/:assignmentId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={AssessmentResponsePage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/edusafe-resources" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeEduSafeResourcesPage} />
+                    </RouteGuard>
+                  } />
                   
                   {/* Updated Backoffice Employee Verification routes */}
-                  <Route path="/backoffice-employee-verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
-                  <Route path="/backoffice-employee-verification/employee/:employeeId" element={<BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />} />
+                  <Route path="/backoffice-employee-verification" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeEmployeeVerificationPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice-employee-verification/employee/:employeeId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />
+                    </RouteGuard>
+                  } />
                   
                   {/* Legacy routes for backward compatibility */}
-                  <Route path="/backoffice/employee-verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
-                  <Route path="/backoffice/employee-verification/employee/:employeeId" element={<BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />} />
-                  <Route path="/backoffice/verification" element={<BackofficeWrapper component={BackofficeEmployeeVerificationPage} />} />
+                  <Route path="/backoffice/employee-verification" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeEmployeeVerificationPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/employee-verification/employee/:employeeId" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeEmployeeDocumentsPage} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/verification" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={BackofficeEmployeeVerificationPage} />
+                    </RouteGuard>
+                  } />
                   
                   {/* 404 route */}
                   <Route path="*" element={<NotFound />} />

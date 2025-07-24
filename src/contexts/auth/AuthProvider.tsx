@@ -18,6 +18,7 @@ import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setL
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
+import { validateBackofficeSession } from '@/utils/sessionValidation';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -244,8 +245,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       authCheckInProgressRef.current = true;
       
       try {
-        // If we have persisted backoffice user state, skip Supabase checks
+        // If we have persisted backoffice user state, validate session
         if (isBackofficeUser && currentUser) {
+          const isValidSession = validateBackofficeSession();
+          if (!isValidSession) {
+            console.log('Backoffice session expired during initialization');
+            dispatch(clearAuth());
+            dispatch(resetEmployee());
+            clearPersistedAuthState();
+            toast.error("Your session has expired. Please login again.");
+          }
           setIsInitializing(false);
           return;
         }
