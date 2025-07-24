@@ -35,10 +35,10 @@ const RouteGuard = ({
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
   // Handle backoffice route protection with JWT validation
-  if (isBackoffice) {
+  if (isBackoffice && requireAuth) {
     const isValidSession = validateBackofficeSession();
     
-    if (requireAuth && !isValidSession) {
+    if (!isValidSession) {
       // Clear any stale auth state and redirect to backoffice login
       dispatch(clearAuth());
       toast.error("Your session has expired. Please login again.");
