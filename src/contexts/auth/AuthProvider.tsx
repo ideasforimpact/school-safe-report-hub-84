@@ -18,9 +18,10 @@ import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setL
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
-import { validateBackofficeSession } from '@/utils/sessionValidation';
+import { validateSession } from '@/utils/sessionValidation';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSessionRefresh } from '@/hooks/useSessionRefresh';
 
 // Create the context with async logout
 export const AuthContext = createContext<AuthContextType>({
@@ -70,6 +71,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
   const initializationCompleteRef = useRef<boolean>(false);
+  
+  // Use session refresh hook for automatic session validation
+  const { refreshSession } = useSessionRefresh(5); // Check every 5 minutes
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -213,6 +217,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setShowAuthLoading(true);
           setTimeout(async () => {
             await handleUserAuthentication(session.user);
+            
+            // After successful SSO authentication, save with SSO session type
+            const authStateToSave = {
+              currentUser: currentUser,
+              isAuthenticated: true,
+              isBackofficeUser: false,
+              authError: null,
+              configuredModules: state.configuredModules,
+              employeeData: state.employeeData,
+              sessionType: 'sso' as const
+            };
+            
+            // Import and use saveAuthState
+            const { saveAuthState } = await import('@/store/authPersistence');
+            saveAuthState(authStateToSave);
+            
             setTimeout(() => setShowAuthLoading(false), 2000);
           }, 0);
         } catch (error) {
@@ -272,12 +292,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
         
-        // If we have persisted backoffice user state, validate session (but not on login routes)
-        if (isBackofficeUser && currentUser) {
-          console.log('🔄 AuthProvider: Validating backoffice session during init');
-          const isValidSession = validateBackofficeSession();
+        // If we have persisted user state, validate session using appropriate method
+        if (currentUser) {
+          console.log('🔄 AuthProvider: User found, validating session', { isBackofficeUser });
+          const isValidSession = await validateSession();
           if (!isValidSession) {
-            console.log('🔄 AuthProvider: Backoffice session expired during initialization');
+            console.log('🔄 AuthProvider: Session expired during initialization');
             dispatch(clearAuth());
             dispatch(resetEmployee());
             clearPersistedAuthState();
@@ -285,11 +305,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           setIsInitializing(false);
           return;
-        }
-
-        // If we have persisted regular user state, validate with Supabase
-        if (currentUser && !isBackofficeUser) {
-          console.log('🔄 AuthProvider: Regular user found, checking Supabase session');
         }
 
         const { data } = await supabase.auth.getSession();
