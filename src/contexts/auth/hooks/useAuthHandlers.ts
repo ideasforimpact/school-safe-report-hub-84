@@ -316,12 +316,12 @@ export const useAuthHandlers = ({
         return;
       }
 
-      // STEP 2: Look for employee record by email (this is the gatekeeper)
-      const { data: employeeRecord, error: employeeError } = await supabase
-        .from('employees')
-        .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
-        .eq('email', supabaseUser.email.toLowerCase())
-        .single();
+      // STEP 2: Look for employee record by email using security definer function to bypass RLS
+      const { data: employeeRecords, error: employeeError } = await supabase
+        .rpc('get_employee_by_email_for_auth', { user_email: supabaseUser.email.toLowerCase() });
+
+      // Extract the first (and should be only) employee record
+      const employeeRecord = employeeRecords && employeeRecords.length > 0 ? employeeRecords[0] : null;
 
       // STEP 3: If no employee record found, reject authentication immediately
       if (employeeError || !employeeRecord) {
