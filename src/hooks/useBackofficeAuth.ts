@@ -131,7 +131,8 @@ export const useBackofficeAuth = () => {
         configuredModules: backofficeModules,
         employeeData: backofficeEmployeeData,
         jwtToken,
-        expiresAt
+        expiresAt,
+        sessionType: 'backoffice' // Mark as backoffice session
       });
 
       console.log('Backoffice authentication successful:', {
