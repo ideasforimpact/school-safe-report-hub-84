@@ -317,8 +317,9 @@ export const useAuthHandlers = ({
       }
 
       // STEP 2: Look for employee record by email using security definer function to bypass RLS
+      const cleanedEmail = supabaseUser.email.trim().replace(/[\n\r\t]/g, '').toLowerCase();
       const { data: employeeRecords, error: employeeError } = await supabase
-        .rpc('get_employee_by_email_for_auth', { user_email: supabaseUser.email.toLowerCase() });
+        .rpc('get_employee_by_email_for_auth', { user_email: cleanedEmail });
 
       // Extract the first (and should be only) employee record
       const employeeRecord = employeeRecords && employeeRecords.length > 0 ? employeeRecords[0] : null;
