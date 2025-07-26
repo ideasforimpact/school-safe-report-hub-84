@@ -357,10 +357,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           dispatch(setLoading(true));
           
+          const cleanedEmail = email.trim().replace(/[\n\r\t]/g, '').toLowerCase();
           const { data: employeeData, error } = await supabase
             .from('employees')
             .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type')
-            .eq('email', email.toLowerCase())
+            .eq('email', cleanedEmail)
             .single();
           
           if (employeeData && !error) {
