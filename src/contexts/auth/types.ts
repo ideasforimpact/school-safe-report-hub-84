@@ -15,7 +15,8 @@ export interface AuthContextType {
   authError: string | null;
   handleUserAuthentication: (user: any) => Promise<void>;
   employeeData: EmployeeData | null;
-  setUser: (user: User | null) => void; // Add setUser function
+  setUser: (user: User | null) => void;
+  isProcessingAuth: boolean; // Add processing state
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';

@@ -24,7 +24,7 @@ const RouteGuard = ({
   requireSaasOwner = false,
   isBackoffice = false
 }: RouteGuardProps) => {
-  const { authError } = useAuth();
+  const { authError, isProcessingAuth } = useAuth();
   const location = useLocation();
   const { state, dispatch } = useEmployeeStore();
   
@@ -78,6 +78,16 @@ const RouteGuard = ({
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
         <p className="text-sm text-gray-600">Logging out...</p>
+      </div>
+    </div>;
+  }
+
+  // If currently processing authentication, show loading instead of redirecting
+  if (isProcessingAuth) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-600">Authenticating...</p>
       </div>
     </div>;
   }

@@ -22,6 +22,21 @@ interface SupabaseUser {
   created_at?: string;
 }
 
+// Enhanced employee data interface that includes the new fields from the updated RPC function
+interface EmployeeAuthRecord {
+  id: string;
+  email: string;
+  client_id: string;
+  user_id: string;
+  status: boolean;
+  first_name: string;
+  last_name: string;
+  employee_id: string;
+  is_super_admin: boolean;
+  department?: string;
+  employee_type?: string;
+}
+
 interface UseAuthHandlersProps {
   user: User | null;
   users: any[];
@@ -322,7 +337,7 @@ export const useAuthHandlers = ({
         .rpc('get_employee_by_email_for_auth', { user_email: cleanedEmail });
 
       // Extract the first (and should be only) employee record
-      const employeeRecord = employeeRecords && employeeRecords.length > 0 ? employeeRecords[0] : null;
+      const employeeRecord = employeeRecords && employeeRecords.length > 0 ? employeeRecords[0] as EmployeeAuthRecord : null;
 
       // STEP 3: If no employee record found, reject authentication immediately
       if (employeeError || !employeeRecord) {
