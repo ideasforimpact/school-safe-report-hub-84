@@ -51,21 +51,18 @@ const Header = () => {
   // Check if we're in the backoffice
   const isBackoffice = location.pathname.startsWith('/backoffice');
   
-  // Find the client associated with the current user - Use employeeData.clientId from Redux if available
-  const userClient = employeeData?.clientId 
-    ? clients.find(c => c.id === employeeData.clientId) 
-    : currentUser?.clientId 
-      ? clients.find(c => c.id === currentUser.clientId) 
-      : null;
+  // Use direct client object from employeeData or currentUser - no need to search by ID
+  const userClient = employeeData?.client || currentUser?.client || null;
 
   // Debug client resolution
   console.log('Client Resolution Debug:', {
-    employeeData,
-    currentUser,
-    clients: clients.length,
-    userClient,
-    employeeClientId: employeeData?.clientId,
-    currentUserClientId: currentUser?.clientId
+    employeeData: employeeData,
+    currentUser: currentUser,
+    userClient: userClient,
+    employeeHasClient: !!employeeData?.client,
+    currentUserHasClient: !!currentUser?.client,
+    clientLogo: userClient?.logo,
+    clientName: userClient?.name
   });
 
   // Set dashboard path to /dashboard for all users
