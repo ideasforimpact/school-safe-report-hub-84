@@ -4,10 +4,7 @@ import Layout from '@/components/layout/Layout';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
-import SafetyDashboardHeader from '@/components/dashboard/SafetyDashboardHeader';
-import EnhancedStatsCards from '@/components/dashboard/EnhancedStatsCards';
-import SafetyPerformanceGauges from '@/components/dashboard/SafetyPerformanceGauges';
-import RiskAssessmentMatrix from '@/components/dashboard/RiskAssessmentMatrix';
+import DashboardStatsCards from '@/components/dashboard/DashboardStatsCards';
 import MonthlyIncidentsChart from '@/components/dashboard/MonthlyIncidentsChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
@@ -28,12 +25,15 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="container py-6 space-y-8">
-        {/* Enhanced Safety Dashboard Header */}
-        <SafetyDashboardHeader 
-          stats={stats}
-          schoolName={schoolName}
-          loading={loading}
-        />
+        {/* Welcome Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome to {schoolName}'s Safety Dashboard
+          </h1>
+          <p className="text-gray-600">
+            Monitor your safety metrics and key performance indicators
+          </p>
+        </div>
 
         {/* Error State */}
         {error && (
@@ -46,27 +46,20 @@ const Dashboard = () => {
           </Alert>
         )}
 
-        {/* Critical Safety Overview */}
+        {/* Dashboard Statistics Cards */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-foreground">Critical Safety Overview</h2>
-            <div className="text-sm text-muted-foreground">
+            <h2 className="text-2xl font-semibold text-gray-900">Dashboard Overview</h2>
+            <div className="text-sm text-gray-500">
               Last updated: {new Date().toLocaleString()}
             </div>
           </div>
           
-          <EnhancedStatsCards stats={stats} loading={loading} />
+          <DashboardStatsCards stats={stats} loading={loading} />
         </div>
 
-        {/* Safety Performance Metrics */}
-        <SafetyPerformanceGauges stats={stats} loading={loading} />
-
-        {/* Analytics Dashboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Risk Assessment Matrix */}
-          <RiskAssessmentMatrix stats={stats} loading={loading} />
-          
-          {/* Monthly Incidents Trend */}
+        {/* Monthly Incidents Chart */}
+        <div className="space-y-6">
           <MonthlyIncidentsChart 
             data={stats.monthlyIncidentsData} 
             loading={loading} 
