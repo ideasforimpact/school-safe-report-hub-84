@@ -7,7 +7,8 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 import SafetyDashboardHeader from '@/components/dashboard/SafetyDashboardHeader';
 import EnhancedStatsCards from '@/components/dashboard/EnhancedStatsCards';
 import SafetyPerformanceGauges from '@/components/dashboard/SafetyPerformanceGauges';
-import IncidentHeatmap from '@/components/dashboard/IncidentHeatmap';
+import FacilityRiskMatrix from '@/components/dashboard/FacilityRiskMatrix';
+import CategoryImpactAnalysis from '@/components/dashboard/CategoryImpactAnalysis';
 import MonthlyIncidentsChart from '@/components/dashboard/MonthlyIncidentsChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
@@ -50,16 +51,13 @@ const Dashboard = () => {
 
         {/* Analytics Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Incident Heatmap */}
-          <IncidentHeatmap stats={stats} loading={loading} />
-          
-          {/* Monthly Incidents Chart */}
-          <div className="space-y-4">
-            <MonthlyIncidentsChart 
-              data={stats.monthlyIncidentsData} 
-              loading={loading} 
-            />
-          </div>
+          <FacilityRiskMatrix loading={loading} />
+          <CategoryImpactAnalysis loading={loading} />
+        </div>
+        
+        {/* Monthly Trends */}
+        <div className="grid grid-cols-1 gap-6">
+          <MonthlyIncidentsChart data={stats.monthlyIncidentsData || []} loading={loading} />
         </div>
       </div>
     </Layout>
