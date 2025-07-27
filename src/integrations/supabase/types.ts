@@ -1602,6 +1602,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      backfill_employee_user_links: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       check_cron_status: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1712,6 +1716,10 @@ export type Database = {
       is_current_user_backoffice_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      link_user_to_employee: {
+        Args: { p_user_id: string; p_employee_email: string }
+        Returns: Json
       }
       verify_password: {
         Args: { email: string; password_attempt: string }
