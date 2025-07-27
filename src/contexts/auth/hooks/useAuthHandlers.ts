@@ -37,6 +37,23 @@ interface EmployeeAuthRecord {
   employee_type?: string;
 }
 
+// Interface for the link_user_to_employee function response
+interface LinkUserResponse {
+  success: boolean;
+  error: string | null;
+  employee_data: {
+    id: string;
+    clientId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    employeeId: string;
+    isSuperAdmin: boolean;
+    department?: string;
+    employeeType?: string;
+  } | null;
+}
+
 interface UseAuthHandlersProps {
   user: User | null;
   users: any[];
@@ -297,6 +314,60 @@ export const useAuthHandlers = ({
     }
   }, []);
 
+  // Enhanced function to link user_id to employee record using database function
+  const linkUserToEmployee = useCallback(async (userId: string, email: string, retryCount = 0): Promise<LinkUserResponse> => {
+    const maxRetries = 3;
+    
+    try {
+      console.log(`Attempting to link user ID to employee record (attempt ${retryCount + 1}):`, { userId, email });
+      
+      // Use the new database function for transactional linking
+      const { data, error } = await supabase.rpc('link_user_to_employee', {
+        p_user_id: userId,
+        p_employee_email: email.trim()
+      });
+
+      if (error) {
+        console.error('Error calling link_user_to_employee function:', error);
+        
+        // Retry on certain types of errors
+        if (retryCount < maxRetries && (
+          error.code === 'PGRST301' || // Connection error
+          error.code === 'PGRST116' || // Transaction error
+          error.message?.includes('timeout')
+        )) {
+          console.log(`Retrying user linking (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
+          return linkUserToEmployee(userId, email, retryCount + 1);
+        }
+        
+        return { success: false, error: error.message, employee_data: null };
+      }
+
+      // Type assertion for the response data with proper unknown conversion
+      const result = data as unknown as LinkUserResponse;
+      
+      if (!result?.success) {
+        console.error('Failed to link user ID to employee:', result?.error);
+        return result;
+      }
+
+      console.log('Successfully linked user ID to employee:', result.employee_data);
+      return result;
+    } catch (error) {
+      console.error('Exception during user ID linking:', error);
+      
+      // Retry on exceptions
+      if (retryCount < maxRetries) {
+        console.log(`Retrying user linking after exception (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return linkUserToEmployee(userId, email, retryCount + 1);
+      }
+      
+      return { success: false, error: `Exception during linking: ${error}`, employee_data: null };
+    }
+  }, []);
+
   // Handle user authentication from various providers (Google, etc.) - MEMOIZED
   const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
     if (!supabaseUser || isProcessingAuth) {
@@ -410,14 +481,14 @@ export const useAuthHandlers = ({
 
       // STEP 6: If employee exists and is valid, link user_id if not already linked
       if (!employeeRecord.user_id) {
-        const { error: updateError } = await supabase
-          .from('employees')
-          .update({ user_id: supabaseUser.id })
-          .eq('id', employeeRecord.id);
-
-        if (updateError) {
-          console.error("Error linking user_id to employee:", updateError);
-          setAuthError("Failed to link your account. Please contact support.");
+        console.log("Employee record needs user_id linking:", { employeeId: employeeRecord.id, userEmail: supabaseUser.email });
+        
+        // Use the new enhanced linking function with retry logic
+        const linkResult = await linkUserToEmployee(supabaseUser.id, supabaseUser.email);
+        
+        if (!linkResult.success) {
+          console.error("Failed to link user_id to employee:", linkResult.error);
+          setAuthError(`Failed to link your account: ${linkResult.error}. Please contact support.`);
           toast.error("Failed to link your account. Please contact support.");
           await supabase.auth.signOut();
           setIsProcessingAuth(false);
@@ -426,6 +497,19 @@ export const useAuthHandlers = ({
 
         // Update the employee record with the new user_id for further processing
         employeeRecord.user_id = supabaseUser.id;
+        
+        // Update other fields if they were returned from the linking function
+        if (linkResult.employee_data) {
+          employeeRecord.client_id = linkResult.employee_data.clientId;
+          employeeRecord.first_name = linkResult.employee_data.firstName;
+          employeeRecord.last_name = linkResult.employee_data.lastName;
+          employeeRecord.employee_id = linkResult.employee_data.employeeId;
+          employeeRecord.is_super_admin = linkResult.employee_data.isSuperAdmin;
+          employeeRecord.department = linkResult.employee_data.department;
+          employeeRecord.employee_type = linkResult.employee_data.employeeType;
+        }
+        
+        console.log("Successfully linked user_id to employee record");
       }
 
       // STEP 7: Create user and employee data objects
