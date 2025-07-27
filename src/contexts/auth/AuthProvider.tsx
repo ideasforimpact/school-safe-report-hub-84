@@ -41,6 +41,7 @@ export const AuthContext = createContext<AuthContextType>({
   handleUserAuthentication: async () => {},
   employeeData: null,
   setUser: () => {},
+  isProcessingAuth: false
 });
 
 interface AuthProviderProps {
@@ -67,6 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
+  const [isProcessingAuth, setIsProcessingAuth] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
@@ -206,16 +208,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     if (authListenerSetupRef.current || state.isLoggingOut) return;
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Skip processing if logging out
       if (state.isLoggingOut) {
         return;
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          setShowAuthLoading(true);
-          setTimeout(async () => {
+        console.log('👤 User signed in via SSO:', session.user.email);
+        setIsProcessingAuth(true);
+        setShowAuthLoading(true);
+        
+        // Use setTimeout to avoid blocking the auth state change callback
+        setTimeout(async () => {
+          try {
             await handleUserAuthentication(session.user);
             
             // After successful SSO authentication, save with SSO session type
@@ -234,17 +240,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             saveAuthState(authStateToSave);
             
             setTimeout(() => setShowAuthLoading(false), 2000);
-          }, 0);
-        } catch (error) {
-          console.error("Error in handleUserAuthentication:", error);
-          toast.error("Authentication failed. Please try again.");
-          setShowAuthLoading(false);
-        }
+          } catch (error) {
+            console.error("Error in handleUserAuthentication:", error);
+            toast.error("Authentication failed. Please try again.");
+            setShowAuthLoading(false);
+          } finally {
+            setIsProcessingAuth(false);
+          }
+        }, 0);
       } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
         dispatch(clearAuth());
         dispatch(resetEmployee());
         clearPersistedAuthState();
         setShowAuthLoading(false);
+        setIsProcessingAuth(false);
         toast.info("You have been logged out");
         logoutUser();
       }
@@ -598,13 +607,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     handleUserAuthentication,
     employeeData: state.employeeData,
     setUser: handleSetUser,
+    isProcessingAuth,
   }), [
     currentUser,
     displayUsers, 
     isAdmin,
     isSaasOwner,
     authError,
-    state.employeeData
+    state.employeeData,
+    isProcessingAuth
   ]);
 
   if (isInitializing) {
