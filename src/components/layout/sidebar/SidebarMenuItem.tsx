@@ -33,10 +33,10 @@ const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive, accessLev
       <button
         onClick={handleClick}
         className={cn(
-          "w-full flex flex-col items-center justify-center py-3 px-2 rounded-md transition-colors text-center",
+          "w-full flex flex-col items-center justify-center py-3 px-2 rounded-lg transition-all duration-300 text-center relative",
           isActive
-            ? "bg-blue-700 text-white"
-            : "text-blue-100 hover:bg-blue-800 hover:text-white"
+            ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 transform scale-105"
+            : "text-blue-100 hover:bg-white/10 hover:text-white hover:shadow-md hover:shadow-blue-400/20 backdrop-blur-sm"
         )}
         aria-current={isActive ? 'page' : undefined}
       >

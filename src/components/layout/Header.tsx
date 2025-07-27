@@ -58,6 +58,16 @@ const Header = () => {
       ? clients.find(c => c.id === currentUser.clientId) 
       : null;
 
+  // Debug client resolution
+  console.log('Client Resolution Debug:', {
+    employeeData,
+    currentUser,
+    clients: clients.length,
+    userClient,
+    employeeClientId: employeeData?.clientId,
+    currentUserClientId: currentUser?.clientId
+  });
+
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
