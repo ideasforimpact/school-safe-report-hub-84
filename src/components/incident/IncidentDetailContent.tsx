@@ -169,7 +169,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <TabsContent value="documents" className="mt-6">
           <SupportingDocuments
             incidentId={displayIncident.id}
-            documents={convertedDocuments}
             canDelete={isAdmin}
             canUpload={canUploadDocuments}
             onDocumentDeleted={onRefreshIncident}
