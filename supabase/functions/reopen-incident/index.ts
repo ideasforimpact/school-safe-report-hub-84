@@ -29,18 +29,10 @@ async function checkReopenPermissions(
     return { canReopen: false, incident: null, clientId: '' }
   }
 
-  // Get employee details to check admin status
+  // Get employee details first
   const { data: employee, error: employeeError } = await supabase
     .from('employees')
-    .select(`
-      id, 
-      is_super_admin, 
-      client_id,
-      employee_modules!inner(
-        level,
-        module:modules(name)
-      )
-    `)
+    .select('id, is_super_admin, client_id')
     .eq('id', employeeId)
     .eq('client_id', incident.client_id)
     .single()
@@ -50,17 +42,50 @@ async function checkReopenPermissions(
     return { canReopen: false, incident, clientId: incident.client_id }
   }
 
-  // Check if user is super admin
-  if (employee.is_super_admin) {
-    console.log('User is super admin, allowing reopen')
-    return { canReopen: true, incident, clientId: incident.client_id }
-  }
+  let hasIncidentAdmin = false
 
-  // Check if user has incident admin access
-  const hasIncidentAdmin = employee.employee_modules?.some((empModule: any) => 
-    empModule.module?.name?.toLowerCase() === 'incidents' && 
-    empModule.level?.is_admin === true
-  )
+  // Check incident admin access based on user type
+  if (employee.is_super_admin) {
+    console.log('Checking super admin incident module access from client_modules')
+    // For super admin, check client_modules
+    const { data: clientModules, error: clientModulesError } = await supabase
+      .from('client_modules')
+      .select(`
+        enabled,
+        access_level,
+        module:modules(name)
+      `)
+      .eq('client_id', employee.client_id)
+      .eq('enabled', true)
+
+    if (clientModulesError) {
+      console.error('Error fetching client modules:', clientModulesError)
+    } else {
+      hasIncidentAdmin = clientModules?.some((clientModule: any) => 
+        clientModule.module?.name?.toLowerCase() === 'incidents' && 
+        clientModule.access_level?.isAdmin === true
+      ) || false
+    }
+  } else {
+    console.log('Checking regular employee incident module access from employee_modules')
+    // For regular employee, check employee_modules
+    const { data: employeeModules, error: employeeModulesError } = await supabase
+      .from('employee_modules')
+      .select(`
+        level,
+        module:modules(name)
+      `)
+      .eq('employee_id', employeeId)
+
+    if (employeeModulesError) {
+      console.error('Error fetching employee modules:', employeeModulesError)
+    } else {
+      hasIncidentAdmin = employeeModules?.some((empModule: any) => 
+        empModule.module?.name?.toLowerCase() === 'incidents' && 
+        empModule.level?.is_admin === true
+      ) || false
+    }
+  }
 
   // Check if user created the incident
   const isCreator = incident.created_by === employeeId
