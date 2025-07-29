@@ -33,7 +33,7 @@ async function checkReopenPermissions(
   const { data: employee, error: employeeError } = await supabase
     .from('employees')
     .select('id, is_super_admin, client_id')
-    .eq('id', employeeId)
+    .eq('id', incident.created_by)
     .eq('client_id', incident.client_id)
     .single()
 
@@ -75,7 +75,7 @@ async function checkReopenPermissions(
         level,
         module:modules(name)
       `)
-      .eq('employee_id', employeeId)
+      .eq('employee_id', employee.id)
 
     if (employeeModulesError) {
       console.error('Error fetching employee modules:', employeeModulesError)
@@ -88,10 +88,10 @@ async function checkReopenPermissions(
   }
 
   // Check if user created the incident
-  const isCreator = incident.created_by === employeeId
+  const isCreator = incident.created_by === employee.id
   
   // Check if user is assigned to the incident
-  const isAssigned = incident.assigned_to === employeeId
+  const isAssigned = incident.assigned_to === employee.id
 
   console.log('Reopen permission check:', {
     employeeId,
