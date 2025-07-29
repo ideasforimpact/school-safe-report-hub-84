@@ -74,8 +74,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authCheckInProgressRef = useRef<boolean>(false);
   const initializationCompleteRef = useRef<boolean>(false);
   
-  // Use session refresh hook for automatic session validation
-  const { refreshSession } = useSessionRefresh(5); // Check every 5 minutes
+  // Use session refresh hook for automatic session validation (only for backoffice users)
+  const { refreshSession } = useSessionRefresh(isBackofficeUser ? 5 : 15); // More frequent for backoffice
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -291,7 +291,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           pathname: location.pathname,
           isOnLoginRoute,
           isBackofficeUser,
-          hasCurrentUser: !!currentUser
+          hasCurrentUser: !!currentUser,
+          timestamp: new Date().toISOString()
         });
         
         // Skip all validation and clearing on login routes
@@ -301,11 +302,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
         
+        // Check if logout is in progress via sessionStorage
+        const logoutInProgress = sessionStorage.getItem('is_logout_initiated') === 'true';
+        if (logoutInProgress) {
+          console.log('🔄 AuthProvider: Logout in progress, skipping initialization');
+          setIsInitializing(false);
+          return;
+        }
+        
         // If we have persisted user state, validate session using appropriate method
         if (currentUser) {
           console.log('🔄 AuthProvider: User found, validating session', { isBackofficeUser });
+          
+          // Add a small delay to prevent race conditions with logout
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Check logout flag again after delay
+          if (sessionStorage.getItem('is_logout_initiated') === 'true' || state.isLoggingOut) {
+            console.log('🔄 AuthProvider: Logout detected during delay, aborting validation');
+            setIsInitializing(false);
+            return;
+          }
+          
           const isValidSession = await validateSession();
-          if (!isValidSession) {
+          if (!isValidSession && !state.isLoggingOut) {
             console.log('🔄 AuthProvider: Session expired during initialization');
             dispatch(clearAuth());
             dispatch(resetEmployee());
@@ -319,12 +339,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
-          if (!currentUser) {
+          if (!currentUser && !state.isLoggingOut) {
             console.log('🔄 AuthProvider: Supabase session found, no current user, authenticating');
             setShowAuthLoading(true);
             setTimeout(async () => {
-              await handleUserAuthentication(data.session?.user);
-              setTimeout(() => setShowAuthLoading(false), 2000);
+              if (!state.isLoggingOut) {
+                await handleUserAuthentication(data.session?.user);
+                setTimeout(() => setShowAuthLoading(false), 2000);
+              }
             }, 0);
           }
         } else {
@@ -429,6 +451,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set logout flag immediately to prevent redirect loops
     sessionStorage.setItem('is_logout_initiated', 'true');
     console.log('🏁 AuthProvider: Set logout flag in sessionStorage');
+    
+    // Reset validation state manager to prevent validation conflicts
+    const { validationStateManager } = await import('@/utils/validationStateManager');
+    validationStateManager.reset();
+    console.log('🔄 AuthProvider: Reset validation state manager');
     
     // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
