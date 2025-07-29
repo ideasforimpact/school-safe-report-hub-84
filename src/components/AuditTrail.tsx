@@ -84,6 +84,120 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
     }
   };
 
+  // Parse and highlight text for better readability
+  const parseAndHighlightText = (text: string) => {
+    if (!text) return null;
+
+    // Check for reopen reason pattern
+    const reopenMatch = text.match(/Reason:\s*(.+)/);
+    if (reopenMatch) {
+      const beforeReason = text.substring(0, text.indexOf('Reason:'));
+      const reason = reopenMatch[1].trim();
+      return {
+        type: 'reopen',
+        beforeReason: beforeReason.trim(),
+        reason: reason
+      };
+    }
+
+    // Check for field change patterns
+    const changeMatch = text.match(/(.+?)\s+changed\s+from\s+"([^"]+)"\s+to\s+"([^"]+)"/);
+    if (changeMatch) {
+      return {
+        type: 'change',
+        field: changeMatch[1].trim(),
+        oldValue: changeMatch[2],
+        newValue: changeMatch[3]
+      };
+    }
+
+    // Check for set pattern
+    const setMatch = text.match(/(.+?)\s+set\s+to\s+"([^"]+)"/);
+    if (setMatch) {
+      return {
+        type: 'set',
+        field: setMatch[1].trim(),
+        value: setMatch[2]
+      };
+    }
+
+    // Check for cleared pattern
+    const clearMatch = text.match(/(.+?)\s+cleared\s+\(was\s+"([^"]+)"\)/);
+    if (clearMatch) {
+      return {
+        type: 'clear',
+        field: clearMatch[1].trim(),
+        oldValue: clearMatch[2]
+      };
+    }
+
+    return { type: 'plain', text };
+  };
+
+  // Render highlighted change based on parsed content
+  const renderHighlightedChange = (parsed: any) => {
+    if (!parsed) return null;
+
+    switch (parsed.type) {
+      case 'reopen':
+        return (
+          <div className="space-y-2">
+            {parsed.beforeReason && (
+              <p className="text-sm text-gray-700">{parsed.beforeReason}</p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-900">Reason:</span>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                {parsed.reason}
+              </Badge>
+            </div>
+          </div>
+        );
+
+      case 'change':
+        return (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">{parsed.field}</span>
+            <span className="text-gray-600">changed from</span>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+              {parsed.oldValue}
+            </Badge>
+            <span className="text-gray-600">to</span>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {parsed.newValue}
+            </Badge>
+          </div>
+        );
+
+      case 'set':
+        return (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">{parsed.field}</span>
+            <span className="text-gray-600">set to</span>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {parsed.value}
+            </Badge>
+          </div>
+        );
+
+      case 'clear':
+        return (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">{parsed.field}</span>
+            <span className="text-gray-600">cleared (was</span>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+              {parsed.oldValue}
+            </Badge>
+            <span className="text-gray-600">)</span>
+          </div>
+        );
+
+      case 'plain':
+      default:
+        return <span className="text-sm text-gray-700">{parsed.text}</span>;
+    }
+  };
+
   // Parse changes from details to show in a cleaner format
   const parseChanges = (details: string) => {
     if (!details || !details.includes(':')) return null;
@@ -207,23 +321,44 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
                         
                         {/* Activity description */}
                         <div className="space-y-2">
-                          {changes && changes.length > 0 ? (
-                            <div className="bg-gray-50 rounded-lg p-3 border">
-                              <h5 className="text-sm font-medium text-gray-900 mb-2">Changes Made:</h5>
-                              <div className="space-y-1">
-                                {changes.map((change, changeIndex) => (
-                                  <div key={changeIndex} className="flex items-center text-sm text-gray-700">
-                                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2 flex-shrink-0" />
-                                    <span>{change}</span>
+                          {(() => {
+                            const activityText = activity.details || `${activity.activity} ${activity.entityTitle}`;
+                            const parsed = parseAndHighlightText(activityText);
+                            const changes = parseChanges(activityText);
+                            
+                            // If we have a parsed structured change, show it highlighted
+                            if (parsed && parsed.type !== 'plain') {
+                              return (
+                                <div className="bg-gray-50 rounded-lg p-3 border">
+                                  {renderHighlightedChange(parsed)}
+                                </div>
+                              );
+                            }
+                            
+                            // If we have legacy changes, show them
+                            if (changes && changes.length > 0) {
+                              return (
+                                <div className="bg-gray-50 rounded-lg p-3 border">
+                                  <h5 className="text-sm font-medium text-gray-900 mb-2">Changes Made:</h5>
+                                  <div className="space-y-1">
+                                    {changes.map((change, changeIndex) => (
+                                      <div key={changeIndex} className="flex items-center text-sm text-gray-700">
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2 flex-shrink-0" />
+                                        <span>{change}</span>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                </div>
+                              );
+                            }
+                            
+                            // Default plain text display
+                            return (
+                              <div className="bg-gray-50 rounded-lg p-3 border">
+                                <span className="text-sm text-gray-700">{activityText}</span>
                               </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 border">
-                              {activity.details || `${activity.activity} ${activity.entityTitle}`}
-                            </p>
-                          )}
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
