@@ -2,6 +2,13 @@
 import React from 'react';
 import { FileItem } from '@/types/incident';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import TypeSection from './components/TypeSection';
 import CategorySubcategorySection from './components/CategorySubcategorySection';
 import LocationFacilitySection from './components/LocationFacilitySection';
@@ -59,31 +66,117 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
 }) => {
   return (
     <div className="space-y-8">
-      {/* Classification Section */}
+      {/* Classification & Location Section */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Classification</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* First column */}
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Incident Details</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* First row - Report Type, Category, Location */}
           <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
             <TypeSection
               type={formData.type}
               onSelectChange={onSelectChange}
               getCategoriesForType={getCategoriesForType}
             />
-
-            <PrioritySection
-              priority={formData.priority}
-              onSelectChange={onSelectChange}
-            />
           </div>
 
-          {/* Second column */}
           <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
-            <CategorySubcategorySection
-              categoryId={formData.categoryId}
-              categories={categories}
-              subcategory={formData.subcategory}
-              availableSubcategories={availableSubcategories}
+            <div className="space-y-2">
+              <label htmlFor="categoryId" className="text-sm font-medium">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <Select 
+                value={formData.categoryId}
+                onValueChange={(value) => onSelectChange('categoryId', value)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(category => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
+            <div className="space-y-2">
+              <label htmlFor="locationId" className="text-sm font-medium">
+                Location <span className="text-red-500">*</span>
+              </label>
+              <Select 
+                value={formData.locationId}
+                onValueChange={(value) => onSelectChange('locationId', value)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Second row - Subcategory, Facility, Priority */}
+          <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
+            <div className="space-y-2">
+              <label htmlFor="subcategory" className="text-sm font-medium">
+                Subcategory
+              </label>
+              <Select 
+                value={formData.subcategory}
+                onValueChange={(value) => onSelectChange('subcategory', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select subcategory" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableSubcategories.map(sub => (
+                    <SelectItem key={sub.id} value={sub.name}>
+                      {sub.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
+            <div className="space-y-2">
+              <label htmlFor="facilityId" className="text-sm font-medium">
+                Facility
+              </label>
+              <Select 
+                value={formData.facilityId}
+                onValueChange={(value) => onSelectChange('facilityId', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select facility" />
+                </SelectTrigger>
+                <SelectContent>
+                  {facilities.map(facility => (
+                    <SelectItem key={facility.id} value={facility.id}>
+                      {facility.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
+            <PrioritySection
+              priority={formData.priority}
               onSelectChange={onSelectChange}
             />
           </div>
@@ -92,29 +185,15 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
 
       <Separator className="bg-gray-200" />
 
-      {/* Location & Time Section */}
+      {/* Date & Time Section */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-3">Location & Timeline</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* First column */}
-          <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
-            <LocationFacilitySection
-              location={formData.locationId}
-              locations={locations}
-              facility={formData.facilityId}
-              facilities={facilities}
-              onSelectChange={onSelectChange}
-            />
-          </div>
-
-          {/* Second column */}
-          <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
-            <DateTimeSection
-              date={formData.date}
-              time={formData.time}
-              onChange={onDateTimeChange}
-            />
-          </div>
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Timeline</h3>
+        <div className="p-4 bg-gray-50 rounded-md border border-gray-100">
+          <DateTimeSection
+            date={formData.date}
+            time={formData.time}
+            onChange={onDateTimeChange}
+          />
         </div>
       </div>
 
