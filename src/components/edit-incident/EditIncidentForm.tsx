@@ -233,7 +233,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       <form onSubmit={handleSubmit} className="w-full">
         <Card className="bg-white shadow-sm border border-gray-200">
           <CardContent className="space-y-6 p-6">
-            {/* First Row - Report Type, Category, Location */}
+            {/* First Row - Report Type, Category, Subcategory */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="type" className="text-sm font-medium text-gray-700">
@@ -272,27 +272,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                  Location <span className="text-red-500">*</span>
-                </Label>
-                <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
-                  <SelectTrigger className="h-11 bg-white border-gray-300">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white z-50">
-                    {configData.locations.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Second Row - Subcategory, Facility, Priority */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
                 <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
                   Subcategory
                 </Label>
@@ -304,6 +283,27 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                     {getFilteredSubcategories().map((subcategory) => (
                       <SelectItem key={subcategory.id} value={subcategory.id}>
                         {subcategory.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Second Row - Location, Facility, Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                  Location <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {configData.locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
