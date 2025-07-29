@@ -7,6 +7,7 @@ import { resetEmployee } from '@/store/employeeActions';
 import { clearPersistedAuthState } from '@/store/authPersistence';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { authCoordinator } from '@/utils/authCoordinator';
 
 // Hook to handle automatic session validation and refresh
 export const useSessionRefresh = (intervalMinutes: number = 5) => {
@@ -16,12 +17,14 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   const navigate = useNavigate();
   const location = useLocation();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const validationCountRef = useRef(0);
+  const MAX_VALIDATIONS = 5;
   
   useEffect(() => {
-    // Don't run session refresh on login pages
+    // Don't run session refresh on login pages or if operations are blocked
     const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
     
-    if (!currentUser || isOnLoginRoute) {
+    if (!currentUser || isOnLoginRoute || authCoordinator.shouldBlockOperation('session refresh')) {
       // Clear any existing interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -31,7 +34,24 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
     }
     
     const checkSession = async () => {
-      console.log('🔄 useSessionRefresh: Checking session validity');
+      // Circuit breaker: prevent too many validations
+      if (validationCountRef.current >= MAX_VALIDATIONS) {
+        console.log('🔄 useSessionRefresh: Max validations reached, stopping');
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        return;
+      }
+
+      // Don't run if coordinator blocks it
+      if (authCoordinator.shouldBlockOperation('session refresh validation')) {
+        console.log('🔄 useSessionRefresh: Validation blocked by coordinator');
+        return;
+      }
+
+      validationCountRef.current++;
+      console.log(`🔄 useSessionRefresh: Checking session validity (attempt ${validationCountRef.current}/${MAX_VALIDATIONS})`);
       
       try {
         const isValid = await validateSession();
@@ -44,14 +64,16 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
           dispatch(resetEmployee());
           clearPersistedAuthState();
           
-          // Show error message
-          toast.error("Your session has expired. Please login again.");
-          
-          // Navigate to appropriate login page
-          if (isBackofficeUser) {
-            navigate('/backoffice/login', { replace: true });
-          } else {
-            navigate('/login', { replace: true });
+          // Show error message only if we can navigate
+          if (authCoordinator.canNavigate(isBackofficeUser ? '/backoffice/login' : '/login')) {
+            toast.error("Your session has expired. Please login again.");
+            
+            // Navigate to appropriate login page
+            if (isBackofficeUser) {
+              navigate('/backoffice/login', { replace: true });
+            } else {
+              navigate('/login', { replace: true });
+            }
           }
           
           // Clear the interval since we're logging out
@@ -61,6 +83,8 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
           }
         } else {
           console.log('🔄 useSessionRefresh: Session is valid');
+          // Reset validation counter on successful validation
+          validationCountRef.current = 0;
         }
       } catch (error) {
         console.error('🔄 useSessionRefresh: Error during session validation', error);
@@ -68,11 +92,14 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
       }
     };
     
-    // Set up interval for periodic session checks
-    intervalRef.current = setInterval(checkSession, intervalMinutes * 60 * 1000);
+    // Adjust interval based on user type (SSO users need less frequent checks)
+    const actualIntervalMinutes = isBackofficeUser ? intervalMinutes : intervalMinutes * 2;
     
-    // Also check immediately
-    checkSession();
+    // Set up interval for periodic session checks
+    intervalRef.current = setInterval(checkSession, actualIntervalMinutes * 60 * 1000);
+    
+    // Also check immediately (but not if we're just starting up)
+    setTimeout(checkSession, 1000);
     
     // Cleanup interval on unmount or dependency change
     return () => {
@@ -87,6 +114,12 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   const refreshSession = async (): Promise<boolean> => {
     console.log('🔄 useSessionRefresh: Manual session refresh requested');
     
+    // Don't allow manual refresh if operations are blocked
+    if (authCoordinator.shouldBlockOperation('manual session refresh')) {
+      console.log('🔄 useSessionRefresh: Manual refresh blocked by coordinator');
+      return true; // Return true to avoid triggering logout
+    }
+    
     try {
       const isValid = await validateSession();
       
@@ -98,14 +131,16 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
         dispatch(resetEmployee());
         clearPersistedAuthState();
         
-        // Show error message
-        toast.error("Your session has expired. Please login again.");
-        
-        // Navigate to appropriate login page
-        if (isBackofficeUser) {
-          navigate('/backoffice/login', { replace: true });
-        } else {
-          navigate('/login', { replace: true });
+        // Show error message and navigate only if allowed
+        if (authCoordinator.canNavigate(isBackofficeUser ? '/backoffice/login' : '/login')) {
+          toast.error("Your session has expired. Please login again.");
+          
+          // Navigate to appropriate login page
+          if (isBackofficeUser) {
+            navigate('/backoffice/login', { replace: true });
+          } else {
+            navigate('/login', { replace: true });
+          }
         }
         
         return false;

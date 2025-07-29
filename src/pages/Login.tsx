@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { providerConfigs } from "@/utils/authProviders";
 import { useEmployeeStore } from "@/store/EmployeeContext";
+import { authCoordinator } from "@/utils/authCoordinator";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -50,33 +51,45 @@ const Login = () => {
   // Separate effect for user redirect - uses refs to prevent continuous execution
   useEffect(() => {
     // Skip if we're logging out or already redirected
-    if (state.isLoggingOut || hasRedirectedRef.current) {
-      console.log('⏸️ Login: Skipping redirect - logging out or already redirected');
+    if (state.isLoggingOut || hasRedirectedRef.current || authCoordinator.shouldBlockOperation('login redirect')) {
+      console.log('⏸️ Login: Skipping redirect', { 
+        loggingOut: state.isLoggingOut, 
+        redirected: hasRedirectedRef.current,
+        blocked: authCoordinator.shouldBlockOperation('login redirect')
+      });
       return;
     }
 
-    // Skip if logout is in progress via sessionStorage
-    const isLogoutInProgress = sessionStorage.getItem('is_logout_initiated') === 'true';
-    if (isLogoutInProgress) {
-      console.log('⏸️ Login: Blocking redirect - logout in progress');
+    // Skip if logout is in progress via coordinator
+    if (authCoordinator.isLogoutInProgress()) {
+      console.log('⏸️ Login: Blocking redirect - logout in progress via coordinator');
       return;
     }
 
     // Only redirect if we have a user and haven't redirected yet
     if (user && !hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
-      const timestamp = new Date().toISOString();
-      console.log('✅ Login: User exists, redirecting at:', timestamp);
-      
-      const redirectTo = redirectPathRef.current;
-      
-      if (user?.role === "saas_owner") {
-        console.log('🏢 Login: Redirecting to backoffice dashboard');
-        navigate("/backoffice/dashboard", { replace: true });
-      } else {
-        console.log('🏠 Login: Redirecting to:', redirectTo);
-        navigate(redirectTo, { replace: true });
-      }
+      // Add a small delay to ensure logout state is properly cleared
+      setTimeout(() => {
+        // Double-check logout status after delay
+        if (state.isLoggingOut || authCoordinator.isLogoutInProgress()) {
+          console.log('⏸️ Login: Logout detected after delay, blocking redirect');
+          return;
+        }
+
+        hasRedirectedRef.current = true;
+        const timestamp = new Date().toISOString();
+        console.log('✅ Login: User exists, redirecting at:', timestamp);
+        
+        const redirectTo = redirectPathRef.current;
+        
+        if (user?.role === "saas_owner") {
+          console.log('🏢 Login: Redirecting to backoffice dashboard');
+          navigate("/backoffice/dashboard", { replace: true });
+        } else {
+          console.log('🏠 Login: Redirecting to:', redirectTo);
+          navigate(redirectTo, { replace: true });
+        }
+      }, 100);
     }
   }, [user, state.isLoggingOut, navigate]); // Minimal dependencies
 

@@ -8,6 +8,7 @@ import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors
 import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
 import { validateBackofficeSession } from '@/utils/sessionValidation';
 import { clearAuth } from '@/store/authActions';
+import { authCoordinator } from '@/utils/authCoordinator';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -72,12 +73,14 @@ const RouteGuard = ({
     console.log('🛡️ RouteGuard: Session valid, allowing access');
   }
 
-  // If currently logging out, don't redirect - let the logout process complete
-  if (state.isLoggingOut) {
+  // If currently logging out or coordinator blocks operations, show loading
+  if (state.isLoggingOut || authCoordinator.isLogoutInProgress() || authCoordinator.shouldBlockOperation('route guard')) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">Logging out...</p>
+        <p className="text-sm text-gray-600">
+          {state.isLoggingOut || authCoordinator.isLogoutInProgress() ? 'Logging out...' : 'Loading...'}
+        </p>
       </div>
     </div>;
   }

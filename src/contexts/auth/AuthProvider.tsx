@@ -22,6 +22,7 @@ import { validateSession } from '@/utils/sessionValidation';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSessionRefresh } from '@/hooks/useSessionRefresh';
+import { authCoordinator } from '@/utils/authCoordinator';
 
 // Create the context with async logout
 export const AuthContext = createContext<AuthContextType>({
@@ -268,12 +269,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
-    // Prevent infinite loops by only running initialization once
-    if (initializationCompleteRef.current || state.isLoggingOut || authCheckInProgressRef.current) {
+    // Prevent infinite loops and respect coordinator blocks
+    if (initializationCompleteRef.current || 
+        authCheckInProgressRef.current || 
+        authCoordinator.shouldBlockOperation('initialization')) {
       console.log('🔄 AuthProvider: Skipping initialization', { 
         initComplete: initializationCompleteRef.current,
-        isLoggingOut: state.isLoggingOut,
-        inProgress: authCheckInProgressRef.current
+        inProgress: authCheckInProgressRef.current,
+        blocked: authCoordinator.shouldBlockOperation('initialization')
       });
       return;
     }
@@ -284,7 +287,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       initializationCompleteRef.current = true; // Mark as complete immediately to prevent re-runs
       
       try {
-        // Skip session validation on login routes to prevent errors
+        // Skip all operations on login routes
         const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
         
         console.log('🔄 AuthProvider: Starting one-time initialization check', { 
@@ -296,50 +299,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Skip all validation and clearing on login routes
         if (isOnLoginRoute) {
-          console.log('🔄 AuthProvider: On login route, skipping validation');
+          console.log('🔄 AuthProvider: On login route, skipping all operations');
           setIsInitializing(false);
           return;
         }
         
-        // If we have persisted user state, validate session using appropriate method
-        if (currentUser) {
-          console.log('🔄 AuthProvider: User found, validating session', { isBackofficeUser });
-          const isValidSession = await validateSession();
-          if (!isValidSession) {
-            console.log('🔄 AuthProvider: Session expired during initialization');
-            dispatch(clearAuth());
-            dispatch(resetEmployee());
-            clearPersistedAuthState();
-            toast.error("Your session has expired. Please login again.");
-          }
-          setIsInitializing(false);
-          return;
-        }
+        // Don't run session validation during initialization to prevent conflicts
+        console.log('🔄 AuthProvider: Initialization without session validation to prevent conflicts');
 
         const { data } = await supabase.auth.getSession();
         
-        if (data.session) {
-          if (!currentUser) {
-            console.log('🔄 AuthProvider: Supabase session found, no current user, authenticating');
-            setShowAuthLoading(true);
-            setTimeout(async () => {
-              await handleUserAuthentication(data.session?.user);
-              setTimeout(() => setShowAuthLoading(false), 2000);
-            }, 0);
-          }
-        } else {
-          // If no Supabase session and no persisted user (or not backoffice), clear everything
-          if (!currentUser || (!isBackofficeUser && currentUser)) {
-            console.log('🔄 AuthProvider: No session, clearing auth state');
-            dispatch(clearAuth());
-            dispatch(resetEmployee());
-            clearPersistedAuthState();
-            logoutUser();
-          }
+        if (data.session && !currentUser) {
+          console.log('🔄 AuthProvider: Supabase session found, no current user, authenticating');
+          setShowAuthLoading(true);
+          setTimeout(async () => {
+            await handleUserAuthentication(data.session?.user);
+            setTimeout(() => setShowAuthLoading(false), 2000);
+          }, 0);
         }
       } catch (error) {
         console.error("Error checking authentication status:", error);
-        toast.error("Error checking authentication status");
+        // Don't show error toast during initialization to prevent spam
       } finally {
         console.log('🔄 AuthProvider: Initialization complete');
         setIsInitializing(false);
@@ -426,9 +406,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🚪 AuthProvider: Starting logout process');
     console.log('🕐 AuthProvider: Logout started at:', new Date().toISOString());
     
-    // Set logout flag immediately to prevent redirect loops
-    sessionStorage.setItem('is_logout_initiated', 'true');
-    console.log('🏁 AuthProvider: Set logout flag in sessionStorage');
+    // Check if logout is already in progress
+    if (!authCoordinator.startLogout()) {
+      console.log('🔒 AuthProvider: Logout already in progress, skipping');
+      return;
+    }
     
     // Set logout state immediately to prevent validation loops and redirects
     dispatch(setLogoutState(true));
@@ -461,32 +443,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Determine where to redirect based on user type and current route
       const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
       const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
+      const targetPath = shouldRedirectToBackoffice ? '/backoffice/login' : '/login';
       
-      // Navigate immediately after clearing state
-      console.log('🧭 AuthProvider: Navigating to login page');
-      if (shouldRedirectToBackoffice) {
-        navigate('/backoffice/login', { replace: true });
+      // Navigate only if coordinator allows it
+      if (authCoordinator.canNavigate(targetPath)) {
+        console.log('🧭 AuthProvider: Navigating to login page:', targetPath);
+        if (shouldRedirectToBackoffice) {
+          navigate('/backoffice/login', { replace: true });
+        } else {
+          navigate('/login', { replace: true });
+        }
       } else {
-        navigate('/login', { replace: true });
+        console.log('🚫 AuthProvider: Navigation blocked by coordinator');
       }
       
-      toast.success('You have been logged out successfully');
-      
+      // Wait a moment before clearing logout state to ensure navigation completes
+      setTimeout(() => {
+        authCoordinator.endLogout();
+        dispatch(setLogoutState(false));
+        console.log('✅ AuthProvider: Logout completed and flags cleared');
+      }, 1000);
     } catch (error) {
       console.error('Error during logout:', error);
-      toast.error('There was an error logging out');
+      toast.error("Error during logout");
       
-      // Fallback navigation in case of error
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      if (isCurrentlyBackoffice) {
-        navigate('/backoffice/login', { replace: true });
-      } else {
-        navigate('/login', { replace: true });
-      }
-    } finally {
-      // Reset logout state after a short delay
+      // Clear logout flags even on error
       setTimeout(() => {
-        console.log('🔓 AuthProvider: Resetting logout state to false');
+        authCoordinator.endLogout();
         dispatch(setLogoutState(false));
       }, 1000);
     }
