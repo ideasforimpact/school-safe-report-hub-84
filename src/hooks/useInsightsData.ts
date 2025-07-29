@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFacilities } from '@/contexts/FacilityContext';
@@ -20,7 +20,6 @@ import {
   extractUniqueValues
 } from '@/utils/insights/dataProcessors';
 import { incidentDataService } from '@/services/incident/incidentDataService';
-import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface InsightsFiltersState {
@@ -39,6 +38,10 @@ export const useInsightsData = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const [incidents, setIncidents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
+  const [reportTypes, setReportTypes] = useState([]);
+  const [locations, setLocations] = useState([]);
   
   // Get facilities with error handling in case the context is not available
   let facilities = [];
@@ -62,9 +65,9 @@ export const useInsightsData = () => {
     dateRange: undefined
   });
 
-  // Fetch incidents data for insights
+  // Fetch reference data and incidents for insights
   useEffect(() => {
-    const fetchIncidentsForInsights = async () => {
+    const fetchInsightsData = async () => {
       try {
         setIsLoading(true);
 
@@ -88,6 +91,19 @@ export const useInsightsData = () => {
           return;
         }
 
+        // Fetch reference data in parallel
+        const [categoriesData, subcategoriesData, reportTypesData, locationsData] = await Promise.all([
+          supabase.from('incident_categories').select('*').eq('client_id', clientId),
+          supabase.from('incident_subcategories').select('*').eq('client_id', clientId),
+          supabase.from('incident_report_types').select('*').eq('client_id', clientId),
+          supabase.from('incidents').select('location_id, facility_id').eq('client_id', clientId)
+        ]);
+
+        // Set reference data
+        setCategories(categoriesData.data || []);
+        setSubcategories(subcategoriesData.data || []);
+        setReportTypes(reportTypesData.data || []);
+
         const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
         const hasIncidentAdmin = employeeState.configuredModules?.find(
           module => module.name.toLowerCase() === 'incidents'
@@ -102,31 +118,59 @@ export const useInsightsData = () => {
           { page: 1, pageSize: 1000 } // Get a large number for insights
         );
 
-        // Transform incidents to the format expected by insights
-        const transformedIncidents = response.data.map(record => ({
-          id: record.id,
-          ticketId: record.ticket_id,
-          type: record.type,
-          category: record.category,
-          subcategory: record.subcategory,
-          description: record.description,
-          date: record.date,
-          location: record.location,
-          peopleInvolved: [],
-          status: record.status,
-          reportedBy: { id: '', name: record.reportedBy },
-          owner: record.owner ? { id: '', name: record.owner } : undefined,
-          facility: record.facility,
-          createdAt: record.createdAt,
-          updatedAt: record.updatedAt,
-          priority: record.priority
-        }));
+        // Transform incidents to the format expected by insights with proper people involved data
+        const transformedIncidents = response.data.map(record => {
+          // Parse people involved from JSON if it exists - using any to bypass type checking
+          let peopleInvolved = [];
+          try {
+            const recordWithPeople = record as any;
+            if (recordWithPeople.peopleInvolved && typeof recordWithPeople.peopleInvolved === 'string') {
+              peopleInvolved = JSON.parse(recordWithPeople.peopleInvolved);
+            } else if (Array.isArray(recordWithPeople.peopleInvolved)) {
+              peopleInvolved = recordWithPeople.peopleInvolved;
+            } else if (recordWithPeople.people_involved) {
+              // Try different property names that might exist in the actual data
+              if (typeof recordWithPeople.people_involved === 'string') {
+                peopleInvolved = JSON.parse(recordWithPeople.people_involved);
+              } else if (Array.isArray(recordWithPeople.people_involved)) {
+                peopleInvolved = recordWithPeople.people_involved;
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse people_involved for incident:', record.id);
+            peopleInvolved = [];
+          }
+
+          return {
+            id: record.id,
+            ticketId: record.ticket_id,
+            type: record.type,
+            category: record.category,
+            subcategory: record.subcategory,
+            description: record.description,
+            date: record.date,
+            location: record.location,
+            peopleInvolved: peopleInvolved,
+            status: record.status,
+            reportedBy: { id: '', name: record.reportedBy },
+            owner: record.owner ? { id: '', name: record.owner } : undefined,
+            facility: record.facility,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+            priority: record.priority
+          };
+        });
         
         setIncidents(transformedIncidents);
-        console.log('Insights incidents fetched successfully:', transformedIncidents.length);
+        console.log('Insights data fetched successfully:', {
+          incidents: transformedIncidents.length,
+          categories: categoriesData.data?.length || 0,
+          subcategories: subcategoriesData.data?.length || 0,
+          reportTypes: reportTypesData.data?.length || 0
+        });
 
       } catch (error) {
-        console.error('Error fetching incidents for insights:', error);
+        console.error('Error fetching insights data:', error);
         setIncidents([]);
       } finally {
         setIsLoading(false);
@@ -135,7 +179,7 @@ export const useInsightsData = () => {
 
     if ((employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
         employeeState.configuredModules) {
-      fetchIncidentsForInsights();
+      fetchInsightsData();
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.configuredModules]);
   
@@ -160,6 +204,14 @@ export const useInsightsData = () => {
     () => extractUniqueValues(incidents),
     [incidents]
   );
+
+  // Get admin status properly
+  const isAdmin = useMemo(() => {
+    const incidentModule = employeeState.configuredModules?.find(
+      module => module.name.toLowerCase() === 'incidents'
+    );
+    return incidentModule?.accessLevel?.is_admin === true;
+  }, [employeeState.configuredModules]);
   
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -214,7 +266,7 @@ export const useInsightsData = () => {
   
   return {
     facilities,
-    isAdmin: false,
+    isAdmin,
     filters,
     handleFilterChange,
     handleDateRangeChange,
@@ -223,6 +275,10 @@ export const useInsightsData = () => {
     peopleInvolved,
     chartData,
     roleDistributionData,
-    isLoading
+    isLoading,
+    categories,
+    subcategories,
+    reportTypes,
+    locations
   };
 };

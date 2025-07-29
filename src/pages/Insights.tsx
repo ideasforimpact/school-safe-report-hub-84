@@ -13,6 +13,8 @@ import ChartsTab from '@/components/insights/tabs/ChartsTab';
 import PeopleTab from '@/components/insights/tabs/PeopleTab';
 import LocationTab from '@/components/insights/tabs/LocationTab';
 import RiskAnalysisTab from '@/components/insights/tabs/RiskAnalysisTab';
+import InsightsSummaryCards from '@/components/insights/InsightsSummaryCards';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Insights = () => {
   const navigate = useNavigate();
@@ -27,7 +29,11 @@ const Insights = () => {
     peopleInvolved,
     chartData,
     roleDistributionData,
-    isLoading
+    isLoading,
+    categories,
+    subcategories,
+    reportTypes,
+    locations
   } = useInsightsData();
   
   // Function to clear filters
@@ -52,11 +58,35 @@ const Insights = () => {
   if (isLoading) {
     return (
       <Layout>
-        <div className="space-y-6">
-          <div className="flex justify-center items-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading insights data...</p>
+        <div className="space-y-6 p-6 w-full">
+          {/* Header skeleton */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div className="px-4 sm:px-6 lg:px-8 py-6">
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-48" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Summary cards skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {Array(4).fill(0).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full" />
+            ))}
+          </div>
+          
+          {/* Filters skeleton */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div className="px-4 sm:px-6 lg:px-8 py-6">
+              <Skeleton className="h-40 w-full" />
+            </div>
+          </div>
+          
+          {/* Content skeleton */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div className="px-4 sm:px-6 lg:px-8 py-6">
+              <Skeleton className="h-96 w-full" />
             </div>
           </div>
         </div>
@@ -84,6 +114,15 @@ const Insights = () => {
           </div>
         </div>
 
+        {/* Summary Cards */}
+        <InsightsSummaryCards
+          filteredIncidents={filteredIncidents}
+          timeSeriesData={chartData.timeSeriesData}
+          categoryData={chartData.categoryData}
+          statusData={chartData.statusData}
+          facilityData={chartData.facilityData}
+        />
+
         {/* Filters Section */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="px-4 sm:px-6 lg:px-8 py-6">
@@ -107,6 +146,8 @@ const Insights = () => {
               availableSubcategories={availableSubcategories}
               peopleInvolved={peopleInvolved}
               facilities={facilities}
+              categories={categories}
+              reportTypes={reportTypes}
               isAdmin={isAdmin}
             />
           </div>
