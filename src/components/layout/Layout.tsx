@@ -18,15 +18,9 @@ const Layout = ({
     user,
     isSaasOwner
   } = useAuth();
-  const {
-    clients
-  } = useClient();
   
   // Use the employee validation hook
   useEmployeeValidation();
-  
-  // Find the client associated with the current user
-  const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
   
   return (
     <div className="min-h-screen bg-[#F4F6F9] overflow-hidden">

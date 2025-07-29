@@ -11,11 +11,8 @@ import FacilityRiskMatrix from '@/components/dashboard/FacilityRiskMatrix';
 import CategoryImpactAnalysis from '@/components/dashboard/CategoryImpactAnalysis';
 import MonthlyIncidentsChart from '@/components/dashboard/MonthlyIncidentsChart';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClient } from '@/contexts/ClientContext';
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const { clients } = useClient();
   const { stats, loading, error } = useDashboardStats();
 
   return (

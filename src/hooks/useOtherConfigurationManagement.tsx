@@ -3,13 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { toast } from 'sonner';
 import { ConfigItem, SectionItem } from '@/contexts/types';
-import { useClient } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useOtherConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('designations');
-  const { client } = useClient();
+  const { employeeData } = useAuth();
   
   const { 
     designations: contextDesignations,
@@ -39,23 +39,23 @@ export function useOtherConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch data from Supabase when client changes
+  // Fetch data from Supabase when employeeData changes
   useEffect(() => {
-    if (client?.id) {
+    if (employeeData?.clientId) {
       fetchCampuses();
       fetchGrades();
       fetchSections();
       fetchFacilities();
     }
-  }, [client?.id]);
+  }, [employeeData?.clientId]);
 
   const fetchCampuses = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -73,12 +73,12 @@ export function useOtherConfigurationManagement() {
   };
 
   const fetchGrades = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -97,12 +97,12 @@ export function useOtherConfigurationManagement() {
   };
   
   const fetchSections = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -121,12 +121,12 @@ export function useOtherConfigurationManagement() {
   };
 
   const fetchFacilities = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -177,7 +177,7 @@ export function useOtherConfigurationManagement() {
 
   // Campus management with Supabase
   const addCampus = async (name: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -185,7 +185,7 @@ export function useOtherConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { name, clientId: client.id, action: 'create' }
+        body: { name, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -254,7 +254,7 @@ export function useOtherConfigurationManagement() {
 
   // Class/Grade management
   const addClass = async (campusId: string, name: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -262,7 +262,7 @@ export function useOtherConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { name, campusId, clientId: client.id, action: 'create' }
+        body: { name, campusId, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -333,7 +333,7 @@ export function useOtherConfigurationManagement() {
 
   // Section management
   const addSection = async (classId: string, name: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -341,7 +341,7 @@ export function useOtherConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { name, gradeId: classId, clientId: client.id, action: 'create' }
+        body: { name, gradeId: classId, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -405,7 +405,7 @@ export function useOtherConfigurationManagement() {
 
   // Facility management
   const addFacility = async (name: string, campusId: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -413,7 +413,7 @@ export function useOtherConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { name, campusId, clientId: client.id, action: 'create' }
+        body: { name, campusId, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
