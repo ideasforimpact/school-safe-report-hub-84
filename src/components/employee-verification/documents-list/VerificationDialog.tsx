@@ -1031,16 +1031,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 (isOther && isOtherVerifying)
               }
             >
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
-               isAadharManualVerifying || isOtherVerifying ? (
+              {isAadharManualVerifying || isOtherVerifying ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
-               isAadharManualVerifying || isOtherVerifying
+              {isAadharManualVerifying || isOtherVerifying
                 ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
@@ -1057,16 +1053,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 (isOther && isOtherRejecting)
               }
             >
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ||
-               isOtherRejecting ? (
+              {isOtherRejecting ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ||
-               isOtherRejecting
+              {isOtherRejecting
                 ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
