@@ -1,6 +1,7 @@
 import { loadAuthState, clearPersistedAuthState } from '@/store/authPersistence';
 import { verifyBackofficeToken, isTokenExpired } from './jwtUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { authCoordinator } from './authCoordinator';
 
 // Validate Supabase session for SSO users
 export const validateSupabaseSession = async (): Promise<boolean> => {
@@ -85,29 +86,51 @@ export const validateBackofficeSession = (): boolean => {
 
 // Universal session validation that determines user type and applies appropriate validation
 export const validateSession = async (): Promise<boolean> => {
-  console.log('🔐 validateSession: Starting universal session validation');
-  const authState = loadAuthState();
-  
-  // If no auth state, invalid session
-  if (!authState) {
-    console.log('🔐 validateSession: No auth state found');
-    return false;
+  // Check if validation should be blocked
+  if (authCoordinator.shouldBlockOperation('session validation')) {
+    console.log('🔐 validateSession: Validation blocked by coordinator');
+    return true; // Don't invalidate during blocked operations
   }
-  
-  // Determine user type and apply appropriate validation
-  if (authState.isBackofficeUser) {
-    console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
-    return validateBackofficeSession();
-  } else {
-    console.log('🔐 validateSession: Detected SSO user, using Supabase validation');
-    return await validateSupabaseSession();
+
+  // Try to start validation - exit if already in progress
+  if (!authCoordinator.startValidation()) {
+    console.log('🔐 validateSession: Validation already in progress, returning true');
+    return true;
+  }
+
+  try {
+    console.log('🔐 validateSession: Starting universal session validation');
+    const authState = loadAuthState();
+    
+    // If no auth state, invalid session
+    if (!authState) {
+      console.log('🔐 validateSession: No auth state found');
+      return false;
+    }
+    
+    // Determine user type and apply appropriate validation
+    if (authState.isBackofficeUser) {
+      console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
+      return validateBackofficeSession();
+    } else {
+      console.log('🔐 validateSession: Detected SSO user, using Supabase validation');
+      return await validateSupabaseSession();
+    }
+  } finally {
+    authCoordinator.endValidation();
   }
 };
 
 export const getSessionTimeRemaining = (): number => {
   const authState = loadAuthState();
   
-  if (!authState || !authState.expiresAt) {
+  // For SSO users, return infinite time remaining (no manual expiry management)
+  if (!authState || !authState.isBackofficeUser) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  // Only apply time-based expiry for backoffice users
+  if (!authState.expiresAt) {
     return 0;
   }
 
@@ -116,5 +139,13 @@ export const getSessionTimeRemaining = (): number => {
 };
 
 export const isSessionExpired = (): boolean => {
+  const authState = loadAuthState();
+  
+  // SSO users never expire (Supabase handles token refresh)
+  if (!authState || !authState.isBackofficeUser) {
+    return false;
+  }
+  
+  // Only check expiry for backoffice users
   return getSessionTimeRemaining() === 0;
 };
