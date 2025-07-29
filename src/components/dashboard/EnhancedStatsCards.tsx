@@ -176,31 +176,18 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 {card.description}
               </p>
 
-              {/* Progress bar for percentage-based metrics */}
-              {card.percentage !== undefined && (
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      card.percentage >= 90 ? 'bg-green-500' : 
-                      card.percentage >= 70 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${card.percentage}%` }}
-                  ></div>
-                </div>
-              )}
-
               {/* Status indicators */}
-              {card.status && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Status:</span>
-                  <span className={`font-medium ${card.color}`}>{card.status}</span>
-                </div>
-              )}
-
               {card.priority && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-500">Priority:</span>
                   <span className={`font-medium ${card.color}`}>{card.priority}</span>
+                </div>
+              )}
+
+              {card.status && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-500">Status:</span>
+                  <span className={`font-medium ${card.color}`}>{card.status}</span>
                 </div>
               )}
 
