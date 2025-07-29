@@ -84,7 +84,7 @@ const Header = () => {
   });
 
   return (
-    <div className="w-full h-16 bg-white shadow-sm">
+    <div className="w-full h-20 bg-white shadow-sm">
       <div className="w-full h-full px-4">
         <div className="w-full h-full flex items-center justify-between">
           {/* Logo Section - Positioned at absolute left */}
