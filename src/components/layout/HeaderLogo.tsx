@@ -25,15 +25,15 @@ const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps)
           <img 
             src={userClient.logo} 
             alt={`${userClient.name} logo`}
-            className="h-14 w-auto object-contain"
+            className="h-12 w-auto object-contain"
             onError={(e) => {
               console.error('Logo failed to load:', userClient.logo);
               e.currentTarget.style.display = 'none';
             }}
           />
         ) : (
-          <div className="h-14 w-14 bg-primary/10 rounded-md flex items-center justify-center border border-primary/20">
-            <ShieldCheck className="h-8 w-8 text-primary" />
+          <div className="h-12 w-12 bg-primary/10 rounded-md flex items-center justify-center border border-primary/20">
+            <ShieldCheck className="h-7 w-7 text-primary" />
           </div>
         )}
         
