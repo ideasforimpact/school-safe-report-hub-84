@@ -117,7 +117,6 @@ const Insights = () => {
         {/* Summary Cards */}
         <InsightsSummaryCards
           filteredIncidents={filteredIncidents}
-          timeSeriesData={chartData.timeSeriesData}
           categoryData={chartData.categoryData}
           statusData={chartData.statusData}
           facilityData={chartData.facilityData}
