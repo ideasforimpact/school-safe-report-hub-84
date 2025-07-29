@@ -1,11 +1,9 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, Shield, Users, MapPin } from 'lucide-react';
-import { useTimeSeriesMetrics } from '@/hooks/insights/useTimeSeriesMetrics';
+import { AlertTriangle, Shield, Users, MapPin } from 'lucide-react';
 
 interface InsightsSummaryCardsProps {
   filteredIncidents: any[];
-  timeSeriesData: Array<{month: string, count: number}>;
   categoryData: Array<{name: string, value: number}>;
   statusData: Array<{name: string, value: number}>;
   facilityData: Array<{name: string, value: number}>;
@@ -13,12 +11,10 @@ interface InsightsSummaryCardsProps {
 
 const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
   filteredIncidents,
-  timeSeriesData,
   categoryData,
   statusData,
   facilityData
 }) => {
-  const timeSeriesMetrics = useTimeSeriesMetrics(timeSeriesData);
 
   // Calculate summary metrics
   const totalIncidents = filteredIncidents.length;
@@ -33,12 +29,7 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
       icon: AlertTriangle,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-      trend: {
-        isIncreasing: timeSeriesMetrics.isIncreasing,
-        percentage: timeSeriesMetrics.percentageChange,
-        label: timeSeriesMetrics.isIncreasing ? 'increase' : 'decrease'
-      }
+      borderColor: 'border-orange-200'
     },
     {
       title: 'Open Cases',
@@ -46,8 +37,7 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
       icon: Shield,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      borderColor: 'border-red-200',
-      trend: null
+      borderColor: 'border-red-200'
     },
     {
       title: 'Most Common',
@@ -55,8 +45,7 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-      trend: null
+      borderColor: 'border-blue-200'
     },
     {
       title: 'Affected Facilities',
@@ -64,8 +53,7 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
       icon: MapPin,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-      trend: null
+      borderColor: 'border-purple-200'
     }
   ];
 
@@ -73,8 +61,6 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
       {summaryCards.map((card, index) => {
         const Icon = card.icon;
-        const TrendIcon = card.trend?.isIncreasing ? TrendingUp : 
-                         card.trend?.isIncreasing === false ? TrendingDown : Minus;
         
         return (
           <Card key={index} className={`border ${card.borderColor} hover:shadow-lg transition-all duration-300 ${card.bgColor}`}>
@@ -87,14 +73,6 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
                   <p className="text-2xl font-bold">
                     {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
                   </p>
-                  {card.trend && (
-                    <div className="flex items-center space-x-1">
-                      <TrendIcon className={`h-4 w-4 ${card.trend.isIncreasing ? 'text-red-500' : 'text-green-500'}`} />
-                      <span className={`text-sm font-medium ${card.trend.isIncreasing ? 'text-red-500' : 'text-green-500'}`}>
-                        {card.trend.percentage}% {card.trend.label}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <div className={`p-3 rounded-full ${card.bgColor}`}>
                   <Icon className={`h-6 w-6 ${card.color}`} />

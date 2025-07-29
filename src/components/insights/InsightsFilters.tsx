@@ -57,7 +57,7 @@ const InsightsFilters: React.FC<InsightsFiltersProps> = ({
   reportTypes,
   isAdmin
 }) => {
-  const [isOpen, setIsOpen] = useState(true);  // Default to open state
+  const [isOpen, setIsOpen] = useState(false);  // Default to closed state
 
   // Count active filters to show in the badge
   const activeFilterCount = [
