@@ -975,7 +975,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 variant="outline" 
                 className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
                 onClick={handleApiClick}
-                disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying || isOtherVerifying || isOtherRejecting}
+                disabled={
+                  (isAadhar && (isRequestingOtp || cooldownSeconds !== null)) ||
+                  (isPan && isPanVerifying) ||
+                  (isVoterId && isVoterIdVerifying) ||
+                  (isDrivingLicense && isDrivingLicenseVerifying) ||
+                  (isBankAccount && isBankAccountVerifying)
+                }
               >
                 {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                  (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
@@ -1016,9 +1022,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
-                        isOtherVerifying || isOtherRejecting}
+              disabled={
+                (isAadhar && isAadharManualVerifying) ||
+                (isPan && isPanVerifying) ||
+                (isVoterId && isVoterIdVerifying) ||
+                (isDrivingLicense && isDrivingLicenseVerifying) ||
+                (isBankAccount && isBankAccountVerifying) ||
+                (isOther && isOtherVerifying)
+              }
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
@@ -1038,9 +1049,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={handleRejectClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
-                        isOtherVerifying || isOtherRejecting}
+              disabled={
+                (isPan && isPanVerifying) ||
+                (isVoterId && isVoterIdVerifying) ||
+                (isDrivingLicense && isDrivingLicenseVerifying) ||
+                (isBankAccount && isBankAccountVerifying) ||
+                (isOther && isOtherRejecting)
+              }
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ||
@@ -1110,9 +1125,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
-                        isOtherVerifying || isOtherRejecting}
+              disabled={
+                isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
+                isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                isOtherVerifying || isOtherRejecting
+              }
             >
               Cancel
             </Button>
