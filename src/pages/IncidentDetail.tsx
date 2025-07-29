@@ -64,7 +64,15 @@ const IncidentDetail = () => {
         priority: fetchedIncident.priority.name,
         comments: Array.isArray(fetchedIncident.comments) ? fetchedIncident.comments : [],
         reopen: fetchedIncident.reopen || 0,
-        // Add closure-related fields for proper pre-population
+        // Map closure fields to expected UI field names
+        rootCause: fetchedIncident.root_cause_analysis || '',
+        actions: fetchedIncident.action_taken ? [{
+          description: fetchedIncident.action_taken,
+          responsiblePerson: '',
+          date: new Date(fetchedIncident.date)
+        }] : [],
+        contributingFactors: Array.isArray(fetchedIncident.contributing_factor) ? fetchedIncident.contributing_factor : [],
+        // Keep original fields for closure form pre-population
         rootCauseAnalysis: fetchedIncident.root_cause_analysis || '',
         actionTaken: fetchedIncident.action_taken || '',
         contributingFactor: Array.isArray(fetchedIncident.contributing_factor) ? fetchedIncident.contributing_factor : []
