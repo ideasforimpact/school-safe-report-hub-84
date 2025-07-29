@@ -16,7 +16,7 @@ interface ReopenIncidentRequest {
 // Helper function to check incident reopen permissions
 async function checkReopenPermissions(
   incidentId: string,
-  employeeId: string
+  userId: string
 ): Promise<{ canReopen: boolean, incident: any, clientId: string }> {
   // Get the incident details with creator and assigned user
   const { data: incident, error: incidentError } = await supabase
@@ -30,23 +30,23 @@ async function checkReopenPermissions(
     return { canReopen: false, incident: null, clientId: '' }
   }
 
-  // Get employee details first
-  const { data: employee, error: employeeError } = await supabase
+  // Get the current user's employee record using the user_id
+  const { data: currentEmployee, error: currentEmployeeError } = await supabase
     .from('employees')
     .select('id, is_super_admin, client_id')
-    .eq('id', incident.created_by)
+    .eq('user_id', userId)
     .eq('client_id', incident.client_id)
     .single()
 
-  if (employeeError || !employee) {
-    console.error('Error fetching employee:', employeeError)
+  if (currentEmployeeError || !currentEmployee) {
+    console.error('Error fetching current user employee:', currentEmployeeError)
     return { canReopen: false, incident, clientId: incident.client_id }
   }
 
   let hasIncidentAdmin = false
 
   // Check incident admin access based on user type
-  if (employee.is_super_admin) {
+  if (currentEmployee.is_super_admin) {
     console.log('Checking super admin incident module access from client_modules')
     // For super admin, check client_modules
     const { data: clientModules, error: clientModulesError } = await supabase
@@ -56,7 +56,7 @@ async function checkReopenPermissions(
         access_level,
         module:modules(name)
       `)
-      .eq('client_id', employee.client_id)
+      .eq('client_id', currentEmployee.client_id)
       .eq('enabled', true)
 
     if (clientModulesError) {
@@ -76,7 +76,7 @@ async function checkReopenPermissions(
         level,
         module:modules(name)
       `)
-      .eq('employee_id', employee.id)
+      .eq('employee_id', currentEmployee.id)
 
     if (employeeModulesError) {
       console.error('Error fetching employee modules:', employeeModulesError)
@@ -88,14 +88,15 @@ async function checkReopenPermissions(
     }
   }
 
-  // Check if user created the incident
-  const isCreator = incident.created_by === employee.id
+  // Check if current user created the incident
+  const isCreator = incident.created_by === currentEmployee.id
   
-  // Check if user is assigned to the incident
-  const isAssigned = incident.assigned_to === employee.id
+  // Check if current user is assigned to the incident
+  const isAssigned = incident.assigned_to === currentEmployee.id
 
   console.log('Reopen permission check:', {
-    employeeId,
+    userId,
+    currentEmployeeId: currentEmployee.id,
     createdBy: incident.created_by,
     assignedTo: incident.assigned_to,
     isCreator,
@@ -154,10 +155,10 @@ Deno.serve(async (req) => {
 
     console.log('Reopening incident:', { incident_id, reopened_by, reopen_reason })
 
-    // Check permissions before allowing the reopen
+    // Check permissions before allowing the reopen (this expects user_id)
     const { canReopen, incident, clientId } = await checkReopenPermissions(
       incident_id,
-      reopened_by
+      user.id // Pass the user ID for permission checking
     )
 
     if (!canReopen) {
@@ -241,7 +242,7 @@ Deno.serve(async (req) => {
       p_field_changed: 'status_reopen',
       p_old_value: 'Closed',
       p_new_value: `Open (Reopened ${newReopenCount} time${newReopenCount > 1 ? 's' : ''})`,
-      p_changed_by: reopened_by,
+      p_changed_by: user.id, // Use the authenticated user's ID
       p_change_type: 'reopen',
       p_description: `Incident reopened for the ${newReopenCount}${newReopenCount === 1 ? 'st' : newReopenCount === 2 ? 'nd' : newReopenCount === 3 ? 'rd' : 'th'} time. Reason: ${reopen_reason.trim()}`
     })

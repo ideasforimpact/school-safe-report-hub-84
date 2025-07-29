@@ -93,20 +93,35 @@ const getUserName = async (userId: string): Promise<string> => {
   try {
     console.log('Looking up user name for user_id:', userId);
     
+    // First try to look up by user_id (for newer entries)
     const { data: employee, error } = await supabase
       .from('employees')
       .select('first_name, last_name')
-      .eq('user_id', userId)  // Changed from 'id' to 'user_id'
+      .eq('user_id', userId)
       .single();
 
-    if (error || !employee) {
-      console.log('Employee not found for user ID:', userId, error);
-      return 'Unknown User';
+    if (employee && !error) {
+      const fullName = `${employee.first_name} ${employee.last_name}`;
+      console.log('Found employee name by user_id:', fullName);
+      return fullName;
     }
 
-    const fullName = `${employee.first_name} ${employee.last_name}`;
-    console.log('Found employee name:', fullName);
-    return fullName;
+    // Fallback: try to look up by employee id (for older entries or edge function entries)
+    console.log('User not found by user_id, trying by employee id:', userId);
+    const { data: employeeById, error: errorById } = await supabase
+      .from('employees')
+      .select('first_name, last_name')
+      .eq('id', userId)
+      .single();
+
+    if (employeeById && !errorById) {
+      const fullName = `${employeeById.first_name} ${employeeById.last_name}`;
+      console.log('Found employee name by employee id:', fullName);
+      return fullName;
+    }
+
+    console.log('Employee not found by either user_id or employee id:', userId);
+    return 'Unknown User';
   } catch (error) {
     console.error('Error fetching user name:', error);
     return 'Unknown User';
