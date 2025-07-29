@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface ReopenIncidentRequest {
   incidentId: string;
   reopenedBy: string;
+  reopenReason: string;
 }
 
 export interface ReopenIncidentResponse {
@@ -14,16 +15,18 @@ export interface ReopenIncidentResponse {
 
 export const reopenIncident = async (
   incidentId: string,
-  reopenedBy: string
+  reopenedBy: string,
+  reopenReason: string
 ): Promise<ReopenIncidentResponse> => {
   try {
-    console.log('Reopening incident via edge function:', { incidentId, reopenedBy });
+    console.log('Reopening incident via edge function:', { incidentId, reopenedBy, reopenReason });
 
     // Call the reopen-incident edge function
     const { data, error } = await supabase.functions.invoke('reopen-incident', {
       body: {
         incident_id: incidentId,
-        reopened_by: reopenedBy
+        reopened_by: reopenedBy,
+        reopen_reason: reopenReason
       }
     });
 

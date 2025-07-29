@@ -10,6 +10,7 @@ const supabase = createClient(
 interface ReopenIncidentRequest {
   incident_id: string
   reopened_by: string
+  reopen_reason: string
 }
 
 // Helper function to check incident reopen permissions
@@ -137,7 +138,7 @@ Deno.serve(async (req) => {
       throw new Error('Invalid authentication')
     }
 
-    const { incident_id, reopened_by }: ReopenIncidentRequest = await req.json()
+    const { incident_id, reopened_by, reopen_reason }: ReopenIncidentRequest = await req.json()
 
     if (!incident_id) {
       throw new Error('incident_id is required')
@@ -147,7 +148,11 @@ Deno.serve(async (req) => {
       throw new Error('reopened_by is required')
     }
 
-    console.log('Reopening incident:', { incident_id, reopened_by })
+    if (!reopen_reason?.trim()) {
+      throw new Error('reopen_reason is required')
+    }
+
+    console.log('Reopening incident:', { incident_id, reopened_by, reopen_reason })
 
     // Check permissions before allowing the reopen
     const { canReopen, incident, clientId } = await checkReopenPermissions(
@@ -238,7 +243,7 @@ Deno.serve(async (req) => {
       p_new_value: `Open (Reopened ${newReopenCount} time${newReopenCount > 1 ? 's' : ''})`,
       p_changed_by: reopened_by,
       p_change_type: 'reopen',
-      p_description: `Incident reopened for the ${newReopenCount}${newReopenCount === 1 ? 'st' : newReopenCount === 2 ? 'nd' : newReopenCount === 3 ? 'rd' : 'th'} time`
+      p_description: `Incident reopened for the ${newReopenCount}${newReopenCount === 1 ? 'st' : newReopenCount === 2 ? 'nd' : newReopenCount === 3 ? 'rd' : 'th'} time. Reason: ${reopen_reason.trim()}`
     })
 
     if (auditError) {

@@ -9,12 +9,13 @@ export const useIncidentReopen = () => {
   const handleReopenIncident = async (
     incidentId: string,
     reopenedBy: string,
+    reopenReason: string,
     onSuccess?: () => void
   ) => {
     setIsReopening(true);
     
     try {
-      const result = await reopenIncident(incidentId, reopenedBy);
+      const result = await reopenIncident(incidentId, reopenedBy, reopenReason);
       
       if (result.success) {
         toast.success(result.message);
