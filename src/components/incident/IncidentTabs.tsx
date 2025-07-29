@@ -1,12 +1,14 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Incident } from '@/types/incident';
 import IncidentDetailsCard from './IncidentDetailsCard';
 import CommentsList from './CommentsList';
 import SupportingDocuments from './SupportingDocuments';
 import PeopleInvolved from './PeopleInvolved';
 import AuditTrail from '@/components/AuditTrail';
+import { incidentDocumentAggregator } from '@/services/incident/incidentDocumentAggregator';
 
 interface IncidentTabsProps {
   incident: Incident;
@@ -14,10 +16,17 @@ interface IncidentTabsProps {
 }
 
 const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
-  console.log('=== INCIDENT TABS DEBUG ===');
-  console.log('IncidentTabs received incident:', incident);
-  console.log('Incident ID being passed to AuditTrail:', incident?.id);
-  console.log('=== END INCIDENT TABS DEBUG ===');
+  const [totalDocuments, setTotalDocuments] = useState(0);
+
+  useEffect(() => {
+    const loadDocumentCount = async () => {
+      if (incident.id) {
+        const { totalCount } = await incidentDocumentAggregator.getAllDocuments(incident.id);
+        setTotalDocuments(totalCount);
+      }
+    };
+    loadDocumentCount();
+  }, [incident.id, incident.documents, incident.comments]);
 
   // Helper function to format date
   const formatDate = (date: Date) => {
@@ -42,10 +51,10 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
           )}
         </TabsTrigger>
         <TabsTrigger value="documents">
-          Documents {incident.documents && incident.documents.length > 0 && (
-            <span className="ml-1 bg-green-100 text-green-800 text-xs rounded-full px-2 py-1">
-              {incident.documents.length}
-            </span>
+          Documents {totalDocuments > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {totalDocuments}
+            </Badge>
           )}
         </TabsTrigger>
         <TabsTrigger value="people">People Involved</TabsTrigger>
