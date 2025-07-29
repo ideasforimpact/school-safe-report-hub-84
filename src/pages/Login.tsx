@@ -64,28 +64,19 @@ const Login = () => {
 
     // Only redirect if we have a user and haven't redirected yet
     if (user && !hasRedirectedRef.current) {
-      // Add a small delay to prevent race conditions with logout
-      setTimeout(() => {
-        // Double-check logout status after delay
-        if (state.isLoggingOut || sessionStorage.getItem('is_logout_initiated') === 'true') {
-          console.log('⏸️ Login: Logout detected during redirect delay, aborting');
-          return;
-        }
-        
-        hasRedirectedRef.current = true;
-        const timestamp = new Date().toISOString();
-        console.log('✅ Login: User exists, redirecting at:', timestamp);
-        
-        const redirectTo = redirectPathRef.current;
-        
-        if (user?.role === "saas_owner") {
-          console.log('🏢 Login: Redirecting to backoffice dashboard');
-          navigate("/backoffice/dashboard", { replace: true });
-        } else {
-          console.log('🏠 Login: Redirecting to:', redirectTo);
-          navigate(redirectTo, { replace: true });
-        }
-      }, 300); // Small delay to allow logout to complete
+      hasRedirectedRef.current = true;
+      const timestamp = new Date().toISOString();
+      console.log('✅ Login: User exists, redirecting at:', timestamp);
+      
+      const redirectTo = redirectPathRef.current;
+      
+      if (user?.role === "saas_owner") {
+        console.log('🏢 Login: Redirecting to backoffice dashboard');
+        navigate("/backoffice/dashboard", { replace: true });
+      } else {
+        console.log('🏠 Login: Redirecting to:', redirectTo);
+        navigate(redirectTo, { replace: true });
+      }
     }
   }, [user, state.isLoggingOut, navigate]); // Minimal dependencies
 
