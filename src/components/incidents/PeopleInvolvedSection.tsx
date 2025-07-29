@@ -185,25 +185,46 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const getFilteredOptions = (index: number, role: string) => {
     const searchQuery = searchQueries[index] || '';
     
+    // Get already selected people names for filtering
+    const selectedStaffNames = peopleInvolved
+      .filter((person, idx) => idx !== index && person.role === 'Staff')
+      .map(person => person.name);
+    
+    const selectedStudentNames = peopleInvolved
+      .filter((person, idx) => idx !== index && person.role === 'Student')
+      .map(person => {
+        // Handle both formats: "John Doe" and "John Doe (STU123)"
+        return person.name.includes('(') ? person.name.split(' (')[0] : person.name;
+      });
+    
     if (role === 'Staff') {
+      const availableStaff = staffMembers.filter(staff => {
+        const fullName = `${staff.firstName} ${staff.lastName}`;
+        return !selectedStaffNames.includes(fullName);
+      });
+      
       return searchQuery
-        ? staffMembers.filter(staff => {
+        ? availableStaff.filter(staff => {
             const fullName = `${staff.firstName} ${staff.lastName}`;
             const searchTerm = searchQuery.toLowerCase();
             return fullName.toLowerCase().includes(searchTerm) || 
                    staff.email.toLowerCase().includes(searchTerm);
           })
-        : staffMembers;
+        : availableStaff;
     } else if (role === 'Student') {
+      const availableStudents = fetchedStudents.filter(student => {
+        return !selectedStudentNames.includes(student.name);
+      });
+      
       return searchQuery
-        ? fetchedStudents.filter(student => {
+        ? availableStudents.filter(student => {
             const searchTerm = searchQuery.toLowerCase();
             return student.name.toLowerCase().includes(searchTerm) ||
                    student.studentId.toLowerCase().includes(searchQuery) ||
                    student.grade.toLowerCase().includes(searchTerm) ||
                    student.section.toLowerCase().includes(searchTerm);
           })
-        : fetchedStudents;
+        : availableStudents;
     }
     return [];
   };
