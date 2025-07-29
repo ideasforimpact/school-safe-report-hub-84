@@ -103,15 +103,29 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
   const getFilteredStudents = (index: number) => {
     const searchQuery = searchQueries[index] || '';
+    
+    // Get already selected student names for filtering
+    const selectedStudentNames = peopleInvolved
+      .filter((person, idx) => idx !== index && person.role === 'Student')
+      .map(person => {
+        // Handle both formats: "John Doe" and "John Doe (STU123)"
+        return person.name.includes('(') ? person.name.split(' (')[0] : person.name;
+      });
+    
+    // Filter out already selected students
+    const availableStudents = students.filter(student => {
+      return !selectedStudentNames.includes(student.name);
+    });
+    
     return searchQuery
-      ? students.filter(student => {
+      ? availableStudents.filter(student => {
           const searchTerm = searchQuery.toLowerCase();
           return student.name.toLowerCase().includes(searchTerm) ||
                  student.studentId.toLowerCase().includes(searchTerm) ||
                  student.grade.toLowerCase().includes(searchTerm) ||
                  student.section.toLowerCase().includes(searchTerm);
         })
-      : students;
+      : availableStudents;
   };
 
   const addPerson = () => {
