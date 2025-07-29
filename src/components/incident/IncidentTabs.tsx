@@ -83,15 +83,6 @@ const IncidentTabs = ({ incident, onUpdate }: IncidentTabsProps) => {
 
       <TabsContent value="documents" className="mt-6">
         <SupportingDocuments 
-          documents={incident.documents ? incident.documents.map(doc => ({
-            id: doc.name || 'unknown',
-            name: doc.name || 'Unknown Document',
-            type: doc.type || 'application/octet-stream',
-            size: 0,
-            url: doc.data || '',
-            path: '',
-            uploadedAt: new Date().toISOString()
-          })) : []} 
           incidentId={incident.id}
           onDocumentDeleted={() => {
             if (onUpdate) {
