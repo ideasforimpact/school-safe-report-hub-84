@@ -4,20 +4,18 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClient } from '@/contexts/ClientContext';
 
 interface CategoryImpactAnalysisProps {
   loading?: boolean;
 }
 
 const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps) => {
-  const { user } = useAuth();
-  const { client } = useClient();
+  const { employeeData } = useAuth();
 
   const { data: categoryData = [], isLoading } = useQuery({
-    queryKey: ['category-impact-analysis', client?.id],
+    queryKey: ['category-impact-analysis', employeeData?.clientId],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!employeeData?.clientId) return [];
 
       // Get incidents with categories and subcategories
       const { data: incidents } = await supabase
@@ -29,7 +27,7 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
           incident_categories!inner(id, name),
           incident_subcategories(id, name)
         `)
-        .eq('client_id', client.id);
+        .eq('client_id', employeeData.clientId);
 
       if (!incidents) return [];
 
@@ -70,7 +68,7 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
         }))
         .sort((a, b) => b.value - a.value);
     },
-    enabled: !!client?.id,
+    enabled: !!employeeData?.clientId,
   });
 
   // Colors for categories

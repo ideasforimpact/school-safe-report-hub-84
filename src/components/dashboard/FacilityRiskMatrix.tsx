@@ -3,20 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClient } from '@/contexts/ClientContext';
 
 interface FacilityRiskMatrixProps {
   loading?: boolean;
 }
 
 const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
-  const { user } = useAuth();
-  const { client } = useClient();
+  const { employeeData } = useAuth();
 
   const { data: facilityRiskData = [], isLoading } = useQuery({
-    queryKey: ['facility-risk-matrix', client?.id],
+    queryKey: ['facility-risk-matrix', employeeData?.clientId],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!employeeData?.clientId) return [];
 
       // Get facilities with incident counts by priority
       const { data: incidents } = await supabase
@@ -28,7 +26,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
           facilities!inner(id, name),
           incident_priorities!inner(id, name, weight)
         `)
-        .eq('client_id', client.id);
+        .eq('client_id', employeeData.clientId);
 
       if (!incidents) return [];
 
@@ -57,7 +55,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
         ...data
       })).sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
     },
-    enabled: !!client?.id,
+    enabled: !!employeeData?.clientId,
   });
 
   const maxRiskScore = Math.max(...facilityRiskData.map(f => f.riskScore || 0), 1);

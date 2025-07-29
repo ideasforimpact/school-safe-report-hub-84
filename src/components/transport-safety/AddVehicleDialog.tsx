@@ -9,7 +9,6 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Vehicle } from '@/types/transportSafety';
 import { toast } from 'sonner';
-import { useClient } from '@/contexts/ClientContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AddVehicleDialogProps {
@@ -21,7 +20,6 @@ type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documen
 
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
   const { addVehicle } = useTransportSafety();
-  const { client } = useClient();
   const { employeeData } = useAuth();
   
   const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset, setValue } = useForm<VehicleFormData>({
@@ -35,14 +33,14 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
       driver: '',
       route: '',
       capacity: undefined,
-      clientId: client?.id,
+      clientId: employeeData?.clientId,
       employeeId: employeeData?.id
     }
   });
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     try {
-      if (client) {
+      if (employeeData?.clientId) {
         // Ensure numeric values are properly converted from strings or set to null if empty
         const yearValue = data.year ? Number(data.year) : null;
         const capacityValue = data.capacity ? Number(data.capacity) : null;
@@ -56,7 +54,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
           ...data,
           year: yearValue,
           capacity: capacityValue,
-          clientId: client.id, // Always use the current client's ID
+          clientId: employeeData.clientId, // Always use the current client's ID
           employeeId: employeeData?.id // Use logged-in employee's ID
         });
         reset();

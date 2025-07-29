@@ -17,13 +17,10 @@ interface SafetyDashboardHeaderProps {
 }
 
 const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) => {
-  const { user, employeeData } = useAuth();
-  const { clients } = useClient();
+  const { employeeData } = useAuth();
 
-  // Find the client associated with the current user
-  const userClient = user?.clientId 
-    ? clients.find(c => c.id === user.clientId) 
-    : null;
+  // Use direct client object from employeeData
+  const userClient = employeeData?.client || null;
 
   // Calculate safety status based on open incidents and compliance
   const employeeComplianceRate = stats.totalEmployees > 0 
