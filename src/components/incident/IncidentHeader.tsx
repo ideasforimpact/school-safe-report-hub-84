@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIncidentReopen } from '@/hooks/useIncidentReopen';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
+import ReopenIncidentDialog from '@/features/incident/ReopenIncidentDialog';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -36,6 +37,10 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   const { handleReopenIncident, isReopening } = useIncidentReopen();
   const { checkPermissions } = useIncidentPermissions();
 
+  // Reopen dialog state
+  const [showReopenDialog, setShowReopenDialog] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+
   // Get permissions for this specific incident
   const permissions = React.useMemo(() => {
     if (!incident.reportedBy?.id) return { canEdit: false, canClose: false, canReopen: false };
@@ -57,15 +62,25 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
     }
   };
 
-  const handleReopenClick = async () => {
+  const handleReopenClick = () => {
+    setReopenReason('');
+    setShowReopenDialog(true);
+  };
+
+  const handleConfirmReopen = async () => {
     if (!user?.id) {
       console.error('No user ID available for reopening incident');
+      return;
+    }
+
+    if (!reopenReason.trim()) {
       return;
     }
 
     const success = await handleReopenIncident(
       incident.id,
       user.id,
+      reopenReason.trim(),
       () => {
         // On success callback - refresh the incident data
         if (onIncidentUpdate) {
@@ -75,6 +90,8 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
     );
 
     if (success) {
+      setShowReopenDialog(false);
+      setReopenReason('');
       console.log('Incident reopened successfully');
     }
   };
@@ -232,6 +249,14 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
           )}
         </div>
       </CardContent>
+      
+      <ReopenIncidentDialog
+        open={showReopenDialog}
+        onOpenChange={setShowReopenDialog}
+        reopenReason={reopenReason}
+        onReopenReasonChange={setReopenReason}
+        onConfirm={handleConfirmReopen}
+      />
     </Card>
   );
 };
