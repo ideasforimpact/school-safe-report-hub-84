@@ -66,109 +66,120 @@ const Insights = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Back button */}
-        <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            className="flex items-center"
-            onClick={() => navigate('/incidents')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Incidents
-          </Button>
+      <div className="space-y-6 p-6 w-full">
+        {/* Header Section */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between mb-6">
+              <Button 
+                variant="ghost" 
+                className="flex items-center"
+                onClick={() => navigate('/incidents')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Incidents
+              </Button>
+            </div>
+            <InsightsHeader />
+          </div>
         </div>
 
-        {/* InsightsHeader with no export prop */}
-        <InsightsHeader />
-        
-        {/* Update InsightsFilters with the new props structure */}
-        <InsightsFilters 
-          dateFilter={filters.dateFilter}
-          setDateFilter={(value) => handleFilterChange('dateFilter', value)}
-          typeFilter={filters.typeFilter}
-          setTypeFilter={(value) => handleFilterChange('typeFilter', value)}
-          categoryFilter={filters.categoryFilter}
-          setCategoryFilter={(value) => handleFilterChange('categoryFilter', value)}
-          subcategoryFilter={filters.subcategoryFilter}
-          setSubcategoryFilter={(value) => handleFilterChange('subcategoryFilter', value)}
-          facilityFilter={filters.facilityFilter}
-          setFacilityFilter={(value) => handleFilterChange('facilityFilter', value)}
-          personFilter={filters.personFilter}
-          setPersonFilter={(value) => handleFilterChange('personFilter', value)}
-          roleFilter={filters.roleFilter}
-          setRoleFilter={(value) => handleFilterChange('roleFilter', value)}
-          dateRange={filters.dateRange}
-          handleDateRangeChange={handleDateRangeChange}
-          availableSubcategories={availableSubcategories}
-          peopleInvolved={peopleInvolved}
-          facilities={facilities}
-          isAdmin={isAdmin}
-        />
+        {/* Filters Section */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="px-4 sm:px-6 lg:px-8 py-6">
+            <InsightsFilters 
+              dateFilter={filters.dateFilter}
+              setDateFilter={(value) => handleFilterChange('dateFilter', value)}
+              typeFilter={filters.typeFilter}
+              setTypeFilter={(value) => handleFilterChange('typeFilter', value)}
+              categoryFilter={filters.categoryFilter}
+              setCategoryFilter={(value) => handleFilterChange('categoryFilter', value)}
+              subcategoryFilter={filters.subcategoryFilter}
+              setSubcategoryFilter={(value) => handleFilterChange('subcategoryFilter', value)}
+              facilityFilter={filters.facilityFilter}
+              setFacilityFilter={(value) => handleFilterChange('facilityFilter', value)}
+              personFilter={filters.personFilter}
+              setPersonFilter={(value) => handleFilterChange('personFilter', value)}
+              roleFilter={filters.roleFilter}
+              setRoleFilter={(value) => handleFilterChange('roleFilter', value)}
+              dateRange={filters.dateRange}
+              handleDateRangeChange={handleDateRangeChange}
+              availableSubcategories={availableSubcategories}
+              peopleInvolved={peopleInvolved}
+              facilities={facilities}
+              isAdmin={isAdmin}
+            />
+          </div>
+        </div>
 
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="charts">Charts</TabsTrigger>
-            <TabsTrigger value="people">People</TabsTrigger>
-            <TabsTrigger value="locations">Locations</TabsTrigger>
-            <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview">
-            <OverviewTab 
-              categoryData={chartData.categoryData}
-              typeData={chartData.typeData}
-              statusData={chartData.statusData} 
-              timeSeriesData={chartData.timeSeriesData}
-              colors={chartColors} 
-            />
-          </TabsContent>
-          
-          <TabsContent value="charts">
-            <ChartsTab 
-              categoryData={chartData.categoryData}
-              typeData={chartData.typeData}
-              subcategoryData={chartData.subcategoryData}
-              timeSeriesData={chartData.timeSeriesData}
-              locationData={chartData.locationData}
-              facilityData={chartData.facilityData}
-              assigneeData={chartData.assigneeData}
-              statusData={chartData.statusData}
-              riskData={chartData.riskData}
-              isAdmin={isAdmin}
-              colors={chartColors}
-              roleDistributionData={roleDistributionData}
-              heatmapData={chartData.heatmapData}
-            />
-          </TabsContent>
-          
-          <TabsContent value="people">
-            <PeopleTab 
-              roleDistributionData={roleDistributionData}
-              assigneeData={chartData.assigneeData}
-              colors={chartColors}
-            />
-          </TabsContent>
-          
-          <TabsContent value="locations">
-            <LocationTab 
-              locationData={chartData.locationData}
-              facilityData={chartData.facilityData}
-              heatmapData={chartData.heatmapData}
-              isAdmin={isAdmin}
-              colors={chartColors}
-            />
-          </TabsContent>
-          
-          <TabsContent value="risk">
-            <RiskAnalysisTab 
-              subcategoryData={chartData.subcategoryData}
-              riskData={chartData.riskData}
-              colors={chartColors} 
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Content Section */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="px-4 sm:px-6 lg:px-8 py-6">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="mb-6">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="charts">Charts</TabsTrigger>
+                <TabsTrigger value="people">People</TabsTrigger>
+                <TabsTrigger value="locations">Locations</TabsTrigger>
+                <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview">
+                <OverviewTab 
+                  categoryData={chartData.categoryData}
+                  typeData={chartData.typeData}
+                  statusData={chartData.statusData} 
+                  timeSeriesData={chartData.timeSeriesData}
+                  colors={chartColors} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="charts">
+                <ChartsTab 
+                  categoryData={chartData.categoryData}
+                  typeData={chartData.typeData}
+                  subcategoryData={chartData.subcategoryData}
+                  timeSeriesData={chartData.timeSeriesData}
+                  locationData={chartData.locationData}
+                  facilityData={chartData.facilityData}
+                  assigneeData={chartData.assigneeData}
+                  statusData={chartData.statusData}
+                  riskData={chartData.riskData}
+                  isAdmin={isAdmin}
+                  colors={chartColors}
+                  roleDistributionData={roleDistributionData}
+                  heatmapData={chartData.heatmapData}
+                />
+              </TabsContent>
+              
+              <TabsContent value="people">
+                <PeopleTab 
+                  roleDistributionData={roleDistributionData}
+                  assigneeData={chartData.assigneeData}
+                  colors={chartColors}
+                />
+              </TabsContent>
+              
+              <TabsContent value="locations">
+                <LocationTab 
+                  locationData={chartData.locationData}
+                  facilityData={chartData.facilityData}
+                  heatmapData={chartData.heatmapData}
+                  isAdmin={isAdmin}
+                  colors={chartColors}
+                />
+              </TabsContent>
+              
+              <TabsContent value="risk">
+                <RiskAnalysisTab 
+                  subcategoryData={chartData.subcategoryData}
+                  riskData={chartData.riskData}
+                  colors={chartColors} 
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </Layout>
   );
