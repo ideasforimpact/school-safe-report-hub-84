@@ -36,7 +36,6 @@ const RouteGuard = ({
 
   // Skip session validation on login routes
   const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
-  const isLogoutInProgress = sessionStorage.getItem('is_logout_initiated') === 'true';
   
   console.log('🛡️ RouteGuard: Route protection check', { 
     pathname: location.pathname,
@@ -44,21 +43,8 @@ const RouteGuard = ({
     requireAuth, 
     isOnLoginRoute,
     hasCurrentUser: !!currentUser,
-    isBackofficeUser,
-    isLogoutInProgress,
-    timestamp: new Date().toISOString()
+    isBackofficeUser 
   });
-
-  // Block all route protection logic during logout
-  if (isLogoutInProgress || state.isLoggingOut) {
-    console.log('🛡️ RouteGuard: Logout in progress, showing loading state');
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">Logging out...</p>
-      </div>
-    </div>;
-  }
 
   // Handle backoffice route protection with JWT validation (but not on login routes)
   if (isBackoffice && requireAuth && !isOnLoginRoute) {

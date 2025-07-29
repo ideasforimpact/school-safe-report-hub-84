@@ -1,12 +1,8 @@
 import { loadAuthState, clearPersistedAuthState } from '@/store/authPersistence';
 import { verifyBackofficeToken, isTokenExpired } from './jwtUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { validationStateManager } from './validationStateManager';
 
 // Validate Supabase session for SSO users
-// IMPORTANT NOTE: For SSO users, we don't manually validate session expiry
-// because Supabase handles token refresh automatically. Manual expiry checks
-// can cause false positives and unnecessary session invalidations.
 export const validateSupabaseSession = async (): Promise<boolean> => {
   console.log('🔐 validateSupabaseSession: Starting validation for SSO user');
   
@@ -23,9 +19,15 @@ export const validateSupabaseSession = async (): Promise<boolean> => {
       return false;
     }
     
-    // For SSO users, we trust Supabase's built-in session management
-    // The getSession() call above already handles token refresh if needed
-    // and returns null if the session is truly invalid/expired
+    // Check if session is expired
+    const expiresAt = session.expires_at;
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    if (expiresAt && currentTime > expiresAt) {
+      console.log('🔐 validateSupabaseSession: Supabase session has expired');
+      return false;
+    }
+    
     console.log('🔐 validateSupabaseSession: Supabase session is valid');
     return true;
   } catch (error) {
@@ -83,45 +85,29 @@ export const validateBackofficeSession = (): boolean => {
 
 // Universal session validation that determines user type and applies appropriate validation
 export const validateSession = async (): Promise<boolean> => {
-  // Use validation state manager to prevent conflicts
-  if (!validationStateManager.startValidation()) {
-    console.log('🔐 validateSession: Validation blocked by state manager');
-    return true; // Return true to avoid triggering logout when validation is blocked
+  console.log('🔐 validateSession: Starting universal session validation');
+  const authState = loadAuthState();
+  
+  // If no auth state, invalid session
+  if (!authState) {
+    console.log('🔐 validateSession: No auth state found');
+    return false;
   }
-
-  try {
-    console.log('🔐 validateSession: Starting universal session validation');
-    const authState = loadAuthState();
-    
-    // If no auth state, invalid session
-    if (!authState) {
-      console.log('🔐 validateSession: No auth state found');
-      return false;
-    }
-    
-    // Determine user type and apply appropriate validation
-    if (authState.isBackofficeUser) {
-      console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
-      return validateBackofficeSession();
-    } else {
-      console.log('🔐 validateSession: Detected SSO user, using Supabase validation');
-      return await validateSupabaseSession();
-    }
-  } finally {
-    validationStateManager.endValidation();
+  
+  // Determine user type and apply appropriate validation
+  if (authState.isBackofficeUser) {
+    console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
+    return validateBackofficeSession();
+  } else {
+    console.log('🔐 validateSession: Detected SSO user, using Supabase validation');
+    return await validateSupabaseSession();
   }
 };
 
 export const getSessionTimeRemaining = (): number => {
   const authState = loadAuthState();
   
-  // For SSO users, return infinite time remaining since Supabase handles token lifecycle
-  if (!authState || !authState.isBackofficeUser) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-  
-  // Only check expiry for backoffice users with custom JWT tokens
-  if (!authState.expiresAt) {
+  if (!authState || !authState.expiresAt) {
     return 0;
   }
 
@@ -130,13 +116,5 @@ export const getSessionTimeRemaining = (): number => {
 };
 
 export const isSessionExpired = (): boolean => {
-  const authState = loadAuthState();
-  
-  // For SSO users, sessions never expire manually (handled by Supabase)
-  if (!authState || !authState.isBackofficeUser) {
-    return false;
-  }
-  
-  // Only check expiry for backoffice users
   return getSessionTimeRemaining() === 0;
 };
