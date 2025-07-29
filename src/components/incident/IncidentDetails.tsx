@@ -119,27 +119,72 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
             description={incident.description}
             image={incident.image}
           />
+
+          {/* Show closure information only if the incident is closed */}
+          {incident.status === 'Closed' && (
+            <div className="mt-6 space-y-6 border-t pt-6">
+              {/* Root cause section */}
+              {incident.rootCause && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Root Cause Analysis</h3>
+                  <div className="bg-muted/50 p-4 rounded-md">
+                    <p className="whitespace-pre-wrap text-sm">{incident.rootCause}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Contributing factors section */}
+              {incident.contributingFactors && incident.contributingFactors.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Contributing Factors</h3>
+                  <div className="space-y-2">
+                    {incident.contributingFactors.map(factor => (
+                      <div key={factor.id} className="border p-3 rounded-md bg-muted/30">
+                        <div className="flex justify-between items-start">
+                          <span className="font-medium">{factor.category}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            factor.weight === 'High' ? 'bg-red-100 text-red-800' :
+                            factor.weight === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {factor.weight} Impact
+                          </span>
+                        </div>
+                        <p className="text-sm mt-1 text-muted-foreground">{factor.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions taken section */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Actions Taken</h3>
+                {incident.actions && incident.actions.length > 0 ? (
+                  <div className="space-y-3">
+                    {incident.actions.map((action, index) => (
+                      <div key={index} className="border-l-4 border-primary/20 pl-4 py-2">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-sm font-medium">Action {index + 1}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(action.date)}
+                          </span>
+                        </div>
+                        <p className="text-sm mb-1">{action.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Responsible: {action.responsiblePerson}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No actions recorded yet.</p>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-      
-      {/* Show closure information only if the incident is closed */}
-      {incident.status === 'Closed' && (
-        <>
-          {/* Root cause section */}
-          <RootCauseDisplay rootCause={incident.rootCause} />
-          
-          {/* Contributing factors section */}
-          <ContributingFactorsDisplay factors={incident.contributingFactors} />
-          
-          {/* Actions taken section */}
-          {incident.actions && incident.actions.length > 0 && (
-            <ActionsList 
-              actions={incident.actions} 
-              formatDate={formatDate}
-            />
-          )}
-        </>
-      )}
       
       {/* Incident Closure Form */}
       <IncidentClosureForm
