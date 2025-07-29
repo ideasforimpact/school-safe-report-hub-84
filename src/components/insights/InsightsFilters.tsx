@@ -26,8 +26,10 @@ interface InsightsFiltersProps {
   dateRange: DateRange | undefined;
   handleDateRangeChange: (range: DateRange | undefined) => void;
   availableSubcategories: string[];
-  peopleInvolved: string[]; // Update type to string[] to ensure only strings are passed
+  peopleInvolved: string[];
   facilities: any[];
+  categories: any[];
+  reportTypes: any[];
   isAdmin: boolean;
 }
 
@@ -51,6 +53,8 @@ const InsightsFilters: React.FC<InsightsFiltersProps> = ({
   availableSubcategories,
   peopleInvolved,
   facilities,
+  categories,
+  reportTypes,
   isAdmin
 }) => {
   const [isOpen, setIsOpen] = useState(true);  // Default to open state
@@ -73,7 +77,7 @@ const InsightsFilters: React.FC<InsightsFiltersProps> = ({
           <div className="flex items-center gap-2">
             <CardTitle>Filter Insights</CardTitle>
             {activeFilterCount > 0 && (
-              <div className="bg-blue-100 text-blue-800 text-xs font-semibold rounded-full px-2.5 py-1">
+              <div className="bg-primary/10 text-primary text-xs font-semibold rounded-full px-2.5 py-1">
                 {activeFilterCount} active
               </div>
             )}
@@ -127,9 +131,11 @@ const InsightsFilters: React.FC<InsightsFiltersProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="Incident">Incidents</SelectItem>
-                    <SelectItem value="Near Miss">Near Misses</SelectItem>
-                    <SelectItem value="Unsafe Condition">Unsafe Conditions</SelectItem>
+                    {reportTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.name}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -142,11 +148,11 @@ const InsightsFilters: React.FC<InsightsFiltersProps> = ({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="Physical Injury">Physical Injury</SelectItem>
-                    <SelectItem value="Behavioral Incident">Behavioral</SelectItem>
-                    <SelectItem value="Health Emergency">Health Emergency</SelectItem>
-                    <SelectItem value="Security Event">Security</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
