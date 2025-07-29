@@ -26,6 +26,7 @@ interface ContributingFactorFormProps {
     weight: 'Low' | 'Medium' | 'High';
   }>>;
   addFactor: () => void;
+  contributingFactors: ContributingFactor[];
 }
 
 interface ContributingFactorOption {
@@ -37,7 +38,8 @@ interface ContributingFactorOption {
 const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
   currentFactor,
   setCurrentFactor,
-  addFactor
+  addFactor,
+  contributingFactors
 }) => {
   const [factorOptions, setFactorOptions] = useState<ContributingFactorOption[]>([]);
   const [weightOptions, setWeightOptions] = useState<string[]>([]);
@@ -81,6 +83,11 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
     fetchContributingFactors();
   }, [state.employeeData?.clientId]);
 
+  // Filter out already selected factor categories
+  const availableFactorOptions = factorOptions.filter(
+    factor => !contributingFactors.some(cf => cf.category === factor.name)
+  );
+
   if (isLoading) {
     return (
       <div className="bg-gray-50 rounded-md p-4 border">
@@ -102,7 +109,7 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            {factorOptions.map((factor) => (
+            {availableFactorOptions.map((factor) => (
               <SelectItem key={factor.id} value={factor.name}>
                 {factor.name}
               </SelectItem>

@@ -51,6 +51,7 @@ const ContributingFactorsSection: React.FC<ContributingFactorsSectionProps> = ({
         currentFactor={currentFactor}
         setCurrentFactor={setCurrentFactor}
         addFactor={addFactor}
+        contributingFactors={contributingFactors}
       />
 
       {/* Factors List */}
