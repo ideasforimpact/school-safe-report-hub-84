@@ -14,6 +14,8 @@ import { IncidentDocument } from '@/services/incident/incidentDocumentService';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import IncidentDocumentUploader from './IncidentDocumentUploader';
 import { formatFileSize, viewDocument } from '@/utils/fileUtils';
+import { incidentDocumentAggregator } from '@/services/incident/incidentDocumentAggregator';
+import { Badge } from '@/components/ui/badge';
 
 interface SupportingDocumentsProps {
   incidentId: string;
@@ -34,16 +36,32 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<IncidentDocument | null>(null);
   const [showUploader, setShowUploader] = useState(false);
+  const [allDocuments, setAllDocuments] = useState<IncidentDocument[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
   const { documents: hookDocuments, loadDocuments, deleteDocument } = useIncidentDocuments();
-  
-  // Use prop documents if provided, otherwise use hook documents
-  const documents = propDocuments || hookDocuments;
+
+  const loadAllDocuments = async () => {
+    if (!incidentId) return;
+    
+    setIsLoadingDocs(true);
+    try {
+      const { documents: aggregatedDocs } = await incidentDocumentAggregator.getAllDocuments(incidentId);
+      setAllDocuments(aggregatedDocs);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setIsLoadingDocs(false);
+    }
+  };
 
   useEffect(() => {
     if (incidentId && !propDocuments) {
-      loadDocuments(incidentId);
+      loadAllDocuments();
     }
-  }, [incidentId, propDocuments, loadDocuments]);
+  }, [incidentId, propDocuments]);
+
+  // Use prop documents if provided, otherwise use aggregated documents
+  const documents = propDocuments || allDocuments;
 
   const getFileIcon = (fileType: string) => {
     const safeFileType = fileType || '';
@@ -88,9 +106,16 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
   const handleDelete = async (doc: IncidentDocument) => {
     if (!canDelete) return;
     
+    // Don't allow deletion of comment documents from here
+    if (doc.source === 'comment') {
+      alert('Comment documents can only be deleted from the Comments tab.');
+      return;
+    }
+    
     if (confirm(`Are you sure you want to delete "${doc.name}"?`)) {
       try {
         await deleteDocument(incidentId, doc.path);
+        loadAllDocuments(); // Reload all documents
         onDocumentDeleted?.();
       } catch (error) {
         console.error('Error deleting document:', error);
@@ -102,7 +127,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
     console.log(`${count} documents uploaded successfully`);
     // Refresh documents list
     if (!propDocuments) {
-      loadDocuments(incidentId);
+      loadAllDocuments();
     }
     setShowUploader(false);
     onDocumentDeleted?.(); // Trigger refresh in parent component
@@ -160,9 +185,16 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                     <div className="flex items-start gap-3">
                       {getFileIcon(document.type)}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {document.name || `Document ${index + 1}`}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">
+                            {document.name || `Document ${index + 1}`}
+                          </p>
+                          {document.source === 'comment' && (
+                            <Badge variant="secondary" className="text-xs">
+                              Comment
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-500 mt-1">
                           {document.type || 'Unknown type'}
                         </p>
@@ -200,7 +232,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                             <Download className="h-3 w-3" />
                             Download
                           </Button>
-                          {canDelete && (
+                          {canDelete && document.source !== 'comment' && (
                             <Button
                               variant="outline"
                               size="sm"

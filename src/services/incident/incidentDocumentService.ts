@@ -10,6 +10,8 @@ export interface IncidentDocument {
   url: string;
   path: string;
   uploadedAt: string;
+  source?: 'incident' | 'comment';
+  commentId?: string;
 }
 
 // Type for storing in database (JSON compatible)
