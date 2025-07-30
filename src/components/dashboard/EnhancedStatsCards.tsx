@@ -178,29 +178,25 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
 
               {/* Status indicators */}
               {card.priority && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Priority:</span>
+                <div className="text-xs">
                   <span className={`font-medium ${card.color}`}>{card.priority}</span>
                 </div>
               )}
 
               {card.status && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Status:</span>
+                <div className="text-xs">
                   <span className={`font-medium ${card.color}`}>{card.status}</span>
                 </div>
               )}
 
               {card.direction && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Trend:</span>
+                <div className="text-xs">
                   <span className={`font-medium ${card.color}`}>{card.direction}</span>
                 </div>
               )}
 
               {card.performance && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Performance:</span>
+                <div className="text-xs">
                   <span className={`font-medium ${card.color}`}>{card.performance}</span>
                 </div>
               )}
