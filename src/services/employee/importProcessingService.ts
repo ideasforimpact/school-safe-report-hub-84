@@ -182,6 +182,15 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       
       if (functionError) {
         console.error(`Function invoke error:`, functionError);
+        console.error('Client ID used:', clientId);
+        console.error('Employee IDs being processed:', employees.map(emp => emp.employeeId));
+        
+        // Check for duplicate employee ID error
+        if (functionError.message && functionError.message.includes('employee_id_client_id')) {
+          const duplicateIds = employees.map(emp => emp.employeeId);
+          throw new Error(`Duplicate employee IDs found for this client: ${duplicateIds.join(', ')}. Please ensure all employee IDs are unique within your organization.`);
+        }
+        
         throw new Error(`Bulk operation failed: ${functionError.message || 'Unknown error'}`);
       }
       
