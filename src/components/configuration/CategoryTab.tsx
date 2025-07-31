@@ -11,6 +11,17 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
@@ -20,7 +31,7 @@ interface CategoryTabProps {
   categories: CategoryItem[];
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
-  deleteCategory: (id: string) => void;
+  deleteCategory: (id: string) => Promise<void>;
 }
 
 export const CategoryTab = ({ 
@@ -32,6 +43,8 @@ export const CategoryTab = ({
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleCategoryAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,8 +58,31 @@ export const CategoryTab = ({
     setNewCategory('');
   };
 
-  const handleCategoryDelete = (id: string) => {
-    deleteCategory(id);
+  const handleCategoryDelete = (category: CategoryItem) => {
+    setCategoryToDelete({
+      id: category.id,
+      name: category.name
+    });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmCategoryDelete = async () => {
+    if (categoryToDelete) {
+      try {
+        await deleteCategory(categoryToDelete.id);
+        setIsDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      } catch (error: any) {
+        // Error is already handled by the service with toast
+        setIsDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      }
+    }
+  };
+
+  const cancelCategoryDelete = () => {
+    setIsDeleteDialogOpen(false);
+    setCategoryToDelete(null);
   };
 
   const handleEditOpen = (category: CategoryItem) => {
@@ -126,7 +162,7 @@ export const CategoryTab = ({
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleCategoryDelete(category.id)}
+                        onClick={() => handleCategoryDelete(category)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -154,6 +190,24 @@ export const CategoryTab = ({
             onClose={handleEditClose}
           />
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Category</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the category "{categoryToDelete?.name}"? 
+                This action cannot be undone. If this category is linked to any incidents, 
+                the deletion will be prevented to maintain data integrity.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={cancelCategoryDelete}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmCategoryDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

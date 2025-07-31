@@ -89,8 +89,13 @@ export function useIncidentCategories() {
   };
 
   const deleteCategory = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      await categoryService.deleteCategory(id);
+      await categoryService.deleteCategory(id, employeeData.clientId);
       setCategories(prev => prev.filter(cat => cat.id !== id));
       setSubcategoryMappings(prev => {
         const { [id]: _, ...rest } = prev;
@@ -99,6 +104,7 @@ export function useIncidentCategories() {
       toast.success('Category deleted successfully');
     } catch (error) {
       console.error('Error deleting category:', error);
+      // Error toast is already handled by the service
     }
   };
 

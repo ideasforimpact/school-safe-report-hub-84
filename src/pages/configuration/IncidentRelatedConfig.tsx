@@ -32,7 +32,7 @@ interface IncidentRelatedConfigProps {
   categories: ConfigItem[];
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
-  deleteCategory: (id: string) => void;
+  deleteCategory: (id: string) => Promise<void>;
   subcategoryMappings: Record<string, SubcategoryItem[]>;
   addSubcategory: (categoryId: string, name: string) => void;
   updateSubcategory: (categoryId: string, id: string, name: string) => void;
