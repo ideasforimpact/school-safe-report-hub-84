@@ -18,6 +18,59 @@ export interface SubcategoryItem {
 }
 
 export const categoryService = {
+  // Check for duplicate category name within client
+  checkDuplicateCategory: async (name: string, clientId: string, excludeId?: string): Promise<boolean> => {
+    try {
+      let query = supabase
+        .from('incident_categories')
+        .select('id')
+        .eq('client_id', clientId)
+        .ilike('name', name.trim());
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return data && data.length > 0;
+    } catch (error: any) {
+      console.error('Error checking duplicate category:', error);
+      return false;
+    }
+  },
+
+  // Check for duplicate subcategory name within category
+  checkDuplicateSubcategory: async (name: string, categoryId: string, clientId: string, excludeId?: string): Promise<boolean> => {
+    try {
+      let query = supabase
+        .from('incident_subcategories')
+        .select('id')
+        .eq('category_id', categoryId)
+        .eq('client_id', clientId)
+        .ilike('name', name.trim());
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return data && data.length > 0;
+    } catch (error: any) {
+      console.error('Error checking duplicate subcategory:', error);
+      return false;
+    }
+  },
+
   // Categories
   getCategories: async (clientId?: string) => {
     try {
@@ -52,11 +105,22 @@ export const categoryService = {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
+
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('Category name cannot be empty');
+      }
+
+      // Check for duplicate
+      const isDuplicate = await categoryService.checkDuplicateCategory(trimmedName, clientId);
+      if (isDuplicate) {
+        throw new Error('A category with this name already exists');
+      }
       
       const { data, error } = await supabase
         .from('incident_categories')
         .insert([
-          { name, description: description || null, client_id: clientId, is_active: true }
+          { name: trimmedName, description: description || null, client_id: clientId, is_active: true }
         ])
         .select();
 
@@ -72,11 +136,26 @@ export const categoryService = {
     }
   },
 
-  updateCategory: async (id: string, name: string, description?: string) => {
+  updateCategory: async (id: string, name: string, description?: string, clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('Category name cannot be empty');
+      }
+
+      // Check for duplicate (excluding current record)
+      const isDuplicate = await categoryService.checkDuplicateCategory(trimmedName, clientId, id);
+      if (isDuplicate) {
+        throw new Error('A category with this name already exists');
+      }
+
       const { data, error } = await supabase
         .from('incident_categories')
-        .update({ name, description: description || null })
+        .update({ name: trimmedName, description: description || null })
         .eq('id', id)
         .select();
 
@@ -153,11 +232,22 @@ export const categoryService = {
         throw new Error('Client ID is required');
       }
 
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('Subcategory name cannot be empty');
+      }
+
+      // Check for duplicate within the same category
+      const isDuplicate = await categoryService.checkDuplicateSubcategory(trimmedName, categoryId, clientId);
+      if (isDuplicate) {
+        throw new Error('A subcategory with this name already exists in this category');
+      }
+
       const { data, error } = await supabase
         .from('incident_subcategories')
         .insert([
           { 
-            name, 
+            name: trimmedName, 
             category_id: categoryId, 
             description: description || null, 
             client_id: clientId,
@@ -184,7 +274,35 @@ export const categoryService = {
         throw new Error('Client ID is required');
       }
 
-      let updateData: any = { name, description: description || null };
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('Subcategory name cannot be empty');
+      }
+
+      // For update, we need to know the category ID to check duplicates
+      if (!categoryId) {
+        // Get current category ID if not provided
+        const { data: currentData } = await supabase
+          .from('incident_subcategories')
+          .select('category_id')
+          .eq('id', id)
+          .eq('client_id', clientId)
+          .single();
+        
+        if (currentData) {
+          categoryId = currentData.category_id;
+        }
+      }
+
+      if (categoryId) {
+        // Check for duplicate within the same category (excluding current record)
+        const isDuplicate = await categoryService.checkDuplicateSubcategory(trimmedName, categoryId, clientId, id);
+        if (isDuplicate) {
+          throw new Error('A subcategory with this name already exists in this category');
+        }
+      }
+
+      let updateData: any = { name: trimmedName, description: description || null };
       
       if (categoryId) {
         updateData.category_id = categoryId;
