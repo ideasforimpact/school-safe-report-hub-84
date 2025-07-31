@@ -72,8 +72,13 @@ export function useIncidentCategories() {
   };
 
   const updateCategory = async (id: string, name: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      await categoryService.updateCategory(id, name);
+      await categoryService.updateCategory(id, name, undefined, employeeData.clientId);
       setCategories(prev => prev.map(cat => 
         cat.id === id ? { ...cat, name } : cat
       ));

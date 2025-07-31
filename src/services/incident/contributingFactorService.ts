@@ -11,6 +11,32 @@ export interface ContributingFactorItem {
 }
 
 export const contributingFactorService = {
+  // Check for duplicate contributing factor name within client
+  checkDuplicateContributingFactor: async (name: string, clientId: string, excludeId?: string): Promise<boolean> => {
+    try {
+      let query = supabase
+        .from('contributing_factors')
+        .select('id')
+        .eq('client_id', clientId)
+        .ilike('name', name.trim());
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return data && data.length > 0;
+    } catch (error: any) {
+      console.error('Error checking duplicate contributing factor:', error);
+      return false;
+    }
+  },
+
   // Get contributing factors - always requiring clientId
   getContributingFactors: async (clientId: string) => {
     try {
@@ -42,12 +68,23 @@ export const contributingFactorService = {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
+
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('Contributing factor name cannot be empty');
+      }
+
+      // Check for duplicate
+      const isDuplicate = await contributingFactorService.checkDuplicateContributingFactor(trimmedName, clientId);
+      if (isDuplicate) {
+        throw new Error('A contributing factor with this name already exists');
+      }
       
       const { data, error } = await supabase
         .from('contributing_factors')
         .insert([
           { 
-            name, 
+            name: trimmedName, 
             description: description || null, 
             weight: weight || null, 
             client_id: clientId 
@@ -75,10 +112,21 @@ export const contributingFactorService = {
         throw new Error('Client ID is required');
       }
 
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error('Contributing factor name cannot be empty');
+      }
+
+      // Check for duplicate (excluding current record)
+      const isDuplicate = await contributingFactorService.checkDuplicateContributingFactor(trimmedName, clientId, id);
+      if (isDuplicate) {
+        throw new Error('A contributing factor with this name already exists');
+      }
+
       const { data, error } = await supabase
         .from('contributing_factors')
         .update({ 
-          name, 
+          name: trimmedName, 
           description: description || null, 
           weight: weight || null 
         })
