@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -11,7 +11,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { ClassItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
@@ -47,6 +47,8 @@ export const ClassTab = ({
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingClass, setEditingClass] = useState<{id: string, name: string, campusId: string} | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [filterCampusId, setFilterCampusId] = useState<string>('');
 
   const handleClassAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +126,28 @@ export const ClassTab = ({
     return campus ? campus.name : 'Unknown Campus';
   };
 
+  // Filter classes based on search term and campus
+  const filteredClasses = useMemo(() => {
+    let filtered = classes;
+    
+    if (searchFilter.trim()) {
+      filtered = filtered.filter(cls => 
+        cls.name.toLowerCase().includes(searchFilter.toLowerCase())
+      );
+    }
+    
+    if (filterCampusId) {
+      filtered = filtered.filter(cls => cls.campusId === filterCampusId);
+    }
+    
+    return filtered;
+  }, [classes, searchFilter, filterCampusId]);
+
+  const clearFilters = () => {
+    setSearchFilter('');
+    setFilterCampusId('');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -172,6 +196,56 @@ export const ClassTab = ({
             </Button>
           </div>
         </form>
+
+        {/* Filter Section */}
+        <div className="flex gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search grades..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="w-48">
+            <Select value={filterCampusId} onValueChange={setFilterCampusId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by campus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All campuses</SelectItem>
+                {campuses.map((campus) => (
+                  <SelectItem key={campus.id} value={campus.id}>
+                    {campus.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(searchFilter || filterCampusId) && (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Results Info */}
+        {(searchFilter || filterCampusId) && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Showing {filteredClasses.length} of {classes.length} grades
+          </div>
+        )}
         
         <Table>
           <TableHeader>
@@ -191,14 +265,17 @@ export const ClassTab = ({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : classes.length === 0 ? (
+            ) : filteredClasses.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                  No grades available. Add your first grade above.
+                  {classes.length === 0 
+                    ? "No grades available. Add your first grade above."
+                    : "No grades match your search criteria."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
-              classes.map((cls) => (
+              filteredClasses.map((cls) => (
                 <TableRow key={cls.id}>
                   <TableCell>{cls.name}</TableCell>
                   <TableCell>{getCampusName(cls.campusId)}</TableCell>

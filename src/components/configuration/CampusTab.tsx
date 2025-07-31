@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
@@ -48,6 +48,7 @@ export const CampusTab = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campusToDelete, setCampusToDelete] = useState<{id: string, name: string} | null>(null);
+  const [searchFilter, setSearchFilter] = useState('');
 
   const handleCampusAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +110,16 @@ export const CampusTab = ({
     setEditingCampus(null);
   };
 
+  // Filter campuses based on search term
+  const filteredCampuses = useMemo(() => {
+    if (!searchFilter.trim()) return campuses;
+    return campuses.filter(campus => 
+      campus.name.toLowerCase().includes(searchFilter.toLowerCase())
+    );
+  }, [campuses, searchFilter]);
+
+  const clearFilter = () => setSearchFilter('');
+
   return (
     <Card>
       <CardHeader>
@@ -138,6 +149,35 @@ export const CampusTab = ({
             </Button>
           </div>
         </form>
+
+        {/* Filter Section */}
+        <div className="flex gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search campuses..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={clearFilter}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Results Info */}
+        {searchFilter && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Showing {filteredCampuses.length} of {campuses.length} campuses
+          </div>
+        )}
         
         <Table>
           <TableHeader>
@@ -156,14 +196,17 @@ export const CampusTab = ({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : campuses.length === 0 ? (
+            ) : filteredCampuses.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
-                  No campuses available. Add your first campus above.
+                  {campuses.length === 0 
+                    ? "No campuses available. Add your first campus above."
+                    : "No campuses match your search criteria."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
-              campuses.map((campus) => (
+              filteredCampuses.map((campus) => (
                 <TableRow key={campus.id}>
                   <TableCell>{campus.name}</TableCell>
                   <TableCell>
