@@ -11,6 +11,16 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { ConfigItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
@@ -45,6 +55,8 @@ export const FacilityTab = ({
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingFacility, setEditingFacility] = useState<{id: string, name: string, campusId: string} | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [facilityToDelete, setFacilityToDelete] = useState<{id: string, name: string} | null>(null);
 
   const handleFacilityAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,9 +77,26 @@ export const FacilityTab = ({
     toast.success("Facility added successfully");
   };
 
-  const handleFacilityDelete = (id: string) => {
-    deleteFacility(id);
-    toast.success("Facility deleted successfully");
+  const handleDeleteClick = (facility: ConfigItem) => {
+    setFacilityToDelete({
+      id: facility.id,
+      name: facility.name
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (facilityToDelete) {
+      try {
+        await deleteFacility(facilityToDelete.id);
+        setDeleteDialogOpen(false);
+        setFacilityToDelete(null);
+      } catch (error: any) {
+        // Error handling is done in the hook, just close the dialog
+        setDeleteDialogOpen(false);
+        setFacilityToDelete(null);
+      }
+    }
   };
 
   const handleEditOpen = (facility: any) => {
@@ -210,7 +239,7 @@ export const FacilityTab = ({
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleFacilityDelete(facility.id)}
+                        onClick={() => handleDeleteClick(facility)}
                         disabled={loading}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -222,6 +251,34 @@ export const FacilityTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Facility</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the facility "{facilityToDelete?.name}"? 
+                This action cannot be undone. If this facility is linked to any incidents, 
+                deletion will be prevented.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setDeleteDialogOpen(false);
+                setFacilityToDelete(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Edit Dialog */}
         {editingFacility && (
