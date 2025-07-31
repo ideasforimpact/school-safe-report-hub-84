@@ -1,5 +1,6 @@
 
 import { RawEmployeeData } from '../types/importTypes';
+import { checkBulkEmployeeIdDuplicates } from '../employeeValidationService';
 
 /**
  * Required fields that must be present in the Excel file
@@ -18,9 +19,10 @@ const requiredFields: (keyof RawEmployeeData)[] = [
 /**
  * Validates the data extracted from Excel
  * @param data The raw data extracted from Excel
+ * @param clientId The client ID to check for duplicate employee IDs (optional)
  * @returns Array of validation errors (empty if valid)
  */
-export const validateExcelData = (data: any[]): string[] => {
+export const validateExcelData = async (data: any[], clientId?: string): Promise<string[]> => {
   const errors: string[] = [];
   
   if (!Array.isArray(data) || data.length === 0) {
@@ -51,6 +53,38 @@ export const validateExcelData = (data: any[]): string[] => {
     });
   }
   
+  // Check for duplicate employee IDs within the file
+  const employeeIds = data.map(row => row.employeeId).filter(id => id);
+  const duplicateIds = employeeIds.filter((id, index) => employeeIds.indexOf(id) !== index);
+  if (duplicateIds.length > 0) {
+    const uniqueDuplicates = [...new Set(duplicateIds)];
+    uniqueDuplicates.forEach(id => {
+      errors.push(`Duplicate employee ID found in file: ${id}`);
+    });
+  }
+
+  // Check for existing employee IDs in the database if clientId is provided
+  if (clientId && employeeIds.length > 0) {
+    try {
+      const { duplicates, errors: dbErrors } = await checkBulkEmployeeIdDuplicates(employeeIds, clientId);
+      
+      // Add database errors
+      if (dbErrors.length > 0) {
+        errors.push(...dbErrors);
+      }
+      
+      // Add duplicate employee ID errors
+      if (duplicates.length > 0) {
+        duplicates.forEach(id => {
+          errors.push(`Employee ID '${id}' already exists for this client`);
+        });
+      }
+    } catch (error) {
+      console.error('Error checking bulk employee ID duplicates:', error);
+      errors.push('Error validating employee IDs against existing records');
+    }
+  }
+
   // Validate each row
   data.forEach((row, index) => {
     const rowNum = index + 2; // +2 because Excel is 1-based and we're skipping header row
