@@ -207,10 +207,18 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           result.addedEmployees = responseData.employees.map(transformEmployeeData);
         }
         
-        // Add any errors from the bulk operation
+        // Parse and flatten error arrays to extract specific error messages
         if (responseData.errors && Array.isArray(responseData.errors)) {
-          result.errors = [...result.errors, ...responseData.errors];
-          result.errorCount += responseData.errors.length;
+          responseData.errors.forEach(error => {
+            if (Array.isArray(error)) {
+              result.errors.push(...error);
+            } else if (typeof error === 'string') {
+              result.errors.push(error);
+            } else if (error && typeof error === 'object' && error.message) {
+              result.errors.push(error.message);
+            }
+          });
+          result.errorCount = result.errors.length;
         }
       } else {
         throw new Error("Bulk operation returned unexpected response format");
@@ -273,10 +281,18 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           result.addedEmployees = responseData.employees.map(transformEmployeeData);
         }
         
-        // Add any errors from the bulk operation
+        // Parse and flatten error arrays to extract specific error messages
         if (responseData.errors && Array.isArray(responseData.errors)) {
-          result.errors = [...result.errors, ...responseData.errors];
-          result.errorCount += responseData.errors.length;
+          responseData.errors.forEach(error => {
+            if (Array.isArray(error)) {
+              result.errors.push(...error);
+            } else if (typeof error === 'string') {
+              result.errors.push(error);
+            } else if (error && typeof error === 'object' && error.message) {
+              result.errors.push(error.message);
+            }
+          });
+          result.errorCount = result.errors.length;
         }
       } else {
         throw new Error("Bulk operation returned unexpected response format");
@@ -286,8 +302,25 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     return result;
   } catch (error) {
     console.error('Error in bulk employee processing:', error);
-    result.errors.push(`Bulk operation error: ${(error as Error).message || 'Unknown error'}`);
-    result.errorCount += 1;
+    
+    // Provide more helpful error messages
+    let errorMessage = 'Unknown error occurred during import';
+    if (error instanceof Error) {
+      if (error.message.includes('already exists')) {
+        errorMessage = error.message;
+      } else if (error.message.includes('Duplicate employee IDs')) {
+        errorMessage = error.message;
+      } else if (error.message.includes('validation')) {
+        errorMessage = 'Data validation failed. Please check employee information and try again.';
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        errorMessage = 'Network error occurred. Please check your connection and try again.';
+      } else {
+        errorMessage = `Import failed: ${error.message}`;
+      }
+    }
+    
+    result.errors.push(errorMessage);
+    result.errorCount = result.errors.length;
     return result;
   }
 };
@@ -340,13 +373,20 @@ export const showImportResultNotifications = (result: ImportResult): void => {
     toast.success(`Successfully updated ${result.updatedCount} existing employees`);
   }
   
-  // Show error toasts
+  // Show error toasts with specific error messages
   if (result.errors.length > 0) {
     console.error('Import errors:', result.errors);
-    if (result.errors.length <= 3) {
-      result.errors.forEach(error => toast.error(error));
-    } else {
-      toast.error(`Failed to process ${result.errors.length} employee records. Check console for details.`);
+    
+    // Show first 2 specific error messages directly
+    const specificErrors = result.errors.slice(0, 2);
+    specificErrors.forEach(error => {
+      toast.error(error);
+    });
+    
+    // If there are more errors, show summary
+    if (result.errors.length > 2) {
+      const remainingCount = result.errors.length - 2;
+      toast.error(`${remainingCount} additional error${remainingCount > 1 ? 's' : ''} occurred. Check console for full details.`);
     }
   }
 };
