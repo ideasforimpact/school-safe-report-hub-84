@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { checkReportTypeReferences } from './incidentReferenceService';
 
 export interface ReportTypeItem {
   id: string;
@@ -183,21 +184,40 @@ export const reportTypeService = {
   // Delete report type - RLS handles client validation automatically
   deleteReportType: async (id: string) => {
     try {
+      // Get client_id for reference check
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('client_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (employeeError || !employee) {
+        throw new Error('Employee record not found');
+      }
+
+      // Check if report type is referenced by any incidents
+      const referenceCheck = await checkReportTypeReferences(id, employee.client_id);
+      if (referenceCheck.hasReferences) {
+        throw new Error(referenceCheck.message);
+      }
+
       const { error } = await supabase
         .from('incident_report_types')
         .delete()
         .eq('id', id);
 
       if (error) {
-        console.error('Error deleting report type:', error);
-        toast.error(`Failed to delete report type: ${error.message}`);
         throw error;
       }
 
       return true;
     } catch (error: any) {
       console.error('Error deleting report type:', error);
-      toast.error(`Failed to delete report type: ${error.message}`);
       throw error;
     }
   },

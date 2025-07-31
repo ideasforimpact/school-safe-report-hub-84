@@ -110,9 +110,9 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         // Refresh data immediately
         await fetchReportTypes();
         toast.success('Report type deleted successfully');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting report type:', error);
-        toast.error('Failed to delete report type');
+        toast.error(error.message || 'Failed to delete report type');
       }
     }
   };
