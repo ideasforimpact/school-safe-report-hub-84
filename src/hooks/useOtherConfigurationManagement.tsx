@@ -471,6 +471,20 @@ export function useOtherConfigurationManagement() {
   };
 
   const deleteFacility = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
+    // Check if facility is referenced by incidents
+    const { incidentReferenceService } = await import('@/services/incident/incidentReferenceService');
+    const referenceCheck = await incidentReferenceService.checkFacilityReferences(id, employeeData.clientId);
+    
+    if (referenceCheck.hasReferences) {
+      toast.error(referenceCheck.message);
+      return;
+    }
+
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('facility-management', {
