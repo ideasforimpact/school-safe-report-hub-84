@@ -46,7 +46,9 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     console.log("Starting verification for file:", selectedFile.name);
     setIsVerifying(true);
     try {
-      const errors = await validateEmployeeExcel(selectedFile);
+      // Use the effective client ID for validation
+      const effectiveClientId = manualClientId || clientId;
+      const errors = await validateEmployeeExcel(selectedFile, effectiveClientId);
       
       if (errors.length > 0) {
         // Show the first few errors in toast
