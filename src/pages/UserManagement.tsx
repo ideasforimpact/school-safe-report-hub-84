@@ -33,7 +33,7 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
-import { getEmployeeModuleAccessItems, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
+import { getEmployeeModuleAccessItems, getModuleAccessForUser, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
@@ -192,8 +192,12 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       if (employeeData && employeeData.length > 0) {
         // Process each employee to get their module access items
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Get module access items directly
-          const moduleAccessItems = await getEmployeeModuleAccessItems(employee.id);
+          // Get module access items (handles both super admin and regular employees)
+          const moduleAccessItems = await getModuleAccessForUser({
+            id: employee.id,
+            isSuperAdmin: employee.isSuperAdmin,
+            clientId: employee.clientId
+          });
           
           return {
             id: employee.id,
@@ -349,8 +353,12 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       
       if (employeeData && employeeData.length > 0) {
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Get module access items directly
-          const moduleAccessItems = await getEmployeeModuleAccessItems(employee.id);
+          // Get module access items (handles both super admin and regular employees)
+          const moduleAccessItems = await getModuleAccessForUser({
+            id: employee.id,
+            isSuperAdmin: employee.isSuperAdmin,
+            clientId: employee.clientId
+          });
           
           return {
             id: employee.id,
