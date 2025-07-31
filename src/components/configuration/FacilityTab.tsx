@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { ConfigItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
@@ -57,6 +57,8 @@ export const FacilityTab = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [facilityToDelete, setFacilityToDelete] = useState<{id: string, name: string} | null>(null);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [filterCampusId, setFilterCampusId] = useState<string>('');
 
   const handleFacilityAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +147,28 @@ export const FacilityTab = ({
     return campus ? campus.name : 'Unknown Campus';
   };
 
+  // Filter facilities based on search term and campus
+  const filteredFacilities = useMemo(() => {
+    let filtered = facilities;
+    
+    if (searchFilter.trim()) {
+      filtered = filtered.filter(facility => 
+        facility.name.toLowerCase().includes(searchFilter.toLowerCase())
+      );
+    }
+    
+    if (filterCampusId) {
+      filtered = filtered.filter(facility => (facility as any).campusId === filterCampusId);
+    }
+    
+    return filtered;
+  }, [facilities, searchFilter, filterCampusId]);
+
+  const clearFilters = () => {
+    setSearchFilter('');
+    setFilterCampusId('');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -193,6 +217,56 @@ export const FacilityTab = ({
             </Button>
           </div>
         </form>
+
+        {/* Filter Section */}
+        <div className="flex gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search facilities..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="w-48">
+            <Select value={filterCampusId} onValueChange={setFilterCampusId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by campus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All campuses</SelectItem>
+                {campuses.map((campus) => (
+                  <SelectItem key={campus.id} value={campus.id}>
+                    {campus.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(searchFilter || filterCampusId) && (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Results Info */}
+        {(searchFilter || filterCampusId) && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Showing {filteredFacilities.length} of {facilities.length} facilities
+          </div>
+        )}
         
         <Table>
           <TableHeader>
@@ -212,14 +286,17 @@ export const FacilityTab = ({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : facilities.length === 0 ? (
+            ) : filteredFacilities.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                  No facilities available. Add your first facility above.
+                  {facilities.length === 0 
+                    ? "No facilities available. Add your first facility above."
+                    : "No facilities match your search criteria."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
-              facilities.map((facility: any) => (
+              filteredFacilities.map((facility: any) => (
                 <TableRow key={facility.id}>
                   <TableCell>{facility.name}</TableCell>
                   <TableCell>

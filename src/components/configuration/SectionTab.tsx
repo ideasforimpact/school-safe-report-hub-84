@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -11,7 +11,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
@@ -50,6 +50,9 @@ export const SectionTab = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [filteredClasses, setFilteredClasses] = useState<ClassItem[]>([]);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [filterCampusId, setFilterCampusId] = useState<string>('');
+  const [filterClassId, setFilterClassId] = useState<string>('');
 
   // Filter classes by selected campus
   useEffect(() => {
@@ -169,6 +172,41 @@ export const SectionTab = ({
     return foundCampus ? foundCampus.name : 'Unknown Campus';
   };
 
+  // Filter sections based on search term, campus, and class
+  const filteredSections = useMemo(() => {
+    let filtered = sections;
+    
+    if (searchFilter.trim()) {
+      filtered = filtered.filter(section => 
+        section.name.toLowerCase().includes(searchFilter.toLowerCase())
+      );
+    }
+    
+    if (filterCampusId) {
+      filtered = filtered.filter(section => section.campusId === filterCampusId);
+    }
+    
+    if (filterClassId) {
+      filtered = filtered.filter(section => section.classId === filterClassId);
+    }
+    
+    return filtered;
+  }, [sections, searchFilter, filterCampusId, filterClassId]);
+
+  // Get classes filtered by selected campus for the class filter dropdown
+  const availableClassesForFilter = useMemo(() => {
+    if (filterCampusId) {
+      return classes.filter(cls => cls.campusId === filterCampusId);
+    }
+    return classes;
+  }, [classes, filterCampusId]);
+
+  const clearFilters = () => {
+    setSearchFilter('');
+    setFilterCampusId('');
+    setFilterClassId('');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -249,6 +287,81 @@ export const SectionTab = ({
             </Button>
           </div>
         </form>
+
+        {/* Filter Section */}
+        <div className="flex gap-4 mb-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search sections..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchFilter && (
+              <button
+                type="button"
+                onClick={() => setSearchFilter('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="w-48">
+            <Select value={filterCampusId} onValueChange={(value) => {
+              setFilterCampusId(value);
+              // Reset class filter if campus changes
+              if (filterClassId && !availableClassesForFilter.some(cls => cls.id === filterClassId)) {
+                setFilterClassId('');
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by campus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All campuses</SelectItem>
+                {campuses.map((campus) => (
+                  <SelectItem key={campus.id} value={campus.id}>
+                    {campus.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-48">
+            <Select 
+              value={filterClassId} 
+              onValueChange={setFilterClassId}
+              disabled={!filterCampusId && availableClassesForFilter.length > 10}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by grade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All grades</SelectItem>
+                {availableClassesForFilter.map((classItem) => (
+                  <SelectItem key={classItem.id} value={classItem.id}>
+                    {classItem.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(searchFilter || filterCampusId || filterClassId) && (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Results Info */}
+        {(searchFilter || filterCampusId || filterClassId) && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Showing {filteredSections.length} of {sections.length} sections
+          </div>
+        )}
         
         <Table>
           <TableHeader>
@@ -269,14 +382,17 @@ export const SectionTab = ({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : sections.length === 0 ? (
+            ) : filteredSections.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
-                  No sections available. Add your first section above.
+                  {sections.length === 0 
+                    ? "No sections available. Add your first section above."
+                    : "No sections match your search criteria."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
-              sections.map((section) => (
+              filteredSections.map((section) => (
                 <TableRow key={section.id}>
                   <TableCell>{section.name}</TableCell>
                   <TableCell>{getClassName(section.classId)}</TableCell>
