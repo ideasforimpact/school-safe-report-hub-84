@@ -220,6 +220,11 @@ export function useOtherConfigurationManagement() {
   };
 
   const deleteCampus = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     // Check if campus has associated classes/grades
     const hasClasses = classes.some((cls: any) => cls.campusId === id);
     if (hasClasses) {
@@ -231,6 +236,15 @@ export function useOtherConfigurationManagement() {
     const hasFacilities = facilities.some((facility: any) => facility.campusId === id);
     if (hasFacilities) {
       toast.error("Cannot delete campus with associated facilities. Remove the facilities first.");
+      return;
+    }
+
+    // Check if campus is referenced by incidents
+    const { incidentReferenceService } = await import('@/services/incident/incidentReferenceService');
+    const referenceCheck = await incidentReferenceService.checkLocationReferences(id, employeeData.clientId);
+    
+    if (referenceCheck.hasReferences) {
+      toast.error(referenceCheck.message);
       return;
     }
     

@@ -11,6 +11,16 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
@@ -36,6 +46,8 @@ export const CampusTab = ({
   const [newCampus, setNewCampus] = useState('');
   const [editingCampus, setEditingCampus] = useState<CampusItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [campusToDelete, setCampusToDelete] = useState<{id: string, name: string} | null>(null);
 
   const handleCampusAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,16 +62,26 @@ export const CampusTab = ({
     setNewCampus('');
   };
 
-  const handleCampusDelete = (id: string) => {
-    const hasClasses = classes.some(cls => cls.campusId === id);
-    
-    if (hasClasses) {
-      toast.error("Cannot delete campus with associated classes. Remove the classes first.");
-      return;
+  const handleDeleteClick = (campus: CampusItem) => {
+    setCampusToDelete({
+      id: campus.id,
+      name: campus.name
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (campusToDelete) {
+      try {
+        await deleteCampus(campusToDelete.id);
+        setDeleteDialogOpen(false);
+        setCampusToDelete(null);
+      } catch (error: any) {
+        // Error handling is done in the hook, just close the dialog
+        setDeleteDialogOpen(false);
+        setCampusToDelete(null);
+      }
     }
-    
-    console.log("Deleting campus:", id);
-    deleteCampus(id);
   };
 
   const handleEditOpen = (campus: CampusItem) => {
@@ -158,7 +180,7 @@ export const CampusTab = ({
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleCampusDelete(campus.id)}
+                        onClick={() => handleDeleteClick(campus)}
                         disabled={loading}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -170,6 +192,34 @@ export const CampusTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Campus</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the campus "{campusToDelete?.name}"? 
+                This action cannot be undone. If this campus is linked to any incidents, 
+                classes, or facilities, deletion will be prevented.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setDeleteDialogOpen(false);
+                setCampusToDelete(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Edit Dialog */}
         {editingCampus && (
