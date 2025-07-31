@@ -12,6 +12,16 @@ import {
 } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
 import { EditDialog } from './EditDialog';
@@ -37,6 +47,8 @@ export const SubcategoryTab = ({
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string, categoryId: string} | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [subcategoryToDelete, setSubcategoryToDelete] = useState<{id: string, name: string} | null>(null);
   const { employeeData } = useAuth();
   
   const handleAddSubcategory = (e: React.FormEvent) => {
@@ -57,8 +69,26 @@ export const SubcategoryTab = ({
     setNewSubcategoryName('');
   };
   
-  const handleDeleteSubcategory = (categoryId: string, subcategoryId: string) => {
-    deleteSubcategory(categoryId, subcategoryId);
+  const handleDeleteClick = (subcategory: SubcategoryItem) => {
+    setSubcategoryToDelete({
+      id: subcategory.id,
+      name: subcategory.name
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (subcategoryToDelete) {
+      try {
+        await deleteSubcategory(selectedCategoryId, subcategoryToDelete.id);
+        setDeleteDialogOpen(false);
+        setSubcategoryToDelete(null);
+      } catch (error: any) {
+        // Error handling is done in the hook, just close the dialog
+        setDeleteDialogOpen(false);
+        setSubcategoryToDelete(null);
+      }
+    }
   };
   
   const handleEditOpen = (subcategory: SubcategoryItem) => {
@@ -174,7 +204,7 @@ export const SubcategoryTab = ({
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => handleDeleteSubcategory(selectedCategoryId, subcategory.id)}
+                          onClick={() => handleDeleteClick(subcategory)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -192,6 +222,34 @@ export const SubcategoryTab = ({
             <p className="text-gray-500">Select a category to manage its subcategories</p>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete the subcategory "{subcategoryToDelete?.name}"? 
+                This action cannot be undone. If this subcategory is linked to any incidents, 
+                deletion will be prevented.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setDeleteDialogOpen(false);
+                setSubcategoryToDelete(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Edit Dialog */}
         {editingSubcategory && (
