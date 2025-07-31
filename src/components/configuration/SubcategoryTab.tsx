@@ -57,8 +57,14 @@ export const SubcategoryTab = ({
     setNewSubcategoryName('');
   };
   
-  const handleDeleteSubcategory = (categoryId: string, subcategoryId: string) => {
-    deleteSubcategory(categoryId, subcategoryId);
+  const handleDeleteSubcategory = async (categoryId: string, subcategoryId: string) => {
+    try {
+      await deleteSubcategory(categoryId, subcategoryId);
+      toast.success('Subcategory deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting subcategory:', error);
+      toast.error(error.message || 'Failed to delete subcategory');
+    }
   };
   
   const handleEditOpen = (subcategory: SubcategoryItem) => {
