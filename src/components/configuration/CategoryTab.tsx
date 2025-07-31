@@ -45,14 +45,8 @@ export const CategoryTab = ({
     setNewCategory('');
   };
 
-  const handleCategoryDelete = async (id: string) => {
-    try {
-      await deleteCategory(id);
-      toast.success('Category deleted successfully');
-    } catch (error: any) {
-      console.error('Error deleting category:', error);
-      toast.error(error.message || 'Failed to delete category');
-    }
+  const handleCategoryDelete = (id: string) => {
+    deleteCategory(id);
   };
 
   const handleEditOpen = (category: CategoryItem) => {
