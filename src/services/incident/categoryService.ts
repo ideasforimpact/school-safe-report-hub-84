@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { incidentReferenceService } from "./incidentReferenceService";
 
 export interface CategoryItem {
   id: string;
@@ -171,8 +172,19 @@ export const categoryService = {
     }
   },
 
-  deleteCategory: async (id: string) => {
+  deleteCategory: async (id: string, clientId: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+
+      // Check if category is referenced by incidents
+      const referenceCheck = await incidentReferenceService.checkCategoryReferences(id, clientId);
+      
+      if (referenceCheck.hasReferences) {
+        throw new Error(referenceCheck.message);
+      }
+
       // First, delete related subcategories
       await supabase
         .from('incident_subcategories')
@@ -335,6 +347,13 @@ export const categoryService = {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
+      }
+
+      // Check if subcategory is referenced by incidents
+      const referenceCheck = await incidentReferenceService.checkSubcategoryReferences(id, clientId);
+      
+      if (referenceCheck.hasReferences) {
+        throw new Error(referenceCheck.message);
       }
 
       const { error } = await supabase
