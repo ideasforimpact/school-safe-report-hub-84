@@ -69,12 +69,13 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         // Refresh data immediately
         await refetch();
         toast.success('Priority added successfully');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error adding priority:', error);
-        toast.error('Failed to add priority');
+        // Display the specific error message from the service
+        toast.error(error.message || 'Failed to add priority');
       }
     } else {
-      toast.error('Name is required');
+      toast.error('Priority name cannot be empty');
     }
   };
 
@@ -93,12 +94,13 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         // Refresh data immediately
         await refetch();
         toast.success('Priority updated successfully');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating priority:', error);
-        toast.error('Failed to update priority');
+        // Display the specific error message from the service
+        toast.error(error.message || 'Failed to update priority');
       }
     } else {
-      toast.error('Name is required');
+      toast.error('Priority name cannot be empty');
     }
   };
 
