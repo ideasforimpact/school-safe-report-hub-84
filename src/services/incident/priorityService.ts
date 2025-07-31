@@ -1,7 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { checkPriorityReferences } from './incidentReferenceService';
 
 export interface PriorityItem {
   id: string;
@@ -190,40 +189,21 @@ export const priorityService = {
   // Delete priority - RLS handles client validation automatically
   deletePriority: async (id: string) => {
     try {
-      // Get client_id for reference check
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
-      }
-
-      // Check if priority is referenced by any incidents
-      const referenceCheck = await checkPriorityReferences(id, employee.client_id);
-      if (referenceCheck.hasReferences) {
-        throw new Error(referenceCheck.message);
-      }
-
       const { error } = await supabase
         .from('incident_priorities')
         .delete()
         .eq('id', id);
 
       if (error) {
+        console.error('Error deleting priority:', error);
+        toast.error(`Failed to delete priority: ${error.message}`);
         throw error;
       }
 
       return true;
     } catch (error: any) {
       console.error('Error deleting priority:', error);
+      toast.error(`Failed to delete priority: ${error.message}`);
       throw error;
     }
   },
