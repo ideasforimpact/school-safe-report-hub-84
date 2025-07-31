@@ -108,3 +108,42 @@ export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<
     return [];
   }
 };
+
+// Get module access for user (handles both super admin and regular employees)
+export const getModuleAccessForUser = async (employee: { id: string; isSuperAdmin?: boolean; clientId?: string }): Promise<ModuleAccessItem[]> => {
+  try {
+    // If user is super admin, fetch all client modules
+    if (employee.isSuperAdmin && employee.clientId) {
+      const { data, error } = await supabase
+        .from('client_modules')
+        .select('*, modules(id, name)')
+        .eq('client_id', employee.clientId)
+        .eq('enabled', true);
+
+      if (error) {
+        console.error("Error fetching client modules for super admin:", error);
+        return [];
+      }
+
+      // Map to ModuleAccessItem format for super admin (all modules with admin level)
+      return data.map(item => {
+        const moduleName = item.modules?.name || 'Unknown Module';
+        const moduleKey = item.module_id;
+        
+        return {
+          name: moduleName,
+          key: moduleKey,
+          employeeId: employee.id,
+          module_id: item.module_id,
+          level: { is_admin: true } // Super admin has admin level for all modules
+        };
+      });
+    } else {
+      // For regular employees, use existing function
+      return await getEmployeeModuleAccessItems(employee.id);
+    }
+  } catch (error) {
+    console.error("Error getting module access for user:", error);
+    return [];
+  }
+};
