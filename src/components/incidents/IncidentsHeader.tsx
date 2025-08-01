@@ -48,7 +48,7 @@ const IncidentsHeader = ({ hasIncidentAdmin }: IncidentsHeaderProps) => {
         {(hasIncidentsAdminAccess || hasIncidentAdmin) && (
           <Button 
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all" 
-            onClick={() => navigate('/insights')}
+            onClick={() => navigate('/new-insights')}
           >
             <PieChart className="h-4 w-4 mr-2" />
             Insights
