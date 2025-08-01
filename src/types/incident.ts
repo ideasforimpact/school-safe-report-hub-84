@@ -123,8 +123,6 @@ export interface Incident {
   rootCauseAnalysis?: string; // Maps to root_cause_analysis column
   actionTaken?: string; // Maps to action_taken column
   contributingFactor?: ContributingFactor[]; // Maps to contributing_factor jsonb column
-  createdBy?: string; // Employee ID who created the incident
-  assignedTo?: string; // Employee ID who is assigned to the incident
 }
 
 // Create a user type for dropdown selection

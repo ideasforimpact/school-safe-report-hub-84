@@ -12,30 +12,6 @@ export interface IncidentPermissionContext {
 }
 
 /**
- * Check if a user can view an incident
- */
-export const canViewIncident = (context: IncidentPermissionContext): boolean => {
-  const { incidentCreatedBy, incidentAssignedTo, currentEmployeeId, hasIncidentAdmin, isSuperAdmin } = context;
-  
-  if (!currentEmployeeId) return false;
-  
-  // Super admin can view all incidents
-  if (isSuperAdmin) return true;
-  
-  // Incident admin can view all incidents
-  if (hasIncidentAdmin) return true;
-  
-  // Check if user created the incident
-  const isCreator = incidentCreatedBy === currentEmployeeId;
-  
-  // Check if user is assigned to the incident
-  const isAssigned = incidentAssignedTo === currentEmployeeId;
-  
-  // Non-admin can only view their own incidents or assigned incidents
-  return isCreator || isAssigned;
-};
-
-/**
  * Check if a user can edit an incident
  */
 export const canEditIncident = (context: IncidentPermissionContext): boolean => {
@@ -52,8 +28,13 @@ export const canEditIncident = (context: IncidentPermissionContext): boolean => 
   // Check if user is assigned to the incident
   const isAssigned = incidentAssignedTo === currentEmployeeId;
   
-  // Both incident admin and non-admin can only edit own + assigned incidents
-  return isCreator || isAssigned;
+  // Incident admin can edit own + assigned incidents
+  if (hasIncidentAdmin) {
+    return isCreator || isAssigned;
+  }
+  
+  // Non-admin can only edit their own incidents
+  return isCreator;
 };
 
 /**
@@ -81,19 +62,13 @@ export const useIncidentPermissions = () => {
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   const currentEmployeeId = state.employeeData?.id;
   
-  // Check if user has incident admin access - this will automatically update when configuredModules changes
+  // Check if user has incident admin access
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
     const incidentsModule = state.configuredModules?.find(
       module => module.name.toLowerCase() === 'incidents'
     );
-    
-    console.log('Checking incident admin access:', {
-      incidentsModule,
-      isAdmin: incidentsModule?.accessLevel?.is_admin,
-      configuredModules: state.configuredModules
-    });
     
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, state.configuredModules]);
@@ -111,7 +86,6 @@ export const useIncidentPermissions = () => {
     };
     
     return {
-      canView: canViewIncident(context),
       canEdit: canEditIncident(context),
       canClose: canCloseIncident(context),
       canReopen: canReopenIncident(context)
