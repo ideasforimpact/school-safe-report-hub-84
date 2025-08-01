@@ -1,4 +1,26 @@
-import { Incident } from '@/contexts/IncidentContext';
+// Enhanced incident type that matches the transformed data from useInsightsData
+export interface EnhancedIncident {
+  id: string;
+  ticketId: string;
+  type: string;
+  category: string;
+  subcategory: string;
+  description: string;
+  date: Date;
+  location: string;
+  peopleInvolved: Array<{
+    name: string;
+    role: string;
+    type: string;
+  }>;
+  status: string;
+  reportedBy: { id: string; name: string };
+  owner?: { id: string; name: string };
+  facility: string;
+  createdAt: Date;
+  updatedAt: Date;
+  priority: string;
+}
 
 export interface ResolutionMetrics {
   resolutionRate: number;
@@ -9,6 +31,7 @@ export interface ResolutionMetrics {
   overdueIncidents: number;
   previousPeriodResolutionRate?: number;
   resolutionTrend: 'increasing' | 'decreasing' | 'stable';
+  improvementTips: string[];
 }
 
 export interface ResponseMetrics {
@@ -17,6 +40,8 @@ export interface ResponseMetrics {
   unassignedCount: number;
   slaCompliance: number;
   escalatedCount: number;
+  peakResponseHours: Array<{ hour: number; count: number }>;
+  responseEfficiencyScore: number;
 }
 
 export interface WorkloadMetrics {
@@ -27,7 +52,10 @@ export interface WorkloadMetrics {
     assignee: string;
     count: number;
     percentage: number;
+    efficiency: 'light' | 'balanced' | 'heavy' | 'overloaded';
   }>;
+  teamBalance: 'balanced' | 'unbalanced';
+  capacityUtilization: number;
 }
 
 export interface RiskMetrics {
@@ -35,20 +63,31 @@ export interface RiskMetrics {
     location: string;
     count: number;
     riskScore: number;
+    trend: 'increasing' | 'decreasing' | 'stable';
   }>;
   criticalIncidents: number;
   recurrentIssues: Array<{
     category: string;
     location: string;
     count: number;
+    frequency: string;
+  }>;
+  riskTrends: {
+    weekOverWeek: number;
+    monthOverMonth: number;
+  };
+  priorityDistribution: Array<{
+    priority: string;
+    count: number;
+    percentage: number;
   }>;
 }
 
 export function calculateResolutionMetrics(
-  incidents: Incident[], 
-  previousPeriodIncidents?: Incident[]
+  incidents: EnhancedIncident[], 
+  previousPeriodIncidents?: EnhancedIncident[]
 ): ResolutionMetrics {
-  const resolvedStatuses = ['resolved', 'closed', 'completed'];
+  const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed'];
   
   const resolvedIncidents = incidents.filter(incident => 
     resolvedStatuses.includes(incident.status?.toLowerCase() || '')
@@ -98,6 +137,18 @@ export function calculateResolutionMetrics(
     if (difference > 5) resolutionTrend = 'increasing';
     else if (difference < -5) resolutionTrend = 'decreasing';
   }
+
+  // Generate improvement tips based on metrics
+  const improvementTips: string[] = [];
+  if (resolutionRate < 70) {
+    improvementTips.push('Focus on resolving pending incidents to improve resolution rate');
+  }
+  if (averageResolutionTime > 5) {
+    improvementTips.push('Consider streamlining resolution processes to reduce response time');
+  }
+  if (overdueIncidents > incidents.length * 0.2) {
+    improvementTips.push('Address overdue incidents to prevent customer satisfaction issues');
+  }
   
   return {
     resolutionRate,
@@ -107,18 +158,19 @@ export function calculateResolutionMetrics(
     pendingIncidents,
     overdueIncidents,
     previousPeriodResolutionRate,
-    resolutionTrend
+    resolutionTrend,
+    improvementTips
   };
 }
 
-export function calculateResponseMetrics(incidents: Incident[]): ResponseMetrics {
-  // Calculate average response time (creation to first assignment)
+export function calculateResponseMetrics(incidents: EnhancedIncident[]): ResponseMetrics {
+  // Calculate average response time (creation to assignment)
   const assignedIncidents = incidents.filter(incident => incident.owner);
   
   const totalResponseTime = assignedIncidents.reduce((sum, incident) => {
     const created = new Date(incident.date);
     const assigned = new Date(incident.createdAt); // Using createdAt as proxy for assignment time
-    return sum + (assigned.getTime() - created.getTime()) / (1000 * 60 * 60);
+    return sum + Math.abs(assigned.getTime() - created.getTime()) / (1000 * 60 * 60);
   }, 0);
   
   const averageResponseTime = assignedIncidents.length > 0 
@@ -128,8 +180,8 @@ export function calculateResponseMetrics(incidents: Incident[]): ResponseMetrics
   const unassignedCount = incidents.filter(incident => !incident.owner).length;
   
   // Calculate SLA compliance (incidents resolved within 72 hours)
+  const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed'];
   const slaCompliantIncidents = incidents.filter(incident => {
-    const resolvedStatuses = ['resolved', 'closed', 'completed'];
     if (!resolvedStatuses.includes(incident.status?.toLowerCase() || '')) return false;
     
     const created = new Date(incident.date);
@@ -140,34 +192,53 @@ export function calculateResponseMetrics(incidents: Incident[]): ResponseMetrics
   
   const slaCompliance = incidents.length > 0 ? (slaCompliantIncidents / incidents.length) * 100 : 0;
   
-  // Count escalated incidents (priority changed to higher)
+  // Count escalated incidents (high/critical priority)
   const escalatedCount = incidents.filter(incident => {
-    // This would need audit log data to determine escalation
-    // For now, using high priority as proxy
-    return incident.priority === 'High' || incident.priority === 'Critical';
+    return ['High', 'Critical', 'Urgent'].includes(incident.priority);
   }).length;
+
+  // Calculate peak response hours
+  const hourCounts: { [hour: number]: number } = {};
+  incidents.forEach(incident => {
+    const hour = new Date(incident.date).getHours();
+    hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+  });
+
+  const peakResponseHours = Object.entries(hourCounts)
+    .map(([hour, count]) => ({ hour: parseInt(hour), count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  // Calculate response efficiency score (0-100)
+  const responseEfficiencyScore = Math.min(100, 
+    (slaCompliance * 0.4) + 
+    ((unassignedCount === 0 ? 100 : Math.max(0, 100 - (unassignedCount / incidents.length) * 100)) * 0.3) +
+    ((averageResponseTime <= 4 ? 100 : Math.max(0, 100 - (averageResponseTime - 4) * 10)) * 0.3)
+  );
   
   return {
     averageResponseTime,
-    averageAssignmentTime: averageResponseTime, // Same for now
+    averageAssignmentTime: averageResponseTime,
     unassignedCount,
     slaCompliance,
-    escalatedCount
+    escalatedCount,
+    peakResponseHours,
+    responseEfficiencyScore
   };
 }
 
-export function calculateWorkloadMetrics(incidents: Incident[]): WorkloadMetrics {
+export function calculateWorkloadMetrics(incidents: EnhancedIncident[]): WorkloadMetrics {
   const assigneeCount: { [key: string]: number } = {};
   
   incidents.forEach(incident => {
     if (incident.owner) {
-      const assigneeName = typeof incident.owner === 'string' ? incident.owner : incident.owner.name || 'Unknown';
+      const assigneeName = typeof incident.owner === 'string' ? incident.owner : incident.owner.name || 'Unassigned';
       assigneeCount[assigneeName] = (assigneeCount[assigneeName] || 0) + 1;
     }
   });
   
   const assignees = Object.keys(assigneeCount);
-  const totalAssignees = assignees.length;
+  const totalAssignees = Math.max(assignees.length, 1); // Avoid division by zero
   const workloadCounts = Object.values(assigneeCount);
   
   const averageWorkload = totalAssignees > 0 
@@ -175,26 +246,51 @@ export function calculateWorkloadMetrics(incidents: Incident[]): WorkloadMetrics
     : 0;
   
   const maxWorkload = workloadCounts.length > 0 ? Math.max(...workloadCounts) : 0;
+
+  // Determine efficiency levels and team balance
+  const getEfficiencyLevel = (count: number): 'light' | 'balanced' | 'heavy' | 'overloaded' => {
+    if (count <= averageWorkload * 0.5) return 'light';
+    if (count <= averageWorkload * 1.2) return 'balanced';
+    if (count <= averageWorkload * 2) return 'heavy';
+    return 'overloaded';
+  };
   
   const workloadDistribution = Object.entries(assigneeCount)
     .map(([assignee, count]) => ({
       assignee,
       count,
-      percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
+      percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0,
+      efficiency: getEfficiencyLevel(count)
     }))
     .sort((a, b) => b.count - a.count);
+
+  // Team balance assessment
+  const teamBalance: 'balanced' | 'unbalanced' = maxWorkload > averageWorkload * 2.5 ? 'unbalanced' : 'balanced';
+  
+  // Capacity utilization (percentage of incidents assigned vs total)
+  const assignedIncidents = incidents.filter(incident => incident.owner).length;
+  const capacityUtilization = incidents.length > 0 ? (assignedIncidents / incidents.length) * 100 : 0;
   
   return {
     totalAssignees,
     averageWorkload,
     maxWorkload,
-    workloadDistribution
+    workloadDistribution,
+    teamBalance,
+    capacityUtilization
   };
 }
 
-export function calculateRiskMetrics(incidents: Incident[]): RiskMetrics {
-  // High-risk locations (more than average incident count)
+export function calculateRiskMetrics(incidents: EnhancedIncident[]): RiskMetrics {
+  // High-risk locations analysis
   const locationCount: { [key: string]: number } = {};
+  const recentIncidents = incidents.filter(incident => {
+    const incidentDate = new Date(incident.date);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return incidentDate >= thirtyDaysAgo;
+  });
+
   incidents.forEach(incident => {
     if (incident.location) {
       locationCount[incident.location] = (locationCount[incident.location] || 0) + 1;
@@ -203,51 +299,116 @@ export function calculateRiskMetrics(incidents: Incident[]): RiskMetrics {
   
   const avgIncidentsPerLocation = Object.values(locationCount).length > 0
     ? Object.values(locationCount).reduce((sum, count) => sum + count, 0) / Object.values(locationCount).length
-    : 0;
+    : 1;
   
   const highRiskLocations = Object.entries(locationCount)
     .filter(([_, count]) => count > avgIncidentsPerLocation)
     .map(([location, count]) => ({
       location,
       count,
-      riskScore: count / avgIncidentsPerLocation
+      riskScore: Math.round((count / avgIncidentsPerLocation) * 100) / 100,
+      trend: 'stable' as 'increasing' | 'decreasing' | 'stable' // Simplified for now
     }))
     .sort((a, b) => b.riskScore - a.riskScore)
     .slice(0, 5);
   
-  // Critical incidents
+  // Critical incidents analysis
   const criticalIncidents = incidents.filter(incident => 
-    incident.priority === 'Critical' || incident.priority === 'High'
+    ['Critical', 'High', 'Urgent'].includes(incident.priority)
   ).length;
   
-  // Recurrent issues (same category and location)
-  const issueKey: { [key: string]: number } = {};
+  // Priority distribution
+  const priorityCount: { [key: string]: number } = {};
+  incidents.forEach(incident => {
+    if (incident.priority) {
+      priorityCount[incident.priority] = (priorityCount[incident.priority] || 0) + 1;
+    }
+  });
+
+  const priorityDistribution = Object.entries(priorityCount)
+    .map(([priority, count]) => ({
+      priority,
+      count,
+      percentage: incidents.length > 0 ? Math.round((count / incidents.length) * 100) : 0
+    }))
+    .sort((a, b) => b.count - a.count);
+  
+  // Recurrent issues with frequency analysis
+  const issueKey: { [key: string]: { count: number; dates: Date[] } } = {};
   incidents.forEach(incident => {
     if (incident.category && incident.location) {
       const key = `${incident.category}-${incident.location}`;
-      issueKey[key] = (issueKey[key] || 0) + 1;
+      if (!issueKey[key]) {
+        issueKey[key] = { count: 0, dates: [] };
+      }
+      issueKey[key].count += 1;
+      issueKey[key].dates.push(new Date(incident.date));
     }
   });
   
+  const getFrequency = (dates: Date[]): string => {
+    if (dates.length < 2) return 'Isolated';
+    const sortedDates = dates.sort((a, b) => a.getTime() - b.getTime());
+    const totalDays = (sortedDates[sortedDates.length - 1].getTime() - sortedDates[0].getTime()) / (1000 * 60 * 60 * 24);
+    const avgDaysBetween = totalDays / (dates.length - 1);
+    
+    if (avgDaysBetween <= 7) return 'Weekly';
+    if (avgDaysBetween <= 30) return 'Monthly';
+    return 'Sporadic';
+  };
+
   const recurrentIssues = Object.entries(issueKey)
-    .filter(([_, count]) => count > 2)
-    .map(([key, count]) => {
+    .filter(([_, data]) => data.count >= 2)
+    .map(([key, data]) => {
       const [category, location] = key.split('-');
-      return { category, location, count };
+      return { 
+        category, 
+        location, 
+        count: data.count,
+        frequency: getFrequency(data.dates)
+      };
     })
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
+
+  // Risk trends (simplified calculations)
+  const currentWeekIncidents = incidents.filter(incident => {
+    const incidentDate = new Date(incident.date);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return incidentDate >= oneWeekAgo;
+  }).length;
+
+  const previousWeekIncidents = incidents.filter(incident => {
+    const incidentDate = new Date(incident.date);
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return incidentDate >= twoWeeksAgo && incidentDate < oneWeekAgo;
+  }).length;
+
+  const weekOverWeek = previousWeekIncidents > 0 
+    ? Math.round(((currentWeekIncidents - previousWeekIncidents) / previousWeekIncidents) * 100)
+    : 0;
+
+  const riskTrends = {
+    weekOverWeek,
+    monthOverMonth: 0 // Simplified for now
+  };
   
   return {
     highRiskLocations,
     criticalIncidents,
-    recurrentIssues
+    recurrentIssues,
+    riskTrends,
+    priorityDistribution
   };
 }
 
 export function calculatePeriodComparison(
-  currentPeriod: Incident[],
-  previousPeriod: Incident[]
+  currentPeriod: EnhancedIncident[],
+  previousPeriod: EnhancedIncident[]
 ) {
   const current = calculateResolutionMetrics(currentPeriod);
   const previous = calculateResolutionMetrics(previousPeriod);
