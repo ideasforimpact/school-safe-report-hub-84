@@ -118,54 +118,73 @@ export const useIncidentData = () => {
 
       console.log('Enhanced employee data for filtering:', enhancedEmployeeData);
 
-      // Use the centralized service with pagination and role-based filtering
-      const response = await incidentDataService.fetchIncidentsForClient(
-        clientId, 
-        forceRefresh, 
-        enhancedEmployeeData,
-        hasIncidentAdmin,
-        { page, pageSize }
-      );
+      // Call the edge function to fetch incidents
+      const { data, error } = await supabase.functions.invoke('fetch-incidents', {
+        body: {
+          clientId: clientId,
+          employeeId: enhancedEmployeeData.id,
+          isSuperAdmin: isSuperAdmin,
+          hasIncidentAdmin: hasIncidentAdmin
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch incidents');
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Failed to fetch incidents');
+      }
 
       // Transform the data with proper type casting
-      const transformedIncidents: Incident[] = response.data.map((record) => ({
+      const incidents = data.incidents || [];
+      const transformedIncidents: Incident[] = incidents.map((record: any) => ({
         id: record.id,
         ticketId: record.ticket_id,
-        type: record.type as IncidentType,
-        category: record.category as IncidentCategory,
-        subcategory: record.subcategory,
+        type: record.incident_report_types?.name as IncidentType,
+        category: record.incident_categories?.name as IncidentCategory,
+        subcategory: record.incident_subcategories?.name,
         description: record.description,
         date: record.date,
-        location: record.location as IncidentLocation,
-        peopleInvolved: [],
-        status: record.status as IncidentStatus,
+        location: record.campuses?.name as IncidentLocation,
+        peopleInvolved: record.people_involved || [],
+        status: record.incident_status?.name as IncidentStatus,
         reportedBy: {
-          id: '',
-          name: record.reportedBy
+          id: record.created_by || '',
+          name: record.created_by_employee ? `${record.created_by_employee.first_name} ${record.created_by_employee.last_name}` : 'Unknown'
         },
-        owner: record.owner ? {
-          id: '',
-          name: record.owner
+        owner: record.assigned_employee ? {
+          id: record.assigned_to || '',
+          name: `${record.assigned_employee.first_name} ${record.assigned_employee.last_name}`
         } : undefined,
-        facility: record.facility,
-        documents: [],
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-        priority: record.priority as 'Low' | 'Medium' | 'High' | 'Critical',
-        comments: []
+        facility: record.facilities?.name,
+        documents: record.documents || [],
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+        priority: record.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical',
+        comments: record.comments || [],
+        createdBy: record.created_by,
+        assignedTo: record.assigned_to
       }));
 
-      setIncidents(transformedIncidents);
+      // Calculate pagination info (for now, we'll use client-side pagination)
+      const totalCount = transformedIncidents.length;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedIncidents = transformedIncidents.slice(startIndex, endIndex);
+
+      setIncidents(paginatedIncidents);
       setPagination({
-        currentPage: response.currentPage,
-        totalPages: response.totalPages,
-        totalCount: response.totalCount,
-        hasMore: response.hasMore,
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasMore: page < totalPages,
         pageSize
       });
 
-      console.log(`Successfully fetched ${transformedIncidents.length} incidents (page ${response.currentPage} of ${response.totalPages})`);
-      console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : 'Regular User (filtered incidents)'}`);
+      console.log(`Successfully fetched ${transformedIncidents.length} incidents`);
+      console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : hasIncidentAdmin ? 'Incident Admin (all incidents, limited edit)' : 'Regular User (filtered incidents)'}`);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);

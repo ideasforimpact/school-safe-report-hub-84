@@ -3,7 +3,7 @@ import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Ticket, BanIcon, Calendar, Building2, Edit, Eye, User } from 'lucide-react';
-import { Incident } from '@/contexts/IncidentContext';
+import { Incident } from '@/types/incident';
 import { getPriorityIcon } from '@/utils/priorityIcons';
 import { getStatusBadgeClass } from '@/utils/statusUtils';
 import { getSimpleId } from '@/utils/ticketUtils';
@@ -29,16 +29,16 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   // Debug logging to identify permission issues
   console.log('🔍 Permission Debug for incident:', incident.ticketId);
   console.log('📋 Current user ID:', currentEmployeeId);
-  console.log('👤 Incident created by ID:', incident.reportedBy?.id);
-  console.log('👥 Incident assigned to ID:', incident.owner?.id);
+  console.log('👤 Incident created by ID:', incident.createdBy);
+  console.log('👥 Incident assigned to ID:', incident.assignedTo);
   console.log('🔑 User has incident admin:', hasIncidentAdmin);
   console.log('⭐ User is super admin:', isSuperAdmin);
   console.log('❌ Incident is voided:', incident.isVoided);
   
   // Check if current user can edit this incident
   const permissions = checkPermissions(
-    incident.reportedBy?.id || '', 
-    incident.owner?.id
+    incident.createdBy || '', 
+    incident.assignedTo
   );
   
   console.log('✅ Permission check result:', permissions);
