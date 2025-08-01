@@ -87,24 +87,26 @@ export function calculateResolutionMetrics(
   incidents: EnhancedIncident[], 
   previousPeriodIncidents?: EnhancedIncident[]
 ): ResolutionMetrics {
-  const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed'];
+  // Broader status matching to catch actual data
+  const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed', 'done', 'close'];
   
-  const resolvedIncidents = incidents.filter(incident => 
-    resolvedStatuses.includes(incident.status?.toLowerCase() || '')
-  ).length;
+  const resolvedIncidents = incidents.filter(incident => {
+    const status = incident.status?.toLowerCase() || '';
+    return resolvedStatuses.some(s => status.includes(s));
+  }).length;
   
   const pendingIncidents = incidents.length - resolvedIncidents;
   
-  // Calculate average resolution time (in days)
+  // Calculate average resolution time (in days) using actual incident dates
   const resolvedWithDates = incidents.filter(incident => {
     const status = incident.status?.toLowerCase() || '';
-    return resolvedStatuses.includes(status) && incident.date && incident.updatedAt;
+    return resolvedStatuses.some(s => status.includes(s)) && incident.date && incident.updatedAt;
   });
   
   const totalResolutionTime = resolvedWithDates.reduce((sum, incident) => {
     const created = new Date(incident.date);
     const resolved = new Date(incident.updatedAt);
-    return sum + (resolved.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return sum + Math.abs(resolved.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
   }, 0);
   
   const averageResolutionTime = resolvedWithDates.length > 0 
@@ -118,7 +120,8 @@ export function calculateResolutionMetrics(
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   
   const overdueIncidents = incidents.filter(incident => {
-    const isOpen = !resolvedStatuses.includes(incident.status?.toLowerCase() || '');
+    const status = incident.status?.toLowerCase() || '';
+    const isOpen = !resolvedStatuses.some(s => status.includes(s));
     const createdDate = new Date(incident.date);
     return isOpen && createdDate < sevenDaysAgo;
   }).length;
@@ -128,9 +131,10 @@ export function calculateResolutionMetrics(
   let previousPeriodResolutionRate: number | undefined;
   
   if (previousPeriodIncidents && previousPeriodIncidents.length > 0) {
-    const prevResolved = previousPeriodIncidents.filter(incident => 
-      resolvedStatuses.includes(incident.status?.toLowerCase() || '')
-    ).length;
+    const prevResolved = previousPeriodIncidents.filter(incident => {
+      const status = incident.status?.toLowerCase() || '';
+      return resolvedStatuses.some(s => status.includes(s));
+    }).length;
     previousPeriodResolutionRate = (prevResolved / previousPeriodIncidents.length) * 100;
     
     const difference = resolutionRate - previousPeriodResolutionRate;
@@ -165,36 +169,48 @@ export function calculateResolutionMetrics(
 
 export function calculateResponseMetrics(incidents: EnhancedIncident[]): ResponseMetrics {
   // Calculate average response time (creation to assignment)
-  const assignedIncidents = incidents.filter(incident => incident.owner);
+  const assignedIncidents = incidents.filter(incident => incident.owner && incident.owner.name);
   
   const totalResponseTime = assignedIncidents.reduce((sum, incident) => {
     const created = new Date(incident.date);
-    const assigned = new Date(incident.createdAt); // Using createdAt as proxy for assignment time
-    return sum + Math.abs(assigned.getTime() - created.getTime()) / (1000 * 60 * 60);
+    const updated = new Date(incident.updatedAt);
+    return sum + Math.abs(updated.getTime() - created.getTime()) / (1000 * 60 * 60);
   }, 0);
   
   const averageResponseTime = assignedIncidents.length > 0 
     ? totalResponseTime / assignedIncidents.length 
     : 0;
   
-  const unassignedCount = incidents.filter(incident => !incident.owner).length;
+  const unassignedCount = incidents.filter(incident => !incident.owner || !incident.owner.name).length;
   
-  // Calculate SLA compliance (incidents resolved within 72 hours)
-  const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed'];
-  const slaCompliantIncidents = incidents.filter(incident => {
-    if (!resolvedStatuses.includes(incident.status?.toLowerCase() || '')) return false;
-    
+  // Calculate SLA compliance with broader status matching
+  const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed', 'done', 'close'];
+  const resolvedIncidents = incidents.filter(incident => {
+    const status = incident.status?.toLowerCase() || '';
+    return resolvedStatuses.some(s => status.includes(s));
+  });
+  
+  const slaCompliantIncidents = resolvedIncidents.filter(incident => {
     const created = new Date(incident.date);
     const resolved = new Date(incident.updatedAt);
-    const hoursToResolve = (resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
-    return hoursToResolve <= 72;
+    const hoursToResolve = Math.abs(resolved.getTime() - created.getTime()) / (1000 * 60 * 60);
+    
+    // Dynamic SLA based on priority
+    const priority = incident.priority?.toLowerCase() || 'medium';
+    let slaHours = 72; // Default for medium/low
+    if (priority.includes('critical') || priority.includes('high')) {
+      slaHours = 24; // 24 hours for high/critical
+    }
+    
+    return hoursToResolve <= slaHours;
   }).length;
   
-  const slaCompliance = incidents.length > 0 ? (slaCompliantIncidents / incidents.length) * 100 : 0;
+  const slaCompliance = resolvedIncidents.length > 0 ? (slaCompliantIncidents / resolvedIncidents.length) * 100 : 0;
   
-  // Count escalated incidents (high/critical priority)
+  // Count escalated incidents (high/critical priority) with case-insensitive matching
   const escalatedCount = incidents.filter(incident => {
-    return ['High', 'Critical', 'Urgent'].includes(incident.priority);
+    const priority = incident.priority?.toLowerCase() || '';
+    return priority.includes('high') || priority.includes('critical') || priority.includes('urgent');
   }).length;
 
   // Calculate peak response hours
@@ -230,9 +246,16 @@ export function calculateResponseMetrics(incidents: EnhancedIncident[]): Respons
 export function calculateWorkloadMetrics(incidents: EnhancedIncident[]): WorkloadMetrics {
   const assigneeCount: { [key: string]: number } = {};
   
-  incidents.forEach(incident => {
-    if (incident.owner) {
-      const assigneeName = typeof incident.owner === 'string' ? incident.owner : incident.owner.name || 'Unassigned';
+  // Only count open/active incidents for current workload
+  const activeIncidents = incidents.filter(incident => {
+    const status = incident.status?.toLowerCase() || '';
+    const resolvedStatuses = ['resolved', 'closed', 'completed', 'fixed', 'done', 'close'];
+    return !resolvedStatuses.some(s => status.includes(s));
+  });
+  
+  activeIncidents.forEach(incident => {
+    if (incident.owner && incident.owner.name) {
+      const assigneeName = incident.owner.name;
       assigneeCount[assigneeName] = (assigneeCount[assigneeName] || 0) + 1;
     }
   });
@@ -259,7 +282,7 @@ export function calculateWorkloadMetrics(incidents: EnhancedIncident[]): Workloa
     .map(([assignee, count]) => ({
       assignee,
       count,
-      percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0,
+      percentage: activeIncidents.length > 0 ? (count / activeIncidents.length) * 100 : 0,
       efficiency: getEfficiencyLevel(count)
     }))
     .sort((a, b) => b.count - a.count);
@@ -267,9 +290,9 @@ export function calculateWorkloadMetrics(incidents: EnhancedIncident[]): Workloa
   // Team balance assessment
   const teamBalance: 'balanced' | 'unbalanced' = maxWorkload > averageWorkload * 2.5 ? 'unbalanced' : 'balanced';
   
-  // Capacity utilization (percentage of incidents assigned vs total)
-  const assignedIncidents = incidents.filter(incident => incident.owner).length;
-  const capacityUtilization = incidents.length > 0 ? (assignedIncidents / incidents.length) * 100 : 0;
+  // Capacity utilization (percentage of active incidents assigned vs total active)
+  const assignedActiveIncidents = activeIncidents.filter(incident => incident.owner && incident.owner.name).length;
+  const capacityUtilization = activeIncidents.length > 0 ? (assignedActiveIncidents / activeIncidents.length) * 100 : 0;
   
   return {
     totalAssignees,
@@ -312,10 +335,11 @@ export function calculateRiskMetrics(incidents: EnhancedIncident[]): RiskMetrics
     .sort((a, b) => b.riskScore - a.riskScore)
     .slice(0, 5);
   
-  // Critical incidents analysis
-  const criticalIncidents = incidents.filter(incident => 
-    ['Critical', 'High', 'Urgent'].includes(incident.priority)
-  ).length;
+  // Critical incidents analysis with case-insensitive matching
+  const criticalIncidents = incidents.filter(incident => {
+    const priority = incident.priority?.toLowerCase() || '';
+    return priority.includes('critical') || priority.includes('high') || priority.includes('urgent');
+  }).length;
   
   // Priority distribution
   const priorityCount: { [key: string]: number } = {};

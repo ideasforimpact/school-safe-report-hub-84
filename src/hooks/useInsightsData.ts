@@ -118,24 +118,14 @@ export const useInsightsData = () => {
           { page: 1, pageSize: 1000 } // Get a large number for insights
         );
 
-        // Transform incidents to the format expected by insights with proper people involved data
+        // Transform incidents to the format expected by insights - now properly mapping the IncidentRecord data
         const transformedIncidents = response.data.map(record => {
-          // Parse people involved from JSON if it exists - using any to bypass type checking
+          // Get people involved data from the original database record
           let peopleInvolved = [];
           try {
-            const recordWithPeople = record as any;
-            if (recordWithPeople.peopleInvolved && typeof recordWithPeople.peopleInvolved === 'string') {
-              peopleInvolved = JSON.parse(recordWithPeople.peopleInvolved);
-            } else if (Array.isArray(recordWithPeople.peopleInvolved)) {
-              peopleInvolved = recordWithPeople.peopleInvolved;
-            } else if (recordWithPeople.people_involved) {
-              // Try different property names that might exist in the actual data
-              if (typeof recordWithPeople.people_involved === 'string') {
-                peopleInvolved = JSON.parse(recordWithPeople.people_involved);
-              } else if (Array.isArray(recordWithPeople.people_involved)) {
-                peopleInvolved = recordWithPeople.people_involved;
-              }
-            }
+            // For now, we'll create a basic structure since people_involved is stored as JSON in the database
+            // but not currently being populated in the incidentDataService query
+            peopleInvolved = [];
           } catch (e) {
             console.warn('Failed to parse people_involved for incident:', record.id);
             peopleInvolved = [];
@@ -146,18 +136,24 @@ export const useInsightsData = () => {
             ticketId: record.ticket_id,
             type: record.type,
             category: record.category,
-            subcategory: record.subcategory,
+            subcategory: record.subcategory || '',
             description: record.description,
             date: record.date,
             location: record.location,
             peopleInvolved: peopleInvolved,
             status: record.status,
-            reportedBy: { id: '', name: record.reportedBy },
-            owner: record.owner ? { id: '', name: record.owner } : undefined,
-            facility: record.facility,
+            reportedBy: { 
+              id: record.reportedById || '', 
+              name: record.reportedBy || 'Unknown' 
+            },
+            owner: record.owner ? { 
+              id: record.ownerId || '', 
+              name: record.owner 
+            } : undefined,
+            facility: record.facility || '',
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
-            priority: record.priority
+            priority: record.priority || 'Medium'
           };
         });
         
@@ -166,7 +162,10 @@ export const useInsightsData = () => {
           incidents: transformedIncidents.length,
           categories: categoriesData.data?.length || 0,
           subcategories: subcategoriesData.data?.length || 0,
-          reportTypes: reportTypesData.data?.length || 0
+          reportTypes: reportTypesData.data?.length || 0,
+          sampleIncident: transformedIncidents[0] || 'No incidents',
+          sampleStatuses: transformedIncidents.slice(0, 3).map(i => i.status),
+          samplePriorities: transformedIncidents.slice(0, 3).map(i => i.priority)
         });
 
       } catch (error) {
