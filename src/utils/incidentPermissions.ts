@@ -81,13 +81,19 @@ export const useIncidentPermissions = () => {
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   const currentEmployeeId = state.employeeData?.id;
   
-  // Check if user has incident admin access
+  // Check if user has incident admin access - this will automatically update when configuredModules changes
   const hasIncidentAdmin = React.useMemo(() => {
     if (isSuperAdmin) return true;
     
     const incidentsModule = state.configuredModules?.find(
       module => module.name.toLowerCase() === 'incidents'
     );
+    
+    console.log('Checking incident admin access:', {
+      incidentsModule,
+      isAdmin: incidentsModule?.accessLevel?.is_admin,
+      configuredModules: state.configuredModules
+    });
     
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, state.configuredModules]);
