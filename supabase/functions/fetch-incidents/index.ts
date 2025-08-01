@@ -19,7 +19,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { clientId, employeeId, isSuperAdmin } = await req.json();
+    const { clientId, employeeId, isSuperAdmin, hasIncidentAdmin } = await req.json();
 
     if (!clientId) {
       throw new Error('Client ID is required');
@@ -28,6 +28,7 @@ serve(async (req) => {
     console.log('Fetching incidents for client:', clientId);
     console.log('Employee ID:', employeeId);
     console.log('Is Super Admin:', isSuperAdmin);
+    console.log('Has Incident Admin:', hasIncidentAdmin);
 
     // Build base query
     let query = supabaseClient
@@ -61,8 +62,11 @@ serve(async (req) => {
       if (isSuperAdmin === true) {
         // Super admin can see all incidents for the client
         console.log('Super admin access: fetching all incidents for client');
+      } else if (hasIncidentAdmin === true) {
+        // Incident admin can see all incidents for the client but with limited edit permissions
+        console.log('Incident admin access: fetching all incidents for client');
       } else {
-        // Non-super admin can only see incidents they created or are assigned to
+        // Non-admin can only see incidents they created or are assigned to
         query = query.or(`created_by.eq.${employeeId},assigned_to.eq.${employeeId}`);
         console.log(`Regular user access: filtering for employee ${employeeId} (created_by OR assigned_to)`);
       }
@@ -85,7 +89,7 @@ serve(async (req) => {
     }
 
     console.log(`Successfully fetched ${incidents?.length || 0} incidents for client ${clientId}`);
-    console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : 'Regular User (filtered incidents)'}`);
+    console.log(`Access level: ${isSuperAdmin ? 'Super Admin (all incidents)' : hasIncidentAdmin ? 'Incident Admin (all incidents, limited edit)' : 'Regular User (filtered incidents)'}`);
 
     return new Response(
       JSON.stringify({ 
