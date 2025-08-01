@@ -49,24 +49,6 @@ const Insights = () => {
     handleDateRangeChange(undefined);
   };
 
-  // Function to handle filter application from summary cards
-  const onFilterApply = (filterType: string, value: string) => {
-    // Map filter types to the correct filter names
-    switch (filterType) {
-      case 'facility':
-        handleFilterChange('facilityFilter', value);
-        break;
-      case 'type':
-        handleFilterChange('typeFilter', value);
-        break;
-      case 'assignee':
-        handleFilterChange('personFilter', value);
-        break;
-      default:
-        break;
-    }
-  };
-
   // Generate a consistent set of colors for charts
   const chartColors = [
     '#4f46e5', '#06b6d4', '#059669', '#8b5cf6', '#ec4899', 
@@ -138,7 +120,6 @@ const Insights = () => {
           categoryData={chartData.categoryData}
           statusData={chartData.statusData}
           facilityData={chartData.facilityData}
-          onFilterApply={onFilterApply}
         />
 
         {/* Filters Section */}

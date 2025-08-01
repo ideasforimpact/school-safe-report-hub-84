@@ -1,63 +1,40 @@
 import React from 'react';
-import MonthlyTrendCard from './cards/MonthlyTrendCard';
-import FacilityRiskCard from './cards/FacilityRiskCard';
-import ReportTypeCard from './cards/ReportTypeCard';
-import AssignmentWorkloadCard from './cards/AssignmentWorkloadCard';
+import ResolutionRateCard from './cards/ResolutionRateCard';
+import ResponseTimeCard from './cards/ResponseTimeCard';
+import WorkloadCard from './cards/WorkloadCard';
+import RiskAlertsCard from './cards/RiskAlertsCard';
 import { 
-  calculateMonthlyTrends,
-  calculateFacilityRisks,
-  calculateReportTypeDistribution,
-  calculateAssignmentWorkload
-} from '@/utils/insights/businessMetrics';
+  calculateResolutionMetrics, 
+  calculateResponseMetrics, 
+  calculateWorkloadMetrics, 
+  calculateRiskMetrics 
+} from '@/utils/insights/advancedMetrics';
 
 interface InsightsSummaryCardsProps {
   filteredIncidents: any[];
   categoryData: Array<{name: string, value: number}>;
   statusData: Array<{name: string, value: number}>;
   facilityData: Array<{name: string, value: number}>;
-  onFilterApply?: (filterType: string, value: string) => void;
 }
 
 const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
   filteredIncidents,
   categoryData,
   statusData,
-  facilityData,
-  onFilterApply
+  facilityData
 }) => {
-  // Calculate business metrics from actual incident data
-  const monthlyTrends = calculateMonthlyTrends(filteredIncidents);
-  const facilityRisks = calculateFacilityRisks(filteredIncidents);
-  const reportTypeMetrics = calculateReportTypeDistribution(filteredIncidents);
-  const assignmentMetrics = calculateAssignmentWorkload(filteredIncidents);
-
-  const handleFacilityClick = (facilityName: string) => {
-    onFilterApply?.('facility', facilityName);
-  };
-
-  const handleTypeClick = (reportType: string) => {
-    onFilterApply?.('type', reportType);
-  };
-
-  const handleEmployeeClick = (employeeName: string) => {
-    onFilterApply?.('assignee', employeeName);
-  };
+  // Calculate advanced metrics from actual incident data
+  const resolutionMetrics = calculateResolutionMetrics(filteredIncidents);
+  const responseMetrics = calculateResponseMetrics(filteredIncidents);
+  const workloadMetrics = calculateWorkloadMetrics(filteredIncidents);
+  const riskMetrics = calculateRiskMetrics(filteredIncidents);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-      <MonthlyTrendCard metrics={monthlyTrends} />
-      <FacilityRiskCard 
-        metrics={facilityRisks} 
-        onFacilityClick={handleFacilityClick} 
-      />
-      <ReportTypeCard 
-        metrics={reportTypeMetrics} 
-        onTypeClick={handleTypeClick} 
-      />
-      <AssignmentWorkloadCard 
-        metrics={assignmentMetrics} 
-        onEmployeeClick={handleEmployeeClick} 
-      />
+      <ResolutionRateCard metrics={resolutionMetrics} />
+      <ResponseTimeCard metrics={responseMetrics} />
+      <WorkloadCard metrics={workloadMetrics} />
+      <RiskAlertsCard metrics={riskMetrics} />
     </div>
   );
 };
