@@ -3,6 +3,8 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode, use
 import { employeeReducer, initialEmployeeState } from './employeeReducer';
 import { EmployeeState, EmployeeAction } from './types';
 import { saveAuthState, clearPersistedAuthState } from './authPersistence';
+import { useEmployeeModuleRealtime } from '@/hooks/useEmployeeModuleRealtime';
+import { getEmployeeData, isEmployeeSuperAdmin } from './employeeSelectors';
 
 interface EmployeeContextType {
   state: EmployeeState;
@@ -36,6 +38,17 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
   const hasClearedRef = useRef(false);
   const lastPersistedStateRef = useRef<string>('');
   const isInitializedRef = useRef(false);
+
+  // Get employee data for real-time subscriptions
+  const employeeData = getEmployeeData(state);
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
+
+  // Setup real-time updates for employee module permissions
+  useEmployeeModuleRealtime({
+    employeeId: employeeData?.id,
+    clientId: employeeData?.clientId,
+    isSuperAdmin
+  });
 
   // Persist authentication state changes to sessionStorage
   useEffect(() => {
