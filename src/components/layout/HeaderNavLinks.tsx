@@ -14,7 +14,7 @@ const HeaderNavLinks = () => {
       <Link to="/report-incident" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
         Report Incident
       </Link>
-      <Link to="/insights" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
+      <Link to="/new-insights" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
         Insights
       </Link>
     </nav>

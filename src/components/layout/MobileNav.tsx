@@ -54,7 +54,7 @@ const MobileNav = () => {
     },
     {
       name: 'Insights',
-      path: '/insights',
+      path: '/new-insights',
       icon: BarChart3
     },
     {

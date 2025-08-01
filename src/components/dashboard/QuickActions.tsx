@@ -27,7 +27,7 @@ const QuickActions: React.FC = () => {
       icon: ChartPie,
       color: "text-green-600",
       bgColor: "bg-green-100",
-      path: "/insights"
+      path: "/new-insights"
     }
   ];
   
