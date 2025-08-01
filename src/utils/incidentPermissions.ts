@@ -12,30 +12,6 @@ export interface IncidentPermissionContext {
 }
 
 /**
- * Check if a user can view an incident
- */
-export const canViewIncident = (context: IncidentPermissionContext): boolean => {
-  const { incidentCreatedBy, incidentAssignedTo, currentEmployeeId, hasIncidentAdmin, isSuperAdmin } = context;
-  
-  if (!currentEmployeeId) return false;
-  
-  // Super admin can view all incidents
-  if (isSuperAdmin) return true;
-  
-  // Incident admin can view all incidents for their client
-  if (hasIncidentAdmin) return true;
-  
-  // Check if user created the incident
-  const isCreator = incidentCreatedBy === currentEmployeeId;
-  
-  // Check if user is assigned to the incident
-  const isAssigned = incidentAssignedTo === currentEmployeeId;
-  
-  // Regular users can only view incidents they created or are assigned to
-  return isCreator || isAssigned;
-};
-
-/**
  * Check if a user can edit an incident
  */
 export const canEditIncident = (context: IncidentPermissionContext): boolean => {
@@ -52,9 +28,13 @@ export const canEditIncident = (context: IncidentPermissionContext): boolean => 
   // Check if user is assigned to the incident
   const isAssigned = incidentAssignedTo === currentEmployeeId;
   
-  // Both incident admin and regular users can only edit own + assigned incidents
-  // (The difference is in VIEWING - admins can view all but edit only own/assigned)
-  return isCreator || isAssigned;
+  // Incident admin can edit own + assigned incidents
+  if (hasIncidentAdmin) {
+    return isCreator || isAssigned;
+  }
+  
+  // Non-admin can only edit their own incidents
+  return isCreator;
 };
 
 /**
@@ -106,7 +86,6 @@ export const useIncidentPermissions = () => {
     };
     
     return {
-      canView: canViewIncident(context),
       canEdit: canEditIncident(context),
       canClose: canCloseIncident(context),
       canReopen: canReopenIncident(context)
