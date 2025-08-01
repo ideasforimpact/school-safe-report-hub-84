@@ -31,6 +31,7 @@ import IncidentDetail from '@/pages/IncidentDetail';
 import ReportIncident from '@/pages/ReportIncident';
 import EditIncidentPage from '@/pages/EditIncidentPage';
 import Insights from '@/pages/Insights';
+import NewInsights from '@/pages/NewInsights';
 import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import AssessmentResponsePage from '@/pages/AssessmentResponsePage';
@@ -148,6 +149,7 @@ function App() {
                   <Route path="/incident/:id/edit" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
                   <Route path="/edit-incident/:id" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
                   <Route path="/insights" element={<RouteGuard requireAuth={true}><Insights /></RouteGuard>} />
+                  <Route path="/new-insights" element={<RouteGuard requireAuth={true}><NewInsights /></RouteGuard>} />
 
                   {/* Assessment routes */}
                   <Route path="/assessments" element={<RouteGuard requireAuth={true}><AssessmentsPage /></RouteGuard>} />
