@@ -170,7 +170,8 @@ const Insights = () => {
                   typeData={chartData.typeData}
                   statusData={chartData.statusData} 
                   timeSeriesData={chartData.timeSeriesData}
-                  colors={chartColors} 
+                  colors={chartColors}
+                  filteredIncidents={filteredIncidents}
                 />
               </TabsContent>
               

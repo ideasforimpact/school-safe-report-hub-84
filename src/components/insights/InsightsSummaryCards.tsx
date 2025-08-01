@@ -1,6 +1,14 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Shield, Users, MapPin } from 'lucide-react';
+import ResolutionRateCard from './cards/ResolutionRateCard';
+import ResponseTimeCard from './cards/ResponseTimeCard';
+import WorkloadCard from './cards/WorkloadCard';
+import RiskAlertsCard from './cards/RiskAlertsCard';
+import { 
+  calculateResolutionMetrics, 
+  calculateResponseMetrics, 
+  calculateWorkloadMetrics, 
+  calculateRiskMetrics 
+} from '@/utils/insights/advancedMetrics';
 
 interface InsightsSummaryCardsProps {
   filteredIncidents: any[];
@@ -15,73 +23,18 @@ const InsightsSummaryCards: React.FC<InsightsSummaryCardsProps> = ({
   statusData,
   facilityData
 }) => {
-
-  // Calculate summary metrics
-  const totalIncidents = filteredIncidents.length;
-  const openIncidents = statusData.find(s => s.name === 'Open')?.value || 0;
-  const mostCommonCategory = categoryData.length > 0 ? categoryData[0].name : 'N/A';
-  const affectedFacilities = facilityData.length;
-
-  const summaryCards = [
-    {
-      title: 'Total Incidents',
-      value: totalIncidents,
-      icon: AlertTriangle,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200'
-    },
-    {
-      title: 'Open Cases',
-      value: openIncidents,
-      icon: Shield,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200'
-    },
-    {
-      title: 'Most Common',
-      value: mostCommonCategory,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200'
-    },
-    {
-      title: 'Affected Facilities',
-      value: affectedFacilities,
-      icon: MapPin,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200'
-    }
-  ];
+  // Calculate advanced metrics from actual incident data
+  const resolutionMetrics = calculateResolutionMetrics(filteredIncidents);
+  const responseMetrics = calculateResponseMetrics(filteredIncidents);
+  const workloadMetrics = calculateWorkloadMetrics(filteredIncidents);
+  const riskMetrics = calculateRiskMetrics(filteredIncidents);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-      {summaryCards.map((card, index) => {
-        const Icon = card.icon;
-        
-        return (
-          <Card key={index} className={`border ${card.borderColor} hover:shadow-lg transition-all duration-300 ${card.bgColor}`}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {card.title}
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
-                  </p>
-                </div>
-                <div className={`p-3 rounded-full ${card.bgColor}`}>
-                  <Icon className={`h-6 w-6 ${card.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+      <ResolutionRateCard metrics={resolutionMetrics} />
+      <ResponseTimeCard metrics={responseMetrics} />
+      <WorkloadCard metrics={workloadMetrics} />
+      <RiskAlertsCard metrics={riskMetrics} />
     </div>
   );
 };
