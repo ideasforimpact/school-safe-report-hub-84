@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NewInsightsSummaryCards from '@/components/insights/NewInsightsSummaryCards';
+import NewInsightsCharts from '@/components/insights/NewInsightsCharts';
 
 const NewInsights = () => {
   const navigate = useNavigate();
@@ -64,6 +65,16 @@ const NewInsights = () => {
           assignmentWorkload={assignmentWorkload}
           onFilterApply={onFilterApply}
         />
+
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-6">Visual Analytics</h2>
+          <NewInsightsCharts
+            monthlyTrends={monthlyTrends}
+            facilityRisk={facilityRisk}
+            reportTypeDistribution={reportTypeDistribution}
+            assignmentWorkload={assignmentWorkload}
+          />
+        </div>
       </div>
     </Layout>
   );
