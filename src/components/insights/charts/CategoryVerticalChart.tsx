@@ -91,6 +91,9 @@ const CategoryVerticalChart: React.FC<CategoryVerticalChartProps> = ({ title, de
               />
               <YAxis 
                 tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                allowDecimals={false}
+                domain={[0, 'dataMax']}
+                tickFormatter={(value) => Math.floor(value).toString()}
               />
               <Tooltip 
                 content={<CategoryTooltip />}
