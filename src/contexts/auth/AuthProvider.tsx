@@ -216,14 +216,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         userEmail: session?.user?.email 
       });
 
-      // CRITICAL: Block all auth processing during logout to prevent re-authentication
+      // CRITICAL: Block auth processing during logout but ALLOW during legitimate login
       if (state.isLoggingOut || authCoordinator.isLogoutInProgress()) {
         console.log('🔒 AuthProvider: Blocking auth processing - logout in progress');
         return;
       }
+      
+      // Allow processing for legitimate login attempts
+      if (event === 'SIGNED_IN') {
+        console.log('✅ AuthProvider: Processing SIGNED_IN event - legitimate login attempt');
+      }
 
       if (event === 'SIGNED_IN' && session?.user) {
         console.log('👤 AuthProvider: User signed in via SSO:', session.user.email);
+        
+        // Set login in progress flag to prevent session validation interference
+        sessionStorage.setItem('is_login_in_progress', 'true');
+        localStorage.setItem('is_login_in_progress', 'true');
+        
         setIsProcessingAuth(true);
         setShowAuthLoading(true);
         
@@ -235,6 +245,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log('🔒 AuthProvider: Aborting auth - logout detected during processing');
               setIsProcessingAuth(false);
               setShowAuthLoading(false);
+              sessionStorage.removeItem('is_login_in_progress');
+              localStorage.removeItem('is_login_in_progress');
               return;
             }
 
@@ -263,6 +275,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setShowAuthLoading(false);
           } finally {
             setIsProcessingAuth(false);
+            // Clear login in progress flags
+            sessionStorage.removeItem('is_login_in_progress');
+            localStorage.removeItem('is_login_in_progress');
           }
         }, 0);
       } else if (event === 'SIGNED_OUT') {
@@ -295,15 +310,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Prevent infinite loops and respect coordinator blocks
     if (initializationCompleteRef.current || 
-        authCheckInProgressRef.current || 
-        authCoordinator.shouldBlockOperation('initialization')) {
+        authCheckInProgressRef.current) {
       console.log('🔄 AuthProvider: Skipping initialization', { 
         initComplete: initializationCompleteRef.current,
-        inProgress: authCheckInProgressRef.current,
-        blocked: authCoordinator.shouldBlockOperation('initialization')
+        inProgress: authCheckInProgressRef.current
       });
       return;
     }
+    
+    // Don't block initialization - it should always be allowed
+    console.log('✅ AuthProvider: Proceeding with initialization');
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;

@@ -21,11 +21,13 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   const MAX_VALIDATIONS = 5;
   
   useEffect(() => {
-    // Enhanced conditions to prevent session refresh during logout
+    // Enhanced conditions to prevent session refresh during logout or login
     const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
     const isLogoutInProgress = authCoordinator.isLogoutInProgress();
+    const isLoginInProgress = sessionStorage.getItem('is_login_in_progress') === 'true' ||
+                             localStorage.getItem('is_login_in_progress') === 'true';
     
-    if (!currentUser || isOnLoginRoute || isLogoutInProgress || authCoordinator.shouldBlockOperation('session refresh')) {
+    if (!currentUser || isOnLoginRoute || isLogoutInProgress || isLoginInProgress || authCoordinator.shouldBlockOperation('session refresh')) {
       // Clear any existing interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -34,6 +36,8 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
       
       if (isLogoutInProgress) {
         console.log('🔄 useSessionRefresh: Skipping session refresh - logout in progress');
+      } else if (isLoginInProgress) {
+        console.log('🔄 useSessionRefresh: Skipping session refresh - login in progress');
       }
       return;
     }
@@ -49,9 +53,13 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
         return;
       }
 
-      // Don't run if coordinator blocks it
-      if (authCoordinator.shouldBlockOperation('session refresh validation')) {
-        console.log('🔄 useSessionRefresh: Validation blocked by coordinator');
+      // Check for login in progress
+      const isLoginInProgress = sessionStorage.getItem('is_login_in_progress') === 'true' ||
+                               localStorage.getItem('is_login_in_progress') === 'true';
+
+      // Don't run if coordinator blocks it or login is in progress
+      if (authCoordinator.shouldBlockOperation('session refresh validation') || isLoginInProgress) {
+        console.log('🔄 useSessionRefresh: Validation blocked by coordinator or login in progress');
         return;
       }
 

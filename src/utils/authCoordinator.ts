@@ -72,10 +72,18 @@ export const authCoordinator = {
     console.log('🔄 AuthCoordinator: Redirect counter reset');
   },
 
-  // Enhanced state check with cross-storage monitoring
+  // Enhanced state check with cross-storage monitoring - excludes login operations
   shouldBlockOperation: (operation: string) => {
     const sessionLogout = sessionStorage.getItem('is_logout_initiated') === 'true';
     const localLogout = localStorage.getItem('is_logout_initiated') === 'true';
+    
+    // Never block login, authentication, or SSO operations
+    const loginOperations = ['login', 'authentication', 'sso', 'signin', 'oauth'];
+    if (loginOperations.some(op => operation.toLowerCase().includes(op))) {
+      console.log(`✅ AuthCoordinator: Allowing ${operation} - login operation not blocked`);
+      return false;
+    }
+    
     const blocked = isValidating || isLoggingOut || sessionLogout || localLogout;
     if (blocked) {
       console.log(`🚫 AuthCoordinator: Blocking ${operation} - validation: ${isValidating}, logout: ${isLoggingOut}, sessionLogout: ${sessionLogout}, localLogout: ${localLogout}`);
