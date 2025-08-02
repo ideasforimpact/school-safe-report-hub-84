@@ -1,11 +1,10 @@
 import React from 'react';
 import { MonthlyTrends, FacilityRisk, ReportTypeDistribution, AssignmentWorkload } from '@/hooks/useNewInsightsData';
-import TimeSeriesAnalysis from './charts/TimeSeriesAnalysis';
+import MonthlyComparisonChart from './charts/MonthlyComparisonChart';
 import BarChartComponent from './charts/BarChartComponent';
 import SimplePieChart from './charts/SimplePieChart';
 import StackedBarChart from './charts/StackedBarChart';
 import { 
-  transformMonthlyTrendsForChart,
   transformFacilityRiskForChart,
   transformReportTypeForChart,
   transformAssignmentWorkloadForChart
@@ -25,19 +24,18 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
   reportTypeDistribution,
   assignmentWorkload
 }) => {
-  const monthlyTrendsData = transformMonthlyTrendsForChart(monthlyTrends);
   const facilityRiskData = transformFacilityRiskForChart(facilityRisk);
   const reportTypeData = transformReportTypeForChart(reportTypeDistribution);
   const assignmentWorkloadData = transformAssignmentWorkloadForChart(assignmentWorkload);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Monthly Trends Chart */}
-      <div className="h-[400px]">
-        <TimeSeriesAnalysis 
-          data={monthlyTrendsData}
-          title="6-Month Incident Trends"
-          description="Monthly incident patterns and trending analysis"
+      {/* Monthly Comparison Chart */}
+      <div className="h-[500px]">
+        <MonthlyComparisonChart 
+          monthlyTrends={monthlyTrends}
+          title="Monthly Comparison Analysis"
+          description="Compare incident counts between selected months"
         />
       </div>
 
