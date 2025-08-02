@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_audit_log: {
+        Row: {
+          assessment_id: string
+          change_type: string
+          changed_at: string
+          changed_by: string | null
+          client_id: string | null
+          description: string | null
+          field_changed: string
+          id: string
+          metadata: Json | null
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          assessment_id: string
+          change_type?: string
+          changed_at?: string
+          changed_by?: string | null
+          client_id?: string | null
+          description?: string | null
+          field_changed: string
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          change_type?: string
+          changed_at?: string
+          changed_by?: string | null
+          client_id?: string | null
+          description?: string | null
+          field_changed?: string
+          id?: string
+          metadata?: Json | null
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: []
+      }
       assessment_templates: {
         Row: {
           category_id: string | null
@@ -1679,6 +1721,20 @@ export type Database = {
       }
       hash_password: {
         Args: { password: string }
+        Returns: string
+      }
+      insert_assessment_audit_log: {
+        Args: {
+          p_assessment_id: string
+          p_client_id: string
+          p_field_changed: string
+          p_changed_by: string
+          p_old_value?: string
+          p_new_value?: string
+          p_change_type?: string
+          p_description?: string
+          p_metadata?: Json
+        }
         Returns: string
       }
       insert_incident_audit_log: {

@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
+import AssessmentAuditTimeline from '../audit/AssessmentAuditTimeline';
 
 interface AssessmentViewDialogProps {
   open: boolean;
@@ -562,6 +563,9 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                     })}
                   </CardContent>
                 </Card>
+
+                {/* Assessment Activity Timeline */}
+                <AssessmentAuditTimeline assessmentId={assessment.id} />
               </div>
             </ScrollArea>
 
