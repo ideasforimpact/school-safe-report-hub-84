@@ -13,7 +13,7 @@ const TopReportersCard: React.FC<TopReportersCardProps> = ({ data, onFilterApply
   const reporters = data.contributors.filter(c => c.type === 'reporter').slice(0, 5);
 
   return (
-    <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
+    <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-white">Top Reporters</CardTitle>
         <User className="h-4 w-4 text-white/80" />
