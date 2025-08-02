@@ -12,11 +12,11 @@ interface StatusOverviewCardsProps {
 const StatusOverviewCards: React.FC<StatusOverviewCardsProps> = ({ title, description, data }) => {
   if (data.statuses.length === 0) {
     return (
-      <Card className="bg-gradient-to-br from-blue-400 to-blue-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Card className="bg-gradient-to-br from-gray-400 to-gray-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
           <CardTitle className="text-sm font-medium text-white">{title}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <div className="text-sm text-white/80">No status data available</div>
         </CardContent>
       </Card>
@@ -24,14 +24,14 @@ const StatusOverviewCards: React.FC<StatusOverviewCardsProps> = ({ title, descri
   }
 
   return (
-    <Card className="bg-gradient-to-br from-blue-400 to-blue-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="bg-gradient-to-br from-gray-400 to-gray-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle className="text-sm font-medium text-white">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
+      <CardContent className="p-4">
+        <div className="space-y-1.5">
           {data.statuses.map((status, index) => (
-            <div key={index} className="flex items-center justify-between p-2 hover:bg-white/10 rounded cursor-pointer transition-colors">
+            <div key={index} className="flex items-center justify-between p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors">
               <div className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full"
@@ -46,8 +46,8 @@ const StatusOverviewCards: React.FC<StatusOverviewCardsProps> = ({ title, descri
               </div>
             </div>
           ))}
-          <div className="text-xs text-white/80 pt-2 border-t border-white/20">
-            Total incidents: {data.totalIncidents}
+          <div className="text-xs text-white/80 pt-1 border-t border-white/20">
+            Total: {data.totalIncidents}
           </div>
         </div>
       </CardContent>

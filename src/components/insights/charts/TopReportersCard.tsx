@@ -13,24 +13,24 @@ const TopReportersCard: React.FC<TopReportersCardProps> = ({ data, onFilterApply
   const reporters = data.contributors.filter(c => c.type === 'reporter').slice(0, 5);
 
   return (
-    <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="bg-gradient-to-br from-gray-500 to-gray-600 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle className="text-sm font-medium text-white">Top Reporters</CardTitle>
         <User className="h-4 w-4 text-white/80" />
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4">
         {reporters.length === 0 ? (
           <div className="text-sm text-white/80">No reporter data available</div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {reporters.map((reporter, index) => (
               <div 
                 key={index} 
-                className="flex items-center justify-between p-2 hover:bg-white/10 rounded cursor-pointer transition-colors"
+                className="flex items-center justify-between p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors"
                 onClick={() => onFilterApply?.('reporter', reporter.name)}
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
                     <span className="text-xs font-medium text-white">
                       {index + 1}
                     </span>
@@ -44,9 +44,6 @@ const TopReportersCard: React.FC<TopReportersCardProps> = ({ data, onFilterApply
                 </Badge>
               </div>
             ))}
-            <div className="text-xs text-white/80 pt-2 border-t border-white/20">
-              Total reports: {data.totalReports}
-            </div>
           </div>
         )}
       </CardContent>
