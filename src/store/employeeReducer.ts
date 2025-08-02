@@ -80,7 +80,9 @@ export const employeeReducer = (
         isBackofficeUser: false,
         authError: null,
         configuredModules: [],
-        employeeData: null
+        employeeData: null,
+        clientId: null,
+        isLoggingOut: false
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
@@ -122,9 +124,15 @@ export const employeeReducer = (
       
     case EmployeeActionTypes.RESET_EMPLOYEE:
       return {
-        ...initialEmployeeState,
-        configuredModules: [],
+        currentUser: null,
+        isAuthenticated: false,
+        isBackofficeUser: false,
+        authError: null,
         employeeData: null,
+        configuredModules: [],
+        isLoading: false,
+        error: null,
+        clientId: null,
         isLoggingOut: false
       };
       

@@ -17,6 +17,11 @@ const Home = () => {
   const hasRedirectedRef = useRef(false);
   
   useEffect(() => {
+    // Reset redirect flag when user becomes null (logout)
+    if (!user) {
+      hasRedirectedRef.current = false;
+    }
+    
     // If user is logged in as SaaS owner, redirect them to dashboard
     if (user && isSaasOwner && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
