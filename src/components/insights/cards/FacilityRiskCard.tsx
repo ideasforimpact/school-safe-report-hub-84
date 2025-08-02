@@ -12,21 +12,21 @@ const FacilityRiskCard: React.FC<FacilityRiskCardProps> = ({ risk, onFilterApply
   const topFacility = risk.topFacilities[0];
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="bg-gradient-to-br from-red-500 to-orange-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">High-Risk Facilities</CardTitle>
-        <Building2 className="h-4 w-4 text-muted-foreground" />
+        <CardTitle className="text-sm font-medium text-white">High-Risk Facilities</CardTitle>
+        <Building2 className="h-4 w-4 text-white/80" />
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           {topFacility ? (
             <>
               <div 
-                className="cursor-pointer hover:bg-muted/50 p-2 rounded transition-colors"
+                className="cursor-pointer hover:bg-white/20 p-2 rounded transition-colors"
                 onClick={() => onFilterApply('facility', topFacility.name)}
               >
-                <div className="text-lg font-semibold">{topFacility.name}</div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-lg font-semibold text-white">{topFacility.name}</div>
+                <div className="text-sm text-white/80">
                   {topFacility.count} incidents ({topFacility.percentage.toFixed(1)}%)
                 </div>
               </div>
@@ -35,20 +35,20 @@ const FacilityRiskCard: React.FC<FacilityRiskCardProps> = ({ risk, onFilterApply
                 {risk.topFacilities.slice(1, 4).map((facility, index) => (
                   <div 
                     key={facility.name}
-                    className="flex justify-between items-center text-sm cursor-pointer hover:bg-muted/30 p-1 rounded"
+                    className="flex justify-between items-center text-sm cursor-pointer hover:bg-white/10 p-1 rounded"
                     onClick={() => onFilterApply('facility', facility.name)}
                   >
-                    <span className="truncate">{facility.name}</span>
-                    <span className="text-muted-foreground">{facility.count}</span>
+                    <span className="truncate text-white">{facility.name}</span>
+                    <span className="text-white/80">{facility.count}</span>
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <div className="text-sm text-muted-foreground">No facility data available</div>
+            <div className="text-sm text-white/80">No facility data available</div>
           )}
           
-          <div className="text-xs text-muted-foreground pt-2 border-t">
+          <div className="text-xs text-white/80 pt-2 border-t border-white/20">
             Total: {risk.totalIncidents} incidents
           </div>
         </div>

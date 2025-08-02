@@ -1,5 +1,4 @@
 import React from 'react';
-import MonthlyTrendsCard from './cards/MonthlyTrendsCard';
 import FacilityRiskCard from './cards/FacilityRiskCard';
 import ReportTypeCard from './cards/ReportTypeCard';
 import AssignmentWorkloadCard from './cards/AssignmentWorkloadCard';
@@ -21,8 +20,7 @@ const NewInsightsSummaryCards: React.FC<NewInsightsSummaryCardsProps> = ({
   onFilterApply
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-      <MonthlyTrendsCard trends={monthlyTrends} />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
       <FacilityRiskCard risk={facilityRisk} onFilterApply={onFilterApply} />
       <ReportTypeCard distribution={reportTypeDistribution} onFilterApply={onFilterApply} />
       <AssignmentWorkloadCard workload={assignmentWorkload} onFilterApply={onFilterApply} />
