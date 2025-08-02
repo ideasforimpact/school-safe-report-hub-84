@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { DateRange } from 'react-day-picker';
+import { isWithinInterval } from 'date-fns';
 
 export interface MonthlyTrends {
   currentMonth: {
@@ -94,7 +96,7 @@ export interface MonthlyTrendsArea {
   totalIncidents: number;
 }
 
-export const useNewInsightsData = () => {
+export const useNewInsightsData = (dateRange?: DateRange) => {
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -141,6 +143,21 @@ export const useNewInsightsData = () => {
     fetchData();
   }, [clientId]);
 
+  // Filter incidents by date range
+  const filteredIncidents = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return incidents;
+    }
+    
+    return incidents.filter(incident => {
+      const incidentDate = new Date(incident.created_at);
+      return isWithinInterval(incidentDate, { 
+        start: dateRange.from!, 
+        end: dateRange.to! 
+      });
+    });
+  }, [incidents, dateRange]);
+
   // Calculate monthly trends
   const monthlyTrends = useMemo((): MonthlyTrends => {
     const now = new Date();
@@ -150,12 +167,12 @@ export const useNewInsightsData = () => {
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    const currentMonthIncidents = incidents.filter(incident => {
+    const currentMonthIncidents = filteredIncidents.filter(incident => {
       const incidentDate = new Date(incident.created_at);
       return incidentDate.getMonth() === currentMonth && incidentDate.getFullYear() === currentYear;
     });
 
-    const previousMonthIncidents = incidents.filter(incident => {
+    const previousMonthIncidents = filteredIncidents.filter(incident => {
       const incidentDate = new Date(incident.created_at);
       return incidentDate.getMonth() === previousMonth && incidentDate.getFullYear() === previousYear;
     });
@@ -183,13 +200,13 @@ export const useNewInsightsData = () => {
       percentageChange,
       trend
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate facility risk
   const facilityRisk = useMemo((): FacilityRisk => {
     const facilityCount: Record<string, number> = {};
     
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       const facilityName = incident.facility?.name || 'Unknown Facility';
       facilityCount[facilityName] = (facilityCount[facilityName] || 0) + 1;
     });
@@ -198,22 +215,22 @@ export const useNewInsightsData = () => {
       .map(([name, count]) => ({
         name,
         count,
-        percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
+        percentage: filteredIncidents.length > 0 ? (count / filteredIncidents.length) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
     return {
       topFacilities,
-      totalIncidents: incidents.length
+      totalIncidents: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate report type distribution
   const reportTypeDistribution = useMemo((): ReportTypeDistribution => {
     const typeCount: Record<string, number> = {};
     
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       const typeName = incident.type?.name || 'Unknown Type';
       typeCount[typeName] = (typeCount[typeName] || 0) + 1;
     });
@@ -222,19 +239,19 @@ export const useNewInsightsData = () => {
       .map(([name, count]) => ({
         name,
         count,
-        percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
+        percentage: filteredIncidents.length > 0 ? (count / filteredIncidents.length) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
 
     return {
       types,
-      totalIncidents: incidents.length
+      totalIncidents: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate assignment workload
   const assignmentWorkload = useMemo((): AssignmentWorkload => {
-    const openIncidents = incidents.filter(incident => 
+    const openIncidents = filteredIncidents.filter(incident => 
       incident.status?.name !== 'Resolved' && incident.status?.name !== 'Closed'
     );
 
@@ -248,7 +265,7 @@ export const useNewInsightsData = () => {
     let totalSelfAssigned = 0;
     let totalAssigned = 0;
 
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       const assignedToName = incident.assigned_to_user 
         ? `${incident.assigned_to_user.first_name} ${incident.assigned_to_user.last_name}`
         : null;
@@ -297,13 +314,13 @@ export const useNewInsightsData = () => {
       totalOpenIncidents: openIncidents.length,
       selfAssignmentRate
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate priority distribution
   const priorityDistribution = useMemo((): PriorityDistribution => {
     const priorityCount: Record<string, { count: number; color: string }> = {};
     
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       const priorityName = incident.priority?.name || 'No Priority';
       const priorityColor = incident.priority?.color || '#9b87f5';
       
@@ -318,22 +335,22 @@ export const useNewInsightsData = () => {
         name,
         count,
         color,
-        percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
+        percentage: filteredIncidents.length > 0 ? (count / filteredIncidents.length) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
 
     return {
       priorities,
-      totalIncidents: incidents.length
+      totalIncidents: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate category breakdown
   const categoryBreakdown = useMemo((): CategoryBreakdown => {
     const categoryCount: Record<string, number> = {};
     const categoryClosedCount: Record<string, number> = {};
     
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       const categoryName = incident.category?.name || 'Unknown Category';
       categoryCount[categoryName] = (categoryCount[categoryName] || 0) + 1;
       
@@ -349,21 +366,21 @@ export const useNewInsightsData = () => {
         name,
         count,
         closedCount: categoryClosedCount[name] || 0,
-        percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
+        percentage: filteredIncidents.length > 0 ? (count / filteredIncidents.length) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
 
     return {
       categories,
-      totalIncidents: incidents.length
+      totalIncidents: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate status overview
   const statusOverview = useMemo((): StatusOverview => {
     const statusCount: Record<string, number> = {};
     
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       const statusName = incident.status?.name || 'Unknown Status';
       statusCount[statusName] = (statusCount[statusName] || 0) + 1;
     });
@@ -372,22 +389,22 @@ export const useNewInsightsData = () => {
       .map(([name, count]) => ({
         name,
         count,
-        percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
+        percentage: filteredIncidents.length > 0 ? (count / filteredIncidents.length) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);
 
     return {
       statuses,
-      totalIncidents: incidents.length
+      totalIncidents: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate top contributors
   const topContributors = useMemo((): TopContributors => {
     const reporterCount: Record<string, number> = {};
     const assigneeCount: Record<string, number> = {};
     
-    incidents.forEach(incident => {
+    filteredIncidents.forEach(incident => {
       // Count reporters
       const reporterName = incident.created_by_user 
         ? `${incident.created_by_user.first_name} ${incident.created_by_user.last_name}`
@@ -415,9 +432,9 @@ export const useNewInsightsData = () => {
 
     return {
       contributors,
-      totalReports: incidents.length
+      totalReports: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Calculate monthly trends area data
   const monthlyTrendsArea = useMemo((): MonthlyTrendsArea => {
@@ -428,7 +445,7 @@ export const useNewInsightsData = () => {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
       
-      const monthIncidents = incidents.filter(incident => {
+      const monthIncidents = filteredIncidents.filter(incident => {
         const incidentDate = new Date(incident.created_at);
         return incidentDate.getMonth() === date.getMonth() && 
                incidentDate.getFullYear() === date.getFullYear();
@@ -452,9 +469,9 @@ export const useNewInsightsData = () => {
 
     return {
       monthlyData,
-      totalIncidents: incidents.length
+      totalIncidents: filteredIncidents.length
     };
-  }, [incidents]);
+  }, [filteredIncidents]);
 
   // Filter application handler
   const onFilterApply = (filterType: string, value: string) => {
