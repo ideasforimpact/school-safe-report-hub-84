@@ -14,6 +14,11 @@ const NewInsights = () => {
     facilityRisk,
     reportTypeDistribution,
     assignmentWorkload,
+    priorityDistribution,
+    categoryBreakdown,
+    statusOverview,
+    topContributors,
+    monthlyTrendsArea,
     isLoading,
     onFilterApply
   } = useNewInsightsData();
@@ -73,6 +78,11 @@ const NewInsights = () => {
             facilityRisk={facilityRisk}
             reportTypeDistribution={reportTypeDistribution}
             assignmentWorkload={assignmentWorkload}
+            priorityDistribution={priorityDistribution}
+            categoryBreakdown={categoryBreakdown}
+            statusOverview={statusOverview}
+            topContributors={topContributors}
+            monthlyTrendsArea={monthlyTrendsArea}
           />
         </div>
       </div>
