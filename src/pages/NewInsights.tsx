@@ -73,17 +73,15 @@ const NewInsights = () => {
 
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-6">Visual Analytics</h2>
-          <NewInsightsCharts
-            monthlyTrends={monthlyTrends}
-            facilityRisk={facilityRisk}
-            reportTypeDistribution={reportTypeDistribution}
-            assignmentWorkload={assignmentWorkload}
-            priorityDistribution={priorityDistribution}
-            categoryBreakdown={categoryBreakdown}
-            statusOverview={statusOverview}
-            topContributors={topContributors}
-            monthlyTrendsArea={monthlyTrendsArea}
-          />
+        <NewInsightsCharts
+          facilityRisk={facilityRisk}
+          priorityDistribution={priorityDistribution}
+          categoryBreakdown={categoryBreakdown}
+          statusOverview={statusOverview}
+          topContributors={topContributors}
+          monthlyTrendsArea={monthlyTrendsArea}
+          onFilterApply={onFilterApply}
+        />
         </div>
       </div>
     </Layout>
