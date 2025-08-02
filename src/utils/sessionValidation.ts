@@ -86,9 +86,15 @@ export const validateBackofficeSession = (): boolean => {
 
 // Enhanced session validation with logout state awareness
 export const validateSession = async (): Promise<boolean> => {
-  // CRITICAL: Never validate during logout process to prevent re-authentication
-  if (authCoordinator.isLogoutInProgress() || authCoordinator.shouldBlockOperation('session validation')) {
-    console.log('🔐 validateSession: Validation blocked - logout in progress or coordinator block');
+  // Check for login in progress - never validate during login
+  const isLoginInProgress = sessionStorage.getItem('is_login_in_progress') === 'true' ||
+                           localStorage.getItem('is_login_in_progress') === 'true';
+  
+  // CRITICAL: Never validate during logout process or login to prevent re-authentication
+  if (authCoordinator.isLogoutInProgress() || 
+      authCoordinator.shouldBlockOperation('session validation') || 
+      isLoginInProgress) {
+    console.log('🔐 validateSession: Validation blocked - logout/login in progress or coordinator block');
     return true; // Don't invalidate during blocked operations
   }
 
