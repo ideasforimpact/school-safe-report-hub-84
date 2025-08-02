@@ -60,7 +60,6 @@ export interface CategoryBreakdown {
   categories: Array<{
     name: string;
     count: number;
-    resolvedCount: number;
     percentage: number;
   }>;
   totalIncidents: number;
@@ -330,27 +329,17 @@ export const useNewInsightsData = () => {
 
   // Calculate category breakdown
   const categoryBreakdown = useMemo((): CategoryBreakdown => {
-    const categoryStats: Record<string, { count: number; resolvedCount: number }> = {};
+    const categoryCount: Record<string, number> = {};
     
     incidents.forEach(incident => {
       const categoryName = incident.category?.name || 'Unknown Category';
-      const isResolved = incident.status?.name === 'Resolved' || incident.status?.name === 'Closed';
-      
-      if (!categoryStats[categoryName]) {
-        categoryStats[categoryName] = { count: 0, resolvedCount: 0 };
-      }
-      
-      categoryStats[categoryName].count++;
-      if (isResolved) {
-        categoryStats[categoryName].resolvedCount++;
-      }
+      categoryCount[categoryName] = (categoryCount[categoryName] || 0) + 1;
     });
 
-    const categories = Object.entries(categoryStats)
-      .map(([name, { count, resolvedCount }]) => ({
+    const categories = Object.entries(categoryCount)
+      .map(([name, count]) => ({
         name,
         count,
-        resolvedCount,
         percentage: incidents.length > 0 ? (count / incidents.length) * 100 : 0
       }))
       .sort((a, b) => b.count - a.count);

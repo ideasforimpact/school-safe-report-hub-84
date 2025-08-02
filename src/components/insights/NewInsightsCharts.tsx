@@ -12,7 +12,7 @@ import {
 import BarChartComponent from './charts/BarChartComponent';
 import PriorityPieChart from './charts/PriorityPieChart';
 import MonthlyTrendsAreaChart from './charts/MonthlyTrendsAreaChart';
-import CategoryVerticalChart from './charts/CategoryVerticalChart';
+import CategoryHorizontalChart from './charts/CategoryHorizontalChart';
 import StatusOverviewCards from './charts/StatusOverviewCards';
 import TopReportersCard from './charts/TopReportersCard';
 import TopAssigneesCard from './charts/TopAssigneesCard';
@@ -66,7 +66,7 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
       {/* Row 2: Category Chart (1 col) + High-Risk Facilities (1 col) - Equal space */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="h-[400px]">
-          <CategoryVerticalChart
+          <CategoryHorizontalChart
             title="Incidents by Category"
             description="Breakdown of incidents by category"
             data={categoryBreakdown}
