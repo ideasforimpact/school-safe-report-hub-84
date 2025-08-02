@@ -205,27 +205,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch
   });
 
-  // Setup Supabase auth listener for Google authentication
+  // Setup Supabase auth listener for SSO authentication with enhanced logout handling
   useEffect(() => {
-    if (authListenerSetupRef.current || state.isLoggingOut) return;
+    if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Skip processing if logging out
-      if (state.isLoggingOut) {
+      console.log('🔔 AuthProvider: Auth state changed:', event, { 
+        hasSession: !!session, 
+        isLoggingOut: state.isLoggingOut,
+        userEmail: session?.user?.email 
+      });
+
+      // CRITICAL: Block all auth processing during logout to prevent re-authentication
+      if (state.isLoggingOut || authCoordinator.isLogoutInProgress()) {
+        console.log('🔒 AuthProvider: Blocking auth processing - logout in progress');
         return;
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('👤 User signed in via SSO:', session.user.email);
+        console.log('👤 AuthProvider: User signed in via SSO:', session.user.email);
         setIsProcessingAuth(true);
         setShowAuthLoading(true);
         
         // Use setTimeout to avoid blocking the auth state change callback
         setTimeout(async () => {
           try {
+            // Double-check logout state before proceeding
+            if (state.isLoggingOut || authCoordinator.isLogoutInProgress()) {
+              console.log('🔒 AuthProvider: Aborting auth - logout detected during processing');
+              setIsProcessingAuth(false);
+              setShowAuthLoading(false);
+              return;
+            }
+
             await handleUserAuthentication(session.user);
             
-            // After successful SSO authentication, save with SSO session type
+            // Store SSO session data in localStorage for persistence
             const authStateToSave = {
               currentUser: currentUser,
               isAuthenticated: true,
@@ -236,27 +251,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               sessionType: 'sso' as const
             };
             
-            // Import and use saveAuthState
+            // Import and use saveAuthState with localStorage for SSO
             const { saveAuthState } = await import('@/store/authPersistence');
             saveAuthState(authStateToSave);
             
-            setTimeout(() => setShowAuthLoading(false), 2000);
+            console.log('✅ AuthProvider: SSO authentication completed successfully');
+            setTimeout(() => setShowAuthLoading(false), 1500);
           } catch (error) {
-            console.error("Error in handleUserAuthentication:", error);
+            console.error("❌ AuthProvider: Error in handleUserAuthentication:", error);
             toast.error("Authentication failed. Please try again.");
             setShowAuthLoading(false);
           } finally {
             setIsProcessingAuth(false);
           }
         }, 0);
-      } else if (event === 'SIGNED_OUT' && !state.isLoggingOut) {
-        dispatch(clearAuth());
-        dispatch(resetEmployee());
-        clearPersistedAuthState();
-        setShowAuthLoading(false);
-        setIsProcessingAuth(false);
-        toast.info("You have been logged out");
-        logoutUser();
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👋 AuthProvider: User signed out from Supabase');
+        
+        // Only process SIGNED_OUT if it's not part of our own logout process
+        if (!state.isLoggingOut && !authCoordinator.isLogoutInProgress()) {
+          console.log('🧹 AuthProvider: Processing external signout');
+          dispatch(clearAuth());
+          dispatch(resetEmployee());
+          clearPersistedAuthState();
+          setShowAuthLoading(false);
+          setIsProcessingAuth(false);
+          toast.info("You have been logged out");
+          logoutUser();
+        } else {
+          console.log('🔒 AuthProvider: Ignoring SIGNED_OUT during logout process');
+        }
       }
     });
     
@@ -265,7 +289,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication, dispatch, state.isLoggingOut]);
+  }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData]);
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
@@ -401,9 +425,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout with proper navigation and cleanup
+  // Enhanced SSO logout with proper sequence and state management
   const handleLogout = async (): Promise<void> => {
-    console.log('🚪 AuthProvider: Starting logout process');
+    console.log('🚪 AuthProvider: Starting enhanced SSO logout process');
     console.log('🕐 AuthProvider: Logout started at:', new Date().toISOString());
     
     // Check if logout is already in progress
@@ -417,35 +441,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🔒 AuthProvider: Set logout state to true');
     
     try {
-      // Clear Redux state immediately
-      console.log('🧹 AuthProvider: Clearing Redux state');
+      // PHASE 1: Clear application state first (prevents re-auth triggers)
+      console.log('🧹 AuthProvider: Phase 1 - Clearing application state');
       dispatch(clearAuth());
       dispatch(resetEmployee());
       
-      // Clear persisted state
-      console.log('🗑️ AuthProvider: Clearing persisted state');
-      clearPersistedAuthState();
+      // PHASE 2: Clear all storage (both localStorage and sessionStorage)
+      console.log('🗑️ AuthProvider: Phase 2 - Clearing all storage');
+      clearPersistedAuthState(); // Clears both localStorage and sessionStorage
+      logoutUser(); // Clear additional local storage items
       
-      // Clear local storage
-      console.log('💾 AuthProvider: Clearing local storage');
-      logoutUser();
-      
-      // For non-backoffice users, sign out from Supabase
+      // PHASE 3: Sign out from Supabase (for SSO users)
       if (!isBackofficeUser) {
         try {
-          console.log('🔐 AuthProvider: Signing out from Supabase');
+          console.log('🔐 AuthProvider: Phase 3 - Signing out from Supabase');
           await supabase.auth.signOut();
+          console.log('✅ AuthProvider: Supabase logout completed');
         } catch (supabaseError) {
-          console.error('Error signing out from Supabase:', supabaseError);
+          console.error('❌ AuthProvider: Error signing out from Supabase:', supabaseError);
+          // Continue with logout process even if Supabase signout fails
         }
       }
       
-      // Determine where to redirect based on user type and current route
+      // PHASE 4: Navigate to login page
       const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
       const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
       const targetPath = shouldRedirectToBackoffice ? '/backoffice/login' : '/login';
       
-      // Navigate only if coordinator allows it
+      console.log('🧭 AuthProvider: Phase 4 - Navigation logic', {
+        isCurrentlyBackoffice,
+        shouldRedirectToBackoffice,
+        targetPath,
+        currentPath: location.pathname
+      });
+      
+      // Navigate with proper coordination
       if (authCoordinator.canNavigate(targetPath)) {
         console.log('🧭 AuthProvider: Navigating to login page:', targetPath);
         if (shouldRedirectToBackoffice) {
@@ -454,17 +484,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           navigate('/login', { replace: true });
         }
       } else {
-        console.log('🚫 AuthProvider: Navigation blocked by coordinator');
+        console.log('🚫 AuthProvider: Navigation blocked by coordinator - attempting emergency reset');
+        authCoordinator.emergencyReset();
+        // Try navigation again after emergency reset
+        navigate(targetPath, { replace: true });
       }
       
-      // Wait a moment before clearing logout state to ensure navigation completes
+      // Show logout success message
+      toast.success("Successfully logged out");
+      
+      // PHASE 5: Reset coordination flags after navigation
       setTimeout(() => {
         authCoordinator.endLogout();
         dispatch(setLogoutState(false));
-        console.log('✅ AuthProvider: Logout completed and flags cleared');
-      }, 1000);
+        authCoordinator.resetRedirectCounter(); // Reset redirect counter for fresh start
+        console.log('✅ AuthProvider: Logout completed and all flags cleared');
+      }, 1500); // Slightly longer delay for navigation to complete
+      
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('❌ AuthProvider: Error during logout:', error);
       toast.error("Error during logout");
       
       // Clear logout flags even on error

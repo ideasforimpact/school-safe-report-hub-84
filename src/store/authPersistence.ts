@@ -14,22 +14,26 @@ export interface PersistedAuthState {
   sessionType?: 'backoffice' | 'sso'; // Track session type for proper validation
 }
 
-// Save authentication state to appropriate storage based on session type
+// Enhanced save with proper SSO/backoffice separation
 export const saveAuthState = (state: PersistedAuthState): void => {
   try {
     const serializedState = JSON.stringify(state);
     
-    // Use sessionStorage for backoffice (more secure, shorter-lived)
-    // Use localStorage for SSO sessions (better persistence across browser sessions)
+    // CRITICAL: Only use localStorage for SSO, sessionStorage for backoffice
+    // This prevents storage conflicts that cause re-authentication loops
     if (state.sessionType === 'backoffice' || state.isBackofficeUser) {
+      // Clear localStorage to prevent conflicts
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       sessionStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-      console.log('💾 saveAuthState: Saved backoffice auth state to sessionStorage');
+      console.log('💾 saveAuthState: Saved backoffice auth state to sessionStorage (cleared localStorage)');
     } else {
+      // Clear sessionStorage to prevent conflicts  
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
       localStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-      console.log('💾 saveAuthState: Saved SSO auth state to localStorage');
+      console.log('💾 saveAuthState: Saved SSO auth state to localStorage (cleared sessionStorage)');
     }
   } catch (error) {
-    console.error("Error saving auth state:", error);
+    console.error("❌ saveAuthState: Error saving auth state:", error);
   }
 };
 
