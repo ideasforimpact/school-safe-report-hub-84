@@ -94,6 +94,12 @@ export interface TotalIncidentData {
   closedPercentage: number;
 }
 
+export interface TopIncidentCreator {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
 export interface MonthlyTrendsArea {
   monthlyData: Array<{
     month: string;
@@ -501,6 +507,26 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
     };
   }, [filteredIncidents]);
 
+  // Calculate top incident creator
+  const topIncidentCreator: TopIncidentCreator = useMemo(() => {
+    const topReporter = topContributors.contributors.find(c => c.type === 'reporter');
+    const total = filteredIncidents.length;
+    
+    if (!topReporter || total === 0) {
+      return {
+        name: 'N/A',
+        count: 0,
+        percentage: 0
+      };
+    }
+    
+    return {
+      name: topReporter.name,
+      count: topReporter.count,
+      percentage: Math.round((topReporter.count / total) * 100)
+    };
+  }, [topContributors, filteredIncidents]);
+
   // Filter application handler
   const onFilterApply = (filterType: string, value: string) => {
     // This could navigate to the main incidents page with filters applied
@@ -519,6 +545,7 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
     topContributors,
     monthlyTrendsArea,
     totalIncidentData,
+    topIncidentCreator,
     filteredIncidents,
     isLoading,
     onFilterApply

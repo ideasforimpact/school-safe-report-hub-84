@@ -25,6 +25,7 @@ const NewInsights = () => {
     topContributors,
     monthlyTrendsArea,
     totalIncidentData,
+    topIncidentCreator,
     filteredIncidents,
     isLoading,
     onFilterApply
@@ -114,13 +115,13 @@ const NewInsights = () => {
           </div>
         </div>
 
-        <NewInsightsSummaryCards
-          totalIncidentData={totalIncidentData}
-          facilityRisk={facilityRisk}
-          reportTypeDistribution={reportTypeDistribution}
-          assignmentWorkload={assignmentWorkload}
-          onFilterApply={onFilterApply}
-        />
+          <NewInsightsSummaryCards 
+            totalIncidentData={totalIncidentData}
+            facilityRisk={facilityRisk}
+            reportTypeDistribution={reportTypeDistribution}
+            topIncidentCreator={topIncidentCreator}
+            onFilterApply={onFilterApply}
+          />
 
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-6">Visual Analytics</h2>
