@@ -3,59 +3,48 @@ import {
   MonthlyTrends, 
   FacilityRisk, 
   ReportTypeDistribution, 
-  AssignmentWorkload,
   PriorityDistribution,
   CategoryBreakdown,
   StatusOverview,
   TopContributors,
   MonthlyTrendsArea
 } from '@/hooks/useNewInsightsData';
-import MonthlyComparisonChart from './charts/MonthlyComparisonChart';
 import BarChartComponent from './charts/BarChartComponent';
-import SimplePieChart from './charts/SimplePieChart';
-import StackedBarChart from './charts/StackedBarChart';
 import PriorityPieChart from './charts/PriorityPieChart';
 import MonthlyTrendsAreaChart from './charts/MonthlyTrendsAreaChart';
 import CategoryHorizontalChart from './charts/CategoryHorizontalChart';
 import StatusOverviewCards from './charts/StatusOverviewCards';
-import TopContributorsList from './charts/TopContributorsList';
+import TopReportersCard from './charts/TopReportersCard';
+import TopAssigneesCard from './charts/TopAssigneesCard';
 import { 
-  transformFacilityRiskForChart,
-  transformReportTypeForChart,
-  transformAssignmentWorkloadForChart
+  transformFacilityRiskForChart
 } from '@/utils/chartDataTransformers';
 import { CHART_COLORS } from '@/utils/chartColorUtils';
 
 interface NewInsightsChartsProps {
-  monthlyTrends: MonthlyTrends;
   facilityRisk: FacilityRisk;
-  reportTypeDistribution: ReportTypeDistribution;
-  assignmentWorkload: AssignmentWorkload;
   priorityDistribution: PriorityDistribution;
   categoryBreakdown: CategoryBreakdown;
   statusOverview: StatusOverview;
   topContributors: TopContributors;
   monthlyTrendsArea: MonthlyTrendsArea;
+  onFilterApply?: (filterType: string, value: string) => void;
 }
 
 const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
-  monthlyTrends,
   facilityRisk,
-  reportTypeDistribution,
-  assignmentWorkload,
   priorityDistribution,
   categoryBreakdown,
   statusOverview,
   topContributors,
-  monthlyTrendsArea
+  monthlyTrendsArea,
+  onFilterApply
 }) => {
   const facilityRiskData = transformFacilityRiskForChart(facilityRisk);
-  const reportTypeData = transformReportTypeForChart(reportTypeDistribution);
-  const assignmentWorkloadData = transformAssignmentWorkloadForChart(assignmentWorkload);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-      {/* Monthly Trends Area Chart */}
+      {/* Row 1: Monthly Trends Area Chart (2 cols) + Priority Pie Chart (1 col) */}
       <div className="lg:col-span-2 h-[400px]">
         <MonthlyTrendsAreaChart 
           title="Monthly Incident Trends"
@@ -64,7 +53,6 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
         />
       </div>
 
-      {/* Priority Distribution Chart */}
       <div className="h-[400px]">
         <PriorityPieChart
           title="Incidents by Priority"
@@ -73,7 +61,7 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
         />
       </div>
 
-      {/* Category Distribution Chart */}
+      {/* Row 2: Category Chart (1 col) + High-Risk Facilities (1 col) + Empty slot */}
       <div className="h-[400px]">
         <CategoryHorizontalChart
           title="Incidents by Category"
@@ -82,7 +70,6 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
         />
       </div>
 
-      {/* High-Risk Facilities Chart */}
       <div className="h-[400px]">
         <BarChartComponent
           title="High-Risk Facilities"
@@ -93,30 +80,26 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
         />
       </div>
 
-      {/* Status Overview Cards */}
+      {/* Row 3: Top Reporters (1 col) + Top Assignees (1 col) + Status Overview (1 col) */}
+      <div className="h-[400px]">
+        <TopReportersCard
+          data={topContributors}
+          onFilterApply={onFilterApply}
+        />
+      </div>
+
+      <div className="h-[400px]">
+        <TopAssigneesCard
+          data={topContributors}
+          onFilterApply={onFilterApply}
+        />
+      </div>
+
       <div className="h-[400px]">
         <StatusOverviewCards
           title="Status Overview"
           description="Current status distribution"
           data={statusOverview}
-        />
-      </div>
-
-      {/* Top Contributors */}
-      <div className="lg:col-span-2 h-[400px]">
-        <TopContributorsList
-          title="Top Contributors"
-          description="Most active reporters and assignees"
-          data={topContributors}
-        />
-      </div>
-
-      {/* Assignment Workload Chart */}
-      <div className="h-[400px]">
-        <StackedBarChart
-          title="Assignment Workload"
-          description="Self-assigned vs assigned by others"
-          data={assignmentWorkloadData}
         />
       </div>
     </div>

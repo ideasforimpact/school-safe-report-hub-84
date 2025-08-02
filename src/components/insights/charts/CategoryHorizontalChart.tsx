@@ -12,17 +12,18 @@ interface CategoryHorizontalChartProps {
 }
 
 const CategoryHorizontalChart: React.FC<CategoryHorizontalChartProps> = ({ title, description, data }) => {
+  // Transform data for chart with yellow theme
   const chartData = data.categories.map((category, index) => ({
     name: category.name,
     value: category.count,
     percentage: category.percentage,
-    fill: CHART_COLORS.sequence[index % CHART_COLORS.sequence.length]
+    fill: `hsl(${45 + index * 15}, 85%, ${55 + index * 5}%)` // Yellow theme variations
   }));
 
   const chartConfig = {
     value: {
       label: "Incidents",
-      color: CHART_COLORS.orange,
+      color: "hsl(45, 85%, 60%)", // Primary yellow color
     },
   };
 
@@ -75,7 +76,7 @@ const CategoryHorizontalChart: React.FC<CategoryHorizontalChartProps> = ({ title
               />
               <Bar 
                 dataKey="value" 
-                fill={CHART_COLORS.orange}
+                fill="hsl(45, 85%, 60%)"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
