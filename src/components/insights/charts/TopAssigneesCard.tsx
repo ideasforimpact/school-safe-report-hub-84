@@ -13,16 +13,16 @@ const TopAssigneesCard: React.FC<TopAssigneesCardProps> = ({ data, onFilterApply
   const assignees = data.contributors.filter(c => c.type === 'assignee').slice(0, 5);
 
   return (
-    <Card className="bg-gradient-to-br from-slate-400 to-slate-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
+    <Card className="bg-gradient-to-br from-purple-400 to-purple-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle className="text-sm font-medium text-white">Top Assignees</CardTitle>
         <UserCheck className="h-4 w-4 text-white/80" />
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {assignees.length === 0 ? (
           <div className="text-sm text-white/80">No assignee data available</div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {assignees.map((assignee, index) => (
               <div 
                 key={index} 
