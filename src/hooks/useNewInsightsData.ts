@@ -86,6 +86,14 @@ export interface TopContributors {
   totalReports: number;
 }
 
+export interface TotalIncidentData {
+  total: number;
+  open: number;
+  closed: number;
+  openPercentage: number;
+  closedPercentage: number;
+}
+
 export interface MonthlyTrendsArea {
   monthlyData: Array<{
     month: string;
@@ -473,6 +481,26 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
     };
   }, [filteredIncidents]);
 
+  // Calculate total incident data with open/closed breakdown
+  const totalIncidentData = useMemo((): TotalIncidentData => {
+    const total = filteredIncidents.length;
+    
+    const closedStatuses = ['resolved', 'closed'];
+    const closedCount = filteredIncidents.filter(incident => 
+      closedStatuses.includes(incident.status?.name?.toLowerCase() || '')
+    ).length;
+    
+    const openCount = total - closedCount;
+    
+    return {
+      total,
+      open: openCount,
+      closed: closedCount,
+      openPercentage: total > 0 ? (openCount / total) * 100 : 0,
+      closedPercentage: total > 0 ? (closedCount / total) * 100 : 0
+    };
+  }, [filteredIncidents]);
+
   // Filter application handler
   const onFilterApply = (filterType: string, value: string) => {
     // This could navigate to the main incidents page with filters applied
@@ -490,6 +518,7 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
     statusOverview,
     topContributors,
     monthlyTrendsArea,
+    totalIncidentData,
     filteredIncidents,
     isLoading,
     onFilterApply

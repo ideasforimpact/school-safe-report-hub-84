@@ -24,6 +24,7 @@ const NewInsights = () => {
     statusOverview,
     topContributors,
     monthlyTrendsArea,
+    totalIncidentData,
     filteredIncidents,
     isLoading,
     onFilterApply
@@ -113,8 +114,8 @@ const NewInsights = () => {
           </div>
         </div>
 
-        <NewInsightsSummaryCards 
-          monthlyTrends={monthlyTrends}
+        <NewInsightsSummaryCards
+          totalIncidentData={totalIncidentData}
           facilityRisk={facilityRisk}
           reportTypeDistribution={reportTypeDistribution}
           assignmentWorkload={assignmentWorkload}
