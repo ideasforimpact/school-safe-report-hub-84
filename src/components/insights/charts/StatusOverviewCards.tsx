@@ -12,51 +12,42 @@ interface StatusOverviewCardsProps {
 const StatusOverviewCards: React.FC<StatusOverviewCardsProps> = ({ title, description, data }) => {
   if (data.statuses.length === 0) {
     return (
-      <Card className="h-full">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
+      <Card className="bg-gradient-to-br from-blue-400 to-blue-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-white">{title}</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">No status data available</p>
+        <CardContent>
+          <div className="text-sm text-white/80">No status data available</div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+    <Card className="bg-gradient-to-br from-blue-400 to-blue-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-white">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-2">
           {data.statuses.map((status, index) => (
-            <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center gap-3">
+            <div key={index} className="flex items-center justify-between p-2 hover:bg-white/10 rounded cursor-pointer transition-colors">
+              <div className="flex items-center gap-2">
                 <div 
-                  className="w-4 h-4 rounded-full"
+                  className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: getStatusColor(status.name) }}
                 />
-                <div>
-                  <p className="font-medium">{status.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {status.percentage.toFixed(1)}% of total
-                  </p>
-                </div>
+                <span className="text-sm font-medium text-white truncate">
+                  {status.name}
+                </span>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">{status.count}</p>
-                <p className="text-sm text-muted-foreground">incidents</p>
+                <span className="text-lg font-bold text-white">{status.count}</span>
               </div>
             </div>
           ))}
-        </div>
-        <div className="mt-4 pt-4 border-t">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Total Incidents</span>
-            <span className="text-lg font-bold">{data.totalIncidents}</span>
+          <div className="text-xs text-white/80 pt-2 border-t border-white/20">
+            Total incidents: {data.totalIncidents}
           </div>
         </div>
       </CardContent>
