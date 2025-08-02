@@ -131,7 +131,10 @@ async function checkClosePermissions(
 
   let canClose = false
 
-  if (hasIncidentAdmin) {
+  // Super admins can close any incident
+  if (employee.is_super_admin) {
+    canClose = true
+  } else if (hasIncidentAdmin) {
     // Incident admin can close own + assigned incidents
     canClose = isCreator || isAssigned
   } else {
