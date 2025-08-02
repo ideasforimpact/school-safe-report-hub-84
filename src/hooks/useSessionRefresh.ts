@@ -20,6 +20,13 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   const validationCountRef = useRef(0);
   const MAX_VALIDATIONS = 5;
   
+  // Early return for SSO users - they don't need session validation
+  // Supabase handles all token management for SSO users automatically
+  if (currentUser && !isBackofficeUser) {
+    console.log('🔄 useSessionRefresh: Skipping for SSO user - Supabase handles session management');
+    return { refreshSession: async () => true }; // Return dummy function that always returns true
+  }
+  
   useEffect(() => {
     // Enhanced conditions to prevent session refresh during logout or login
     const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';

@@ -98,32 +98,31 @@ export const validateSession = async (): Promise<boolean> => {
     return true; // Don't invalidate during blocked operations
   }
 
-  // Try to start validation - exit if already in progress
+  console.log('🔐 validateSession: Starting enhanced session validation');
+  const authState = loadAuthState();
+  
+  // If no auth state, invalid session (unless we're logging out)
+  if (!authState) {
+    console.log('🔐 validateSession: No auth state found');
+    return false;
+  }
+  
+  // CRITICAL FIX: For SSO users, return true immediately - let Supabase handle everything
+  if (authState.sessionType === 'sso') {
+    console.log('🔐 validateSession: SSO user detected - skipping validation, letting Supabase handle session');
+    return true; // Always return true for SSO users
+  }
+
+  // Try to start validation - exit if already in progress (only for backoffice users)
   if (!authCoordinator.startValidation()) {
     console.log('🔐 validateSession: Validation already in progress, returning true');
     return true;
   }
 
   try {
-    console.log('🔐 validateSession: Starting enhanced session validation');
-    const authState = loadAuthState();
-    
-    // If no auth state, invalid session (unless we're logging out)
-    if (!authState) {
-      console.log('🔐 validateSession: No auth state found');
-      return false;
-    }
-    
-    // Double-check logout state from auth state
-    if (authState.sessionType === 'sso') {
-      // For SSO users, validate Supabase session
-      console.log('🔐 validateSession: Detected SSO user, using Supabase validation');
-      return await validateSupabaseSession();
-    } else {
-      // For backoffice users, validate JWT
-      console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
-      return validateBackofficeSession();
-    }
+    // For backoffice users, validate JWT
+    console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
+    return validateBackofficeSession();
   } finally {
     authCoordinator.endValidation();
   }
