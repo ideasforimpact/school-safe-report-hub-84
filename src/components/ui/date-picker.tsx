@@ -87,7 +87,7 @@ export function DatePickerWithRange({
                 format(date.from, "LLL dd, y")
               )
             ) : (
-              <span>Pick a date range</span>
+              <span>Select date range for analytics</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -95,7 +95,7 @@ export function DatePickerWithRange({
           <Calendar
             initialFocus
             mode="range"
-            defaultMonth={date?.from || new Date()}
+            defaultMonth={new Date()}
             selected={date}
             onSelect={onChange}
             numberOfMonths={2}
