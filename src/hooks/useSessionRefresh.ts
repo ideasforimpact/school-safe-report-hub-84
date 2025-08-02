@@ -22,29 +22,21 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   
   useEffect(() => {
     // Early return for SSO users - they don't need session validation
-    // Supabase handles all token management for SSO users automatically
     if (currentUser && !isBackofficeUser) {
-      console.log('🔄 useSessionRefresh: Skipping for SSO user - Supabase handles session management');
       return;
     }
 
-    // Enhanced conditions to prevent session refresh during logout or login
+    // Skip session refresh during logout, login, or on login routes
     const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
     const isLogoutInProgress = authCoordinator.isLogoutInProgress();
     const isLoginInProgress = sessionStorage.getItem('is_login_in_progress') === 'true' ||
                              localStorage.getItem('is_login_in_progress') === 'true';
     
-    if (!currentUser || isOnLoginRoute || isLogoutInProgress || isLoginInProgress || authCoordinator.shouldBlockOperation('session refresh')) {
+    if (!currentUser || isOnLoginRoute || isLogoutInProgress || isLoginInProgress) {
       // Clear any existing interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-      }
-      
-      if (isLogoutInProgress) {
-        console.log('🔄 useSessionRefresh: Skipping session refresh - logout in progress');
-      } else if (isLoginInProgress) {
-        console.log('🔄 useSessionRefresh: Skipping session refresh - login in progress');
       }
       return;
     }
@@ -52,7 +44,6 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
     const checkSession = async () => {
       // Circuit breaker: prevent too many validations
       if (validationCountRef.current >= MAX_VALIDATIONS) {
-        console.log('🔄 useSessionRefresh: Max validations reached, stopping');
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;
@@ -64,36 +55,29 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
       const isLoginInProgress = sessionStorage.getItem('is_login_in_progress') === 'true' ||
                                localStorage.getItem('is_login_in_progress') === 'true';
 
-      // Don't run if coordinator blocks it or login is in progress
-      if (authCoordinator.shouldBlockOperation('session refresh validation') || isLoginInProgress) {
-        console.log('🔄 useSessionRefresh: Validation blocked by coordinator or login in progress');
+      // Don't run if login is in progress
+      if (isLoginInProgress) {
         return;
       }
 
       validationCountRef.current++;
-      console.log(`🔄 useSessionRefresh: Checking session validity (attempt ${validationCountRef.current}/${MAX_VALIDATIONS})`);
       
       try {
         const isValid = await validateSession();
         
         if (!isValid) {
-          console.log('🔄 useSessionRefresh: Session invalid, logging out');
-          
           // Clear state
           dispatch(clearAuth());
           dispatch(resetEmployee());
           clearPersistedAuthState();
           
-          // Show error message only if we can navigate
-          if (authCoordinator.canNavigate(isBackofficeUser ? '/backoffice/login' : '/login')) {
-            toast.error("Your session has expired. Please login again.");
-            
-            // Navigate to appropriate login page
-            if (isBackofficeUser) {
-              navigate('/backoffice/login', { replace: true });
-            } else {
-              navigate('/login', { replace: true });
-            }
+          // Show error message and navigate
+          toast.error("Your session has expired. Please login again.");
+          
+          if (isBackofficeUser) {
+            navigate('/backoffice/login', { replace: true });
+          } else {
+            navigate('/login', { replace: true });
           }
           
           // Clear the interval since we're logging out
@@ -102,23 +86,19 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
             intervalRef.current = null;
           }
         } else {
-          console.log('🔄 useSessionRefresh: Session is valid');
           // Reset validation counter on successful validation
           validationCountRef.current = 0;
         }
       } catch (error) {
-        console.error('🔄 useSessionRefresh: Error during session validation', error);
+        console.error('Session validation error:', error);
         dispatch(setAuthError('Session validation failed'));
       }
     };
     
-    // Adjust interval based on user type (SSO users need less frequent checks)
-    const actualIntervalMinutes = isBackofficeUser ? intervalMinutes : intervalMinutes * 2;
-    
     // Set up interval for periodic session checks
-    intervalRef.current = setInterval(checkSession, actualIntervalMinutes * 60 * 1000);
+    intervalRef.current = setInterval(checkSession, intervalMinutes * 60 * 1000);
     
-    // Also check immediately (but not if we're just starting up)
+    // Check immediately after a short delay
     setTimeout(checkSession, 1000);
     
     // Cleanup interval on unmount or dependency change
@@ -132,50 +112,35 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   
   // Manual session refresh function
   const refreshSession = async (): Promise<boolean> => {
-    console.log('🔄 useSessionRefresh: Manual session refresh requested');
-    
     // For SSO users, always return true (no validation needed)
     if (currentUser && !isBackofficeUser) {
-      console.log('🔄 useSessionRefresh: Manual refresh skipped for SSO user');
       return true;
-    }
-    
-    // Don't allow manual refresh if operations are blocked
-    if (authCoordinator.shouldBlockOperation('manual session refresh')) {
-      console.log('🔄 useSessionRefresh: Manual refresh blocked by coordinator');
-      return true; // Return true to avoid triggering logout
     }
     
     try {
       const isValid = await validateSession();
       
       if (!isValid) {
-        console.log('🔄 useSessionRefresh: Manual refresh - session invalid');
-        
         // Clear state
         dispatch(clearAuth());
         dispatch(resetEmployee());
         clearPersistedAuthState();
         
-        // Show error message and navigate only if allowed
-        if (authCoordinator.canNavigate(isBackofficeUser ? '/backoffice/login' : '/login')) {
-          toast.error("Your session has expired. Please login again.");
-          
-          // Navigate to appropriate login page
-          if (isBackofficeUser) {
-            navigate('/backoffice/login', { replace: true });
-          } else {
-            navigate('/login', { replace: true });
-          }
+        // Show error message and navigate
+        toast.error("Your session has expired. Please login again.");
+        
+        if (isBackofficeUser) {
+          navigate('/backoffice/login', { replace: true });
+        } else {
+          navigate('/login', { replace: true });
         }
         
         return false;
       }
       
-      console.log('🔄 useSessionRefresh: Manual refresh - session valid');
       return true;
     } catch (error) {
-      console.error('🔄 useSessionRefresh: Error during manual session refresh', error);
+      console.error('Session refresh error:', error);
       dispatch(setAuthError('Session refresh failed'));
       return false;
     }

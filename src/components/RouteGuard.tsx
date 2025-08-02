@@ -38,25 +38,11 @@ const RouteGuard = ({
   // Skip session validation on login routes
   const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
   
-  console.log('🛡️ RouteGuard: Route protection check', { 
-    pathname: location.pathname,
-    isBackoffice, 
-    requireAuth, 
-    isOnLoginRoute,
-    hasCurrentUser: !!currentUser,
-    isBackofficeUser 
-  });
 
   // Handle backoffice route protection with JWT validation (but not on login routes)
   if (isBackoffice && requireAuth && !isOnLoginRoute) {
-    console.log('🛡️ RouteGuard: Validating backoffice session', { 
-      hasCurrentUser: !!currentUser, 
-      isBackofficeUser 
-    });
-    
     // First check if user exists at all
     if (!currentUser) {
-      console.log('🛡️ RouteGuard: No current user, redirecting to login');
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
     
@@ -64,29 +50,15 @@ const RouteGuard = ({
     const isValidSession = validateBackofficeSession();
     
     if (!isValidSession) {
-      console.log('🛡️ RouteGuard: Session invalid, redirecting to login');
       // Clear any stale auth state and redirect to backoffice login
       dispatch(clearAuth());
       toast.error("Your session has expired. Please login again.");
       return <Navigate to="/backoffice/login" state={{ from: location }} replace />;
     }
-    console.log('🛡️ RouteGuard: Session valid, allowing access');
   }
 
-  // If currently logging out or coordinator blocks operations, show loading
-  if (state.isLoggingOut || authCoordinator.isLogoutInProgress() || authCoordinator.shouldBlockOperation('route guard')) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">
-          {state.isLoggingOut || authCoordinator.isLogoutInProgress() ? 'Logging out...' : 'Loading...'}
-        </p>
-      </div>
-    </div>;
-  }
-
-  // If currently processing authentication, show loading instead of redirecting
-  if (isProcessingAuth) {
+  // Only show loading during auth processing, not logout
+  if (isProcessingAuth && !state.isLoggingOut && !authCoordinator.isLogoutInProgress()) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
@@ -94,6 +66,7 @@ const RouteGuard = ({
       </div>
     </div>;
   }
+
 
   // If authentication is required and user is not logged in, redirect to login
   if (requireAuth && !currentUser) {
