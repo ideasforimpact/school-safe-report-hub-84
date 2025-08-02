@@ -20,23 +20,26 @@ const TopIncidentCreatorCard: React.FC<TopIncidentCreatorCardProps> = ({ creator
 
   return (
     <Card 
-      className="bg-gradient-to-br from-purple-400 to-purple-500 text-white border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer h-36"
+      className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
       onClick={handleClick}
     >
-      <div className="p-4 h-full flex flex-col justify-between">
-        <div className="flex items-center justify-between">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm">Top Reporter</h3>
           <User className="w-4 h-4 text-white/80" />
         </div>
         
-        <div className="text-center">
+        <div className="space-y-2">
           <div className="text-lg font-bold truncate" title={creator.name}>
             {creator.name}
           </div>
         </div>
         
-        <div className="text-center pt-2 border-t border-white/20">
-          <span className="text-2xl font-bold">{creator.count}</span>
+        <div className="mt-3 pt-2 border-t border-white/20">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-white/80">Total reports</span>
+            <span className="text-lg font-bold">{creator.count}</span>
+          </div>
         </div>
       </div>
     </Card>
