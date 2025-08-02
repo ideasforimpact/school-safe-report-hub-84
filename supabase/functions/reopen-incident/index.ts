@@ -106,7 +106,10 @@ async function checkReopenPermissions(
 
   let canReopen = false
 
-  if (hasIncidentAdmin) {
+  // Super admins can reopen any incident
+  if (currentEmployee.is_super_admin) {
+    canReopen = true
+  } else if (hasIncidentAdmin) {
     // Incident admin can reopen own + assigned incidents
     canReopen = isCreator || isAssigned
   } else {
