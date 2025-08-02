@@ -1,9 +1,24 @@
 import React from 'react';
-import { MonthlyTrends, FacilityRisk, ReportTypeDistribution, AssignmentWorkload } from '@/hooks/useNewInsightsData';
+import { 
+  MonthlyTrends, 
+  FacilityRisk, 
+  ReportTypeDistribution, 
+  AssignmentWorkload,
+  PriorityDistribution,
+  CategoryBreakdown,
+  StatusOverview,
+  TopContributors,
+  MonthlyTrendsArea
+} from '@/hooks/useNewInsightsData';
 import MonthlyComparisonChart from './charts/MonthlyComparisonChart';
 import BarChartComponent from './charts/BarChartComponent';
 import SimplePieChart from './charts/SimplePieChart';
 import StackedBarChart from './charts/StackedBarChart';
+import PriorityPieChart from './charts/PriorityPieChart';
+import MonthlyTrendsAreaChart from './charts/MonthlyTrendsAreaChart';
+import CategoryHorizontalChart from './charts/CategoryHorizontalChart';
+import StatusOverviewCards from './charts/StatusOverviewCards';
+import TopContributorsList from './charts/TopContributorsList';
 import { 
   transformFacilityRiskForChart,
   transformReportTypeForChart,
@@ -16,26 +31,54 @@ interface NewInsightsChartsProps {
   facilityRisk: FacilityRisk;
   reportTypeDistribution: ReportTypeDistribution;
   assignmentWorkload: AssignmentWorkload;
+  priorityDistribution: PriorityDistribution;
+  categoryBreakdown: CategoryBreakdown;
+  statusOverview: StatusOverview;
+  topContributors: TopContributors;
+  monthlyTrendsArea: MonthlyTrendsArea;
 }
 
 const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
   monthlyTrends,
   facilityRisk,
   reportTypeDistribution,
-  assignmentWorkload
+  assignmentWorkload,
+  priorityDistribution,
+  categoryBreakdown,
+  statusOverview,
+  topContributors,
+  monthlyTrendsArea
 }) => {
   const facilityRiskData = transformFacilityRiskForChart(facilityRisk);
   const reportTypeData = transformReportTypeForChart(reportTypeDistribution);
   const assignmentWorkloadData = transformAssignmentWorkloadForChart(assignmentWorkload);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Monthly Comparison Chart */}
-      <div className="h-[500px]">
-        <MonthlyComparisonChart 
-          monthlyTrends={monthlyTrends}
-          title="Monthly Comparison Analysis"
-          description="Compare incident counts between selected months"
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {/* Monthly Trends Area Chart */}
+      <div className="lg:col-span-2 h-[400px]">
+        <MonthlyTrendsAreaChart 
+          title="Monthly Incident Trends"
+          description="6-month trend showing total, open, and closed incidents"
+          data={monthlyTrendsArea}
+        />
+      </div>
+
+      {/* Priority Distribution Chart */}
+      <div className="h-[400px]">
+        <PriorityPieChart
+          title="Incidents by Priority"
+          description="Distribution of incidents by priority level"
+          data={priorityDistribution}
+        />
+      </div>
+
+      {/* Category Distribution Chart */}
+      <div className="h-[400px]">
+        <CategoryHorizontalChart
+          title="Incidents by Category"
+          description="Breakdown of incidents by category"
+          data={categoryBreakdown}
         />
       </div>
 
@@ -50,13 +93,21 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
         />
       </div>
 
-      {/* Report Type Distribution Chart */}
+      {/* Status Overview Cards */}
       <div className="h-[400px]">
-        <SimplePieChart
-          title="Report Type Distribution"
-          description="Breakdown of incident types"
-          data={reportTypeData}
-          colors={[CHART_COLORS.red, CHART_COLORS.orange, CHART_COLORS.blue, CHART_COLORS.green, CHART_COLORS.purple, CHART_COLORS.yellow]}
+        <StatusOverviewCards
+          title="Status Overview"
+          description="Current status distribution"
+          data={statusOverview}
+        />
+      </div>
+
+      {/* Top Contributors */}
+      <div className="lg:col-span-2 h-[400px]">
+        <TopContributorsList
+          title="Top Contributors"
+          description="Most active reporters and assignees"
+          data={topContributors}
         />
       </div>
 

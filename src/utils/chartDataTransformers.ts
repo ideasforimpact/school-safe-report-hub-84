@@ -1,4 +1,14 @@
-import { MonthlyTrends, FacilityRisk, ReportTypeDistribution, AssignmentWorkload } from '@/hooks/useNewInsightsData';
+import { 
+  MonthlyTrends, 
+  FacilityRisk, 
+  ReportTypeDistribution, 
+  AssignmentWorkload,
+  PriorityDistribution,
+  CategoryBreakdown,
+  StatusOverview,
+  TopContributors,
+  MonthlyTrendsArea
+} from '@/hooks/useNewInsightsData';
 
 // Transform monthly trends for line chart (mock 6 months of data)
 export function transformMonthlyTrendsForChart(trends: MonthlyTrends) {
@@ -56,5 +66,52 @@ export function transformAssignmentWorkloadForChart(assignmentWorkload: Assignme
     assignedByOthers: assignee.assignedByOthers,
     total: assignee.totalAssigned,
     open: assignee.openCount
+  }));
+}
+
+// Transform priority distribution for pie chart
+export function transformPriorityDistributionForChart(priorityDistribution: PriorityDistribution) {
+  return priorityDistribution.priorities.map(priority => ({
+    name: priority.name,
+    value: priority.count,
+    percentage: priority.percentage,
+    fill: priority.color
+  }));
+}
+
+// Transform category breakdown for horizontal bar chart
+export function transformCategoryBreakdownForChart(categoryBreakdown: CategoryBreakdown) {
+  return categoryBreakdown.categories.map(category => ({
+    name: category.name,
+    value: category.count,
+    percentage: category.percentage
+  }));
+}
+
+// Transform status overview for cards
+export function transformStatusOverviewForChart(statusOverview: StatusOverview) {
+  return statusOverview.statuses.map(status => ({
+    name: status.name,
+    count: status.count,
+    percentage: status.percentage
+  }));
+}
+
+// Transform top contributors for list
+export function transformTopContributorsForChart(topContributors: TopContributors) {
+  return {
+    reporters: topContributors.contributors.filter(c => c.type === 'reporter'),
+    assignees: topContributors.contributors.filter(c => c.type === 'assignee'),
+    totalReports: topContributors.totalReports
+  };
+}
+
+// Transform monthly trends area for area chart
+export function transformMonthlyTrendsAreaForChart(monthlyTrendsArea: MonthlyTrendsArea) {
+  return monthlyTrendsArea.monthlyData.map(month => ({
+    month: month.month,
+    incidents: month.incidents,
+    closed: month.closed,
+    open: month.open
   }));
 }
