@@ -9,10 +9,18 @@ import NewInsightsSummaryCards from '@/components/insights/NewInsightsSummaryCar
 import NewInsightsCharts from '@/components/insights/NewInsightsCharts';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { DateRange } from 'react-day-picker';
+import { subMonths, startOfDay } from 'date-fns';
 
 const NewInsights = () => {
   const navigate = useNavigate();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const today = new Date();
+    const sixMonthsAgo = subMonths(today, 6);
+    return {
+      from: startOfDay(sixMonthsAgo),
+      to: today
+    };
+  });
   
   const {
     monthlyTrends,
@@ -59,7 +67,7 @@ const NewInsights = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incidents
             </Button>
-            <h1 className="text-2xl font-semibold">Business Insights</h1>
+            <h1 className="text-2xl font-semibold">Incident Analytics</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-80">
@@ -98,7 +106,7 @@ const NewInsights = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incidents
             </Button>
-            <h1 className="text-2xl font-semibold">Business Insights</h1>
+            <h1 className="text-2xl font-semibold">Incident Analytics</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-80">
