@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // If user already has client info, use it directly
     if (user.client !== undefined && user.clientType !== undefined) {
       dispatch(setCurrentUser(user));
-      setTimeout(() => setShowAuthLoading(false), 2000);
+      setShowAuthLoading(false);
       return;
     }
 
@@ -169,15 +169,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           clientType
         };
         dispatch(setCurrentUser(userWithClientInfo));
-        setTimeout(() => setShowAuthLoading(false), 2000);
+        setShowAuthLoading(false);
       } catch (error) {
         console.error("Error fetching client info for user:", error);
         dispatch(setCurrentUser(user));
-        setTimeout(() => setShowAuthLoading(false), 2000);
+        setShowAuthLoading(false);
       }
     } else {
       dispatch(setCurrentUser(user));
-      setTimeout(() => setShowAuthLoading(false), 2000);
+      setShowAuthLoading(false);
     }
   }).current;
 
@@ -245,7 +245,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const { saveAuthState } = await import('@/store/authPersistence');
             saveAuthState(authStateToSave);
             
-            setTimeout(() => setShowAuthLoading(false), 1500);
+            setShowAuthLoading(false);
           } catch (error) {
             toast.error("Authentication failed. Please try again.");
             setShowAuthLoading(false);
@@ -373,7 +373,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch(setLoading(false));
         }
         
-        setTimeout(() => setShowAuthLoading(false), 2000);
+        setShowAuthLoading(false);
         return true;
       }
 
@@ -391,77 +391,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Enhanced SSO logout with proper sequence and state management
+  // Simplified logout with immediate state clearing
   const handleLogout = async (): Promise<void> => {
     // Check if logout is already in progress
     if (!authCoordinator.startLogout()) {
       return;
     }
     
-    // Set logout state immediately to prevent validation loops and redirects
-    dispatch(setLogoutState(true));
-    console.log('🔒 AuthProvider: Set logout state to true');
-    
     try {
-      // PHASE 1: Clear application state first (prevents re-auth triggers)
-      console.log('🧹 AuthProvider: Phase 1 - Clearing application state');
+      // Immediate state clearing - no setTimeout delays
+      dispatch(setLogoutState(true));
       dispatch(clearAuth());
       dispatch(resetEmployee());
+      clearPersistedAuthState();
+      logoutUser();
       
-      // PHASE 2: Clear all storage (both localStorage and sessionStorage)
-      console.log('🗑️ AuthProvider: Phase 2 - Clearing all storage');
-      clearPersistedAuthState(); // Clears both localStorage and sessionStorage
-      logoutUser(); // Clear additional local storage items
-      
-      // PHASE 3: Sign out from Supabase (for SSO users)
+      // Sign out from Supabase (for SSO users)
       if (!isBackofficeUser) {
         try {
-          console.log('🔐 AuthProvider: Phase 3 - Signing out from Supabase');
           await supabase.auth.signOut();
-          console.log('✅ AuthProvider: Supabase logout completed');
-        } catch (supabaseError) {
-          console.error('❌ AuthProvider: Error signing out from Supabase:', supabaseError);
-          // Continue with logout process even if Supabase signout fails
+        } catch (error) {
+          // Continue with logout even if Supabase fails
+          console.error('Supabase logout error:', error);
         }
       }
       
-      // PHASE 4: Navigate to login page
-      const isCurrentlyBackoffice = location.pathname.startsWith('/backoffice');
-      const shouldRedirectToBackoffice = isBackofficeUser || isCurrentlyBackoffice;
+      // Navigate immediately
+      const shouldRedirectToBackoffice = isBackofficeUser || location.pathname.startsWith('/backoffice');
       const targetPath = shouldRedirectToBackoffice ? '/backoffice/login' : '/login';
       
-      console.log('🧭 AuthProvider: Phase 4 - Navigation logic', {
-        isCurrentlyBackoffice,
-        shouldRedirectToBackoffice,
-        targetPath,
-        currentPath: location.pathname
-      });
-      
-      // Navigate with proper coordination
-      if (authCoordinator.canNavigate(targetPath)) {
-        console.log('🧭 AuthProvider: Navigating to login page:', targetPath);
-        if (shouldRedirectToBackoffice) {
-          navigate('/backoffice/login', { replace: true });
-        } else {
-          navigate('/login', { replace: true });
-        }
-      } else {
-        console.log('🚫 AuthProvider: Navigation blocked by coordinator - attempting emergency reset');
-        authCoordinator.emergencyReset();
-        // Try navigation again after emergency reset
-        navigate(targetPath, { replace: true });
-      }
-      
-      // Show logout success message
+      navigate(targetPath, { replace: true });
       toast.success("Successfully logged out");
       
-      // PHASE 5: Reset coordination flags after navigation
-      setTimeout(() => {
-        authCoordinator.endLogout();
-        dispatch(setLogoutState(false));
-        authCoordinator.resetRedirectCounter(); // Reset redirect counter for fresh start
-        console.log('✅ AuthProvider: Logout completed and all flags cleared');
-      }, 1500); // Slightly longer delay for navigation to complete
+      // Clear logout state immediately after navigation
+      dispatch(setLogoutState(false));
+      authCoordinator.endLogout();
+      authCoordinator.resetRedirectCounter();
       
     } catch (error) {
       console.error('❌ AuthProvider: Error during logout:', error);
