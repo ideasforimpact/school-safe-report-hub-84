@@ -38,20 +38,14 @@ export const useEmployeeData = () => {
            location.pathname === '/blog';
   }, [location.pathname]);
 
-  // Memoize the persisted modules check
-  const checkPersistedModules = useCallback((): Module[] | null => {
-    if (shouldSkipEmployeeData) {
-      return null;
-    }
-    
-    const persistedState = loadAuthState();
-    if (persistedState && persistedState.configuredModules && persistedState.configuredModules.length > 0) {
-      return persistedState.configuredModules;
-    }
-    return null;
-  }, [shouldSkipEmployeeData]);
+  // Reset function to clear initialization
+  const resetInitialization = useCallback(() => {
+    isInitializedRef.current = false;
+    isFetchingModulesRef.current = false;
+    isFetchingEmployeeDataRef.current = false;
+  }, []);
 
-  // Memoize the configured modules fetching function
+  // Memoize the configured modules fetching function - ALWAYS FETCH FRESH
   const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null) => {
     // Prevent multiple simultaneous fetches
     if (isFetchingModulesRef.current || shouldSkipEmployeeData) {
@@ -60,13 +54,6 @@ export const useEmployeeData = () => {
 
     try {
       isFetchingModulesRef.current = true;
-
-      // First check if we have valid modules in persistence
-      const persistedModules = checkPersistedModules();
-      if (persistedModules && persistedModules.length > 0) {
-        dispatch(setConfiguredModules(persistedModules));
-        return;
-      }
 
       dispatch(setLoading(true));
       
@@ -86,7 +73,6 @@ export const useEmployeeData = () => {
         .maybeSingle();
 
       if (employeeError) {
-        console.error('Error fetching employee:', employeeError);
         dispatch(setError(employeeError.message));
         return;
       }
@@ -110,7 +96,6 @@ export const useEmployeeData = () => {
           .eq('enabled', true);
 
         if (clientModulesError) {
-          console.error('Error fetching client modules:', clientModulesError);
           dispatch(setError(clientModulesError.message));
           return;
         }
@@ -149,7 +134,6 @@ export const useEmployeeData = () => {
           .eq('enabled', true);
 
         if (clientModulesError) {
-          console.error('Error fetching client modules for employee:', clientModulesError);
           dispatch(setError(clientModulesError.message));
           return;
         }
@@ -164,7 +148,6 @@ export const useEmployeeData = () => {
           .eq('employee_id', employeeId);
 
         if (employeeModulesError) {
-          console.error('Error fetching employee modules:', employeeModulesError);
           dispatch(setError(employeeModulesError.message));
           return;
         }
@@ -230,13 +213,12 @@ export const useEmployeeData = () => {
       dispatch(setLoading(false));
 
     } catch (error) {
-      console.error('Error in fetchConfiguredModules:', error);
       dispatch(setError("Failed to fetch configured modules"));
       dispatch(setLoading(false));
     } finally {
       isFetchingModulesRef.current = false;
     }
-  }, [shouldSkipEmployeeData, checkPersistedModules, dispatch]);
+  }, [shouldSkipEmployeeData, dispatch]);
 
   // Memoize the employee data fetching function
   const fetchEmployeeDataFromDB = useCallback(async (userId: string) => {
@@ -254,7 +236,6 @@ export const useEmployeeData = () => {
         .maybeSingle();
         
       if (error) {
-        console.error('Error fetching employee data:', error);
         return;
       }
       
@@ -274,20 +255,17 @@ export const useEmployeeData = () => {
           dispatch(setClientId(data.client_id));
         }
         
-        // Check for persisted modules first
-        const persistedModules = checkPersistedModules();
-        if (persistedModules && persistedModules.length > 0) {
-          dispatch(setConfiguredModules(persistedModules));
-        } else if (data.id && data.client_id && !isFetchingModulesRef.current) {
+        // Always fetch fresh modules after login
+        if (data.id && data.client_id && !isFetchingModulesRef.current) {
           await fetchConfiguredModules(data.id, data.client_id);
         }
       }
     } catch (fetchError) {
-      console.error('Error in fetchEmployeeDataFromDB:', fetchError);
+      // Handle error silently
     } finally {
       isFetchingEmployeeDataRef.current = false;
     }
-  }, [shouldSkipEmployeeData, dispatch, checkPersistedModules, fetchConfiguredModules]);
+  }, [shouldSkipEmployeeData, dispatch, fetchConfiguredModules]);
 
   // Main effect for setting employee data from auth context
   useEffect(() => {
@@ -315,14 +293,9 @@ export const useEmployeeData = () => {
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
-      // Check if we already have valid modules before fetching
-      const hasValidModules = state.configuredModules && state.configuredModules.length > 0;
-      const persistedModules = checkPersistedModules();
-      
-      if (!hasValidModules && !persistedModules && authEmployeeData.id && authEmployeeData.clientId && !isFetchingModulesRef.current) {
+      // Always fetch fresh modules after authentication
+      if (authEmployeeData.id && authEmployeeData.clientId && !isFetchingModulesRef.current) {
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
-      } else if (persistedModules && persistedModules.length > 0 && (!state.configuredModules || state.configuredModules.length === 0)) {
-        dispatch(setConfiguredModules(persistedModules));
       }
       
       isInitializedRef.current = true;
@@ -337,7 +310,6 @@ export const useEmployeeData = () => {
     needsEmployeeData, 
     shouldSkipEmployeeData, 
     dispatch, 
-    checkPersistedModules, 
     fetchConfiguredModules, 
     fetchEmployeeDataFromDB,
     state.configuredModules
@@ -364,6 +336,7 @@ export const useEmployeeData = () => {
     isLoading: state.isLoading,
     error: state.error,
     clientId: state.clientId,
-    refetchModules
+    refetchModules,
+    resetInitialization
   };
 };

@@ -181,16 +181,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }).current;
 
-  // Add setUser function that can be called directly with enhanced logging
+  // Add setUser function that can be called directly
   const handleSetUser = (user: User | null) => {
-    console.log('🔄 AuthProvider: Setting user to:', user);
-    console.log('🕐 AuthProvider: setUser called at:', new Date().toISOString());
     dispatch(setCurrentUser(user));
-    
-    // Add a small delay to verify state propagation
-    setTimeout(() => {
-      console.log('✅ AuthProvider: User state after setUser:', currentUser);
-    }, 100);
   };
 
   // Import useAuthHandlers
@@ -210,26 +203,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔔 AuthProvider: Auth state changed:', event, { 
-        hasSession: !!session, 
-        isLoggingOut: state.isLoggingOut,
-        userEmail: session?.user?.email 
-      });
-
       // CRITICAL: Block auth processing during logout but ALLOW during legitimate login
       if (state.isLoggingOut || authCoordinator.isLogoutInProgress()) {
-        console.log('🔒 AuthProvider: Blocking auth processing - logout in progress');
         return;
-      }
-      
-      // Allow processing for legitimate login attempts
-      if (event === 'SIGNED_IN') {
-        console.log('✅ AuthProvider: Processing SIGNED_IN event - legitimate login attempt');
       }
 
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log('👤 AuthProvider: User signed in via SSO:', session.user.email);
-        
         // Set login in progress flag to prevent session validation interference
         sessionStorage.setItem('is_login_in_progress', 'true');
         localStorage.setItem('is_login_in_progress', 'true');
@@ -242,7 +221,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             // Double-check logout state before proceeding
             if (state.isLoggingOut || authCoordinator.isLogoutInProgress()) {
-              console.log('🔒 AuthProvider: Aborting auth - logout detected during processing');
               setIsProcessingAuth(false);
               setShowAuthLoading(false);
               sessionStorage.removeItem('is_login_in_progress');
@@ -267,10 +245,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const { saveAuthState } = await import('@/store/authPersistence');
             saveAuthState(authStateToSave);
             
-            console.log('✅ AuthProvider: SSO authentication completed successfully');
             setTimeout(() => setShowAuthLoading(false), 1500);
           } catch (error) {
-            console.error("❌ AuthProvider: Error in handleUserAuthentication:", error);
             toast.error("Authentication failed. Please try again.");
             setShowAuthLoading(false);
           } finally {
@@ -281,11 +257,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }, 0);
       } else if (event === 'SIGNED_OUT') {
-        console.log('👋 AuthProvider: User signed out from Supabase');
-        
         // Only process SIGNED_OUT if it's not part of our own logout process
         if (!state.isLoggingOut && !authCoordinator.isLogoutInProgress()) {
-          console.log('🧹 AuthProvider: Processing external signout');
           dispatch(clearAuth());
           dispatch(resetEmployee());
           clearPersistedAuthState();
@@ -293,8 +266,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsProcessingAuth(false);
           toast.info("You have been logged out");
           logoutUser();
-        } else {
-          console.log('🔒 AuthProvider: Ignoring SIGNED_OUT during logout process');
         }
       }
     });
@@ -311,15 +282,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Prevent infinite loops and respect coordinator blocks
     if (initializationCompleteRef.current || 
         authCheckInProgressRef.current) {
-      console.log('🔄 AuthProvider: Skipping initialization', { 
-        initComplete: initializationCompleteRef.current,
-        inProgress: authCheckInProgressRef.current
-      });
       return;
     }
-    
-    // Don't block initialization - it should always be allowed
-    console.log('✅ AuthProvider: Proceeding with initialization');
 
     const checkSupabaseAuth = async () => {
       if (authCheckInProgressRef.current) return;
@@ -330,27 +294,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Skip all operations on login routes
         const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
         
-        console.log('🔄 AuthProvider: Starting one-time initialization check', { 
-          pathname: location.pathname,
-          isOnLoginRoute,
-          isBackofficeUser,
-          hasCurrentUser: !!currentUser
-        });
-        
         // Skip all validation and clearing on login routes
         if (isOnLoginRoute) {
-          console.log('🔄 AuthProvider: On login route, skipping all operations');
           setIsInitializing(false);
           return;
         }
-        
-        // Don't run session validation during initialization to prevent conflicts
-        console.log('🔄 AuthProvider: Initialization without session validation to prevent conflicts');
 
         const { data } = await supabase.auth.getSession();
         
         if (data.session && !currentUser) {
-          console.log('🔄 AuthProvider: Supabase session found, no current user, authenticating');
           setShowAuthLoading(true);
           setTimeout(async () => {
             await handleUserAuthentication(data.session?.user);
@@ -358,10 +310,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }, 0);
         }
       } catch (error) {
-        console.error("Error checking authentication status:", error);
         // Don't show error toast during initialization to prevent spam
       } finally {
-        console.log('🔄 AuthProvider: Initialization complete');
         setIsInitializing(false);
         authCheckInProgressRef.current = false;
       }
@@ -443,12 +393,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Enhanced SSO logout with proper sequence and state management
   const handleLogout = async (): Promise<void> => {
-    console.log('🚪 AuthProvider: Starting enhanced SSO logout process');
-    console.log('🕐 AuthProvider: Logout started at:', new Date().toISOString());
-    
     // Check if logout is already in progress
     if (!authCoordinator.startLogout()) {
-      console.log('🔒 AuthProvider: Logout already in progress, skipping');
       return;
     }
     
