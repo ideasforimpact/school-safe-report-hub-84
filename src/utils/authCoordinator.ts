@@ -31,10 +31,11 @@ export const authCoordinator = {
     console.log('✅ AuthCoordinator: Validation completed');
   },
 
-  // Logout coordination
+  // Enhanced logout coordination with cross-tab support
   isLogoutInProgress: () => {
     const sessionFlag = sessionStorage.getItem('is_logout_initiated') === 'true';
-    return isLoggingOut || sessionFlag;
+    const localFlag = localStorage.getItem('is_logout_initiated') === 'true';
+    return isLoggingOut || sessionFlag || localFlag;
   },
   startLogout: () => {
     if (isLoggingOut) {
@@ -42,14 +43,18 @@ export const authCoordinator = {
       return false;
     }
     isLoggingOut = true;
+    // Set logout flag in both storages for cross-tab coordination
     sessionStorage.setItem('is_logout_initiated', 'true');
-    console.log('🚪 AuthCoordinator: Starting logout');
+    localStorage.setItem('is_logout_initiated', 'true');
+    console.log('🚪 AuthCoordinator: Starting logout with cross-tab support');
     return true;
   },
   endLogout: () => {
     isLoggingOut = false;
+    // Clear logout flags from both storages
     sessionStorage.removeItem('is_logout_initiated');
-    console.log('✅ AuthCoordinator: Logout completed');
+    localStorage.removeItem('is_logout_initiated');
+    console.log('✅ AuthCoordinator: Logout completed with cross-tab cleanup');
   },
 
   // Navigation protection
@@ -67,22 +72,26 @@ export const authCoordinator = {
     console.log('🔄 AuthCoordinator: Redirect counter reset');
   },
 
-  // Comprehensive state check
+  // Enhanced state check with cross-storage monitoring
   shouldBlockOperation: (operation: string) => {
-    const blocked = isValidating || isLoggingOut || sessionStorage.getItem('is_logout_initiated') === 'true';
+    const sessionLogout = sessionStorage.getItem('is_logout_initiated') === 'true';
+    const localLogout = localStorage.getItem('is_logout_initiated') === 'true';
+    const blocked = isValidating || isLoggingOut || sessionLogout || localLogout;
     if (blocked) {
-      console.log(`🚫 AuthCoordinator: Blocking ${operation} - validation: ${isValidating}, logout: ${isLoggingOut}`);
+      console.log(`🚫 AuthCoordinator: Blocking ${operation} - validation: ${isValidating}, logout: ${isLoggingOut}, sessionLogout: ${sessionLogout}, localLogout: ${localLogout}`);
     }
     return blocked;
   },
 
-  // Emergency reset for stuck states
+  // Enhanced emergency reset for stuck states
   emergencyReset: () => {
     console.log('🚨 AuthCoordinator: Emergency reset triggered');
     isValidating = false;
     isLoggingOut = false;
     redirectCounter = 0;
+    // Clear logout flags from both storages
     sessionStorage.removeItem('is_logout_initiated');
-    console.log('✅ AuthCoordinator: Emergency reset completed');
+    localStorage.removeItem('is_logout_initiated');
+    console.log('✅ AuthCoordinator: Emergency reset completed with full storage cleanup');
   }
 };

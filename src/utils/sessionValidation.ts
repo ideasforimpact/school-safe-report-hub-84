@@ -84,11 +84,11 @@ export const validateBackofficeSession = (): boolean => {
   return authState.isAuthenticated;
 };
 
-// Universal session validation that determines user type and applies appropriate validation
+// Enhanced session validation with logout state awareness
 export const validateSession = async (): Promise<boolean> => {
-  // Check if validation should be blocked
-  if (authCoordinator.shouldBlockOperation('session validation')) {
-    console.log('🔐 validateSession: Validation blocked by coordinator');
+  // CRITICAL: Never validate during logout process to prevent re-authentication
+  if (authCoordinator.isLogoutInProgress() || authCoordinator.shouldBlockOperation('session validation')) {
+    console.log('🔐 validateSession: Validation blocked - logout in progress or coordinator block');
     return true; // Don't invalidate during blocked operations
   }
 
@@ -99,22 +99,24 @@ export const validateSession = async (): Promise<boolean> => {
   }
 
   try {
-    console.log('🔐 validateSession: Starting universal session validation');
+    console.log('🔐 validateSession: Starting enhanced session validation');
     const authState = loadAuthState();
     
-    // If no auth state, invalid session
+    // If no auth state, invalid session (unless we're logging out)
     if (!authState) {
       console.log('🔐 validateSession: No auth state found');
       return false;
     }
     
-    // Determine user type and apply appropriate validation
-    if (authState.isBackofficeUser) {
-      console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
-      return validateBackofficeSession();
-    } else {
+    // Double-check logout state from auth state
+    if (authState.sessionType === 'sso') {
+      // For SSO users, validate Supabase session
       console.log('🔐 validateSession: Detected SSO user, using Supabase validation');
       return await validateSupabaseSession();
+    } else {
+      // For backoffice users, validate JWT
+      console.log('🔐 validateSession: Detected backoffice user, using JWT validation');
+      return validateBackofficeSession();
     }
   } finally {
     authCoordinator.endValidation();

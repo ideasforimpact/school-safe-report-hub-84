@@ -21,14 +21,19 @@ export const useSessionRefresh = (intervalMinutes: number = 5) => {
   const MAX_VALIDATIONS = 5;
   
   useEffect(() => {
-    // Don't run session refresh on login pages or if operations are blocked
+    // Enhanced conditions to prevent session refresh during logout
     const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
+    const isLogoutInProgress = authCoordinator.isLogoutInProgress();
     
-    if (!currentUser || isOnLoginRoute || authCoordinator.shouldBlockOperation('session refresh')) {
+    if (!currentUser || isOnLoginRoute || isLogoutInProgress || authCoordinator.shouldBlockOperation('session refresh')) {
       // Clear any existing interval
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
+      }
+      
+      if (isLogoutInProgress) {
+        console.log('🔄 useSessionRefresh: Skipping session refresh - logout in progress');
       }
       return;
     }
