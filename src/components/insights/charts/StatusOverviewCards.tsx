@@ -24,12 +24,12 @@ const StatusOverviewCards: React.FC<StatusOverviewCardsProps> = ({ title, descri
   }
 
   return (
-    <Card className="bg-gradient-to-br from-gray-400 to-gray-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
+    <Card className="bg-gradient-to-br from-blue-400 to-cyan-500 text-white border-none shadow-card hover:shadow-card-hover transition-shadow h-[280px]">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle className="text-sm font-medium text-white">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-4">
-        <div className="space-y-1.5">
+      <CardContent className="p-3">
+        <div className="space-y-1">
           {data.statuses.map((status, index) => (
             <div key={index} className="flex items-center justify-between p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors">
               <div className="flex items-center gap-2">

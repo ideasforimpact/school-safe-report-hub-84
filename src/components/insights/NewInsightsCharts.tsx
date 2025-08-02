@@ -86,14 +86,14 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
 
       {/* Row 3: Top Assignees (1 col) + Status Overview (1 col) + Top Reporters (1 col) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        <div className="h-[400px]">
+        <div className="h-[280px]">
           <TopAssigneesCard
             data={topContributors}
             onFilterApply={onFilterApply}
           />
         </div>
 
-        <div className="h-[400px]">
+        <div className="h-[280px]">
           <StatusOverviewCards
             title="Status Overview"
             description="Current status distribution"
@@ -101,7 +101,7 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
           />
         </div>
 
-        <div className="h-[400px]">
+        <div className="h-[280px]">
           <TopReportersCard
             data={topContributors}
             onFilterApply={onFilterApply}
