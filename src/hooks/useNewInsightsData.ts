@@ -490,6 +490,7 @@ export const useNewInsightsData = (dateRange?: DateRange) => {
     statusOverview,
     topContributors,
     monthlyTrendsArea,
+    filteredIncidents,
     isLoading,
     onFilterApply
   };
