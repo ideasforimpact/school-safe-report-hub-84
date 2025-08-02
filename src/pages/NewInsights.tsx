@@ -13,14 +13,7 @@ import { subMonths, startOfDay } from 'date-fns';
 
 const NewInsights = () => {
   const navigate = useNavigate();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const today = new Date();
-    const sixMonthsAgo = subMonths(today, 6);
-    return {
-      from: startOfDay(sixMonthsAgo),
-      to: today
-    };
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   const {
     monthlyTrends,
