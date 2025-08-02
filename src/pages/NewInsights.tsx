@@ -4,7 +4,7 @@ import { useNewInsightsData } from '@/hooks/useNewInsightsData';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { prepareIncidentsExport, downloadCSV } from '@/utils/insightsUtils';
+import { prepareIncidentsExcelExport, downloadExcel } from '@/utils/insightsUtils';
 import NewInsightsSummaryCards from '@/components/insights/NewInsightsSummaryCards';
 import NewInsightsCharts from '@/components/insights/NewInsightsCharts';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
@@ -34,13 +34,13 @@ const NewInsights = () => {
       return;
     }
 
-    const csvContent = prepareIncidentsExport(filteredIncidents);
+    const excelData = prepareIncidentsExcelExport(filteredIncidents);
     const dateRangeText = dateRange?.from && dateRange?.to 
       ? `${dateRange.from.toISOString().split('T')[0]}_to_${dateRange.to.toISOString().split('T')[0]}`
       : 'all_data';
-    const filename = `incidents_export_${dateRangeText}.csv`;
+    const filename = `incidents_export_${dateRangeText}.xlsx`;
     
-    downloadCSV(csvContent, filename);
+    downloadExcel(excelData, filename);
   };
 
   if (isLoading) {
