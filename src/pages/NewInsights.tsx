@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useNewInsightsData } from '@/hooks/useNewInsightsData';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { prepareIncidentsExcelExport, downloadExcel } from '@/utils/insightsUtils';
 import NewInsightsSummaryCards from '@/components/insights/NewInsightsSummaryCards';
 import NewInsightsCharts from '@/components/insights/NewInsightsCharts';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
@@ -39,19 +38,6 @@ const NewInsights = () => {
     onFilterApply
   } = useNewInsightsData(dateRange);
 
-  const handleExportReport = () => {
-    if (!filteredIncidents || filteredIncidents.length === 0) {
-      return;
-    }
-
-    const excelData = prepareIncidentsExcelExport(filteredIncidents);
-    const dateRangeText = dateRange?.from && dateRange?.to 
-      ? `${dateRange.from.toISOString().split('T')[0]}_to_${dateRange.to.toISOString().split('T')[0]}`
-      : 'all_data';
-    const filename = `incidents_export_${dateRangeText}.xlsx`;
-    
-    downloadExcel(excelData, filename);
-  };
 
   if (isLoading) {
     return (
@@ -61,26 +47,19 @@ const NewInsights = () => {
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="icon" 
               onClick={() => navigate('/incidents')}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Incidents
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-2xl font-semibold">Incident Analytics</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-80">
-              <DatePickerWithRange
-                date={dateRange}
-                onChange={setDateRange}
-                className="w-full"
-              />
-            </div>
-            <Button variant="outline" onClick={handleExportReport}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Report
-            </Button>
+          <div className="w-80">
+            <DatePickerWithRange
+              date={dateRange}
+              onChange={setDateRange}
+              className="w-full"
+            />
           </div>
         </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -100,26 +79,19 @@ const NewInsights = () => {
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
-              size="sm" 
+              size="icon" 
               onClick={() => navigate('/incidents')}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Incidents
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-2xl font-semibold">Incident Analytics</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-80">
-              <DatePickerWithRange
-                date={dateRange}
-                onChange={setDateRange}
-                className="w-full"
-              />
-            </div>
-            <Button variant="outline" onClick={handleExportReport}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Report
-            </Button>
+          <div className="w-80">
+            <DatePickerWithRange
+              date={dateRange}
+              onChange={setDateRange}
+              className="w-full"
+            />
           </div>
         </div>
 
