@@ -12,28 +12,43 @@ const FacilityRiskCard: React.FC<FacilityRiskCardProps> = ({ risk, onFilterApply
   const topFacility = risk.topFacilities[0];
 
   return (
-    <Card className="bg-gradient-to-br from-red-400 to-red-500 text-white border-none shadow-lg hover:shadow-xl transition-shadow h-36">
-      <div className="p-4 h-full flex flex-col justify-between">
-        <div className="flex items-center justify-between">
+    <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-none shadow-lg hover:shadow-xl transition-shadow">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-sm">High-Risk Facilities</h3>
           <Building2 className="w-4 h-4 text-white/80" />
         </div>
         
         {topFacility ? (
-          <div className="text-center">
+          <div className="space-y-2">
             <div 
-              className="cursor-pointer hover:bg-white/10 px-2 py-1 rounded transition-colors"
+              className="cursor-pointer hover:bg-white/10 p-2 rounded transition-colors"
               onClick={() => onFilterApply('facility', topFacility.name)}
             >
               <div className="text-lg font-bold truncate">{topFacility.name}</div>
+              <div className="text-sm text-white/80">{topFacility.count} incidents</div>
             </div>
+            
+            {risk.topFacilities.slice(1, 3).map((facility) => (
+              <div 
+                key={facility.name}
+                className="flex justify-between items-center text-sm cursor-pointer hover:bg-white/10 p-1 rounded"
+                onClick={() => onFilterApply('facility', facility.name)}
+              >
+                <span className="truncate">{facility.name}</span>
+                <span className="font-semibold">{facility.count}</span>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="text-center text-sm text-white/80">No data available</div>
+          <div className="text-sm text-white/80">No data available</div>
         )}
         
-        <div className="text-center pt-2 border-t border-white/20">
-          <span className="text-2xl font-bold">{risk.totalIncidents}</span>
+        <div className="mt-3 pt-2 border-t border-white/20">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-white/80">Total incidents</span>
+            <span className="text-lg font-bold">{risk.totalIncidents}</span>
+          </div>
         </div>
       </div>
     </Card>

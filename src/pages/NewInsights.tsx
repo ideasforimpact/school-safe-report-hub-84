@@ -59,7 +59,7 @@ const NewInsights = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incidents
             </Button>
-            <h1 className="text-2xl font-semibold">Incident Analytics</h1>
+            <h1 className="text-2xl font-semibold">Business Insights</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-80">
@@ -98,7 +98,7 @@ const NewInsights = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incidents
             </Button>
-            <h1 className="text-2xl font-semibold">Incident Analytics</h1>
+            <h1 className="text-2xl font-semibold">Business Insights</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-80">

@@ -49,7 +49,7 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
         <div className="lg:col-span-2 h-[400px]">
           <MonthlyTrendsAreaChart 
             title="Monthly Incident Trends"
-            description="Incidents reported and resolved over time"
+            description="6-month trend showing total, open, and closed incidents"
             data={monthlyTrendsArea}
           />
         </div>
