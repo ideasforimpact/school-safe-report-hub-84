@@ -21,17 +21,8 @@ const QuestionsSection: React.FC<QuestionsSectionProps> = ({
 }) => {
   return (
     <div className="border-t border-gray-200 pt-6">
-      <div className="flex justify-between items-center mb-4">
+      <div className="mb-4">
         <h3 className="text-lg font-medium">Questions (Yes/No)</h3>
-        <Button 
-          type="button" 
-          onClick={onAddQuestion}
-          variant="outline"
-          size="sm"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Question
-        </Button>
       </div>
       
       {questions.length === 0 ? (
@@ -60,6 +51,16 @@ const QuestionsSection: React.FC<QuestionsSectionProps> = ({
               onRemove={() => onRemoveQuestion(index)}
             />
           ))}
+          <Button 
+            type="button" 
+            onClick={onAddQuestion}
+            variant="outline"
+            size="sm"
+            className="mt-4"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Question
+          </Button>
         </div>
       )}
     </div>
