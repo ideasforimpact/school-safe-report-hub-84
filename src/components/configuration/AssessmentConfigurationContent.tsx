@@ -4,14 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import CreateTemplateForm from '@/components/assessments/templates/CreateTemplateForm';
 import TemplatesList from '@/components/assessments/templates/TemplatesList';
+import TemplateDetailView from '@/components/assessments/templates/TemplateDetailView';
+import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 
 interface AssessmentConfigurationContentProps {
   embedded?: boolean;
 }
 
 const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigurationContentProps) => {
+  const { getTemplateById } = useAssessment();
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [viewingTemplateId, setViewingTemplateId] = useState<string | null>(null);
 
   const handleCreateTemplate = () => {
     setEditingTemplateId(null);
@@ -23,11 +27,46 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
     setShowCreateTemplate(true);
   };
 
+  const handleViewTemplate = (templateId: string) => {
+    setViewingTemplateId(templateId);
+    setShowCreateTemplate(false);
+    setEditingTemplateId(null);
+  };
+
   const handleCancelCreate = () => {
     setShowCreateTemplate(false);
     setEditingTemplateId(null);
   };
 
+  const handleBackToList = () => {
+    setViewingTemplateId(null);
+    setShowCreateTemplate(false);
+    setEditingTemplateId(null);
+  };
+
+  const handleEditFromDetail = () => {
+    if (viewingTemplateId) {
+      setEditingTemplateId(viewingTemplateId);
+      setViewingTemplateId(null);
+      setShowCreateTemplate(true);
+    }
+  };
+
+  // Show template detail view
+  if (viewingTemplateId) {
+    const template = getTemplateById(viewingTemplateId);
+    if (template) {
+      return (
+        <TemplateDetailView
+          template={template}
+          onBack={handleBackToList}
+          onEdit={handleEditFromDetail}
+        />
+      );
+    }
+  }
+
+  // Show create/edit form
   if (showCreateTemplate) {
     return (
       <CreateTemplateForm 
@@ -52,6 +91,7 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
       <TemplatesList 
         onCreateTemplate={handleCreateTemplate}
         onEditTemplate={handleEditTemplate}
+        onViewTemplate={handleViewTemplate}
       />
     </div>
   );
