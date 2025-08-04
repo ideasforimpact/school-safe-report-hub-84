@@ -82,11 +82,13 @@ import BackofficeLayout from '@/components/layout/BackofficeLayout';
 // Backoffice Wrapper Component with Client Provider
 const BackofficeWrapper = ({ component: Component }) => {
   return (
-    <BackofficeClientProvider>
-      <BackofficeLayout>
-        <Component />
-      </BackofficeLayout>
-    </BackofficeClientProvider>
+    <EmployeeVerificationProvider>
+      <BackofficeClientProvider>
+        <BackofficeLayout>
+          <Component />
+        </BackofficeLayout>
+      </BackofficeClientProvider>
+    </EmployeeVerificationProvider>
   );
 };
 
