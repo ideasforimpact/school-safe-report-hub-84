@@ -6,14 +6,22 @@ import { Plus } from 'lucide-react';
 import QuestionEditor from './QuestionEditor';
 import { AssessmentQuestion } from '@/types/assessment';
 
+interface PendingFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  file: File;
+  status: 'pending';
+}
+
 interface QuestionsSectionProps {
   questions: AssessmentQuestion[];
   onAddQuestion: () => void;
   onUpdateQuestion: (index: number, question: AssessmentQuestion) => void;
   onRemoveQuestion: (index: number) => void;
-  assessmentName?: string;
-  clientId?: string;
-  employeeId?: string;
+  pendingFiles: Record<string, PendingFile[]>;
+  onPendingFilesChange: (pendingFiles: Record<string, PendingFile[]>) => void;
 }
 
 const QuestionsSection: React.FC<QuestionsSectionProps> = ({
@@ -21,10 +29,16 @@ const QuestionsSection: React.FC<QuestionsSectionProps> = ({
   onAddQuestion,
   onUpdateQuestion,
   onRemoveQuestion,
-  assessmentName,
-  clientId,
-  employeeId
+  pendingFiles,
+  onPendingFilesChange
 }) => {
+  
+  const handlePendingFilesChange = (questionId: string, files: PendingFile[]) => {
+    onPendingFilesChange({
+      ...pendingFiles,
+      [questionId]: files
+    });
+  };
   return (
     <div className="border-t border-gray-200 pt-6">
       <div className="mb-4">
@@ -55,9 +69,8 @@ const QuestionsSection: React.FC<QuestionsSectionProps> = ({
               index={index}
               onChange={updatedQuestion => onUpdateQuestion(index, updatedQuestion)}
               onRemove={() => onRemoveQuestion(index)}
-              assessmentName={assessmentName}
-              clientId={clientId}
-              employeeId={employeeId}
+              pendingFiles={pendingFiles[question.id] || []}
+              onPendingFilesChange={(files) => handlePendingFilesChange(question.id, files)}
             />
           ))}
           <Button 

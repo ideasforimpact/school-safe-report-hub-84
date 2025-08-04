@@ -9,7 +9,9 @@ import FormError from './FormError';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
-import { AssessmentQuestion } from '@/types/assessment';
+import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
+import { questionFileService } from '@/services/assessment/questionFileService';
+import { FileItem } from '@/types/fileTypes';
 
 interface CreateTemplateFormProps {
   templateId?: string;
@@ -35,6 +37,16 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // Pending files state - maps question IDs to their pending files
+  const [pendingFiles, setPendingFiles] = useState<Record<string, Array<{
+    id: string;
+    name: string;
+    size: number;
+    type: string;
+    file: File;
+    status: 'pending';
+  }>>>({});
 
   // Load existing template data if in edit mode
   useEffect(() => {
@@ -100,6 +112,73 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     return true;
   };
 
+  const uploadPendingFiles = async (): Promise<AssessmentQuestion[]> => {
+    if (!employeeData?.clientId || !employeeData?.id) {
+      throw new Error('User information not available for file upload');
+    }
+
+    const questionsWithUploadedFiles = [...questions];
+    
+    for (const [questionId, files] of Object.entries(pendingFiles)) {
+      if (files.length === 0) continue;
+      
+      const questionIndex = questionsWithUploadedFiles.findIndex(q => q.id === questionId);
+      if (questionIndex === -1) continue;
+      
+      const questionNumber = questionIndex + 1;
+      
+      // Convert Files to FileItems
+      const fileItems: FileItem[] = await Promise.all(
+        files.map(async (file) => {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file.file);
+          });
+
+          return {
+            id: file.id,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            base64,
+            uploadedAt: new Date(),
+            status: 'uploading' as const
+          };
+        })
+      );
+
+      // Upload files
+      const uploadedFiles = await questionFileService.uploadQuestionFiles(
+        fileItems,
+        employeeData.clientId,
+        employeeData.id,
+        title || 'Untitled Template',
+        questionNumber
+      );
+
+      // Convert to QuestionFile format
+      const questionFiles: QuestionFile[] = uploadedFiles.map(file => ({
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        url: file.url,
+        path: file.path,
+        uploadedAt: file.uploadedAt.toISOString()
+      }));
+
+      // Update question with uploaded files
+      questionsWithUploadedFiles[questionIndex] = {
+        ...questionsWithUploadedFiles[questionIndex],
+        files: [...(questionsWithUploadedFiles[questionIndex].files || []), ...questionFiles]
+      };
+    }
+
+    return questionsWithUploadedFiles;
+  };
+
   const onFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submission triggered');
@@ -112,6 +191,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     try {
       setIsSubmitting(true);
       
+      // Upload pending files first
+      const questionsWithFiles = await uploadPendingFiles();
+      
       if (isEditMode && templateId) {
         // Update existing template
         await updateTemplate(templateId, {
@@ -119,7 +201,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           description,
           type,
           isActive,
-          questions
+          questions: questionsWithFiles
         });
         console.log('Template updated successfully');
         toast.success('Template updated successfully');
@@ -129,7 +211,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           title,
           description,
           type,
-          questions
+          questions: questionsWithFiles
         };
         
         console.log('Creating template with data:', templateData);
@@ -137,6 +219,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
         console.log('Template created with ID:', newTemplateId);
         toast.success('Template created successfully');
       }
+      
+      // Clear pending files after successful save
+      setPendingFiles({});
       
       // Always use onCancel if provided, otherwise navigate
       if (onCancel) {
@@ -213,9 +298,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           onAddQuestion={handleAddQuestion}
           onUpdateQuestion={handleUpdateQuestion}
           onRemoveQuestion={handleRemoveQuestion}
-          assessmentName={title || 'Untitled Template'}
-          clientId={employeeData?.clientId}
-          employeeId={employeeData?.id}
+          pendingFiles={pendingFiles}
+          onPendingFilesChange={setPendingFiles}
         />
         
         {formError && <FormError error={formError} />}

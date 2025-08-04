@@ -9,14 +9,22 @@ import { Trash } from 'lucide-react';
 import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
 import QuestionFileUpload from './QuestionFileUpload';
 
+interface PendingFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  file: File;
+  status: 'pending';
+}
+
 interface QuestionEditorProps {
   question: AssessmentQuestion;
   index: number;
   onChange: (question: AssessmentQuestion) => void;
   onRemove: () => void;
-  assessmentName?: string;
-  clientId?: string;
-  employeeId?: string;
+  pendingFiles: PendingFile[];
+  onPendingFilesChange: (files: PendingFile[]) => void;
 }
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
@@ -24,9 +32,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
   index,
   onChange,
   onRemove,
-  assessmentName = 'template',
-  clientId,
-  employeeId
+  pendingFiles,
+  onPendingFilesChange
 }) => {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange({
@@ -109,10 +116,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
             questionId={question.id}
             questionNumber={index + 1}
             files={question.files || []}
+            pendingFiles={pendingFiles}
             onFilesChange={handleFilesChange}
-            assessmentName={assessmentName}
-            clientId={clientId}
-            employeeId={employeeId}
+            onPendingFilesChange={onPendingFilesChange}
           />
         </div>
       </CardContent>
