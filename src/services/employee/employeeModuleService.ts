@@ -71,6 +71,20 @@ export const updateEmployeeModulePermissions = async (
   }
 };
 
+// Force refresh modules for a specific employee across all sessions
+export const forceRefreshEmployeeModules = async (employeeId: string): Promise<void> => {
+  try {
+    // This function will trigger a notification to refresh modules
+    // We could implement a separate table for notifications or use Supabase realtime
+    console.log(`Forcing module refresh for employee: ${employeeId}`);
+    
+    // The actual refresh will be handled by the real-time listener in useRealtimeModuleSync
+    // This function exists as a placeholder for future expansion
+  } catch (error) {
+    console.error("Error forcing module refresh:", error);
+  }
+};
+
 // Get employee module access items
 export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<ModuleAccessItem[]> => {
   try {
