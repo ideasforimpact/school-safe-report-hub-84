@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
@@ -13,6 +13,10 @@ import { toast } from 'sonner';
 export const useRealtimeModuleSync = () => {
   const { state, dispatch } = useEmployeeStore();
   const { getEmployeeId, getClientId } = useEmployeeAccess();
+  
+  // Toast deduplication: prevent multiple identical toasts within 5 seconds
+  const lastToastTimeRef = useRef<number>(0);
+  const TOAST_DEBOUNCE_MS = 5000; // 5 seconds
 
   const refreshModules = useCallback(async () => {
     const employeeId = getEmployeeId();
@@ -154,10 +158,14 @@ export const useRealtimeModuleSync = () => {
       // Update the configured modules in Redux store
       dispatch(setConfiguredModules(configuredModules));
       
-      // Show a toast notification to inform the user
-      toast.info('Your module access has been updated', {
-        description: 'Your permissions have changed. Some features may now be available or restricted.',
-      });
+      // Show toast notification with deduplication - only if enough time has passed
+      const currentTime = Date.now();
+      if (currentTime - lastToastTimeRef.current > TOAST_DEBOUNCE_MS) {
+        lastToastTimeRef.current = currentTime;
+        toast.info('Your module access has been updated', {
+          description: 'Your permissions have changed. Some features may now be available or restricted.',
+        });
+      }
 
     } catch (error) {
       console.error('Error refreshing modules:', error);
