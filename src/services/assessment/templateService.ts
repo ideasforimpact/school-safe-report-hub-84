@@ -73,10 +73,11 @@ export const templateService = {
       .eq('name', template.type)
       .single();
 
-    // Add IDs to questions
+    // Add IDs to questions and serialize for database storage
     const questionsWithIds = template.questions.map((q, index) => ({
       ...q,
-      id: `q_${Date.now()}_${index}`
+      id: `q_${Date.now()}_${index}`,
+      files: [] // Initialize empty files array for new questions
     }));
 
     // Try to get the current user, but don't fail if not authenticated

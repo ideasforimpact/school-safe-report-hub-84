@@ -11,13 +11,19 @@ interface QuestionsSectionProps {
   onAddQuestion: () => void;
   onUpdateQuestion: (index: number, question: AssessmentQuestion) => void;
   onRemoveQuestion: (index: number) => void;
+  assessmentName?: string;
+  clientId?: string;
+  employeeId?: string;
 }
 
 const QuestionsSection: React.FC<QuestionsSectionProps> = ({
   questions,
   onAddQuestion,
   onUpdateQuestion,
-  onRemoveQuestion
+  onRemoveQuestion,
+  assessmentName,
+  clientId,
+  employeeId
 }) => {
   return (
     <div className="border-t border-gray-200 pt-6">
@@ -49,6 +55,9 @@ const QuestionsSection: React.FC<QuestionsSectionProps> = ({
               index={index}
               onChange={updatedQuestion => onUpdateQuestion(index, updatedQuestion)}
               onRemove={() => onRemoveQuestion(index)}
+              assessmentName={assessmentName}
+              clientId={clientId}
+              employeeId={employeeId}
             />
           ))}
           <Button 

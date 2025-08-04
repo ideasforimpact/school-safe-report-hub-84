@@ -1,12 +1,23 @@
 
 import { User } from '@/contexts/auth/types';
 
+export interface QuestionFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  path: string;
+  uploadedAt: string;
+}
+
 export interface AssessmentQuestion {
   id: string;
   text: string;
   allowComments: boolean;
   allowAttachments: boolean;
   required: boolean;
+  files?: QuestionFile[];
 }
 
 export interface AssessmentTemplate {

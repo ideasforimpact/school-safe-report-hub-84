@@ -7,6 +7,7 @@ import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { AssessmentQuestion } from '@/types/assessment';
 
@@ -23,6 +24,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const { createTemplate, updateTemplate, getTemplateById } = useAssessment();
+  const { user, employeeData } = useAuth();
   
   // Form state
   const [title, setTitle] = useState('');
@@ -211,6 +213,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           onAddQuestion={handleAddQuestion}
           onUpdateQuestion={handleUpdateQuestion}
           onRemoveQuestion={handleRemoveQuestion}
+          assessmentName={title || 'Untitled Template'}
+          clientId={employeeData?.clientId}
+          employeeId={employeeData?.id}
         />
         
         {formError && <FormError error={formError} />}

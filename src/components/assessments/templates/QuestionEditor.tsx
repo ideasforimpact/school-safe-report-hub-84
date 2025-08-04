@@ -6,20 +6,27 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Trash } from 'lucide-react';
-import { AssessmentQuestion } from '@/types/assessment';
+import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
+import QuestionFileUpload from './QuestionFileUpload';
 
 interface QuestionEditorProps {
   question: AssessmentQuestion;
   index: number;
   onChange: (question: AssessmentQuestion) => void;
   onRemove: () => void;
+  assessmentName?: string;
+  clientId?: string;
+  employeeId?: string;
 }
 
 const QuestionEditor: React.FC<QuestionEditorProps> = ({
   question,
   index,
   onChange,
-  onRemove
+  onRemove,
+  assessmentName = 'template',
+  clientId,
+  employeeId
 }) => {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange({
@@ -32,6 +39,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
     onChange({
       ...question,
       [field]: !question[field]
+    });
+  };
+
+  const handleFilesChange = (files: QuestionFile[]) => {
+    onChange({
+      ...question,
+      files
     });
   };
 
@@ -84,6 +98,22 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
             />
             <Label htmlFor={`attachments-${index}`} className="text-sm">Allow file attachments</Label>
           </div>
+        </div>
+
+        {/* File Upload Section */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            Question Files (Optional)
+          </Label>
+          <QuestionFileUpload
+            questionId={question.id}
+            questionNumber={index + 1}
+            files={question.files || []}
+            onFilesChange={handleFilesChange}
+            assessmentName={assessmentName}
+            clientId={clientId}
+            employeeId={employeeId}
+          />
         </div>
       </CardContent>
     </Card>
