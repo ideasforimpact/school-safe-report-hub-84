@@ -1,47 +1,47 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Upload, X, File, Loader2 } from 'lucide-react';
+import { Upload, X, File, Loader2, Clock } from 'lucide-react';
 import { FileItem } from '@/types/fileTypes';
 import { QuestionFile } from '@/types/assessment';
-import { questionFileService } from '@/services/assessment/questionFileService';
 import { toast } from 'sonner';
+
+interface PendingFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  file: File;
+  status: 'pending';
+}
 
 interface QuestionFileUploadProps {
   questionId: string;
   questionNumber: number;
   files: QuestionFile[];
+  pendingFiles: PendingFile[];
   onFilesChange: (files: QuestionFile[]) => void;
-  assessmentName: string;
-  clientId?: string;
-  employeeId?: string;
+  onPendingFilesChange: (files: PendingFile[]) => void;
 }
 
 const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
   questionId,
   questionNumber,
   files,
+  pendingFiles,
   onFilesChange,
-  assessmentName,
-  clientId,
-  employeeId
+  onPendingFilesChange
 }) => {
-  const [uploading, setUploading] = useState(false);
+  const [selecting, setSelecting] = useState(false);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
-    
-    if (!clientId || !employeeId) {
-      toast.error('User information not available for file upload');
-      return;
-    }
 
-    setUploading(true);
+    setSelecting(true);
 
     try {
-      // Convert FileList to FileItem array
-      const fileItems: FileItem[] = [];
+      const newPendingFiles: PendingFile[] = [];
       
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
@@ -52,87 +52,52 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
           continue;
         }
 
-        // Convert to base64
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        // Check for duplicate files
+        const isDuplicate = [...files, ...pendingFiles].some(
+          existingFile => existingFile.name === file.name && existingFile.size === file.size
+        );
 
-        fileItems.push({
+        if (isDuplicate) {
+          toast.error(`${file.name} is already added`);
+          continue;
+        }
+
+        newPendingFiles.push({
           id: crypto.randomUUID(),
           name: file.name,
           size: file.size,
           type: file.type,
-          base64,
-          uploadedAt: new Date(),
-          status: 'uploading'
+          file,
+          status: 'pending'
         });
       }
 
-      if (fileItems.length === 0) {
-        setUploading(false);
-        return;
+      if (newPendingFiles.length > 0) {
+        onPendingFilesChange([...pendingFiles, ...newPendingFiles]);
+        toast.success(`Added ${newPendingFiles.length} file(s) for upload`);
       }
-
-      // Validate files
-      const validation = questionFileService.validateFiles(fileItems);
-      if (!validation.valid) {
-        validation.errors.forEach(error => toast.error(error));
-        setUploading(false);
-        return;
-      }
-
-      // Upload files
-      const uploadedFiles = await questionFileService.uploadQuestionFiles(
-        fileItems,
-        clientId,
-        employeeId,
-        assessmentName,
-        questionNumber
-      );
-
-      // Convert to QuestionFile format
-      const questionFiles: QuestionFile[] = uploadedFiles.map(file => ({
-        id: file.id,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: file.url,
-        path: file.path,
-        uploadedAt: file.uploadedAt.toISOString()
-      }));
-
-      // Update files list
-      onFilesChange([...files, ...questionFiles]);
-      toast.success(`Successfully uploaded ${questionFiles.length} file(s)`);
 
     } catch (error) {
-      console.error('Error uploading files:', error);
-      toast.error('Failed to upload files');
+      console.error('Error selecting files:', error);
+      toast.error('Failed to select files');
     } finally {
-      setUploading(false);
+      setSelecting(false);
     }
 
     // Clear the input
     e.target.value = '';
   };
 
-  const handleRemoveFile = async (fileToRemove: QuestionFile) => {
-    try {
-      // Delete from storage
-      await questionFileService.deleteQuestionFile(fileToRemove.path);
-      
-      // Update files list
-      const updatedFiles = files.filter(file => file.id !== fileToRemove.id);
-      onFilesChange(updatedFiles);
-      
-      toast.success('File removed successfully');
-    } catch (error) {
-      console.error('Error removing file:', error);
-      toast.error('Failed to remove file');
-    }
+  const handleRemoveFile = (fileToRemove: QuestionFile) => {
+    const updatedFiles = files.filter(file => file.id !== fileToRemove.id);
+    onFilesChange(updatedFiles);
+    toast.success('File removed successfully');
+  };
+
+  const handleRemovePendingFile = (fileToRemove: PendingFile) => {
+    const updatedPendingFiles = pendingFiles.filter(file => file.id !== fileToRemove.id);
+    onPendingFilesChange(updatedPendingFiles);
+    toast.success('File removed successfully');
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -153,41 +118,42 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
           className="sr-only"
           multiple
           onChange={handleFileSelect}
-          disabled={uploading}
+          disabled={selecting}
         />
         <Label
           htmlFor={`file-upload-${questionId}`}
           className={`inline-flex items-center px-3 py-2 text-sm border border-dashed border-gray-300 rounded-md hover:border-gray-400 cursor-pointer transition-colors ${
-            uploading ? 'opacity-50 cursor-not-allowed' : ''
+            selecting ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
-          {uploading ? (
+          {selecting ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
             <Upload className="h-4 w-4 mr-2" />
           )}
-          {uploading ? 'Uploading...' : 'Upload Files (Max 30MB each)'}
+          {selecting ? 'Selecting...' : 'Select Files (Max 30MB each)'}
         </Label>
       </div>
 
-      {/* Uploaded files list */}
-      {files.length > 0 && (
+      {/* Files list */}
+      {(files.length > 0 || pendingFiles.length > 0) && (
         <div className="space-y-2">
-          <Label className="text-sm text-gray-600">Uploaded Files:</Label>
+          <Label className="text-sm text-gray-600">Files:</Label>
           <div className="space-y-1">
+            {/* Uploaded files */}
             {files.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md p-2"
+                className="flex items-center justify-between bg-green-50 border border-green-200 rounded-md p-2"
               >
                 <div className="flex items-center min-w-0 flex-1">
-                  <File className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />
+                  <File className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
                       {file.name}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {formatFileSize(file.size)} • {new Date(file.uploadedAt).toLocaleDateString()}
+                    <p className="text-xs text-green-600">
+                      {formatFileSize(file.size)} • Uploaded
                     </p>
                   </div>
                 </div>
@@ -196,6 +162,35 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleRemoveFile(file)}
+                  className="h-6 w-6 p-0 text-gray-500 hover:text-red-500 flex-shrink-0 ml-2"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            
+            {/* Pending files */}
+            {pendingFiles.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-md p-2"
+              >
+                <div className="flex items-center min-w-0 flex-1">
+                  <Clock className="h-4 w-4 text-yellow-600 mr-2 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-yellow-600">
+                      {formatFileSize(file.size)} • Pending upload
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemovePendingFile(file)}
                   className="h-6 w-6 p-0 text-gray-500 hover:text-red-500 flex-shrink-0 ml-2"
                 >
                   <X className="h-4 w-4" />
