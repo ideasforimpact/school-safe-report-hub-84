@@ -24,9 +24,8 @@ const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Templates
+          <Button variant="outline" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-xl font-semibold">{template.title}</h2>
         </div>
