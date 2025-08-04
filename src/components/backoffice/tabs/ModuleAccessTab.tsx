@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Loader2, Check } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
+import { updateEmployeeModulePermissions, forceRefreshEmployeeModules } from '@/services/employee/employeeModuleService';
 
 interface Module {
   id: string;
@@ -32,6 +33,7 @@ export interface ModuleInfo {
 
 interface ModuleAccessTabProps {
   formData: {
+    id?: string;
     moduleInfoArray?: ModuleInfo[];
   };
   onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
@@ -62,10 +64,16 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
   const mountedRef = useRef(true);
 
   // Debounced update function
-  const debouncedUpdate = useDebounce((moduleInfoArray: ModuleInfo[]) => {
+  const debouncedUpdate = useDebounce(async (moduleInfoArray: ModuleInfo[]) => {
     if (onModuleInfoChange && !isUpdatingRef.current && mountedRef.current) {
       isUpdatingRef.current = true;
       onModuleInfoChange(moduleInfoArray);
+      
+      // Force refresh modules for the employee to update their session
+      if (formData?.id) {
+        await forceRefreshEmployeeModules(formData.id);
+      }
+      
       // Reset the flag after a short delay
       setTimeout(() => {
         isUpdatingRef.current = false;
