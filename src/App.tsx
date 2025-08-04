@@ -95,11 +95,11 @@ const BackofficeWrapper = ({ component: Component }) => {
 function App() {
   return (
     <EmployeeContextProvider>
-      <ModuleSyncProvider>
-        <IncidentProvider>
-          <StudentProvider>
-            <FacilityProvider>
-              <EmployeeVerificationProvider>
+      <IncidentProvider>
+        <StudentProvider>
+          <FacilityProvider>
+            <EmployeeVerificationProvider>
+              <ModuleSyncProvider>
                 <AssessmentProvider>
                 <Routes>
                   {/* Public routes - no authentication required */}
@@ -328,12 +328,12 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster position="top-right" closeButton={true} />
-              </AssessmentProvider>
+                </AssessmentProvider>
+              </ModuleSyncProvider>
             </EmployeeVerificationProvider>
           </FacilityProvider>
         </StudentProvider>
       </IncidentProvider>
-      </ModuleSyncProvider>
     </EmployeeContextProvider>
   );
 }
