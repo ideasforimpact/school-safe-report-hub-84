@@ -288,17 +288,28 @@ export const useAuthHandlers = ({
     }
     
     try {
-      // Fetch allowed domains for the client
-      const { data, error } = await supabase
-        .from('clients')
-        .select('allowed_domains, super_admin_allowed_domain')
-        .eq('id', clientId)
-        .single();
+      // Use secure function to fetch client domains (bypasses RLS during login)
+      const { data, error } = await supabase.rpc('get_client_domains', {
+        p_client_id: clientId
+      });
       
-      console.log("📊 DOMAIN VALIDATION DEBUG - Client data fetched:", { data, error });
+      console.log("📊 DOMAIN VALIDATION DEBUG - Client data fetched via secure function:", { data, error });
       
       if (error || !data) {
         console.error("❌ DOMAIN VALIDATION DEBUG - Error fetching client domains:", error);
+        return false;
+      }
+      
+      // Type assertion for the RPC response data
+      const clientData = data as { 
+        allowed_domains: string | null; 
+        super_admin_allowed_domain: string | null; 
+        active: boolean; 
+      };
+      
+      // Check if client is active
+      if (!clientData.active) {
+        console.log("❌ DOMAIN VALIDATION DEBUG - Client is not active");
         return false;
       }
       
@@ -316,7 +327,7 @@ export const useAuthHandlers = ({
       }
       
       // Parse allowed domains string into array
-      const allowedDomainsStr = data.allowed_domains || '';
+      const allowedDomainsStr = clientData.allowed_domains || '';
       console.log("📝 DOMAIN VALIDATION DEBUG - Raw allowed domains string:", { allowedDomainsStr });
       
       const allowedDomains = allowedDomainsStr

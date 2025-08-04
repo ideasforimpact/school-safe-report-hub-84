@@ -1697,6 +1697,10 @@ export type Database = {
         Args: { doc_number: string }
         Returns: string
       }
+      get_client_domains: {
+        Args: { p_client_id: string }
+        Returns: Json
+      }
       get_current_user_client_id: {
         Args: Record<PropertyKey, never>
         Returns: string
