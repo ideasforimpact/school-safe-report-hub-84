@@ -62,7 +62,7 @@ export const templateService = {
     title: string;
     description: string;
     type: string;
-    questions: Omit<AssessmentQuestion, 'id'>[];
+    questions: AssessmentQuestion[];
   }): Promise<string> {
     console.log('Creating template with data:', template);
     
@@ -73,12 +73,14 @@ export const templateService = {
       .eq('name', template.type)
       .single();
 
-    // Add IDs to questions and serialize for database storage
+    // Add IDs to questions if they don't have them, preserve existing files
     const questionsWithIds = template.questions.map((q, index) => ({
       ...q,
-      id: `q_${Date.now()}_${index}`,
-      files: [] // Initialize empty files array for new questions
+      id: q.id || `q_${Date.now()}_${index}`,
+      files: q.files || [] // Preserve existing files or initialize empty array
     }));
+    
+    console.log('Questions being saved to database:', JSON.stringify(questionsWithIds, null, 2));
 
     // Try to get the current user, but don't fail if not authenticated
     const { data: { user } } = await supabase.auth.getUser();
@@ -111,7 +113,7 @@ export const templateService = {
         title: template.title,
         description: template.description,
         category_id: category?.id || null,
-        questions: questionsWithIds,
+        questions: questionsWithIds as any,
         created_by: employeeId,
         is_active: true
       })
@@ -144,7 +146,8 @@ export const templateService = {
     }
 
     if (updates.questions) {
-      updateData.questions = updates.questions;
+      console.log('Updating template with questions:', JSON.stringify(updates.questions, null, 2));
+      updateData.questions = updates.questions as any;
     }
 
     const { error } = await supabase

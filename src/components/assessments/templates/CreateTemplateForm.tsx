@@ -163,6 +163,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           ...questionsWithUploadedFiles[questionIndex],
           files: [...(questionsWithUploadedFiles[questionIndex].files || []), ...questionFiles]
         };
+        
+        console.log(`Updated question ${questionIndex} with files:`, JSON.stringify(questionsWithUploadedFiles[questionIndex], null, 2));
       } catch (error) {
         console.error(`Failed to upload files for question ${questionNumber}:`, error);
         throw new Error(`Failed to upload files for question ${questionNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -186,6 +188,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       
       // Upload pending files first
       const questionsWithFiles = await uploadPendingFiles();
+      console.log('Questions with files after upload:', JSON.stringify(questionsWithFiles, null, 2));
       
       if (isEditMode && templateId) {
         // Update existing template
