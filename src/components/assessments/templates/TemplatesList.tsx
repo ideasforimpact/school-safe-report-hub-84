@@ -12,11 +12,13 @@ import DuplicateTemplateDialog from './DuplicateTemplateDialog';
 interface TemplatesListProps {
   onCreateTemplate?: () => void;
   onEditTemplate?: (templateId: string) => void;
+  onViewTemplate?: (templateId: string) => void;
 }
 
 const TemplatesList: React.FC<TemplatesListProps> = ({
   onCreateTemplate,
-  onEditTemplate
+  onEditTemplate,
+  onViewTemplate
 }) => {
   const navigate = useNavigate();
   const { templates } = useAssessment();
@@ -31,6 +33,14 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
       onEditTemplate(templateId);
     } else {
       navigate(`/assessments/templates/${templateId}/edit`);
+    }
+  };
+
+  const handleViewClick = (templateId: string) => {
+    if (onViewTemplate) {
+      onViewTemplate(templateId);
+    } else {
+      navigate(`/assessments/templates/${templateId}`);
     }
   };
 
@@ -87,7 +97,7 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
                   >
                     <TableCell 
                       className="font-medium" 
-                      onClick={() => navigate(`/assessments/templates/${template.id}`)}
+                      onClick={() => handleViewClick(template.id)}
                     >
                       {template.title}
                     </TableCell>
