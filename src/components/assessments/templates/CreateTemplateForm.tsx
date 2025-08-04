@@ -127,53 +127,46 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       
       const questionNumber = questionIndex + 1;
       
-      // Convert Files to FileItems
-      const fileItems: FileItem[] = await Promise.all(
-        files.map(async (file) => {
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file.file);
-          });
-
-          return {
-            id: file.id,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            base64,
-            uploadedAt: new Date(),
-            status: 'uploading' as const
-          };
-        })
-      );
-
-      // Upload files
-      const uploadedFiles = await questionFileService.uploadQuestionFiles(
-        fileItems,
-        employeeData.clientId,
-        employeeData.id,
-        title || 'Untitled Template',
-        questionNumber
-      );
-
-      // Convert to QuestionFile format
-      const questionFiles: QuestionFile[] = uploadedFiles.map(file => ({
-        id: file.id,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: file.url,
-        path: file.path,
-        uploadedAt: file.uploadedAt.toISOString()
+      console.log(`Processing ${files.length} files for question ${questionNumber}:`, files.map(f => f.name));
+      
+      // Convert to UploadFileInput format for the improved service
+      const uploadInputs = files.map(file => ({
+        file: file.file,
+        id: file.id
       }));
 
-      // Update question with uploaded files
-      questionsWithUploadedFiles[questionIndex] = {
-        ...questionsWithUploadedFiles[questionIndex],
-        files: [...(questionsWithUploadedFiles[questionIndex].files || []), ...questionFiles]
-      };
+      try {
+        // Upload files using the improved service
+        const uploadedFiles = await questionFileService.uploadQuestionFiles(
+          uploadInputs,
+          employeeData.clientId,
+          employeeData.id,
+          title || 'Untitled Template',
+          questionNumber
+        );
+
+        console.log(`Successfully uploaded ${uploadedFiles.length} files for question ${questionNumber}`);
+
+        // Convert to QuestionFile format
+        const questionFiles: QuestionFile[] = uploadedFiles.map(file => ({
+          id: file.id,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url: file.url,
+          path: file.path,
+          uploadedAt: file.uploadedAt.toISOString()
+        }));
+
+        // Update question with uploaded files
+        questionsWithUploadedFiles[questionIndex] = {
+          ...questionsWithUploadedFiles[questionIndex],
+          files: [...(questionsWithUploadedFiles[questionIndex].files || []), ...questionFiles]
+        };
+      } catch (error) {
+        console.error(`Failed to upload files for question ${questionNumber}:`, error);
+        throw new Error(`Failed to upload files for question ${questionNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
 
     return questionsWithUploadedFiles;

@@ -11,6 +11,11 @@ export interface QuestionFileItem {
   uploadedAt: Date;
 }
 
+export interface UploadFileInput {
+  file: File;
+  id: string;
+}
+
 export const questionFileService = {
   // Generate file path for question files
   generateFilePath: (
@@ -24,31 +29,42 @@ export const questionFileService = {
     return `${clientId}/${employeeId}/${sanitizedAssessmentName}/question_${questionNumber}/${fileName}`;
   },
 
-  // Upload files for a specific question
+  // Upload files for a specific question using File objects directly
   uploadQuestionFiles: async (
-    files: FileItem[],
+    uploadInputs: UploadFileInput[],
     clientId: string,
     employeeId: string,
     assessmentName: string,
     questionNumber: number
   ): Promise<QuestionFileItem[]> => {
-    const uploadPromises = files.map(async (file) => {
+    console.log('Starting file upload process...', { 
+      fileCount: uploadInputs.length, 
+      clientId, 
+      employeeId, 
+      assessmentName, 
+      questionNumber 
+    });
+
+    const uploadPromises = uploadInputs.map(async ({ file, id }) => {
       try {
-        // Convert base64 to blob
-        const base64Data = file.base64.includes(',') ? file.base64.split(',')[1] : file.base64;
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        console.log(`Processing file: ${file.name}`, { 
+          size: file.size, 
+          type: file.type 
+        });
+
+        // Validate file before upload
+        if (file.size === 0) {
+          throw new Error(`File ${file.name} is empty`);
         }
-        
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: file.type });
+
+        if (file.size > 30 * 1024 * 1024) {
+          throw new Error(`File ${file.name} exceeds 30MB limit`);
+        }
 
         // Generate unique file name to avoid conflicts
         const timestamp = Date.now();
-        const uniqueFileName = `${timestamp}_${file.name}`;
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const uniqueFileName = `${timestamp}_${randomSuffix}_${file.name}`;
         const filePath = questionFileService.generateFilePath(
           clientId,
           employeeId,
@@ -57,26 +73,30 @@ export const questionFileService = {
           uniqueFileName
         );
 
-        // Upload to Supabase storage
+        console.log(`Uploading to path: ${filePath}`);
+
+        // Upload File object directly to Supabase storage
         const { data, error } = await supabase.storage
           .from('assessment-question-files')
-          .upload(filePath, blob, {
+          .upload(filePath, file, {
             cacheControl: '3600',
             upsert: false
           });
 
         if (error) {
-          console.error('Error uploading file:', error);
+          console.error('Supabase upload error:', error);
           throw new Error(`Failed to upload ${file.name}: ${error.message}`);
         }
+
+        console.log('Upload successful:', data);
 
         // Get public URL
         const { data: urlData } = supabase.storage
           .from('assessment-question-files')
           .getPublicUrl(filePath);
 
-        return {
-          id: data.id || crypto.randomUUID(),
+        const result = {
+          id: id,
           name: file.name,
           size: file.size,
           type: file.type,
@@ -84,13 +104,45 @@ export const questionFileService = {
           path: filePath,
           uploadedAt: new Date()
         };
+
+        console.log('File upload completed:', result);
+        return result;
       } catch (error) {
         console.error('Error processing file:', file.name, error);
-        throw error;
+        throw new Error(`Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     });
 
-    return Promise.all(uploadPromises);
+    try {
+      const results = await Promise.all(uploadPromises);
+      console.log('All files uploaded successfully:', results);
+      return results;
+    } catch (error) {
+      console.error('Error in batch upload:', error);
+      throw error;
+    }
+  },
+
+  // Legacy method for backward compatibility
+  uploadQuestionFilesLegacy: async (
+    files: FileItem[],
+    clientId: string,
+    employeeId: string,
+    assessmentName: string,
+    questionNumber: number
+  ): Promise<QuestionFileItem[]> => {
+    const uploadInputs: UploadFileInput[] = files.map(file => ({
+      file: new File([file.base64], file.name, { type: file.type }),
+      id: file.id
+    }));
+    
+    return questionFileService.uploadQuestionFiles(
+      uploadInputs,
+      clientId,
+      employeeId,
+      assessmentName,
+      questionNumber
+    );
   },
 
   // Delete a question file
