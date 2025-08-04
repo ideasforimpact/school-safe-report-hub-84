@@ -280,7 +280,12 @@ export const useAuthHandlers = ({
 
   // Function to check if domain is allowed for a client
   const validateDomain = useCallback(async (email: string | undefined, clientId: string | null): Promise<boolean> => {
-    if (!email || !clientId) return false;
+    console.log("🔍 DOMAIN VALIDATION DEBUG - Starting validation:", { email, clientId });
+    
+    if (!email || !clientId) {
+      console.log("❌ DOMAIN VALIDATION DEBUG - Missing email or clientId:", { email, clientId });
+      return false;
+    }
     
     try {
       // Fetch allowed domains for the client
@@ -290,26 +295,54 @@ export const useAuthHandlers = ({
         .eq('id', clientId)
         .single();
       
+      console.log("📊 DOMAIN VALIDATION DEBUG - Client data fetched:", { data, error });
+      
       if (error || !data) {
-        console.error("Error fetching client domains:", error);
+        console.error("❌ DOMAIN VALIDATION DEBUG - Error fetching client domains:", error);
         return false;
       }
       
       // Extract domain from email
       const userDomain = extractDomain(email);
-      if (!userDomain) return false;
+      console.log("🌐 DOMAIN VALIDATION DEBUG - User domain extracted:", { 
+        email, 
+        userDomain, 
+        extractedBy: 'extractDomain function' 
+      });
+      
+      if (!userDomain) {
+        console.log("❌ DOMAIN VALIDATION DEBUG - No domain extracted from email");
+        return false;
+      }
       
       // Parse allowed domains string into array
       const allowedDomainsStr = data.allowed_domains || '';
+      console.log("📝 DOMAIN VALIDATION DEBUG - Raw allowed domains string:", { allowedDomainsStr });
+      
       const allowedDomains = allowedDomainsStr
         .split(',')
         .map(domain => domain.trim())
         .filter(domain => domain.length > 0);
       
+      console.log("📋 DOMAIN VALIDATION DEBUG - Parsed allowed domains:", { 
+        allowedDomains,
+        allowedDomainsCount: allowedDomains.length 
+      });
+      
       // Check if domain is allowed
-      return allowedDomains.includes(userDomain);
+      const isAllowed = allowedDomains.includes(userDomain);
+      
+      console.log("🎯 DOMAIN VALIDATION DEBUG - Final comparison:", {
+        userDomain,
+        allowedDomains,
+        isAllowed,
+        exactMatch: allowedDomains.find(domain => domain === userDomain),
+        caseInsensitiveCheck: allowedDomains.find(domain => domain.toLowerCase() === userDomain.toLowerCase())
+      });
+      
+      return isAllowed;
     } catch (error) {
-      console.error("Error validating domain:", error);
+      console.error("💥 DOMAIN VALIDATION DEBUG - Exception in validateDomain:", error);
       return false;
     }
   }, []);
@@ -449,9 +482,22 @@ export const useAuthHandlers = ({
 
       // STEP 5: Validate domain for this client (unless super admin)
       if (!employeeRecord.is_super_admin) {
+        console.log("🔐 AUTH DEBUG - Starting domain validation for non-super admin:", {
+          userEmail: supabaseUser.email,
+          employeeClientId: employeeRecord.client_id,
+          employeeIsSuperAdmin: employeeRecord.is_super_admin
+        });
+        
         const isDomainValid = await validateDomain(supabaseUser.email, employeeRecord.client_id);
         
+        console.log("✅ AUTH DEBUG - Domain validation result:", {
+          isDomainValid,
+          userEmail: supabaseUser.email,
+          clientId: employeeRecord.client_id
+        });
+        
         if (!isDomainValid) {
+          console.log("❌ AUTH DEBUG - Domain validation failed, blocking authentication");
           setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
           toast.error("Your email domain is not authorized for this application.");
           
@@ -477,6 +523,10 @@ export const useAuthHandlers = ({
           
           return;
         }
+        
+        console.log("✅ AUTH DEBUG - Domain validation passed, continuing authentication");
+      } else {
+        console.log("👑 AUTH DEBUG - User is super admin, skipping domain validation");
       }
 
       // STEP 6: If employee exists and is valid, link user_id if not already linked
