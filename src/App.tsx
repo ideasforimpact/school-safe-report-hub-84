@@ -10,6 +10,7 @@ import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 import { EmployeeProvider as EmployeeContextProvider } from './contexts/employee/EmployeeContext';
 import { BackofficeClientProvider } from '@/components/providers/BackofficeClientProvider';
 import RouteGuard from '@/components/RouteGuard';
+import ModuleSyncProvider from '@/components/employee/ModuleSyncProvider';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -92,11 +93,12 @@ const BackofficeWrapper = ({ component: Component }) => {
 function App() {
   return (
     <EmployeeContextProvider>
-      <IncidentProvider>
-        <StudentProvider>
-          <FacilityProvider>
-            <EmployeeVerificationProvider>
-              <AssessmentProvider>
+      <ModuleSyncProvider>
+        <IncidentProvider>
+          <StudentProvider>
+            <FacilityProvider>
+              <EmployeeVerificationProvider>
+                <AssessmentProvider>
                 <Routes>
                   {/* Public routes - no authentication required */}
                   <Route path="/login" element={<Login />} />
@@ -329,6 +331,7 @@ function App() {
           </FacilityProvider>
         </StudentProvider>
       </IncidentProvider>
+      </ModuleSyncProvider>
     </EmployeeContextProvider>
   );
 }
