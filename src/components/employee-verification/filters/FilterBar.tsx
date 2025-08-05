@@ -2,14 +2,11 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import SearchFilter from '@/components/incidents/filters/SearchFilter';
-import StatusFilter from './StatusFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
 
 interface FilterBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  statusFilter: string;
-  onStatusChange: (value: string) => void;
   documentStatusFilter: string;
   onDocumentStatusChange: (value: string) => void;
   onClearFilters: () => void;
@@ -20,8 +17,6 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = ({
   searchTerm,
   onSearchChange,
-  statusFilter,
-  onStatusChange,
   documentStatusFilter,
   onDocumentStatusChange,
   onClearFilters,
@@ -29,24 +24,18 @@ const FilterBar: React.FC<FilterBarProps> = ({
   totalCount
 }) => {
   const hasActiveFilters = searchTerm || 
-    statusFilter !== 'all' || 
     documentStatusFilter !== 'all';
 
   return (
     <div className="space-y-4 mb-6">
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex-1 min-w-[300px]">
+        <div className="w-[400px]">
           <SearchFilter
             value={searchTerm}
             onChange={onSearchChange}
             placeholder="Search by name, email, or employee ID..."
           />
         </div>
-        
-        <StatusFilter
-          value={statusFilter}
-          onChange={onStatusChange}
-        />
         
         <DocumentStatusFilter
           value={documentStatusFilter}
