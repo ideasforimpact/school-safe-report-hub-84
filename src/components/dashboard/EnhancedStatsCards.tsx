@@ -185,11 +185,11 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
               {(card as any).showBreakdown && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Open Incidents:</span>
+                    <span className="text-green-600 font-medium">Open Incidents:</span>
                     <span className="font-semibold text-green-600">{(card as any).openIncidents}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Closed Incidents:</span>
+                    <span className="text-red-600 font-medium">Closed Incidents:</span>
                     <span className="font-semibold text-red-600">{(card as any).closedIncidents}</span>
                   </div>
                 </div>
