@@ -17,13 +17,11 @@ import { Employee } from '@/types/employeeVerification';
 
 interface EmployeesListProps {
   searchTerm: string;
-  statusFilter: string;
   documentStatusFilter: string;
 }
 
 const EmployeesList: React.FC<EmployeesListProps> = ({
   searchTerm,
-  statusFilter,
   documentStatusFilter
 }) => {
   const { employees, fetchEmployees, isLoading } = useEmployeeVerification();
@@ -65,13 +63,6 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
         if (!matchesSearch) return false;
       }
 
-      // Status filter
-      if (statusFilter !== 'all') {
-        const isActive = employee.status === true;
-        if (statusFilter === 'active' && !isActive) return false;
-        if (statusFilter === 'inactive' && isActive) return false;
-      }
-
       // Document status filter
       if (documentStatusFilter !== 'all') {
         const docStatus = getDocumentStatus(employee);
@@ -80,7 +71,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
 
       return true;
     });
-  }, [employees, searchTerm, statusFilter, documentStatusFilter]);
+  }, [employees, searchTerm, documentStatusFilter]);
 
   // Render documents information for each employee
   const renderDocumentsInfo = (employee) => {

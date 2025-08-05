@@ -13,7 +13,6 @@ const EmployeeVerificationPage = () => {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
 
   // Calculate filtered results count
@@ -28,13 +27,6 @@ const EmployeeVerificationPage = () => {
           employee.employeeId.toLowerCase().includes(searchLower);
         
         if (!matchesSearch) return false;
-      }
-
-      // Status filter
-      if (statusFilter !== 'all') {
-        const isActive = employee.status === true;
-        if (statusFilter === 'active' && !isActive) return false;
-        if (statusFilter === 'inactive' && isActive) return false;
       }
 
       // Document status filter
@@ -64,7 +56,7 @@ const EmployeeVerificationPage = () => {
 
       return true;
     }).length;
-  }, [employees, searchTerm, statusFilter, documentStatusFilter]);
+  }, [employees, searchTerm, documentStatusFilter]);
 
   // Fetch employees when component mounts
   useEffect(() => {
@@ -77,7 +69,6 @@ const EmployeeVerificationPage = () => {
 
   const handleClearFilters = () => {
     setSearchTerm('');
-    setStatusFilter('all');
     setDocumentStatusFilter('all');
   };
 
@@ -116,8 +107,6 @@ const EmployeeVerificationPage = () => {
           <FilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
             documentStatusFilter={documentStatusFilter}
             onDocumentStatusChange={setDocumentStatusFilter}
             onClearFilters={handleClearFilters}
@@ -127,7 +116,6 @@ const EmployeeVerificationPage = () => {
           
           <EmployeesList
             searchTerm={searchTerm}
-            statusFilter={statusFilter}
             documentStatusFilter={documentStatusFilter}
           />
         </div>
