@@ -11,6 +11,7 @@ interface DocumentNumberInputProps {
   onChange: (value: string) => void;
   required?: boolean;
   className?: string;
+  fieldType?: string; // For bank account sub-fields
 }
 
 const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
@@ -18,13 +19,38 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
   value,
   onChange,
   required = true,
-  className
+  className,
+  fieldType
 }) => {
   const [showValue, setShowValue] = useState(false);
   const [displayValue, setDisplayValue] = useState('');
 
   // Document type configurations
-  const getDocumentConfig = (type: string) => {
+  const getDocumentConfig = (type: string, field?: string) => {
+    // Handle bank account sub-fields
+    if (type === 'bank_account') {
+      if (field === 'account_number') {
+        return {
+          label: 'Account Number',
+          placeholder: '123456789012',
+          maxLength: 18,
+          pattern: /^\d+$/,
+          format: (val: string) => val.replace(/\D/g, ''),
+          validate: (val: string) => /^\d{9,18}$/.test(val)
+        };
+      }
+      if (field === 'ifsc_code') {
+        return {
+          label: 'IFSC Code',
+          placeholder: 'ABCD0123456',
+          maxLength: 11,
+          pattern: /^[A-Z]{4}[0-9A-Z]{7}$/,
+          format: (val: string) => val.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+          validate: (val: string) => /^[A-Z]{4}[0-9A-Z]{7}$/.test(val)
+        };
+      }
+    }
+
     switch (type) {
       case 'aadhar':
         return {
@@ -88,7 +114,7 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
     }
   };
 
-  const config = getDocumentConfig(documentType);
+  const config = getDocumentConfig(documentType, fieldType);
 
   // Update display value when value changes
   useEffect(() => {
@@ -107,6 +133,10 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
       inputValue = inputValue.replace(/[^\d\s]/g, '');
     } else if (documentType === 'pan' || documentType === 'driving_license' || documentType === 'voter_id' || documentType === 'passport') {
       inputValue = inputValue.replace(/[^A-Za-z0-9-]/g, '');
+    } else if (documentType === 'bank_account' && fieldType === 'account_number') {
+      inputValue = inputValue.replace(/\D/g, '');
+    } else if (documentType === 'bank_account' && fieldType === 'ifsc_code') {
+      inputValue = inputValue.replace(/[^A-Za-z0-9]/g, '');
     }
 
     // Apply max length
@@ -127,6 +157,15 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
     if (!value) return null;
     
     if (!config.validate(value)) {
+      if (documentType === 'bank_account') {
+        if (fieldType === 'account_number') {
+          return 'Account number must be 9-18 digits';
+        }
+        if (fieldType === 'ifsc_code') {
+          return 'IFSC code must be in format: ABCD0123456';
+        }
+      }
+      
       switch (documentType) {
         case 'aadhar':
           return 'Aadhar number must be 12 digits in format: 1234 5678 9012';
