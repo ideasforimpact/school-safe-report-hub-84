@@ -29,7 +29,8 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     fetchEmployeeDocuments, 
     documentTypes, 
     fetchDocumentStatuses, 
-    documentStatuses 
+    documentStatuses,
+    getEmployeeDocuments
   } = useEmployeeVerification();
 
   // Fetch document statuses only once when the component mounts
@@ -65,6 +66,12 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const isBankAccount = (typeId: string): boolean => {
     const docType = documentTypes.find(type => type.id === typeId);
     return docType?.name === 'bank_account' || typeId === '3';
+  };
+
+  // Get existing document for the selected type
+  const getExistingDocument = (typeId: string) => {
+    const existingDocuments = getEmployeeDocuments(employeeId);
+    return existingDocuments.find(doc => doc.documentTypeId === typeId);
   };
 
   const handleSubmit = async (values: any) => {
@@ -256,7 +263,19 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
             <div className="w-full">
               <DocumentTypeSelector 
                 selectedTypeId={selectedTypeId} 
-                onChange={setSelectedTypeId} 
+                onChange={(typeId) => {
+                  setSelectedTypeId(typeId);
+                  // Show notification if document already exists
+                  const existingDoc = getExistingDocument(typeId);
+                  if (existingDoc) {
+                    const docType = documentTypes.find(type => type.id === typeId);
+                    toast({
+                      title: "Document Already Exists",
+                      description: `A ${docType?.description || 'document'} is already uploaded. You can update it by uploading a new one.`,
+                    });
+                  }
+                }}
+                employeeId={employeeId}
               />
             </div>
             {!selectedTypeId && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
