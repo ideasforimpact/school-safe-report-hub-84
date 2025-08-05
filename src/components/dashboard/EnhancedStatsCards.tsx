@@ -34,6 +34,10 @@ interface EnhancedStatsCardsProps {
 }
 
 const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
+  // Calculate total incidents from monthly data
+  const totalIncidents = stats.monthlyIncidentsData?.reduce((sum, month) => sum + (month.total || 0), 0) || 0;
+  const closedIncidents = totalIncidents - stats.openIncidents;
+  
   // Calculate trend indicators
   const currentMonthIncidents = stats.monthlyIncidentsData?.[stats.monthlyIncidentsData.length - 1]?.total || 0;
   const previousMonthIncidents = stats.monthlyIncidentsData?.[stats.monthlyIncidentsData.length - 2]?.total || 0;
@@ -62,15 +66,16 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
 
   const statsCards = [
     {
-      title: 'Open Incidents',
-      value: stats.openIncidents,
-      description: `${stats.openIncidents} incidents require attention`,
-      icon: AlertTriangle,
-      color: stats.openIncidents > 5 ? 'text-red-600' : stats.openIncidents > 2 ? 'text-orange-600' : 'text-green-600',
-      bgColor: stats.openIncidents > 5 ? 'bg-red-50' : stats.openIncidents > 2 ? 'bg-orange-50' : 'bg-green-50',
-      gradient: stats.openIncidents > 5 ? 'from-red-50 to-red-100' : stats.openIncidents > 2 ? 'from-orange-50 to-orange-100' : 'from-green-50 to-green-100',
-      trend: incidentTrend,
-      priority: stats.openIncidents > 5 ? 'High Priority' : stats.openIncidents > 2 ? 'Medium Priority' : 'Low Priority'
+      title: 'Total Incidents',
+      value: totalIncidents,
+      description: 'System-wide incident overview',
+      icon: BarChart3,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      gradient: 'from-blue-50 to-blue-100',
+      showBreakdown: true,
+      openIncidents: stats.openIncidents,
+      closedIncidents: closedIncidents
     },
     {
       title: 'Employee Safety Score',
@@ -176,28 +181,42 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 {card.description}
               </p>
 
+              {/* Show breakdown for Total Incidents card */}
+              {(card as any).showBreakdown && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Open Incidents:</span>
+                    <span className="font-medium text-red-600">{(card as any).openIncidents}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Closed Incidents:</span>
+                    <span className="font-medium text-green-600">{(card as any).closedIncidents}</span>
+                  </div>
+                </div>
+              )}
+
               {/* Status indicators */}
-              {card.priority && (
+              {(card as any).priority && (
                 <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{card.priority}</span>
+                  <span className={`font-medium ${card.color}`}>{(card as any).priority}</span>
                 </div>
               )}
 
-              {card.status && (
+              {(card as any).status && (
                 <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{card.status}</span>
+                  <span className={`font-medium ${card.color}`}>{(card as any).status}</span>
                 </div>
               )}
 
-              {card.direction && (
+              {(card as any).direction && (
                 <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{card.direction}</span>
+                  <span className={`font-medium ${card.color}`}>{(card as any).direction}</span>
                 </div>
               )}
 
-              {card.performance && (
+              {(card as any).performance && (
                 <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{card.performance}</span>
+                  <span className={`font-medium ${card.color}`}>{(card as any).performance}</span>
                 </div>
               )}
             </CardContent>
