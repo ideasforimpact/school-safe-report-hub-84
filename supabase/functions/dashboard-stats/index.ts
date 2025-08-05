@@ -146,6 +146,57 @@ serve(async (req) => {
     // Get unique vehicle IDs with documents
     const uniqueVehiclesWithDocs = new Set(vehiclesWithDocs?.map(doc => doc.vehicle_id) || [])
 
+    // Get active vehicles count with role-based filtering
+    let activeVehiclesQuery = supabase
+      .from('vehicles')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'active')
+
+    if (shouldFilterByEmployee) {
+      activeVehiclesQuery = activeVehiclesQuery.eq('employee_id', employee_id)
+    }
+
+    const { data: activeVehicles, error: activeVehiclesError } = await activeVehiclesQuery
+
+    if (activeVehiclesError) {
+      console.error('Error fetching active vehicles:', activeVehiclesError)
+    }
+
+    // Get maintenance vehicles count with role-based filtering
+    let maintenanceVehiclesQuery = supabase
+      .from('vehicles')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'maintenance')
+
+    if (shouldFilterByEmployee) {
+      maintenanceVehiclesQuery = maintenanceVehiclesQuery.eq('employee_id', employee_id)
+    }
+
+    const { data: maintenanceVehicles, error: maintenanceVehiclesError } = await maintenanceVehiclesQuery
+
+    if (maintenanceVehiclesError) {
+      console.error('Error fetching maintenance vehicles:', maintenanceVehiclesError)
+    }
+
+    // Get inactive vehicles count with role-based filtering
+    let inactiveVehiclesQuery = supabase
+      .from('vehicles')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'inactive')
+
+    if (shouldFilterByEmployee) {
+      inactiveVehiclesQuery = inactiveVehiclesQuery.eq('employee_id', employee_id)
+    }
+
+    const { data: inactiveVehicles, error: inactiveVehiclesError } = await inactiveVehiclesQuery
+
+    if (inactiveVehiclesError) {
+      console.error('Error fetching inactive vehicles:', inactiveVehiclesError)
+    }
+
     // Get incidents from last month with role-based filtering
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
@@ -247,6 +298,9 @@ serve(async (req) => {
       employeesVerified: uniqueEmployeesWithDocs.size,
       totalVehicles: totalVehicles?.length || 0,
       vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
+      activeVehicles: activeVehicles?.length || 0,
+      maintenanceVehicles: maintenanceVehicles?.length || 0,
+      inactiveVehicles: inactiveVehicles?.length || 0,
       incidentsLastMonth: incidentsLastMonth?.length || 0,
       incidentsLast6Months: incidentsLast6Months?.length || 0,
       monthlyIncidentsData
