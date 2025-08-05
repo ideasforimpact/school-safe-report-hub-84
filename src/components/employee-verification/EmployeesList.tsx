@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -13,8 +13,23 @@ import { Eye, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
+import { Employee } from '@/types/employeeVerification';
 
-const EmployeesList = () => {
+interface EmployeesListProps {
+  searchTerm: string;
+  departmentFilter: string;
+  employeeTypeFilter: string;
+  statusFilter: string;
+  documentStatusFilter: string;
+}
+
+const EmployeesList: React.FC<EmployeesListProps> = ({
+  searchTerm,
+  departmentFilter,
+  employeeTypeFilter,
+  statusFilter,
+  documentStatusFilter
+}) => {
   const { employees, fetchEmployees, isLoading } = useEmployeeVerification();
   const navigate = useNavigate();
 
@@ -24,6 +39,62 @@ const EmployeesList = () => {
       fetchEmployees();
     }
   }, [employees.length, isLoading, fetchEmployees]);
+
+  // Get document status for an employee
+  const getDocumentStatus = (employee: Employee) => {
+    const documents = employee.documents || [];
+    if (documents.length === 0) return 'no-documents';
+    
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    
+    if (verified.length === documents.length) return 'verified';
+    if (failed.length > 0) return 'failed';
+    if (pending.length > 0) return 'pending';
+    return 'mixed';
+  };
+
+  // Filter employees based on all filter criteria
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((employee) => {
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          employee.name.toLowerCase().includes(searchLower) ||
+          employee.email.toLowerCase().includes(searchLower) ||
+          employee.employeeId.toLowerCase().includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
+
+      // Department filter
+      if (departmentFilter !== 'all' && employee.department !== departmentFilter) {
+        return false;
+      }
+
+      // Employee type filter
+      if (employeeTypeFilter !== 'all' && employee.employeeType !== employeeTypeFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const isActive = employee.status === true;
+        if (statusFilter === 'active' && !isActive) return false;
+        if (statusFilter === 'inactive' && isActive) return false;
+      }
+
+      // Document status filter
+      if (documentStatusFilter !== 'all') {
+        const docStatus = getDocumentStatus(employee);
+        if (docStatus !== documentStatusFilter) return false;
+      }
+
+      return true;
+    });
+  }, [employees, searchTerm, departmentFilter, employeeTypeFilter, statusFilter, documentStatusFilter]);
 
   // Render documents information for each employee
   const renderDocumentsInfo = (employee) => {
@@ -89,14 +160,17 @@ const EmployeesList = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {employees.length === 0 ? (
+            {filteredEmployees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-6 text-gray-500">
-                  No employees found. Add your first employee to get started.
+                  {employees.length === 0 
+                    ? "No employees found. Add your first employee to get started."
+                    : "No employees match your current filters."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((employee) => {
+              filteredEmployees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === false;
                 
