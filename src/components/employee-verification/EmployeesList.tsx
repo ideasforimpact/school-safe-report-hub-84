@@ -14,6 +14,8 @@ import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types/employeeVerification';
+import { usePagination } from '@/hooks/usePagination';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 interface EmployeesListProps {
   searchTerm: string;
@@ -72,6 +74,16 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
       return true;
     });
   }, [employees, searchTerm, documentStatusFilter]);
+
+  // Set up pagination
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedEmployees,
+    goToNextPage,
+    goToPreviousPage
+  } = usePagination(filteredEmployees, 10);
 
   // Render documents information for each employee
   const renderDocumentsInfo = (employee) => {
@@ -147,7 +159,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEmployees.map((employee) => {
+              paginatedEmployees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === false;
                 
@@ -179,6 +191,40 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
           </TableBody>
         </Table>
       </div>
+      
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-4">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={goToPreviousPage}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+                <PaginationItem key={pageNumber}>
+                  <PaginationLink
+                    onClick={() => setCurrentPage(pageNumber)}
+                    isActive={currentPage === pageNumber}
+                    className="cursor-pointer"
+                  >
+                    {pageNumber}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={goToNextPage}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 };
