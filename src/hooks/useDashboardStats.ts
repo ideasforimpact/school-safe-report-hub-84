@@ -15,6 +15,10 @@ interface DashboardStats {
   inactiveVehicles: number;
   incidentsLastMonth: number;
   incidentsLast6Months: number;
+  totalAssessments: number;
+  newAssessments: number;
+  completedAssessments: number;
+  draftAssessments: number;
   monthlyIncidentsData: Array<{
     month: string;
     open: number;
@@ -36,6 +40,10 @@ export const useDashboardStats = () => {
     inactiveVehicles: 0,
     incidentsLastMonth: 0,
     incidentsLast6Months: 0,
+    totalAssessments: 0,
+    newAssessments: 0,
+    completedAssessments: 0,
+    draftAssessments: 0,
     monthlyIncidentsData: []
   });
   const [loading, setLoading] = useState(false);

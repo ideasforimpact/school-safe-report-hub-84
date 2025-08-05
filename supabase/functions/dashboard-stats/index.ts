@@ -197,6 +197,70 @@ serve(async (req) => {
       console.error('Error fetching inactive vehicles:', inactiveVehiclesError)
     }
 
+    // Get assessment status counts with role-based filtering
+    let totalAssessmentsQuery = supabase
+      .from('assessments')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+
+    if (shouldFilterByEmployee) {
+      totalAssessmentsQuery = totalAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+
+    const { data: totalAssessments, error: totalAssessmentsError } = await totalAssessmentsQuery
+
+    if (totalAssessmentsError) {
+      console.error('Error fetching total assessments:', totalAssessmentsError)
+    }
+
+    let newAssessmentsQuery = supabase
+      .from('assessments')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'New')
+
+    if (shouldFilterByEmployee) {
+      newAssessmentsQuery = newAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+
+    const { data: newAssessments, error: newAssessmentsError } = await newAssessmentsQuery
+
+    if (newAssessmentsError) {
+      console.error('Error fetching new assessments:', newAssessmentsError)
+    }
+
+    let completedAssessmentsQuery = supabase
+      .from('assessments')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'Completed')
+
+    if (shouldFilterByEmployee) {
+      completedAssessmentsQuery = completedAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+
+    const { data: completedAssessments, error: completedAssessmentsError } = await completedAssessmentsQuery
+
+    if (completedAssessmentsError) {
+      console.error('Error fetching completed assessments:', completedAssessmentsError)
+    }
+
+    let draftAssessmentsQuery = supabase
+      .from('assessments')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status', 'Draft')
+
+    if (shouldFilterByEmployee) {
+      draftAssessmentsQuery = draftAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+
+    const { data: draftAssessments, error: draftAssessmentsError } = await draftAssessmentsQuery
+
+    if (draftAssessmentsError) {
+      console.error('Error fetching draft assessments:', draftAssessmentsError)
+    }
+
     // Get incidents from last month with role-based filtering
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
@@ -303,6 +367,10 @@ serve(async (req) => {
       inactiveVehicles: inactiveVehicles?.length || 0,
       incidentsLastMonth: incidentsLastMonth?.length || 0,
       incidentsLast6Months: incidentsLast6Months?.length || 0,
+      totalAssessments: totalAssessments?.length || 0,
+      newAssessments: newAssessments?.length || 0,
+      completedAssessments: completedAssessments?.length || 0,
+      draftAssessments: draftAssessments?.length || 0,
       monthlyIncidentsData
     }
 
