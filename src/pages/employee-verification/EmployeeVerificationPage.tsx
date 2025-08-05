@@ -1,7 +1,8 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
+import FilterBar from '@/components/employee-verification/filters/FilterBar';
 import { FileCheck, BarChart2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -10,6 +11,79 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
   
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [employeeTypeFilter, setEmployeeTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
+  
+  // Get unique departments for filter
+  const departments = useMemo(() => {
+    const uniqueDepartments = [...new Set(employees.map(emp => emp.department))];
+    return uniqueDepartments.filter(Boolean).sort();
+  }, [employees]);
+
+  // Calculate filtered results count
+  const filteredEmployeesCount = useMemo(() => {
+    return employees.filter((employee) => {
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          employee.name.toLowerCase().includes(searchLower) ||
+          employee.email.toLowerCase().includes(searchLower) ||
+          employee.employeeId.toLowerCase().includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
+
+      // Department filter
+      if (departmentFilter !== 'all' && employee.department !== departmentFilter) {
+        return false;
+      }
+
+      // Employee type filter
+      if (employeeTypeFilter !== 'all' && employee.employeeType !== employeeTypeFilter) {
+        return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const isActive = employee.status === true;
+        if (statusFilter === 'active' && !isActive) return false;
+        if (statusFilter === 'inactive' && isActive) return false;
+      }
+
+      // Document status filter
+      if (documentStatusFilter !== 'all') {
+        const documents = employee.documents || [];
+        
+        if (documentStatusFilter === 'no-documents' && documents.length > 0) return false;
+        if (documentStatusFilter === 'verified') {
+          const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+          if (verified.length !== documents.length || documents.length === 0) return false;
+        }
+        if (documentStatusFilter === 'pending') {
+          const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+          if (pending.length === 0) return false;
+        }
+        if (documentStatusFilter === 'failed') {
+          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+          if (failed.length === 0) return false;
+        }
+        if (documentStatusFilter === 'mixed') {
+          const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+          const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+          if (verified.length === documents.length || failed.length === 0 || pending.length === 0) return false;
+        }
+      }
+
+      return true;
+    }).length;
+  }, [employees, searchTerm, departmentFilter, employeeTypeFilter, statusFilter, documentStatusFilter]);
+
   // Fetch employees when component mounts
   useEffect(() => {
     fetchEmployees();
@@ -17,6 +91,14 @@ const EmployeeVerificationPage = () => {
   
   const handleRefresh = () => {
     fetchEmployees();
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setDepartmentFilter('all');
+    setEmployeeTypeFilter('all');
+    setStatusFilter('all');
+    setDocumentStatusFilter('all');
   };
 
   return (
@@ -50,7 +132,31 @@ const EmployeeVerificationPage = () => {
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <h2 className="text-lg font-medium mb-4 text-left">Employees</h2>
-          <EmployeesList />
+          
+          <FilterBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            departmentFilter={departmentFilter}
+            onDepartmentChange={setDepartmentFilter}
+            employeeTypeFilter={employeeTypeFilter}
+            onEmployeeTypeChange={setEmployeeTypeFilter}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            documentStatusFilter={documentStatusFilter}
+            onDocumentStatusChange={setDocumentStatusFilter}
+            onClearFilters={handleClearFilters}
+            departments={departments}
+            resultCount={filteredEmployeesCount}
+            totalCount={employees.length}
+          />
+          
+          <EmployeesList
+            searchTerm={searchTerm}
+            departmentFilter={departmentFilter}
+            employeeTypeFilter={employeeTypeFilter}
+            statusFilter={statusFilter}
+            documentStatusFilter={documentStatusFilter}
+          />
         </div>
       </div>
     </Layout>
