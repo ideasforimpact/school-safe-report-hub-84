@@ -26,6 +26,10 @@ interface EnhancedStatsCardsProps {
     inactiveVehicles: number;
     incidentsLastMonth: number;
     incidentsLast6Months: number;
+    totalAssessments: number;
+    newAssessments: number;
+    completedAssessments: number;
+    draftAssessments: number;
     monthlyIncidentsData: Array<{
       month: string;
       open: number;
@@ -105,14 +109,17 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       direction: incidentTrend <= 0 ? 'Improving' : 'Increasing'
     },
     {
-      title: 'Assessment Status',
-      value: stats.activeAssessments,
-      description: `${stats.activeAssessments} active safety assessments`,
+      title: 'Assessment Status Overview',
+      value: `${stats.totalAssessments}`,
+      description: 'Assessment status overview',
       icon: FileCheck,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      gradient: 'from-blue-50 to-blue-100',
-      status: stats.activeAssessments > 0 ? 'In Progress' : 'Up to Date'
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      gradient: 'from-purple-50 to-purple-100',
+      showAssessmentBreakdown: true,
+      newAssessments: stats.newAssessments,
+      completedAssessments: stats.completedAssessments,
+      draftAssessments: stats.draftAssessments
     },
     {
       title: 'Transport Safety Overview',
@@ -215,22 +222,39 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 </div>
               )}
 
-              {(card as any).showVehicleBreakdown && (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600 font-medium">Active:</span>
-                    <span className="font-semibold text-green-600">{(card as any).activeVehicles}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-red-600 font-medium">Inactive:</span>
-                    <span className="font-semibold text-red-600">{(card as any).inactiveVehicles}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-yellow-600 font-medium">Maintenance:</span>
-                    <span className="font-semibold text-yellow-600">{(card as any).maintenanceVehicles}</span>
-                  </div>
-                </div>
-              )}
+                    {(card as any).showVehicleBreakdown && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-600 font-medium">Active:</span>
+                          <span className="font-semibold text-green-600">{(card as any).activeVehicles}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-red-600 font-medium">Inactive:</span>
+                          <span className="font-semibold text-red-600">{(card as any).inactiveVehicles}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-yellow-600 font-medium">Maintenance:</span>
+                          <span className="font-semibold text-yellow-600">{(card as any).maintenanceVehicles}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {(card as any).showAssessmentBreakdown && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600 font-medium">New:</span>
+                          <span className="font-semibold text-gray-600">{(card as any).newAssessments}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-600 font-medium">Completed:</span>
+                          <span className="font-semibold text-green-600">{(card as any).completedAssessments}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-amber-600 font-medium">Draft:</span>
+                          <span className="font-semibold text-amber-600">{(card as any).draftAssessments}</span>
+                        </div>
+                      </div>
+                    )}
 
               {/* Status indicators */}
               {(card as any).priority && (
@@ -244,6 +268,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                   <span className={`font-medium ${card.color}`}>{(card as any).status}</span>
                 </div>
               )}
+
 
               {(card as any).direction && (
                 <div className="text-xs">
