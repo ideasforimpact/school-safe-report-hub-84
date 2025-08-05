@@ -78,15 +78,17 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       closedIncidents: closedIncidents
     },
     {
-      title: 'Employee Safety Score',
-      value: `${safetyScore}%`,
-      description: `${stats.employeesVerified}/${stats.totalEmployees} employees verified`,
+      title: 'Employee Safety Overview',
+      value: stats.totalEmployees.toString(),
+      description: 'Employee verification status',
       icon: ShieldCheck,
-      color: safetyScore >= 90 ? 'text-green-600' : safetyScore >= 70 ? 'text-yellow-600' : 'text-red-600',
-      bgColor: safetyScore >= 90 ? 'bg-green-50' : safetyScore >= 70 ? 'bg-yellow-50' : 'bg-red-50',
-      gradient: safetyScore >= 90 ? 'from-green-50 to-green-100' : safetyScore >= 70 ? 'from-yellow-50 to-yellow-100' : 'from-red-50 to-red-100',
-      percentage: employeeVerificationPercentage,
-      status: safetyScore >= 90 ? 'Excellent' : safetyScore >= 70 ? 'Good' : 'Needs Attention'
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      gradient: 'from-blue-50 to-blue-100',
+      showEmployeeBreakdown: true,
+      totalEmployees: stats.totalEmployees,
+      verifiedEmployees: stats.employeesVerified,
+      failedEmployees: stats.totalEmployees - stats.employeesVerified
     },
     {
       title: 'Incident Trends',
@@ -191,6 +193,23 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-red-600 font-medium">Closed Incidents:</span>
                     <span className="font-semibold text-red-600">{(card as any).closedIncidents}</span>
+                  </div>
+                </div>
+              )}
+
+              {(card as any).showEmployeeBreakdown && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Total Employees:</span>
+                    <span className="font-semibold">{(card as any).totalEmployees}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-600 font-medium">Verified:</span>
+                    <span className="font-semibold text-green-600">{(card as any).verifiedEmployees}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-red-600 font-medium">Failed:</span>
+                    <span className="font-semibold text-red-600">{(card as any).failedEmployees}</span>
                   </div>
                 </div>
               )}
