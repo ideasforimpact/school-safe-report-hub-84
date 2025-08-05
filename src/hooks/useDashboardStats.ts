@@ -10,6 +10,9 @@ interface DashboardStats {
   employeesVerified: number;
   totalVehicles: number;
   vehiclesWithDocuments: number;
+  activeVehicles: number;
+  maintenanceVehicles: number;
+  inactiveVehicles: number;
   incidentsLastMonth: number;
   incidentsLast6Months: number;
   monthlyIncidentsData: Array<{
@@ -28,6 +31,9 @@ export const useDashboardStats = () => {
     employeesVerified: 0,
     totalVehicles: 0,
     vehiclesWithDocuments: 0,
+    activeVehicles: 0,
+    maintenanceVehicles: 0,
+    inactiveVehicles: 0,
     incidentsLastMonth: 0,
     incidentsLast6Months: 0,
     monthlyIncidentsData: []

@@ -21,6 +21,9 @@ interface EnhancedStatsCardsProps {
     employeesVerified: number;
     totalVehicles: number;
     vehiclesWithDocuments: number;
+    activeVehicles: number;
+    maintenanceVehicles: number;
+    inactiveVehicles: number;
     incidentsLastMonth: number;
     incidentsLast6Months: number;
     monthlyIncidentsData: Array<{
@@ -112,15 +115,17 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       status: stats.activeAssessments > 0 ? 'In Progress' : 'Up to Date'
     },
     {
-      title: 'Transport Safety',
-      value: `${vehicleDocumentationPercentage}%`,
-      description: `${stats.vehiclesWithDocuments}/${stats.totalVehicles} vehicles compliant`,
+      title: 'Transport Safety Overview',
+      value: stats.totalVehicles.toString(),
+      description: 'Vehicle status overview',
       icon: Truck,
-      color: vehicleDocumentationPercentage >= 90 ? 'text-green-600' : vehicleDocumentationPercentage >= 70 ? 'text-yellow-600' : 'text-red-600',
-      bgColor: vehicleDocumentationPercentage >= 90 ? 'bg-green-50' : vehicleDocumentationPercentage >= 70 ? 'bg-yellow-50' : 'bg-red-50',
-      gradient: vehicleDocumentationPercentage >= 90 ? 'from-green-50 to-green-100' : vehicleDocumentationPercentage >= 70 ? 'from-yellow-50 to-yellow-100' : 'from-red-50 to-red-100',
-      percentage: vehicleDocumentationPercentage,
-      status: vehicleDocumentationPercentage >= 90 ? 'Compliant' : vehicleDocumentationPercentage >= 70 ? 'Mostly Compliant' : 'Non-Compliant'
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      gradient: 'from-blue-50 to-blue-100',
+      showVehicleBreakdown: true,
+      activeVehicles: stats.activeVehicles,
+      maintenanceVehicles: stats.maintenanceVehicles,
+      inactiveVehicles: stats.inactiveVehicles
     },
     {
       title: 'Response Time',
@@ -206,6 +211,23 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-red-600 font-medium">Failed:</span>
                     <span className="font-semibold text-red-600">{(card as any).failedEmployees}</span>
+                  </div>
+                </div>
+              )}
+
+              {(card as any).showVehicleBreakdown && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-600 font-medium">Active:</span>
+                    <span className="font-semibold text-green-600">{(card as any).activeVehicles}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-red-600 font-medium">Inactive:</span>
+                    <span className="font-semibold text-red-600">{(card as any).inactiveVehicles}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-yellow-600 font-medium">Maintenance:</span>
+                    <span className="font-semibold text-yellow-600">{(card as any).maintenanceVehicles}</span>
                   </div>
                 </div>
               )}
