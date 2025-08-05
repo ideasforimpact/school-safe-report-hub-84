@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DocumentNumberInputProps {
@@ -22,9 +20,6 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
   className,
   fieldType
 }) => {
-  const [showValue, setShowValue] = useState(false);
-  const [displayValue, setDisplayValue] = useState('');
-
   // Document type configurations
   const getDocumentConfig = (type: string, field?: string) => {
     // Handle bank account sub-fields
@@ -116,15 +111,6 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
 
   const config = getDocumentConfig(documentType, fieldType);
 
-  // Update display value when value changes
-  useEffect(() => {
-    if (showValue) {
-      setDisplayValue(value);
-    } else {
-      setDisplayValue('*'.repeat(value.length));
-    }
-  }, [value, showValue]);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let inputValue = e.target.value;
     
@@ -147,10 +133,6 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
     // Apply formatting
     const formattedValue = config.format(inputValue);
     onChange(formattedValue);
-  };
-
-  const toggleVisibility = () => {
-    setShowValue(!showValue);
   };
 
   const getValidationMessage = () => {
@@ -186,38 +168,27 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
 
   const validationMessage = getValidationMessage();
 
+  // Create unique ID to prevent cross-contamination
+  const inputId = `${documentType}${fieldType ? `_${fieldType}` : ''}_input`;
+
   return (
     <div className={className}>
-      <Label htmlFor="documentNumber" className="text-sm font-medium">
+      <Label htmlFor={inputId} className="text-sm font-medium">
         {config.label} {required && <span className="text-red-500">*</span>}
       </Label>
-      <div className="relative mt-1">
+      <div className="mt-1">
         <Input
-          id="documentNumber"
+          id={inputId}
           type="text"
-          value={showValue ? value : displayValue}
+          value={value}
           onChange={handleInputChange}
           placeholder={config.placeholder}
           required={required}
           maxLength={config.maxLength}
           className={cn(
-            "pr-10",
             validationMessage && "border-red-500 focus-visible:ring-red-500"
           )}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-          onClick={toggleVisibility}
-        >
-          {showValue ? (
-            <EyeOff className="h-4 w-4 text-gray-500" />
-          ) : (
-            <Eye className="h-4 w-4 text-gray-500" />
-          )}
-        </Button>
       </div>
       {validationMessage && (
         <p className="text-sm text-red-500 mt-1">{validationMessage}</p>
