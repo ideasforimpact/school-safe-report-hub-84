@@ -276,34 +276,20 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       {/* Bank Account Details */}
       {isBankAccount && (
         <>
-          <div>
-            <Label htmlFor="accountNumber" className="text-sm font-medium">
-              Account Number <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="accountNumber"
-              type="text"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="Enter account number"
-              required
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ifscCode" className="text-sm font-medium">
-              IFSC Code <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="ifscCode"
-              type="text"
-              value={ifscCode}
-              onChange={(e) => setIfscCode(e.target.value)}
-              placeholder="Enter IFSC code"
-              required
-              className="mt-1"
-            />
-          </div>
+          <DocumentNumberInput
+            documentType="bank_account"
+            fieldType="account_number"
+            value={accountNumber}
+            onChange={setAccountNumber}
+            required
+          />
+          <DocumentNumberInput
+            documentType="bank_account"
+            fieldType="ifsc_code"
+            value={ifscCode}
+            onChange={setIfscCode}
+            required
+          />
         </>
       )}
 
