@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
-import SearchFilter from '@/components/incidents/filters/SearchFilter';
-import StatusFilter from './StatusFilter';
+import { X, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import StatusRadioFilter from './StatusRadioFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
 
 interface FilterBarProps {
@@ -33,25 +33,31 @@ const FilterBar: React.FC<FilterBarProps> = ({
     documentStatusFilter !== 'all';
 
   return (
-    <div className="space-y-4 mb-6">
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex-1 min-w-[300px]">
-          <SearchFilter
-            value={searchTerm}
-            onChange={onSearchChange}
-            placeholder="Search by name, email, or employee ID..."
+    <div className="space-y-6 mb-6">
+      {/* Search Bar */}
+      <div className="relative w-full">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email, or employee ID..."
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10 h-12 w-full text-base"
+        />
+      </div>
+
+      {/* Filters Row */}
+      <div className="flex flex-wrap gap-6 items-center justify-between">
+        <div className="flex items-center gap-6">
+          <DocumentStatusFilter
+            value={documentStatusFilter}
+            onChange={onDocumentStatusChange}
+          />
+          
+          <StatusRadioFilter
+            value={statusFilter}
+            onChange={onStatusChange}
           />
         </div>
-        
-        <StatusFilter
-          value={statusFilter}
-          onChange={onStatusChange}
-        />
-        
-        <DocumentStatusFilter
-          value={documentStatusFilter}
-          onChange={onDocumentStatusChange}
-        />
         
         {hasActiveFilters && (
           <Button
