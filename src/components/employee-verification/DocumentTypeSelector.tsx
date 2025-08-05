@@ -7,7 +7,8 @@ import {
   Car, 
   Globe2 as Globe, 
   Building, 
-  Users 
+  Users,
+  CheckCircle
 } from 'lucide-react';
 import { DocumentType } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -15,6 +16,7 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 interface DocumentTypeSelectorProps {
   selectedTypeId: string | null;
   onChange: (typeId: string) => void;
+  employeeId?: string;
 }
 
 // Ordered document types as specified
@@ -28,8 +30,11 @@ const defaultDocumentTypes = [
   { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50', enabled: true },
 ];
 
-const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange }) => {
-  const { documentTypes, isLoading } = useEmployeeVerification();
+const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange, employeeId }) => {
+  const { documentTypes, isLoading, getEmployeeDocuments } = useEmployeeVerification();
+  
+  // Get existing documents for this employee
+  const existingDocuments = employeeId ? getEmployeeDocuments(employeeId) : [];
   
   // No API calls here - the parent component handles fetching
   
@@ -79,6 +84,11 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
     }
   };
 
+  // Helper function to check if document type has been uploaded
+  const hasDocumentUploaded = (typeId: string) => {
+    return existingDocuments.some(doc => doc.documentTypeId === typeId);
+  };
+
   return (
     <div className="grid grid-cols-4 md:grid-cols-6 gap-2 w-full">
       {typesToDisplay.map((type) => {
@@ -90,11 +100,13 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
           type.description : 
           type.name.replace('_', ' ');
         
+        const hasUploaded = hasDocumentUploaded(type.id);
+        
         return (
           <div
             key={type.id}
             className={`
-              flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors
+              relative flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors
               ${isSelected 
                 ? `${bgColor} border-primary text-primary` 
                 : `${bgColor} border-transparent hover:border-gray-300`
@@ -102,6 +114,11 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
             `}
             onClick={() => onChange(type.id)}
           >
+            {hasUploaded && (
+              <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1">
+                <CheckCircle className="h-3 w-3 text-white" />
+              </div>
+            )}
             <Icon className={`h-6 w-6 mb-1 ${isSelected ? 'text-primary' : 'text-gray-500'}`} />
             <span className="text-xs font-medium capitalize">{displayLabel}</span>
           </div>

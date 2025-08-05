@@ -53,13 +53,52 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const { user } = useAuth();
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
-  const { documentTypes, fetchEmployeeDocuments } = useEmployeeVerification();
+  const { documentTypes, fetchEmployeeDocuments, getEmployeeDocuments } = useEmployeeVerification();
 
   // Get document type details
   const documentType = documentTypes.find(type => type.id === selectedTypeId);
   const isDrivingLicense = documentType?.name === 'driving_license';
   const isBankAccount = documentType?.name === 'bank_account';
   const isOtherType = documentType?.name === 'other';
+
+  // Pre-populate with existing document data if available
+  useEffect(() => {
+    if (selectedTypeId && employeeId) {
+      const existingDocuments = getEmployeeDocuments(employeeId);
+      const existingDoc = existingDocuments.find(doc => doc.documentTypeId === selectedTypeId);
+      
+      if (existingDoc) {
+        console.log('Pre-populating form with existing document:', existingDoc);
+        setDocumentNumber(existingDoc.documentNumber || '');
+        
+        // For bank account documents, extract account details from params
+        if (isBankAccount && existingDoc.params) {
+          setAccountNumber(existingDoc.params.accountNumber || '');
+          setIfscCode(existingDoc.params.ifscCode || '');
+        }
+        
+        // For driving license, extract DOB from params
+        if (isDrivingLicense && existingDoc.params?.DOB) {
+          try {
+            setDateOfBirth(new Date(existingDoc.params.DOB));
+          } catch (e) {
+            console.warn('Failed to parse date from existing document:', e);
+          }
+        }
+        
+        toast({
+          title: 'Existing Data Found',
+          description: 'Form has been pre-populated with existing document data. You can modify it before uploading.',
+        });
+      } else {
+        // Clear form if no existing document
+        setDocumentNumber('');
+        setAccountNumber('');
+        setIfscCode('');
+        setDateOfBirth(undefined);
+      }
+    }
+  }, [selectedTypeId, employeeId, isBankAccount, isDrivingLicense, getEmployeeDocuments, toast]);
 
   // Handle direct edge function calls for Court Case Check and Police Verification
   const handleDirectSubmission = async (verificationType: 'court_case_check' | 'police_verification') => {

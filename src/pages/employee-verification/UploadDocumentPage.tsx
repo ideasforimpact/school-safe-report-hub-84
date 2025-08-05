@@ -61,8 +61,7 @@ const UploadDocumentPage = () => {
         <h2 className="text-2xl font-bold mb-4">Employee Not Found</h2>
         <p className="text-gray-600 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
         <Button onClick={() => navigate('/employee-verification')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Employees
+          <ArrowLeft className="h-4 w-4" />
         </Button>
       </div>
     </Layout>;
@@ -77,8 +76,7 @@ const UploadDocumentPage = () => {
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
         <div className="flex items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
           <Button variant="ghost" size="sm" onClick={() => navigate(`/employee-verification/${employeeId}`)} className="mr-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-left">Upload Document</h1>
