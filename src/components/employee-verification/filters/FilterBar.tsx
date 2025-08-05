@@ -2,24 +2,17 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import SearchFilter from '@/components/incidents/filters/SearchFilter';
-import DepartmentFilter from './DepartmentFilter';
-import EmployeeTypeFilter from './EmployeeTypeFilter';
 import StatusFilter from './StatusFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
 
 interface FilterBarProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  departmentFilter: string;
-  onDepartmentChange: (value: string) => void;
-  employeeTypeFilter: string;
-  onEmployeeTypeChange: (value: string) => void;
   statusFilter: string;
   onStatusChange: (value: string) => void;
   documentStatusFilter: string;
   onDocumentStatusChange: (value: string) => void;
   onClearFilters: () => void;
-  departments: string[];
   resultCount: number;
   totalCount: number;
 }
@@ -27,22 +20,15 @@ interface FilterBarProps {
 const FilterBar: React.FC<FilterBarProps> = ({
   searchTerm,
   onSearchChange,
-  departmentFilter,
-  onDepartmentChange,
-  employeeTypeFilter,
-  onEmployeeTypeChange,
   statusFilter,
   onStatusChange,
   documentStatusFilter,
   onDocumentStatusChange,
   onClearFilters,
-  departments,
   resultCount,
   totalCount
 }) => {
   const hasActiveFilters = searchTerm || 
-    departmentFilter !== 'all' || 
-    employeeTypeFilter !== 'all' || 
     statusFilter !== 'all' || 
     documentStatusFilter !== 'all';
 
@@ -56,17 +42,6 @@ const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Search by name, email, or employee ID..."
           />
         </div>
-        
-        <DepartmentFilter
-          value={departmentFilter}
-          onChange={onDepartmentChange}
-          departments={departments}
-        />
-        
-        <EmployeeTypeFilter
-          value={employeeTypeFilter}
-          onChange={onEmployeeTypeChange}
-        />
         
         <StatusFilter
           value={statusFilter}

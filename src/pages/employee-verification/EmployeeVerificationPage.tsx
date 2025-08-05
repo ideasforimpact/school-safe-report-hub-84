@@ -13,16 +13,8 @@ const EmployeeVerificationPage = () => {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [employeeTypeFilter, setEmployeeTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
-  
-  // Get unique departments for filter
-  const departments = useMemo(() => {
-    const uniqueDepartments = [...new Set(employees.map(emp => emp.department))];
-    return uniqueDepartments.filter(Boolean).sort();
-  }, [employees]);
 
   // Calculate filtered results count
   const filteredEmployeesCount = useMemo(() => {
@@ -36,16 +28,6 @@ const EmployeeVerificationPage = () => {
           employee.employeeId.toLowerCase().includes(searchLower);
         
         if (!matchesSearch) return false;
-      }
-
-      // Department filter
-      if (departmentFilter !== 'all' && employee.department !== departmentFilter) {
-        return false;
-      }
-
-      // Employee type filter
-      if (employeeTypeFilter !== 'all' && employee.employeeType !== employeeTypeFilter) {
-        return false;
       }
 
       // Status filter
@@ -82,7 +64,7 @@ const EmployeeVerificationPage = () => {
 
       return true;
     }).length;
-  }, [employees, searchTerm, departmentFilter, employeeTypeFilter, statusFilter, documentStatusFilter]);
+  }, [employees, searchTerm, statusFilter, documentStatusFilter]);
 
   // Fetch employees when component mounts
   useEffect(() => {
@@ -95,8 +77,6 @@ const EmployeeVerificationPage = () => {
 
   const handleClearFilters = () => {
     setSearchTerm('');
-    setDepartmentFilter('all');
-    setEmployeeTypeFilter('all');
     setStatusFilter('all');
     setDocumentStatusFilter('all');
   };
@@ -136,24 +116,17 @@ const EmployeeVerificationPage = () => {
           <FilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            departmentFilter={departmentFilter}
-            onDepartmentChange={setDepartmentFilter}
-            employeeTypeFilter={employeeTypeFilter}
-            onEmployeeTypeChange={setEmployeeTypeFilter}
             statusFilter={statusFilter}
             onStatusChange={setStatusFilter}
             documentStatusFilter={documentStatusFilter}
             onDocumentStatusChange={setDocumentStatusFilter}
             onClearFilters={handleClearFilters}
-            departments={departments}
             resultCount={filteredEmployeesCount}
             totalCount={employees.length}
           />
           
           <EmployeesList
             searchTerm={searchTerm}
-            departmentFilter={departmentFilter}
-            employeeTypeFilter={employeeTypeFilter}
             statusFilter={statusFilter}
             documentStatusFilter={documentStatusFilter}
           />
