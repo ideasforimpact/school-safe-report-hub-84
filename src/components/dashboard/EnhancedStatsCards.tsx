@@ -186,11 +186,11 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Open Incidents:</span>
-                    <span className="font-medium text-red-600">{(card as any).openIncidents}</span>
+                    <span className="font-semibold text-green-600">{(card as any).openIncidents}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Closed Incidents:</span>
-                    <span className="font-medium text-green-600">{(card as any).closedIncidents}</span>
+                    <span className="font-semibold text-red-600">{(card as any).closedIncidents}</span>
                   </div>
                 </div>
               )}
