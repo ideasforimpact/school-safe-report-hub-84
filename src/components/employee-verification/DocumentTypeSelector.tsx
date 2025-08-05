@@ -19,13 +19,13 @@ interface DocumentTypeSelectorProps {
 
 // Ordered document types as specified
 const defaultDocumentTypes = [
-  { id: '1', name: 'aadhar', description: 'Aadhar Card', icon: CreditCard, bgColor: 'bg-blue-50' },
-  { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50' },
-  { id: '6', name: 'voter_id', description: 'Voter ID', icon: Users, bgColor: 'bg-pink-50' },
-  { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50' },
-  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50' },
-  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
-  { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
+  { id: '1', name: 'aadhar', description: 'Aadhar Card', icon: CreditCard, bgColor: 'bg-blue-50', enabled: true },
+  { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50', enabled: true },
+  { id: '6', name: 'voter_id', description: 'Voter ID', icon: Users, bgColor: 'bg-pink-50', enabled: true },
+  { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50', enabled: true },
+  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50', enabled: true },
+  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50', enabled: false },
+  { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50', enabled: true },
 ];
 
 const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange }) => {
@@ -35,20 +35,23 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
   
   // Use fetched document types, or fall back to default if still loading
   const typesToDisplay = documentTypes.length > 0 ? 
-    // Sort according to the specified order if we have API data
-    [...documentTypes].sort((a, b) => {
-      const orderMap: Record<string, number> = {
-        'aadhar': 1,
-        'pan': 2,
-        'voter_id': 3,
-        'driving_license': 4,
-        'bank_account': 5,
-        'passport': 6,
-        'other': 7
-      };
-      return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
-    }) : 
-    defaultDocumentTypes;
+    // Sort according to the specified order if we have API data and filter enabled types
+    [...documentTypes]
+      .filter(type => type.name !== 'passport') // Hide passport for now
+      .sort((a, b) => {
+        const orderMap: Record<string, number> = {
+          'aadhar': 1,
+          'pan': 2,
+          'voter_id': 3,
+          'driving_license': 4,
+          'bank_account': 5,
+          'passport': 6,
+          'other': 7
+        };
+        return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
+      }) : 
+    // Filter enabled types from default types
+    defaultDocumentTypes.filter(type => type.enabled);
   
   // Helper function to get icon for document type
   const getIconForType = (typeName: string) => {
@@ -77,7 +80,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
   };
 
   return (
-    <div className="grid grid-cols-4 md:grid-cols-7 gap-2 w-full">
+    <div className="grid grid-cols-4 md:grid-cols-6 gap-2 w-full">
       {typesToDisplay.map((type) => {
         const Icon = getIconForType(type.name);
         const bgColor = getBgColorForType(type.name);
