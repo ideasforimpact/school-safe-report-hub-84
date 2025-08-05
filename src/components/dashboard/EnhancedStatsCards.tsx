@@ -200,10 +200,6 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
               {(card as any).showEmployeeBreakdown && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Total Employees:</span>
-                    <span className="font-semibold">{(card as any).totalEmployees}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
                     <span className="text-green-600 font-medium">Verified:</span>
                     <span className="font-semibold text-green-600">{(card as any).verifiedEmployees}</span>
                   </div>
