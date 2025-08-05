@@ -92,3 +92,6 @@ verify_jwt = true
 [functions.backoffice-client-management]
 verify_jwt = false
 
+[functions.edusafe-resource-client]
+verify_jwt = false
+

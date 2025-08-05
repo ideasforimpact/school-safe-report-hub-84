@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { formatUserFullName } from '@/utils/userUtils';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,6 +33,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [resources, setResources] = useState<EduSafeResource[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const location = useLocation();
 
   const fetchResources = async () => {
     try {
@@ -42,93 +44,117 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setResources([]);
         return;
       }
+
+      // Check if we're in a client context (non-backoffice)
+      const isClientContext = !location.pathname.startsWith('/backoffice');
       
-      // Fetch regular edusafe_resources filtered by client_id
-      const { data: regularResources, error: regularError } = await supabase
-        .from('edusafe_resources')
-        .select('*')
-        .eq('client_id', user.clientId)
-        .order('created_at', { ascending: false });
+      if (isClientContext) {
+        // Use the new edge function for client resource fetching
+        const { data: resourcesData, error } = await supabase.functions
+          .invoke('edusafe-resource-client', {
+            body: { 
+              action: 'fetch_resources',
+              data: { client_id: user.clientId }
+            }
+          });
 
-      if (regularError) throw regularError;
-
-      // Get client type ID from user data
-      const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
-
-      // Fetch backoffice resources using the edge function with client_type_id
-      let backofficeResources = [];
-      if (clientTypeId) {
-        const { data: backofficeData, error: backofficeError } = await supabase.functions.invoke('backoffice-edusafe-resource', {
-          body: { 
-            action: 'list',
-            client_type_id: clientTypeId
-          }
-        });
-
-        if (backofficeError) {
-          console.error('Error fetching backoffice resources:', backofficeError);
-        } else {
-          backofficeResources = backofficeData.resources || [];
+        if (error) {
+          console.error('Error fetching resources via edge function:', error);
+          toast.error('Failed to load resources');
+          setResources([]);
+          return;
         }
+
+        setResources(resourcesData?.resources || []);
+      } else {
+        // Backoffice context - use existing logic
+        // Fetch regular edusafe_resources filtered by client_id
+        const { data: regularResources, error: regularError } = await supabase
+          .from('edusafe_resources')
+          .select('*')
+          .eq('client_id', user.clientId)
+          .order('created_at', { ascending: false });
+
+        if (regularError) throw regularError;
+
+        // Get client type ID from user data
+        const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
+
+        // Fetch backoffice resources using the edge function with client_type_id
+        let backofficeResources = [];
+        if (clientTypeId) {
+          const { data: backofficeData, error: backofficeError } = await supabase.functions.invoke('backoffice-edusafe-resource', {
+            body: { 
+              action: 'list',
+              client_type_id: clientTypeId
+            }
+          });
+
+          if (backofficeError) {
+            console.error('Error fetching backoffice resources:', backofficeError);
+          } else {
+            backofficeResources = backofficeData.resources || [];
+          }
+        }
+
+        // Transform database records to EduSafeResource format
+        const transformedResources: EduSafeResource[] = [];
+
+        // Process regular edusafe_resources
+        (regularResources || []).forEach(record => {
+          transformedResources.push({
+            id: record.id,
+            title: record.title,
+            description: record.description || '',
+            category: record.category as any,
+            tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
+            uploadDate: record.created_at,
+            uploaderId: record.uploaded_by || 'unknown',
+            uploaderName: 'User',
+            ownerType: 'school',
+            clientId: record.client_id,
+            resourceType: 'Organisational Resource',
+            file: {
+              id: `file-${record.id}`,
+              name: record.title,
+              type: 'application/pdf',
+              size: 0,
+              base64: record.document_url
+            }
+          });
+        });
+
+        // Process backoffice resources (Global Resources)
+        backofficeResources.forEach(record => {
+          transformedResources.push({
+            id: `backoffice-${record.id}`,
+            title: record.title,
+            description: record.description || '',
+            category: record.category as any,
+            tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
+            uploadDate: record.created_at,
+            uploaderId: record.uploaded_by || 'unknown',
+            uploaderName: 'Admin',
+            ownerType: 'saas',
+            clientId: user.clientId, // Use user's client ID for compatibility
+            resourceType: 'Global Resource',
+            file: {
+              id: `file-backoffice-${record.id}`,
+              name: record.title,
+              type: 'application/pdf',
+              size: 0,
+              base64: record.document_url
+            }
+          });
+        });
+
+        // Sort all resources by created date
+        transformedResources.sort((a, b) => 
+          new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
+        );
+
+        setResources(transformedResources);
       }
-
-      // Transform database records to EduSafeResource format
-      const transformedResources: EduSafeResource[] = [];
-
-      // Process regular edusafe_resources
-      (regularResources || []).forEach(record => {
-        transformedResources.push({
-          id: record.id,
-          title: record.title,
-          description: record.description || '',
-          category: record.category as any,
-          tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
-          uploadDate: record.created_at,
-          uploaderId: record.uploaded_by || 'unknown',
-          uploaderName: 'User',
-          ownerType: 'school',
-          clientId: record.client_id,
-          resourceType: 'Organisational Resource',
-          file: {
-            id: `file-${record.id}`,
-            name: record.title,
-            type: 'application/pdf',
-            size: 0,
-            base64: record.document_url
-          }
-        });
-      });
-
-      // Process backoffice resources (Global Resources)
-      backofficeResources.forEach(record => {
-        transformedResources.push({
-          id: `backoffice-${record.id}`,
-          title: record.title,
-          description: record.description || '',
-          category: record.category as any,
-          tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
-          uploadDate: record.created_at,
-          uploaderId: record.uploaded_by || 'unknown',
-          uploaderName: 'Admin',
-          ownerType: 'saas',
-          clientId: user.clientId, // Use user's client ID for compatibility
-          resourceType: 'Global Resource',
-          file: {
-            id: `file-backoffice-${record.id}`,
-            name: record.title,
-            type: 'application/pdf',
-            size: 0,
-            base64: record.document_url
-          }
-        });
-      });
-
-      // Sort all resources by created date
-      transformedResources.sort((a, b) => 
-        new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
-      );
-
-      setResources(transformedResources);
     } catch (error) {
       console.error('Error fetching resources:', error);
       toast.error('Failed to load resources');
