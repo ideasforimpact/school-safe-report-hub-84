@@ -18,6 +18,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
 import ImageUpload from '@/components/ImageUpload';
 import BankStatementUploader from './BankStatementUploader';
+import DocumentNumberInput from './DocumentNumberInput';
 import { FileItem } from '@/types/fileTypes';
 
 interface DocumentFormProps {
@@ -233,20 +234,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Document Number Input */}
       {!isBankAccount && !isOtherType && (
-        <div>
-          <Label htmlFor="documentNumber" className="text-sm font-medium">
-            Document Number <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="documentNumber"
-            type="text"
-            value={documentNumber}
-            onChange={(e) => setDocumentNumber(e.target.value)}
-            placeholder="Enter document number"
-            required
-            className="mt-1"
-          />
-        </div>
+        <DocumentNumberInput
+          documentType={documentType?.name || ''}
+          value={documentNumber}
+          onChange={setDocumentNumber}
+          required={true}
+        />
       )}
 
       {/* Date of Birth for Driving License */}
