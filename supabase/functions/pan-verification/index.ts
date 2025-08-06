@@ -237,7 +237,7 @@ serve(async (req) => {
               status: "failed",
               statusId: rejectedStatusId
             }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (error) {
@@ -256,11 +256,12 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify({ 
+            success: false,
             error: userFriendlyError,
             errorCode: errorCode,
             originalError: error.message
           }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
