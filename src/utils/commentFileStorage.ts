@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/incident';
+import { sanitizeFilename, generateUniqueFilename } from '@/utils/filenameSanitizer';
 
 export interface StoredFileItem {
   id: string;
@@ -25,12 +25,9 @@ export const commentFileStorage = {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: file.type });
 
-      // Create a unique file path
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2);
-      const fileExtension = file.name.split('.').pop() || '';
-      const fileName = `${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}_${randomId}`;
-      const filePath = `${incidentId}/${fileName}`;
+      // Generate unique sanitized filename
+      const uniqueFileName = generateUniqueFilename(file.name);
+      const filePath = `${incidentId}/${uniqueFileName}`;
 
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
