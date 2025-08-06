@@ -27,7 +27,8 @@ const defaultDocumentTypes = [
   { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50', enabled: true },
   { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50', enabled: true },
   { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50', enabled: false },
-  { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50', enabled: true },
+  { id: '7', name: 'manual', description: 'Manual', icon: Wallet, bgColor: 'bg-orange-50', enabled: true },
+  { id: '8', name: 'other_documents', description: 'Other', icon: FileText, bgColor: 'bg-gray-50', enabled: true },
 ];
 
 const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange, employeeId }) => {
@@ -51,7 +52,8 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
           'driving_license': 4,
           'bank_account': 5,
           'passport': 6,
-          'other': 7
+          'manual': 7,
+          'other_documents': 8
         };
         return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
       }) : 
@@ -67,7 +69,8 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
       case 'driving_license': return Car;
       case 'passport': return Globe;
       case 'voter_id': return Users;
-      case 'other': default: return Wallet;
+      case 'manual': return Wallet;
+      case 'other_documents': default: return FileText;
     }
   };
   
@@ -80,7 +83,8 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
       case 'driving_license': return 'bg-purple-50';
       case 'passport': return 'bg-cyan-50';
       case 'voter_id': return 'bg-pink-50';
-      case 'other': default: return 'bg-orange-50';
+      case 'manual': return 'bg-orange-50';
+      case 'other_documents': default: return 'bg-gray-50';
     }
   };
 

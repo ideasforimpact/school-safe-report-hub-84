@@ -90,7 +90,7 @@ export interface VerificationDocument {
   updatedAt: string;
 }
 
-export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'other';
+export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'manual' | 'other_documents';
 
 export interface VerificationResult {
   success: boolean;

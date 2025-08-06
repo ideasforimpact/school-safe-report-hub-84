@@ -21,6 +21,7 @@ import ImageUpload from '@/components/ImageUpload';
 import BankStatementUploader from './BankStatementUploader';
 import DocumentNumberInput from './DocumentNumberInput';
 import DocumentDisplay from './DocumentDisplay';
+import CustomDocumentUploader from './CustomDocumentUploader';
 import { FileItem } from '@/types/fileTypes';
 
 interface DocumentFormProps {
@@ -51,6 +52,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [bankStatementFiles, setBankStatementFiles] = useState<FileItem[]>([]);
   
+  // Custom document fields
+  const [customDocumentName, setCustomDocumentName] = useState('');
+  const [customDocumentFiles, setCustomDocumentFiles] = useState<FileItem[]>([]);
+  
   const { toast } = useToast();
   const { user } = useAuth();
   const { state } = useEmployeeStore();
@@ -61,7 +66,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const documentType = documentTypes.find(type => type.id === selectedTypeId);
   const isDrivingLicense = documentType?.name === 'driving_license';
   const isBankAccount = documentType?.name === 'bank_account';
-  const isOtherType = documentType?.name === 'other';
+  const isManualType = documentType?.name === 'manual';
+  const isOtherDocuments = documentType?.name === 'other_documents';
 
   // Check if document already exists
   const existingDocuments = getEmployeeDocuments(employeeId);
@@ -76,6 +82,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setAccountNumber('');
       setIfscCode('');
       setDateOfBirth(undefined);
+      setOtherType('');
+      setCustomDocumentName('');
+      setCustomDocumentFiles([]);
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
 
@@ -145,6 +154,75 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     }
   };
 
+  // Handle custom document submission
+  const handleCustomDocumentSubmit = async (documentName: string, files: FileItem[]) => {
+    const clientId = employeeData?.clientId || state.clientId;
+    if (!clientId) {
+      toast({
+        title: 'Error',
+        description: 'Client ID not found. Please ensure you are logged in properly.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      console.log('Calling custom-document-verification edge function');
+      
+      const { data, error } = await supabase.functions.invoke('custom-document-verification', {
+        body: {
+          action: 'uploadCustomDocument',
+          employeeId,
+          clientId,
+          documentTypeId: selectedTypeId,
+          documentName,
+          documentFiles: files.map(file => ({
+            name: file.name,
+            base64: file.base64,
+            type: file.type,
+            size: file.size
+          }))
+        }
+      });
+
+      if (error) {
+        console.error('Error calling custom-document-verification function:', error);
+        throw error;
+      }
+
+      console.log('Custom document upload response:', data);
+
+      if (data?.success) {
+        toast({
+          title: 'Document Uploaded Successfully',
+          description: data.message || 'Your custom document has been uploaded successfully.',
+        });
+        
+        // Refresh employee documents to show the new document
+        if (employeeId) {
+          fetchEmployeeDocuments(employeeId);
+        }
+        
+        // Reset form and close
+        setCustomDocumentName('');
+        setCustomDocumentFiles([]);
+        onCancel();
+      } else {
+        throw new Error(data?.error || 'Failed to upload custom document');
+      }
+    } catch (error) {
+      console.error('Error submitting custom document:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload custom document. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -160,8 +238,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     onSubmit(values);
   };
 
-  const renderOtherTypeOptions = () => {
-    if (!isOtherType) return null;
+  const renderManualTypeOptions = () => {
+    if (!isManualType) return null;
 
     return (
       <div className="space-y-4">
@@ -245,8 +323,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     );
   };
 
-  // Don't show the submit button for court case check and police verification
-  const shouldShowSubmitButton = !isOtherType || (otherType !== 'court_case_check' && otherType !== 'police_verification');
+  // Don't show the submit button for court case check, police verification, and custom documents
+  const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification');
+  const shouldShowForm = !isOtherDocuments; // Hide the default form for custom documents
 
   // If document already exists, show display mode instead of form
   if (hasExistingDocument && existingDocument) {
@@ -272,10 +351,27 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     );
   }
 
+  // For custom documents, show only the custom uploader
+  if (isOtherDocuments) {
+    return (
+      <div className="space-y-4">
+        <CustomDocumentUploader
+          documentName={customDocumentName}
+          setDocumentName={setCustomDocumentName}
+          files={customDocumentFiles}
+          setFiles={setCustomDocumentFiles}
+          onSubmit={handleCustomDocumentSubmit}
+          isProcessing={isProcessing}
+          onCancel={onCancel}
+        />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Document Number Input */}
-      {!isBankAccount && !isOtherType && (
+      {!isBankAccount && !isManualType && !isOtherDocuments && (
         <DocumentNumberInput
           documentType={documentType?.name || ''}
           value={documentNumber}
@@ -322,11 +418,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         </>
       )}
 
-      {/* Other Type Options */}
-      {renderOtherTypeOptions()}
+      {/* Manual Type Options */}
+      {renderManualTypeOptions()}
 
       {/* Document Image Upload */}
-      {!isBankAccount && !isOtherType && (
+      {!isBankAccount && !isManualType && !isOtherDocuments && (
         <div>
           <Label className="text-sm font-medium">
             Document Image <span className="text-red-500">*</span>

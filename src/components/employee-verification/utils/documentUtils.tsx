@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText, CreditCard, Car, Globe2 as Globe, FileCheck, Vote, File } from 'lucide-react';
+import { FileText, CreditCard, Car, Globe2 as Globe, FileCheck, Vote, File, Wallet } from 'lucide-react';
 
 export const getDocumentIcon = (documentType: string) => {
   switch (documentType) {
@@ -16,6 +16,10 @@ export const getDocumentIcon = (documentType: string) => {
       return <Vote className="h-4 w-4 text-purple-500" />;
     case 'bank_account':
       return <FileCheck className="h-4 w-4 text-indigo-500" />;
+    case 'manual':
+      return <Wallet className="h-4 w-4 text-orange-500" />;
+    case 'other_documents':
+      return <FileText className="h-4 w-4 text-gray-500" />;
     default:
       return <File className="h-4 w-4 text-gray-500" />;
   }
@@ -35,6 +39,10 @@ export const formatDocumentTypeName = (documentType: string) => {
       return 'Voter ID';
     case 'bank_account':
       return 'Bank Account';
+    case 'manual':
+      return 'Manual Verification';
+    case 'other_documents':
+      return 'Other Documents';
     default:
       return documentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
@@ -54,6 +62,10 @@ export const getDocumentPlaceholder = (documentTypeId: string) => {
       return 'ABC1234567';
     case 'bank_account':
       return '12345678901234';
+    case 'manual':
+      return 'Enter document number';
+    case 'other_documents':
+      return 'Custom document';
     default:
       return 'Enter document number';
   }
