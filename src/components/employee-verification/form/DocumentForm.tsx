@@ -10,6 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DatePickerWithYearMonth } from '@/components/ui/date-picker-with-year-month';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { supabase } from '@/integrations/supabase/client';
@@ -289,28 +290,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           <Label className="text-sm font-medium">
             Date of Birth <span className="text-red-500">*</span>
           </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full mt-1 justify-start text-left font-normal",
-                  !dateOfBirth && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateOfBirth ? format(dateOfBirth, "PPP") : "Pick a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={dateOfBirth}
-                onSelect={setDateOfBirth}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="mt-1">
+            <DatePickerWithYearMonth
+              date={dateOfBirth}
+              onChange={setDateOfBirth}
+              placeholderText="Select date of birth"
+              minYear={1940}
+              maxYear={new Date().getFullYear() - 18}
+            />
+          </div>
         </div>
       )}
 
