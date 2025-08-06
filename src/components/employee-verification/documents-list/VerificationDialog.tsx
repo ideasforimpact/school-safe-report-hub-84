@@ -152,7 +152,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data?.success) {
-        onVerify('api');
+        toast.success("Bank Statement Verified", {
+          description: data?.message || "The Bank Statement has been verified successfully."
+        });
+        onOpenChange(false);
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data.error || "Bank Statement verification failed. Please try manual verification.";
@@ -195,7 +198,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onVerify('manual');
+      toast.success("Bank Statement Manually Verified", {
+        description: data?.message || "The Bank Statement has been manually verified successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleBankAccountManualVerification:", err);
       toast.error("Verification Error", {
@@ -231,7 +237,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onReject();
+      toast.success("Bank Statement Rejected", {
+        description: data?.message || "The Bank Statement has been rejected successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleBankAccountRejection:", err);
       toast.error("Rejection Error", {
@@ -268,7 +277,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data.success) {
-        onVerify('api');
+        toast.success("PAN Verified", {
+          description: data?.message || "The PAN has been verified successfully."
+        });
+        onOpenChange(false);
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data.error || "PAN verification failed. Please try manual verification.";
@@ -308,7 +320,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data?.success) {
-        onVerify('api');
+        toast.success("Driving License Verified", {
+          description: data?.message || "The Driving License has been verified successfully."
+        });
+        onOpenChange(false);
       }
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
@@ -342,7 +357,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onVerify('manual');
+      toast.success("Driving License Manually Verified", {
+        description: data?.message || "The Driving License has been manually verified successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseManualVerification:", err);
       toast.error("Verification Error", {
@@ -378,7 +396,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onReject();
+      toast.success("Driving License Rejected", {
+        description: data?.message || "The Driving License has been rejected successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseRejection:", err);
       toast.error("Rejection Error", {
@@ -414,7 +435,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onVerify('manual');
+      toast.success("PAN Manually Verified", {
+        description: data?.message || "The PAN has been manually verified successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handlePanManualVerification:", err);
       toast.error("Verification Error", {
@@ -450,7 +474,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onReject();
+      toast.success("PAN Rejected", {
+        description: data?.message || "The PAN has been rejected successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handlePanRejection:", err);
       toast.error("Rejection Error", {
@@ -487,7 +514,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data.success) {
-        onVerify('api');
+        toast.success("Voter ID Verified", {
+          description: data?.message || "The Voter ID has been verified successfully."
+        });
+        onOpenChange(false);
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data.error || "Voter ID verification failed. Please try manual verification.";
@@ -530,7 +560,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onVerify('manual');
+      toast.success("Voter ID Manually Verified", {
+        description: data?.message || "The Voter ID has been manually verified successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleVoterIdManualVerification:", err);
       toast.error("Verification Error", {
@@ -566,7 +599,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onReject();
+      toast.success("Voter ID Rejected", {
+        description: data?.message || "The Voter ID has been rejected successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleVoterIdRejection:", err);
       toast.error("Rejection Error", {
@@ -602,7 +638,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onVerify('manual');
+      toast.success("Document Manually Verified", {
+        description: data?.message || "The document has been manually verified successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleOtherManualVerification:", err);
       toast.error("Verification Error", {
@@ -638,7 +677,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      onReject();
+      toast.success("Document Rejected", {
+        description: data?.message || "The document has been rejected successfully."
+      });
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in handleOtherRejection:", err);
       toast.error("Rejection Error", {
@@ -778,7 +820,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
-        onVerify('manual');
+        toast.success("Document Manually Verified", {
+          description: data?.message || "The document has been manually verified successfully."
+        });
+        onOpenChange(false);
       } catch (err: any) {
         console.error("Exception in manual verification:", err);
         toast.error("Verification Error", {
