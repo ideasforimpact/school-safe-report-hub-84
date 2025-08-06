@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/fileTypes';
 import { sanitizeFilename, generateUniqueFilename } from '@/utils/filenameSanitizer';
@@ -10,6 +11,8 @@ export interface IncidentDocument {
   url: string;
   path: string;
   uploadedAt: Date;
+  source?: 'incident' | 'comment'; // Add source property
+  commentId?: string; // Add commentId property for comment documents
 }
 
 export const incidentDocumentService = {
@@ -60,7 +63,8 @@ export const incidentDocumentService = {
           size: file.size,
           url: urlData.publicUrl,
           path: filePath,
-          uploadedAt: new Date()
+          uploadedAt: new Date(),
+          source: 'incident' as const // Mark as incident document
         };
       } catch (error) {
         console.error('Error processing file:', file.name, error);
@@ -73,18 +77,10 @@ export const incidentDocumentService = {
 
   getIncidentDocuments: async (incidentId: string): Promise<IncidentDocument[]> => {
     try {
-      const { data, error } = await supabase
-        .from('incidents')
-        .select('supporting_documents')
-        .eq('id', incidentId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching incident documents:', error);
-        return [];
-      }
-
-      return data?.supporting_documents || [];
+      // Since supporting_documents doesn't exist, we'll return empty array for now
+      // This will be handled by the aggregator which gets documents from comments
+      console.log('Getting incident documents for:', incidentId);
+      return [];
     } catch (error) {
       console.error('Error in getIncidentDocuments:', error);
       return [];
@@ -93,15 +89,9 @@ export const incidentDocumentService = {
 
   updateIncidentDocuments: async (incidentId: string, documents: IncidentDocument[]): Promise<void> => {
     try {
-      const { error } = await supabase
-        .from('incidents')
-        .update({ supporting_documents: documents })
-        .eq('id', incidentId);
-
-      if (error) {
-        console.error('Error updating incident documents:', error);
-        throw new Error(`Failed to update incident documents: ${error.message}`);
-      }
+      // Since supporting_documents doesn't exist, we'll skip this for now
+      // Documents are stored through the comment system
+      console.log('Skipping updateIncidentDocuments as supporting_documents column does not exist');
     } catch (error) {
       console.error('Error in updateIncidentDocuments:', error);
       throw error;
@@ -120,10 +110,8 @@ export const incidentDocumentService = {
         throw new Error(`Failed to delete file from storage: ${storageError.message}`);
       }
 
-      // Remove from incident's supporting_documents array
-      const existingDocs = await incidentDocumentService.getIncidentDocuments(incidentId);
-      const updatedDocs = existingDocs.filter(doc => doc.path !== documentPath);
-      await incidentDocumentService.updateIncidentDocuments(incidentId, updatedDocs);
+      // Since supporting_documents doesn't exist, we only delete from storage
+      console.log('Document deleted from storage:', documentPath);
     } catch (error) {
       console.error('Error in deleteDocument:', error);
       throw error;
