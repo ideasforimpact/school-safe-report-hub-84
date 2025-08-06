@@ -18,15 +18,13 @@ import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 interface EmployeesListProps {
-  searchTerm: string;
-  documentStatusFilter: string;
+  employees: Employee[];
 }
 
 const EmployeesList: React.FC<EmployeesListProps> = ({
-  searchTerm,
-  documentStatusFilter
+  employees
 }) => {
-  const { employees, fetchEmployees, isLoading } = useEmployeeVerification();
+  const { isLoading, fetchEmployees } = useEmployeeVerification();
   const navigate = useNavigate();
 
   // Ensure employees are fetched when component mounts if not already loaded
@@ -51,23 +49,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     return 'mixed';
   };
 
-  // Filter employees based on search term only (document status filtering is handled by parent)
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((employee) => {
-      // Search filter
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesSearch = 
-          employee.name.toLowerCase().includes(searchLower) ||
-          employee.email.toLowerCase().includes(searchLower) ||
-          employee.employeeId.toLowerCase().includes(searchLower);
-        
-        if (!matchesSearch) return false;
-      }
-
-      return true;
-    });
-  }, [employees, searchTerm]);
+  // Employees are already filtered by parent component
 
   // Set up pagination
   const {
@@ -77,10 +59,10 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     paginatedItems: paginatedEmployees,
     goToNextPage,
     goToPreviousPage
-  } = usePagination(filteredEmployees, 10);
+  } = usePagination(employees, 10);
 
   // Render documents information for each employee
-  const renderDocumentsInfo = (employee) => {
+  const renderDocumentsInfo = (employee: Employee) => {
     const documents = employee.documents || [];
     
     // Group by verification status
@@ -143,13 +125,10 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredEmployees.length === 0 ? (
+            {employees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-6 text-gray-500">
-                  {employees.length === 0 
-                    ? "No employees found. Add your first employee to get started."
-                    : "No employees match your current filters."
-                  }
+                  No employees match your current filters.
                 </TableCell>
               </TableRow>
             ) : (
