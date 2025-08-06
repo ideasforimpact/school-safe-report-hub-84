@@ -438,8 +438,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     return null;
   }
 
+  // Debug: Log document type name
+  console.log('DocumentActions - documentTypeName:', document.documentTypeName, 'documentTypeId:', document.documentTypeId);
+  
   // For 'other' and 'other_documents' document types - show a custom button with only manual verification option
-  if (document.documentTypeName === 'other' || document.documentTypeName === 'other_documents') {
+  if (document.documentTypeName === 'other' || 
+      document.documentTypeName === 'other_documents' || 
+      document.documentTypeId === '8') {
     return (
       <div className="flex space-x-2">
         <Button
