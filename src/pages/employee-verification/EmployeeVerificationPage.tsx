@@ -41,9 +41,8 @@ const EmployeeVerificationPage = () => {
           if (verified.length === 0) return false;
         } else if (documentStatusFilter === 'pending') {
           if (documents.length === 0) return false;
-          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
           const pending = documents.filter(doc => doc.verificationStatus === 'pending');
-          if (failed.length > 0 || pending.length === 0) return false;
+          if (pending.length === 0) return false;
         } else if (documentStatusFilter === 'failed') {
           if (documents.length === 0) return false;
           const failed = documents.filter(doc => doc.verificationStatus === 'failed');
