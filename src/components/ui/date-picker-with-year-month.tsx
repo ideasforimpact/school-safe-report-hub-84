@@ -118,7 +118,6 @@ export function DatePickerWithYearMonth({
               <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Year" />
-                  <ChevronDown className="h-4 w-4 opacity-50" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
                   {years.map((year) => (
@@ -133,7 +132,6 @@ export function DatePickerWithYearMonth({
               <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Month" />
-                  <ChevronDown className="h-4 w-4 opacity-50" />
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((month, index) => (
