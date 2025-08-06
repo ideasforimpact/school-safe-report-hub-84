@@ -28,10 +28,14 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
-      // Special logic for Other document type
-      if (document.documentTypeName === 'other') {
+      // Special logic for Other document types (both 'other' and 'other_documents')
+      if (document.documentTypeName === 'other' || document.documentTypeName === 'other_documents') {
         if (method === 'manual') {
-          const { data, error } = await supabase.functions.invoke('other-document-verification', {
+          const functionName = document.documentTypeName === 'other_documents' 
+            ? 'custom-document-verification' 
+            : 'other-document-verification';
+          
+          const { data, error } = await supabase.functions.invoke(functionName, {
             body: {
               action: 'manualVerify',
               documentId: document.id,
@@ -281,9 +285,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
-      // Special handling for Other document type
-      if (document.documentTypeName === 'other') {
-        const { data, error } = await supabase.functions.invoke('other-document-verification', {
+      // Special handling for Other document types (both 'other' and 'other_documents')
+      if (document.documentTypeName === 'other' || document.documentTypeName === 'other_documents') {
+        const functionName = document.documentTypeName === 'other_documents' 
+          ? 'custom-document-verification' 
+          : 'other-document-verification';
+        
+        const { data, error } = await supabase.functions.invoke(functionName, {
           body: {
             action: 'reject',
             documentId: document.id,
@@ -430,8 +438,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     return null;
   }
 
-  // For 'other' document type - show a custom button with only manual verification option
-  if (document.documentTypeName === 'other') {
+  // For 'other' and 'other_documents' document types - show a custom button with only manual verification option
+  if (document.documentTypeName === 'other' || document.documentTypeName === 'other_documents') {
     return (
       <div className="flex space-x-2">
         <Button
@@ -452,6 +460,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           onReject={handleReject}
           isVerifying={isVerifying}
           documentId={document.id}
+          documentType={document.documentTypeName}
         />
       </div>
     );

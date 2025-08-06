@@ -7,12 +7,14 @@ const corsHeaders = {
 }
 
 interface CustomDocumentRequest {
-  action: 'uploadCustomDocument';
-  employeeId: string;
-  clientId: string;
-  documentTypeId: string;
-  documentName: string;
-  documentFiles: Array<{
+  action: 'uploadCustomDocument' | 'manualVerify' | 'reject';
+  employeeId?: string;
+  clientId?: string;
+  documentTypeId?: string;
+  documentName?: string;
+  documentId?: string;
+  verification_notes?: string;
+  documentFiles?: Array<{
     name: string;
     base64: string;
     type: string;
@@ -37,10 +39,92 @@ serve(async (req) => {
     const requestBody: CustomDocumentRequest = await req.json();
     console.log('Custom Document Verification: Request body:', JSON.stringify(requestBody, null, 2));
 
-    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles } = requestBody;
+    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles, documentId, verification_notes } = requestBody;
 
-    if (action !== 'uploadCustomDocument') {
+    if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
       throw new Error('Invalid action specified');
+    }
+
+    // Handle manual verification
+    if (action === 'manualVerify') {
+      if (!documentId) {
+        throw new Error('Missing documentId for manual verification');
+      }
+
+      console.log(`Custom Document Verification: Manual verification for document ${documentId}`);
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('employee_documents')
+        .update({
+          verification_status: 'verified',
+          updated_at: new Date().toISOString(),
+          employee_docs_log: [
+            {
+              action: 'manual_verify',
+              timestamp: new Date().toISOString(),
+              notes: verification_notes || 'Document manually verified by staff.'
+            }
+          ]
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Custom Document Verification: Update error:', updateError);
+        throw new Error(`Failed to update document status: ${updateError.message}`);
+      }
+
+      console.log('Custom Document Verification: Manual verification successful:', updateData);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Document manually verified successfully',
+        data: updateData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle rejection
+    if (action === 'reject') {
+      if (!documentId) {
+        throw new Error('Missing documentId for rejection');
+      }
+
+      console.log(`Custom Document Verification: Rejecting document ${documentId}`);
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('employee_documents')
+        .update({
+          verification_status: 'failed',
+          updated_at: new Date().toISOString(),
+          employee_docs_log: [
+            {
+              action: 'reject',
+              timestamp: new Date().toISOString(),
+              notes: verification_notes || 'Document verification rejected by staff.'
+            }
+          ]
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Custom Document Verification: Update error:', updateError);
+        throw new Error(`Failed to update document status: ${updateError.message}`);
+      }
+
+      console.log('Custom Document Verification: Rejection successful:', updateData);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Document rejected successfully',
+        data: updateData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (!employeeId || !clientId || !documentTypeId || !documentName || !documentFiles?.length) {
