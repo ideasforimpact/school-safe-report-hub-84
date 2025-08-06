@@ -151,9 +151,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data?.success) {
-        toast.success("Bank Statement Verified", {
-          description: data.message || "Bank Statement has been successfully verified."
-        });
         onVerify('api');
       } else {
         // Use the user-friendly error message from the API
@@ -197,9 +194,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.success("Bank Statement Manually Verified", {
-        description: "The Bank Statement has been manually verified successfully."
-      });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handleBankAccountManualVerification:", err);
@@ -236,9 +230,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.error("Bank Statement Rejected", {
-        description: "The Bank Statement has been marked as failed verification."
-      });
       onReject();
     } catch (err: any) {
       console.error("Exception in handleBankAccountRejection:", err);
@@ -276,9 +267,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data.success) {
-        toast.success("PAN Verified", {
-          description: data.message || "PAN has been successfully verified with government database."
-        });
         onVerify('api');
       } else {
         // Use the user-friendly error message from the API
@@ -322,9 +310,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data?.success) {
-        toast.success("Driving License Verified", {
-          description: data.message || "Driving License has been successfully verified with government database."
-        });
         onVerify('api');
       } else {
         // Use the user-friendly error message from the API
@@ -368,9 +353,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.success("Driving License Manually Verified", {
-        description: "The Driving License has been manually verified successfully."
-      });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseManualVerification:", err);
@@ -407,9 +389,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.error("Driving License Rejected", {
-        description: "The Driving License has been marked as failed verification."
-      });
       onReject();
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseRejection:", err);
@@ -446,9 +425,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.success("PAN Manually Verified", {
-        description: "The PAN card has been manually verified successfully."
-      });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handlePanManualVerification:", err);
@@ -485,9 +461,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.error("PAN Rejected", {
-        description: "The PAN card has been marked as failed verification."
-      });
       onReject();
     } catch (err: any) {
       console.error("Exception in handlePanRejection:", err);
@@ -525,9 +498,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data.success) {
-        toast.success("Voter ID Verified", {
-          description: data.message || "Voter ID has been successfully verified with government database."
-        });
         onVerify('api');
       } else {
         // Use the user-friendly error message from the API
@@ -571,9 +541,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.success("Voter ID Manually Verified", {
-        description: "The Voter ID has been manually verified successfully."
-      });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handleVoterIdManualVerification:", err);
@@ -610,9 +577,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.error("Voter ID Rejected", {
-        description: "The Voter ID has been marked as failed verification."
-      });
       onReject();
     } catch (err: any) {
       console.error("Exception in handleVoterIdRejection:", err);
@@ -649,9 +613,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.success("Document Manually Verified", {
-        description: "The document has been manually verified successfully."
-      });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handleOtherManualVerification:", err);
@@ -688,9 +649,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.error("Document Rejected", {
-        description: "The document has been marked as failed verification."
-      });
       onReject();
     } catch (err: any) {
       console.error("Exception in handleOtherRejection:", err);
@@ -831,9 +789,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
-        toast.success("Document Manually Verified", {
-          description: "The document has been manually verified successfully."
-        });
         onVerify('manual');
       } catch (err: any) {
         console.error("Exception in manual verification:", err);
@@ -926,9 +881,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      toast.success("Verification Successful", {
-        description: "Aadhar verification completed successfully"
-      });
       onVerify('api');
       setShowOtpInput(false);
       setOtp("");
@@ -968,7 +920,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md mx-auto">
+      <DialogContent className="max-w-lg mx-auto">
         <DialogHeader className="text-center">
           <DialogTitle className="text-xl">Verify Document</DialogTitle>
           <DialogDescription className="text-center text-sm">
