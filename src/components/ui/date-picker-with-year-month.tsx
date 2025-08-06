@@ -33,10 +33,10 @@ export function DatePickerWithYearMonth({
   className,
   placeholderText = "Select date of birth",
   minYear = 1940,
-  maxYear = new Date().getFullYear() - 18, // 18 years ago for driving license eligibility
+  maxYear = new Date().getFullYear(),
 }: DatePickerWithYearMonthProps) {
   const [selectedYear, setSelectedYear] = React.useState<number>(
-    date?.getFullYear() || 1985
+    date?.getFullYear() || new Date().getFullYear()
   );
   const [selectedMonth, setSelectedMonth] = React.useState<number>(
     date?.getMonth() || 0
