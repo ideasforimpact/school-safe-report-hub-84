@@ -244,7 +244,7 @@ const EmployeeDetailPage = () => {
 
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden mb-8">
           <div className="p-6">
-            <EmployeeDetails employee={employee} />
+            <EmployeeDetails employee={employee} documents={documents} />
           </div>
         </div>
         
