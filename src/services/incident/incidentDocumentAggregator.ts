@@ -1,3 +1,4 @@
+
 import { IncidentDocument, incidentDocumentService } from './incidentDocumentService';
 import { supabase } from '@/integrations/supabase/client';
 import { commentFileStorage } from '@/utils/commentFileStorage';
@@ -53,7 +54,7 @@ export const incidentDocumentAggregator = {
                 size: file.size || 0,
                 url: file.url || commentFileStorage.getDownloadUrl(file.path),
                 path: file.path,
-                uploadedAt: comment.createdAt || new Date().toISOString(),
+                uploadedAt: new Date(comment.createdAt || new Date().toISOString()),
                 source: 'comment',
                 commentId: comment.id
               });
