@@ -37,7 +37,7 @@ const EmployeeVerificationPage = () => {
           if (documents.length > 0) return false;
         } else if (documentStatusFilter === 'verified') {
           if (documents.length === 0) return false;
-          const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+          const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
           if (verified.length !== documents.length) return false;
         } else if (documentStatusFilter === 'pending') {
           if (documents.length === 0) return false;
