@@ -20,6 +20,7 @@ interface OtherDocumentVerificationDialogProps {
   onReject: () => void;
   isVerifying: boolean;
   documentId?: string;
+  documentType?: string;
 }
 
 const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogProps> = ({
@@ -28,7 +29,8 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
   onVerify,
   onReject,
   isVerifying,
-  documentId = ''
+  documentId = '',
+  documentType = 'other'
 }) => {
   const [isManualVerifying, setIsManualVerifying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -40,7 +42,11 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
     try {
       console.log("Initiating manual verification for document ID:", documentId);
       
-      const { data, error } = await supabase.functions.invoke('other-document-verification', {
+      const functionName = documentType === 'other_documents' 
+        ? 'custom-document-verification' 
+        : 'other-document-verification';
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           action: 'manualVerify',
           documentId,
@@ -79,7 +85,11 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
     try {
       console.log("Rejecting verification for document ID:", documentId);
       
-      const { data, error } = await supabase.functions.invoke('other-document-verification', {
+      const functionName = documentType === 'other_documents' 
+        ? 'custom-document-verification' 
+        : 'other-document-verification';
+      
+      const { data, error } = await supabase.functions.invoke(functionName, {
         body: {
           action: 'reject',
           documentId,
