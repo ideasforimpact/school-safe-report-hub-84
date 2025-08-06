@@ -295,8 +295,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
               date={dateOfBirth}
               onChange={setDateOfBirth}
               placeholderText="Select date of birth"
-              minYear={1940}
-              maxYear={new Date().getFullYear() - 18}
+              minYear={1900}
+              maxYear={new Date().getFullYear()}
             />
           </div>
         </div>
