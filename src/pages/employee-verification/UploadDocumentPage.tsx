@@ -75,9 +75,9 @@ const UploadDocumentPage = () => {
     <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
         <div className="flex items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-          <Button variant="ghost" size="sm" onClick={() => navigate(`/employee-verification/${employeeId}`)} className="mr-4">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/employee-verification/${employeeId}`)} className="mr-4">
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
           <div>
             <h1 className="text-2xl font-bold text-left">Upload Document</h1>
             <p className="text-gray-500">For {employee.name} • {employee.employeeId}</p>

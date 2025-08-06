@@ -19,6 +19,7 @@ import { getEmployeeData } from '@/store/employeeSelectors';
 import ImageUpload from '@/components/ImageUpload';
 import BankStatementUploader from './BankStatementUploader';
 import DocumentNumberInput from './DocumentNumberInput';
+import DocumentDisplay from './DocumentDisplay';
 import { FileItem } from '@/types/fileTypes';
 
 interface DocumentFormProps {
@@ -61,44 +62,21 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const isBankAccount = documentType?.name === 'bank_account';
   const isOtherType = documentType?.name === 'other';
 
-  // Pre-populate with existing document data if available
+  // Check if document already exists
+  const existingDocuments = getEmployeeDocuments(employeeId);
+  const existingDocument = existingDocuments.find(doc => doc.documentTypeId === selectedTypeId);
+  const hasExistingDocument = !!existingDocument;
+
+  // Pre-populate with existing document data if available (only if we're showing the form)
   useEffect(() => {
-    if (selectedTypeId && employeeId) {
-      const existingDocuments = getEmployeeDocuments(employeeId);
-      const existingDoc = existingDocuments.find(doc => doc.documentTypeId === selectedTypeId);
-      
-      if (existingDoc) {
-        console.log('Pre-populating form with existing document:', existingDoc);
-        setDocumentNumber(existingDoc.documentNumber || '');
-        
-        // For bank account documents, extract account details from params
-        if (isBankAccount && existingDoc.params) {
-          setAccountNumber(existingDoc.params.accountNumber || '');
-          setIfscCode(existingDoc.params.ifscCode || '');
-        }
-        
-        // For driving license, extract DOB from params
-        if (isDrivingLicense && existingDoc.params?.DOB) {
-          try {
-            setDateOfBirth(new Date(existingDoc.params.DOB));
-          } catch (e) {
-            console.warn('Failed to parse date from existing document:', e);
-          }
-        }
-        
-        toast({
-          title: 'Existing Data Found',
-          description: 'Form has been pre-populated with existing document data. You can modify it before uploading.',
-        });
-      } else {
-        // Clear form if no existing document
-        setDocumentNumber('');
-        setAccountNumber('');
-        setIfscCode('');
-        setDateOfBirth(undefined);
-      }
+    if (selectedTypeId && employeeId && !hasExistingDocument) {
+      // Clear form for new documents
+      setDocumentNumber('');
+      setAccountNumber('');
+      setIfscCode('');
+      setDateOfBirth(undefined);
     }
-  }, [selectedTypeId, employeeId, isBankAccount, isDrivingLicense, getEmployeeDocuments, toast]);
+  }, [selectedTypeId, employeeId, hasExistingDocument]);
 
   // Handle direct edge function calls for Court Case Check and Police Verification
   const handleDirectSubmission = async (verificationType: 'court_case_check' | 'police_verification') => {
@@ -268,6 +246,30 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   // Don't show the submit button for court case check and police verification
   const shouldShowSubmitButton = !isOtherType || (otherType !== 'court_case_check' && otherType !== 'police_verification');
+
+  // If document already exists, show display mode instead of form
+  if (hasExistingDocument && existingDocument) {
+    return (
+      <div className="space-y-4">
+        <DocumentDisplay
+          documentType={documentType?.name || ''}
+          documentNumber={existingDocument.documentNumber}
+          documentImage={existingDocument.documentImage}
+          fileName={existingDocument.documentImage}
+          params={existingDocument.params}
+        />
+        <div className="flex justify-center pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+          >
+            Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
