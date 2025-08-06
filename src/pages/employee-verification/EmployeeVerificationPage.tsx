@@ -15,8 +15,8 @@ const EmployeeVerificationPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
 
-  // Calculate filtered results count
-  const filteredEmployeesCount = useMemo(() => {
+  // Filter employees based on all criteria
+  const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
       // Search filter
       if (searchTerm) {
@@ -51,7 +51,7 @@ const EmployeeVerificationPage = () => {
       }
 
       return true;
-    }).length;
+    });
   }, [employees, searchTerm, documentStatusFilter]);
 
   // Fetch employees when component mounts
@@ -106,13 +106,12 @@ const EmployeeVerificationPage = () => {
             documentStatusFilter={documentStatusFilter}
             onDocumentStatusChange={setDocumentStatusFilter}
             onClearFilters={handleClearFilters}
-            resultCount={filteredEmployeesCount}
+            resultCount={filteredEmployees.length}
             totalCount={employees.length}
           />
           
           <EmployeesList
-            searchTerm={searchTerm}
-            documentStatusFilter={documentStatusFilter}
+            employees={filteredEmployees}
           />
         </div>
       </div>
