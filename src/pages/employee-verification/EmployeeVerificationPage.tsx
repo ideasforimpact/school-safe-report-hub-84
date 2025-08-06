@@ -33,22 +33,25 @@ const EmployeeVerificationPage = () => {
       if (documentStatusFilter !== 'all') {
         const documents = employee.documents || [];
         
-        // Use the same status logic as in EmployeesList
-        const getDocumentStatus = () => {
-          if (documents.length === 0) return 'no-documents';
-          
+        if (documentStatusFilter === 'no-documents' && documents.length > 0) return false;
+        if (documentStatusFilter === 'verified') {
+          const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+          if (verified.length !== documents.length || documents.length === 0) return false;
+        }
+        if (documentStatusFilter === 'pending') {
+          const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+          if (pending.length === 0) return false;
+        }
+        if (documentStatusFilter === 'failed') {
+          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+          if (failed.length === 0) return false;
+        }
+        if (documentStatusFilter === 'mixed') {
           const verified = documents.filter(doc => doc.verificationStatus === 'verified');
           const failed = documents.filter(doc => doc.verificationStatus === 'failed');
           const pending = documents.filter(doc => doc.verificationStatus === 'pending');
-          
-          if (verified.length === documents.length) return 'verified';
-          if (failed.length > 0) return 'failed';
-          if (pending.length > 0) return 'pending';
-          return 'mixed';
-        };
-        
-        const docStatus = getDocumentStatus();
-        if (docStatus !== documentStatusFilter) return false;
+          if (verified.length === documents.length || failed.length === 0 || pending.length === 0) return false;
+        }
       }
 
       return true;

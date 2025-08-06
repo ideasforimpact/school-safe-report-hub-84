@@ -85,22 +85,45 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     goToPreviousPage
   } = usePagination(filteredEmployees, 10);
 
-  // Render status information for each employee
-  const renderStatusInfo = (employee) => {
-    const status = getDocumentStatus(employee);
+  // Render documents information for each employee
+  const renderDocumentsInfo = (employee) => {
+    const documents = employee.documents || [];
     
-    switch (status) {
-      case 'no-documents':
-        return <span className="text-muted-foreground">-</span>;
-      case 'verified':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Verified</Badge>;
-      case 'failed':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Failed</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>;
-      default:
-        return <span className="text-muted-foreground">-</span>;
+    // Group by verification status
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    const total = documents.length;
+
+    if (total === 0) {
+      return <span className="text-gray-500 text-sm">No documents</span>;
     }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {verified.length > 0 && (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            Verified ({verified.length})
+          </Badge>
+        )}
+        
+        {failed.length > 0 && (
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            Failed ({failed.length})
+          </Badge>
+        )}
+
+        {pending.length > 0 && (
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+            Pending ({pending.length})
+          </Badge>
+        )}
+
+        <span className="text-xs text-gray-500 ml-1">
+          ({total} total)
+        </span>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -121,7 +144,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Documents</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -145,8 +168,8 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                     <TableCell>{employee.employeeId}</TableCell>
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
-                    <TableCell>
-                      {renderStatusInfo(employee)}
+                    <TableCell className="max-w-md">
+                      {renderDocumentsInfo(employee)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
