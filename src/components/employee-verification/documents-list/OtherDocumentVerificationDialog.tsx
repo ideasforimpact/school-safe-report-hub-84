@@ -64,8 +64,17 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         return;
       }
       
+      // Check if the operation was successful based on the response data
+      if (data && !data.success) {
+        console.error('Manual verification failed:', data.message);
+        toast.error("Verification Failed", {
+          description: data.message || "Failed to manually verify document. Please try again."
+        });
+        return;
+      }
+      
       toast.success("Document Manually Verified", {
-        description: "The document has been manually verified successfully."
+        description: data?.message || "The document has been manually verified successfully."
       });
       onVerify('manual');
     } catch (err: any) {
@@ -107,8 +116,17 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         return;
       }
       
+      // Check if the operation was successful based on the response data
+      if (data && !data.success) {
+        console.error('Document rejection failed:', data.message);
+        toast.error("Rejection Failed", {
+          description: data.message || "Failed to reject document. Please try again."
+        });
+        return;
+      }
+      
       toast.error("Document Rejected", {
-        description: "The document has been marked as failed verification."
+        description: data?.message || "The document has been marked as failed verification."
       });
       onReject();
     } catch (err: any) {
