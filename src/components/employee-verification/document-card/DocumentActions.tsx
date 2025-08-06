@@ -440,11 +440,17 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
 
   // Debug: Log document type name
   console.log('DocumentActions - documentTypeName:', document.documentTypeName, 'documentTypeId:', document.documentTypeId);
+  console.log('DocumentActions - Check conditions:');
+  console.log('  - documentTypeName === other:', document.documentTypeName === 'other');
+  console.log('  - documentTypeName === other_documents:', document.documentTypeName === 'other_documents');
+  console.log('  - documentTypeId === 8:', document.documentTypeId === '8');
   
   // For 'other' and 'other_documents' document types - show a custom button with only manual verification option
-  if (document.documentTypeName === 'other' || 
-      document.documentTypeName === 'other_documents' || 
+  const docTypeName = (document.documentTypeName || '').toLowerCase().trim();
+  if (docTypeName === 'other' || 
+      docTypeName === 'other_documents' || 
       document.documentTypeId === '8') {
+    console.log('DocumentActions - Using OtherDocumentVerificationDialog for:', document.documentTypeName);
     return (
       <div className="flex space-x-2">
         <Button
@@ -472,6 +478,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   }
 
   // For other document types, use the regular verification dialog
+  console.log('DocumentActions - Using regular VerificationDialog for:', document.documentTypeName);
   return (
     <div className="flex space-x-2">
       <DocumentVerifyDropdown
