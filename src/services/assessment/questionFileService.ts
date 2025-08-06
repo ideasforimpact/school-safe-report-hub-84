@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/fileTypes';
+import { sanitizeFilename } from '@/utils/filenameSanitizer';
 
 export interface QuestionFileItem {
   id: string;
@@ -17,23 +18,6 @@ export interface UploadFileInput {
 }
 
 export const questionFileService = {
-  // Sanitize filename for storage
-  sanitizeFileName: (fileName: string): string => {
-    return fileName
-      // Replace spaces with underscores
-      .replace(/\s+/g, '_')
-      // Replace parentheses with underscores
-      .replace(/[()]/g, '_')
-      // Replace em dash, en dash, and other special dashes with regular hyphen
-      .replace(/[—–]/g, '-')
-      // Remove or replace other problematic characters but keep alphanumeric, hyphens, underscores, and periods
-      .replace(/[^a-zA-Z0-9.\-_]/g, '_')
-      // Remove multiple consecutive underscores/hyphens
-      .replace(/[_-]+/g, '_')
-      // Remove leading/trailing underscores
-      .replace(/^_+|_+$/g, '');
-  },
-
   // Generate file path for question files
   generateFilePath: (
     clientId: string,
@@ -43,7 +27,8 @@ export const questionFileService = {
     fileName: string
   ): string => {
     const sanitizedAssessmentName = assessmentName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    return `${clientId}/${employeeId}/${sanitizedAssessmentName}/question_${questionNumber}/${fileName}`;
+    const sanitizedFileName = sanitizeFilename(fileName);
+    return `${clientId}/${employeeId}/${sanitizedAssessmentName}/question_${questionNumber}/${sanitizedFileName}`;
   },
 
   // Upload files for a specific question using File objects directly
@@ -78,10 +63,10 @@ export const questionFileService = {
           throw new Error(`File ${file.name} exceeds 30MB limit`);
         }
 
-        // Generate unique file name to avoid conflicts
+        // Generate unique file name to avoid conflicts using sanitized filename
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(2, 8);
-        const sanitizedFileName = questionFileService.sanitizeFileName(file.name);
+        const sanitizedFileName = sanitizeFilename(file.name);
         const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
         const filePath = questionFileService.generateFilePath(
           clientId,
@@ -185,7 +170,6 @@ export const questionFileService = {
     const sanitizedAssessmentName = assessmentName.replace(/[^a-zA-Z0-9-_]/g, '_');
     const folderPath = `${clientId}/${employeeId}/${sanitizedAssessmentName}/question_${questionNumber}/`;
 
-    // List all files in the question folder
     const { data: files, error: listError } = await supabase.storage
       .from('assessment-question-files')
       .list(folderPath);

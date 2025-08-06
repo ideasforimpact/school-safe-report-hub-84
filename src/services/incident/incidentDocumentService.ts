@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { FileItem } from '@/types/fileTypes';
+import { sanitizeFilename, generateUniqueFilename } from '@/utils/filenameSanitizer';
 
 export interface IncidentDocument {
   id: string;
@@ -9,36 +9,18 @@ export interface IncidentDocument {
   size: number;
   url: string;
   path: string;
-  uploadedAt: string;
-  source?: 'incident' | 'comment';
-  commentId?: string;
-}
-
-// Type for storing in database (JSON compatible)
-interface IncidentDocumentRecord {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  url: string;
-  path: string;
-  uploadedAt: string;
+  uploadedAt: Date;
 }
 
 export const incidentDocumentService = {
-  // Upload files to storage and return document info
-  async uploadFiles(incidentId: string, clientId: string, files: FileItem[]): Promise<IncidentDocument[]> {
-    const uploadedDocuments: IncidentDocument[] = [];
+  // Upload files with hierarchical client/incident structure
+  uploadFiles: async (incidentId: string, clientId: string, files: FileItem[]): Promise<IncidentDocument[]> => {
+    console.log('Uploading files for incident:', incidentId, 'client:', clientId, 'files:', files.length);
 
-    for (const file of files) {
+    const uploadPromises = files.map(async (file) => {
       try {
-        // Generate unique file path with hierarchical structure: incidents/{clientId}/{incidentId}/
-        const timestamp = Date.now();
-        const fileExtension = file.name.split('.').pop() || '';
-        const fileName = `incidents/${clientId}/${incidentId}/${timestamp}_${file.id}.${fileExtension}`;
-        
         // Convert base64 to blob
-        const base64Data = file.base64.split(',')[1];
+        const base64Data = file.base64.split(',')[1] || file.base64;
         const byteCharacters = atob(base64Data);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -47,100 +29,86 @@ export const incidentDocumentService = {
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: file.type });
 
-        // Upload to storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Create hierarchical path: client/incident/sanitized_filename
+        const sanitizedFilename = generateUniqueFilename(file.name);
+        const filePath = `${clientId}/${incidentId}/${sanitizedFilename}`;
+
+        console.log('Uploading file to path:', filePath);
+
+        // Upload to Supabase Storage
+        const { data, error } = await supabase.storage
           .from('incident-documents')
-          .upload(fileName, blob, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: file.type
+          .upload(filePath, blob, {
+            contentType: file.type,
+            upsert: false
           });
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw uploadError;
+        if (error) {
+          console.error('Error uploading file:', error);
+          throw new Error(`Failed to upload ${file.name}: ${error.message}`);
         }
 
-        // Get public URL
+        // Get the public URL
         const { data: urlData } = supabase.storage
           .from('incident-documents')
-          .getPublicUrl(fileName);
+          .getPublicUrl(filePath);
 
-        const document: IncidentDocument = {
+        return {
           id: file.id,
           name: file.name,
           type: file.type,
           size: file.size,
           url: urlData.publicUrl,
-          path: fileName,
-          uploadedAt: new Date().toISOString()
+          path: filePath,
+          uploadedAt: new Date()
         };
-
-        uploadedDocuments.push(document);
-        console.log('Successfully uploaded file:', file.name, 'to:', urlData.publicUrl);
       } catch (error) {
-        console.error('Error uploading file:', file.name, error);
+        console.error('Error processing file:', file.name, error);
         throw error;
       }
-    }
+    });
 
-    return uploadedDocuments;
+    return Promise.all(uploadPromises);
   },
 
-  // Update incident with documents
-  async updateIncidentDocuments(incidentId: string, documents: IncidentDocument[]): Promise<void> {
-    // Convert to plain objects for JSON storage
-    const documentsForStorage: IncidentDocumentRecord[] = documents.map(doc => ({
-      id: doc.id,
-      name: doc.name,
-      type: doc.type,
-      size: doc.size,
-      url: doc.url,
-      path: doc.path,
-      uploadedAt: doc.uploadedAt
-    }));
+  getIncidentDocuments: async (incidentId: string): Promise<IncidentDocument[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('incidents')
+        .select('supporting_documents')
+        .eq('id', incidentId)
+        .single();
 
-    const { error } = await supabase
-      .from('incidents')
-      .update({ documents: documentsForStorage as any })
-      .eq('id', incidentId);
+      if (error) {
+        console.error('Error fetching incident documents:', error);
+        return [];
+      }
 
-    if (error) {
-      console.error('Error updating incident documents:', error);
+      return data?.supporting_documents || [];
+    } catch (error) {
+      console.error('Error in getIncidentDocuments:', error);
+      return [];
+    }
+  },
+
+  updateIncidentDocuments: async (incidentId: string, documents: IncidentDocument[]): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('incidents')
+        .update({ supporting_documents: documents })
+        .eq('id', incidentId);
+
+      if (error) {
+        console.error('Error updating incident documents:', error);
+        throw new Error(`Failed to update incident documents: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error in updateIncidentDocuments:', error);
       throw error;
     }
-
-    console.log('Successfully updated incident documents in database for incident:', incidentId);
   },
 
-  // Get incident documents
-  async getIncidentDocuments(incidentId: string): Promise<IncidentDocument[]> {
-    const { data, error } = await supabase
-      .from('incidents')
-      .select('documents')
-      .eq('id', incidentId)
-      .single();
-
-    if (error) {
-      console.error('Error fetching incident documents:', error);
-      throw error;
-    }
-
-    // Convert from stored format back to IncidentDocument[]
-    const storedDocuments = data?.documents as any[];
-    return (storedDocuments || []).map((doc: any): IncidentDocument => ({
-      id: doc.id || '',
-      name: doc.name || '',
-      type: doc.type || '',
-      size: doc.size || 0,
-      url: doc.url || '',
-      path: doc.path || '',
-      uploadedAt: doc.uploadedAt || new Date().toISOString()
-    }));
-  },
-
-  // Delete document from storage and update incident
-  async deleteDocument(incidentId: string, documentPath: string): Promise<void> {
+  deleteDocument: async (incidentId: string, documentPath: string): Promise<void> => {
     try {
       // Delete from storage
       const { error: storageError } = await supabase.storage
@@ -148,20 +116,14 @@ export const incidentDocumentService = {
         .remove([documentPath]);
 
       if (storageError) {
-        console.error('Error deleting from storage:', storageError);
-        throw storageError;
+        console.error('Error deleting file from storage:', storageError);
+        throw new Error(`Failed to delete file from storage: ${storageError.message}`);
       }
 
-      // Get current documents
-      const currentDocuments = await this.getIncidentDocuments(incidentId);
-      
-      // Remove the deleted document
-      const updatedDocuments = currentDocuments.filter(doc => doc.path !== documentPath);
-      
-      // Update incident
-      await this.updateIncidentDocuments(incidentId, updatedDocuments);
-      
-      console.log('Successfully deleted document:', documentPath);
+      // Remove from incident's supporting_documents array
+      const existingDocs = await incidentDocumentService.getIncidentDocuments(incidentId);
+      const updatedDocs = existingDocs.filter(doc => doc.path !== documentPath);
+      await incidentDocumentService.updateIncidentDocuments(incidentId, updatedDocs);
     } catch (error) {
       console.error('Error in deleteDocument:', error);
       throw error;
