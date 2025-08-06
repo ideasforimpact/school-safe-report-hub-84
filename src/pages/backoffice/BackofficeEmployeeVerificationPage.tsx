@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { UserCheck, Search, Eye, ArrowLeft } from 'lucide-react';
+import VerificationStatusSummary from '@/components/employee-verification/VerificationStatusSummary';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { backofficeEmployeeService, type EmployeeWithDocumentsSummary, type BackofficeClient } from '@/services/employee/backofficeEmployeeService';
@@ -94,27 +94,6 @@ const BackofficeEmployeeVerificationPage = () => {
     navigate(`/backoffice/employee-verification/employee/${employeeId}?clientId=${selectedClientId}`);
   };
 
-  const getStatusBadge = (summary: EmployeeWithDocumentsSummary['documentsSummary']) => {
-    const { verified, pending, failed, total } = summary;
-    
-    if (total === 0) {
-      return <Badge variant="secondary">No Documents</Badge>;
-    }
-    
-    if (verified === total) {
-      return <Badge variant="default" className="bg-green-500">All Verified</Badge>;
-    }
-    
-    if (failed > 0) {
-      return <Badge variant="destructive">{failed} Failed</Badge>;
-    }
-    
-    if (pending > 0) {
-      return <Badge variant="outline">{pending} Pending</Badge>;
-    }
-    
-    return <Badge variant="secondary">Mixed Status</Badge>;
-  };
 
   if (loading) {
     return (
@@ -231,7 +210,9 @@ const BackofficeEmployeeVerificationPage = () => {
                       <TableCell>{employee.department}</TableCell>
                       <TableCell>{employee.position || '-'}</TableCell>
                       <TableCell>{employee.email}</TableCell>
-                      <TableCell>{getStatusBadge(employee.documentsSummary)}</TableCell>
+                      <TableCell>
+                        <VerificationStatusSummary summary={employee.documentsSummary} />
+                      </TableCell>
                       <TableCell>
                         <span className="text-sm text-gray-600">
                           {employee.documentsSummary.verified}/{employee.documentsSummary.total} verified
