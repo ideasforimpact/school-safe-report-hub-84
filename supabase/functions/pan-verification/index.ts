@@ -208,10 +208,32 @@ serve(async (req) => {
             })
             .eq('id', documentId);
           
+          // Parse specific error types for user-friendly messages
+          let userFriendlyError = "PAN verification failed";
+          let errorCode = "PAN_VERIFICATION_FAILED";
+          
+          if (data.message) {
+            const message = data.message.toLowerCase();
+            if (message.includes('invalid pan') || message.includes('pan not found')) {
+              userFriendlyError = "This PAN number is not found in government records";
+              errorCode = "PAN_INVALID";
+            } else if (message.includes('format') || message.includes('pattern')) {
+              userFriendlyError = "Please enter a valid PAN number (e.g., ABCDE1234F)";
+              errorCode = "PAN_INVALID_FORMAT";
+            } else if (message.includes('already linked')) {
+              userFriendlyError = "This PAN is already linked to another Aadhaar";
+              errorCode = "PAN_ALREADY_LINKED";
+            } else {
+              userFriendlyError = "PAN verification failed. Please check the number and try again.";
+            }
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: data.message || "PAN verification failed",
+              error: userFriendlyError,
+              errorCode: errorCode,
+              originalError: data.message,
               status: "failed",
               statusId: rejectedStatusId
             }),
@@ -220,8 +242,24 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error verifying PAN with Surepass API:", error);
+        
+        let userFriendlyError = "Something went wrong during PAN verification. Please try again.";
+        let errorCode = "INTERNAL_ERROR";
+        
+        if (error.message?.includes('timeout') || error.message?.includes('connection')) {
+          userFriendlyError = "Verification service is temporarily unavailable. Please try again.";
+          errorCode = "CONNECTION_TIMEOUT";
+        } else if (error.message?.includes('429') || error.message?.includes('limit')) {
+          userFriendlyError = "Too many verification attempts. Please try again after some time.";
+          errorCode = "API_LIMIT_EXCEEDED";
+        }
+        
         return new Response(
-          JSON.stringify({ error: "Failed to connect to verification service" }),
+          JSON.stringify({ 
+            error: userFriendlyError,
+            errorCode: errorCode,
+            originalError: error.message
+          }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

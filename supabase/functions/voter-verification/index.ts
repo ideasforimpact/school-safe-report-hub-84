@@ -208,10 +208,32 @@ serve(async (req) => {
             })
             .eq('id', documentId);
           
+          // Parse specific error types for user-friendly messages
+          let userFriendlyError = "Voter ID verification failed";
+          let errorCode = "VOTER_ID_VERIFICATION_FAILED";
+          
+          if (data.message) {
+            const message = data.message.toLowerCase();
+            if (message.includes('invalid voter') || message.includes('voter id not found')) {
+              userFriendlyError = "This Voter ID is not found in electoral records";
+              errorCode = "VOTER_ID_INVALID";
+            } else if (message.includes('format') || message.includes('pattern')) {
+              userFriendlyError = "Please enter a valid Voter ID number";
+              errorCode = "VOTER_ID_INVALID_FORMAT";
+            } else if (message.includes('expired') || message.includes('inactive')) {
+              userFriendlyError = "This Voter ID appears to be expired or inactive";
+              errorCode = "VOTER_ID_EXPIRED";
+            } else {
+              userFriendlyError = "Voter ID verification failed. Please check the number and try again.";
+            }
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: data.message || "Voter ID verification failed",
+              error: userFriendlyError,
+              errorCode: errorCode,
+              originalError: data.message,
               status: "failed",
               statusId: rejectedStatusId
             }),
@@ -220,8 +242,24 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error verifying Voter ID with Surepass API:", error);
+        
+        let userFriendlyError = "Something went wrong during Voter ID verification. Please try again.";
+        let errorCode = "INTERNAL_ERROR";
+        
+        if (error.message?.includes('timeout') || error.message?.includes('connection')) {
+          userFriendlyError = "Verification service is temporarily unavailable. Please try again.";
+          errorCode = "CONNECTION_TIMEOUT";
+        } else if (error.message?.includes('429') || error.message?.includes('limit')) {
+          userFriendlyError = "Too many verification attempts. Please try again after some time.";
+          errorCode = "API_LIMIT_EXCEEDED";
+        }
+        
         return new Response(
-          JSON.stringify({ error: "Failed to connect to verification service" }),
+          JSON.stringify({ 
+            error: userFriendlyError,
+            errorCode: errorCode,
+            originalError: error.message
+          }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
