@@ -5,13 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import EditEmployeeDialog from './EditEmployeeDialog';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import VerificationStatusBadge from './VerificationStatusBadge';
+import VerificationStatusSummary from './VerificationStatusSummary';
 
 interface EmployeeDetailsProps {
   employee: Employee;
 }
 
 const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
+  const { getEmployeeDocuments } = useEmployeeVerification();
+  
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM d, yyyy');
@@ -26,9 +28,28 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
-  // Convert boolean status to string status for the badge
-  const getStatusString = (status: boolean): 'verified' | 'pending' | 'failed' => {
-    return status ? 'verified' : 'failed';
+  // Calculate verification summary from employee documents
+  const getVerificationSummary = () => {
+    const documents = getEmployeeDocuments(employee.id);
+    
+    const verified = documents.filter(doc => 
+      doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed'
+    ).length;
+    
+    const pending = documents.filter(doc => 
+      doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress'
+    ).length;
+    
+    const failed = documents.filter(doc => 
+      doc.verificationStatus === 'failed' || doc.verificationStatus === 'rejected'
+    ).length;
+    
+    return {
+      verified,
+      pending,
+      failed,
+      total: documents.length
+    };
   };
 
   return (
@@ -39,7 +60,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
             <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
             <p className="text-gray-500 text-left">{employee.position} · {employee.department}</p>
           </div>
-          <VerificationStatusBadge status={getStatusString(employee.status)} className="text-sm px-3 py-1" />
+          <VerificationStatusSummary summary={getVerificationSummary()} className="text-sm" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 mt-6">
@@ -78,7 +99,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
           <div>
             <p className="text-sm text-gray-500 text-left">Verification Status</p>
             <div className="font-medium text-left">
-              <VerificationStatusBadge status={getStatusString(employee.status)} />
+              <VerificationStatusSummary summary={getVerificationSummary()} />
             </div>
           </div>
           <div className="md:col-span-2">
