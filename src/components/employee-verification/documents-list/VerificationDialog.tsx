@@ -303,26 +303,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Driving License:', error);
-        toast.error("Driving License Verification Failed", {
-          description: error.message || "Something went wrong during Driving License verification. Please try again."
-        });
         return;
       }
       
       if (data?.success) {
         onVerify('api');
-      } else {
-        // Use the user-friendly error message from the API
-        const errorMessage = data.error || "Driving License verification failed. Please try manual verification.";
-        toast.error("Driving License Verification Failed", {
-          description: errorMessage
-        });
       }
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
-      toast.error("Driving License Verification Error", {
-        description: "Something went wrong during Driving License verification. Please try again."
-      });
     } finally {
       setIsDrivingLicenseVerifying(false);
     }
