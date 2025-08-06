@@ -41,11 +41,11 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     const documents = employee.documents || [];
     if (documents.length === 0) return 'no-documents';
     
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
     const failed = documents.filter(doc => doc.verificationStatus === 'failed');
     const pending = documents.filter(doc => doc.verificationStatus === 'pending');
     
-    if (verified.length === documents.length) return 'verified';
+    if (verified.length > 0) return 'verified';
     if (failed.length > 0) return 'failed';
     if (pending.length > 0) return 'pending';
     return 'mixed';
@@ -90,7 +90,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     const documents = employee.documents || [];
     
     // Group by verification status
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
     const failed = documents.filter(doc => doc.verificationStatus === 'failed');
     const pending = documents.filter(doc => doc.verificationStatus === 'pending');
     const total = documents.length;
