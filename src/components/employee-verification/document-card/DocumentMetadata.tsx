@@ -2,7 +2,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ShieldCheck, ShieldX } from 'lucide-react';
-import { getDocumentTypeLabel, getStatusDisplayName } from '../utils/documentUtils';
+import { getDocumentTypeLabel, getStatusDisplayName, getDocumentDisplayName } from '../utils/documentUtils';
 
 interface DocumentMetadataProps {
   documentTypeName: string;
@@ -13,6 +13,7 @@ interface DocumentMetadataProps {
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
+  params?: any;
 }
 
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
@@ -24,6 +25,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   verificationDate,
   verificationNotes,
   verificationMethod,
+  params,
 }) => {
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not verified yet';
@@ -103,9 +105,9 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   return (
     <div className="space-y-2">
       <div>
-        <h3 className="text-lg font-medium">{getDocumentTypeLabel(documentTypeName)}</h3>
+        <h3 className="text-lg font-medium">{getDocumentDisplayName(documentTypeName, params, documentNumber)}</h3>
         <p className="text-sm text-gray-500">
-          {documentTypeName === 'other' ? 
+          {documentTypeName === 'other_documents' ? 
             (documentNumber || 'No reference number') : 
             documentNumber ? `#${documentNumber}` : 'No reference number'}
         </p>
