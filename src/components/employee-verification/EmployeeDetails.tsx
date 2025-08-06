@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Employee } from '@/types/employeeVerification';
+import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import EditEmployeeDialog from './EditEmployeeDialog';
@@ -9,9 +9,10 @@ import VerificationStatusSummary from './VerificationStatusSummary';
 
 interface EmployeeDetailsProps {
   employee: Employee;
+  documents?: VerificationDocument[];
 }
 
-const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
+const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }) => {
   const { getEmployeeDocuments } = useEmployeeVerification();
   
   const formatDate = (dateString: string) => {
@@ -30,17 +31,17 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
 
   // Calculate verification summary from employee documents
   const getVerificationSummary = () => {
-    const documents = getEmployeeDocuments(employee.id);
+    const employeeDocuments = documents || getEmployeeDocuments(employee.id);
     
-    const verified = documents.filter(doc => 
+    const verified = employeeDocuments.filter(doc => 
       doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed'
     ).length;
     
-    const pending = documents.filter(doc => 
+    const pending = employeeDocuments.filter(doc => 
       doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress'
     ).length;
     
-    const failed = documents.filter(doc => 
+    const failed = employeeDocuments.filter(doc => 
       doc.verificationStatus === 'failed' || doc.verificationStatus === 'rejected'
     ).length;
     
@@ -48,7 +49,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
       verified,
       pending,
       failed,
-      total: documents.length
+      total: employeeDocuments.length
     };
   };
 
