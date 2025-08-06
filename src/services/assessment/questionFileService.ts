@@ -17,6 +17,23 @@ export interface UploadFileInput {
 }
 
 export const questionFileService = {
+  // Sanitize filename for storage
+  sanitizeFileName: (fileName: string): string => {
+    return fileName
+      // Replace spaces with underscores
+      .replace(/\s+/g, '_')
+      // Replace parentheses with underscores
+      .replace(/[()]/g, '_')
+      // Replace em dash, en dash, and other special dashes with regular hyphen
+      .replace(/[—–]/g, '-')
+      // Remove or replace other problematic characters but keep alphanumeric, hyphens, underscores, and periods
+      .replace(/[^a-zA-Z0-9.\-_]/g, '_')
+      // Remove multiple consecutive underscores/hyphens
+      .replace(/[_-]+/g, '_')
+      // Remove leading/trailing underscores
+      .replace(/^_+|_+$/g, '');
+  },
+
   // Generate file path for question files
   generateFilePath: (
     clientId: string,
@@ -64,7 +81,8 @@ export const questionFileService = {
         // Generate unique file name to avoid conflicts
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(2, 8);
-        const uniqueFileName = `${timestamp}_${randomSuffix}_${file.name}`;
+        const sanitizedFileName = questionFileService.sanitizeFileName(file.name);
+        const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
         const filePath = questionFileService.generateFilePath(
           clientId,
           employeeId,
