@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -20,6 +21,31 @@ interface CustomDocumentRequest {
     type: string;
     size: number;
   }>;
+}
+
+// Filename sanitization function
+function sanitizeFilename(filename: string): string {
+  // Extract file extension
+  const lastDotIndex = filename.lastIndexOf('.');
+  const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+  const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+  
+  // Sanitize the name part
+  const sanitizedName = name
+    // Replace spaces with underscores
+    .replace(/ /g, '_')
+    // Replace parentheses with underscores
+    .replace(/[()]/g, '_')
+    // Replace em/en dashes with regular hyphens
+    .replace(/[–—]/g, '-')
+    // Replace other problematic characters with underscores
+    .replace(/[[\]{}#%^&*+=|<>?/\\]/g, '_')
+    // Remove multiple consecutive underscores
+    .replace(/_+/g, '_')
+    // Remove leading/trailing underscores
+    .replace(/^_|_$/g, '');
+  
+  return sanitizedName + extension;
 }
 
 serve(async (req) => {
@@ -150,10 +176,10 @@ serve(async (req) => {
         const base64Data = file.base64.split(',')[1] || file.base64;
         const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
         
-        // Generate unique file path
+        // Generate unique file path with sanitized filename
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const fileExtension = file.name.split('.').pop() || 'bin';
-        const fileName = `${employeeId}/${documentTypeId}/${timestamp}_${file.name}`;
+        const sanitizedFileName = sanitizeFilename(file.name);
+        const fileName = `${employeeId}/${documentTypeId}/${timestamp}_${sanitizedFileName}`;
         
         console.log(`Custom Document Verification: Uploading file: ${fileName}`);
         
