@@ -76,7 +76,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
       toast.success("Document Manually Verified", {
         description: data?.message || "The document has been manually verified successfully."
       });
-      onVerify('manual');
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in manual verification:", err);
       toast.error("Verification Error", {
@@ -128,7 +128,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
       toast.error("Document Rejected", {
         description: data?.message || "The document has been marked as failed verification."
       });
-      onReject();
+      onOpenChange(false);
     } catch (err: any) {
       console.error("Exception in rejection:", err);
       toast.error("Rejection Error", {
