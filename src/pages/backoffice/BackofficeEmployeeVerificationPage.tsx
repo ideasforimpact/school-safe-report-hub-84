@@ -10,24 +10,31 @@ import { Badge } from '@/components/ui/badge';
 import { UserCheck, Search, Eye, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { backofficeEmployeeService, type EmployeeWithDocumentsSummary, type BackofficeClient } from '@/services/employee/backofficeEmployeeService';
+import { backofficeEmployeeService, type EmployeeWithDocumentsSummary } from '@/services/employee/backofficeEmployeeService';
+import { useSafeClient } from '@/hooks/useSafeClient';
 
 const BackofficeEmployeeVerificationPage = () => {
   const [employees, setEmployees] = useState<EmployeeWithDocumentsSummary[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<EmployeeWithDocumentsSummary[]>([]);
-  const [clients, setClients] = useState<BackofficeClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { clients, loading, fetchClients } = useSafeClient();
 
   // Fetch all clients on component mount
   useEffect(() => {
     fetchClients();
   }, []);
+
+  // Auto-select first client when clients are loaded
+  useEffect(() => {
+    if (clients.length > 0 && !selectedClientId) {
+      setSelectedClientId(clients[0].id);
+    }
+  }, [clients, selectedClientId]);
 
   // Fetch employees when client is selected
   useEffect(() => {
@@ -51,27 +58,6 @@ const BackofficeEmployeeVerificationPage = () => {
     }
   }, [searchTerm, employees]);
 
-  const fetchClients = async () => {
-    try {
-      setLoading(true);
-      const clientsData = await backofficeEmployeeService.fetchAllClients();
-      setClients(clientsData);
-      
-      // Auto-select first client if available
-      if (clientsData.length > 0) {
-        setSelectedClientId(clientsData[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch clients",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchEmployeesByClient = async (clientId: string) => {
     try {
