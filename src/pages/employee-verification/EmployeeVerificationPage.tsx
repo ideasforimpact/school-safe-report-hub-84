@@ -33,24 +33,21 @@ const EmployeeVerificationPage = () => {
       if (documentStatusFilter !== 'all') {
         const documents = employee.documents || [];
         
-        if (documentStatusFilter === 'no-documents' && documents.length > 0) return false;
-        if (documentStatusFilter === 'verified') {
+        if (documentStatusFilter === 'no-documents') {
+          if (documents.length > 0) return false;
+        } else if (documentStatusFilter === 'verified') {
+          if (documents.length === 0) return false;
           const verified = documents.filter(doc => doc.verificationStatus === 'verified');
-          if (verified.length !== documents.length || documents.length === 0) return false;
-        }
-        if (documentStatusFilter === 'pending') {
+          if (verified.length !== documents.length) return false;
+        } else if (documentStatusFilter === 'pending') {
+          if (documents.length === 0) return false;
+          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
           const pending = documents.filter(doc => doc.verificationStatus === 'pending');
-          if (pending.length === 0) return false;
-        }
-        if (documentStatusFilter === 'failed') {
+          if (failed.length > 0 || pending.length === 0) return false;
+        } else if (documentStatusFilter === 'failed') {
+          if (documents.length === 0) return false;
           const failed = documents.filter(doc => doc.verificationStatus === 'failed');
           if (failed.length === 0) return false;
-        }
-        if (documentStatusFilter === 'mixed') {
-          const verified = documents.filter(doc => doc.verificationStatus === 'verified');
-          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-          const pending = documents.filter(doc => doc.verificationStatus === 'pending');
-          if (verified.length === documents.length || failed.length === 0 || pending.length === 0) return false;
         }
       }
 

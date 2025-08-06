@@ -144,7 +144,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Documents</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
