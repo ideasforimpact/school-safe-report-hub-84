@@ -6,7 +6,6 @@ import { FileText, Calendar } from 'lucide-react';
 import { Employee } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import BackofficeDocumentCard from './BackofficeDocumentCard';
-import VerificationStatusSummary from '@/components/employee-verification/VerificationStatusSummary';
 
 interface BackofficeDocumentsListProps {
   employee: Employee;
@@ -92,27 +91,15 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
       return docType?.name.toLowerCase() === 'other';
     });
     
-    // Map statuses to our three main categories
-    const verifiedCount = otherDocuments.filter(doc => 
-      doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed'
-    ).length;
-    
-    const pendingCount = otherDocuments.filter(doc => 
-      doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress'
-    ).length;
-    
-    const failedCount = otherDocuments.filter(doc => 
-      doc.verificationStatus === 'failed' || doc.verificationStatus === 'rejected'
-    ).length;
-    
+    const verified = otherDocuments.filter(doc => doc.verificationStatus === 'verified').length;
+    const completed = otherDocuments.filter(doc => doc.verificationStatus === 'completed').length;
+    const pending = otherDocuments.filter(doc => doc.verificationStatus === 'pending').length;
+    const inProgress = otherDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
+    const failed = otherDocuments.filter(doc => doc.verificationStatus === 'failed').length;
+    const rejected = otherDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
     const total = otherDocuments.length;
     
-    return { 
-      verified: verifiedCount, 
-      pending: pendingCount, 
-      failed: failedCount, 
-      total 
-    };
+    return { verified, completed, pending, inProgress, failed, rejected, total };
   };
 
   const counts = getDocumentCounts();
@@ -125,9 +112,9 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
             <FileText className="h-5 w-5" />
             <div>
               <CardTitle>Other Document Verification</CardTitle>
-              <div className="mt-2">
-                <VerificationStatusSummary summary={counts} />
-              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {counts.total} documents • {counts.completed} completed • {counts.inProgress} in-progress • {counts.pending} pending • {counts.rejected} rejected
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
