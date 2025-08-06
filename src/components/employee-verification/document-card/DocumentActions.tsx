@@ -30,32 +30,30 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     try {
       // Special logic for Other document types (both 'other' and 'other_documents')
       if (document.documentTypeName === 'other' || document.documentTypeName === 'other_documents') {
-        if (method === 'manual') {
-          const functionName = document.documentTypeName === 'other_documents' 
-            ? 'custom-document-verification' 
-            : 'other-document-verification';
-          
-          const { data, error } = await supabase.functions.invoke(functionName, {
-            body: {
-              action: 'manualVerify',
-              documentId: document.id,
-              verification_notes: 'Document manually verified by staff.'
-            }
-          });
-          
-          if (error) {
-            throw new Error(error.message || 'Manual verification failed');
+        const functionName = document.documentTypeName === 'other_documents' 
+          ? 'custom-document-verification' 
+          : 'other-document-verification';
+        
+        const { data, error } = await supabase.functions.invoke(functionName, {
+          body: {
+            action: 'manualVerify',
+            documentId: document.id,
+            verification_notes: 'Document manually verified by staff.'
           }
-          
-          toast({
-            title: "Document Verified",
-            description: "Document has been manually verified successfully.",
-          });
-          
-          setIsVerifying(false);
-          setOtherDocDialogOpen(false);
-          return;
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Manual verification failed');
         }
+        
+        toast({
+          title: "Document Verified",
+          description: "Document has been manually verified successfully.",
+        });
+        
+        setIsVerifying(false);
+        setOtherDocDialogOpen(false);
+        return;
       }
       
       // Special logic for Bank Account documents
