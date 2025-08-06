@@ -144,8 +144,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Bank Statement:', error);
-        toast.error("Verification Failed", {
-          description: error.message || "Failed to verify Bank Statement. Please try again."
+        toast.error("Bank Statement Verification Failed", {
+          description: error.message || "Something went wrong during Bank Statement verification. Please try again."
         });
         return;
       }
@@ -156,14 +156,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         });
         onVerify('api');
       } else {
-        toast.error("Verification Failed", {
-          description: data.error || "Bank Statement verification failed. Please try manual verification."
+        // Use the user-friendly error message from the API
+        const errorMessage = data.error || "Bank Statement verification failed. Please try manual verification.";
+        toast.error("Bank Statement Verification Failed", {
+          description: errorMessage
         });
       }
     } catch (err: any) {
       console.error("Exception in handleBankAccountApiVerification:", err);
-      toast.error("Verification Error", {
-        description: err.message || "Failed to verify Bank Statement"
+      toast.error("Bank Statement Verification Error", {
+        description: "Something went wrong during Bank Statement verification. Please try again."
       });
     } finally {
       setIsBankAccountVerifying(false);
@@ -267,8 +269,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying PAN:', error);
-        toast.error("Verification Failed", {
-          description: error.message || "Failed to verify PAN. Please try again."
+        toast.error("PAN Verification Failed", {
+          description: error.message || "Something went wrong during PAN verification. Please try again."
         });
         return;
       }
@@ -279,14 +281,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         });
         onVerify('api');
       } else {
-        toast.error("Verification Failed", {
-          description: data.error || "PAN verification failed. Please try manual verification."
+        // Use the user-friendly error message from the API
+        const errorMessage = data.error || "PAN verification failed. Please try manual verification.";
+        toast.error("PAN Verification Failed", {
+          description: errorMessage
         });
       }
     } catch (err: any) {
       console.error("Exception in handlePanApiVerification:", err);
-      toast.error("Verification Error", {
-        description: err.message || "Failed to verify PAN"
+      toast.error("PAN Verification Error", {
+        description: "Something went wrong during PAN verification. Please try again."
       });
     } finally {
       setIsPanVerifying(false);
@@ -311,8 +315,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Driving License:', error);
-        toast.error("Verification Failed", {
-          description: error.message || "Failed to verify Driving License. Please try again."
+        toast.error("Driving License Verification Failed", {
+          description: error.message || "Something went wrong during Driving License verification. Please try again."
         });
         return;
       }
@@ -323,14 +327,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         });
         onVerify('api');
       } else {
-        toast.error("Verification Failed", {
-          description: data.error || "Driving License verification failed. Please try manual verification."
+        // Use the user-friendly error message from the API
+        const errorMessage = data.error || "Driving License verification failed. Please try manual verification.";
+        toast.error("Driving License Verification Failed", {
+          description: errorMessage
         });
       }
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
-      toast.error("Verification Error", {
-        description: err.message || "Failed to verify Driving License"
+      toast.error("Driving License Verification Error", {
+        description: "Something went wrong during Driving License verification. Please try again."
       });
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -512,8 +518,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Voter ID:', error);
-        toast.error("Verification Failed", {
-          description: error.message || "Failed to verify Voter ID. Please try again."
+        toast.error("Voter ID Verification Failed", {
+          description: error.message || "Something went wrong during Voter ID verification. Please try again."
         });
         return;
       }
@@ -524,14 +530,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         });
         onVerify('api');
       } else {
-        toast.error("Verification Failed", {
-          description: data.error || "Voter ID verification failed. Please try manual verification."
+        // Use the user-friendly error message from the API
+        const errorMessage = data.error || "Voter ID verification failed. Please try manual verification.";
+        toast.error("Voter ID Verification Failed", {
+          description: errorMessage
         });
       }
     } catch (err: any) {
       console.error("Exception in handleVoterIdApiVerification:", err);
-      toast.error("Verification Error", {
-        description: err.message || "Failed to verify Voter ID"
+      toast.error("Voter ID Verification Error", {
+        description: "Something went wrong during Voter ID verification. Please try again."
       });
     } finally {
       setIsVoterIdVerifying(false);

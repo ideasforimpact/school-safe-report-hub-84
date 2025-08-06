@@ -232,19 +232,60 @@ serve(async (req) => {
             console.error("Error updating document as failed:", updateError);
           }
           
+          // Parse specific error types for user-friendly messages
+          let userFriendlyError = "Driving License verification failed";
+          let errorCode = "DL_VERIFICATION_FAILED";
+          
+          if (apiResponse.message) {
+            const message = apiResponse.message.toLowerCase();
+            if (message.includes('invalid driving') || message.includes('not found in rto')) {
+              userFriendlyError = "This Driving License number is not found in RTO records";
+              errorCode = "DL_INVALID";
+            } else if (message.includes('expired')) {
+              userFriendlyError = "This Driving License has expired";
+              errorCode = "DL_EXPIRED";
+            } else if (message.includes('dob') || message.includes('date of birth')) {
+              userFriendlyError = "Date of birth doesn't match with Driving License records";
+              errorCode = "DL_DOB_MISMATCH";
+            } else if (message.includes('format') || message.includes('pattern')) {
+              userFriendlyError = "Please enter a valid Driving License number";
+              errorCode = "DL_INVALID_FORMAT";
+            } else {
+              userFriendlyError = "Driving License verification failed. Please check the number and try again.";
+            }
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: "Driving license verification failed",
-              message: apiResponse.message || "Verification failed"
+              error: userFriendlyError,
+              errorCode: errorCode,
+              originalError: apiResponse.message,
+              message: userFriendlyError
             }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (error) {
         console.error("Error calling Surepass API:", error);
+        
+        let userFriendlyError = "Something went wrong during Driving License verification. Please try again.";
+        let errorCode = "INTERNAL_ERROR";
+        
+        if (error.message?.includes('timeout') || error.message?.includes('connection')) {
+          userFriendlyError = "Verification service is temporarily unavailable. Please try again.";
+          errorCode = "CONNECTION_TIMEOUT";
+        } else if (error.message?.includes('429') || error.message?.includes('limit')) {
+          userFriendlyError = "Too many verification attempts. Please try again after some time.";
+          errorCode = "API_LIMIT_EXCEEDED";
+        }
+        
         return new Response(
-          JSON.stringify({ error: "Failed to connect to verification service" }),
+          JSON.stringify({ 
+            error: userFriendlyError,
+            errorCode: errorCode,
+            originalError: error.message
+          }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
