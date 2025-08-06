@@ -43,6 +43,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isDrivingLicense = documentType === 'driving_license';
   const isBankAccount = documentType === 'bank_account';
   const isOther = documentType === 'other';
+  const isOtherDocuments = documentType === 'other_documents';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -742,7 +743,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleManualClick = async () => {
-    if (isOther) {
+    if (isOther || isOtherDocuments) {
       await handleOtherManualVerification();
     } else if (isPan) {
       await handlePanManualVerification();
@@ -790,7 +791,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleRejectClick = async () => {
-    if (isOther) {
+    if (isOther || isOtherDocuments) {
       await handleOtherRejection();
     } else if (isPan) {
       await handlePanRejection();
@@ -917,8 +918,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         </DialogHeader>
         {!showOtpInput ? (
           <div className="flex flex-col gap-4 py-4">
-            {/* API Verification Button - Hide for "other" document type */}
-            {!isOther && (
+            {/* API Verification Button - Hide for "other" and "other_documents" document types */}
+            {!isOther && !isOtherDocuments && (
               <Button 
                 variant="outline" 
                 className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
