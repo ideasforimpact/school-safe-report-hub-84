@@ -77,17 +77,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
         
         <CardContent className="p-4 pt-6">
           <DocumentImagePreview documentImage={document.documentImage} />
-        <DocumentMetadata
-          documentTypeName={document.documentTypeName || ''}
-          documentNumber={document.documentNumber}
-          createdAt={document.createdAt}
-          verificationStatus={document.verificationStatus}
-          documentStatusName={document.documentStatusName}
-          verificationDate={document.verificationDate}
-          verificationNotes={document.verificationNotes}
-          verificationMethod={document.verificationMethod}
-          params={document.params}
-        />
+          <DocumentMetadata 
+            documentTypeName={document.documentTypeName || ''}
+            documentNumber={document.documentNumber}
+            createdAt={document.createdAt}
+            verificationStatus={document.verificationStatus}
+            documentStatusName={document.documentStatusName}
+            verificationDate={document.verificationDate}
+            verificationNotes={document.verificationNotes}
+            verificationMethod={document.verificationMethod}
+          />
         </CardContent>
         
         <CardFooter className="border-t p-4 bg-gray-50 flex justify-between">

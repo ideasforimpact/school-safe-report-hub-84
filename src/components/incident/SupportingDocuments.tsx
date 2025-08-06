@@ -232,7 +232,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                             <Download className="h-3 w-3" />
                             Download
                           </Button>
-                          {canDelete && (!document.source || document.source !== 'comment') && (
+                          {canDelete && document.source !== 'comment' && (
                             <Button
                               variant="outline"
                               size="sm"

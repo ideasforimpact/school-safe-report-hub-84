@@ -1,58 +1,26 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Centralized filename sanitization utility
-const sanitizeFilename = (filename: string): string => {
-  if (!filename) return '';
-
-  // Split filename and extension
-  const lastDotIndex = filename.lastIndexOf('.');
-  let name = filename;
-  let extension = '';
-  
-  if (lastDotIndex > 0) {
-    name = filename.substring(0, lastDotIndex);
-    extension = filename.substring(lastDotIndex);
-  }
-
-  // Sanitize the name part (keep extension as-is)
-  const sanitizedName = name
-    // Replace spaces with underscores
-    .replace(/\s+/g, '_')
-    // Replace parentheses with underscores
-    .replace(/[()]/g, '_')
-    // Replace em dash, en dash, and other special dashes with regular hyphen
-    .replace(/[—–]/g, '-')
-    // Replace other problematic characters but keep alphanumeric, hyphens, underscores, and periods
-    .replace(/[^a-zA-Z0-9.\-_]/g, '_')
-    // Remove multiple consecutive underscores/hyphens
-    .replace(/[_-]+/g, '_')
-    // Remove leading/trailing underscores
-    .replace(/^_+|_+$/g, '');
-
-  return sanitizedName + extension;
-};
-
-// Generate a unique filename with timestamp
-const generateUniqueFilename = (originalFilename: string): string => {
-  const sanitized = sanitizeFilename(originalFilename);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  
-  // Split to add timestamp before extension
-  const lastDotIndex = sanitized.lastIndexOf('.');
-  if (lastDotIndex > 0) {
-    const name = sanitized.substring(0, lastDotIndex);
-    const extension = sanitized.substring(lastDotIndex);
-    return `${timestamp}_${name}${extension}`;
-  }
-  
-  return `${timestamp}_${sanitized}`;
-};
+interface CustomDocumentRequest {
+  action: 'uploadCustomDocument' | 'manualVerify' | 'reject';
+  employeeId?: string;
+  clientId?: string;
+  documentTypeId?: string;
+  documentName?: string;
+  documentId?: string;
+  verification_notes?: string;
+  documentFiles?: Array<{
+    name: string;
+    base64: string;
+    type: string;
+    size: number;
+  }>;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -63,126 +31,217 @@ serve(async (req) => {
   try {
     console.log('Custom Document Verification: Request received');
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const requestBody = await req.json()
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const requestBody: CustomDocumentRequest = await req.json();
     console.log('Custom Document Verification: Request body:', JSON.stringify(requestBody, null, 2));
 
-    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles } = requestBody
+    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles, documentId, verification_notes } = requestBody;
 
-    if (action === 'uploadCustomDocument') {
-      console.log(`Custom Document Verification: Processing ${documentFiles.length} files for employee ${employeeId}`);
-      
-      const uploadedFiles = []
-      
-      for (const file of documentFiles) {
-        try {
-          // Convert base64 to Uint8Array
-          const base64Data = file.base64.split(',')[1] || file.base64
-          const binaryString = atob(base64Data)
-          const bytes = new Uint8Array(binaryString.length)
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i)
-          }
-
-          // Generate sanitized unique filename
-          const sanitizedFilename = generateUniqueFilename(file.name);
-          const fileName = `${employeeId}/${documentTypeId}/${sanitizedFilename}`;
-          
-          console.log(`Custom Document Verification: Uploading file: ${fileName}`);
-
-          // Upload to Supabase storage
-          const { data: uploadData, error: uploadError } = await supabaseClient.storage
-            .from('custom-document-verification')
-            .upload(fileName, bytes, {
-              contentType: file.type || 'application/octet-stream',
-              upsert: false
-            })
-
-          if (uploadError) {
-            console.error(`Custom Document Verification: Upload error for ${file.name}:`, uploadError);
-            throw new Error(`Failed to upload file ${file.name}: ${uploadError.message}`)
-          }
-
-          // Get public URL
-          const { data: urlData } = supabaseClient.storage
-            .from('custom-document-verification')
-            .getPublicUrl(fileName)
-
-          uploadedFiles.push({
-            originalName: file.name,
-            fileName: sanitizedFilename,
-            path: fileName,
-            url: urlData.publicUrl,
-            size: bytes.length,
-            type: file.type
-          })
-
-          console.log(`Custom Document Verification: Successfully uploaded: ${file.name} as ${sanitizedFilename}`);
-        } catch (error) {
-          console.error(`Custom Document Verification: Error processing file ${file.name}:`, error);
-          throw new Error(`Failed to process file ${file.name}: ${error.message}`)
-        }
-      }
-
-      // Store verification record in database
-      const { data: verificationData, error: dbError } = await supabaseClient
-        .from('employee_custom_document_verification')
-        .insert({
-          employee_id: employeeId,
-          client_id: clientId,
-          document_type_id: documentTypeId,
-          document_name: documentName,
-          document_files: uploadedFiles,
-          verification_status: 'pending',
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single()
-
-      if (dbError) {
-        console.error('Custom Document Verification: Database error:', dbError);
-        throw new Error(`Failed to create verification record: ${dbError.message}`)
-      }
-
-      console.log('Custom Document Verification: Successfully created verification record');
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: verificationData,
-          uploadedFiles: uploadedFiles
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
+      throw new Error('Invalid action specified');
     }
 
-    // Handle other actions...
-    return new Response(
-      JSON.stringify({ success: false, error: 'Invalid action' }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400
+    // Handle manual verification
+    if (action === 'manualVerify') {
+      if (!documentId) {
+        throw new Error('Missing documentId for manual verification');
       }
-    )
+
+      console.log(`Custom Document Verification: Manual verification for document ${documentId}`);
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('employee_documents')
+        .update({
+          verification_status: 'verified',
+          updated_at: new Date().toISOString(),
+          employee_docs_log: [
+            {
+              action: 'manual_verify',
+              timestamp: new Date().toISOString(),
+              notes: verification_notes || 'Document manually verified by staff.'
+            }
+          ]
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Custom Document Verification: Update error:', updateError);
+        throw new Error(`Failed to update document status: ${updateError.message}`);
+      }
+
+      console.log('Custom Document Verification: Manual verification successful:', updateData);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Document manually verified successfully',
+        data: updateData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Handle rejection
+    if (action === 'reject') {
+      if (!documentId) {
+        throw new Error('Missing documentId for rejection');
+      }
+
+      console.log(`Custom Document Verification: Rejecting document ${documentId}`);
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('employee_documents')
+        .update({
+          verification_status: 'failed',
+          updated_at: new Date().toISOString(),
+          employee_docs_log: [
+            {
+              action: 'reject',
+              timestamp: new Date().toISOString(),
+              notes: verification_notes || 'Document verification rejected by staff.'
+            }
+          ]
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Custom Document Verification: Update error:', updateError);
+        throw new Error(`Failed to update document status: ${updateError.message}`);
+      }
+
+      console.log('Custom Document Verification: Rejection successful:', updateData);
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Document rejected successfully',
+        data: updateData
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!employeeId || !clientId || !documentTypeId || !documentName || !documentFiles?.length) {
+      throw new Error('Missing required fields: employeeId, clientId, documentTypeId, documentName, or documentFiles');
+    }
+
+    // Validate total file size (30MB limit)
+    const totalSize = documentFiles.reduce((sum, file) => sum + file.size, 0);
+    const maxSize = 30 * 1024 * 1024; // 30MB in bytes
+
+    if (totalSize > maxSize) {
+      throw new Error('Total file size exceeds 30MB limit');
+    }
+
+    console.log(`Custom Document Verification: Processing ${documentFiles.length} files for employee ${employeeId}`);
+
+    // Upload files to storage
+    const uploadedFiles: string[] = [];
+    
+    for (const file of documentFiles) {
+      try {
+        // Convert base64 to blob
+        const base64Data = file.base64.split(',')[1] || file.base64;
+        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        
+        // Generate unique file path
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const fileExtension = file.name.split('.').pop() || 'bin';
+        const fileName = `${employeeId}/${documentTypeId}/${timestamp}_${file.name}`;
+        
+        console.log(`Custom Document Verification: Uploading file: ${fileName}`);
+        
+        // Upload to employee_other_documents bucket
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('employee_other_documents')
+          .upload(fileName, binaryData, {
+            contentType: file.type,
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error(`Custom Document Verification: Upload error for ${file.name}:`, uploadError);
+          throw new Error(`Failed to upload file ${file.name}: ${uploadError.message}`);
+        }
+
+        console.log(`Custom Document Verification: Successfully uploaded: ${fileName}`);
+        uploadedFiles.push(fileName);
+        
+      } catch (fileError) {
+        console.error(`Custom Document Verification: Error processing file ${file.name}:`, fileError);
+        throw new Error(`Failed to process file ${file.name}: ${fileError.message}`);
+      }
+    }
+
+    // Create document record in database
+    const documentData = {
+      employee_id: employeeId,
+      document_type_id: documentTypeId,
+      document_url: uploadedFiles[0], // Primary file
+      verification_status: 'pending',
+      params: {
+        document_name: documentName,
+        uploaded_files: uploadedFiles,
+        file_count: uploadedFiles.length,
+        total_size: totalSize,
+        custom_document: true
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('Custom Document Verification: Creating document record:', documentData);
+
+    const { data: documentRecord, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert(documentData)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Custom Document Verification: Database insert error:', insertError);
+      throw new Error(`Failed to create document record: ${insertError.message}`);
+    }
+
+    console.log('Custom Document Verification: Document record created successfully:', documentRecord);
+
+    const response = {
+      success: true,
+      message: `Custom document "${documentName}" uploaded successfully with ${uploadedFiles.length} files`,
+      data: {
+        documentId: documentRecord.id,
+        employeeId,
+        documentName,
+        filesUploaded: uploadedFiles.length,
+        totalSize,
+        uploadedFiles
+      }
+    };
+
+    console.log('Custom Document Verification: Success response:', response);
+
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
     console.error('Custom Document Verification: Error:', error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        details: error.toString()
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    )
+    
+    const errorResponse = {
+      success: false,
+      error: error.message || 'An unexpected error occurred during custom document upload',
+      details: error.stack
+    };
+
+    return new Response(JSON.stringify(errorResponse), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
-})
+});

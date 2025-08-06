@@ -1,112 +1,193 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// Centralized filename sanitization utility
-const sanitizeFilename = (filename: string): string => {
-  if (!filename) return '';
-
-  // Split filename and extension
-  const lastDotIndex = filename.lastIndexOf('.');
-  let name = filename;
-  let extension = '';
-  
-  if (lastDotIndex > 0) {
-    name = filename.substring(0, lastDotIndex);
-    extension = filename.substring(lastDotIndex);
-  }
-
-  // Sanitize the name part (keep extension as-is)
-  const sanitizedName = name
-    // Replace spaces with underscores
-    .replace(/\s+/g, '_')
-    // Replace parentheses with underscores
-    .replace(/[()]/g, '_')
-    // Replace em dash, en dash, and other special dashes with regular hyphen
-    .replace(/[—–]/g, '-')
-    // Replace other problematic characters but keep alphanumeric, hyphens, underscores, and periods
-    .replace(/[^a-zA-Z0-9.\-_]/g, '_')
-    // Remove multiple consecutive underscores/hyphens
-    .replace(/[_-]+/g, '_')
-    // Remove leading/trailing underscores
-    .replace(/^_+|_+$/g, '');
-
-  return sanitizedName + extension;
 };
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+// Handle CORS preflight requests
+function handleCors(req: Request) {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders
+    });
   }
+  return null;
+}
+
+serve(async (req) => {
+  // Handle CORS
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    // Get the Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const requestBody = await req.json()
-    const { vehicleId, clientId, documentType, file } = requestBody
-
-    // Convert base64 to Uint8Array
-    const base64Data = file.base64.split(',')[1] || file.base64
-    const binaryString = atob(base64Data)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
+    // Get data from request
+    const { vehicleId, files, documentInfo } = await req.json();
+    
+    console.log(`Processing upload for vehicle: ${vehicleId}`);
+    console.log(`Number of files: ${files.length}`);
+    
+    // Ensure we have a valid vehicle ID
+    if (!vehicleId) {
+      return new Response(
+        JSON.stringify({ error: "Vehicle ID is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
     }
 
-    // Generate sanitized filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const sanitizedFilename = sanitizeFilename(file.name);
-    const fileName = `${clientId}/${vehicleId}/${documentType}/${timestamp}_${sanitizedFilename}`;
-
-    // Upload to storage
-    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-      .from('vehicle-documents')
-      .upload(fileName, bytes, {
-        contentType: file.type || 'application/octet-stream',
-        upsert: false
-      })
-
-    if (uploadError) {
-      throw new Error(`Failed to upload file: ${uploadError.message}`)
+    const uploadTime = new Date().toISOString();
+    const uploadResults = [];
+    
+    // Upload each file to storage
+    for (const file of files) {
+      const { fileName, contentType, base64Data } = file;
+      
+      // Remove the data:image/jpeg;base64, part
+      const base64 = base64Data.split(',')[1];
+      
+      // Create a clean filename
+      const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      
+      // Add timestamp and random string to ensure uniqueness
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 10);
+      const filePath = `${vehicleId}/${timestamp}_${randomStr}_${cleanFileName}`;
+      
+      console.log(`Uploading ${filePath}`);
+      
+      // Upload to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('vehicle-documents')
+        .upload(filePath, decode(base64), {
+          contentType,
+          upsert: true
+        });
+        
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        uploadResults.push({
+          fileName,
+          error: uploadError.message,
+          success: false
+        });
+        continue;
+      }
+      
+      // Get public URL - Constructing the correct URL format
+      const { data: { publicUrl } } = supabase.storage
+        .from('vehicle-documents')
+        .getPublicUrl(filePath);
+        
+      uploadResults.push({
+        fileName,
+        filePath,
+        publicUrl,
+        success: true,
+        uploadTime
+      });
     }
-
-    // Get public URL
-    const { data: urlData } = supabaseClient.storage
-      .from('vehicle-documents')
-      .getPublicUrl(fileName)
-
+    
+    // Prepare document data
+    const documentData = {
+      name: documentInfo?.name || 'Uploaded Document',
+      type: documentInfo?.type || 'general',
+      uploadedAt: uploadTime,
+      files: uploadResults.filter(r => r.success).map(r => ({
+        name: r.fileName,
+        path: r.filePath,
+        url: r.publicUrl,
+        uploadedAt: r.uploadTime
+      }))
+    };
+    
+    // Check if there's an existing record for this vehicle
+    const { data: existingDocs, error: fetchError } = await supabase
+      .from('vehicle_documents')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .single();
+      
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      console.error("Error fetching existing documents:", fetchError);
+      return new Response(
+        JSON.stringify({ error: "Error fetching existing documents", details: fetchError }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+    
+    let result;
+    
+    if (existingDocs) {
+      // Update existing record
+      const updatedDocuments = [...existingDocs.documents, documentData];
+      
+      const { data, error: updateError } = await supabase
+        .from('vehicle_documents')
+        .update({ documents: updatedDocuments })
+        .eq('vehicle_id', vehicleId)
+        .select();
+        
+      if (updateError) {
+        console.error("Error updating documents:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Error updating documents", details: updateError }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      result = data;
+    } else {
+      // Insert new record
+      const { data, error: insertError } = await supabase
+        .from('vehicle_documents')
+        .insert([
+          { vehicle_id: vehicleId, documents: [documentData] }
+        ])
+        .select();
+        
+      if (insertError) {
+        console.error("Error inserting documents:", insertError);
+        return new Response(
+          JSON.stringify({ error: "Error inserting documents", details: insertError }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      result = data;
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: true,
-        fileName: sanitizedFilename,
-        originalName: file.name,
-        path: fileName,
-        url: urlData.publicUrl
+        uploadResults,
+        documentData,
+        result
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
-
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+    
   } catch (error) {
-    console.error('Upload Vehicle Document Error:', error);
+    console.error("Unexpected error:", error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    )
+      JSON.stringify({ error: "Unexpected error", details: error.message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
   }
-})
+});
+
+// Utility function to decode base64
+function decode(base64: string): Uint8Array {
+  const binString = atob(base64);
+  const bytes = new Uint8Array(binString.length);
+  for (let i = 0; i < binString.length; i++) {
+    bytes[i] = binString.charCodeAt(i);
+  }
+  return bytes;
+}
