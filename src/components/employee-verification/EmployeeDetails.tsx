@@ -98,7 +98,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
             <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 text-left">Verification Status</p>
             <div className="font-medium text-left">
               <VerificationStatusSummary summary={getVerificationSummary()} />
             </div>
