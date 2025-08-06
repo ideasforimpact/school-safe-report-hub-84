@@ -61,7 +61,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
             <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
             <p className="text-gray-500 text-left">{employee.position} · {employee.department}</p>
           </div>
-          <VerificationStatusSummary summary={getVerificationSummary()} className="text-sm" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 mt-6">
