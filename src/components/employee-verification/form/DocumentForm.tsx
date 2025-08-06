@@ -72,7 +72,14 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   // Check if document already exists
   const existingDocuments = getEmployeeDocuments(employeeId);
   const existingDocument = existingDocuments.find(doc => doc.documentTypeId === selectedTypeId);
-  const hasExistingDocument = !!existingDocument;
+  
+  // Helper function to check if document type should show existing document restriction
+  const shouldShowExistingDocumentRestriction = (typeName: string) => {
+    // Don't show restriction for types that allow multiple uploads
+    return !['manual', 'other_documents'].includes(typeName);
+  };
+  
+  const hasExistingDocument = !!existingDocument && shouldShowExistingDocumentRestriction(documentType?.name || '');
 
   // Pre-populate with existing document data if available (only if we're showing the form)
   useEffect(() => {
