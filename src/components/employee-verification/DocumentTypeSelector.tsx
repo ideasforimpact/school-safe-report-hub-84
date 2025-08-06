@@ -93,6 +93,12 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
     return existingDocuments.some(doc => doc.documentTypeId === typeId);
   };
 
+  // Helper function to check if document type should show completion badge
+  const shouldShowCompletionBadge = (typeName: string) => {
+    // Don't show completion badge for types that allow multiple uploads
+    return !['manual', 'other_documents'].includes(typeName);
+  };
+
   return (
     <div className="grid grid-cols-4 md:grid-cols-6 gap-2 w-full">
       {typesToDisplay.map((type) => {
@@ -118,7 +124,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
             `}
             onClick={() => onChange(type.id)}
           >
-            {hasUploaded && (
+            {hasUploaded && shouldShowCompletionBadge(type.name) && (
               <div className="absolute -top-1 -right-1 bg-green-500 rounded-full p-1">
                 <CheckCircle className="h-3 w-3 text-white" />
               </div>
