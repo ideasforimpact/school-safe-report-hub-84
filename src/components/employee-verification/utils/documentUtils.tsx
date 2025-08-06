@@ -48,60 +48,6 @@ export const formatDocumentTypeName = (documentType: string) => {
   }
 };
 
-// Get manual verification type display name
-export const getManualVerificationTypeName = (verificationTypeId: string) => {
-  switch (verificationTypeId) {
-    case 'court_case_check':
-      return 'Court Case Check';
-    case 'police_verification':
-      return 'Police Verification';
-    case 'bank_statement_analysis':
-      return 'Bank Statement Analysis';
-    case 'employment_verification':
-      return 'Employment Verification';
-    case 'education_verification':
-      return 'Education Verification';
-    case 'reference_check':
-      return 'Reference Check';
-    case 'social_media_check':
-      return 'Social Media Check';
-    case 'financial_background':
-      return 'Financial Background Check';
-    case 'criminal_background':
-      return 'Criminal Background Check';
-    case 'professional_license':
-      return 'Professional License Verification';
-    default:
-      return verificationTypeId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  }
-};
-
-// Get display name for document considering manual verification types
-export const getDocumentDisplayName = (documentTypeName: string, params?: any, documentNumber?: string) => {
-  // For manual verification documents, show the specific verification type
-  if (documentTypeName === 'manual' && params?.selected) {
-    return getManualVerificationTypeName(params.selected);
-  }
-  
-  // For other documents, try to extract original filename from document number or params
-  if (documentTypeName === 'other_documents') {
-    // If documentNumber contains original filename info, extract it
-    if (documentNumber && !documentNumber.startsWith('#')) {
-      return documentNumber;
-    }
-    // Check if params contains original filename
-    if (params?.originalFileName) {
-      return params.originalFileName;
-    }
-    // Check if params contains document name
-    if (params?.documentName) {
-      return params.documentName;
-    }
-  }
-  
-  return formatDocumentTypeName(documentTypeName);
-};
-
 export const getDocumentPlaceholder = (documentTypeId: string) => {
   switch (documentTypeId) {
     case 'aadhar':
