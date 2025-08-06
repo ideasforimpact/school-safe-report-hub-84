@@ -73,9 +73,9 @@ serve(async (req) => {
         
         console.log(`Custom Document Verification: Uploading file: ${fileName}`);
         
-        // Upload to Employee Documents bucket
+        // Upload to employee_other_documents bucket
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('Employee Documents')
+          .from('employee_other_documents')
           .upload(fileName, binaryData, {
             contentType: file.type,
             upsert: false
