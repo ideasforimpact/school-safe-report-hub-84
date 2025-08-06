@@ -51,7 +51,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     return 'mixed';
   };
 
-  // Filter employees based on all filter criteria
+  // Filter employees based on search term only (document status filtering is handled by parent)
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
       // Search filter
@@ -65,15 +65,9 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
         if (!matchesSearch) return false;
       }
 
-      // Document status filter
-      if (documentStatusFilter !== 'all') {
-        const docStatus = getDocumentStatus(employee);
-        if (docStatus !== documentStatusFilter) return false;
-      }
-
       return true;
     });
-  }, [employees, searchTerm, documentStatusFilter]);
+  }, [employees, searchTerm]);
 
   // Set up pagination
   const {
