@@ -361,7 +361,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>{doc.documentNumber || '—'}</TableCell>
+                  <TableCell>
+                    {doc.documentTypeName === 'manual' ? 
+                      'Manual Verification' : 
+                      doc.documentTypeName === 'other_documents' ?
+                      (doc.params?.document_name || '—') :
+                      (doc.documentNumber || '—')
+                    }
+                  </TableCell>
                   <TableCell>
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
                   </TableCell>
