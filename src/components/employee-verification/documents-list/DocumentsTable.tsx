@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { Eye, Download, Cog, MessageCircle, FileSearch, MoreVertical, Trash } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Eye, Download, Cog, MessageCircle, FileSearch, MoreVertical, Trash, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Table,
@@ -49,8 +50,13 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onVerifyDocument,
   onDocumentAction
 }) => {
-  const { documentStatuses } = useEmployeeVerification();
+  const { documentStatuses, deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
+  
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedDocumentDetails, setSelectedDocumentDetails] = React.useState<any>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [panDialogOpen, setPanDialogOpen] = React.useState(false);
@@ -351,6 +357,40 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       return doc.documentNumber || '—';
     }
   };
+
+  // Handle delete document
+  const handleDeleteDocument = async (documentId: string) => {
+    try {
+      setIsDeleting(true);
+      await deleteDocument(documentId);
+      toast({
+        title: 'Document Deleted',
+        description: 'The document has been deleted successfully.',
+      });
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+      
+      // Trigger document refetch after deletion
+      if (onDocumentAction) {
+        onDocumentAction();
+      }
+    } catch (error) {
+      console.error("Error in handleDeleteDocument:", error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete document.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (documentId: string) => {
+    setDocumentToDelete(documentId);
+    setDeleteDialogOpen(true);
+  };
   
   return (
     <>
@@ -455,11 +495,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                              <Download className="h-4 w-4 mr-2" />
                              Download
                            </DropdownMenuItem>
-                           <DropdownMenuSeparator />
-                            <DocumentDeleteButton 
-                              documentId={doc.id}
-                              onDocumentDeleted={onDocumentAction}
-                            />
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => openDeleteDialog(doc.id)}
+                              className="cursor-pointer text-red-600 focus:text-red-600"
+                            >
+                              <Trash className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
                          </DropdownMenuContent>
                        </DropdownMenu>
                     </div>
@@ -513,6 +556,40 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         verificationHistory={selectedVerificationHistory}
         documentId={selectedDocumentId}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this document? This action cannot be undone and will remove the document from storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 hover:bg-red-700"
+              onClick={(e) => {
+                e.preventDefault();
+                if (documentToDelete) {
+                  handleDeleteDocument(documentToDelete);
+                }
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
