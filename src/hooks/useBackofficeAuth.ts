@@ -21,16 +21,16 @@ export const useBackofficeAuth = () => {
     setError(null);
 
     try {
-      // Normalize email for consistency
-      const normalizedEmail = email.trim().toLowerCase();
+      // Clean email (remove whitespace only, preserve case)
+      const cleanedEmail = email.trim();
       
-      console.log('Attempting backoffice login for email:', normalizedEmail);
+      console.log('Attempting backoffice login for email:', cleanedEmail);
 
       // Step 1: Check if user exists first
       const { data: existingUser, error: checkError } = await supabase
         .from('backoffice_users')
         .select('email')
-        .eq('email', normalizedEmail)
+        .eq('email', cleanedEmail)
         .maybeSingle();
 
       if (checkError) {
@@ -49,7 +49,7 @@ export const useBackofficeAuth = () => {
 
       // Step 2: Verify credentials using RPC function
       const { data: isValidCredentials, error: verifyError } = await supabase.rpc('verify_password', { 
-        email: normalizedEmail, 
+        email: cleanedEmail, 
         password_attempt: password 
       });
 
@@ -61,7 +61,7 @@ export const useBackofficeAuth = () => {
       }
 
       if (!isValidCredentials) {
-        console.log('Invalid password for user:', normalizedEmail);
+        console.log('Invalid password for user:', cleanedEmail);
         setError("Invalid password. Please try again.");
         setIsLoading(false);
         return false;
@@ -71,7 +71,7 @@ export const useBackofficeAuth = () => {
       const { data: backofficeUser, error: userError } = await supabase
         .from('backoffice_users')
         .select('*')
-        .eq('email', normalizedEmail)
+        .eq('email', cleanedEmail)
         .maybeSingle();
         
       if (userError) {
