@@ -87,3 +87,27 @@ export const getStatusDisplayName = (status: string) => {
       return status.charAt(0).toUpperCase() + status.slice(1);
   }
 };
+
+export const getManualVerificationDisplayName = (selected?: string) => {
+  if (!selected) return 'Manual Verification';
+  
+  switch (selected) {
+    case 'court_case_check':
+      return 'Court Case Check';
+    case 'bank_statement_analysis':
+      return 'Bank Statement Analysis';
+    case 'police_verification':
+      return 'Police Verification';
+    case 'employment_verification':
+      return 'Employment Verification';
+    case 'education_verification':
+      return 'Education Verification';
+    case 'reference_check':
+      return 'Reference Check';
+    case 'address_verification':
+      return 'Address Verification';
+    default:
+      // Convert snake_case to Title Case
+      return selected.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+};
