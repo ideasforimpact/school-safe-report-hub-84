@@ -32,7 +32,7 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
       return { text: 'Ready for Review', variant: 'review' as const, clickable: true };
     }
     
-    return { text: 'Reviewed', variant: 'reviewed' as const, clickable: false };
+    return { text: 'Reviewed', variant: 'reviewed' as const, clickable: true };
   };
 
   const openDetailDialog = () => {
