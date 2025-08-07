@@ -1,7 +1,14 @@
 
 import React, { useEffect } from 'react';
-import { Eye, Download, Cog, MessageCircle, FileSearch } from 'lucide-react';
+import { Eye, Download, Cog, MessageCircle, FileSearch, MoreVertical, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatDistanceToNow } from 'date-fns';
 import {
   Table,
@@ -412,40 +419,49 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         <Cog className="h-4 w-4" />
                         <span className="sr-only">Process Document</span>
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewDocument(doc.documentImage)}
-                        title="View document"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleDownloadDocument(doc.documentImage)}
-                        title="Download document"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Download</span>
-                      </Button>
-                      {showCommentsIcon && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleCommentsClick(doc)}
-                          title="View comments and verification history"
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                          <span className="sr-only">Comments</span>
-                        </Button>
-                      )}
-                      <DocumentDeleteButton 
-                        documentId={doc.id} 
-                        onDocumentDeleted={onDocumentAction}
-                      />
+                       {showCommentsIcon && (
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => handleCommentsClick(doc)}
+                           title="View comments and verification history"
+                           className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                         >
+                           <MessageCircle className="h-4 w-4" />
+                           <span className="sr-only">Comments</span>
+                         </Button>
+                       )}
+                       
+                       {/* Actions Menu Dropdown */}
+                       <DropdownMenu>
+                         <DropdownMenuTrigger asChild>
+                           <Button variant="outline" size="sm" title="More actions">
+                             <MoreVertical className="h-4 w-4" />
+                             <span className="sr-only">More actions</span>
+                           </Button>
+                         </DropdownMenuTrigger>
+                         <DropdownMenuContent align="end" className="w-40 bg-white border shadow-lg z-50">
+                           <DropdownMenuItem 
+                             onClick={() => handleViewDocument(doc.documentImage)}
+                             className="cursor-pointer"
+                           >
+                             <Eye className="h-4 w-4 mr-2" />
+                             View
+                           </DropdownMenuItem>
+                           <DropdownMenuItem 
+                             onClick={() => handleDownloadDocument(doc.documentImage)}
+                             className="cursor-pointer"
+                           >
+                             <Download className="h-4 w-4 mr-2" />
+                             Download
+                           </DropdownMenuItem>
+                           <DropdownMenuSeparator />
+                            <DocumentDeleteButton 
+                              documentId={doc.id}
+                              onDocumentDeleted={onDocumentAction}
+                            />
+                         </DropdownMenuContent>
+                       </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
