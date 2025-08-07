@@ -166,22 +166,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
             <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
           </Button>
           
-          <Button 
-            variant="outline" 
-            className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
-            onClick={handleRejectClick}
-            disabled={isVerifying || isManualVerifying || isRejecting}
-          >
-            {isRejecting ? (
-              <Loader2 className="h-4 w-4 mr-3 animate-spin" />
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
-            {isRejecting ? 'Processing...' : 'Reject Document'}
-            <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
-          </Button>
+          {/* Reject button removed as per new requirements */}
         </div>
         <DialogFooter className="flex justify-center sm:justify-end mt-4">
           <Button 
