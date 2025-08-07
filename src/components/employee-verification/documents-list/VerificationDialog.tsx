@@ -1037,27 +1037,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
-            <Button 
-              variant="outline" 
-              className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
-              onClick={handleRejectClick}
-              disabled={
-                (isPan && isPanVerifying) ||
-                (isVoterId && isVoterIdVerifying) ||
-                (isDrivingLicense && isDrivingLicenseVerifying) ||
-                (isBankAccount && isBankAccountVerifying) ||
-                (isOther && isOtherRejecting)
-              }
-            >
-              {isOtherRejecting ? (
-                <Loader2 className="h-4 w-4 mr-3 animate-spin" />
-              ) : (
-                <ShieldCheck className="h-4 w-4 mr-3" />
-              )}
-              {isOtherRejecting
-                ? 'Processing...' : 'Reject Document'}
-              <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
-            </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-4 py-4">
