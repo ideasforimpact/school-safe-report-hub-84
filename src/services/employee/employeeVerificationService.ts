@@ -192,6 +192,11 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
           details?: any;
           error?: string;
         }> : [],
+        // Map new API response tracking fields
+        apiResponseData: doc.api_response_data || undefined,
+        apiVerificationStatus: doc.api_verification_status as 'pending' | 'completed' | 'failed' | null || null,
+        apiVerificationDate: doc.api_verification_date || undefined,
+        apiVerificationMethod: doc.api_verification_method || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

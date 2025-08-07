@@ -178,7 +178,11 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         <OtherDocumentVerificationDialog
           open={otherDocDialogOpen}
           onOpenChange={setOtherDocDialogOpen}
+          onVerify={() => handleVerify('manual')}
+          onReject={() => {}} // Empty function since reject is removed
+          isVerifying={isVerifying}
           documentId={document.id}
+          documentType={document.documentTypeName}
         />
       </>
     );
@@ -196,8 +200,12 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       <VerificationDialog
         open={verificationDialogOpen}
         onOpenChange={setVerificationDialogOpen}
+        onVerify={handleVerify}
+        onReject={() => {}} // Empty function since reject is removed
+        isVerifying={isVerifying}
+        documentType={document.documentTypeName}
         documentId={document.id}
-        onVerificationUpdate={onVerificationUpdate}
+        documentNumber={document.documentNumber}
       />
 
       {/* Bank statement details dialog for bank account verification */}
@@ -206,8 +214,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         <BankStatementDetailsDialog
           open={bankDialogOpen}
           onOpenChange={setBankDialogOpen}
+          statementDetails={null}
           documentId={document.id}
-          onVerificationUpdate={onVerificationUpdate}
         />
       )}
     </div>
