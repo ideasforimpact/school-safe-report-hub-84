@@ -86,6 +86,11 @@ export interface VerificationDocument {
     details?: any;
     error?: string;
   }>;
+  // New API response tracking fields
+  apiResponseData?: any;
+  apiVerificationStatus?: 'pending' | 'completed' | 'failed' | null;
+  apiVerificationDate?: string;
+  apiVerificationMethod?: string;
   createdAt: string;
   updatedAt: string;
 }

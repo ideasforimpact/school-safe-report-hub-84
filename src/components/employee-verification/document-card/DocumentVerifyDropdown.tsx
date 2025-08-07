@@ -25,7 +25,7 @@ const DocumentVerifyDropdown: React.FC<DocumentVerifyDropdownProps> = ({
       <DropdownMenuTrigger asChild>
         <Button variant="default" size="sm" disabled={isDisabled} className="flex items-center">
           <CheckCircle className="h-4 w-4 mr-1" />
-          Verify
+          Process Document
           <ChevronDown className="h-4 w-4 ml-1" />
         </Button>
       </DropdownMenuTrigger>
