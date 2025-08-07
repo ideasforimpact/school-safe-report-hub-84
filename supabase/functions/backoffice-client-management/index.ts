@@ -1,8 +1,16 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4'
 import { corsHeaders } from '../_shared/cors.ts'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// Create a Supabase client with service role for bypassing RLS
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -11,176 +19,127 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Create admin client with service role to bypass RLS
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-
-    const { action, data } = await req.json()
-
-    console.log(`Backoffice client management action: ${action}`)
+    const { action, ...payload } = await req.json()
+    console.log('Backoffice client management request:', { action, payload })
 
     switch (action) {
-      case 'fetch-clients': {
-        const { data: clients, error } = await supabaseAdmin
-          .from('clients')
-          .select(`
-            *,
-            client_type (
-              id,
-              name,
-              key
-            )
-          `)
-          .order('creation_date', { ascending: false })
-
-        if (error) {
-          console.error('Error fetching clients:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to fetch clients' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        return new Response(
-          JSON.stringify({ clients }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      case 'add-client': {
-        const { client } = data
-
-        // Insert client
-        const { data: newClient, error: clientError } = await supabaseAdmin
-          .from('clients')
-          .insert([client])
-          .select()
-          .single()
-
-        if (clientError) {
-          console.error('Error creating client:', clientError)
-          return new Response(
-            JSON.stringify({ error: 'Failed to create client' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        // Handle module access if provided
-        if (client.moduleAccess && client.moduleAccess.length > 0) {
-          const moduleAccessData = client.moduleAccess.map((moduleId: string) => ({
-            client_id: newClient.id,
-            module_id: moduleId,
-            enabled: true,
-            access_level: {}
-          }))
-
-          const { error: moduleError } = await supabaseAdmin
-            .from('client_modules')
-            .insert(moduleAccessData)
-
-          if (moduleError) {
-            console.error('Error creating client modules:', moduleError)
-            // Don't fail the entire operation, just log the error
-          }
-        }
-
-        return new Response(
-          JSON.stringify({ client: newClient }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      case 'update-client': {
-        const { id, updates } = data
-
-        // Update client
-        const { data: updatedClient, error: clientError } = await supabaseAdmin
-          .from('clients')
-          .update(updates)
-          .eq('id', id)
-          .select()
-          .single()
-
-        if (clientError) {
-          console.error('Error updating client:', clientError)
-          return new Response(
-            JSON.stringify({ error: 'Failed to update client' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        // Handle module access updates if provided
-        if (updates.moduleAccess !== undefined) {
-          // Delete existing module access
-          await supabaseAdmin
-            .from('client_modules')
-            .delete()
-            .eq('client_id', id)
-
-          // Insert new module access
-          if (updates.moduleAccess.length > 0) {
-            const moduleAccessData = updates.moduleAccess.map((moduleId: string) => ({
-              client_id: id,
-              module_id: moduleId,
-              enabled: true,
-              access_level: {}
-            }))
-
-            const { error: moduleError } = await supabaseAdmin
-              .from('client_modules')
-              .insert(moduleAccessData)
-
-            if (moduleError) {
-              console.error('Error updating client modules:', moduleError)
-              // Don't fail the entire operation, just log the error
-            }
-          }
-        }
-
-        return new Response(
-          JSON.stringify({ client: updatedClient }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      case 'delete-client': {
-        const { id } = data
-
-        // Delete client (cascading deletes will handle related records)
-        const { error } = await supabaseAdmin
-          .from('clients')
-          .delete()
-          .eq('id', id)
-
-        if (error) {
-          console.error('Error deleting client:', error)
-          return new Response(
-            JSON.stringify({ error: 'Failed to delete client' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
-
-        return new Response(
-          JSON.stringify({ success: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
+      case 'fetchAllClients':
+        return await fetchAllClients()
+      case 'fetchEmployeesByClient':
+        return await fetchEmployeesByClient(payload.clientId)
       default:
-        return new Response(
-          JSON.stringify({ error: 'Invalid action' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+        throw new Error(`Unknown action: ${action}`)
     }
   } catch (error) {
-    console.error('Backoffice client management error:', error)
+    console.error('Error in backoffice client management:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     )
   }
 })
+
+async function fetchAllClients() {
+  console.log('🔍 Fetching all clients with service role...')
+  
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, name, email, active')
+    .eq('active', true)
+    .order('name')
+
+  if (error) {
+    console.error('Error fetching clients:', error)
+    throw error
+  }
+
+  console.log('✅ Successfully fetched clients:', data?.length || 0)
+  return new Response(
+    JSON.stringify({ success: true, data }),
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  )
+}
+
+async function fetchEmployeesByClient(clientId: string) {
+  if (!clientId) {
+    throw new Error('Client ID is required')
+  }
+
+  console.log('🔍 Fetching employees for client:', clientId)
+
+  // Fetch employees
+  const { data: employees, error: employeesError } = await supabase
+    .from('employees')
+    .select('id, employee_id, first_name, last_name, email, department, employee_type, client_id')
+    .eq('client_id', clientId)
+    .eq('status', true)
+    .order('first_name')
+
+  if (employeesError) {
+    console.error('Error fetching employees:', employeesError)
+    throw employeesError
+  }
+
+  // Fetch document summaries
+  const employeeIds = employees?.map(emp => emp.id) || []
+  let documentSummaries: Record<string, any> = {}
+  
+  if (employeeIds.length > 0) {
+    const { data: documents, error: documentsError } = await supabase
+      .from('employee_documents')
+      .select('employee_id, verification_status')
+      .in('employee_id', employeeIds)
+
+    if (!documentsError && documents) {
+      documentSummaries = documents.reduce((acc, doc) => {
+        if (!acc[doc.employee_id]) {
+          acc[doc.employee_id] = { total: 0, verified: 0, pending: 0, failed: 0 }
+        }
+        
+        acc[doc.employee_id].total++
+        
+        switch (doc.verification_status) {
+          case 'verified':
+          case 'completed':
+            acc[doc.employee_id].verified++
+            break
+          case 'pending':
+          case 'in-progress':
+            acc[doc.employee_id].pending++
+            break
+          case 'failed':
+          case 'rejected':
+            acc[doc.employee_id].failed++
+            break
+        }
+        
+        return acc
+      }, {} as Record<string, any>)
+    }
+  }
+
+  // Map employees with document summaries
+  const result = (employees || []).map(emp => ({
+    id: emp.id,
+    employeeId: emp.employee_id || '',
+    name: `${emp.first_name} ${emp.last_name}`,
+    email: emp.email || '',
+    department: emp.department || '',
+    position: emp.employee_type || '',
+    clientId: emp.client_id,
+    documentsSummary: documentSummaries[emp.id] || { total: 0, verified: 0, pending: 0, failed: 0 }
+  }))
+
+  console.log('✅ Successfully fetched employees:', result.length)
+  return new Response(
+    JSON.stringify({ success: true, data: result }),
+    { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  )
+}

@@ -28,39 +28,24 @@ export interface EmployeeWithDocumentsSummary {
 export const backofficeEmployeeService = {
   async fetchAllClients(): Promise<BackofficeClient[]> {
     try {
-      console.log('🔍 Fetching clients - checking auth state...');
+      console.log('🔍 Fetching clients via edge function...');
       
-      // Debug authentication state
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('Current session:', session ? {
-        user: session.user?.email,
-        role: session.user?.role,
-        aud: session.user?.aud
-      } : 'null');
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-      }
-
-      // Check if we can access the clients table
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name, email, active')
-        .eq('active', true)
-        .order('name');
-
-      console.log('Clients query result:', { 
-        success: !error, 
-        dataCount: data?.length || 0, 
-        error: error?.message 
+      // Use edge function with service role to bypass RLS issues
+      const { data, error } = await supabase.functions.invoke('backoffice-client-management', {
+        body: { action: 'fetchAllClients' }
       });
 
       if (error) {
-        console.error('Error fetching clients:', error);
+        console.error('Error calling edge function:', error);
         throw error;
       }
 
-      return data || [];
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch clients');
+      }
+
+      console.log('✅ Successfully received clients:', data.data?.length || 0);
+      return data.data || [];
     } catch (error) {
       console.error('Error in fetchAllClients:', error);
       throw error;
@@ -73,75 +58,24 @@ export const backofficeEmployeeService = {
         throw new Error('Client ID is required');
       }
 
-      // SECURITY: Always filter by client_id
-      const { data: employees, error: employeesError } = await supabase
-        .from('employees')
-        .select('id, employee_id, first_name, last_name, email, department, employee_type, client_id')
-        .eq('client_id', clientId)
-        .eq('status', true)
-        .order('first_name');
+      console.log('🔍 Fetching employees for client via edge function:', clientId);
+      
+      // Use edge function with service role to bypass RLS issues
+      const { data, error } = await supabase.functions.invoke('backoffice-client-management', {
+        body: { action: 'fetchEmployeesByClient', clientId }
+      });
 
-      if (employeesError) {
-        console.error('Error fetching employees:', employeesError);
-        throw employeesError;
+      if (error) {
+        console.error('Error calling edge function:', error);
+        throw error;
       }
 
-      // Fetch document summaries for all employees
-      const employeeIds = employees?.map(emp => emp.id) || [];
-      
-      let documentSummaries: Record<string, any> = {};
-      
-      if (employeeIds.length > 0) {
-        const { data: documents, error: documentsError } = await supabase
-          .from('employee_documents')
-          .select('employee_id, verification_status')
-          .in('employee_id', employeeIds);
-
-        if (documentsError) {
-          console.error('Error fetching document summaries:', documentsError);
-          // Continue without document summaries if there's an error
-        } else {
-          // Group documents by employee_id and calculate summaries
-          documentSummaries = (documents || []).reduce((acc, doc) => {
-            if (!acc[doc.employee_id]) {
-              acc[doc.employee_id] = { total: 0, verified: 0, pending: 0, failed: 0 };
-            }
-            
-            acc[doc.employee_id].total++;
-            
-            switch (doc.verification_status) {
-              case 'verified':
-              case 'completed':
-                acc[doc.employee_id].verified++;
-                break;
-              case 'pending':
-              case 'in-progress':
-                acc[doc.employee_id].pending++;
-                break;
-              case 'failed':
-              case 'rejected':
-                acc[doc.employee_id].failed++;
-                break;
-            }
-            
-            return acc;
-          }, {} as Record<string, any>);
-        }
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch employees');
       }
 
-      // Map employees with document summaries
-      const result: EmployeeWithDocumentsSummary[] = (employees || []).map(emp => ({
-        id: emp.id,
-        employeeId: emp.employee_id || '',
-        name: `${emp.first_name} ${emp.last_name}`,
-        email: emp.email || '',
-        department: emp.department || '',
-        position: emp.employee_type || '',
-        clientId: emp.client_id,
-        documentsSummary: documentSummaries[emp.id] || { total: 0, verified: 0, pending: 0, failed: 0 }
-      }));
-
-      return result;
+      console.log('✅ Successfully received employees:', data.data?.length || 0);
+      return data.data || [];
     } catch (error) {
       console.error('Error in fetchEmployeesByClient:', error);
       throw error;
