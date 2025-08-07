@@ -625,6 +625,10 @@ export type Database = {
       }
       employee_documents: {
         Row: {
+          api_response_data: Json | null
+          api_verification_date: string | null
+          api_verification_method: string | null
+          api_verification_status: string | null
           created_at: string | null
           cron_activate: boolean | null
           cron_activated_date: string | null
@@ -643,6 +647,10 @@ export type Database = {
           verification_status: string | null
         }
         Insert: {
+          api_response_data?: Json | null
+          api_verification_date?: string | null
+          api_verification_method?: string | null
+          api_verification_status?: string | null
           created_at?: string | null
           cron_activate?: boolean | null
           cron_activated_date?: string | null
@@ -661,6 +669,10 @@ export type Database = {
           verification_status?: string | null
         }
         Update: {
+          api_response_data?: Json | null
+          api_verification_date?: string | null
+          api_verification_method?: string | null
+          api_verification_status?: string | null
           created_at?: string | null
           cron_activate?: boolean | null
           cron_activated_date?: string | null

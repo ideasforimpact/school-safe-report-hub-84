@@ -11,6 +11,7 @@ import DocumentActions from './document-card/DocumentActions';
 import DocumentStatusButton from './document-card/DocumentStatusButton';
 import DocumentDeleteButton from './document-card/DocumentDeleteButton';
 import DocumentCommentsDialog from './DocumentCommentsDialog';
+import ApiResponseButton from './document-card/ApiResponseButton';
 import { useToast } from '@/hooks/use-toast';
 
 interface DocumentCardProps {
@@ -97,6 +98,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
             ) : (
               <DocumentStatusButton document={document} />
             )}
+            
+            <ApiResponseButton document={document} />
             
             {showCommentsIcon && (
               <Button 
