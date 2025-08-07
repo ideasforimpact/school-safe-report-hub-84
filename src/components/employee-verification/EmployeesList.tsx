@@ -96,9 +96,6 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
           </Badge>
         )}
 
-        <span className="text-xs text-gray-500 ml-1">
-          ({total} total)
-        </span>
       </div>
     );
   };
