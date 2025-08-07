@@ -14,7 +14,7 @@ import {
 import { VerificationDocument } from '@/types/employeeVerification';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
+import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
@@ -351,7 +351,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getDocumentIcon(doc.documentTypeName || '')}
-                      <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
+                      <span className="capitalize">
+                        {doc.documentTypeName === 'other_documents' ? 
+                          (doc.params?.document_name || 'Other Documents') : 
+                          doc.documentTypeName === 'manual' ?
+                          (getManualVerificationDisplayName(doc.params?.selected) || 'Manual Verification') :
+                          formatDocumentTypeName(doc.documentTypeName || '')
+                        }
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>{doc.documentNumber || '—'}</TableCell>
