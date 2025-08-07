@@ -9,6 +9,62 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
+// Helper function to convert technical API errors to user-friendly messages
+const getUserFriendlyErrorMessage = (apiResponse: any, statusCode?: number): string => {
+  // Handle Surepass API specific errors
+  if (apiResponse?.data?.valid_aadhaar === false || apiResponse?.message?.includes('invalid_aadhaar')) {
+    return 'Please enter a valid 12-digit Aadhaar number';
+  }
+  
+  if (apiResponse?.message?.includes('aadhaar_not_found')) {
+    return 'This Aadhaar number is not found in government records';
+  }
+  
+  if (apiResponse?.message?.includes('otp_expired') || apiResponse?.message?.includes('otp_timeout')) {
+    return 'The OTP has expired. Please request a new one';
+  }
+  
+  if (apiResponse?.message?.includes('invalid_otp') || apiResponse?.message?.includes('wrong_otp')) {
+    return 'Please enter the correct 6-digit OTP';
+  }
+  
+  if (apiResponse?.message?.includes('verification_failed')) {
+    return 'Verification failed. Please check your details and try again';
+  }
+  
+  if (apiResponse?.message?.includes('already_verified')) {
+    return 'This document has already been verified';
+  }
+  
+  if (apiResponse?.message?.includes('rate_limit')) {
+    return 'Too many requests. Please wait a moment and try again';
+  }
+  
+  // Handle HTTP status codes
+  if (statusCode === 429) {
+    return 'Too many requests. Please wait a moment and try again';
+  }
+  
+  if (statusCode === 401) {
+    return 'Authentication failed. Please try again';
+  }
+  
+  if (statusCode === 403) {
+    return 'Access denied. Please contact support';
+  }
+  
+  if (statusCode === 404) {
+    return 'Service not found. Please contact support';
+  }
+  
+  if (statusCode >= 500) {
+    return 'Service temporarily unavailable. Please try again later';
+  }
+  
+  // Default fallback for any other errors
+  return 'Verification failed. Please check your details and try again';
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -329,15 +385,20 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
+          // Log the technical error for debugging
+          console.error("Surepass API error:", data);
+          
+          // Return user-friendly error message
+          const userFriendlyMessage = getUserFriendlyErrorMessage(data, response.status);
           return new Response(
-            JSON.stringify({ error: data.message || "Failed to generate OTP" }),
+            JSON.stringify({ error: userFriendlyMessage }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (error) {
         console.error("Error calling Surepass API:", error);
         return new Response(
-          JSON.stringify({ error: "Failed to connect to verification service" }),
+          JSON.stringify({ error: "Unable to connect to verification service. Please try again later" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -489,10 +550,15 @@ serve(async (req) => {
             }
           }
           
+          // Log the technical error for debugging
+          console.error("OTP verification failed:", data);
+          
+          // Return user-friendly error message
+          const userFriendlyMessage = getUserFriendlyErrorMessage(data, response.status);
           return new Response(
             JSON.stringify({ 
               success: false, 
-              error: data.message || "OTP verification failed" 
+              error: userFriendlyMessage
             }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -500,7 +566,7 @@ serve(async (req) => {
       } catch (error) {
         console.error("Error verifying OTP with Surepass API:", error);
         return new Response(
-          JSON.stringify({ error: "Failed to connect to verification service" }),
+          JSON.stringify({ error: "Unable to connect to verification service. Please try again later" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
