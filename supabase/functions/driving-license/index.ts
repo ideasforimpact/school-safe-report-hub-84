@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -102,7 +101,7 @@ serve(async (req) => {
       manualStatusId
     });
     
-    // API Verification for Driving License
+    // API Verification for Driving License - NEW BEHAVIOR
     if (action === 'apiVerify') {
       // Verify we have a document ID
       if (!documentId) {
@@ -115,7 +114,7 @@ serve(async (req) => {
       // Fetch the document to get the license number and DOB from params
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_number, params')
+        .select('document_number, params, employee_docs_log')
         .eq('id', documentId)
         .single();
       
@@ -129,6 +128,7 @@ serve(async (req) => {
       
       const licenseNumber = document.document_number;
       const dob = document.params?.DOB;
+      const existingLogs = document?.employee_docs_log || [];
       
       if (!licenseNumber) {
         return new Response(
@@ -163,23 +163,6 @@ serve(async (req) => {
         const apiResponse = await response.json();
         console.log("Surepass API driving license verification response:", apiResponse);
         
-        // First fetch the current logs
-        const { data: currentDoc, error: fetchError } = await supabase
-          .from('employee_documents')
-          .select('employee_docs_log')
-          .eq('id', documentId)
-          .single();
-        
-        if (fetchError) {
-          console.error("Error fetching document logs:", fetchError);
-          return new Response(
-            JSON.stringify({ error: "Failed to fetch document logs" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        const existingLogs = currentDoc?.employee_docs_log || [];
-        
         // Create log entry with timestamp and API response
         const logEntry = {
           timestamp: new Date().toISOString(),
@@ -187,23 +170,27 @@ serve(async (req) => {
           response: apiResponse
         };
         
-        // Check if verification was successful (status_code 200)
+        // NEW BEHAVIOR: Always store API response and keep status as pending
+        // Only set to failed if API call completely failed
         if (apiResponse.success && apiResponse.status_code === 200) {
-          // Update document with verification status, log entry and governance status
+          // API Success: Store response in api_response_data, keep status pending
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update({
-              verification_status: 'verified',
+              api_response_data: apiResponse,
+              api_verification_status: 'completed',
+              api_verification_method: 'api',
+              api_verification_date: new Date().toISOString(),
               employee_docs_log: [...existingLogs, logEntry],
-              document_status_id: governanceStatusId,
               updated_at: new Date().toISOString()
+              // verification_status stays 'pending' - user needs to manually review
             })
             .eq('id', documentId);
           
           if (updateError) {
             console.error("Error updating document:", updateError);
             return new Response(
-              JSON.stringify({ error: "Failed to update document status" }),
+              JSON.stringify({ error: "Failed to store API response" }),
               { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
@@ -211,26 +198,25 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Driving license verified successfully",
-              data: apiResponse.data
+              message: "Driving license API verification completed. Please review the response.",
+              requiresReview: true
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // Update document with failed status and log
-          const { error: updateError } = await supabase
+          // API Failure: Set status to failed immediately
+          await supabase
             .from('employee_documents')
             .update({
               verification_status: 'failed',
               employee_docs_log: [...existingLogs, logEntry],
               document_status_id: rejectedStatusId,
+              api_verification_status: 'failed',
+              api_verification_method: 'api',
+              api_verification_date: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
-          
-          if (updateError) {
-            console.error("Error updating document as failed:", updateError);
-          }
           
           // Parse specific error types for user-friendly messages
           let userFriendlyError = "Driving License verification failed";
@@ -268,6 +254,23 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error calling Surepass API:", error);
+        
+        // API call failed completely - set to failed status
+        await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'failed',
+            document_status_id: rejectedStatusId,
+            api_verification_status: 'failed',
+            api_verification_method: 'api',
+            employee_docs_log: [...existingLogs, {
+              timestamp: new Date().toISOString(),
+              action: "verify_driving_license_api_error",
+              response: { error: error.message }
+            }],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
         
         let userFriendlyError = "Something went wrong during Driving License verification. Please try again.";
         let errorCode = "INTERNAL_ERROR";
@@ -316,7 +319,9 @@ serve(async (req) => {
           );
         }
         
-        // Create empty logs array if needed
+        const existingLogs = document?.employee_docs_log || [];
+        
+        // Create log entry
         const logEntry = {
           timestamp: new Date().toISOString(),
           action: "verify_driving_license_manual",
@@ -328,7 +333,7 @@ serve(async (req) => {
           .from('employee_documents')
           .update({
             verification_status: 'verified',
-            employee_docs_log: [logEntry],
+            employee_docs_log: [...existingLogs, logEntry],
             document_status_id: manualStatusId,
             updated_at: new Date().toISOString()
           })
@@ -367,6 +372,23 @@ serve(async (req) => {
       }
       
       try {
+        // Get existing logs
+        const { data: document, error: fetchError } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error fetching document:", fetchError);
+          return new Response(
+            JSON.stringify({ error: "Document not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        const existingLogs = document?.employee_docs_log || [];
+        
         // Create rejection log entry
         const logEntry = {
           timestamp: new Date().toISOString(),
@@ -379,7 +401,7 @@ serve(async (req) => {
           .from('employee_documents')
           .update({
             verification_status: 'failed',
-            employee_docs_log: [logEntry],
+            employee_docs_log: [...existingLogs, logEntry],
             document_status_id: rejectedStatusId,
             updated_at: new Date().toISOString()
           })
