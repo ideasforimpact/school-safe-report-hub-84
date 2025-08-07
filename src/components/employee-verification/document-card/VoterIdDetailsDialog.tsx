@@ -1,31 +1,40 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, X, AlertCircle, User, MapPin, FileText } from 'lucide-react';
+import { Check, X, AlertCircle, User, MapPin, FileText, Loader2 } from 'lucide-react';
+import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface VoterIdDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   voterIdDetails: any;
   documentId?: string;
+  onVerificationUpdate?: () => void;
 }
 
 const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
   open,
   onOpenChange,
   voterIdDetails,
-  documentId
+  documentId,
+  onVerificationUpdate
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { verifyDocument } = useEmployeeVerification();
+  const { toast } = useToast();
   if (!voterIdDetails) return null;
   
   // Extract useful information from the Voter ID verification response
@@ -52,6 +61,52 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
     const excludeKeys = ['name_v1', 'name_v2', 'name_v3', 'epic_no', 'relation_name', 'relation_type', 'gender', 'age', 
                         'district_name', 'part_name', 'part_number', 'ac_name', 'pc_name', 'state_name', 'polling_station', 'client_id'];
     return Object.entries(voterInfo).filter(([key]) => !excludeKeys.includes(key) && voterInfo[key] !== null && voterInfo[key] !== undefined);
+  };
+
+  const handleVerify = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'verified', 'Verified after Voter ID API check');
+      toast({
+        title: "Document Verified",
+        description: "Voter ID document has been successfully verified.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'failed', 'Rejected after Voter ID API check');
+      toast({
+        title: "Document Rejected",
+        description: "Voter ID document has been rejected.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Rejection Failed",
+        description: "Failed to reject document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
   
   return (
@@ -188,6 +243,46 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
             </div>
           )}
         </ScrollArea>
+
+        <DialogFooter className="flex gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            Close
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleReject}
+            disabled={isProcessing}
+            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Reject Document"
+            )}
+          </Button>
+          <Button
+            onClick={handleVerify}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Verify Document"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

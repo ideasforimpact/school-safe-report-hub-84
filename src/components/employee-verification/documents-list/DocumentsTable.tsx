@@ -14,6 +14,7 @@ import {
 import { VerificationDocument } from '@/types/employeeVerification';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import ApiResponseIndicator from '../document-card/ApiResponseIndicator';
+import ApiResponseReviewIndicator from '../document-card/ApiResponseReviewIndicator';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -420,25 +421,23 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           <span className="sr-only">Comments</span>
                         </Button>
                       )}
-                      {/* Show API Response Indicator if response exists, otherwise show Process Document button */}
-                      {doc.apiResponseData ? (
-                        <ApiResponseIndicator 
+                      {/* Show API Response Review Indicator if response exists and pending, otherwise show Process Document button */}
+                      {doc.apiResponseData && doc.verificationStatus === 'pending' ? (
+                        <ApiResponseReviewIndicator 
                           document={doc} 
                           onVerificationUpdate={onDocumentAction}
                         />
-                      ) : (
-                        doc.verificationStatus === 'pending' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                            onClick={() => onVerifyDocument(doc.id)}
-                          >
-                            <ShieldCheck className="h-4 w-4 mr-1" />
-                            Process Document
-                          </Button>
-                        )
-                      )}
+                      ) : !doc.apiResponseData && doc.verificationStatus === 'pending' ? (
+                        <Button 
+                          variant="default" 
+                          size="sm"
+                          onClick={() => onVerifyDocument(doc.id)}
+                          title="Process this document"
+                        >
+                          <ShieldCheck className="h-4 w-4 mr-1" />
+                          Process Document
+                        </Button>
+                      ) : null}
                       <DocumentDeleteButton 
                         documentId={doc.id} 
                         onDocumentDeleted={onDocumentAction}
