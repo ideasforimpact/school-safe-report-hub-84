@@ -94,16 +94,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
         <CardFooter className="border-t p-4 bg-gray-50 flex justify-between">
           <div className="flex items-center gap-2">
             {document.verificationStatus === 'pending' && showVerifyButton ? (
-              <>
-                {!document.apiVerificationStatus ? (
-                  <DocumentActions document={document} showVerifyButton={showVerifyButton} />
-                ) : (
-                  <ApiResponseButton document={document} />
-                )}
-              </>
+              <DocumentActions document={document} showVerifyButton={showVerifyButton} />
             ) : (
               <DocumentStatusButton document={document} />
             )}
+            
+            <ApiResponseButton document={document} />
             
             {showCommentsIcon && (
               <Button 

@@ -119,8 +119,8 @@ const ApiResponseButton: React.FC<ApiResponseButtonProps> = ({
     return JSON.stringify(data, null, 2);
   };
 
-  // Only show if API response data exists (indicating an API call was made)
-  if (!document.apiResponseData && !document.apiVerificationStatus) {
+  // Only show if API verification status exists
+  if (!document.apiVerificationStatus) {
     return null;
   }
 

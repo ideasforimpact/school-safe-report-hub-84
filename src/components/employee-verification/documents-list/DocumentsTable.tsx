@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { Eye, Download, MessageCircle } from 'lucide-react';
+import { Eye, Download, ShieldCheck, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -24,14 +24,12 @@ import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 import DocumentCommentsDialog from '../DocumentCommentsDialog';
-import DocumentVerifyDropdown from '../document-card/DocumentVerifyDropdown';
-import ApiResponseButton from '../document-card/ApiResponseButton';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
   onViewDocument: (documentImage: string) => void;
   onDownloadDocument: (documentImage: string) => void;
-  onVerifyDocument: (documentId: string, method: 'api' | 'manual') => void;
+  onVerifyDocument: (documentId: string) => void;
   onDocumentAction?: () => void;
 }
 
@@ -422,20 +420,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         </Button>
                       )}
                       {doc.verificationStatus === 'pending' && (
-                        <>
-                          {!doc.apiResponseData ? (
-                            <DocumentVerifyDropdown
-                              onVerify={(method) => onVerifyDocument(doc.id, method)}
-                              documentTypeName={doc.documentTypeName}
-                              isDisabled={false}
-                            />
-                          ) : (
-                            <ApiResponseButton 
-                              document={doc}
-                              onVerificationUpdate={onDocumentAction}
-                            />
-                          )}
-                        </>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                          onClick={() => onVerifyDocument(doc.id)}
+                        >
+                          <ShieldCheck className="h-4 w-4 mr-1" />
+                          Verify
+                        </Button>
                       )}
                       <DocumentDeleteButton 
                         documentId={doc.id} 

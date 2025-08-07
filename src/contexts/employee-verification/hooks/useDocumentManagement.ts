@@ -96,10 +96,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           params,
           employee_docs_log,
           last_otp_generated,
-          api_response_data,
-          api_verification_status,
-          api_verification_date,
-          api_verification_method,
           cron_activate,
           cron_activated_date,
           cron_updated_date,
@@ -137,18 +133,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
-          // Map new API response fields with proper logging
-          apiResponseData: doc.api_response_data,
-          apiVerificationStatus: (doc.api_verification_status as 'pending' | 'completed' | 'failed' | null) || null,
-          apiVerificationDate: doc.api_verification_date,
-          apiVerificationMethod: doc.api_verification_method,
-          // Add the employee_docs_log to track verification history
-          employee_docs_log: Array.isArray(doc.employee_docs_log) ? (doc.employee_docs_log as Array<{
-            timestamp: string;
-            action: string;
-            response: any;
-            notes?: string;
-          }>) : [],
           // Map new cron fields including cron_log with proper type casting
           cronActivate: doc.cron_activate || false,
           cronActivatedDate: doc.cron_activated_date || undefined,

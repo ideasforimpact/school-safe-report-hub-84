@@ -99,17 +99,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     }
   };
 
-  const handleVerifyDocument = async (documentId: string, method: 'api' | 'manual') => {
+  const handleVerifyDocument = (documentId: string) => {
     setSelectedDocumentId(documentId);
-    
-    if (method === 'manual') {
-      // For manual verification, open verification dialog
-      setIsVerificationDialogOpen(true);
-    } else {
-      // For API verification, trigger the API call directly
-      // The edge function will handle updating api_verification_status
-      await handleVerificationSubmit(method);
-    }
+    setIsVerificationDialogOpen(true);
   };
 
   const handleVerificationSubmit = async (method: 'api' | 'manual') => {
