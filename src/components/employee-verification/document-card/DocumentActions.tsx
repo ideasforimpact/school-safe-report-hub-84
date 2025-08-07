@@ -64,15 +64,14 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       }
       
       if (method === 'api') {
-        // NEW BEHAVIOR: API calls should set api_verification_status and store response
-        // On success: api_verification_status='completed', verification_status stays 'pending'
-        // On failure: verification_status='rejected' (handled in backend)
+        // NEW BEHAVIOR: API calls should NOT update verification_status to 'verified'
+        // They should store API response and set api_verification_status
         switch (documentTypeName) {
           case 'bank_account':
           case 'bank_statement':
             result = await supabase.functions.invoke('bank-statement-verification', {
               body: {
-                action: 'apiCheck',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
                 accountNumber: document.documentNumber || '',
                 ifscCode: document.details?.ifscCode || ''
@@ -83,7 +82,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'pan':
             result = await supabase.functions.invoke('pan-verification', {
               body: {
-                action: 'apiCheck',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
                 documentNumber: document.documentNumber || ''
               }
@@ -93,7 +92,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'driving_license':
             result = await supabase.functions.invoke('driving-license-verification', {
               body: {
-                action: 'apiCheck',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
                 documentNumber: document.documentNumber || '',
                 dateOfBirth: document.details?.dateOfBirth || ''
@@ -104,7 +103,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'voter_id':
             result = await supabase.functions.invoke('voter-id-verification', {
               body: {
-                action: 'apiCheck',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
                 documentNumber: document.documentNumber || ''
               }
@@ -117,11 +116,11 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         
         // Success message for API check completion
         toast({
-          title: "Processing Complete",
-          description: "Document has been processed. Please review the API response to make final decision.",
+          title: "API Check Complete",
+          description: "Document has been processed. Check the API response for details.",
         });
       } else {
-        // Handle manual verification - this directly updates verification status to verified
+        // Handle manual verification - this still directly updates verification status
         const functionName = getFunctionName(documentTypeName);
         
         result = await supabase.functions.invoke(functionName, {
@@ -148,7 +147,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     } catch (error: any) {
       console.error('Processing error:', error);
       toast({
-        title: method === 'api' ? "Processing Failed" : "Verification Failed", 
+        title: method === 'api' ? "API Check Failed" : "Verification Failed", 
         description: error.message || `Failed to ${method === 'api' ? 'process' : 'verify'} document. Please try again.`,
         variant: "destructive",
       });
