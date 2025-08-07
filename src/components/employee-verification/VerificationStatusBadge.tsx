@@ -43,7 +43,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       case 'verified':
         return {
           icon: CheckCircle,
-          text: documentStatusName ? `Verified/${documentStatusName}` : 'Verified',
+          text: 'Verified',
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
