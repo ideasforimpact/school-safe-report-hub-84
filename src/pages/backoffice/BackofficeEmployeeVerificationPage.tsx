@@ -206,7 +206,6 @@ const BackofficeEmployeeVerificationPage = () => {
                     <TableHead>Position</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Documents Status</TableHead>
-                    <TableHead>Total Documents</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -220,11 +219,6 @@ const BackofficeEmployeeVerificationPage = () => {
                       <TableCell>{employee.email}</TableCell>
                       <TableCell>
                         <VerificationStatusSummary summary={employee.documentsSummary} />
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600">
-                          {employee.documentsSummary.verified}/{employee.documentsSummary.total} verified
-                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
