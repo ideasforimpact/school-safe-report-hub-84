@@ -1,23 +1,32 @@
 
-import React, { useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import React, { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
+import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface DrivingLicenseDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   licenseDetails: any;
   documentId?: string;
+  onVerificationUpdate?: () => void;
 }
 
 const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = ({
   open,
   onOpenChange,
   licenseDetails,
-  documentId
+  documentId,
+  onVerificationUpdate
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { verifyDocument } = useEmployeeVerification();
+  const { toast } = useToast();
   // Extract relevant information from the driving license response
   const data = licenseDetails?.data || {};
   const isSuccessful = licenseDetails?.success && licenseDetails?.status_code === 200;
@@ -41,6 +50,52 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
       console.log('DrivingLicenseDetailsDialog - Dialog unmounting');
     };
   }, [open]);
+
+  const handleVerify = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'verified', 'Verified after Driving License API check');
+      toast({
+        title: "Document Verified",
+        description: "Driving License document has been successfully verified.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'failed', 'Rejected after Driving License API check');
+      toast({
+        title: "Document Rejected",
+        description: "Driving License document has been rejected.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Rejection Failed",
+        description: "Failed to reject document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
   
   return (
     <Dialog open={open} onOpenChange={(newOpenState) => {
@@ -91,6 +146,46 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
             </div>
           )}
         </ScrollArea>
+
+        <DialogFooter className="flex gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            Close
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleReject}
+            disabled={isProcessing}
+            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Reject Document"
+            )}
+          </Button>
+          <Button
+            onClick={handleVerify}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Verify Document"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -12,21 +12,28 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { FileText, User, Calendar, CreditCard, Fingerprint, CheckCircle } from 'lucide-react';
+import { FileText, User, Calendar, CreditCard, Fingerprint, CheckCircle, Loader2 } from 'lucide-react';
+import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface PanDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   panDetails: any;
   documentId?: string;
+  onVerificationUpdate?: () => void;
 }
 
 const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
   open,
   onOpenChange,
   panDetails,
-  documentId
+  documentId,
+  onVerificationUpdate
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { verifyDocument } = useEmployeeVerification();
+  const { toast } = useToast();
   if (!panDetails || !panDetails.data) {
     return null;
   }
@@ -45,6 +52,52 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
 
   // Format date if available
   const formattedDob = dob ? format(new Date(dob), 'dd MMM yyyy') : 'Not available';
+
+  const handleVerify = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'verified', 'Verified after PAN API check');
+      toast({
+        title: "Document Verified",
+        description: "PAN document has been successfully verified.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'failed', 'Rejected after PAN API check');
+      toast({
+        title: "Document Rejected",
+        description: "PAN document has been rejected.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Rejection Failed",
+        description: "Failed to reject document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,13 +165,44 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="sm:justify-between">
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Close</Button>
-          </DialogClose>
-          <div className="text-xs text-gray-500">
-            Document ID: {documentId || 'Unknown'}
-          </div>
+        <DialogFooter className="flex gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            Close
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleReject}
+            disabled={isProcessing}
+            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Reject Document"
+            )}
+          </Button>
+          <Button
+            onClick={handleVerify}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Verify Document"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

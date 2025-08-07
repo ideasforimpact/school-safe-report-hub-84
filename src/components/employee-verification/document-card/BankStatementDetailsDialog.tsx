@@ -1,25 +1,33 @@
 
-import React, { useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import React, { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Building, Banknote, CreditCard } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Building, Banknote, CreditCard, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface BankStatementDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   statementDetails: any;
   documentId?: string;
+  onVerificationUpdate?: () => void;
 }
 
 const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   open,
   onOpenChange,
   statementDetails,
-  documentId
+  documentId,
+  onVerificationUpdate
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { verifyDocument } = useEmployeeVerification();
+  const { toast } = useToast();
   // Extract relevant information from the bank statement response
   const data = statementDetails?.data || {};
   const isSuccessful = statementDetails?.success && statementDetails?.status_code === 200;
@@ -100,6 +108,52 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
     const entries = Object.entries(data);
     // Skip the first 5 fields
     return entries.slice(5);
+  };
+
+  const handleVerify = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'verified', 'Verified after Bank Statement API check');
+      toast({
+        title: "Document Verified",
+        description: "Bank Statement document has been successfully verified.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!documentId) return;
+    
+    try {
+      setIsProcessing(true);
+      await verifyDocument(documentId, 'failed', 'Rejected after Bank Statement API check');
+      toast({
+        title: "Document Rejected",
+        description: "Bank Statement document has been rejected.",
+      });
+      onOpenChange(false);
+      onVerificationUpdate?.();
+    } catch (error) {
+      toast({
+        title: "Rejection Failed",
+        description: "Failed to reject document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
   
   return (
@@ -226,6 +280,46 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
             </div>
           )}
         </ScrollArea>
+
+        <DialogFooter className="flex gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            Close
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleReject}
+            disabled={isProcessing}
+            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Reject Document"
+            )}
+          </Button>
+          <Button
+            onClick={handleVerify}
+            disabled={isProcessing}
+            className="flex-1"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Verify Document"
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
