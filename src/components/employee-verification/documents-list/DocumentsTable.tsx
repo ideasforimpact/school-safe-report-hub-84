@@ -421,18 +421,21 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           <span className="sr-only">Comments</span>
                         </Button>
                       )}
-                      {doc.verificationStatus === 'pending' && !doc.apiVerificationStatus && (
-                        <DocumentVerifyDropdown
-                          onVerify={(method) => onVerifyDocument(doc.id, method)}
-                          documentTypeName={doc.documentTypeName}
-                          isDisabled={false}
-                        />
-                      )}
-                      {doc.apiVerificationStatus && (
-                        <ApiResponseButton
-                          document={doc}
-                          onVerificationUpdate={onDocumentAction}
-                        />
+                      {doc.verificationStatus === 'pending' && (
+                        <>
+                          {!doc.apiVerificationStatus ? (
+                            <DocumentVerifyDropdown
+                              onVerify={(method) => onVerifyDocument(doc.id, method)}
+                              documentTypeName={doc.documentTypeName}
+                              isDisabled={false}
+                            />
+                          ) : (
+                            <ApiResponseButton
+                              document={doc}
+                              onVerificationUpdate={onDocumentAction}
+                            />
+                          )}
+                        </>
                       )}
                       <DocumentDeleteButton 
                         documentId={doc.id} 
