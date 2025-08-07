@@ -54,18 +54,25 @@ const BackofficeEmployeeVerificationPage = () => {
   const fetchClients = async () => {
     try {
       setLoading(true);
+      console.log('🚀 BackofficeEmployeeVerificationPage: Starting client fetch');
+      
       const clientsData = await backofficeEmployeeService.fetchAllClients();
+      console.log('📊 Received clients data:', clientsData);
+      
       setClients(clientsData);
       
       // Auto-select first client if available
       if (clientsData.length > 0) {
         setSelectedClientId(clientsData[0].id);
+        console.log('✅ Auto-selected first client:', clientsData[0].name);
+      } else {
+        console.log('⚠️ No clients available');
       }
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      console.error('❌ Error fetching clients:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch clients",
+        description: `Failed to fetch clients: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {

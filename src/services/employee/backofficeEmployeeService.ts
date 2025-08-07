@@ -28,11 +28,32 @@ export interface EmployeeWithDocumentsSummary {
 export const backofficeEmployeeService = {
   async fetchAllClients(): Promise<BackofficeClient[]> {
     try {
+      console.log('🔍 Fetching clients - checking auth state...');
+      
+      // Debug authentication state
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Current session:', session ? {
+        user: session.user?.email,
+        role: session.user?.role,
+        aud: session.user?.aud
+      } : 'null');
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+      }
+
+      // Check if we can access the clients table
       const { data, error } = await supabase
         .from('clients')
         .select('id, name, email, active')
         .eq('active', true)
         .order('name');
+
+      console.log('Clients query result:', { 
+        success: !error, 
+        dataCount: data?.length || 0, 
+        error: error?.message 
+      });
 
       if (error) {
         console.error('Error fetching clients:', error);
