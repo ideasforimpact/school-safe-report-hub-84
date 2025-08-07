@@ -99,9 +99,16 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     }
   };
 
-  const handleVerifyDocument = (documentId: string) => {
-    setSelectedDocumentId(documentId);
-    setIsVerificationDialogOpen(true);
+  const handleVerifyDocument = async (documentId: string, method: 'api' | 'manual') => {
+    // For manual verification, mark as verified immediately
+    // For API verification, the status will be handled by the API response
+    const status = method === 'manual' ? 'verified' : 'verified';
+    await verifyDocument(documentId, status, method);
+    
+    // Trigger document refetch after verification
+    if (onDocumentAction) {
+      onDocumentAction();
+    }
   };
 
   const handleVerificationSubmit = async (method: 'api' | 'manual') => {
