@@ -21,30 +21,74 @@ export const useBackofficeAuth = () => {
     setError(null);
 
     try {
-      // Step 1: Verify credentials using RPC function
+      // Normalize email for consistency
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      console.log('Attempting backoffice login for email:', normalizedEmail);
+
+      // Step 1: Check if user exists first
+      const { data: existingUser, error: checkError } = await supabase
+        .from('backoffice_users')
+        .select('email')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking user existence:', checkError);
+        setError("Database error occurred. Please try again.");
+        setIsLoading(false);
+        return false;
+      }
+
+      if (!existingUser) {
+        console.log('User not found in backoffice_users table');
+        setError("User not found. Please check your email address.");
+        setIsLoading(false);
+        return false;
+      }
+
+      // Step 2: Verify credentials using RPC function
       const { data: isValidCredentials, error: verifyError } = await supabase.rpc('verify_password', { 
-        email, 
+        email: normalizedEmail, 
         password_attempt: password 
       });
 
-      if (verifyError || !isValidCredentials) {
-        setError("Invalid credentials. Please try again.");
+      if (verifyError) {
+        console.error('Password verification error:', verifyError);
+        setError("Authentication error occurred. Please try again.");
         setIsLoading(false);
         return false;
       }
 
-      // Step 2: Fetch backoffice user information
-      const { data: backofficeUser, error: userError } = await supabase
-        .from('backoffice_users')
-        .select('*')
-        .eq('email', email)
-        .single();
-        
-      if (userError || !backofficeUser) {
-        setError("Error retrieving user data");
+      if (!isValidCredentials) {
+        console.log('Invalid password for user:', normalizedEmail);
+        setError("Invalid password. Please try again.");
         setIsLoading(false);
         return false;
       }
+
+      // Step 3: Fetch backoffice user information
+      const { data: backofficeUser, error: userError } = await supabase
+        .from('backoffice_users')
+        .select('*')
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+        
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        setError("Failed to retrieve user information. Please try again.");
+        setIsLoading(false);
+        return false;
+      }
+
+      if (!backofficeUser) {
+        console.error('User not found after successful password verification');
+        setError("User data not found. Please contact support.");
+        setIsLoading(false);
+        return false;
+      }
+
+      console.log('Successfully retrieved backoffice user:', { id: backofficeUser.id, email: backofficeUser.email });
 
       // Step 3: Update last_signed_in timestamp
       await supabase
