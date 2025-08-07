@@ -24,7 +24,8 @@ const EmployeeVerificationPage = () => {
         const matchesSearch = 
           employee.name.toLowerCase().includes(searchLower) ||
           employee.email.toLowerCase().includes(searchLower) ||
-          employee.employeeId.toLowerCase().includes(searchLower);
+          employee.employeeId.toLowerCase().includes(searchLower) ||
+          (employee.address && employee.address.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) return false;
       }
