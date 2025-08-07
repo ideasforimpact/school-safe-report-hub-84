@@ -31,20 +31,18 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     switch (typeName) {
       case 'bank_account':
       case 'bank_statement':
-        return 'bank-statement';
+        return 'bank-statement-verification';
       case 'pan':
         return 'pan-verification';
-      case 'aadhar':
-        return 'employee-verification';
       case 'driving_license':
-        return 'driving-license';
+        return 'driving-license-verification';
       case 'voter_id':
-        return 'voter-verification';
+        return 'voter-id-verification';
       case 'other':
       case 'other_documents':
-        return 'other-document-verification';
+        return 'custom-document-verification';
       default:
-        return 'other-document-verification'; // Default fallback
+        return 'pan-verification'; // Default fallback
     }
   };
 
@@ -66,23 +64,14 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       }
       
       if (method === 'api') {
-        // API calls should only update api_verification_status, not verification_status
+        // NEW BEHAVIOR: API calls should NOT update verification_status to 'verified'
+        // They should store API response and set api_verification_status
         switch (documentTypeName) {
-          case 'aadhar':
-            result = await supabase.functions.invoke('employee-verification', {
-              body: {
-                action: 'requestAadharOtp',
-                documentId: document.id,
-                aadharNumber: document.documentNumber || ''
-              }
-            });
-            break;
-            
           case 'bank_account':
           case 'bank_statement':
-            result = await supabase.functions.invoke('bank-statement', {
+            result = await supabase.functions.invoke('bank-statement-verification', {
               body: {
-                action: 'verify',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
                 accountNumber: document.documentNumber || '',
                 ifscCode: document.details?.ifscCode || ''
@@ -93,17 +82,17 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'pan':
             result = await supabase.functions.invoke('pan-verification', {
               body: {
-                action: 'verify',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
-                panNumber: document.documentNumber || ''
+                documentNumber: document.documentNumber || ''
               }
             });
             break;
             
           case 'driving_license':
-            result = await supabase.functions.invoke('driving-license', {
+            result = await supabase.functions.invoke('driving-license-verification', {
               body: {
-                action: 'verify',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
                 documentNumber: document.documentNumber || '',
                 dateOfBirth: document.details?.dateOfBirth || ''
@@ -112,11 +101,11 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
             break;
             
           case 'voter_id':
-            result = await supabase.functions.invoke('voter-verification', {
+            result = await supabase.functions.invoke('voter-id-verification', {
               body: {
-                action: 'verify',
+                action: 'apiCheck', // New action for API check without final verification
                 documentId: document.id,
-                voterIdNumber: document.documentNumber || ''
+                documentNumber: document.documentNumber || ''
               }
             });
             break;
@@ -131,8 +120,10 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           description: "Document has been processed. Check the API response for details.",
         });
       } else {
-        // Handle manual verification - this updates verification_status directly
-        result = await supabase.functions.invoke('other-document-verification', {
+        // Handle manual verification - this still directly updates verification status
+        const functionName = getFunctionName(documentTypeName);
+        
+        result = await supabase.functions.invoke(functionName, {
           body: {
             action: 'manualVerify',
             documentId: document.id,
