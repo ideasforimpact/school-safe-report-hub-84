@@ -726,14 +726,15 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
-        if (data?.error) {
+        // Check for success flag first, then handle errors
+        if (data?.success === false || data?.error) {
           if (data.cooldownRemaining) {
             // Handle cooldown period
             startCooldownTimer(data.cooldownRemaining);
           }
           
           toast.error("OTP Request Failed", {
-            description: data.error
+            description: data.error || "Failed to request OTP. Please try again."
           });
           return;
         }
@@ -907,9 +908,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data?.error) {
+      // Check for success flag first, then handle errors
+      if (data?.success === false || data?.error) {
         toast.error("Verification Failed", {
-          description: data.error
+          description: data.error || "Failed to verify OTP. Please try again."
         });
         setIsVerifyingOtp(false);
         return;

@@ -388,18 +388,18 @@ serve(async (req) => {
           // Log the technical error for debugging
           console.error("Surepass API error:", data);
           
-          // Return user-friendly error message
+          // Return user-friendly error message with 200 status to ensure frontend can access it
           const userFriendlyMessage = getUserFriendlyErrorMessage(data, response.status);
           return new Response(
-            JSON.stringify({ error: userFriendlyMessage }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ success: false, error: userFriendlyMessage }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (error) {
         console.error("Error calling Surepass API:", error);
         return new Response(
-          JSON.stringify({ error: "Unable to connect to verification service. Please try again later" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
@@ -553,21 +553,21 @@ serve(async (req) => {
           // Log the technical error for debugging
           console.error("OTP verification failed:", data);
           
-          // Return user-friendly error message
+          // Return user-friendly error message with 200 status to ensure frontend can access it
           const userFriendlyMessage = getUserFriendlyErrorMessage(data, response.status);
           return new Response(
             JSON.stringify({ 
               success: false, 
               error: userFriendlyMessage
             }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (error) {
         console.error("Error verifying OTP with Surepass API:", error);
         return new Response(
-          JSON.stringify({ error: "Unable to connect to verification service. Please try again later" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
