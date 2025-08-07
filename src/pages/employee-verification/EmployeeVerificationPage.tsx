@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import FilterBar from '@/components/employee-verification/filters/FilterBar';
-import { FileCheck, BarChart2, RefreshCw } from 'lucide-react';
+import { FileCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -80,12 +80,6 @@ const EmployeeVerificationPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="flex items-center gap-2">
-              <Link to="/employee-verification/dashboard">
-                <BarChart2 className="h-4 w-4" />
-                <span>Dashboard</span>
-              </Link>
-            </Button>
             <Button 
               variant="ghost" 
               size="icon" 
