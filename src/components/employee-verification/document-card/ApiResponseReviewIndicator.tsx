@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { CheckCircle2, Eye, FileCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { VerificationDocument } from '@/types/employeeVerification';
 import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
 import PanDetailsDialog from './PanDetailsDialog';
@@ -23,10 +22,18 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
 
-  // Only show if document has API response data and is still pending
-  if (!document.apiResponseData || document.verificationStatus !== 'pending') {
-    return null;
-  }
+  // Determine badge content and variant
+  const getBadgeContent = () => {
+    if (!document.apiResponseData) {
+      return { text: '-', variant: undefined, clickable: false };
+    }
+    
+    if (document.verificationStatus === 'pending') {
+      return { text: 'Ready for Review', variant: 'review' as const, clickable: true };
+    }
+    
+    return { text: 'Reviewed', variant: 'reviewed' as const, clickable: false };
+  };
 
   const openDetailDialog = () => {
     const docType = document.documentTypeName?.toLowerCase();
@@ -96,19 +103,21 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   };
 
   const apiDetails = getApiDetails();
+  const badgeContent = getBadgeContent();
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={openDetailDialog}
-        title="Review API Response"
-        className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-      >
-        <FileCheck className="h-4 w-4" />
-        <span className="sr-only">Review API Response</span>
-      </Button>
+      {badgeContent.variant ? (
+        <Badge
+          variant={badgeContent.variant}
+          className={badgeContent.clickable ? "cursor-pointer hover:opacity-80" : ""}
+          onClick={badgeContent.clickable ? openDetailDialog : undefined}
+        >
+          {badgeContent.text}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">{badgeContent.text}</span>
+      )}
 
       {/* Aadhar Details Dialog */}
       <AadharDetailsDialog
