@@ -14,7 +14,7 @@ import {
 import { VerificationDocument } from '@/types/employeeVerification';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
+import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
@@ -324,6 +324,24 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     const verificationHistory = (doc.params as any)?.verification_history;
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
+
+  // Helper function to get proper document number display
+  const getDisplayDocumentNumber = (doc: VerificationDocument): string => {
+    const docType = doc.documentTypeName?.toLowerCase();
+    
+    if (docType === 'manual') {
+      // For manual documents, show the proper verification name
+      const selected = (doc.params as any)?.selected;
+      return getManualVerificationDisplayName(selected) || 'Manual Verification';
+    } else if (docType === 'other_documents' || docType === 'other') {
+      // For other documents, show the document name provided during upload
+      const documentName = (doc.params as any)?.document_name;
+      return documentName || 'Other Document';
+    } else {
+      // For standard documents (Aadhar, PAN, etc.), show the document number
+      return doc.documentNumber || '—';
+    }
+  };
   
   return (
     <>
@@ -354,7 +372,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{doc.documentNumber || '—'}</TableCell>
+                  <TableCell>{getDisplayDocumentNumber(doc)}</TableCell>
                   <TableCell>
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
                   </TableCell>
