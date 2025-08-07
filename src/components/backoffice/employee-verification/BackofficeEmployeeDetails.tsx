@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { User, Mail, Building, Calendar, Hash, UserCheck } from 'lucide-react';
 import { Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
+import { formatDepartment } from '@/lib/formatUtils';
 
 interface BackofficeEmployeeDetailsProps {
   employee: Employee;
@@ -93,7 +94,7 @@ const BackofficeEmployeeDetails: React.FC<BackofficeEmployeeDetailsProps> = ({ e
               </div>
               <div>
                 <p className="text-sm text-gray-500">Department</p>
-                <p className="font-medium">{employee.department}</p>
+                <p className="font-medium">{formatDepartment(employee.department)}</p>
               </div>
             </div>
           </div>

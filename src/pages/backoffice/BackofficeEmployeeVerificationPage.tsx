@@ -11,6 +11,7 @@ import VerificationStatusSummary from '@/components/employee-verification/Verifi
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { backofficeEmployeeService, type EmployeeWithDocumentsSummary, type BackofficeClient } from '@/services/employee/backofficeEmployeeService';
+import { formatDepartment } from '@/lib/formatUtils';
 
 const BackofficeEmployeeVerificationPage = () => {
   const [employees, setEmployees] = useState<EmployeeWithDocumentsSummary[]>([]);
@@ -214,7 +215,7 @@ const BackofficeEmployeeVerificationPage = () => {
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">{employee.employeeId}</TableCell>
                       <TableCell>{employee.name}</TableCell>
-                      <TableCell>{employee.department}</TableCell>
+                      <TableCell>{formatDepartment(employee.department)}</TableCell>
                       <TableCell>{employee.position || '-'}</TableCell>
                       <TableCell>{employee.email}</TableCell>
                       <TableCell>
