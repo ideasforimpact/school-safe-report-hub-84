@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Employee } from '@/types/employeeVerification';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { formatDepartment } from '@/lib/formatUtils';
 
 interface EmployeesListProps {
   employees: Employee[];
@@ -140,7 +141,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
                     <TableCell>{employee.employeeId}</TableCell>
                     <TableCell>{employee.name}</TableCell>
-                    <TableCell>{employee.department}</TableCell>
+                    <TableCell>{formatDepartment(employee.department)}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}
                     </TableCell>

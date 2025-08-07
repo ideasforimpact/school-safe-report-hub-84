@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import EditEmployeeDialog from './EditEmployeeDialog';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
+import { formatDepartment } from '@/lib/formatUtils';
 
 interface EmployeeDetailsProps {
   employee: Employee;
@@ -59,7 +60,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
         <div className="flex justify-between items-start mb-4">
           <div>
             <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
-            <p className="text-gray-500 text-left">{employee.position} · {employee.department}</p>
+            <p className="text-gray-500 text-left">{employee.position} · {formatDepartment(employee.department)}</p>
           </div>
         </div>
 
@@ -86,7 +87,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Department</p>
-            <p className="font-medium text-left">{employee.department}</p>
+            <p className="font-medium text-left">{formatDepartment(employee.department)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Position</p>
