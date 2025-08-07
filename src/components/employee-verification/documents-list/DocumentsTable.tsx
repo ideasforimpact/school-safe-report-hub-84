@@ -423,14 +423,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       )}
                       {doc.verificationStatus === 'pending' && (
                         <>
-                          {!doc.apiVerificationStatus ? (
+                          {!doc.apiResponseData ? (
                             <DocumentVerifyDropdown
                               onVerify={(method) => onVerifyDocument(doc.id, method)}
                               documentTypeName={doc.documentTypeName}
                               isDisabled={false}
                             />
                           ) : (
-                            <ApiResponseButton
+                            <ApiResponseButton 
                               document={doc}
                               onVerificationUpdate={onDocumentAction}
                             />
