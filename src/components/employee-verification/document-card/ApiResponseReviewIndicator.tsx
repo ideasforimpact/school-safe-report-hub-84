@@ -103,10 +103,11 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
         variant="outline"
         size="sm"
         onClick={openDetailDialog}
-        className="h-8 px-3 gap-2 text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+        title="Review API Response"
+        className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
       >
         <FileCheck className="h-4 w-4" />
-        <span>Review API Response</span>
+        <span className="sr-only">Review API Response</span>
       </Button>
 
       {/* Aadhar Details Dialog */}
