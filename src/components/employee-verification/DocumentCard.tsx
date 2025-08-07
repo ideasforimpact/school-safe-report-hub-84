@@ -86,6 +86,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
             verificationDate={document.verificationDate}
             verificationNotes={document.verificationNotes}
             verificationMethod={document.verificationMethod}
+            params={document.params}
           />
         </CardContent>
         
