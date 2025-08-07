@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -128,7 +127,7 @@ serve(async (req) => {
     // Get existing logs or initialize empty array
     const existingLogs = document?.employee_docs_log || [];
     
-    // Handle API verification using Surepass
+    // Handle API verification using Surepass - NEW BEHAVIOR
     if (action === 'apiVerify') {
       if (!documentNumber) {
         return new Response(
@@ -160,23 +159,27 @@ serve(async (req) => {
           response: data
         };
         
-        // Check if API verification was successful (status_code 200)
+        // NEW BEHAVIOR: Always store API response and keep status as pending
+        // Only set to failed if API call completely failed
         if (data.success && data.status_code === 200) {
-          // Update document with verification status, API response in log, and governance status
+          // API Success: Store response in api_response_data, keep status pending
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update({
-              verification_status: 'verified',
+              api_response_data: data,
+              api_verification_status: 'completed',
+              api_verification_method: 'api',
+              api_verification_date: new Date().toISOString(),
               employee_docs_log: [...existingLogs, apiLogEntry],
-              document_status_id: governanceStatusId,
               updated_at: new Date().toISOString()
+              // verification_status stays 'pending' - user needs to manually review
             })
             .eq('id', documentId);
             
           if (updateError) {
-            console.error("Error updating document with verification data:", updateError);
+            console.error("Error updating document with API response:", updateError);
             return new Response(
-              JSON.stringify({ error: "Failed to update document status" }),
+              JSON.stringify({ error: "Failed to store API response" }),
               { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
@@ -184,14 +187,13 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Voter ID verification successful",
-              status: "verified",
-              statusId: governanceStatusId
+              message: "Voter ID API verification completed. Please review the response.",
+              requiresReview: true
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // Failed verification - update document with rejected status
+          // API Failure: Set status to failed immediately
           const apiLogEntry = {
             timestamp: new Date().toISOString(),
             action: "verify_voter_id_api_failed",
@@ -204,6 +206,9 @@ serve(async (req) => {
               employee_docs_log: [...existingLogs, apiLogEntry],
               document_status_id: rejectedStatusId,
               verification_status: 'failed',
+              api_verification_status: 'failed',
+              api_verification_method: 'api',
+              api_verification_date: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
@@ -242,6 +247,23 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Error verifying Voter ID with Surepass API:", error);
+        
+        // API call failed completely - set to failed status
+        await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'failed',
+            document_status_id: rejectedStatusId,
+            api_verification_status: 'failed',
+            api_verification_method: 'api',
+            employee_docs_log: [...existingLogs, {
+              timestamp: new Date().toISOString(),
+              action: "verify_voter_id_api_error",
+              response: { error: error.message }
+            }],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
         
         let userFriendlyError = "Something went wrong during Voter ID verification. Please try again.";
         let errorCode = "INTERNAL_ERROR";

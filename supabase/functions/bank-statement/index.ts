@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -28,7 +27,7 @@ serve(async (req) => {
   
   try {
     const requestBody = await req.json();
-    const { action, documentId } = requestBody;
+    const { action, documentId, verification_notes } = requestBody;
     
     console.log(`Bank Statement Verification: Received ${action} request for document ID: ${documentId}`);
     
@@ -73,12 +72,12 @@ serve(async (req) => {
     
     console.log("Bank Statement Verification: Found status IDs:", statusMap);
     
-    // Handle API verification
+    // Handle API verification - NEW BEHAVIOR
     if (action === 'apiVerify') {
       // First, get the document from the database to get the file URL and params
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_url, employee_id, params')
+        .select('document_url, employee_id, params, employee_docs_log')
         .eq('id', documentId)
         .single();
       
@@ -89,6 +88,8 @@ serve(async (req) => {
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      const existingLogs = document?.employee_docs_log || [];
 
       try {
         // Extract account number and IFSC code from params
@@ -124,15 +125,50 @@ serve(async (req) => {
             response: verificationResult
           };
           
-          // Check if bank verification was successful (status_code == 200)
-          if (!verificationResult.success || verificationResult.status_code !== 200) {
-            // Update document with failed status - set to rejected
+          // NEW BEHAVIOR: Always store API response and keep status as pending
+          // Only set to failed if API call completely failed
+          if (verificationResult.success && verificationResult.status_code === 200) {
+            // API Success: Store response in api_response_data, keep status pending
+            const { error: updateError } = await supabase
+              .from('employee_documents')
+              .update({
+                api_response_data: verificationResult,
+                api_verification_status: 'completed',
+                api_verification_method: 'api',
+                api_verification_date: new Date().toISOString(),
+                employee_docs_log: [...existingLogs, verificationLogEntry],
+                updated_at: new Date().toISOString()
+                // verification_status stays 'pending' - user needs to manually review
+              })
+              .eq('id', documentId);
+              
+            if (updateError) {
+              console.error("Error updating document with API response:", updateError);
+              return new Response(
+                JSON.stringify({ error: "Failed to store API response" }),
+                { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                message: "Bank statement API verification completed. Please review the response.",
+                requiresReview: true
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } else {
+            // API Failure: Set status to failed immediately
             const { error: updateError } = await supabase
               .from('employee_documents')
               .update({
                 verification_status: 'failed',
                 document_status_id: statusMap[DOC_STATUS.REJECTED],
-                employee_docs_log: [verificationLogEntry],
+                employee_docs_log: [...existingLogs, verificationLogEntry],
+                api_verification_status: 'failed',
+                api_verification_method: 'api',
+                api_verification_date: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               })
               .eq('id', documentId);
@@ -150,38 +186,6 @@ serve(async (req) => {
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          
-          // Bank verification was successful - set to governance status directly
-          console.log("Bank verification successful, setting status to governance");
-          
-          const { error: updateError } = await supabase
-            .from('employee_documents')
-            .update({
-              verification_status: 'verified',
-              document_status_id: statusMap[DOC_STATUS.VERIFIED],
-              employee_docs_log: [verificationLogEntry],
-              // Comment out cron activation since we're setting final status directly
-              // cron_activate: true,
-              // cron_activated_date: new Date().toISOString(),
-              // cron_updated_date: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
-            
-          if (updateError) {
-            console.error("Error updating document with governance status:", updateError);
-          }
-          
-          console.log("Bank statement verification completed successfully, status set to governance");
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: "Bank statement verified successfully",
-              status_code: 200
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
         }
         
         return new Response(
@@ -195,17 +199,19 @@ serve(async (req) => {
       } catch (error) {
         console.error("Error verifying bank statement:", error);
         
-        // Update document with failed status
+        // API call failed completely - set to failed status
         const { error: updateError } = await supabase
           .from('employee_documents')
           .update({
             verification_status: 'failed',
             document_status_id: statusMap[DOC_STATUS.REJECTED],
-            employee_docs_log: [{
+            employee_docs_log: [...existingLogs, {
               timestamp: new Date().toISOString(),
               action: "bank_verification_error",
               response: { error: error.message }
             }],
+            api_verification_status: 'failed',
+            api_verification_method: 'api',
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
@@ -225,70 +231,126 @@ serve(async (req) => {
     }
     // Handle manual verification
     else if (action === 'manualVerify') {
-      // Update document with manually verified status
-      const { error: updateError } = await supabase
-        .from('employee_documents')
-        .update({
-          verification_status: 'verified',
-          document_status_id: statusMap[DOC_STATUS.MANUAL],
-          employee_docs_log: [],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', documentId);
+      try {
+        // Get existing logs
+        const { data: document, error: fetchError } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error fetching document:", fetchError);
+          return new Response(
+            JSON.stringify({ error: "Document not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         
-      if (updateError) {
-        console.error("Error updating document with manual verification:", updateError);
+        const existingLogs = document?.employee_docs_log || [];
+        
+        // Create log entry
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: "verify_bank_statement_manual",
+          notes: verification_notes || "Document manually verified by staff."
+        };
+        
+        // Update document with manually verified status
+        const { error: updateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'verified',
+            document_status_id: statusMap[DOC_STATUS.MANUAL],
+            employee_docs_log: [...existingLogs, logEntry],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+          
+        if (updateError) {
+          console.error("Error updating document with manual verification:", updateError);
+          return new Response(
+            JSON.stringify({ error: "Failed to update document" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
         return new Response(
-          JSON.stringify({ error: "Failed to update document" }),
+          JSON.stringify({ 
+            success: true, 
+            message: "Document manually verified" 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error("Error in manual verification:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to manually verify document" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Document manually verified" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
     // Handle rejection
     else if (action === 'reject') {
-      // Update document with rejected status
-      const { error: updateError } = await supabase
-        .from('employee_documents')
-        .update({
-          verification_status: 'failed',
-          document_status_id: statusMap[DOC_STATUS.REJECTED],
-          employee_docs_log: [],
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', documentId);
+      try {
+        // Get existing logs
+        const { data: document, error: fetchError } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error fetching document:", fetchError);
+          return new Response(
+            JSON.stringify({ error: "Document not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         
-      if (updateError) {
-        console.error("Error rejecting document:", updateError);
+        const existingLogs = document?.employee_docs_log || [];
+        
+        // Create rejection log entry
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: "reject_bank_statement",
+          notes: verification_notes || "Document verification rejected by staff."
+        };
+        
+        // Update document with rejected status
+        const { error: updateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'failed',
+            document_status_id: statusMap[DOC_STATUS.REJECTED],
+            employee_docs_log: [...existingLogs, logEntry],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+          
+        if (updateError) {
+          console.error("Error rejecting document:", updateError);
+          return new Response(
+            JSON.stringify({ error: "Failed to reject document" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document verification rejected" 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error("Error in rejection process:", error);
         return new Response(
           JSON.stringify({ error: "Failed to reject document" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Document verification rejected" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
-    
-    // Comment out cron job handling since we're not using it anymore
-    /*
-    // Handle cron job execution
-    else if (action === 'cronJob') {
-      return await handleCronJob(supabase, baseUrl, apiKey, statusMap);
-    }
-    */
     
     return new Response(
       JSON.stringify({ error: "Invalid action specified" }),
@@ -303,14 +365,3 @@ serve(async (req) => {
     );
   }
 });
-
-/*
-// Comment out the entire cron job function since we're not using it
-async function handleCronJob(supabase: any, baseUrl: string, apiKey: string, statusMap: Record<string, string>) {
-  // Function commented out - no longer needed as we set status directly after verification
-  return new Response(
-    JSON.stringify({ success: true, message: "Cron job functionality disabled" }),
-    { headers: { corsHeaders, "Content-Type": "application/json" } }
-  );
-}
-*/

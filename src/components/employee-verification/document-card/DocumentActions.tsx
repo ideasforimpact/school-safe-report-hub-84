@@ -71,7 +71,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'bank_statement':
             result = await supabase.functions.invoke('bank-statement-verification', {
               body: {
-                action: 'apiCheck', // New action for API check without final verification
+                action: 'apiVerify', // Use existing API action
                 documentId: document.id,
                 accountNumber: document.documentNumber || '',
                 ifscCode: document.details?.ifscCode || ''
@@ -82,7 +82,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'pan':
             result = await supabase.functions.invoke('pan-verification', {
               body: {
-                action: 'apiCheck', // New action for API check without final verification
+                action: 'apiVerify', // Use existing API action
                 documentId: document.id,
                 documentNumber: document.documentNumber || ''
               }
@@ -92,7 +92,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'driving_license':
             result = await supabase.functions.invoke('driving-license-verification', {
               body: {
-                action: 'apiCheck', // New action for API check without final verification
+                action: 'apiVerify', // Use existing API action
                 documentId: document.id,
                 documentNumber: document.documentNumber || '',
                 dateOfBirth: document.details?.dateOfBirth || ''
@@ -103,7 +103,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           case 'voter_id':
             result = await supabase.functions.invoke('voter-id-verification', {
               body: {
-                action: 'apiCheck', // New action for API check without final verification
+                action: 'apiVerify', // Use existing API action
                 documentId: document.id,
                 documentNumber: document.documentNumber || ''
               }
