@@ -355,7 +355,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               <TableHead>Document #</TableHead>
               <TableHead>Uploaded</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Process</TableHead>
               <TableHead className="text-right">API Review</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -391,35 +390,30 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       documentType={docType}
                     />
                   </TableCell>
-                  {/* Process Document Column */}
-                  <TableCell className="text-right">
-                    {doc.verificationStatus === 'pending' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onVerifyDocument(doc.id)}
-                        title="Process document"
-                        className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-                      >
-                        <Cog className="h-4 w-4" />
-                        <span className="sr-only">Process Document</span>
-                      </Button>
-                    )}
-                  </TableCell>
-                  
                   {/* API Review Column */}
                   <TableCell className="text-right">
-                    {doc.apiResponseData && doc.verificationStatus === 'pending' && (
-                      <ApiResponseReviewIndicator 
-                        document={doc} 
-                        onVerificationUpdate={onDocumentAction}
-                      />
-                    )}
+                    <ApiResponseReviewIndicator 
+                      document={doc} 
+                      onVerificationUpdate={onDocumentAction}
+                    />
                   </TableCell>
                   
                   {/* Actions Column */}
                   <TableCell className="text-right">
                     <div className="flex items-center space-x-2 justify-end">
+                      {/* Process Document Button - moved from Process column */}
+                      {doc.verificationStatus === 'pending' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => onVerifyDocument(doc.id)}
+                          title="Process document"
+                          className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300 border-2"
+                        >
+                          <Cog className="h-4 w-4" />
+                          <span className="sr-only">Process Document</span>
+                        </Button>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
