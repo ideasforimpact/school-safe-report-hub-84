@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { Eye, Download, ShieldCheck, MessageCircle } from 'lucide-react';
+import { Eye, Download, Cog, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -429,13 +429,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         />
                       ) : !doc.apiResponseData && doc.verificationStatus === 'pending' ? (
                         <Button 
-                          variant="default" 
-                          size="sm"
+                          variant="outline" 
+                          size="sm" 
                           onClick={() => onVerifyDocument(doc.id)}
-                          title="Process this document"
+                          title="Process document"
+                          className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
                         >
-                          <ShieldCheck className="h-4 w-4 mr-1" />
-                          Process Document
+                          <Cog className="h-4 w-4" />
+                          <span className="sr-only">Process Document</span>
                         </Button>
                       ) : null}
                       <DocumentDeleteButton 

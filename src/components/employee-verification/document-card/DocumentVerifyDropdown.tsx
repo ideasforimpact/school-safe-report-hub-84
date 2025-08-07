@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ChevronDown } from 'lucide-react';
+import { Cog } from 'lucide-react';
 
 interface DocumentVerifyDropdownProps {
   onVerify: (method: 'api' | 'manual') => void;
@@ -23,10 +23,15 @@ const DocumentVerifyDropdown: React.FC<DocumentVerifyDropdownProps> = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="default" size="sm" disabled={isDisabled} className="flex items-center">
-          <CheckCircle className="h-4 w-4 mr-1" />
-          Process Document
-          <ChevronDown className="h-4 w-4 ml-1" />
+        <Button 
+          variant="default" 
+          size="sm" 
+          disabled={isDisabled} 
+          title="Process document"
+          className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+        >
+          <Cog className="h-4 w-4" />
+          <span className="sr-only">Process Document</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
