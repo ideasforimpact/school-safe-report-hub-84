@@ -24,6 +24,7 @@ import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 import DocumentCommentsDialog from '../DocumentCommentsDialog';
+import ApiResponseIndicator from '../document-card/ApiResponseIndicator';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -419,21 +420,27 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           <span className="sr-only">Comments</span>
                         </Button>
                       )}
-                      {doc.verificationStatus === 'pending' && (
+                      {/* Show Process Document button only for pending docs without API response */}
+                      {doc.verificationStatus === 'pending' && !doc.apiResponseData && (
                         <Button 
                           variant="outline" 
                           size="sm"
                           className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                           onClick={() => onVerifyDocument(doc.id)}
                         >
-                          <ShieldCheck className="h-4 w-4 mr-1" />
-                          Verify
+                           <ShieldCheck className="h-4 w-4 mr-1" />
+                           Process Document
                         </Button>
-                      )}
-                      <DocumentDeleteButton 
-                        documentId={doc.id} 
-                        onDocumentDeleted={onDocumentAction}
-                      />
+                       )}
+                       {/* Show API Response indicator for documents with API response data */}
+                       <ApiResponseIndicator
+                         document={doc}
+                         onVerificationUpdate={onDocumentAction}
+                       />
+                       <DocumentDeleteButton 
+                         documentId={doc.id} 
+                         onDocumentDeleted={onDocumentAction}
+                       />
                     </div>
                   </TableCell>
                 </TableRow>
