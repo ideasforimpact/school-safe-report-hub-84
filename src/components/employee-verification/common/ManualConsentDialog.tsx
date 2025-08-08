@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { formatDocumentTypeName } from '@/components/employee-verification/utils/documentUtils';
 
 interface ManualConsentDialogProps {
   open: boolean;
@@ -38,6 +39,8 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
   const description = employeeName
     ? `Please review ${employeeName}'s document and confirm their consent for manual verification.`
     : 'Please review the document and confirm user consent for manual verification.';
+
+  const displayDocType = documentTypeName ? formatDocumentTypeName(documentTypeName) : 'Document';
 
   const [confirmed, setConfirmed] = useState(false);
 
@@ -77,7 +80,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
           <div className="flex flex-col gap-4 py-4">
             <div className="flex items-start">
               <span className="text-sm text-muted-foreground">
-                Document Type: {documentTypeName || 'Document'}
+                Document Type: {displayDocType}
               </span>
             </div>
             <div className="rounded-md border p-3 flex items-start gap-3">
@@ -85,7 +88,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
                 id="consent-confirm"
                 checked={confirmed}
                 onCheckedChange={(val) => setConfirmed(Boolean(val))}
-                className="mt-0.5 rounded-sm border-2"
+                className="mt-0.5 !rounded-[4px] !border-2"
               />
               <div className="space-y-1">
                 <Label htmlFor="consent-confirm" className="text-sm font-medium">
