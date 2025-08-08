@@ -481,26 +481,26 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     {/* Quick-start API verification (hidden for Other types) */}
     {onQuickVerify && docType !== 'other' && docType !== 'other_documents' && (
       <Button
-        variant="outline"
-        size="icon"
+        variant="verifyApi"
+        size="sm"
         onClick={() => onQuickVerify(doc.id, 'api')}
         title={`API verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
       >
         <Cpu className="h-4 w-4" />
-        <span className="sr-only">API Verification</span>
+        <span>Verify API</span>
       </Button>
     )}
 
     {/* Quick-start Manual verification */}
     {onQuickVerify && (
       <Button
-        variant="outline"
-        size="icon"
+        variant="verifyManual"
+        size="sm"
         onClick={() => onQuickVerify(doc.id, 'manual')}
         title={`Manual verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
       >
         <Wrench className="h-4 w-4" />
-        <span className="sr-only">Manual Verification</span>
+        <span>Verify Manual</span>
       </Button>
     )}
   </>
