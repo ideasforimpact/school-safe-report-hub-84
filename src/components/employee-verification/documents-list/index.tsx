@@ -24,7 +24,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   initialLoadComplete,
   onDocumentAction
 }) => {
-  const { verifyDocument } = useEmployeeVerification();
+  const { verifyDocument, employees } = useEmployeeVerification();
   const { toast } = useToast();
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
   const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
@@ -288,7 +288,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
           if (!open) setConsentSuccess(null);
         }}
         documentTypeName={selectedDocument?.documentTypeName}
-        employeeName={undefined}
+        employeeName={(() => { const emp = employees?.find(e => e.id === (selectedDocument?.employeeId || employeeId)); return emp?.name || [emp?.firstName, emp?.lastName].filter(Boolean).join(' ') || 'Employee'; })()}
         onApprove={handleManualApprove}
         onReject={handleManualReject}
         isProcessing={isProcessing}
