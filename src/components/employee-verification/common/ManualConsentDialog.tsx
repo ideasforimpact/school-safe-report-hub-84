@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -50,10 +51,12 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
       <DialogContent className="max-w-md mx-auto">
         <DialogHeader className="text-center">
           <div className="flex justify-center py-1">
-            <ShieldCheck className="h-10 w-10 text-primary" />
+            <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+              <FileText className="h-6 w-6" />
+            </div>
           </div>
-          <DialogTitle className="text-xl">{title}</DialogTitle>
-          <DialogDescription className="text-center text-sm">{description}</DialogDescription>
+          <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
+          <DialogDescription className="text-center text-sm text-muted-foreground">{description}</DialogDescription>
         </DialogHeader>
 
         {successState ? (
@@ -80,11 +83,12 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
                 id="consent-confirm"
                 checked={confirmed}
                 onCheckedChange={(val) => setConfirmed(Boolean(val))}
+                className="mt-0.5"
               />
               <div className="space-y-1">
-                <label htmlFor="consent-confirm" className="text-sm font-medium">
+                <Label htmlFor="consent-confirm" className="text-sm font-medium">
                   I confirm I have reviewed the document and obtained user consent
-                </label>
+                </Label>
                 <p className="text-sm text-muted-foreground">
                   Once confirmed, you can approve this manual verification.
                 </p>
@@ -96,7 +100,8 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
         {!successState && (
           <DialogFooter className="flex justify-center sm:justify-end mt-2 gap-2">
             <Button
-              variant="destructive"
+              variant="outline"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={onReject}
               disabled={isProcessing}
             >
@@ -105,7 +110,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               ) : null}
               Reject
             </Button>
-            <Button onClick={onApprove} disabled={!confirmed || isProcessing}>
+            <Button variant="success" onClick={onApprove} disabled={!confirmed || isProcessing}>
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
