@@ -65,7 +65,7 @@ serve(async (req) => {
     const requestBody: CustomDocumentRequest = await req.json();
     console.log('Custom Document Verification: Request body:', JSON.stringify(requestBody, null, 2));
 
-    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles, documentId, verification_notes } = requestBody;
+    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles, documentId, verification_notes, verified_by_employee_id } = requestBody;
 
     if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
       throw new Error('Invalid action specified');
@@ -83,6 +83,7 @@ serve(async (req) => {
         .from('employee_documents')
         .update({
           verification_status: 'verified',
+          verified_by: verified_by_employee_id,
           updated_at: new Date().toISOString(),
           employee_docs_log: [
             {
@@ -124,6 +125,7 @@ serve(async (req) => {
         .from('employee_documents')
         .update({
           verification_status: 'failed',
+          verified_by: verified_by_employee_id,
           updated_at: new Date().toISOString(),
           employee_docs_log: [
             {

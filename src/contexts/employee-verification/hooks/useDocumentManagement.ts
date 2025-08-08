@@ -93,6 +93,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           document_url,
           document_number,
           verification_status,
+          verified_by,
           params,
           employee_docs_log,
           last_otp_generated,
@@ -130,6 +131,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationStatus: (doc.verification_status as 'verified' | 'failed' | 'pending') || 'pending',
           documentStatusId: doc.document_status_id,
           documentStatusName: doc.document_status?.name,
+          verifiedByEmployeeId: doc.verified_by || undefined,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
@@ -313,6 +315,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         .from('employee_documents')
         .update({
           verification_status: status,
+          verified_by: employeeData?.id, // Set the verifier employee ID
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId)
