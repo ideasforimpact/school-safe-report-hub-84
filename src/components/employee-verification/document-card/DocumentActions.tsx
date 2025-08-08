@@ -247,6 +247,11 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     return null;
   }
 
+  // Hide verify buttons for manual documents
+  if (document.documentTypeName?.toLowerCase() === 'manual') {
+    return null;
+  }
+
   // For 'other' and 'other_documents' types, use custom verification UI
   if (document.documentTypeName?.toLowerCase() === 'other' || 
       document.documentTypeName?.toLowerCase() === 'other_documents') {
