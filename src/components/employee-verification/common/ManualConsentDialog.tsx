@@ -1,6 +1,8 @@
-import React from 'react';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Loader2, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -31,13 +33,25 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
   isProcessing = false,
   successState = null,
 }) => {
-  const title = 'Manual Verification Consent';
-  const description = 'Please confirm you have reviewed the document and the user consent for manual verification.';
+  const title = 'Document Verification Required';
+  const description = employeeName
+    ? `Please review ${employeeName}'s document and confirm their consent for manual verification.`
+    : 'Please review the document and confirm user consent for manual verification.';
 
+  const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setConfirmed(false);
+    }
+  }, [open, successState]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md mx-auto">
         <DialogHeader className="text-center">
+          <div className="flex justify-center py-1">
+            <ShieldCheck className="h-10 w-10 text-primary" />
+          </div>
           <DialogTitle className="text-xl">{title}</DialogTitle>
           <DialogDescription className="text-center text-sm">{description}</DialogDescription>
         </DialogHeader>
@@ -45,9 +59,9 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
         {successState ? (
           <div className="flex flex-col items-center gap-3 py-6">
             {successState === 'verified' ? (
-              <CheckCircle2 className="h-10 w-10 text-green-600" />
+              <CheckCircle2 className="h-10 w-10 text-primary" />
             ) : (
-              <XCircle className="h-10 w-10 text-red-600" />
+              <XCircle className="h-10 w-10 text-destructive" />
             )}
             <p className="text-base font-medium">
               {successState === 'verified' ? 'Verified' : 'Rejected'}
@@ -58,13 +72,23 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-4 py-4">
-            <div className="rounded-md border p-3">
-              <div className="text-sm">Document type</div>
-              <div className="text-base font-medium">{documentTypeName || 'Document'}</div>
+            <div className="flex justify-center">
+              <Badge variant="secondary">{documentTypeName || 'Document'}</Badge>
             </div>
-            <div className="rounded-md border p-3">
-              <div className="text-sm">Employee</div>
-              <div className="text-base font-medium">{employeeName || 'Employee'}</div>
+            <div className="rounded-md border p-3 flex items-start gap-3">
+              <Checkbox
+                id="consent-confirm"
+                checked={confirmed}
+                onCheckedChange={(val) => setConfirmed(Boolean(val))}
+              />
+              <div className="space-y-1">
+                <label htmlFor="consent-confirm" className="text-sm font-medium">
+                  I confirm I have reviewed the document and obtained user consent
+                </label>
+                <p className="text-sm text-muted-foreground">
+                  Once confirmed, you can approve this manual verification.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -81,7 +105,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               ) : null}
               Reject
             </Button>
-            <Button onClick={onApprove} disabled={isProcessing}>
+            <Button onClick={onApprove} disabled={!confirmed || isProcessing}>
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
