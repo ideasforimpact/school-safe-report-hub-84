@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ interface VerificationDialogProps {
   documentType?: string;
   documentId?: string;
   documentNumber?: string;
+  quickStartMethod?: 'api' | 'manual' | null;
 }
 
 const VerificationDialog: React.FC<VerificationDialogProps> = ({
@@ -34,7 +35,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   isVerifying,
   documentType = '',
   documentId = '',
-  documentNumber = ''
+  documentNumber = '',
+  quickStartMethod = null,
 }) => {
   const { toast: shadcnToast } = useToast();
   const isAadhar = documentType === 'aadhar';
@@ -59,6 +61,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isAadharManualVerifying, setIsAadharManualVerifying] = useState(false);
   const [isOtherVerifying, setIsOtherVerifying] = useState(false);
   const [isOtherRejecting, setIsOtherRejecting] = useState(false);
+  const autoStartedRef = useRef(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -101,7 +104,25 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       setCooldownSeconds(null);
     }
+    autoStartedRef.current = false;
   }, [open]);
+
+  // Auto-start when quickStartMethod is provided
+  useEffect(() => {
+    if (open && quickStartMethod && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      if (quickStartMethod === 'api') {
+        if (!isOther && !isOtherDocuments) {
+          handleApiClick();
+        } else {
+          // For 'other' types, default to manual as API is not applicable
+          handleManualClick();
+        }
+      } else {
+        handleManualClick();
+      }
+    }
+  }, [open, quickStartMethod, isOther, isOtherDocuments]);
 
   const startCooldownTimer = (seconds: number) => {
     console.info("Starting cooldown timer with seconds:", seconds, "current time:", new Date().toISOString());

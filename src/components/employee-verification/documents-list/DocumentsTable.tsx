@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, Cog, MessageCircle, FileSearch, MoreVertical, Trash, Loader2 } from 'lucide-react';
+import { Eye, Download, Cog, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -41,6 +41,7 @@ interface DocumentsTableProps {
   onDownloadDocument: (documentImage: string) => void;
   onVerifyDocument: (documentId: string) => void;
   onDocumentAction?: () => void;
+  onQuickVerify?: (documentId: string, method: 'api' | 'manual') => void;
 }
 
 const DocumentsTable: React.FC<DocumentsTableProps> = ({
@@ -450,16 +451,44 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     <div className="flex items-center space-x-2 justify-end">
                       {/* Process Document Button - moved from Process column */}
 {!(doc.verificationStatus === 'verified' || doc.verificationStatus === 'failed') && (
-  <Button 
-    variant="outline" 
-    size="sm" 
-    onClick={() => onVerifyDocument(doc.id)}
-    title="Process document"
-    className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300 border-2"
-  >
-    <Cog className="h-4 w-4" />
-    <span className="sr-only">Process Document</span>
-  </Button>
+  <>
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={() => onVerifyDocument(doc.id)}
+      title="Process document"
+      className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300 border-2"
+    >
+      <Cog className="h-4 w-4" />
+      <span className="sr-only">Process Document</span>
+    </Button>
+
+    {/* Quick-start API verification (hidden for Other types) */}
+    {onQuickVerify && docType !== 'other' && docType !== 'other_documents' && (
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => onQuickVerify(doc.id, 'api')}
+        title={`API verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
+      >
+        <Cpu className="h-4 w-4" />
+        <span className="sr-only">API Verification</span>
+      </Button>
+    )}
+
+    {/* Quick-start Manual verification */}
+    {onQuickVerify && (
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => onQuickVerify(doc.id, 'manual')}
+        title={`Manual verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
+      >
+        <Wrench className="h-4 w-4" />
+        <span className="sr-only">Manual Verification</span>
+      </Button>
+    )}
+  </>
 )}
                        {showCommentsIcon && (
                          <Button 

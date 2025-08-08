@@ -26,7 +26,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
-  const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
+const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
+  const [quickStartMethod, setQuickStartMethod] = useState<'api' | 'manual' | null>(null);
 
   const handleViewDocument = (documentImage: string) => {
     if (!documentImage) {
@@ -104,6 +105,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     setIsVerificationDialogOpen(true);
   };
 
+  const handleQuickVerify = (documentId: string, method: 'api' | 'manual') => {
+    setSelectedDocumentId(documentId);
+    setQuickStartMethod(method);
+    setIsVerificationDialogOpen(true);
+  };
+
   const handleVerificationSubmit = async (method: 'api' | 'manual') => {
     if (selectedDocumentId) {
       await verifyDocument(selectedDocumentId, 'verified', method);
@@ -161,6 +168,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         onDownloadDocument={handleDownloadDocument}
         onVerifyDocument={handleVerifyDocument}
         onDocumentAction={onDocumentAction}
+        onQuickVerify={handleQuickVerify}
       />
       
       <VerificationDialog
