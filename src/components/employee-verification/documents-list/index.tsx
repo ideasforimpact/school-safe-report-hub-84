@@ -102,6 +102,7 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
 
   const handleVerifyDocument = (documentId: string) => {
     setSelectedDocumentId(documentId);
+    setQuickStartMethod(null);
     setIsVerificationDialogOpen(true);
   };
 
@@ -116,6 +117,7 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
       await verifyDocument(selectedDocumentId, 'verified', method);
       setIsVerificationDialogOpen(false);
       setSelectedDocumentId('');
+      setQuickStartMethod(null);
       
       // Trigger document refetch after verification
       if (onDocumentAction) {
@@ -129,6 +131,7 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
       await verifyDocument(selectedDocumentId, 'failed', 'manual');
       setIsVerificationDialogOpen(false);
       setSelectedDocumentId('');
+      setQuickStartMethod(null);
       
       // Trigger document refetch after rejection
       if (onDocumentAction) {
@@ -140,6 +143,7 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
   const handleDialogClose = () => {
     setIsVerificationDialogOpen(false);
     setSelectedDocumentId('');
+    setQuickStartMethod(null);
   };
 
   if (!initialLoadComplete) {
@@ -180,6 +184,7 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
         documentType={selectedDocument?.documentTypeName?.toLowerCase()}
         documentId={selectedDocumentId}
         documentNumber={selectedDocument?.documentNumber}
+        quickStartMethod={quickStartMethod}
       />
     </>
   );

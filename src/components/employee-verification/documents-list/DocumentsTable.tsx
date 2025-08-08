@@ -49,7 +49,8 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onViewDocument,
   onDownloadDocument,
   onVerifyDocument,
-  onDocumentAction
+  onDocumentAction,
+  onQuickVerify,
 }) => {
   const { documentStatuses, deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
