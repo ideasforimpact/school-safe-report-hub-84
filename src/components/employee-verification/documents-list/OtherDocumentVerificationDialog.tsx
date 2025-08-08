@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth';
 
 interface OtherDocumentVerificationDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
   documentId = '',
   documentType = 'other'
 }) => {
+  const { employeeData } = useAuth();
   const [isManualVerifying, setIsManualVerifying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
@@ -50,7 +52,8 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         body: {
           action: 'manualVerify',
           documentId,
-          verification_notes: 'Document manually verified by staff.'
+          verification_notes: 'Document manually verified by staff.',
+          verified_by_employee_id: employeeData?.id
         }
       });
       
@@ -102,7 +105,8 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         body: {
           action: 'reject',
           documentId,
-          verification_notes: 'Document verification rejected by staff.'
+          verification_notes: 'Document verification rejected by staff.',
+          verified_by_employee_id: employeeData?.id
         }
       });
       

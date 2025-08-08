@@ -8,6 +8,7 @@ import DocumentVerifyDropdown from './DocumentVerifyDropdown';
 import { supabase } from '@/integrations/supabase/client';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 import ManualConsentDialog from '../common/ManualConsentDialog';
+import { useAuth } from '@/contexts/auth';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -17,6 +18,7 @@ interface DocumentActionsProps {
 
 const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyButton, onVerificationUpdate }) => {
   const { verifyDocument, employees } = useEmployeeVerification();
+  const { employeeData } = useAuth();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
   const [manualConsentOpen, setManualConsentOpen] = useState(false);
@@ -82,7 +84,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
             body: {
               action: 'apiVerify',
               documentId: document.id,
-              documentNumber: document.documentNumber || ''
+              documentNumber: document.documentNumber || '',
+              verified_by_employee_id: employeeData?.id
             }
           });
           break;
@@ -103,7 +106,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
             body: {
               action: 'apiVerify',
               documentId: document.id,
-              documentNumber: document.documentNumber || ''
+              documentNumber: document.documentNumber || '',
+              verified_by_employee_id: employeeData?.id
             }
           });
           break;
@@ -144,6 +148,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           documentId: document.id,
           verification_type: 'manual',
           verification_notes: 'Manually verified',
+          verified_by_employee_id: employeeData?.id
         },
       });
 
@@ -175,6 +180,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           documentId: document.id,
           verification_type: 'manual',
           verification_notes: 'Document verification rejected by staff.',
+          verified_by_employee_id: employeeData?.id
         },
       });
 

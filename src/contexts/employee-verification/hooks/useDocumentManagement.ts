@@ -350,7 +350,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       console.error('Error verifying document:', error);
       toast.error('Failed to verify document');
     }
-  }, [documents, updateEmployeeStatus]);
+  }, [documents, updateEmployeeStatus, employeeData]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     try {
