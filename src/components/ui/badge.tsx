@@ -22,6 +22,12 @@ const badgeVariants = cva(
           "border-transparent bg-blue-500 text-white hover:bg-blue-500/80",
         reviewed:
           "border-transparent bg-purple-500 text-white hover:bg-purple-500/80",
+        softNeutral:
+          "bg-muted text-muted-foreground border-border hover:bg-muted/80",
+        softInfo:
+          "bg-primary/15 text-primary border-primary/20 hover:bg-primary/20",
+        softSuccess:
+          "bg-secondary/15 text-secondary-foreground border-secondary/30 hover:bg-secondary/20",
       },
     },
     defaultVariants: {
