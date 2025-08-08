@@ -23,7 +23,8 @@ serve(async (req) => {
       action,
       documentId, 
       documentNumber,
-      verification_notes
+      verification_notes,
+      verified_by_employee_id
     } = requestBody;
     
     console.log(`Voter ID Verification: Received ${action} request`, { 
@@ -305,6 +306,7 @@ serve(async (req) => {
             verification_status: 'verified',
             employee_docs_log: [...existingLogs, logEntry],
             document_status_id: manualStatusId,
+            verified_by: verified_by_employee_id,
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
@@ -352,6 +354,7 @@ serve(async (req) => {
             verification_status: 'failed',
             employee_docs_log: [...existingLogs, logEntry],
             document_status_id: rejectedStatusId,
+            verified_by: verified_by_employee_id,
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);

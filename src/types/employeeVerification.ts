@@ -91,6 +91,7 @@ export interface VerificationDocument {
   apiVerificationStatus?: 'pending' | 'completed' | 'failed' | null;
   apiVerificationDate?: string;
   apiVerificationMethod?: string;
+  verifiedByEmployeeId?: string; // Track which employee verified this document
   createdAt: string;
   updatedAt: string;
 }
