@@ -85,7 +85,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
                 id="consent-confirm"
                 checked={confirmed}
                 onCheckedChange={(val) => setConfirmed(Boolean(val))}
-                className="mt-0.5"
+                className="mt-0.5 rounded-sm border-2"
               />
               <div className="space-y-1">
                 <Label htmlFor="consent-confirm" className="text-sm font-medium">
