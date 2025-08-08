@@ -43,10 +43,12 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
   const displayDocType = documentTypeName ? formatDocumentTypeName(documentTypeName) : 'Document';
 
   const [confirmed, setConfirmed] = useState(false);
+  const [activeAction, setActiveAction] = useState<'approve' | 'reject' | null>(null);
 
   useEffect(() => {
     if (open) {
       setConfirmed(false);
+      setActiveAction(null);
     }
   }, [open, successState]);
 
@@ -114,16 +116,19 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               variant="outline"
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={async () => {
+                setActiveAction('reject');
                 console.log('🔍 Reject button clicked');
                 try {
                   await onReject();
                 } catch (error) {
                   console.error('Reject error:', error);
+                } finally {
+                  setActiveAction(null);
                 }
               }}
               disabled={isProcessing}
             >
-              {isProcessing ? (
+              {isProcessing && activeAction === 'reject' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
               Reject
@@ -131,16 +136,19 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
             <Button 
               variant="success" 
               onClick={async () => {
+                setActiveAction('approve');
                 console.log('🔍 Approve button clicked');
                 try {
                   await onApprove();
                 } catch (error) {
                   console.error('Approve error:', error);
+                } finally {
+                  setActiveAction(null);
                 }
               }} 
               disabled={!confirmed || isProcessing}
             >
-              {isProcessing ? (
+              {isProcessing && activeAction === 'approve' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
               Approve

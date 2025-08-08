@@ -151,6 +151,16 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       employeeDataId: employeeData?.id,
       employeeData: employeeData 
     });
+
+    const verifierId = employeeData?.id;
+    if (!verifierId) {
+      toast({
+        title: 'Cannot verify',
+        description: 'Your employee identity is missing. Please re-login and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setIsVerifying(true);
     try {
@@ -161,7 +171,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           documentId: document.id,
           verification_type: 'manual',
           verification_notes: 'Manually verified',
-          verified_by_employee_id: employeeData?.id
+          verified_by_employee_id: verifierId
         },
       });
 
@@ -190,6 +200,16 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       employeeData: employeeData 
     });
     
+    const verifierId = employeeData?.id;
+    if (!verifierId) {
+      toast({
+        title: 'Cannot reject',
+        description: 'Your employee identity is missing. Please re-login and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsVerifying(true);
     try {
       const functionName = getFunctionName(document.documentTypeName);
@@ -199,7 +219,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           documentId: document.id,
           verification_type: 'manual',
           verification_notes: 'Document verification rejected by staff.',
-          verified_by_employee_id: employeeData?.id
+          verified_by_employee_id: verifierId
         },
       });
 

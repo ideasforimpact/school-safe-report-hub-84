@@ -39,8 +39,14 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
 
   // Handle Manual Verification
   const handleManualClick = async () => {
+    if (!employeeData?.id) {
+      toast.error("Cannot verify", {
+        description: "Your employee identity is missing. Please re-login and try again.",
+      });
+      return;
+    }
+
     setIsManualVerifying(true);
-    
     try {
       console.log("Initiating manual verification for document ID:", documentId);
       
@@ -53,7 +59,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
           action: 'manualVerify',
           documentId,
           verification_notes: 'Document manually verified by staff.',
-          verified_by_employee_id: employeeData?.id
+          verified_by_employee_id: employeeData.id,
         }
       });
       
@@ -92,6 +98,13 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
 
   // Handle Rejection
   const handleRejectClick = async () => {
+    if (!employeeData?.id) {
+      toast.error("Cannot reject", {
+        description: "Your employee identity is missing. Please re-login and try again.",
+      });
+      return;
+    }
+
     setIsRejecting(true);
     
     try {
@@ -106,7 +119,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
           action: 'reject',
           documentId,
           verification_notes: 'Document verification rejected by staff.',
-          verified_by_employee_id: employeeData?.id
+          verified_by_employee_id: employeeData.id,
         }
       });
       
