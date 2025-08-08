@@ -1,13 +1,7 @@
 
 import React from 'react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { Cog } from 'lucide-react';
+import { Cpu, Wrench } from 'lucide-react';
 
 interface DocumentVerifyDropdownProps {
   onVerify: (method: 'api' | 'manual') => void;
@@ -21,28 +15,28 @@ const DocumentVerifyDropdown: React.FC<DocumentVerifyDropdownProps> = ({
   isDisabled
 }) => {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="default" 
-          size="sm" 
-          disabled={isDisabled} 
-          title="Process document"
-          className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-        >
-          <Cog className="h-4 w-4" />
-          <span className="sr-only">Process Document</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onVerify('api')} className="cursor-pointer">
-          API Verification
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onVerify('manual')} className="cursor-pointer">
-          Manual Verification
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={isDisabled}
+        title={`API verification${documentTypeName ? ` for ${documentTypeName}` : ''}`}
+        onClick={() => onVerify('api')}
+      >
+        <Cpu className="h-4 w-4" />
+        <span className="sr-only">API Verification</span>
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={isDisabled}
+        title={`Manual verification${documentTypeName ? ` for ${documentTypeName}` : ''}`}
+        onClick={() => onVerify('manual')}
+      >
+        <Wrench className="h-4 w-4" />
+        <span className="sr-only">Manual Verification</span>
+      </Button>
+    </div>
   );
 };
 
