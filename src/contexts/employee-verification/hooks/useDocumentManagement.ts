@@ -9,10 +9,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const [isLoading, setIsLoading] = useState(false);
   const { user, employeeData } = useAuth();
 
-  // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  // Helper function to upload base64 file to Supabase storage
   const uploadDocumentToStorage = async (base64Data: string, employeeId: string, documentType: string): Promise<string> => {
     try {
       console.log('Starting upload to storage for employee:', employeeId);
@@ -70,7 +68,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     try {
       console.log('Fetching documents for employee:', employeeId, 'client:', clientId);
       
-      // First verify the employee belongs to the current client
       const { data: employee, error: empError } = await supabase
         .from('employees')
         .select('id, client_id')
@@ -93,6 +90,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           document_url,
           document_number,
           verification_status,
+          verified_by,
           params,
           employee_docs_log,
           last_otp_generated,
@@ -114,8 +112,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
       const formattedDocuments: VerificationDocument[] = data.map(doc => {
         let documentUrl = doc.document_url;
-        
-        // If document_url is a storage path, convert to full URL
         if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
           documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
         }
@@ -133,7 +129,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
-          // Map new cron fields including cron_log with proper type casting
+          verifiedByEmployeeId: doc.verified_by || undefined,
           cronActivate: doc.cron_activate || false,
           cronActivatedDate: doc.cron_activated_date || undefined,
           cronUpdatedDate: doc.cron_updated_date || undefined,
@@ -176,7 +172,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
 
     try {
-      // Verify the employee belongs to the current client
       const { data: employee, error: empError } = await supabase
         .from('employees')
         .select('id, client_id')
@@ -191,7 +186,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
       let documentUrlForDB = document.documentImage;
 
-      // If it's a base64 document, upload to storage first
       if (document.documentImage.startsWith('data:')) {
         console.log('Uploading base64 document to storage...');
         const storagePath = await uploadDocumentToStorage(
@@ -203,7 +197,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         console.log('Document uploaded to storage, path:', storagePath);
       }
 
-      // Get document type ID if not provided
       let documentTypeId = document.documentTypeId;
       if (!documentTypeId) {
         const { data: docType } = await supabase
@@ -214,7 +207,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         documentTypeId = docType?.id;
       }
 
-      // Get pending status ID if not provided
       let documentStatusId = document.documentStatusId;
       if (!documentStatusId) {
         const { data: pendingStatus } = await supabase
@@ -262,7 +254,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         throw error;
       }
 
-      // Create the document object with proper URL for frontend display
       let displayUrl = data.document_url;
       if (!displayUrl.startsWith('data:') && !displayUrl.startsWith('https://')) {
         displayUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${displayUrl}`;
@@ -281,6 +272,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         verificationDate: null,
         verificationNotes: '',
         verificationMethod: 'manual',
+        verifiedByEmployeeId: data.verified_by || undefined,
         params: document.params,
         cronActivate: data.cron_activate || false,
         cronActivatedDate: data.cron_activated_date || undefined,
@@ -309,14 +301,20 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual' = 'manual', notes?: string) => {
     try {
+      const updatePayload: Record<string, any> = {
+        verification_status: status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (status === 'verified' && employeeData?.id) {
+        updatePayload.verified_by = employeeData.id;
+      }
+
       const { data, error } = await supabase
         .from('employee_documents')
-        .update({
-          verification_status: status,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', documentId)
-        .select('employee_id')
+        .select('employee_id, verified_by')
         .single();
 
       if (error) throw error;
@@ -328,12 +326,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
               verificationStatus: status,
               verificationDate: new Date().toISOString(),
               verificationNotes: notes || '',
-              verificationMethod: method
+              verificationMethod: method,
+              verifiedByEmployeeId: status === 'verified' ? (data.verified_by || employeeData?.id) : doc.verifiedByEmployeeId
             }
           : doc
       ));
 
-      // Check if all documents are verified for this employee
       const employeeId = data.employee_id;
       const employeeDocs = documents.filter(d => d.employeeId === employeeId);
       const allVerified = employeeDocs.every(d => d.id === documentId ? status === 'verified' : d.verificationStatus === 'verified');
@@ -347,7 +345,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       console.error('Error verifying document:', error);
       toast.error('Failed to verify document');
     }
-  }, [documents, updateEmployeeStatus]);
+  }, [documents, updateEmployeeStatus, employeeData?.id]);
 
   const deleteDocument = useCallback(async (documentId: string) => {
     try {
