@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, Cog, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -453,17 +453,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       {/* Process Document Button - moved from Process column */}
 {!(doc.verificationStatus === 'verified' || doc.verificationStatus === 'failed') && (
   <>
-    <Button 
-      variant="outline" 
-      size="sm" 
-      onClick={() => onVerifyDocument(doc.id)}
-      title="Process document"
-      className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300 border-2"
-    >
-      <Cog className="h-4 w-4" />
-      <span className="sr-only">Process Document</span>
-    </Button>
-
     {/* Quick-start API verification (hidden for Other types) */}
     {onQuickVerify && docType !== 'other' && docType !== 'other_documents' && (
       <Button
