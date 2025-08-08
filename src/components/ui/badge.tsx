@@ -30,6 +30,8 @@ const badgeVariants = cva(
           "bg-secondary/15 text-secondary-foreground border-secondary/30 hover:bg-secondary/20",
         softAmber:
           "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100/80",
+        teal:
+          "bg-teal-100 text-teal-800 border-teal-300 hover:bg-teal-100/80",
       },
     },
     defaultVariants: {
