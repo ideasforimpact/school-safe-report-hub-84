@@ -28,29 +28,26 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
     if (!document.apiResponseData) {
       return {
         text: 'No details yet',
-        variant: 'outline' as const,
+        variant: 'softNeutral' as const,
         clickable: false,
         icon: FileQuestion,
-        classes: 'bg-muted text-muted-foreground border-border',
       };
     }
     
     if (document.verificationStatus === 'pending') {
       return {
         text: 'Details available',
-        variant: 'outline' as const,
+        variant: 'softInfo' as const,
         clickable: true,
         icon: FileSearch,
-        classes: 'bg-accent/40 text-accent-foreground border-accent/50 hover:bg-accent/50',
       };
     }
     
     return {
       text: 'Details reviewed',
-      variant: 'outline' as const,
+      variant: 'softSuccess' as const,
       clickable: true,
       icon: ClipboardCheck,
-      classes: 'bg-secondary/40 text-secondary-foreground border-secondary/50 hover:bg-secondary/50',
     };
   };
 
@@ -128,7 +125,7 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
     <>
       <Badge
         variant={badgeContent.variant}
-        className={`${badgeContent.classes} ${badgeContent.clickable ? 'cursor-pointer' : ''}`}
+        className={badgeContent.clickable ? 'cursor-pointer' : ''}
         onClick={badgeContent.clickable ? openDetailDialog : undefined}
       >
         {badgeContent.icon
