@@ -6,9 +6,8 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import DocumentVerifyDropdown from './DocumentVerifyDropdown';
 import { supabase } from '@/integrations/supabase/client';
-import VerificationDialog from '../documents-list/VerificationDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
-import OtherDocumentVerificationDialog from '../documents-list/OtherDocumentVerificationDialog';
+import ManualConsentDialog from '../common/ManualConsentDialog';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -17,13 +16,15 @@ interface DocumentActionsProps {
 }
 
 const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyButton, onVerificationUpdate }) => {
-  const { verifyDocument } = useEmployeeVerification();
+  const { verifyDocument, employees } = useEmployeeVerification();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
-  const [otherDocDialogOpen, setOtherDocDialogOpen] = useState(false);
+  const [manualConsentOpen, setManualConsentOpen] = useState(false);
+  const [consentSuccess, setConsentSuccess] = useState<null | 'verified' | 'rejected'>(null);
   const [bankDialogOpen, setBankDialogOpen] = useState(false);
+
+  const employee = employees?.find((e) => e.id === document.employeeId);
+  const employeeName = employee?.name || [employee?.firstName, employee?.lastName].filter(Boolean).join(' ') || 'Employee';
 
   // Helper function to get the appropriate function name for each document type
   const getFunctionName = (documentTypeName?: string): string => {
@@ -49,114 +50,151 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   // Handle verification for different document types - Updated for new flow
   const handleVerify = async (method: 'api' | 'manual'): Promise<void> => {
     setIsVerifying(true);
-    
+
     try {
       const documentTypeName = document.documentTypeName?.toLowerCase();
       console.log('Processing document:', { documentTypeName, method, documentId: document.id });
-      
-      let result;
-      
-      if (documentTypeName === 'other' || documentTypeName === 'other_documents') {
-        // For other documents, show the custom verification dialog
-        setOtherDocDialogOpen(true);
+
+      if (method === 'manual') {
+        // Open consent dialog for all document types
+        setManualConsentOpen(true);
         setIsVerifying(false);
         return;
       }
-      
-      if (method === 'api') {
-        // NEW BEHAVIOR: API calls should NOT update verification_status to 'verified'
-        // They should store API response and set api_verification_status
-        switch (documentTypeName) {
-          case 'bank_account':
-          case 'bank_statement':
-            result = await supabase.functions.invoke('bank-statement-verification', {
-              body: {
-                action: 'apiVerify', // Use existing API action
-                documentId: document.id,
-                accountNumber: document.documentNumber || '',
-                ifscCode: document.details?.ifscCode || ''
-              }
-            });
-            break;
-            
-          case 'pan':
-            result = await supabase.functions.invoke('pan-verification', {
-              body: {
-                action: 'apiVerify', // Use existing API action
-                documentId: document.id,
-                documentNumber: document.documentNumber || ''
-              }
-            });
-            break;
-            
-          case 'driving_license':
-            result = await supabase.functions.invoke('driving-license-verification', {
-              body: {
-                action: 'apiVerify', // Use existing API action
-                documentId: document.id,
-                documentNumber: document.documentNumber || '',
-                dateOfBirth: document.details?.dateOfBirth || ''
-              }
-            });
-            break;
-            
-          case 'voter_id':
-            result = await supabase.functions.invoke('voter-id-verification', {
-              body: {
-                action: 'apiVerify', // Use existing API action
-                documentId: document.id,
-                documentNumber: document.documentNumber || ''
-              }
-            });
-            break;
-            
-          default:
-            throw new Error(`API verification not supported for document type: ${documentTypeName}`);
-        }
-        
-        // Success message for API check completion
-        toast({
-          title: "API Check Complete",
-          description: "Document has been processed. Check the API response for details.",
-        });
-      } else {
-        // Handle manual verification - this still directly updates verification status
-        const functionName = getFunctionName(documentTypeName);
-        
-        result = await supabase.functions.invoke(functionName, {
-          body: {
-            action: 'manualVerify',
-            documentId: document.id,
-            verification_notes: 'Manually verified'
-          }
-        });
-        
-        toast({
-          title: "Document Verified",
-          description: "Document has been manually verified.",
-        });
+
+      // API verification path
+      let result;
+      switch (documentTypeName) {
+        case 'bank_account':
+        case 'bank_statement':
+          result = await supabase.functions.invoke('bank-statement-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id,
+              accountNumber: document.documentNumber || '',
+              ifscCode: document.details?.ifscCode || ''
+            }
+          });
+          break;
+
+        case 'pan':
+          result = await supabase.functions.invoke('pan-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id,
+              documentNumber: document.documentNumber || ''
+            }
+          });
+          break;
+
+        case 'driving_license':
+          result = await supabase.functions.invoke('driving-license-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id,
+              documentNumber: document.documentNumber || '',
+              dateOfBirth: document.details?.dateOfBirth || ''
+            }
+          });
+          break;
+
+        case 'voter_id':
+          result = await supabase.functions.invoke('voter-id-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id,
+              documentNumber: document.documentNumber || ''
+            }
+          });
+          break;
+
+        default:
+          throw new Error(`API verification not supported for document type: ${documentTypeName}`);
       }
-      
+
       if (result.error) {
         throw result.error;
       }
-      
-      // Refresh the documents list
+
+      toast({
+        title: 'API Check Complete',
+        description: 'Document has been processed. Check the API response for details.',
+      });
+
       onVerificationUpdate?.();
-      
     } catch (error: any) {
       console.error('Processing error:', error);
       toast({
-        title: method === 'api' ? "API Check Failed" : "Verification Failed", 
-        description: error.message || `Failed to ${method === 'api' ? 'process' : 'verify'} document. Please try again.`,
-        variant: "destructive",
+        title: 'API Check Failed',
+        description: error.message || 'Failed to process document. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsVerifying(false);
     }
   };
 
-  // REMOVED: handleReject function - reject button is hidden per new requirements
+  const handleManualApprove = async (): Promise<void> => {
+    setIsVerifying(true);
+    try {
+      const functionName = getFunctionName(document.documentTypeName);
+      const result = await supabase.functions.invoke(functionName, {
+        body: {
+          action: 'manualVerify',
+          documentId: document.id,
+          verification_type: 'manual',
+          verification_notes: 'Manually verified',
+        },
+      });
+
+      if (result.error) throw result.error;
+
+      setConsentSuccess('verified');
+      toast({ title: 'Document Verified', description: 'Document has been manually verified.' });
+      onVerificationUpdate?.();
+
+      setTimeout(() => {
+        setManualConsentOpen(false);
+        setConsentSuccess(null);
+      }, 900);
+    } catch (error: any) {
+      console.error('Manual verification error:', error);
+      toast({ title: 'Verification Failed', description: error.message || 'Failed to verify document.', variant: 'destructive' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleManualReject = async (): Promise<void> => {
+    setIsVerifying(true);
+    try {
+      const functionName = getFunctionName(document.documentTypeName);
+      const result = await supabase.functions.invoke(functionName, {
+        body: {
+          action: 'reject',
+          documentId: document.id,
+          verification_type: 'manual',
+          verification_notes: 'Document verification rejected by staff.',
+        },
+      });
+
+      if (result.error) throw result.error;
+
+      setConsentSuccess('rejected');
+      toast({ title: 'Document Rejected', description: 'The document has been marked as failed.' });
+      onVerificationUpdate?.();
+
+      setTimeout(() => {
+        setManualConsentOpen(false);
+        setConsentSuccess(null);
+      }, 900);
+    } catch (error: any) {
+      console.error('Rejection error:', error);
+      toast({ title: 'Rejection Failed', description: error.message || 'Failed to reject document.', variant: 'destructive' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   if (!showVerifyButton || document.verificationStatus === 'verified' || document.verificationStatus === 'failed') {
     return null;
