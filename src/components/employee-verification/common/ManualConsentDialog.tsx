@@ -75,9 +75,10 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-4 py-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Document Type:</span>
-              <Badge variant="teal">{documentTypeName || 'Document'}</Badge>
+            <div className="flex items-start">
+              <span className="text-sm text-muted-foreground">
+                Document Type: Identity Document ({documentTypeName || 'Document'})
+              </span>
             </div>
             <div className="rounded-md border p-3 flex items-start gap-3">
               <Checkbox
@@ -88,11 +89,8 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               />
               <div className="space-y-1">
                 <Label htmlFor="consent-confirm" className="text-sm font-medium">
-                  I confirm I have reviewed the document and obtained user consent
+                  I confirm that I have reviewed the submitted document and verify that it meets all compliance requirements and authenticity standards according to company policy.
                 </Label>
-                <p className="text-sm text-muted-foreground">
-                  Once confirmed, you can approve this manual verification.
-                </p>
               </div>
             </div>
           </div>
