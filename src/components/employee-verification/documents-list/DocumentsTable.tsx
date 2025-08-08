@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,9 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { VerificationDocument } from '@/types/employeeVerification';
-import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
-import ApiResponseIndicator from '../document-card/ApiResponseIndicator';
-import ApiResponseReviewIndicator from '../document-card/ApiResponseReviewIndicator';
+import { Badge } from '@/components/ui/badge';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -342,6 +340,16 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
+  // Helper to get "Verified by" user name from latest verification history entry
+  const getVerifiedByName = (doc: VerificationDocument): string | undefined => {
+    const history = (doc.params as any)?.verification_history;
+    if (!Array.isArray(history) || history.length === 0) return undefined;
+    const withUser = history.filter((e: any) => e && e.verified_by);
+    if (withUser.length === 0) return undefined;
+    withUser.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return withUser[0].verified_by as string;
+  };
+  
   // Helper function to get proper document number display
   const getDisplayDocumentNumber = (doc: VerificationDocument): string => {
     const docType = doc.documentTypeName?.toLowerCase();
@@ -359,7 +367,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       return doc.documentNumber || '—';
     }
   };
-
   // Handle delete document
   const handleDeleteDocument = async (documentId: string) => {
     try {
@@ -404,7 +411,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               <TableHead>Document #</TableHead>
               <TableHead>Uploaded</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Document Details</TableHead>
+              <TableHead className="text-right">Verified by</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -439,12 +446,21 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       documentType={docType}
                     />
                   </TableCell>
-                  {/* Document Details Column */}
+                  {/* Verified by Column */}
                   <TableCell className="text-right">
-                    <ApiResponseReviewIndicator 
-                      document={doc} 
-                      onVerificationUpdate={onDocumentAction}
-                    />
+                    {(() => {
+                      const name = getVerifiedByName(doc);
+                      return name ? (
+                        <div className="flex justify-end">
+                          <Badge variant="softAmber" className="gap-1">
+                            <User className="h-3.5 w-3.5" />
+                            <span className="truncate max-w-[160px]">{name}</span>
+                          </Badge>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      );
+                    })()}
                   </TableCell>
                   
                   {/* Actions Column */}
