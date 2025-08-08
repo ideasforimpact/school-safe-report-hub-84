@@ -45,17 +45,13 @@ export interface VerificationDocument {
   documentTypeId: string;
   documentTypeName?: string;
   documentNumber?: string;
-  documentImage: string;
+  documentImage: string; // This should always be required and not null
   verificationStatus: 'pending' | 'verified' | 'failed' | 'in-progress' | 'completed' | 'rejected';
   documentStatusId?: string;
   documentStatusName?: string;
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
-
-  // New: who verified this document (employee id from employees table)
-  verifiedByEmployeeId?: string;
-
   employee_docs_log?: Array<{
     timestamp: string;
     action: string;
@@ -79,6 +75,7 @@ export interface VerificationDocument {
     }>;
     [key: string]: any;
   };
+  // Cron-related fields
   cronActivate?: boolean;
   cronActivatedDate?: string;
   cronUpdatedDate?: string;
@@ -89,6 +86,7 @@ export interface VerificationDocument {
     details?: any;
     error?: string;
   }>;
+  // New API response tracking fields
   apiResponseData?: any;
   apiVerificationStatus?: 'pending' | 'completed' | 'failed' | null;
   apiVerificationDate?: string;

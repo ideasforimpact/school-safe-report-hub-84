@@ -645,7 +645,6 @@ export type Database = {
           params: Json | null
           updated_at: string | null
           verification_status: string | null
-          verified_by: string | null
         }
         Insert: {
           api_response_data?: Json | null
@@ -668,7 +667,6 @@ export type Database = {
           params?: Json | null
           updated_at?: string | null
           verification_status?: string | null
-          verified_by?: string | null
         }
         Update: {
           api_response_data?: Json | null
@@ -691,7 +689,6 @@ export type Database = {
           params?: Json | null
           updated_at?: string | null
           verification_status?: string | null
-          verified_by?: string | null
         }
         Relationships: [
           {
@@ -706,13 +703,6 @@ export type Database = {
             columns: ["document_type_id"]
             isOneToOne: false
             referencedRelation: "employee_document_type"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employee_documents_verified_by_fkey"
-            columns: ["verified_by"]
-            isOneToOne: false
-            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]

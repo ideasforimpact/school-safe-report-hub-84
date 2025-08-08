@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
@@ -118,7 +119,6 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         document_url,
         document_number,
         verification_status,
-        verified_by,
         params,
         employee_docs_log,
         last_otp_generated,
@@ -142,6 +142,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       return { employee, documents: [] };
     }
 
+    // Map documents to the expected format with proper URL handling and new cron fields
     const documents: VerificationDocument[] = (documentsData || []).map(doc => {
       let documentUrl = doc.document_url;
       
@@ -173,7 +174,6 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         verificationDate: null,
         verificationNotes: '',
         verificationMethod: 'manual',
-        verifiedByEmployeeId: doc.verified_by || undefined,
         employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
           timestamp: string;
           action: string;
@@ -224,7 +224,6 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         document_url,
         document_number,
         verification_status,
-        verified_by,
         params,
         employee_docs_log,
         last_otp_generated,
@@ -315,7 +314,6 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         verificationDate: null,
         verificationNotes: '',
         verificationMethod: 'manual',
-        verifiedByEmployeeId: doc.verified_by || undefined,
         employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
           timestamp: string;
           action: string;
