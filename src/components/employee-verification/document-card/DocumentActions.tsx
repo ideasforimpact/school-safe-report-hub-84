@@ -51,6 +51,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
 
   // Handle verification for different document types - Updated for new flow
   const handleVerify = async (method: 'api' | 'manual'): Promise<void> => {
+    console.log('🔍 DocumentActions - handleVerify called:', { 
+      method, 
+      documentId: document.id, 
+      employeeDataId: employeeData?.id,
+      employeeData: employeeData 
+    });
+    
     setIsVerifying(true);
 
     try {
@@ -139,6 +146,12 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   };
 
   const handleManualApprove = async (): Promise<void> => {
+    console.log('🔍 DocumentActions - handleManualApprove called:', { 
+      documentId: document.id,
+      employeeDataId: employeeData?.id,
+      employeeData: employeeData 
+    });
+    
     setIsVerifying(true);
     try {
       const functionName = getFunctionName(document.documentTypeName);
@@ -171,6 +184,12 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   };
 
   const handleManualReject = async (): Promise<void> => {
+    console.log('🔍 DocumentActions - handleManualReject called:', { 
+      documentId: document.id,
+      employeeDataId: employeeData?.id,
+      employeeData: employeeData 
+    });
+    
     setIsVerifying(true);
     try {
       const functionName = getFunctionName(document.documentTypeName);

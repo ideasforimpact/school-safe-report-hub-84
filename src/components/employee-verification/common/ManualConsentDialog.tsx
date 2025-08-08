@@ -49,6 +49,15 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
       setConfirmed(false);
     }
   }, [open, successState]);
+
+  useEffect(() => {
+    console.log('🔍 ManualConsentDialog state:', { 
+      open, 
+      isProcessing, 
+      successState, 
+      confirmed 
+    });
+  }, [open, isProcessing, successState, confirmed]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md mx-auto">
@@ -104,7 +113,14 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
             <Button
               variant="outline"
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
-              onClick={onReject}
+              onClick={async () => {
+                console.log('🔍 Reject button clicked');
+                try {
+                  await onReject();
+                } catch (error) {
+                  console.error('Reject error:', error);
+                }
+              }}
               disabled={isProcessing}
             >
               {isProcessing ? (
@@ -112,7 +128,18 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               ) : null}
               Reject
             </Button>
-            <Button variant="success" onClick={onApprove} disabled={!confirmed || isProcessing}>
+            <Button 
+              variant="success" 
+              onClick={async () => {
+                console.log('🔍 Approve button clicked');
+                try {
+                  await onApprove();
+                } catch (error) {
+                  console.error('Approve error:', error);
+                }
+              }} 
+              disabled={!confirmed || isProcessing}
+            >
               {isProcessing ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
