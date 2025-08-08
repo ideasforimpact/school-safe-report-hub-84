@@ -402,7 +402,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               <TableHead>Document #</TableHead>
               <TableHead>Uploaded</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">API Review</TableHead>
+              <TableHead className="text-right">Document Details</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -437,7 +437,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       documentType={docType}
                     />
                   </TableCell>
-                  {/* API Review Column */}
+                  {/* Document Details Column */}
                   <TableCell className="text-right">
                     <ApiResponseReviewIndicator 
                       document={doc} 

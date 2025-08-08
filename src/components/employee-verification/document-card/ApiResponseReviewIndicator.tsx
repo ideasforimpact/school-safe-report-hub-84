@@ -25,14 +25,14 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   // Determine badge content and variant
   const getBadgeContent = () => {
     if (!document.apiResponseData) {
-      return { text: '-', variant: undefined, clickable: false };
+      return { text: 'No details yet', variant: undefined, clickable: false };
     }
     
     if (document.verificationStatus === 'pending') {
-      return { text: 'Ready for Review', variant: 'review' as const, clickable: true };
+      return { text: 'Details available', variant: 'review' as const, clickable: true };
     }
     
-    return { text: 'Reviewed', variant: 'reviewed' as const, clickable: true };
+    return { text: 'Details reviewed', variant: 'reviewed' as const, clickable: true };
   };
 
   const openDetailDialog = () => {
