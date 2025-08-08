@@ -23,7 +23,7 @@ import { fetchEmployeeVerificationData, fetchEmployeeDocuments } from '@/service
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
-  const { fetchDocumentStatuses } = useEmployeeVerification();
+  const { fetchDocumentStatuses, fetchEmployees } = useEmployeeVerification();
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
   
@@ -162,7 +162,8 @@ const EmployeeDetailPage = () => {
         console.log('Initial data loading for employee:', employeeId);
         await Promise.all([
           loadEmployeeData(),
-          fetchDocumentStatuses()
+          fetchDocumentStatuses(),
+          fetchEmployees()
         ]);
         console.log('Initial data loading complete for employee:', employeeId);
         setInitialLoadComplete(true);
