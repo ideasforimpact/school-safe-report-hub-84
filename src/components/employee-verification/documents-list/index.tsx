@@ -8,7 +8,7 @@ import EmptyDocumentsState from './EmptyDocumentsState';
 import VerificationDialog from './VerificationDialog';
 import { supabase } from '@/integrations/supabase/client';
 import ManualConsentDialog from '../common/ManualConsentDialog';
-
+import { useAuth } from '@/contexts/auth';
 interface DocumentsListProps {
   employeeId: string;
   documents: VerificationDocument[];
@@ -26,13 +26,13 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 }) => {
   const { verifyDocument, employees } = useEmployeeVerification();
   const { toast } = useToast();
+  const { employeeData } = useAuth();
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
   const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
   const [quickStartMethod, setQuickStartMethod] = useState<'api' | 'manual' | null>(null);
   const [isManualConsentOpen, setIsManualConsentOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [consentSuccess, setConsentSuccess] = useState<null | 'verified' | 'rejected'>(null);
-
   const handleViewDocument = (documentImage: string) => {
     if (!documentImage) {
       toast({
@@ -161,7 +161,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     switch (typeName) {
       case 'bank_account':
       case 'bank_statement':
-        return 'bank-statement-verification';
+        return 'bank-statement';
       case 'pan':
         return 'pan-verification';
       case 'driving_license':
@@ -170,24 +170,40 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         return 'voter-verification';
       case 'other':
       case 'other_documents':
-        return 'custom-document-verification';
+        return 'other-document-verification';
       default:
         return 'pan-verification';
     }
   };
-
   const handleManualApprove = async (): Promise<void> => {
     if (!selectedDocumentId) return;
+    const verifierId = employeeData?.id;
+    const clientId = employeeData?.clientId || null;
+
+    if (!verifierId) {
+      toast({
+        title: 'Cannot verify',
+        description: 'Missing verifier identity. Please re-login and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const functionName = getFunctionName(selectedDocument?.documentTypeName);
+      const payload = {
+        action: 'manualVerify' as const,
+        documentId: selectedDocumentId,
+        verification_type: 'manual' as const,
+        verification_notes: 'Manually verified',
+        verified_by_employee_id: verifierId,
+        client_id: clientId,
+      };
+      console.log('▶️ Manual Approve payload:', { functionName, payload });
+
       const result = await supabase.functions.invoke(functionName, {
-        body: {
-          action: 'manualVerify',
-          documentId: selectedDocumentId,
-          verification_type: 'manual',
-          verification_notes: 'Manually verified',
-        },
+        body: payload,
       });
 
       if (result.error) throw result.error;
