@@ -34,7 +34,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     switch (typeName) {
       case 'bank_account':
       case 'bank_statement':
-        return 'bank-statement-verification';
+        return 'bank-statement';
       case 'pan':
         return 'pan-verification';
       case 'driving_license':
@@ -76,12 +76,10 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       switch (documentTypeName) {
         case 'bank_account':
         case 'bank_statement':
-          result = await supabase.functions.invoke('bank-statement-verification', {
+          result = await supabase.functions.invoke('bank-statement', {
             body: {
               action: 'apiVerify',
               documentId: document.id,
-              accountNumber: document.documentNumber || '',
-              ifscCode: document.details?.ifscCode || ''
             }
           });
           break;
@@ -171,7 +169,9 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           documentId: document.id,
           verification_type: 'manual',
           verification_notes: 'Manually verified',
-          verified_by_employee_id: verifierId
+          verified_by_employee_id: verifierId,
+          employee_id: document.employeeId,
+          client_id: employeeData?.clientId,
         },
       });
 
@@ -219,7 +219,9 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           documentId: document.id,
           verification_type: 'manual',
           verification_notes: 'Document verification rejected by staff.',
-          verified_by_employee_id: verifierId
+          verified_by_employee_id: verifierId,
+          employee_id: document.employeeId,
+          client_id: employeeData?.clientId,
         },
       });
 
