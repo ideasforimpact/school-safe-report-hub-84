@@ -50,7 +50,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onDocumentAction,
   onQuickVerify,
 }) => {
-  const { documentStatuses, deleteDocument } = useEmployeeVerification();
+  const { documentStatuses, deleteDocument, employees } = useEmployeeVerification();
   const { toast } = useToast();
   
   // State for delete confirmation dialog
@@ -340,8 +340,17 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     return Array.isArray(verificationHistory) && verificationHistory.length > 0;
   };
 
-  // Helper to get "Verified by" user name from latest verification history entry
+  // Helper to get "Verified by" employee name using verifiedByEmployeeId
   const getVerifiedByName = (doc: VerificationDocument): string | undefined => {
+    // First check if we have verifiedByEmployeeId (new system)
+    if (doc.verifiedByEmployeeId && employees.length > 0) {
+      const employee = employees.find(emp => emp.id === doc.verifiedByEmployeeId);
+      if (employee) {
+        return `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.name || employee.email;
+      }
+    }
+    
+    // Fallback to verification history (old system)
     const history = (doc.params as any)?.verification_history;
     if (!Array.isArray(history) || history.length === 0) return undefined;
     const withUser = history.filter((e: any) => e && e.verified_by);
