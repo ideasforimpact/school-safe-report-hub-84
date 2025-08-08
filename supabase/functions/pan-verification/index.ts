@@ -30,7 +30,8 @@ serve(async (req) => {
     console.log(`PAN Verification: Received ${action} request`, { 
       documentId, 
       hasDocNumber: !!documentNumber,
-      notes: verification_notes
+      notes: verification_notes,
+      verified_by_employee_id: verified_by_employee_id
     });
     
     // Initialize Supabase client
@@ -292,11 +293,22 @@ serve(async (req) => {
     // Handle manual verification
     else if (action === 'manualVerify') {
       try {
+        console.log(`Manual verification - verified_by_employee_id: ${verified_by_employee_id}`);
+        
+        if (!verified_by_employee_id) {
+          console.error("Missing verified_by_employee_id for manual verification");
+          return new Response(
+            JSON.stringify({ error: "Employee ID is required for manual verification" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
         // Create log entry for manual verification
         const logEntry = {
           timestamp: new Date().toISOString(),
           action: "verify_pan_manual",
-          notes: verification_notes || "Manually verified by staff"
+          notes: verification_notes || "Manually verified by staff",
+          verified_by: verified_by_employee_id
         };
         
         // Update document with verification status and manual status
@@ -340,11 +352,22 @@ serve(async (req) => {
     // Handle rejection
     else if (action === 'reject') {
       try {
+        console.log(`Rejection - verified_by_employee_id: ${verified_by_employee_id}`);
+        
+        if (!verified_by_employee_id) {
+          console.error("Missing verified_by_employee_id for rejection");
+          return new Response(
+            JSON.stringify({ error: "Employee ID is required for rejection" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
         // Create log entry for rejection
         const logEntry = {
           timestamp: new Date().toISOString(),
           action: "reject_pan",
-          notes: verification_notes || "Document verification rejected"
+          notes: verification_notes || "Document verification rejected",
+          verified_by: verified_by_employee_id
         };
         
         // Update document with rejected status

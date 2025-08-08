@@ -77,7 +77,17 @@ serve(async (req) => {
         throw new Error('Missing documentId for manual verification');
       }
 
-      console.log(`Custom Document Verification: Manual verification for document ${documentId}`);
+      console.log(`Custom Document Verification: Manual verification for document ${documentId}`, {
+        verified_by_employee_id: verified_by_employee_id
+      });
+      
+      if (!verified_by_employee_id) {
+        console.error("Missing verified_by_employee_id for manual verification");
+        return new Response(
+          JSON.stringify({ error: "Employee ID is required for manual verification" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
 
       const { data: updateData, error: updateError } = await supabase
         .from('employee_documents')
@@ -119,7 +129,17 @@ serve(async (req) => {
         throw new Error('Missing documentId for rejection');
       }
 
-      console.log(`Custom Document Verification: Rejecting document ${documentId}`);
+      console.log(`Custom Document Verification: Rejecting document ${documentId}`, {
+        verified_by_employee_id: verified_by_employee_id
+      });
+      
+      if (!verified_by_employee_id) {
+        console.error("Missing verified_by_employee_id for rejection");
+        return new Response(
+          JSON.stringify({ error: "Employee ID is required for rejection" }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
 
       const { data: updateData, error: updateError } = await supabase
         .from('employee_documents')

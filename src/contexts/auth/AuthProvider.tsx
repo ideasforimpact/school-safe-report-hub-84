@@ -359,6 +359,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               clientType: clientType
             };
             
+            console.log('🔍 AuthProvider - Employee data loaded:', employee);
+            
             dispatch(setEmployeeData(employee));
             saveEmployeeDataToStorage(employee);
             
