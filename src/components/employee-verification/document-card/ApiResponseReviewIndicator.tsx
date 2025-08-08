@@ -6,6 +6,7 @@ import PanDetailsDialog from './PanDetailsDialog';
 import VoterIdDetailsDialog from './VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from './DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from './BankStatementDetailsDialog';
+import { FileQuestion, FileSearch, ClipboardCheck } from 'lucide-react';
 
 interface ApiResponseReviewIndicatorProps {
   document: VerificationDocument;
@@ -25,14 +26,32 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   // Determine badge content and variant
   const getBadgeContent = () => {
     if (!document.apiResponseData) {
-      return { text: 'No details yet', variant: undefined, clickable: false };
+      return {
+        text: 'No details yet',
+        variant: 'outline' as const,
+        clickable: false,
+        icon: FileQuestion,
+        classes: 'bg-muted text-muted-foreground border-border',
+      };
     }
     
     if (document.verificationStatus === 'pending') {
-      return { text: 'Details available', variant: 'review' as const, clickable: true };
+      return {
+        text: 'Details available',
+        variant: 'outline' as const,
+        clickable: true,
+        icon: FileSearch,
+        classes: 'bg-accent/40 text-accent-foreground border-accent/50 hover:bg-accent/50',
+      };
     }
     
-    return { text: 'Details reviewed', variant: 'reviewed' as const, clickable: true };
+    return {
+      text: 'Details reviewed',
+      variant: 'outline' as const,
+      clickable: true,
+      icon: ClipboardCheck,
+      classes: 'bg-secondary/40 text-secondary-foreground border-secondary/50 hover:bg-secondary/50',
+    };
   };
 
   const openDetailDialog = () => {
@@ -107,17 +126,20 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
 
   return (
     <>
-      {badgeContent.variant ? (
-        <Badge
-          variant={badgeContent.variant}
-          className={badgeContent.clickable ? "cursor-pointer hover:opacity-80" : ""}
-          onClick={badgeContent.clickable ? openDetailDialog : undefined}
-        >
-          {badgeContent.text}
-        </Badge>
-      ) : (
-        <span className="text-muted-foreground">{badgeContent.text}</span>
-      )}
+      <Badge
+        variant={badgeContent.variant}
+        className={`${badgeContent.classes} ${badgeContent.clickable ? 'cursor-pointer' : ''}`}
+        onClick={badgeContent.clickable ? openDetailDialog : undefined}
+      >
+        {badgeContent.icon
+          ? React.createElement(badgeContent.icon, {
+              className: 'mr-1.5 h-3.5 w-3.5',
+              'aria-hidden': true,
+            })
+          : null}
+
+        {badgeContent.text}
+      </Badge>
 
       {/* Aadhar Details Dialog */}
       <AadharDetailsDialog
