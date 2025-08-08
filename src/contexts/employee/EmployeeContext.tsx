@@ -29,6 +29,7 @@ import { updateModulePermissionsInApi } from '@/services/employee/employeeModule
 // Import the supabase client
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from 'react-router-dom';
+import { loadAuthState } from '@/store/authPersistence';
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
@@ -38,7 +39,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const location = useLocation();
 
   // Check if we're on an employee management route
-  const isEmployeeManagementRoute = location.pathname.includes('/employee') || 
+  const isEmployeeManagementRoute = location.pathname.startsWith('/employees') || 
                                    location.pathname.includes('/settings');
 
   // Initialize employees from storage only on relevant routes
@@ -63,15 +64,24 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     try {
       setLoading(true);
-      // First try to get employees from the API
-      const apiEmployees = await getAllEmployeesFromApi(undefined, false).catch(() => null);
-      
-      if (apiEmployees && apiEmployees.length > 0) {
-        setEmployees(apiEmployees);
-      } else {
-        // Fallback to local storage if API fails
+      // Determine clientId from persisted auth state
+      const persisted = loadAuthState();
+      const clientId = persisted?.employeeData?.clientId || persisted?.currentUser?.clientId || null;
+
+      if (!clientId) {
+        console.warn('EmployeeContext.fetchEmployees: No clientId available, skipping API fetch');
+        // Fallback to local storage when clientId is unavailable
         const storedEmployees = getEmployeesFromStorage();
         setEmployees(storedEmployees);
+      } else {
+        // SECURITY: Always pass clientId to ensure proper filtering
+        const apiEmployees = await getAllEmployeesFromApi(clientId, false).catch(() => null);
+        if (apiEmployees && apiEmployees.length > 0) {
+          setEmployees(apiEmployees);
+        } else {
+          const storedEmployees = getEmployeesFromStorage();
+          setEmployees(storedEmployees);
+        }
       }
     } catch (error) {
       console.error("Error initializing employees:", error);
