@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -7,6 +6,8 @@ import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 import DocumentsTable from './DocumentsTable';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import VerificationDialog from './VerificationDialog';
+import { supabase } from '@/integrations/supabase/client';
+import ManualConsentDialog from '../common/ManualConsentDialog';
 
 interface DocumentsListProps {
   employeeId: string;
@@ -26,8 +27,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>('');
-const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
+  const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
   const [quickStartMethod, setQuickStartMethod] = useState<'api' | 'manual' | null>(null);
+  const [isManualConsentOpen, setIsManualConsentOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [consentSuccess, setConsentSuccess] = useState<null | 'verified' | 'rejected'>(null);
 
   const handleViewDocument = (documentImage: string) => {
     if (!documentImage) {
@@ -108,6 +112,11 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
 
   const handleQuickVerify = (documentId: string, method: 'api' | 'manual') => {
     setSelectedDocumentId(documentId);
+    if (method === 'manual') {
+      setIsManualConsentOpen(true);
+      setQuickStartMethod(null);
+      return;
+    }
     setQuickStartMethod(method);
     setIsVerificationDialogOpen(true);
   };
@@ -144,6 +153,91 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
     setIsVerificationDialogOpen(false);
     setSelectedDocumentId('');
     setQuickStartMethod(null);
+  };
+
+  // Map document type to corresponding Edge Function name
+  const getFunctionName = (documentTypeName?: string): string => {
+    const typeName = documentTypeName?.toLowerCase();
+    switch (typeName) {
+      case 'bank_account':
+      case 'bank_statement':
+        return 'bank-statement-verification';
+      case 'pan':
+        return 'pan-verification';
+      case 'driving_license':
+        return 'driving-license';
+      case 'voter_id':
+        return 'voter-verification';
+      case 'other':
+      case 'other_documents':
+        return 'custom-document-verification';
+      default:
+        return 'pan-verification';
+    }
+  };
+
+  const handleManualApprove = async (): Promise<void> => {
+    if (!selectedDocumentId) return;
+    setIsProcessing(true);
+    try {
+      const functionName = getFunctionName(selectedDocument?.documentTypeName);
+      const result = await supabase.functions.invoke(functionName, {
+        body: {
+          action: 'manualVerify',
+          documentId: selectedDocumentId,
+          verification_type: 'manual',
+          verification_notes: 'Manually verified',
+        },
+      });
+
+      if (result.error) throw result.error;
+
+      setConsentSuccess('verified');
+      toast({ title: 'Document Verified', description: 'Document has been manually verified.' });
+      onDocumentAction?.();
+
+      setTimeout(() => {
+        setIsManualConsentOpen(false);
+        setConsentSuccess(null);
+      }, 900);
+    } catch (error: any) {
+      console.error('Manual verification error:', error);
+      toast({ title: 'Verification Failed', description: error.message || 'Failed to verify document.', variant: 'destructive' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleManualReject = async (): Promise<void> => {
+    if (!selectedDocumentId) return;
+    setIsProcessing(true);
+    try {
+      const functionName = getFunctionName(selectedDocument?.documentTypeName);
+      const result = await supabase.functions.invoke(functionName, {
+        body: {
+          action: 'reject',
+          documentId: selectedDocumentId,
+          verification_type: 'manual',
+          verification_notes: 'Document verification rejected by staff.',
+        },
+      });
+
+      if (result.error) throw result.error;
+
+      setConsentSuccess('rejected');
+      toast({ title: 'Document Rejected', description: 'The document has been marked as failed.' });
+      onDocumentAction?.();
+
+      setTimeout(() => {
+        setIsManualConsentOpen(false);
+        setConsentSuccess(null);
+      }, 900);
+    } catch (error: any) {
+      console.error('Rejection error:', error);
+      toast({ title: 'Rejection Failed', description: error.message || 'Failed to reject document.', variant: 'destructive' });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (!initialLoadComplete) {
@@ -185,6 +279,20 @@ const [isVerificationDialogOpen, setIsVerificationDialogOpen] = useState(false);
         documentId={selectedDocumentId}
         documentNumber={selectedDocument?.documentNumber}
         quickStartMethod={quickStartMethod}
+      />
+
+      <ManualConsentDialog
+        open={isManualConsentOpen}
+        onOpenChange={(open) => {
+          setIsManualConsentOpen(open);
+          if (!open) setConsentSuccess(null);
+        }}
+        documentTypeName={selectedDocument?.documentTypeName}
+        employeeName={undefined}
+        onApprove={handleManualApprove}
+        onReject={handleManualReject}
+        isProcessing={isProcessing}
+        successState={consentSuccess}
       />
     </>
   );
