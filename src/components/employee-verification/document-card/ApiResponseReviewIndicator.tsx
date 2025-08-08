@@ -37,7 +37,7 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
     if (document.verificationStatus === 'pending') {
       return {
         text: 'Details available',
-        variant: 'softInfo' as const,
+        variant: 'softAmber' as const,
         clickable: true,
         icon: FileSearch,
       };
@@ -45,7 +45,7 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
     
     return {
       text: 'Details reviewed',
-      variant: 'softSuccess' as const,
+      variant: 'softAmber' as const,
       clickable: true,
       icon: ClipboardCheck,
     };
@@ -125,7 +125,7 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
     <>
       <Badge
         variant={badgeContent.variant}
-        className={badgeContent.clickable ? 'cursor-pointer' : ''}
+        className={badgeContent.clickable ? 'cursor-pointer pl-3 border-l-4 border-amber-400' : ''}
         onClick={badgeContent.clickable ? openDetailDialog : undefined}
       >
         {badgeContent.icon
