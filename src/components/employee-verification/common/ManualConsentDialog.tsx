@@ -77,7 +77,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
           <div className="flex flex-col gap-4 py-4">
             <div className="flex items-start">
               <span className="text-sm text-muted-foreground">
-                Document Type: Identity Document ({documentTypeName || 'Document'})
+                Document Type: {documentTypeName || 'Document'}
               </span>
             </div>
             <div className="rounded-md border p-3 flex items-start gap-3">
