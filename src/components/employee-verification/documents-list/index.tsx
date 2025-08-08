@@ -122,16 +122,28 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleVerificationSubmit = async (method: 'api' | 'manual') => {
-    if (selectedDocumentId) {
-      await verifyDocument(selectedDocumentId, 'verified', method);
+    if (!selectedDocumentId) return;
+
+    const doc = documents.find(d => d.id === selectedDocumentId);
+    const docType = doc?.documentTypeName?.toLowerCase();
+
+    try {
+      if (method === 'api' && (docType === 'bank_account' || docType === 'bank_statement')) {
+        const functionName = getFunctionName(docType);
+        await supabase.functions.invoke(functionName, {
+          body: { action: 'apiVerify', documentId: selectedDocumentId },
+        });
+      } else {
+        await verifyDocument(selectedDocumentId, 'verified', method);
+      }
+
       setIsVerificationDialogOpen(false);
       setSelectedDocumentId('');
       setQuickStartMethod(null);
-      
-      // Trigger document refetch after verification
-      if (onDocumentAction) {
-        onDocumentAction();
-      }
+      onDocumentAction?.();
+    } catch (error) {
+      console.error('Verification submit error:', error);
+      toast({ title: 'Verification Failed', description: 'Unable to complete verification.', variant: 'destructive' });
     }
   };
 
@@ -170,7 +182,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         return 'voter-verification';
       case 'other':
       case 'other_documents':
-        return 'other-document-verification';
+        return 'custom-document-verification';
       default:
         return 'pan-verification';
     }
@@ -199,6 +211,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         verification_notes: 'Manually verified',
         verified_by_employee_id: verifierId,
         client_id: clientId,
+        employee_id: (documents.find(d => d.id === selectedDocumentId)?.employeeId) || employeeId,
       };
       console.log('▶️ Manual Approve payload:', { functionName, payload });
 
@@ -248,6 +261,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         verification_notes: 'Document verification rejected by staff.',
         verified_by_employee_id: verifierId,
         client_id: clientId,
+        employee_id: (documents.find(d => d.id === selectedDocumentId)?.employeeId) || employeeId,
       };
       console.log('▶️ Manual Reject payload:', { functionName, payload });
 

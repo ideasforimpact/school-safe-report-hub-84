@@ -27,7 +27,7 @@ serve(async (req) => {
   
   try {
     const requestBody = await req.json();
-    const { action, documentId, verification_notes } = requestBody;
+    const { action, documentId, verification_notes, verified_by_employee_id } = requestBody;
     
     console.log(`Bank Statement Verification: Received ${action} request for document ID: ${documentId}`);
     
@@ -262,6 +262,7 @@ serve(async (req) => {
           .update({
             verification_status: 'verified',
             document_status_id: statusMap[DOC_STATUS.MANUAL],
+            verified_by: verified_by_employee_id || null,
             employee_docs_log: [...existingLogs, logEntry],
             updated_at: new Date().toISOString()
           })
@@ -323,6 +324,7 @@ serve(async (req) => {
           .update({
             verification_status: 'failed',
             document_status_id: statusMap[DOC_STATUS.REJECTED],
+            verified_by: verified_by_employee_id || null,
             employee_docs_log: [...existingLogs, logEntry],
             updated_at: new Date().toISOString()
           })
