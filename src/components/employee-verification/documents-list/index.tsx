@@ -226,16 +226,33 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
   const handleManualReject = async (): Promise<void> => {
     if (!selectedDocumentId) return;
+    const verifierId = employeeData?.id;
+    const clientId = employeeData?.clientId || null;
+
+    if (!verifierId) {
+      toast({
+        title: 'Cannot reject',
+        description: 'Missing verifier identity. Please re-login and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const functionName = getFunctionName(selectedDocument?.documentTypeName);
+      const payload = {
+        action: 'reject' as const,
+        documentId: selectedDocumentId,
+        verification_type: 'manual' as const,
+        verification_notes: 'Document verification rejected by staff.',
+        verified_by_employee_id: verifierId,
+        client_id: clientId,
+      };
+      console.log('▶️ Manual Reject payload:', { functionName, payload });
+
       const result = await supabase.functions.invoke(functionName, {
-        body: {
-          action: 'reject',
-          documentId: selectedDocumentId,
-          verification_type: 'manual',
-          verification_notes: 'Document verification rejected by staff.',
-        },
+        body: payload,
       });
 
       if (result.error) throw result.error;
