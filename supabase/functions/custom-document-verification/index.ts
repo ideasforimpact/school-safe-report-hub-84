@@ -9,18 +9,24 @@ const corsHeaders = {
 
 interface CustomDocumentRequest {
   action: 'uploadCustomDocument' | 'manualVerify' | 'reject';
+  // camelCase fields (existing)
   employeeId?: string;
   clientId?: string;
   documentTypeId?: string;
   documentName?: string;
   documentId?: string;
   verification_notes?: string;
+  verification_type?: 'manual' | 'api';
   documentFiles?: Array<{
     name: string;
     base64: string;
     type: string;
     size: number;
   }>;
+  // snake_case fields (accepted for compatibility)
+  employee_id?: string;
+  client_id?: string;
+  verified_by_employee_id?: string;
 }
 
 // Filename sanitization function
@@ -62,14 +68,20 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const requestBody: CustomDocumentRequest = await req.json();
-    console.log('Custom Document Verification: Request body:', JSON.stringify(requestBody, null, 2));
+const requestBody: CustomDocumentRequest = await req.json();
+console.log('Custom Document Verification: Request body:', JSON.stringify(requestBody, null, 2));
 
-    const { action, employeeId, clientId, documentTypeId, documentName, documentFiles, documentId, verification_notes, verified_by_employee_id } = requestBody;
+const { action, employeeId, clientId, documentTypeId, documentName, documentFiles, documentId, verification_notes, verified_by_employee_id } = requestBody;
 
-    if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
-      throw new Error('Invalid action specified');
-    }
+// Support both camelCase and snake_case from callers
+const employeeIdFinal = employeeId || (requestBody as any).employee_id;
+const clientIdFinal = clientId || (requestBody as any).client_id;
+
+console.log('Custom Document Verification: Resolved identifiers', { employeeId: employeeIdFinal, clientId: clientIdFinal, verified_by_employee_id });
+
+if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
+  throw new Error('Invalid action specified');
+}
 
     // Handle manual verification
     if (action === 'manualVerify') {
@@ -78,9 +90,10 @@ serve(async (req) => {
       }
 
       console.log(`Custom Document Verification: Manual verification for document ${documentId}`, {
-        verified_by_employee_id: verified_by_employee_id
+        verified_by_employee_id,
+        employee_id: employeeIdFinal,
+        client_id: clientIdFinal
       });
-      
       if (!verified_by_employee_id) {
         console.error("Missing verified_by_employee_id for manual verification");
         return new Response(
@@ -130,9 +143,10 @@ serve(async (req) => {
       }
 
       console.log(`Custom Document Verification: Rejecting document ${documentId}`, {
-        verified_by_employee_id: verified_by_employee_id
+        verified_by_employee_id,
+        employee_id: employeeIdFinal,
+        client_id: clientIdFinal
       });
-      
       if (!verified_by_employee_id) {
         console.error("Missing verified_by_employee_id for rejection");
         return new Response(
@@ -175,8 +189,8 @@ serve(async (req) => {
       });
     }
 
-    if (!employeeId || !clientId || !documentTypeId || !documentName || !documentFiles?.length) {
-      throw new Error('Missing required fields: employeeId, clientId, documentTypeId, documentName, or documentFiles');
+    if (!employeeIdFinal || !clientIdFinal || !documentTypeId || !documentName || !documentFiles?.length) {
+      throw new Error('Missing required fields: employeeId/employee_id, clientId/client_id, documentTypeId, documentName, or documentFiles');
     }
 
     // Validate total file size (30MB limit)
@@ -187,7 +201,7 @@ serve(async (req) => {
       throw new Error('Total file size exceeds 30MB limit');
     }
 
-    console.log(`Custom Document Verification: Processing ${documentFiles.length} files for employee ${employeeId}`);
+    console.log(`Custom Document Verification: Processing ${documentFiles.length} files for employee ${employeeIdFinal}`);
 
     // Upload files to storage
     const uploadedFiles: string[] = [];
@@ -201,7 +215,7 @@ serve(async (req) => {
         // Generate unique file path with sanitized filename
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const sanitizedFileName = sanitizeFilename(file.name);
-        const fileName = `${employeeId}/${documentTypeId}/${timestamp}_${sanitizedFileName}`;
+        const fileName = `${employeeIdFinal}/${documentTypeId}/${timestamp}_${sanitizedFileName}`;
         
         console.log(`Custom Document Verification: Uploading file: ${fileName}`);
         
@@ -229,7 +243,7 @@ serve(async (req) => {
 
     // Create document record in database
     const documentData = {
-      employee_id: employeeId,
+      employee_id: employeeIdFinal,
       document_type_id: documentTypeId,
       document_url: uploadedFiles[0], // Primary file
       verification_status: 'pending',
@@ -264,7 +278,7 @@ serve(async (req) => {
       message: `Custom document "${documentName}" uploaded successfully with ${uploadedFiles.length} files`,
       data: {
         documentId: documentRecord.id,
-        employeeId,
+        employeeId: employeeIdFinal,
         documentName,
         filesUploaded: uploadedFiles.length,
         totalSize,
