@@ -479,7 +479,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 {!(doc.verificationStatus === 'verified' || doc.verificationStatus === 'failed') && (
   <>
     {/* Quick-start API verification (hidden for Other types) */}
-    {onQuickVerify && docType !== 'other' && docType !== 'other_documents' && (
+    {onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual' && (
       <Button
         variant="verifyApi"
         size="sm"
@@ -492,7 +492,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     )}
 
     {/* Quick-start Manual verification */}
-    {onQuickVerify && (
+    {onQuickVerify && docType !== 'manual' && (
       <Button
         variant="verifyManual"
         size="sm"
