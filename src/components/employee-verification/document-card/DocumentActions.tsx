@@ -36,9 +36,9 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       case 'pan':
         return 'pan-verification';
       case 'driving_license':
-        return 'driving-license-verification';
+        return 'driving-license';
       case 'voter_id':
-        return 'voter-id-verification';
+        return 'voter-verification';
       case 'other':
       case 'other_documents':
         return 'custom-document-verification';
@@ -88,7 +88,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           break;
 
         case 'driving_license':
-          result = await supabase.functions.invoke('driving-license-verification', {
+          result = await supabase.functions.invoke('driving-license', {
             body: {
               action: 'apiVerify',
               documentId: document.id,
@@ -99,7 +99,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           break;
 
         case 'voter_id':
-          result = await supabase.functions.invoke('voter-id-verification', {
+          result = await supabase.functions.invoke('voter-verification', {
             body: {
               action: 'apiVerify',
               documentId: document.id,
@@ -213,14 +213,15 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           />
         </div>
         
-        <OtherDocumentVerificationDialog
-          open={otherDocDialogOpen}
-          onOpenChange={setOtherDocDialogOpen}
-          onVerify={() => handleVerify('manual')}
-          onReject={() => {}} // Empty function since reject is removed
-          isVerifying={isVerifying}
-          documentId={document.id}
-          documentType={document.documentTypeName}
+        <ManualConsentDialog
+          open={manualConsentOpen}
+          onOpenChange={setManualConsentOpen}
+          documentTypeName={document.documentTypeName}
+          employeeName={employeeName}
+          onApprove={handleManualApprove}
+          onReject={handleManualReject}
+          isProcessing={isVerifying}
+          successState={consentSuccess}
         />
       </>
     );
@@ -235,15 +236,15 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         isDisabled={isVerifying}
       />
       
-      <VerificationDialog
-        open={verificationDialogOpen}
-        onOpenChange={setVerificationDialogOpen}
-        onVerify={handleVerify}
-        onReject={() => {}} // Empty function since reject is removed
-        isVerifying={isVerifying}
-        documentType={document.documentTypeName}
-        documentId={document.id}
-        documentNumber={document.documentNumber}
+      <ManualConsentDialog
+        open={manualConsentOpen}
+        onOpenChange={setManualConsentOpen}
+        documentTypeName={document.documentTypeName}
+        employeeName={employeeName}
+        onApprove={handleManualApprove}
+        onReject={handleManualReject}
+        isProcessing={isVerifying}
+        successState={consentSuccess}
       />
 
       {/* Bank statement details dialog for bank account verification */}
