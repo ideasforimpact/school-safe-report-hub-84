@@ -958,9 +958,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg mx-auto">
         <DialogHeader className="text-center">
-          <DialogTitle className="text-xl">Verify Document</DialogTitle>
+          <DialogTitle className="text-xl">Process Document</DialogTitle>
           <DialogDescription className="text-center text-sm">
-            Choose a verification method for this {documentType || 'document'}.
+            Choose a processing method for this {documentType || 'document'}.
           </DialogDescription>
         </DialogHeader>
         {!showOtpInput ? (
@@ -990,25 +990,25 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                     ? `Retry in ${formatTime(cooldownSeconds)}` 
                     : isRequestingOtp 
                       ? 'Requesting OTP...' 
-                      : 'Verify via Aadhar API (Requires OTP)' 
+                      : 'Process Aadhar API (Requires OTP)' 
                   : isPan
-                    ? isPanVerifying ? 'Verifying PAN...' : 'Verify via PAN API'
+                    ? isPanVerifying ? 'Processing PAN...' : 'Process PAN API'
                     : isVoterId
-                      ? isVoterIdVerifying ? 'Verifying Voter ID...' : 'Verify via Voter ID API'
+                      ? isVoterIdVerifying ? 'Processing Voter ID...' : 'Process Voter ID API'
                       : isDrivingLicense
-                        ? isDrivingLicenseVerifying ? 'Verifying Driving License...' : 'Verify via Driving License API'
+                        ? isDrivingLicenseVerifying ? 'Processing Driving License...' : 'Process Driving License API'
                         : isBankAccount
-                          ? isBankAccountVerifying ? 'Verifying Bank Statement...' : 'Verify Bank Statement'
-                          : 'Verify via API'
+                          ? isBankAccountVerifying ? 'Processing Bank Statement...' : 'Process Bank Statement'
+                          : 'Process via API'
                 }
                 {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && 
                  !isDrivingLicenseVerifying && !isBankAccountVerifying && (
                   <span className="ml-auto text-xs text-blue-500 font-normal">
-                    {isAadhar ? 'OTP verification' : 
-                     isPan ? 'Surepass verification' : 
-                     isVoterId ? 'Voter ID verification' : 
-                     isDrivingLicense ? 'Driving License verification' :
-                     isBankAccount ? 'Bank Statement verification' :
+                    {isAadhar ? 'OTP required' : 
+                     isPan ? 'Process PAN API' : 
+                     isVoterId ? 'Process Voter ID API' : 
+                     isDrivingLicense ? 'Process Driving License API' :
+                     isBankAccount ? 'Process Bank Statement' :
                      'Automated check'}
                   </span>
                 )}
@@ -1033,7 +1033,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {isAadharManualVerifying || isOtherVerifying
-                ? 'Processing...' : 'Verify Manually'}
+                ? 'Processing...' : 'Process Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
@@ -1081,10 +1081,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 {isVerifyingOtp ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Verifying...
+                    Processing...
                   </>
                 ) : (
-                  'Verify'
+                  'Process'
                 )}
               </Button>
             </>

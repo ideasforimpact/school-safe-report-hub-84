@@ -143,9 +143,9 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md mx-auto">
         <DialogHeader className="text-center">
-          <DialogTitle className="text-xl">Verify Document</DialogTitle>
+          <DialogTitle className="text-xl">Process Document</DialogTitle>
           <DialogDescription className="text-center text-sm">
-            Choose a verification method for this document.
+            Choose a processing method for this document.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
@@ -162,7 +162,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             )}
-            {isManualVerifying ? 'Processing...' : 'Verify Manually'}
+            {isManualVerifying ? 'Processing...' : 'Process Manually'}
             <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
           </Button>
           

@@ -158,7 +158,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
 
   // REMOVED: handleReject function - reject button is hidden per new requirements
 
-  if (!showVerifyButton) {
+  if (!showVerifyButton || document.verificationStatus === 'verified' || document.verificationStatus === 'failed') {
     return null;
   }
 

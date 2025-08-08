@@ -449,16 +449,18 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell className="text-right">
                     <div className="flex items-center space-x-2 justify-end">
                       {/* Process Document Button - moved from Process column */}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onVerifyDocument(doc.id)}
-                        title="Process document"
-                        className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300 border-2"
-                      >
-                        <Cog className="h-4 w-4" />
-                        <span className="sr-only">Process Document</span>
-                      </Button>
+{!(doc.verificationStatus === 'verified' || doc.verificationStatus === 'failed') && (
+  <Button 
+    variant="outline" 
+    size="sm" 
+    onClick={() => onVerifyDocument(doc.id)}
+    title="Process document"
+    className="bg-green-50 hover:bg-green-100 text-green-700 border-green-300 border-2"
+  >
+    <Cog className="h-4 w-4" />
+    <span className="sr-only">Process Document</span>
+  </Button>
+)}
                        {showCommentsIcon && (
                          <Button 
                            variant="outline" 
