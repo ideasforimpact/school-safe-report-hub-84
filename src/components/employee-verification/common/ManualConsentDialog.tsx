@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, XCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -37,8 +35,8 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
 }) => {
   const title = 'Document Verification Required';
   const description = employeeName
-    ? `Please review ${employeeName}'s document and confirm their consent for manual verification.`
-    : 'Please review the document and confirm user consent for manual verification.';
+    ? `Please review ${employeeName}'s document and confirm their consent for Manual Verification.`
+    : 'Please review the document and confirm user consent for Manual Verification.';
 
   const displayDocType = documentTypeName ? formatDocumentTypeName(documentTypeName) : 'Document';
 
@@ -69,7 +67,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               <FileText className="h-6 w-6" />
             </div>
           </div>
-          <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold text-center">{title}</DialogTitle>
           <DialogDescription className="text-center text-sm text-muted-foreground">{description}</DialogDescription>
         </DialogHeader>
 
@@ -91,21 +89,20 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
           <div className="flex flex-col gap-4 py-4">
             <div className="flex items-start">
               <span className="text-sm text-muted-foreground">
-                Document Type: {displayDocType}
+                Document Type: <span className="font-semibold">{displayDocType}</span>
               </span>
             </div>
-            <div className="rounded-md border p-3 flex items-start gap-3">
-              <Checkbox
+                                                                                                                                                                                                                                                                                                                                                                                                <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
                 id="consent-confirm"
                 checked={confirmed}
-                onCheckedChange={(val) => setConfirmed(Boolean(val))}
-                className="mt-0.5 !rounded-[4px] !border-2"
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="mt-1 h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
               />
-              <div className="space-y-1">
-                <Label htmlFor="consent-confirm" className="text-sm font-medium">
-                  I confirm that I have reviewed the submitted document and verify that it meets all compliance requirements and authenticity standards according to company policy.
-                </Label>
-              </div>
+              <label htmlFor="consent-confirm" className="text-sm text-muted-foreground cursor-pointer">
+                I confirm that I have reviewed the submitted document and verify that it meets all compliance requirements and authenticity standards according to company policy.
+              </label>
             </div>
           </div>
         )}

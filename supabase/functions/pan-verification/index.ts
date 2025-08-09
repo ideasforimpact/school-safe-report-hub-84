@@ -190,7 +190,8 @@ serve(async (req) => {
             JSON.stringify({ 
               success: true, 
               message: "PAN API verification completed. Please review the response.",
-              requiresReview: true
+              requiresReview: true,
+              ...data // Include the complete API response data
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

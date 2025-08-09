@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2 } from 'lucide-react';
+import { Eye, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     goToPreviousPage
   } = usePagination(employees, 10);
 
-  // Render documents information for each employee
+  // Render documents information for each employee using priority-based status
   const renderDocumentsInfo = (employee: Employee) => {
     const documents = employee.documents || [];
     
@@ -76,26 +76,47 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
       return <span className="text-gray-500 text-sm">-</span>;
     }
 
+    // Priority-based status logic (same as VerificationStatusSummary)
+    // Priority: Failed > Pending > Verified
+    // If ANY document failed → Show "Failed"
+    // If no failures but ANY pending → Show "Pending"  
+    // If ALL documents verified → Show "Verified"
+    const getOverallStatus = () => {
+      if (failed.length > 0) {
+        return {
+          status: 'Failed',
+          icon: XCircle,
+          iconColor: 'text-red-600',
+          badgeClass: 'bg-red-100 text-red-800 border-red-200'
+        };
+      } else if (pending.length > 0) {
+        return {
+          status: 'Pending',
+          icon: Clock,
+          iconColor: 'text-amber-600',
+          badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
+      } else {
+        return {
+          status: 'Verified',
+          icon: CheckCircle,
+          iconColor: 'text-emerald-600',
+          badgeClass: 'bg-green-100 text-green-800 border-green-200'
+        };
+      }
+    };
+
+    const { status, icon: StatusIcon, iconColor, badgeClass } = getOverallStatus();
+
+    // Debug log to check what's being rendered in list
+    console.log('EmployeesList - Rendering status:', status, 'with icon:', StatusIcon.name);
+
     return (
-      <div className="flex flex-wrap gap-2">
-        {verified.length > 0 && (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            Verified ({verified.length})
-          </Badge>
-        )}
-        
-        {failed.length > 0 && (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            Failed ({failed.length})
-          </Badge>
-        )}
-
-        {pending.length > 0 && (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            Pending ({pending.length})
-          </Badge>
-        )}
-
+      <div className="flex items-center">
+        <Badge className={`gap-1 px-2 py-1 font-medium text-xs ${badgeClass}`}>
+          <StatusIcon className="h-3.5 w-3.5" />
+          {status}
+        </Badge>
       </div>
     );
   };

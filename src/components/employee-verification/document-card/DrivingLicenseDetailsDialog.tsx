@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X, CheckCircle } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,7 +24,8 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   documentId,
   onVerificationUpdate
 }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   // Extract relevant information from the driving license response
@@ -55,22 +56,22 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
     if (!documentId) return;
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'verified', 'Verified after Driving License API check');
+      setIsApproving(true);
+      await verifyDocument(documentId, 'verified', 'manual', 'Verified after Driving License API check');
       toast({
-        title: "Document Verified",
-        description: "Driving License document has been successfully verified.",
+        title: "Document Approved",
+        description: "Driving License document has been successfully approved.",
       });
       onOpenChange(false);
       onVerificationUpdate?.();
     } catch (error) {
       toast({
-        title: "Verification Failed",
-        description: "Failed to verify document. Please try again.",
+        title: "Approval Failed",
+        description: "Failed to approve document. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsApproving(false);
     }
   };
 
@@ -78,8 +79,8 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
     if (!documentId) return;
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'failed', 'Rejected after Driving License API check');
+      setIsRejecting(true);
+      await verifyDocument(documentId, 'failed', 'manual', 'Rejected after Driving License API check');
       toast({
         title: "Document Rejected",
         description: "Driving License document has been rejected.",
@@ -93,7 +94,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsRejecting(false);
     }
   };
   
@@ -150,40 +151,28 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
         <DialogFooter className="flex gap-3 pt-4 border-t">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isProcessing}
-            className="flex-1"
-          >
-            Close
-          </Button>
-          <Button
-            variant="outline"
             onClick={handleReject}
-            disabled={isProcessing}
-            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+            disabled={isRejecting || isApproving}
+            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isRejecting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Reject Document"
+              <X className="h-4 w-4 mr-2" />
             )}
+            Reject
           </Button>
           <Button
             onClick={handleVerify}
-            disabled={isProcessing}
-            className="flex-1"
+            disabled={isApproving || isRejecting}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isApproving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Verify Document"
+              <CheckCircle className="h-4 w-4 mr-2" />
             )}
+            Approve
           </Button>
         </DialogFooter>
       </DialogContent>

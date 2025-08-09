@@ -11,18 +11,24 @@ import ManualConsentDialog from '../common/ManualConsentDialog';
 import { useAuth } from '@/contexts/auth';
 interface DocumentsListProps {
   employeeId: string;
+  employeeName?: string;
   documents: VerificationDocument[];
   onAddDocument: () => void;
   initialLoadComplete: boolean;
   onDocumentAction?: () => void;
+  isVerificationLoading?: boolean;
+  setIsVerificationLoading?: (loading: boolean) => void;
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({
   employeeId,
+  employeeName,
   documents,
   onAddDocument,
   initialLoadComplete,
-  onDocumentAction
+  onDocumentAction,
+  isVerificationLoading = false,
+  setIsVerificationLoading
 }) => {
   const { verifyDocument, employees } = useEmployeeVerification();
   const { toast } = useToast();
@@ -111,7 +117,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleQuickVerify = (documentId: string, method: 'api' | 'manual') => {
+    // console.log('DocumentsList - handleQuickVerify called with:', { documentId, method });
     setSelectedDocumentId(documentId);
+    // console.log('DocumentsList - selectedDocumentId set to:', documentId);
     if (method === 'manual') {
       setIsManualConsentOpen(true);
       setQuickStartMethod(null);
@@ -307,14 +315,25 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
   return (
     <>
-      <DocumentsTable
-        documents={documents}
-        onViewDocument={handleViewDocument}
-        onDownloadDocument={handleDownloadDocument}
-        onVerifyDocument={handleVerifyDocument}
-        onDocumentAction={onDocumentAction}
-        onQuickVerify={handleQuickVerify}
-      />
+      <div className="relative">
+        {isVerificationLoading && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-gray-600 font-medium">Processing verification...</p>
+            </div>
+          </div>
+        )}
+        
+        <DocumentsTable
+          documents={documents}
+          onViewDocument={handleViewDocument}
+          onDownloadDocument={handleDownloadDocument}
+          onVerifyDocument={handleVerifyDocument}
+          onDocumentAction={onDocumentAction}
+          onQuickVerify={handleQuickVerify}
+        />
+      </div>
       
       <VerificationDialog
         open={isVerificationDialogOpen}
@@ -326,6 +345,10 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         documentId={selectedDocumentId}
         documentNumber={selectedDocument?.documentNumber}
         quickStartMethod={quickStartMethod}
+        documents={documents}
+        onDocumentAction={onDocumentAction}
+        setIsVerificationLoading={setIsVerificationLoading}
+        employeeName={employeeName}
       />
 
       <ManualConsentDialog
