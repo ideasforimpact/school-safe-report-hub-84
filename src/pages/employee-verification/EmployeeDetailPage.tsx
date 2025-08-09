@@ -33,6 +33,7 @@ const EmployeeDetailPage = () => {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeframeFilter, setTimeframeFilter] = useState<string | undefined>(undefined);
+  const [isVerificationLoading, setIsVerificationLoading] = useState(false);
   const [isDocumentRefreshing, setIsDocumentRefreshing] = useState(false);
   
   // Get client_id from either employeeData or user context
@@ -273,10 +274,13 @@ const EmployeeDetailPage = () => {
             
             <DocumentsList 
               employeeId={employee.id}
+              employeeName={employee.name}
               documents={documents}
               onAddDocument={handleAddDocument}
               initialLoadComplete={initialLoadComplete}
               onDocumentAction={refetchDocuments}
+              isVerificationLoading={isVerificationLoading}
+              setIsVerificationLoading={setIsVerificationLoading}
             />
           </div>
         </div>

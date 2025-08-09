@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Building, Banknote, CreditCard, Loader2 } from 'lucide-react';
+import { AlertTriangle, Building, Banknote, CreditCard, Loader2, X, FileText, User, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +25,8 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   documentId,
   onVerificationUpdate
 }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   // Extract relevant information from the bank statement response
@@ -103,33 +104,38 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
     return ifscDetails;
   };
 
-  // Skip the first 5 fields and get the rest of the data
+  // Skip displayed fields and get the rest of the data
   const getRemainingFields = () => {
     const entries = Object.entries(data);
-    // Skip the first 5 fields
-    return entries.slice(5);
+    const excludedFields = [
+      'ifsc_details', 'account_number', 'account_holder_name', 'bank_name',
+      'centre', 'address', 'Center', 'Address' // Exclude address fields
+    ];
+    
+    // Filter out the fields that are already displayed in cards
+    return entries.filter(([key]) => !excludedFields.includes(key));
   };
 
   const handleVerify = async () => {
     if (!documentId) return;
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'verified', 'Verified after Bank Statement API check');
+      setIsApproving(true);
+      await verifyDocument(documentId, 'verified', 'manual', 'Verified after Bank Statement API check');
       toast({
-        title: "Document Verified",
-        description: "Bank Statement document has been successfully verified.",
+        title: "Document Approved",
+        description: "Bank Statement document has been successfully approved.",
       });
       onOpenChange(false);
       onVerificationUpdate?.();
     } catch (error) {
       toast({
-        title: "Verification Failed",
-        description: "Failed to verify document. Please try again.",
+        title: "Approval Failed",
+        description: "Failed to approve document. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsApproving(false);
     }
   };
 
@@ -137,8 +143,8 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
     if (!documentId) return;
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'failed', 'Rejected after Bank Statement API check');
+      setIsRejecting(true);
+      await verifyDocument(documentId, 'failed', 'manual', 'Rejected after Bank Statement API check');
       toast({
         title: "Document Rejected",
         description: "Bank Statement document has been rejected.",
@@ -152,7 +158,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsRejecting(false);
     }
   };
   
@@ -235,6 +241,34 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
                 </Card>
               )}
 
+              {/* Address Details Card */}
+              {(data.centre || data.address || data.Center || data.Address) && (
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardHeader className="bg-gray-50 pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                      Address Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 gap-4 pt-4">
+                    {(data.centre || data.Center) && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-500">Centre</div>
+                        <div className="font-medium">{data.centre || data.Center}</div>
+                      </div>
+                    )}
+                    {(data.address || data.Address) && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-500">Address</div>
+                        <div className="font-medium p-3 bg-gray-50 rounded-lg border">
+                          {data.address || data.Address}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Remaining Fields Table */}
               <div className="mt-6">
                 <h3 className="text-base font-semibold mb-3">Additional Details</h3>
@@ -284,40 +318,28 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
         <DialogFooter className="flex gap-3 pt-4 border-t">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isProcessing}
-            className="flex-1"
-          >
-            Close
-          </Button>
-          <Button
-            variant="outline"
             onClick={handleReject}
-            disabled={isProcessing}
-            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+            disabled={isRejecting || isApproving}
+            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isRejecting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Reject Document"
+              <X className="h-4 w-4 mr-2" />
             )}
+            Reject
           </Button>
           <Button
             onClick={handleVerify}
-            disabled={isProcessing}
-            className="flex-1"
+            disabled={isApproving || isRejecting}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isApproving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Verify Document"
+              <CheckCircle className="h-4 w-4 mr-2" />
             )}
+            Approve
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -24,39 +24,47 @@ const VerificationStatusSummary = ({ summary, className = '' }: VerificationStat
     );
   }
 
-  return (
-    <div className={`flex items-center gap-1 flex-wrap ${className}`}>
-      {verified > 0 && (
-        <div className="flex items-center gap-1">
-          <CheckCircle className="h-3 w-3 text-emerald-600" />
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs px-2 py-0.5">
-            {verified} Verified
-          </Badge>
-        </div>
-      )}
-      
-      {pending > 0 && (
-        <div className="flex items-center gap-1">
-          <Clock className="h-3 w-3 text-amber-600" />
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs px-2 py-0.5">
-            {pending} Pending
-          </Badge>
-        </div>
-      )}
-      
-      {failed > 0 && (
-        <div className="flex items-center gap-1">
-          <XCircle className="h-3 w-3 text-red-600" />
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs px-2 py-0.5">
-            {failed} Failed
-          </Badge>
-        </div>
-      )}
+  // Priority-based status logic
+  // Priority: Failed > Pending > Verified
+  // If ANY document failed → Show "Failed"
+  // If no failures but ANY pending → Show "Pending"  
+  // If ALL documents verified → Show "Verified"
+  const getOverallStatus = () => {
+    if (failed > 0) {
+      return {
+        status: 'Failed',
+        icon: XCircle,
+        iconColor: 'text-red-600',
+        badgeClass: 'bg-red-100 text-red-800 border-red-200'
+      };
+    } else if (pending > 0) {
+      return {
+        status: 'Pending',
+        icon: Clock,
+        iconColor: 'text-amber-600',
+        badgeClass: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      };
+    } else {
+      return {
+        status: 'Verified',
+        icon: CheckCircle,
+        iconColor: 'text-emerald-600',
+        badgeClass: 'bg-green-100 text-green-800 border-green-200'
+      };
+    }
+  };
 
-      {/* Show status separators only when there are multiple statuses */}
-      {[verified > 0, pending > 0, failed > 0].filter(Boolean).length > 1 && (
-        <span className="text-muted-foreground text-xs">|</span>
-      )}
+  const { status, icon: StatusIcon, iconColor, badgeClass } = getOverallStatus();
+
+  // Debug log to check what's being rendered
+  console.log('VerificationStatusSummary - Rendering status:', status, 'with icon:', StatusIcon.name);
+
+  return (
+    <div className={`flex items-center ${className}`}>
+      <Badge className={`gap-1 px-2 py-1 font-medium text-xs ${badgeClass}`}>
+        <StatusIcon className="h-3.5 w-3.5" />
+        {status}
+      </Badge>
     </div>
   );
 };

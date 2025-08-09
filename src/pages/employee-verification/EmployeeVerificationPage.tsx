@@ -16,6 +16,28 @@ const EmployeeVerificationPage = () => {
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
 
   // Filter employees based on all criteria
+  // Helper function to get overall status based on priority logic
+  const getOverallStatus = (employee) => {
+    const documents = employee.documents || [];
+    if (documents.length === 0) return 'no-documents';
+    
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    
+    // Priority-based status logic: Failed > Pending > Verified
+    // If ANY document failed → Overall status is "Failed"
+    // If no failures but ANY pending → Overall status is "Pending"  
+    // If ALL documents verified → Overall status is "Verified"
+    if (failed.length > 0) {
+      return 'failed';
+    } else if (pending.length > 0) {
+      return 'pending';
+    } else {
+      return 'verified';
+    }
+  };
+
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
       // Search filter
@@ -30,24 +52,13 @@ const EmployeeVerificationPage = () => {
         if (!matchesSearch) return false;
       }
 
-      // Document status filter
+      // Document status filter based on overall status
       if (documentStatusFilter !== 'all') {
-        const documents = employee.documents || [];
+        const overallStatus = getOverallStatus(employee);
         
-        if (documentStatusFilter === 'no-documents') {
-          if (documents.length > 0) return false;
-        } else if (documentStatusFilter === 'verified') {
-          if (documents.length === 0) return false;
-          const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
-          if (verified.length === 0) return false;
-        } else if (documentStatusFilter === 'pending') {
-          if (documents.length === 0) return false;
-          const pending = documents.filter(doc => doc.verificationStatus === 'pending');
-          if (pending.length === 0) return false;
-        } else if (documentStatusFilter === 'failed') {
-          if (documents.length === 0) return false;
-          const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-          if (failed.length === 0) return false;
+        // Filter based on overall status, not individual document status
+        if (documentStatusFilter !== overallStatus) {
+          return false;
         }
       }
 

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, X, AlertCircle, User, MapPin, FileText, Loader2 } from 'lucide-react';
+import { FileText, User, Calendar, CreditCard, MapPin, CheckCircle, Loader2, X } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,7 +32,8 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
   documentId,
   onVerificationUpdate
 }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   if (!voterIdDetails) return null;
@@ -67,22 +68,22 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
     if (!documentId) return;
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'verified', 'Verified after Voter ID API check');
+      setIsApproving(true);
+      await verifyDocument(documentId, 'verified', 'manual', 'Verified after Voter ID API check');
       toast({
-        title: "Document Verified",
-        description: "Voter ID document has been successfully verified.",
+        title: "Document Approved",
+        description: "Voter ID document has been successfully approved.",
       });
       onOpenChange(false);
       onVerificationUpdate?.();
     } catch (error) {
       toast({
-        title: "Verification Failed",
-        description: "Failed to verify document. Please try again.",
+        title: "Approval Failed",
+        description: "Failed to approve document. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsApproving(false);
     }
   };
 
@@ -90,8 +91,8 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
     if (!documentId) return;
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'failed', 'Rejected after Voter ID API check');
+      setIsRejecting(true);
+      await verifyDocument(documentId, 'failed', 'manual', 'Rejected after Voter ID API check');
       toast({
         title: "Document Rejected",
         description: "Voter ID document has been rejected.",
@@ -105,7 +106,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsRejecting(false);
     }
   };
   
@@ -118,7 +119,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
             <span>Voter ID Verification Details</span>
             {isSuccess ? (
               <Badge className="bg-green-100 text-green-800 border-green-200">
-                <Check className="h-3.5 w-3.5 mr-1" />
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />
                 Verified
               </Badge>
             ) : (
@@ -140,7 +141,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
               {!isSuccess && (
                 <div className="bg-red-50 p-3 rounded-md border border-red-200">
                   <div className="flex items-center text-red-700 text-sm">
-                    <AlertCircle className="h-4 w-4 mr-2" />
+                    <X className="h-4 w-4 mr-2" />
                     <span>Verification failed: {voterIdDetails?.message || "Unknown error"}</span>
                   </div>
                 </div>
@@ -229,7 +230,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
           ) : (
             <div className="p-4 text-center">
               <div className="flex flex-col items-center gap-2">
-                <AlertCircle className="h-8 w-8 text-amber-500" />
+                <X className="h-8 w-8 text-amber-500" />
                 <p className="text-lg text-red-500">
                   {!isSuccess ? 'Verification failed' : 'No data available'}
                 </p>
@@ -247,40 +248,28 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
         <DialogFooter className="flex gap-3 pt-4 border-t">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isProcessing}
-            className="flex-1"
-          >
-            Close
-          </Button>
-          <Button
-            variant="outline"
             onClick={handleReject}
-            disabled={isProcessing}
-            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+            disabled={isRejecting || isApproving}
+            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isRejecting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Reject Document"
+              <X className="h-4 w-4 mr-2" />
             )}
+            Reject
           </Button>
           <Button
             onClick={handleVerify}
-            disabled={isProcessing}
-            className="flex-1"
+            disabled={isApproving || isRejecting}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isApproving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Verify Document"
+              <CheckCircle className="h-4 w-4 mr-2" />
             )}
+            Approve
           </Button>
         </DialogFooter>
       </DialogContent>

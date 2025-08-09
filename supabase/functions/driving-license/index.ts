@@ -200,7 +200,8 @@ serve(async (req) => {
             JSON.stringify({ 
               success: true, 
               message: "Driving license API verification completed. Please review the response.",
-              requiresReview: true
+              requiresReview: true,
+              ...apiResponse // Include the complete API response data
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

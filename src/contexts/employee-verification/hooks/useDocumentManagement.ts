@@ -311,16 +311,41 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual' = 'manual', notes?: string) => {
     try {
+      console.log('verifyDocument called with:', { documentId, status, method, notes, employeeData });
+      
+      // First get the appropriate status ID from document_status table
+      const statusName = status === 'verified' ? 'governance' : 'rejected';
+      const { data: statusRecord, error: statusError } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', statusName)
+        .single();
+
+      if (statusError || !statusRecord) {
+        console.error(`Error fetching ${statusName} status:`, statusError);
+        throw new Error(`Could not find ${statusName} status`);
+      }
+
+      console.log('Found status record:', statusRecord);
+
+      // Update both verification_status and document_status_id
+      const updateData = {
+        verification_status: status,
+        document_status_id: statusRecord.id,
+        updated_at: new Date().toISOString(),
+        ...(employeeData?.id && { verified_by: employeeData.id })
+      };
+
+      console.log('Updating document with data:', updateData);
+
       const { data, error } = await supabase
         .from('employee_documents')
-        .update({
-          verification_status: status,
-          verified_by: employeeData?.id, // Set the verifier employee ID
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', documentId)
         .select('employee_id')
         .single();
+
+      console.log('Database update result:', { data, error });
 
       if (error) throw error;
 
@@ -329,6 +354,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           ? { 
               ...doc, 
               verificationStatus: status,
+              documentStatusId: statusRecord.id,
               verificationDate: new Date().toISOString(),
               verificationNotes: notes || '',
               verificationMethod: method
@@ -342,10 +368,11 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const allVerified = employeeDocs.every(d => d.id === documentId ? status === 'verified' : d.verificationStatus === 'verified');
 
       if (allVerified && status === 'verified') {
+        console.log('All documents verified for employee:', employeeId);
         await updateEmployeeStatus(employeeId, true);
       }
 
-      toast.success(`Document ${status} successfully`);
+      toast.success(`Document ${status === 'verified' ? 'approved' : 'rejected'} successfully`);
     } catch (error) {
       console.error('Error verifying document:', error);
       toast.error('Failed to verify document');

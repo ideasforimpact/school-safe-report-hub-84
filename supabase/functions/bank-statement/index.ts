@@ -154,7 +154,8 @@ serve(async (req) => {
               JSON.stringify({ 
                 success: true, 
                 message: "Bank statement API verification completed. Please review the response.",
-                requiresReview: true
+                requiresReview: true,
+                ...verificationResult // Include the complete API response data
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );

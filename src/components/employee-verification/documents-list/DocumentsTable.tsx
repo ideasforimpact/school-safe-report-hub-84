@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench, User } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Cpu, Wrench, User, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import {
   Table,
   TableBody,
@@ -416,12 +416,12 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Type</TableHead>
-              <TableHead>Document #</TableHead>
-              <TableHead>Uploaded</TableHead>
+              <TableHead className="w-[180px]">Type</TableHead>
+              {/* <TableHead>Document #</TableHead> */}
+              {/* <TableHead>Uploaded</TableHead> */}
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Verified by</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-80">Verified by</TableHead>
+              <TableHead className="w-80">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -440,10 +440,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{getDisplayDocumentNumber(doc)}</TableCell>
-                  <TableCell>
+                  {/* <TableCell>{getDisplayDocumentNumber(doc)}</TableCell> */}
+                  {/* <TableCell>
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     <VerificationStatusBadge 
                       status={doc.verificationStatus} 
@@ -456,15 +456,23 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     />
                   </TableCell>
                   {/* Verified by Column */}
-                  <TableCell className="text-right">
+                  <TableCell>
                     {(() => {
                       const name = getVerifiedByName(doc);
+                      const updatedAt = doc.updatedAt;
+                      
                       return name ? (
-                        <div className="flex justify-end">
+                        <div className="flex items-center gap-2">
                           <Badge variant="softAmber" className="gap-1">
                             <User className="h-3.5 w-3.5" />
-                            <span className="truncate max-w-[160px]">{name}</span>
+                            <span className="truncate max-w-[100px]">{name}</span>
                           </Badge>
+                          {updatedAt && (
+                            <Badge variant="outline" className="gap-1 text-xs bg-blue-50 border-blue-200 text-blue-700">
+                              <Clock className="h-3 w-3" />
+                              <span>{format(new Date(updatedAt), 'MMM dd, h:mm a')}</span>
+                            </Badge>
+                          )}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -473,10 +481,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   
                   {/* Actions Column */}
-                  <TableCell className="text-right">
-                    <div className="flex items-center space-x-2 justify-end">
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
                       {/* Process Document Button - moved from Process column */}
-{!(doc.verificationStatus === 'verified' || doc.verificationStatus === 'failed') && (
+{ true && (
   <>
     {/* Quick-start API verification (hidden for Other types) */}
     {onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual' && (

@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { FileText, User, Calendar, CreditCard, Fingerprint, CheckCircle, Loader2 } from 'lucide-react';
+import { FileText, User, Calendar, CreditCard, Fingerprint, CheckCircle, Loader2, X } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,9 +31,14 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
   documentId,
   onVerificationUpdate
 }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
+  
+  // Debug logging 
+  console.log('PanDetailsDialog - Props:', { open, documentId, onVerificationUpdate, panDetails });
+  
   if (!panDetails || !panDetails.data) {
     return null;
   }
@@ -54,34 +59,45 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
   const formattedDob = dob ? format(new Date(dob), 'dd MMM yyyy') : 'Not available';
 
   const handleVerify = async () => {
-    if (!documentId) return;
+    // console.log('PanDetailsDialog - handleVerify called, documentId:', documentId);
+    if (!documentId) {
+      // console.log('PanDetailsDialog - No documentId, exiting');
+      return;
+    }
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'verified', 'Verified after PAN API check');
+      setIsApproving(true);
+      // console.log('PanDetailsDialog - Calling verifyDocument with:', documentId, 'verified');
+      await verifyDocument(documentId, 'verified', 'manual', 'Verified after PAN API check');
       toast({
-        title: "Document Verified",
-        description: "PAN document has been successfully verified.",
+        title: "Document Approved",
+        description: "PAN document has been successfully approved.",
       });
       onOpenChange(false);
       onVerificationUpdate?.();
     } catch (error) {
+      console.error('PanDetailsDialog - Verification error:', error);
       toast({
-        title: "Verification Failed",
-        description: "Failed to verify document. Please try again.",
+        title: "Approval Failed",
+        description: "Failed to approve document. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsApproving(false);
     }
   };
 
   const handleReject = async () => {
-    if (!documentId) return;
+    // console.log('PanDetailsDialog - handleReject called, documentId:', documentId);
+    if (!documentId) {
+      // console.log('PanDetailsDialog - No documentId, exiting');
+      return;
+    }
     
     try {
-      setIsProcessing(true);
-      await verifyDocument(documentId, 'failed', 'Rejected after PAN API check');
+      setIsRejecting(true);
+      // console.log('PanDetailsDialog - Calling verifyDocument with:', documentId, 'failed');
+      await verifyDocument(documentId, 'failed', 'manual', 'Rejected after PAN API check');
       toast({
         title: "Document Rejected",
         description: "PAN document has been rejected.",
@@ -89,13 +105,14 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
       onOpenChange(false);
       onVerificationUpdate?.();
     } catch (error) {
+      console.error('PanDetailsDialog - Rejection error:', error);
       toast({
         title: "Rejection Failed",
         description: "Failed to reject document. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsProcessing(false);
+      setIsRejecting(false);
     }
   };
 
@@ -168,40 +185,34 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
         <DialogFooter className="flex gap-3 pt-4 border-t">
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isProcessing}
-            className="flex-1"
+            onClick={() => {
+              // console.log('PanDetailsDialog - Reject button clicked');
+              handleReject();
+            }}
+            disabled={isRejecting || isApproving}
+            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
           >
-            Close
+            {isRejecting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <X className="h-4 w-4 mr-2" />
+            )}
+            Reject
           </Button>
           <Button
-            variant="outline"
-            onClick={handleReject}
-            disabled={isProcessing}
-            className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+            onClick={() => {
+              // console.log('PanDetailsDialog - Approve button clicked');
+              handleVerify();
+            }}
+            disabled={isApproving || isRejecting}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
           >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
+            {isApproving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              "Reject Document"
+              <CheckCircle className="h-4 w-4 mr-2" />
             )}
-          </Button>
-          <Button
-            onClick={handleVerify}
-            disabled={isProcessing}
-            className="flex-1"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              "Verify Document"
-            )}
+            Approve
           </Button>
         </DialogFooter>
       </DialogContent>
