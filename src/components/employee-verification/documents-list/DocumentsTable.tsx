@@ -421,7 +421,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               {/* <TableHead>Uploaded</TableHead> */}
               <TableHead>Status</TableHead>
               <TableHead className="w-80">Verified by</TableHead>
-              <TableHead className="w-80">Actions</TableHead>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+              <TableHead className="w-80 text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -437,7 +437,43 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getDocumentIcon(doc.documentTypeName || '')}
-                      <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
+                      <span className="capitalize">
+                        {(() => {
+                          const docType = doc.documentTypeName?.toLowerCase();
+                          // For manual and other document types, show the custom document name
+                          if (docType === 'manual' || docType === 'other' || docType === 'other_documents') {
+                            const customName = doc.params?.document_name;
+                            if (customName) {
+                              return customName;
+                            }
+                            // For manual documents, show the verification type if available
+                            if (docType === 'manual' && doc.params?.otherType) {
+                              return doc.params.otherType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            }
+                            // Check for 'selected' field (used in some edge functions)
+                            if (docType === 'manual' && doc.params?.selected) {
+                              return doc.params.selected.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            }
+                            // Debug logging for manual documents
+                            if (docType === 'manual') {
+                              console.log('Manual document params:', {
+                                id: doc.id,
+                                params: doc.params,
+                                otherType: doc.params?.otherType,
+                                selected: doc.params?.selected,
+                                hasOtherType: !!doc.params?.otherType,
+                                hasSelected: !!doc.params?.selected,
+                                // Check all possible fields
+                                allParamsKeys: Object.keys(doc.params || {}),
+                                documentTypeName: doc.documentTypeName,
+                                documentTypeId: doc.documentTypeId
+                              });
+                            }
+                          }
+                          // For other document types, show the standard document type name
+                          return formatDocumentTypeName(doc.documentTypeName || '');
+                        })()}
+                      </span>
                     </div>
                   </TableCell>
                   {/* <TableCell>{getDisplayDocumentNumber(doc)}</TableCell> */}
@@ -453,6 +489,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       documentLogs={doc.employee_docs_log}
                       documentId={doc.id}
                       documentType={docType}
+                      rejectReason={doc.rejectReason}
                     />
                   </TableCell>
                   {/* Verified by Column */}

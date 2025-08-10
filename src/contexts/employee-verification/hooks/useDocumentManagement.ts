@@ -114,6 +114,17 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       }
 
       const formattedDocuments: VerificationDocument[] = data.map(doc => {
+        console.log('Processing document:', {
+          id: doc.id,
+          documentTypeName: doc.document_type?.name,
+          verificationStatus: doc.verification_status,
+          documentStatusName: doc.document_status?.name,
+          employeeId: doc.employee_id,
+          // Try to access reject_reason to see if it exists
+          rejectReasonExists: 'reject_reason' in doc,
+          rejectReasonValue: (doc as any).reject_reason
+        });
+
         let documentUrl = doc.document_url;
         
         // If document_url is a storage path, convert to full URL
@@ -135,6 +146,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verificationDate: null,
           verificationNotes: '',
           verificationMethod: 'manual',
+          rejectReason: (doc as any).reject_reason || undefined,
           // Map new cron fields including cron_log with proper type casting
           cronActivate: doc.cron_activate || false,
           cronActivatedDate: doc.cron_activated_date || undefined,
@@ -238,7 +250,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         cron_activate: document.cronActivate || false,
         cron_activated_date: document.cronActivatedDate || null,
         cron_updated_date: document.cronUpdatedDate || null,
-        cron_log: document.cronLog || []
+        cron_log: document.cronLog || [],
+        reject_reason: document.rejectReason || null
       });
 
       const { data, error } = await supabase
@@ -254,7 +267,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           cron_activate: document.cronActivate || false,
           cron_activated_date: document.cronActivatedDate || null,
           cron_updated_date: document.cronUpdatedDate || null,
-          cron_log: document.cronLog || []
+          cron_log: document.cronLog || [],
+          reject_reason: document.rejectReason || null
         }])
         .select()
         .single();

@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -171,8 +171,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                           onClick={() => navigate(`/employee-verification/${employee.id}`)}
                           disabled={isInactive}
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
+                          <Settings className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

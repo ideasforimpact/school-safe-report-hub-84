@@ -127,6 +127,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         cron_activated_date,
         cron_updated_date,
         cron_log,
+        reject_reason,
         api_response_data,
         api_verification_status,
         api_verification_date,
@@ -144,7 +145,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
     }
 
     // Map documents to the expected format with proper URL handling and new cron fields
-    const documents: VerificationDocument[] = (documentsData || []).map(doc => {
+    const documents: VerificationDocument[] = ((documentsData as any[]) || []).map(doc => {
       let documentUrl = doc.document_url;
       
       // If document_url is a storage path, convert to full URL
@@ -154,13 +155,6 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       
       // Ensure verification_status is properly mapped, with fallback to 'pending'
       const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
-      
-      console.log('Document status mapping:', {
-        id: doc.id,
-        rawVerificationStatus: doc.verification_status,
-        mappedVerificationStatus: verificationStatus,
-        documentStatusName: doc.document_status?.name
-      });
       
       return {
         id: doc.id,
@@ -199,6 +193,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         apiVerificationStatus: doc.api_verification_status as 'pending' | 'completed' | 'failed' | null || null,
         apiVerificationDate: doc.api_verification_date || undefined,
         apiVerificationMethod: doc.api_verification_method || undefined,
+        rejectReason: (doc as any).reject_reason || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -238,6 +233,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         cron_activated_date,
         cron_updated_date,
         cron_log,
+        reject_reason,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -297,13 +293,6 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
       // Ensure verification_status is properly mapped
       const verificationStatus = doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed';
       
-      console.log('FetchEmployeeDocuments - Document status mapping:', {
-        id: doc.id,
-        rawVerificationStatus: doc.verification_status,
-        mappedVerificationStatus: verificationStatus,
-        documentStatusName: doc.document_status?.name
-      });
-      
       return {
         id: doc.id,
         employeeId: doc.employee_id,
@@ -341,6 +330,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         apiVerificationStatus: doc.api_verification_status as 'pending' | 'completed' | 'failed' | null || null,
         apiVerificationDate: doc.api_verification_date || undefined,
         apiVerificationMethod: doc.api_verification_method || undefined,
+        rejectReason: (doc as any).reject_reason || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

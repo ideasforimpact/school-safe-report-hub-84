@@ -3,12 +3,13 @@ import { ShieldCheck, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { cn } from "@/lib/utils";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -88,7 +89,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isAadharManualVerifying, setIsAadharManualVerifying] = useState(false);
   const [isOtherVerifying, setIsOtherVerifying] = useState(false);
   const [isOtherRejecting, setIsOtherRejecting] = useState(false);
-  const [isConsentChecked, setIsConsentChecked] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const autoStartedRef = useRef(false);
 
   // Detail dialog states
@@ -141,7 +143,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsBankAccountVerifying(false);
       setIsOtherVerifying(false);
       setIsOtherRejecting(false);
-      setIsConsentChecked(false);
+
       // Reset detail dialog states
       setAadharDialogOpen(false);
       setPanDialogOpen(false);
@@ -217,13 +219,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Bank Statement:', error);
-        toast.error("Bank Statement Verification Failed", {
-          description: error.message || "Something went wrong during Bank Statement verification. Please try again."
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(error.message || "Something went wrong during Bank Statement verification. Please try again.");
         return;
       }
       
@@ -259,23 +255,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data.error || "Bank Statement verification failed. Please try manual verification.";
-        toast.error("Bank Statement Verification Failed", {
-          description: errorMessage
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(errorMessage);
       }
     } catch (err: any) {
       console.error("Exception in handleBankAccountApiVerification:", err);
-      toast.error("Bank Statement Verification Error", {
-        description: "Something went wrong during Bank Statement verification. Please try again."
-      });
-      onOpenChange(false); // Close the dialog
-      if (onDocumentAction) {
-        await onDocumentAction(); // Refresh document data
-      }
+      setErrorMessage("Something went wrong during Bank Statement verification. Please try again.");
     } finally {
       setIsBankAccountVerifying(false);
     }
@@ -382,13 +366,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying PAN:', error);
-        toast.error("PAN Verification Failed", {
-          description: error.message || "Something went wrong during PAN verification. Please try again."
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(error.message || "Something went wrong during PAN verification. Please try again.");
         return;
       }
       
@@ -431,23 +409,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data.error || "PAN verification failed. Please try manual verification.";
-        toast.error("PAN Verification Failed", {
-          description: errorMessage
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(errorMessage);
       }
     } catch (err: any) {
       console.error("Exception in handlePanApiVerification:", err);
-      toast.error("PAN Verification Error", {
-        description: "Something went wrong during PAN verification. Please try again."
-      });
-      onOpenChange(false); // Close the dialog
-      if (onDocumentAction) {
-        await onDocumentAction(); // Refresh document data
-      }
+      setErrorMessage("Something went wrong during PAN verification. Please try again.");
     } finally {
       setIsPanVerifying(false);
       setIsVerificationLoading?.(false);
@@ -472,13 +438,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Driving License:', error);
-        toast.error("Driving License Verification Failed", {
-          description: error.message || "Something went wrong during Driving License verification. Please try again."
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(error.message || "Something went wrong during Driving License verification. Please try again.");
         return;
       }
       
@@ -514,23 +474,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data?.error || "Driving License verification failed. Please try manual verification.";
-        toast.error("Driving License Verification Failed", {
-          description: errorMessage
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(errorMessage);
       }
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
-      toast.error("Driving License Verification Error", {
-        description: "Something went wrong during Driving License verification. Please try again."
-      });
-      onOpenChange(false); // Close the dialog
-      if (onDocumentAction) {
-        await onDocumentAction(); // Refresh document data
-      }
+      setErrorMessage("Something went wrong during Driving License verification. Please try again.");
     } finally {
       setIsDrivingLicenseVerifying(false);
     }
@@ -712,13 +660,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Voter ID:', error);
-        toast.error("Voter ID Verification Failed", {
-          description: error.message || "Something went wrong during Voter ID verification. Please try again."
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(error.message || "Something went wrong during Voter ID verification. Please try again.");
         return;
       }
       
@@ -753,23 +695,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       } else {
         // Use the user-friendly error message from the API
         const errorMessage = data.error || "Voter ID verification failed. Please try manual verification.";
-        toast.error("Voter ID Verification Failed", {
-          description: errorMessage
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
+        setErrorMessage(errorMessage);
       }
     } catch (err: any) {
       console.error("Exception in handleVoterIdApiVerification:", err);
-      toast.error("Voter ID Verification Error", {
-        description: "Something went wrong during Voter ID verification. Please try again."
-      });
-      onOpenChange(false); // Close the dialog
-      if (onDocumentAction) {
-        await onDocumentAction(); // Refresh document data
-      }
+      setErrorMessage("Something went wrong during Voter ID verification. Please try again.");
     } finally {
       setIsVoterIdVerifying(false);
     }
@@ -1205,12 +1135,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setOtp("");
     setTxnId(null);
     setClientId(null);
-    setIsConsentChecked(false);
+    setErrorMessage(null); // Clear error message when canceling
+
     if (cooldownTimerId !== null) {
       clearInterval(cooldownTimerId);
       setCooldownTimerId(null);
     }
     setCooldownSeconds(null);
+    
+    // Close the dialog
+    onOpenChange(false);
   };
   
   const formatTime = (seconds: number) => {
@@ -1220,38 +1154,62 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg mx-auto">
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+            "max-w-lg mx-auto"
+          )}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+        {/* Error Message Display */}
+        {errorMessage && (
+          <div className="mt-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <ShieldCheck className="h-5 w-5 text-red-400" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">Verification Failed</h3>
+                  <div className="mt-1 text-sm text-red-700">
+                    {errorMessage}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="flex-shrink-0 ml-3 text-red-400 hover:text-red-600 transition-colors"
+                title="Close error message"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+        
         <DialogHeader className="text-center">
           <div className="flex justify-center py-1">
             <div className="h-12 w-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
               <FileText className="h-6 w-6" />
             </div>
           </div>
-          <DialogTitle className="text-2xl font-semibold text-center">Document Verification Required</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold text-center">API Document Verification</DialogTitle>
           <DialogDescription className="text-center text-sm">
-            Please review {employeeName || 'the employee'}'s document and confirm their consent for API verification.
+            Verify employee data through automated API validation
           </DialogDescription>
         </DialogHeader>
         {!showOtpInput ? (
           // Consent checkbox content
           <div className="flex flex-col gap-4 py-4">
-            <div className="flex items-start">
-              <span className="text-sm text-muted-foreground">
-                Document Type: <span className="font-semibold">{formatDocumentTypeName(documentType || 'Document')}</span>
-              </span>
-            </div>
-            <div className="flex items-start space-x-3">
-              <input
-                type="checkbox"
-                id="verification-consent"
-                checked={isConsentChecked}
-                onChange={(e) => setIsConsentChecked(e.target.checked)}
-                className="mt-1 h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
-              />
-              <label htmlFor="verification-consent" className="text-sm text-muted-foreground cursor-pointer">
-                I confirm that I have reviewed the submitted document and verify that it meets all compliance requirements and authenticity standards according to company policy.
-              </label>
+
+            <div className="text-sm text-muted-foreground text-center">
+              Click the verify button to fetch and validate employee data through our secure API.
             </div>
           </div>
         ) : (
@@ -1306,11 +1264,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             </>
           ) : (
             <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
               <Button
                 variant="success"
                 onClick={handleApiClick}
                 disabled={
-                  !isConsentChecked || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
+                  isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
                   isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
                   isOtherVerifying || isOtherRejecting
                 }
@@ -1325,7 +1286,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             </>
           )}
         </DialogFooter>
-      </DialogContent>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
       
       {/* Detail Dialogs */}
             <AadharDetailsDialog
