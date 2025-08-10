@@ -344,10 +344,14 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
     }
   }
 
+  // Filter out reopen records from the audit trail
+  const filteredEntries = formattedEntries.filter(entry => entry.activity !== 'reopen');
+  
   console.log('Total formatted entries:', formattedEntries.length);
-  console.log('Final formatted entries:', formattedEntries);
+  console.log('Entries after filtering out reopen records:', filteredEntries.length);
+  console.log('Final formatted entries:', filteredEntries);
   console.log('=== END FORMATTING AUDIT ENTRIES ===');
-  return formattedEntries;
+  return filteredEntries;
 };
 
 // Log a manual audit entry (for comments, documents, etc.) - RLS handles client_id automatically

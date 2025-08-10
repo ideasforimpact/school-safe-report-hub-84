@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Cpu, Wrench } from 'lucide-react';
+import { Wrench } from 'lucide-react';
+import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
 
 interface DocumentVerifyDropdownProps {
   onVerify: (method: 'api' | 'manual') => void;
@@ -19,11 +20,11 @@ const DocumentVerifyDropdown: React.FC<DocumentVerifyDropdownProps> = ({
         <Button
           variant="verifyApi"
           disabled={isDisabled}
-          title={`API verification${documentTypeName ? ` for ${documentTypeName}` : ''}`}
+          title={`Government API verification${documentTypeName ? ` for ${documentTypeName}` : ''}`}
           onClick={() => onVerify('api')}
+          className="border border-gray-300 hover:border-gray-400 bg-gray-50/90 hover:bg-gray-100/95 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
         >
-          <Cpu className="h-4 w-4" />
-          <span>Verify API</span>
+          <GovernmentEmblemIcon size={18} />
         </Button>
         <Button
           variant="verifyManual"

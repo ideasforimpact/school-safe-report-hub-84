@@ -83,7 +83,8 @@ serve(async (req) => {
       otp, 
       txnId,
       client_id,
-      verification_notes 
+      verification_notes,
+      reject_reason
     } = requestBody;
     
     console.log(`Received ${action} request`, { 
@@ -568,6 +569,117 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    
+    // Handle reject action
+    if (action === 'reject') {
+      if (!documentId) {
+        return new Response(
+          JSON.stringify({ error: "Document ID is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      try {
+        // Fetch current logs
+        const { data: document } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (document) {
+          const existingLogs = document.employee_docs_log || [];
+          
+          // Log rejection
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: "manual_reject",
+            response: { reason: reject_reason || "Document rejected" },
+            notes: verification_notes
+          };
+          
+          await supabase
+            .from('employee_documents')
+            .update({
+              employee_docs_log: [...existingLogs, logEntry],
+              document_status_id: rejectedStatusId,
+              verification_status: 'failed',
+              reject_reason: reject_reason || "Document verification rejected",
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document rejected successfully" 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error("Error rejecting document:", error);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to reject document" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    
+    // Handle manual verify action
+    if (action === 'manualVerify') {
+      if (!documentId) {
+        return new Response(
+          JSON.stringify({ error: "Document ID is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      try {
+        // Fetch current logs
+        const { data: document } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (document) {
+          const existingLogs = document.employee_docs_log || [];
+          
+          // Log manual verification
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: "manual_verify",
+            response: { status: "approved" },
+            notes: verification_notes
+          };
+          
+          await supabase
+            .from('employee_documents')
+            .update({
+              employee_docs_log: [...existingLogs, logEntry],
+              document_status_id: governanceStatusId,
+              verification_status: 'verified',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Document verified successfully" 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error("Error verifying document:", error);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to verify document" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }

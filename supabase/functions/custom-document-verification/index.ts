@@ -219,9 +219,9 @@ if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
         
         console.log(`Custom Document Verification: Uploading file: ${fileName}`);
         
-        // Upload to employee_other_documents bucket
+        // Upload to employee-documents bucket
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('employee_other_documents')
+          .from('employee-documents')
           .upload(fileName, binaryData, {
             contentType: file.type,
             upsert: false

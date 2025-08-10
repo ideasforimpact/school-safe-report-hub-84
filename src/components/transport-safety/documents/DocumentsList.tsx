@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import EditDocumentForm from './EditDocumentForm';
 
 interface DocumentsListProps {
-  documents: VehicleDocument[];
+  documents: VehicleDocument[]                                                                                                                                                                                                                                                                                                                                                                                                                                        ;
   vehicleId: string;
 }
 

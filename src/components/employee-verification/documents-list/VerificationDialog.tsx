@@ -180,8 +180,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     if (open && quickStartMethod && !autoStartedRef.current) {
       autoStartedRef.current = true;
       if (quickStartMethod === 'manual') {
-        handleManualClick();
-      }
+          handleManualClick();
+        }
       // For API quickStart, just show the dialog - don't auto-click the API button
     }
   }, [open, quickStartMethod, isOther, isOtherDocuments]);
@@ -234,9 +234,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (data?.success) {
         console.log('VerificationDialog - Bank Statement verification successful, response data:', data);
-        toast.success("Bank Statement Verified", {
-          description: data?.message || "The Bank Statement has been verified successfully."
-        });
+        // No toaster for API verification completion
         
         // Close verification popup FIRST
         onOpenChange(false);
@@ -381,9 +379,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (data.success) {
         console.log('PAN verification SUCCESS - entering success block');
-        toast.success("PAN Verified", {
-          description: data?.message || "The PAN has been verified successfully."
-        });
+        // No toaster for API verification completion
         
         // Close verification popup FIRST
         console.log('PAN verification - About to close verification dialog');
@@ -453,9 +449,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (data?.success) {
         console.log('VerificationDialog - Driving License verification successful, response data:', data);
-        toast.success("Driving License Verified", {
-          description: data?.message || "The Driving License has been verified successfully."
-        });
+        // No toaster for API verification completion
         
         // Close verification popup FIRST
         onOpenChange(false);
@@ -674,9 +668,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       if (data.success) {
-        toast.success("Voter ID Verified", {
-          description: data?.message || "The Voter ID has been verified successfully."
-        });
+        // No toaster for API verification completion
         
         // Close verification popup FIRST
         onOpenChange(false);
@@ -1293,22 +1285,22 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button
+            <Button 
                 variant="success"
                 onClick={handleApiClick}
-                disabled={
-                  isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                  isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
-                  isOtherVerifying || isOtherRejecting
-                }
-              >
+              disabled={
+                isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
+                isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                isOtherVerifying || isOtherRejecting
+              }
+            >
                 {isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
                  isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
                  isOtherVerifying ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
                 Verify
-              </Button>
+            </Button>
             </>
           )}
         </DialogFooter>

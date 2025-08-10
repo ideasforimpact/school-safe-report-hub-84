@@ -139,8 +139,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
               </>
             ) : (
               <>
-                <Send className="h-4 w-4" />
-                Submit Comment
+                Save
               </>
             )}
           </Button>
