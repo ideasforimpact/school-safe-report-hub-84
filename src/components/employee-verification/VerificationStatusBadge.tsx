@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { CheckCircle, AlertCircle, Clock, Play, X } from 'lucide-react';
 import PanDetailsDialog from './document-card/PanDetailsDialog';
@@ -21,6 +22,7 @@ interface VerificationStatusBadgeProps {
   }>;
   documentId?: string;
   documentType?: string;
+  rejectReason?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
@@ -31,12 +33,21 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   onClick,
   documentLogs,
   documentId,
-  documentType
+  documentType,
+  rejectReason
 }) => {
   const [panDialogOpen, setPanDialogOpen] = useState(false);
   const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
+  const [showCustomTooltip, setShowCustomTooltip] = useState(false);
+
+  // Log reject reason for debugging
+  console.log('VerificationStatusBadge - Status:', status);
+  console.log('VerificationStatusBadge - Reject Reason:', rejectReason);
+  console.log('VerificationStatusBadge - Reject Reason Type:', typeof rejectReason);
+  console.log('VerificationStatusBadge - Reject Reason Length:', rejectReason?.length);
+  console.log('VerificationStatusBadge - Should Show Tooltip:', status === 'failed' && rejectReason);
 
   const getStatusConfig = () => {
     switch (status) {
@@ -212,21 +223,65 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   
   return (
     <>
-      <Badge 
-        className={cn(
-          'gap-1 px-2 py-1 font-medium text-xs', 
-          bgColor, 
-          className,
-          isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
+      <div className="relative">
+        <TooltipProvider>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Badge 
+                className={cn(
+                  'gap-1 px-2 py-1 font-medium text-xs', 
+                  bgColor, 
+                  className,
+                  isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
+                )}
+                onClick={isClickable ? handleClick : undefined}
+                onMouseEnter={() => {
+                  if (status === 'failed' && rejectReason) {
+                    console.log('VerificationStatusBadge - Hovering over failed badge with reject reason:', rejectReason);
+                    console.log('VerificationStatusBadge - Status:', status);
+                    console.log('VerificationStatusBadge - RejectReason prop:', rejectReason);
+                    // Show custom tooltip as fallback
+                    setShowCustomTooltip(true);
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (status === 'failed' && rejectReason) {
+                    setShowCustomTooltip(false);
+                  }
+                }}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {text}
+                {isClickable && (
+                  <span className="sr-only">(click to view details)</span>
+                )}
+              </Badge>
+            </TooltipTrigger>
+            {status === 'failed' && rejectReason && (
+              <TooltipContent 
+                side="top" 
+                align="center"
+                className="z-[99999] bg-red-100 border border-red-300 text-red-800 shadow-lg max-w-sm rounded-md"
+                sideOffset={5}
+              >
+                <div className="p-2">
+                  <p className="text-sm whitespace-nowrap">{rejectReason}</p>
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Custom Tooltip Fallback */}
+        {showCustomTooltip && status === 'failed' && rejectReason && (
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-[99999]">
+            <div className="bg-red-100 border border-red-300 text-red-800 rounded-md shadow-lg p-2 max-w-sm">
+              <p className="text-sm whitespace-nowrap">{rejectReason}</p>
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-300"></div>
+            </div>
+          </div>
         )}
-        onClick={isClickable ? handleClick : undefined}
-      >
-        <Icon className="h-3.5 w-3.5" />
-        {text}
-        {isClickable && (
-          <span className="sr-only">(click to view details)</span>
-        )}
-      </Badge>
+      </div>
 
       {/* Display PAN Details Dialog */}
       {panDialogOpen && panVerificationLog && documentType === 'pan' && (

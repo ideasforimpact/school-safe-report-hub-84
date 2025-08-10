@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, XCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +20,7 @@ interface ManualConsentDialogProps {
   documentTypeName?: string;
   employeeName?: string;
   onApprove: () => Promise<void> | void;
-  onReject: () => Promise<void> | void;
+  onReject: (reason: string) => Promise<void> | void;
   isProcessing?: boolean;
   successState?: 'verified' | 'rejected' | null;
 }
@@ -42,11 +44,15 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
 
   const [confirmed, setConfirmed] = useState(false);
   const [activeAction, setActiveAction] = useState<'approve' | 'reject' | null>(null);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     if (open) {
       setConfirmed(false);
       setActiveAction(null);
+      setShowRejectForm(false);
+      setRejectReason('');
     }
   }, [open, successState]);
 
@@ -107,27 +113,16 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
           </div>
         )}
 
-        {!successState && (
+        {!successState && !showRejectForm && (
           <DialogFooter className="flex justify-center sm:justify-end mt-2 gap-2">
             <Button
               variant="outline"
               className="text-destructive border-destructive/30 hover:bg-destructive/10"
-              onClick={async () => {
-                setActiveAction('reject');
-                console.log('🔍 Reject button clicked');
-                try {
-                  await onReject();
-                } catch (error) {
-                  console.error('Reject error:', error);
-                } finally {
-                  setActiveAction(null);
-                }
+              onClick={() => {
+                setShowRejectForm(true);
               }}
               disabled={isProcessing}
             >
-              {isProcessing && activeAction === 'reject' ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
               Reject
             </Button>
             <Button 
@@ -151,6 +146,59 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               Approve
             </Button>
           </DialogFooter>
+        )}
+
+        {!successState && showRejectForm && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reject-reason" className="text-sm font-medium">
+                Reason for reject <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="reject-reason"
+                placeholder="Please provide a reason for rejecting this document..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="min-h-[100px]"
+                required
+              />
+            </div>
+            <DialogFooter className="flex justify-center sm:justify-end mt-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowRejectForm(false);
+                  setRejectReason('');
+                }}
+                disabled={isProcessing}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!rejectReason.trim()) {
+                    return; // Don't proceed if reason is empty
+                  }
+                  setActiveAction('reject');
+                  console.log('🔍 Reject button clicked with reason:', rejectReason);
+                  try {
+                    await onReject(rejectReason.trim());
+                  } catch (error) {
+                    console.error('Reject error:', error);
+                  } finally {
+                    setActiveAction(null);
+                  }
+                }}
+                disabled={isProcessing || !rejectReason.trim()}
+              >
+                {isProcessing && activeAction === 'reject' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Confirm Reject
+              </Button>
+            </DialogFooter>
+          </div>
         )}
       </DialogContent>
     </Dialog>

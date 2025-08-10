@@ -27,7 +27,7 @@ serve(async (req) => {
   
   try {
     const requestBody = await req.json();
-    const { action, documentId, verification_notes, verified_by_employee_id } = requestBody;
+    const { action, documentId, verification_notes, verified_by_employee_id, reject_reason } = requestBody;
     
     console.log(`Bank Statement Verification: Received ${action} request for document ID: ${documentId}`);
     
@@ -319,7 +319,7 @@ serve(async (req) => {
           notes: verification_notes || "Document verification rejected by staff."
         };
         
-        // Update document with rejected status
+        // Update document with rejected status and reject reason
         const { error: updateError } = await supabase
           .from('employee_documents')
           .update({
@@ -327,6 +327,7 @@ serve(async (req) => {
             document_status_id: statusMap[DOC_STATUS.REJECTED],
             verified_by: verified_by_employee_id || null,
             employee_docs_log: [...existingLogs, logEntry],
+            reject_reason: reject_reason || "Document verification rejected",
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);

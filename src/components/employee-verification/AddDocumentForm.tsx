@@ -203,6 +203,8 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
           ifscCode: values.ifscCode,
           'ifsc-details': true
         };
+      } else if (documentTypes.find(type => type.id === selectedTypeId)?.name === 'manual' && values.otherType) {
+        params = { otherType: values.otherType };
       }
 
       const documentData = {

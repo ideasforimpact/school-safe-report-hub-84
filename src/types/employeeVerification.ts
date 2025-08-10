@@ -52,6 +52,7 @@ export interface VerificationDocument {
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
+  rejectReason?: string;
   employee_docs_log?: Array<{
     timestamp: string;
     action: string;

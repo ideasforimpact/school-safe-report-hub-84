@@ -245,7 +245,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     }
   };
 
-  const handleManualReject = async (): Promise<void> => {
+  const handleManualReject = async (reason: string): Promise<void> => {
     if (!selectedDocumentId) return;
     const verifierId = employeeData?.id;
     const clientId = employeeData?.clientId || null;
@@ -270,6 +270,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         verified_by_employee_id: verifierId,
         client_id: clientId,
         employee_id: (documents.find(d => d.id === selectedDocumentId)?.employeeId) || employeeId,
+        reject_reason: reason,
       };
       console.log('▶️ Manual Reject payload:', { functionName, payload });
 
