@@ -68,6 +68,9 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     return docType?.name === 'bank_account' || typeId === '3';
   };
 
+  // Check if selected type is other documents
+
+
   // Get existing document for the selected type
   const getExistingDocument = (typeId: string) => {
     const existingDocuments = getEmployeeDocuments(employeeId);
@@ -83,6 +86,8 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       });
       return;
     }
+
+    
 
     // Special handling for Bank Statement Analysis
     if (values.otherType === 'bank_statement_analysis') {

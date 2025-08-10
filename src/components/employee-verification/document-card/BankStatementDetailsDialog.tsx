@@ -1,6 +1,14 @@
 
-import React, { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import React, { useState, useEffect } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +17,10 @@ import { AlertTriangle, Building, Banknote, CreditCard, Loader2, X, FileText, Us
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BankStatementDetailsDialogProps {
   open: boolean;
@@ -27,28 +39,31 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
+  const { user, employeeData } = useAuth();
   // Extract relevant information from the bank statement response
   const data = statementDetails?.data || {};
   const isSuccessful = statementDetails?.success && statementDetails?.status_code === 200;
   
   // Comprehensive debugging logs
-  console.log('BankStatementDetailsDialog - Dialog open state:', open);
-  console.log('BankStatementDetailsDialog - Document ID:', documentId);
-  console.log('BankStatementDetailsDialog - Full statement details:', statementDetails);
-  console.log('BankStatementDetailsDialog - Extracted data:', data);
-  console.log('BankStatementDetailsDialog - Is successful:', isSuccessful);
+  // console.log('BankStatementDetailsDialog - Dialog open state:', open);
+  // console.log('BankStatementDetailsDialog - Document ID:', documentId);
+  // console.log('BankStatementDetailsDialog - Full statement details:', statementDetails);
+  // console.log('BankStatementDetailsDialog - Extracted data:', data);
+  // console.log('BankStatementDetailsDialog - Is successful:', isSuccessful);
   
   useEffect(() => {
-    console.log('BankStatementDetailsDialog - Dialog mounted/updated with open:', open);
+    // console.log('BankStatementDetailsDialog - Dialog mounted/updated with open:', open);
     
     if (open) {
-      console.log('BankStatementDetailsDialog - Dialog is now open');
+      // console.log('BankStatementDetailsDialog - Dialog is now open');
     }
     
     return () => {
-      console.log('BankStatementDetailsDialog - Dialog unmounting');
+      // console.log('BankStatementDetailsDialog - Dialog unmounting');
     };
   }, [open]);
 
@@ -121,13 +136,29 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
     
     try {
       setIsApproving(true);
-      await verifyDocument(documentId, 'verified', 'manual', 'Verified after Bank Statement API check');
-      toast({
-        title: "Document Approved",
-        description: "Bank Statement document has been successfully approved.",
+      
+      // Call the bank-statement edge function directly
+      const { data, error } = await supabase.functions.invoke('bank-statement', {
+        body: {
+          action: 'manualVerify',
+          documentId: documentId,
+          verification_notes: 'Verified after Bank Statement API check',
+          verified_by_employee_id: employeeData?.id || user?.id
+        }
       });
-      onOpenChange(false);
-      onVerificationUpdate?.();
+
+      if (error) {
+        console.error('BankStatementDetailsDialog - Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        // No toaster for approve action in detail dialog
+        onOpenChange(false);
+        onVerificationUpdate?.();
+      } else {
+        throw new Error(data?.error || 'Failed to approve document');
+      }
     } catch (error) {
       toast({
         title: "Approval Failed",
@@ -142,15 +173,48 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   const handleReject = async () => {
     if (!documentId) return;
     
+    // If reject form is not shown, show it first
+    if (!showRejectForm) {
+      setShowRejectForm(true);
+      return;
+    }
+    
+    // If reject form is shown but no reason provided, don't proceed
+    if (!rejectReason.trim()) {
+      toast({
+        title: "Reason Required",
+        description: "Please provide a reason for rejecting this document.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsRejecting(true);
-      await verifyDocument(documentId, 'failed', 'manual', 'Rejected after Bank Statement API check');
-      toast({
-        title: "Document Rejected",
-        description: "Bank Statement document has been rejected.",
+      
+      // Call the bank-statement edge function directly with reject_reason
+      const { data, error } = await supabase.functions.invoke('bank-statement', {
+        body: {
+          action: 'reject',
+          documentId: documentId,
+          verification_notes: rejectReason,
+          verified_by_employee_id: employeeData?.id || user?.id,
+          reject_reason: rejectReason
+        }
       });
-      onOpenChange(false);
-      onVerificationUpdate?.();
+
+      if (error) {
+        console.error('BankStatementDetailsDialog - Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        // No toaster for reject action in detail dialog
+        onOpenChange(false);
+        onVerificationUpdate?.();
+      } else {
+        throw new Error(data?.error || 'Failed to reject document');
+      }
     } catch (error) {
       toast({
         title: "Rejection Failed",
@@ -159,15 +223,22 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
       });
     } finally {
       setIsRejecting(false);
+      setShowRejectForm(false);
+      setRejectReason('');
     }
+  };
+
+  const handleCancelReject = () => {
+    setShowRejectForm(false);
+    setRejectReason('');
   };
   
   return (
     <Dialog open={open} onOpenChange={(newOpenState) => {
-      console.log('BankStatementDetailsDialog - Dialog open state changing to:', newOpenState);
+      // console.log('BankStatementDetailsDialog - Dialog open state changing to:', newOpenState);
       onOpenChange(newOpenState);
     }}>
-      <DialogContent className="sm:max-w-3xl max-h-[80vh]">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <span>Bank Statement Details</span>
@@ -182,7 +253,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="h-[500px] rounded-md border">
+        <ScrollArea className="flex-1 rounded-md border">
           {(isSuccessful && Object.keys(data).length > 0) ? (
             <div className="p-4 space-y-6">
               {/* IFSC Details Card */}
@@ -315,32 +386,77 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
           )}
         </ScrollArea>
 
-        <DialogFooter className="flex gap-3 pt-4 border-t">
-          <Button
-            variant="outline"
-            onClick={handleReject}
-            disabled={isRejecting || isApproving}
-            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
-          >
-            {isRejecting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <X className="h-4 w-4 mr-2" />
-            )}
-            Reject
-          </Button>
-          <Button
-            onClick={handleVerify}
-            disabled={isApproving || isRejecting}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isApproving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            )}
-            Approve
-          </Button>
+        {/* Reject Reason Form */}
+        {showRejectForm && (
+          <div className="space-y-4 pt-4 border-t">
+            <div>
+              <Label htmlFor="rejectReason" className="text-sm font-medium">
+                Reason for reject <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Please provide a reason for rejecting this document..."
+                className="mt-1 min-h-[80px]"
+                required
+              />
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="flex justify-end gap-3 pt-4 border-t mt-auto">
+          {showRejectForm ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleCancelReject}
+                disabled={isRejecting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={isRejecting || !rejectReason.trim()}
+              >
+                {isRejecting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                Confirm Reject
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleReject}
+                disabled={isRejecting || isApproving}
+                className="text-red-600 border-red-300 hover:bg-red-50"
+              >
+                {isRejecting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                Reject
+              </Button>
+              <Button
+                onClick={handleVerify}
+                disabled={isApproving || isRejecting}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isApproving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Approve
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

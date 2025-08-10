@@ -64,7 +64,7 @@ const VerificationStatusSummary = ({ summary, className = '' }: VerificationStat
       <Badge className={`gap-1 px-2 py-1 font-medium text-xs ${badgeClass}`}>
         <StatusIcon className="h-3.5 w-3.5" />
         {status}
-      </Badge>
+          </Badge>
     </div>
   );
 };

@@ -73,7 +73,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     const total = documents.length;
 
     if (total === 0) {
-      return <span className="text-gray-500 text-sm">-</span>;
+      return <span className="text-gray-500 text-sm">No Documents</span>;
     }
 
     // Priority-based status logic (same as VerificationStatusSummary)

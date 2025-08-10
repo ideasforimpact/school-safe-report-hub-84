@@ -239,14 +239,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
             </div>
           )}
 
-          {/* Show reopen count if greater than 0 */}
-          {(incident.reopen || 0) > 0 && (
-            <div className="flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-gray-400" />
-              <span className="text-gray-600">Reopened:</span>
-              <span className="font-medium">{incident.reopen} time{(incident.reopen || 0) > 1 ? 's' : ''}</span>
-            </div>
-          )}
+
         </div>
       </CardContent>
       

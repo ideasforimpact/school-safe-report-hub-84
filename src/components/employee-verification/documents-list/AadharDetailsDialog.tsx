@@ -12,10 +12,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { FileText, User, Calendar, CheckCircle, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AadharAddress {
   country?: string;
@@ -69,8 +73,11 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
+  const { user, employeeData } = useAuth();
   if (!aadharDetails?.response?.data) {
     return null;
   }
@@ -101,13 +108,29 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
     
     try {
       setIsApproving(true);
-      await verifyDocument(documentId, 'verified', 'manual', 'Verified after Aadhar API check');
-      toast({
-        title: "Document Approved",
-        description: "Aadhar document has been successfully approved.",
+      
+      // Call the employee-verification edge function directly for Aadhar
+      const { data, error } = await supabase.functions.invoke('employee-verification', {
+        body: {
+          action: 'manualVerify',
+          documentId: documentId,
+          verification_notes: 'Verified after Aadhar API check',
+          verified_by_employee_id: employeeData?.id || user?.id
+        }
       });
-      onOpenChange(false);
-      onVerificationUpdate?.();
+
+      if (error) {
+        console.error('AadharDetailsDialog - Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        // No toaster for approve action in detail dialog
+        onOpenChange(false);
+        onVerificationUpdate?.();
+      } else {
+        throw new Error(data?.error || 'Failed to approve document');
+      }
     } catch (error) {
       toast({
         title: "Approval Failed",
@@ -122,15 +145,48 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
   const handleReject = async () => {
     if (!documentId) return;
     
+    // If reject form is not shown, show it first
+    if (!showRejectForm) {
+      setShowRejectForm(true);
+      return;
+    }
+    
+    // If reject form is shown but no reason provided, don't proceed
+    if (!rejectReason.trim()) {
+      toast({
+        title: "Reason Required",
+        description: "Please provide a reason for rejecting this document.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setIsRejecting(true);
-      await verifyDocument(documentId, 'failed', 'manual', 'Rejected after Aadhar API check');
-      toast({
-        title: "Document Rejected",
-        description: "Aadhar document has been rejected.",
+      
+      // Call the employee-verification edge function directly with reject_reason
+      const { data, error } = await supabase.functions.invoke('employee-verification', {
+        body: {
+          action: 'reject',
+          documentId: documentId,
+          verification_notes: rejectReason,
+          verified_by_employee_id: employeeData?.id || user?.id,
+          reject_reason: rejectReason
+        }
       });
-      onOpenChange(false);
-      onVerificationUpdate?.();
+
+      if (error) {
+        console.error('AadharDetailsDialog - Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        // No toaster for reject action in detail dialog
+        onOpenChange(false);
+        onVerificationUpdate?.();
+      } else {
+        throw new Error(data?.error || 'Failed to reject document');
+      }
     } catch (error) {
       toast({
         title: "Rejection Failed",
@@ -139,7 +195,14 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
       });
     } finally {
       setIsRejecting(false);
+      setShowRejectForm(false);
+      setRejectReason('');
     }
+  };
+
+  const handleCancelReject = () => {
+    setShowRejectForm(false);
+    setRejectReason('');
   };
 
   return (
@@ -215,35 +278,82 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
             </div>
           </div>
         </ScrollArea>
+
+        {/* Reject Reason Form */}
+        {showRejectForm && (
+          <div className="space-y-4 pt-4 border-t">
+            <div>
+              <Label htmlFor="rejectReason" className="text-sm font-medium">
+                Reason for reject <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Please provide a reason for rejecting this document..."
+                className="mt-1 min-h-[80px]"
+                required
+              />
+            </div>
+          </div>
+        )}
         
         <DialogFooter className="flex gap-3 pt-4 border-t">
           {documentId && onVerificationUpdate && (
             <>
-              <Button
-                variant="outline"
-                onClick={handleReject}
-                            disabled={isRejecting || isApproving}
-            className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
-          >
-            {isRejecting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <X className="h-4 w-4 mr-2" />
-            )}
-            Reject
-          </Button>
-          <Button
-            onClick={handleVerify}
-            disabled={isApproving || isRejecting}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isApproving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            )}
-            Approve
-              </Button>
+              {showRejectForm ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelReject}
+                    disabled={isRejecting}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleReject}
+                    disabled={isRejecting || !rejectReason.trim()}
+                    className="flex-1"
+                  >
+                    {isRejecting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4 mr-2" />
+                    )}
+                    Confirm Reject
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleReject}
+                    disabled={isRejecting || isApproving}
+                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    {isRejecting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <X className="h-4 w-4 mr-2" />
+                    )}
+                    Reject
+                  </Button>
+                  <Button
+                    onClick={handleVerify}
+                    disabled={isApproving || isRejecting}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isApproving ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Approve
+                  </Button>
+                </>
+              )}
             </>
           )}
         </DialogFooter>
