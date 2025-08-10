@@ -100,6 +100,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
   
+  // Cleanup effect to reset loading state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      // Reset loading state when dialog closes
+      setIsVerificationLoading?.(false);
+    }
+  }, [open, setIsVerificationLoading]);
+
   // Detail data states
   const [selectedAadharDetails, setSelectedAadharDetails] = useState<any>(null);
   const [selectedPanDetails, setSelectedPanDetails] = useState<any>(null);
@@ -141,6 +149,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsVoterIdVerifying(false);
       setIsDrivingLicenseVerifying(false);
       setIsBankAccountVerifying(false);
+      setIsAadharManualVerifying(false);
       setIsOtherVerifying(false);
       setIsOtherRejecting(false);
 
@@ -1143,6 +1152,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
     setCooldownSeconds(null);
     
+    // Reset all verification states
+    setIsRequestingOtp(false);
+    setIsVerifyingOtp(false);
+    setIsPanVerifying(false);
+    setIsVoterIdVerifying(false);
+    setIsDrivingLicenseVerifying(false);
+    setIsBankAccountVerifying(false);
+    setIsAadharManualVerifying(false);
+    setIsOtherVerifying(false);
+    setIsOtherRejecting(false);
+    
+    // Reset loading state
+    setIsVerificationLoading?.(false);
+    
     // Close the dialog
     onOpenChange(false);
   };
@@ -1154,7 +1177,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) {
+        // When dialog is closing, reset all states
+        handleCancel();
+      }
+    }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
@@ -1162,8 +1190,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
             "max-w-lg mx-auto"
           )}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
         >
         {/* Error Message Display */}
         {errorMessage && (

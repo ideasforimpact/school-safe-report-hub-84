@@ -499,18 +499,9 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       const updatedAt = doc.updatedAt;
                       
                       return name ? (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="softAmber" className="gap-1">
-                            <User className="h-3.5 w-3.5" />
-                            <span className="truncate max-w-[100px]">{name}</span>
-                          </Badge>
-                          {updatedAt && (
-                            <Badge variant="outline" className="gap-1 text-xs bg-blue-50 border-blue-200 text-blue-700">
-                              <Clock className="h-3 w-3" />
-                              <span>{format(new Date(updatedAt), 'MMM dd, h:mm a')}</span>
-                            </Badge>
-                          )}
-                        </div>
+                        <span className="text-sm text-gray-900">
+                          {name}{updatedAt && ` on ${format(new Date(updatedAt), 'MMM dd, h:mm a')}`}
+                        </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       );
