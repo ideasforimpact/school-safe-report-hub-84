@@ -47,6 +47,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showVerificationResults, setShowVerificationResults] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
+  const [showSafetyCheckConsent, setShowSafetyCheckConsent] = useState(false);
   const navigate = useNavigate();
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
@@ -119,13 +120,22 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         verifyDocument(vehicleId, doc.id, 'verified', 'api', 'Automatically verified through Surepass API');
       });
       
-      toast.success('Vehicle verified successfully through Surepass');
+      // toast.success('Vehicle verified successfully through Surepass');
     } catch (err) {
       console.error('Failed to verify vehicle:', err);
       toast.error('Verification failed. Please try again later.');
     } finally {
       setIsChecking(false);
     }
+  };
+
+  const handleSafetyCheckClick = () => {
+    setShowSafetyCheckConsent(true);
+  };
+
+  const handleSafetyCheckConsent = () => {
+    setShowSafetyCheckConsent(false);
+    runSafetyCheck();
   };
 
   const handleDeleteVehicle = () => {
@@ -194,7 +204,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           {/* Only show Run Safety Check button if user has admin access */}
           {hasAdminAccess && (
             <Button 
-              onClick={runSafetyCheck} 
+              onClick={handleSafetyCheckClick} 
               disabled={isChecking} 
               variant="outline"
               className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
@@ -262,6 +272,29 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </div>
         )}
       </CardContent>
+
+      {/* Safety Check Consent Dialog */}
+      <AlertDialog open={showSafetyCheckConsent} onOpenChange={setShowSafetyCheckConsent}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Run Safety Check</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will initiate a comprehensive safety verification for {make} {model} ({registrationNumber}) 
+              through our secure verification system. The process will check vehicle registration, 
+              insurance status, fitness certificate, and pollution control compliance.
+              <br /><br />
+              This action will use external verification services and may take a few moments to complete.
+              Do you want to proceed with the safety check?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSafetyCheckConsent} className="bg-green-600 hover:bg-green-700">
+              Okay
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

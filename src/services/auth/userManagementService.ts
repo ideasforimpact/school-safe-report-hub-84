@@ -208,7 +208,7 @@ export const deactivateExistingUser = (
     return u;
   });
 
-  toast.success("Employee deactivated successfully");
+  // toast.success("");
   return updatedUsers;
 };
 

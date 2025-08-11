@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCheck, FileX, ShieldAlert, Flag } from 'lucide-react';
+import { Eye, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -21,11 +21,13 @@ import { toast } from 'sonner';
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
   onRefresh?: () => void;
+  onEditVehicle?: (vehicle: Vehicle) => void;
 }
 
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   vehicles,
-  onRefresh
+  onRefresh,
+  onEditVehicle
 }) => {
   const {
     paginatedItems,
@@ -103,12 +105,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px] text-left">Type</TableHead>
-              <TableHead className="text-left">Vehicle Details</TableHead>
-              <TableHead className="w-[160px] text-left">Registration</TableHead>
-              <TableHead className="w-[100px] text-left">Status</TableHead>
+              <TableHead className="w-[150px] text-left">Vehicle Name</TableHead>
+              <TableHead className="w-[150px] text-left">Registration</TableHead>
+              <TableHead className="w-[120px] text-left">Status</TableHead>
               <TableHead className="w-[180px] text-left">Vehicle Status</TableHead>
-              <TableHead className="w-[80px] text-left">Challan</TableHead>
-              <TableHead className="w-[60px] text-left">Actions</TableHead>
+              <TableHead className="w-[100px] text-left">Challan</TableHead>
+              <TableHead className="w-[100px] text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -187,24 +189,40 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell className="text-left">
                     {hasVerification ? (
                       vehicleHasChallan ? (
-                        <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
-                          <Flag className="h-4 w-4 text-orange-600" />
-                          <span>Yes</span>
-                        </Badge>
+                        <div className="flex justify-start">
+                          <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1 w-fit">
+                            <Flag className="h-4 w-4 text-orange-600" />
+                            <span>Yes</span>
+                          </Badge>
+                        </div>
                       ) : (
-                        <span className="text-gray-500 text-xs">-</span>
+                        <div className="flex justify-start">
+                          <span className="text-gray-500 text-xs">-</span>
+                        </div>
                       )
                     ) : (
-                      <span className="text-gray-400 text-xs">-</span>
+                      <div className="flex justify-start">
+                        <span className="text-gray-400 text-xs">-</span>
+                      </div>
                     )}
                   </TableCell>
                   <TableCell className="text-left">
-                    <div className="flex justify-start">
+                    <div className="flex justify-start gap-1">
                       <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
+                      {onEditVehicle && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => onEditVehicle(vehicle)}
+                          title="Edit vehicle"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>;

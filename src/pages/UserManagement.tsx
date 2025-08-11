@@ -14,7 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, FileUp, RefreshCw, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UserPlus, FileUp, RefreshCw, AlertCircle, Search } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -128,6 +130,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [employeeUsers, setEmployeeUsers] = useState<EmployeeUser[]>([]);
   
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  
   // Get clientId from employee data or user context
   const clientId = state.employeeData?.clientId || user?.clientId;
 
@@ -174,6 +180,33 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       fetchEmployeesList();
     }
   }, [clientId]);
+
+  // Filter users based on search and filters
+  const filteredUsers = React.useMemo(() => {
+    try {
+      return employeeUsers.filter(user => {
+        // Search filter
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = 
+          user.firstName?.toLowerCase().includes(searchLower) ||
+          user.lastName?.toLowerCase().includes(searchLower) ||
+          user.email?.toLowerCase().includes(searchLower) ||
+          user.employeeId?.toLowerCase().includes(searchLower) ||
+          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower);
+
+        // Status filter
+        const matchesStatus = 
+          statusFilter === 'all' || 
+          (statusFilter === 'active' && user.isActive) ||
+          (statusFilter === 'inactive' && !user.isActive);
+
+        return matchesSearch && matchesStatus;
+      });
+    } catch (error) {
+      console.error('Error filtering users:', error);
+      return employeeUsers; // Return all users if filtering fails
+    }
+  }, [employeeUsers, searchQuery, statusFilter]);
 
   const fetchEmployeesList = async () => {
     // Add clientId restriction check
@@ -450,10 +483,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           }
           
           await refreshEmployeesList();
-          toast.success("User deactivated successfully");
+          // Removed toast.success("User deactivated successfully");
         } catch (error) {
           console.error("Error deactivating employee:", error);
-          toast.error("User deactivated but employee record update failed");
+          // toast.error("User deactivated but employee record update failed");
         }
       }
     } catch (error) {
@@ -485,7 +518,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           }
           
           await refreshEmployeesList();
-          toast.success("User reactivated successfully");
+          // Removed toast.success("User reactivated successfully");
         } catch (error) {
           console.error("Error reactivating employee:", error);
           toast.error("Failed to reactivate user");
@@ -530,6 +563,18 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     });
     setCurrentUser(null);
   };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+  };
+
+  // Get active filters count
+  const activeFiltersCount = [
+    searchQuery ? 1 : 0,
+    statusFilter !== 'all' ? 1 : 0,
+  ].reduce((sum, count) => sum + count, 0);
 
   // If no clientId is available, show a warning message
   if (!clientId) {
@@ -613,9 +658,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Users</CardTitle>
-            <CardDescription>
-              Manage system users and their permissions
-            </CardDescription>
           </div>
           <Button
             variant="ghost"
@@ -627,61 +669,121 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </CardHeader>
-        <CardContent>
+        
+        {/* Search and Filters Section - Inside the card */}
+        <CardContent className="pb-4">
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full mb-4">
+            {/* Search Bar */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search by name, email, employee ID, or address..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-10"
+                />
+              </div>
+            </div>
+            
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px] h-10">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Clear Filters Button */}
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-gray-600 h-10"
+                >
+                  Clear Filters ({activeFiltersCount})
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          {/* User count after search and filters */}
+          <div className="mb-6">
+            <p className="text-sm text-gray-600">
+              Showing {filteredUsers.length} of {employeeUsers.length} users
+            </p>
+          </div>
+          
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <UserList 
-              users={employeeUsers.length > 0 ? employeeUsers : []}
-              onEditClick={(user) => {
-                setCurrentUser(user);
-                setFormData({
-                  firstName: user.firstName,
-                  lastName: user.lastName,
-                  email: user.email,
-                  employeeId: user.employeeId,
-                  employeeType: user.employeeType,
-                  department: user.department,
-                  joiningDate: user.joiningDate,
-                  clientId: user.clientId || clientId,
-                  moduleAccessPayload: user.moduleAccessPayload || []
-                });
-                setIsEditDialogOpen(true);
-              }}
-              onDeleteUser={async (id) => {
-                try {
-                  await deleteExistingUser([] as any, id);
-                  await refreshEmployeesList();
-                  toast.success("User deleted successfully");
-                } catch (error) {
-                  console.error("Error deleting user:", error);
-                  toast.error("Failed to delete user");
-                }
-              }}
-              onDeactivateUser={async (id) => {
-                try {
-                  await deactivateExistingUser([] as any, id);
-                  await refreshEmployeesList();
-                  toast.success("User deactivated successfully");
-                } catch (error) {
-                  console.error("Error deactivating user:", error);
-                  toast.error("Failed to deactivate user");
-                }
-              }}
-              onReactivateUser={async (id) => {
-                try {
-                  await reactivateExistingUser([] as any, id);
-                  await refreshEmployeesList();
-                  toast.success("User reactivated successfully");
-                } catch (error) {
-                  console.error("Error reactivating user:", error);
-                  toast.error("Failed to reactivate user");
-                }
-              }}
-              hasAdminAccess={hasUserManagementAdminAccess}
-            />
+            <div>
+              {filteredUsers && filteredUsers.length > 0 ? (
+                <UserList 
+                  users={filteredUsers}
+                  onEditClick={(user) => {
+                    setCurrentUser(user);
+                    setFormData({
+                      firstName: user.firstName,
+                      lastName: user.lastName,
+                      email: user.email,
+                      employeeId: user.employeeId,
+                      employeeType: user.employeeType,
+                      department: user.department,
+                      joiningDate: user.joiningDate,
+                      clientId: user.clientId || clientId,
+                      moduleAccessPayload: user.moduleAccessPayload || []
+                    });
+                    setIsEditDialogOpen(true);
+                  }}
+                  onDeleteUser={async (id) => {
+                    try {
+                      await deleteExistingUser([] as any, id);
+                      await refreshEmployeesList();
+                      toast.success("User deleted successfully");
+                    } catch (error) {
+                      console.error("Error deleting user:", error);
+                      toast.error("Failed to delete user");
+                    }
+                  }}
+                  onDeactivateUser={async (id) => {
+                    try {
+                      await deactivateExistingUser([] as any, id);
+                      await refreshEmployeesList();
+                      // toast.success("User deactivated successfully");
+                    } catch (error) {
+                      console.error("Error deactivating user:", error);
+                      toast.error("Failed to deactivate user");
+                    }
+                  }}
+                  onReactivateUser={async (id) => {
+                    try {
+                      await reactivateExistingUser([] as any, id);
+                      await refreshEmployeesList();
+                      // toast.success("User reactivated successfully");
+                    } catch (error) {
+                      console.error("Error reactivating user:", error);
+                      toast.error("Failed to reactivate user");
+                    }
+                  }}
+                  hasAdminAccess={hasUserManagementAdminAccess}
+                  onRefresh={refreshEmployeesList}
+                />
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {searchQuery || statusFilter !== 'all' ? 'No users found matching your filters.' : 'No users found.'}
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

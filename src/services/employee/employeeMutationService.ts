@@ -375,7 +375,7 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
       console.log("Successfully removed all module permissions for deactivated employee");
     }
 
-    toast.success("Employee deactivated successfully");
+    // toast.success("Employee deactivated successfully");
     
     // Convert the response back to our Employee type
     return mapDbRecordToEmployee(data);
