@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
 import VehicleSearchBar from './filters/VehicleSearchBar';
 import VehicleBasicFilters from './filters/VehicleBasicFilters';
 import EmptyVehiclesState from './EmptyVehiclesState';
+import AddVehicleDialog from './AddVehicleDialog';
 import { useVehicleFilters } from './filters/useVehicleFilters';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, FileText, RefreshCw } from 'lucide-react';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { getDocumentStatus, getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
+import { Vehicle } from '@/types/transportSafety';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -21,6 +23,11 @@ interface VehiclesListProps {
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
   const { vehicles, loading, error, fetchVehicles } = useTransportSafety();
+  
+  // State for edit dialog
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
+  
   const {
     // State
     searchQuery,
@@ -42,6 +49,18 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     toggleDocumentStatusFilter,
     clearAllFilters,
   } = useVehicleFilters(vehicles);
+  
+  // Handle edit vehicle
+  const handleEditVehicle = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setShowEditDialog(true);
+  };
+  
+  // Handle close edit dialog
+  const handleCloseEditDialog = () => {
+    setShowEditDialog(false);
+    setSelectedVehicle(undefined);
+  };
   
   // Function to check if a vehicle has challan records
   const hasChallan = (vehicle) => {
@@ -229,9 +248,20 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
               </Button>
             </div>
           </div>
-          <VehiclesListView vehicles={filteredVehicles} onRefresh={handleRefresh} />
+          <VehiclesListView 
+            vehicles={filteredVehicles} 
+            onRefresh={handleRefresh}
+            onEditVehicle={handleEditVehicle}
+          />
         </>
       )}
+      
+      {/* Edit Vehicle Dialog */}
+      <AddVehicleDialog
+        open={showEditDialog}
+        onClose={handleCloseEditDialog}
+        vehicle={selectedVehicle}
+      />
     </div>
   );
 };

@@ -90,7 +90,7 @@ const EmployeeManagement = () => {
       
       // Check if operation was successful
       if (result.success) {
-        toast.success("Employee deactivated successfully");
+        // toast.success("Employee deactivated successfully");
       } else if (result.error) {
         console.error("Failed to deactivate employee:", result.error);
         toast.error(`Failed to deactivate employee: ${result.error}`);
@@ -112,7 +112,7 @@ const EmployeeManagement = () => {
       
       // Check if operation was successful
       if (result.success) {
-        toast.success("Employee deleted successfully");
+        // toast.success("Employee deleted successfully");
       } else if (result.error) {
         console.error("Failed to delete employee:", result.error);
         toast.error(`Failed to delete employee: ${result.error}`);

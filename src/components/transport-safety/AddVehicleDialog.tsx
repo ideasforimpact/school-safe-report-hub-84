@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,19 +10,23 @@ import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyC
 import { Vehicle } from '@/types/transportSafety';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 interface AddVehicleDialogProps {
   open: boolean;
   onClose: () => void;
+  vehicle?: Vehicle; // Optional vehicle for edit mode
 }
 
 type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>;
 
-const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
-  const { addVehicle } = useTransportSafety();
+const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehicle }) => {
+  const { addVehicle, updateVehicle } = useTransportSafety();
   const { employeeData } = useAuth();
   
-  const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset, setValue } = useForm<VehicleFormData>({
+  const isEditMode = !!vehicle;
+  
+  const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset, setValue, watch } = useForm<VehicleFormData>({
     defaultValues: {
       registrationNumber: '',
       type: 'bus',
@@ -38,33 +42,112 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
     }
   });
 
+  // Populate form when vehicle is provided (edit mode)
+  useEffect(() => {
+    if (vehicle && open) {
+      setValue('registrationNumber', vehicle.registrationNumber);
+      setValue('type', vehicle.type);
+      setValue('make', vehicle.make);
+      setValue('model', vehicle.model);
+      setValue('year', vehicle.year);
+      setValue('status', vehicle.status);
+      setValue('driver', vehicle.driver);
+      setValue('route', vehicle.route);
+      setValue('capacity', vehicle.capacity);
+      setValue('clientId', vehicle.clientId);
+      setValue('employeeId', vehicle.employeeId);
+    }
+  }, [vehicle, open, setValue]);
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      reset();
+    }
+  }, [open, reset]);
+
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     try {
-      if (employeeData?.clientId) {
-        // Ensure numeric values are properly converted from strings or set to null if empty
-        const yearValue = data.year ? Number(data.year) : null;
-        const capacityValue = data.capacity ? Number(data.capacity) : null;
-        
-        if (!yearValue) {
-          toast.error('Year is required and must be a valid number');
-          return;
-        }
-
-        await addVehicle({
-          ...data,
-          year: yearValue,
-          capacity: capacityValue,
-          clientId: employeeData.clientId, // Always use the current client's ID
-          employeeId: employeeData?.id // Use logged-in employee's ID
-        });
-        reset();
-        onClose();
-      } else {
+      if (!employeeData?.clientId) {
         toast.error('No client selected. Please select a client first.');
+        return;
       }
+
+      // Validate required fields
+      if (!data.registrationNumber?.trim()) {
+        toast.error('Registration number is required');
+        return;
+      }
+
+      if (!data.make?.trim()) {
+        toast.error('Make is required');
+        return;
+      }
+
+      if (!data.model?.trim()) {
+        toast.error('Model is required');
+        return;
+      }
+
+      if (!data.driver?.trim()) {
+        toast.error('Driver name is required');
+        return;
+      }
+
+      if (!data.route?.trim()) {
+        toast.error('Route is required');
+        return;
+      }
+
+      // Ensure numeric values are properly converted from strings or set to null if empty
+      const yearValue = data.year ? Number(data.year) : null;
+      const capacityValue = data.capacity ? Number(data.capacity) : null;
+      
+      if (!yearValue || yearValue < 1980 || yearValue > new Date().getFullYear() + 1) {
+        toast.error('Year is required and must be between 1980 and ' + (new Date().getFullYear() + 1));
+        return;
+      }
+
+      // Prepare the payload with proper data transformation
+      const vehicleData = {
+        registrationNumber: data.registrationNumber.trim(),
+        type: data.type,
+        make: data.make.trim(),
+        model: data.model.trim(),
+        year: yearValue,
+        driver: data.driver.trim(),
+        route: data.route.trim(),
+        capacity: capacityValue,
+        status: data.status,
+        clientId: employeeData.clientId, // Always use the current client's ID
+        employeeId: employeeData?.id // Use logged-in employee's ID
+      };
+
+      console.log('Sending vehicle data:', {
+        mode: isEditMode ? 'UPDATE' : 'CREATE',
+        vehicleId: isEditMode ? vehicle?.id : 'NEW',
+        payload: vehicleData,
+        employeeData: {
+          clientId: employeeData.clientId,
+          employeeId: employeeData?.id
+        }
+      });
+
+      if (isEditMode && vehicle) {
+        console.log('Updating vehicle with ID:', vehicle.id);
+        await updateVehicle(vehicle.id, vehicleData);
+        toast.success('Vehicle updated successfully');
+      } else {
+        console.log('Creating new vehicle');
+        await addVehicle(vehicleData);
+        toast.success('Vehicle added successfully');
+      }
+      
+      reset();
+      onClose();
     } catch (error) {
-      console.error('Error adding vehicle:', error);
-      toast.error('Failed to add vehicle. Please try again.');
+      console.error('Error saving vehicle:', error);
+      toast.error(`Failed to ${isEditMode ? 'update' : 'add'} vehicle. Please try again.`);
     }
   };
 
@@ -72,7 +155,9 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center">Add New Vehicle</DialogTitle>
+          <DialogTitle className="text-center">
+            {isEditMode ? 'Edit Vehicle' : 'Add New Vehicle'}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -83,6 +168,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                 id="registrationNumber" 
                 {...register('registrationNumber', { required: "Registration number is required" })}
                 placeholder="e.g., KA-01-AB-1234"
+                disabled={isSubmitting}
               />
               {errors.registrationNumber && 
                 <p className="text-red-500 text-sm">{errors.registrationNumber.message}</p>
@@ -93,8 +179,9 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               <div className="space-y-2">
                 <Label htmlFor="type">Vehicle Type*</Label>
                 <Select 
-                  defaultValue="bus" 
-                  onValueChange={(value) => register('type').onChange({ target: { name: 'type', value } })}
+                  value={watch('type')} 
+                  onValueChange={(value) => setValue('type', value as any)}
+                  disabled={isSubmitting}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -112,8 +199,9 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               <div className="space-y-2">
                 <Label htmlFor="status">Status*</Label>
                 <Select 
-                  defaultValue="active" 
-                  onValueChange={(value) => register('status').onChange({ target: { name: 'status', value } })}
+                  value={watch('status')} 
+                  onValueChange={(value) => setValue('status', value as any)}
+                  disabled={isSubmitting}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -134,6 +222,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   id="make" 
                   {...register('make', { required: "Make is required" })}
                   placeholder="e.g., TATA"
+                  disabled={isSubmitting}
                 />
                 {errors.make && 
                   <p className="text-red-500 text-sm">{errors.make.message}</p>
@@ -146,6 +235,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   id="model" 
                   {...register('model', { required: "Model is required" })}
                   placeholder="e.g., Starbus"
+                  disabled={isSubmitting}
                 />
                 {errors.model && 
                   <p className="text-red-500 text-sm">{errors.model.message}</p>
@@ -164,6 +254,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   max: { value: new Date().getFullYear() + 1, message: `Year must be before ${new Date().getFullYear() + 1}` }
                 })}
                 placeholder="e.g., 2023"
+                disabled={isSubmitting}
               />
               {errors.year && 
                 <p className="text-red-500 text-sm">{errors.year.message}</p>
@@ -177,6 +268,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   id="driver" 
                   {...register('driver', { required: "Driver name is required" })}
                   placeholder="e.g., John Doe"
+                  disabled={isSubmitting}
                 />
                 {errors.driver && 
                   <p className="text-red-500 text-sm">{errors.driver.message}</p>
@@ -189,6 +281,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   id="route" 
                   {...register('route', { required: "Route is required" })}
                   placeholder="e.g., Main Campus"
+                  disabled={isSubmitting}
                 />
                 {errors.route && 
                   <p className="text-red-500 text-sm">{errors.route.message}</p>
@@ -205,6 +298,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   min: { value: 1, message: "Capacity must be at least 1" }
                 })}
                 placeholder="e.g., 45"
+                disabled={isSubmitting}
               />
               {errors.capacity && 
                 <p className="text-red-500 text-sm">{errors.capacity.message}</p>
@@ -217,6 +311,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               type="button" 
               variant="outline" 
               onClick={() => { reset(); onClose(); }}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
@@ -224,7 +319,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Adding...' : 'Add Vehicle'}
+              {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Vehicle' : 'Add Vehicle')}
+              {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             </Button>
           </div>
         </form>

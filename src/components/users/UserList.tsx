@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
   Table,
@@ -11,11 +11,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -23,7 +25,8 @@ interface UserListProps {
   onDeleteUser: (id: string) => void;
   onDeactivateUser: (id: string) => void;
   onReactivateUser: (id: string) => void;
-  hasAdminAccess?: boolean; // Add hasAdminAccess prop
+  hasAdminAccess?: boolean;
+  onRefresh?: () => void;
 }
 
 const UserList = ({ 
@@ -32,143 +35,274 @@ const UserList = ({
   onDeleteUser, 
   onDeactivateUser, 
   onReactivateUser, 
-  hasAdminAccess = false 
+  hasAdminAccess = false,
+  onRefresh
 }: UserListProps) => {
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
+  const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
+
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
+
+  // Handle deactivate user with database update
+  const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+    try {
+      setIsTableLoading(true);
+      
+      // Update the employee status in the database
+      const { data, error } = await supabase
+        .from('employees')
+        .update({ 
+          status: false, // Set active = 0 (false)
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .eq('client_id', clientId);
+
+      if (error) {
+        console.error('Error deactivating employee:', error);
+        toast.error('Failed to deactivate employee');
+        return;
+      }
+
+      console.log('Employee deactivated successfully:', data);
+      
+      // Call the parent's deactivate function
+      await onDeactivateUser(userId);
+      
+      // Refresh the list with loading state
+      if (onRefresh) {
+        await onRefresh();
+      }
+      
+    } catch (error) {
+      console.error('Error deactivating employee:', error);
+      toast.error('Failed to deactivate employee');
+    } finally {
+      setIsTableLoading(false);
+      setShowDeactivateDialog(null);
+    }
+  };
+
+  // Handle activate user with database update
+  const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+    try {
+      setIsTableLoading(true);
+      
+      // Update the employee status in the database
+      const { data, error } = await supabase
+        .from('employees')
+        .update({ 
+          status: true, // Set active = 1 (true)
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .eq('client_id', clientId);
+
+      if (error) {
+        console.error('Error activating employee:', error);
+        toast.error('Failed to activate employee');
+        return;
+      }
+
+      console.log('Employee activated successfully:', data);
+      
+      // Call the parent's reactivate function
+      await onReactivateUser(userId);
+      
+      // Refresh the list with loading state
+      if (onRefresh) {
+        await onRefresh();
+      }
+      
+    } catch (error) {
+      console.error('Error activating employee:', error);
+      toast.error('Failed to activate employee');
+    } finally {
+      setIsTableLoading(false);
+      setShowActivateDialog(null);
+    }
+  };
   
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Employee ID</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Department</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Joining Date</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="w-[150px]">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {users.map((user) => (
-          <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
-            <TableCell>{user.employeeId || '-'}</TableCell>
-            <TableCell>{user.firstName} {user.lastName}</TableCell>
-            <TableCell>{user.email}</TableCell>
-            <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
-            <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
-            <TableCell>{user.joiningDate || '-'}</TableCell>
-            <TableCell>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                user.role === 'admin' || user.role === 'saas_owner' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'
-              }`}>
-                {user.role === 'admin' ? 'Admin' : user.role === 'saas_owner' ? 'SaaS Owner' : 'Reporter'}
-              </span>
-            </TableCell>
-            <TableCell>
-              {user.isActive ? (
-                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                  Active
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                  Inactive
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell>
-              {!user.isSuperAdmin && hasAdminAccess ? (
-                <div className="flex space-x-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => onEditClick(user)}
-                    disabled={!user.isActive}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  
-                  {user.isActive ? (
+    <div className="relative">
+      {/* Loading Overlay */}
+      {isTableLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-md">
+          <div className="flex flex-col items-center space-y-2">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="text-sm text-gray-600">Processing...</span>
+          </div>
+        </div>
+      )}
+      
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Employee ID</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Department</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Joining Date</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="w-[150px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
+              <TableCell>{user.employeeId || '-'}</TableCell>
+              <TableCell>{user.firstName} {user.lastName}</TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
+              <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
+              <TableCell>{user.joiningDate || '-'}</TableCell>
+              <TableCell>
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  user.role === 'admin' || user.role === 'saas_owner' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {user.role === 'admin' ? 'Admin' : user.role === 'saas_owner' ? 'SaaS Owner' : 'Reporter'}
+                </span>
+              </TableCell>
+              <TableCell>
+                {user.isActive ? (
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                    Active
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                    Inactive
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {!user.isSuperAdmin && hasAdminAccess ? (
+                  <div className="flex space-x-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => onEditClick(user)}
+                      disabled={isTableLoading}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    
+                    {user.isActive ? (
+                      // Deactivate Button
+                      <AlertDialog open={showDeactivateDialog === user.id} onOpenChange={(open) => setShowDeactivateDialog(open ? user.id : null)}>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            disabled={isTableLoading}
+                          >
+                            <UserX className="h-4 w-4 text-amber-600" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to deactivate {user.firstName} {user.lastName}? They will no longer be able to log in to the system.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-amber-600 hover:bg-amber-700"
+                              onClick={() => handleDeactivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              disabled={isTableLoading}
+                            >
+                              Deactivate
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      // Activate Button
+                      <AlertDialog open={showActivateDialog === user.id} onOpenChange={(open) => setShowActivateDialog(open ? user.id : null)}>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            disabled={isTableLoading}
+                          >
+                            <UserCheck className="h-4 w-4 text-green-600" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Activate User</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to activate {user.firstName} {user.lastName}? They will be able to log in to the system again.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleActivateUser(user.id, user.employeeId || '', user.clientId || '')}
+                              disabled={isTableLoading}
+                            >
+                              Activate
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <UserX className="h-4 w-4 text-amber-600" />
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          disabled={isTableLoading}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+                          <AlertDialogTitle>Delete User</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to deactivate this user? They will no longer be able to log in to the system.
+                            Are you sure you want to permanently delete this user? This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
                           <AlertDialogAction 
-                            className="bg-amber-600 hover:bg-amber-700"
-                            onClick={() => onDeactivateUser(user.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => onDeleteUser(user.id)}
+                            disabled={isTableLoading}
                           >
-                            Deactivate
+                            Delete
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  ) : (
+                  </div>
+                ) : (
+                  <div className="flex space-x-1">
+                    {/* Show only view button if user doesn't have admin access */}
                     <Button 
                       variant="ghost" 
-                      size="icon"
-                      onClick={() => onReactivateUser(user.id)}
+                      size="icon" 
+                      onClick={() => onEditClick(user)}
+                      disabled={!user.isActive || !hasAdminAccess || isTableLoading}
                     >
-                      <UserCheck className="h-4 w-4 text-green-600" />
+                      <Edit className="h-4 w-4" />
                     </Button>
-                  )}
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete User</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to permanently delete this user? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          className="bg-destructive hover:bg-destructive/90"
-                          onClick={() => onDeleteUser(user.id)}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ) : (
-                <div className="flex space-x-1">
-                  {/* Show only view button if user doesn't have admin access */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => onEditClick(user)}
-                    disabled={!user.isActive || !hasAdminAccess}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                  </div>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

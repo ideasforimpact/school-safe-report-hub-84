@@ -102,12 +102,12 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {availableModules.map((module) => {
+          {availableModules.map((module, index) => {
             const isSelected = isModuleSelected(module.module_id);
             const isAdmin = isModuleAdmin(module.module_id);
             
             return (
-              <TableRow key={module.key || module.module_id}>
+              <TableRow key={`${module.module_id}-${index}`}>
                 <TableCell>
                   <Checkbox
                     id={`module-checkbox-${module.module_id}`}
