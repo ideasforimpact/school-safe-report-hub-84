@@ -103,6 +103,107 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
   }
 };
 
+export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIfNoClient: boolean = true): Promise<Employee[]> => {
+  try {
+    console.log("Calling getActiveEmployeesFromApi with clientId:", clientId);
+    
+    // SECURITY: Always require clientId - never fetch without it
+    if (!clientId) {
+      if (skipIfNoClient) {
+        console.log("No clientId provided - returning empty array for security");
+        return [];
+      } else {
+        console.error("SECURITY WARNING: getActiveEmployeesFromApi called without clientId");
+        throw new Error("Client ID is required for security");
+      }
+    }
+    
+    // First, fetch only active employees
+    const { data: employeesData, error: employeesError } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('client_id', clientId) // MANDATORY client_id filter
+      .eq('status', true); // Only fetch active employees
+
+    if (employeesError) {
+      console.error("Error fetching active employees:", employeesError);
+      console.log("Failed to fetch active employees, returning empty array");
+      return [];
+    }
+
+    if (!employeesData || employeesData.length === 0) {
+      console.log("No active employees found for client:", clientId);
+      return [];
+    }
+
+    // Then, fetch documents for all active employees
+    const employeeIds = employeesData.map(emp => emp.id);
+    const { data: documentsData, error: documentsError } = await supabase
+      .from('employee_documents')
+      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, created_at, updated_at')
+      .in('employee_id', employeeIds);
+
+    if (documentsError) {
+      console.error("Error fetching employee documents:", documentsError);
+      // Continue without documents if there's an error
+    }
+
+    console.log(`Successfully fetched ${employeesData.length} active employees from API for client: ${clientId}`);
+    
+    // Map the database records to our Employee model
+    const employees = employeesData.map(record => {
+      // Find documents for this employee
+      const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
+      
+      // Map employee documents to our VerificationDocument interface
+      const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
+        id: doc.id,
+        employeeId: record.id,
+        documentTypeId: doc.document_type_id || '',
+        documentTypeName: 'Unknown', // Will be populated by the component if needed
+        documentNumber: doc.document_number || '',
+        documentImage: doc.document_url || '',
+        verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
+        verificationMethod: 'manual' as const,
+        employee_docs_log: [],
+        params: {},
+        cronActivate: false,
+        createdAt: doc.created_at || new Date().toISOString(),
+        updatedAt: doc.updated_at || new Date().toISOString()
+      }));
+
+      const employee: Employee = {
+        id: record.id,
+        employeeId: record.employee_id || '',
+        name: `${record.first_name} ${record.last_name}`,
+        firstName: record.first_name,
+        lastName: record.last_name,
+        email: record.email || '',
+        phone: '',
+        dateOfBirth: '',
+        address: '',
+        joiningDate: record.joining_date || new Date().toISOString(),
+        department: record.department || '',
+        position: record.employee_type || '',
+        employeeType: (record.employee_type as Employee['employeeType']) || 'permanent',
+        status: record.status === true,
+        createdAt: record.created_at || new Date().toISOString(),
+        updatedAt: record.updated_at || new Date().toISOString(),
+        isSuperAdmin: record?.is_super_admin,
+        documents: documents,
+        clientId: record.client_id
+      };
+      return employee;
+    });
+    
+    return employees;
+  } catch (error) {
+    console.error("Error in getActiveEmployeesFromApi:", error);
+    // Don't show toast error, just return empty array
+    return [];
+  }
+};
+
 export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Promise<Employee | null> => {
   try {
     // Build query with mandatory client_id filter if provided

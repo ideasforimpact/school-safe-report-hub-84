@@ -8,70 +8,135 @@ interface SafetyPerformanceGaugesProps {
     totalEmployees: number;
     employeesVerified: number;
     totalVehicles: number;
-    vehiclesWithDocuments: number;
+    vehiclesVerified?: number;
+    activeAssessments?: number;
     incidentsLastMonth: number;
   };
   loading: boolean;
 }
 
 const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProps) => {
-  // Calculate percentages
-  const employeeComplianceRate = stats.totalEmployees > 0 
-    ? Math.round((stats.employeesVerified / stats.totalEmployees) * 100) 
+  console.log('🔍 SafetyPerformanceGauges - Raw stats received at:', new Date().toISOString(), stats);
+  console.log('🔍 SafetyPerformanceGauges - Key values:');
+  console.log('  - stats.totalEmployees:', stats.totalEmployees);
+  console.log('  - stats.employeesVerified:', stats.employeesVerified);
+  console.log('  - stats.totalVehicles:', stats.totalVehicles);
+  console.log('  - stats.vehiclesVerified:', stats.vehiclesVerified);
+  console.log('  - stats.activeAssessments:', stats.activeAssessments);
+  console.log('  - stats.openIncidents:', stats.openIncidents);
+
+  // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
+  const employeeComplianceScore = stats.totalEmployees > 0 
+    ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees)) 
     : 0;
 
-  const vehicleComplianceRate = stats.totalVehicles > 0 
-    ? Math.round((stats.vehiclesWithDocuments / stats.totalVehicles) * 100) 
+  console.log('🔍 Employee Compliance Score Calculation:');
+  console.log('  - Number of verified employees:', stats.employeesVerified);
+  console.log('  - Number of active employees:', stats.totalEmployees);
+  console.log('  - Calculation: 100 * (', stats.employeesVerified, '/', stats.totalEmployees, ') =', employeeComplianceScore);
+  console.log('  - Final Employee Compliance Score:', employeeComplianceScore);
+
+  // Calculate Vehicle Compliance score = 100 * (number of verified vehicles / number of vehicles)
+  const vehicleComplianceScore = stats.totalVehicles > 0 
+    ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles)) 
     : 0;
 
-  // Calculate overall safety score
-  const safetyScore = Math.round(
-    (employeeComplianceRate * 0.4) + 
-    (vehicleComplianceRate * 0.3) + 
-    ((stats.openIncidents <= 5 ? 100 - (stats.openIncidents * 10) : 50) * 0.3)
+  console.log('🔍 Vehicle Compliance Score Calculation:');
+  console.log('  - Number of verified vehicles:', stats.vehiclesVerified || 0);
+  console.log('  - Number of vehicles:', stats.totalVehicles);
+  console.log('  - Calculation: 100 * (', stats.vehiclesVerified || 0, '/', stats.totalVehicles, ') =', vehicleComplianceScore);
+  console.log('  - Final Vehicle Compliance Score:', vehicleComplianceScore);
+
+  // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
+  const incidentsScore = Math.max(100 - 20 * stats.openIncidents, 0);
+
+  console.log('🔍 Incidents Score Calculation:');
+  console.log('  - Number of open incidents:', stats.openIncidents);
+  console.log('  - Calculation: max(100 - 20 *', stats.openIncidents, ', 0) = max(', 100 - 20 * stats.openIncidents, ', 0) =', incidentsScore);
+  console.log('  - Final Incidents Score:', incidentsScore);
+
+  // Calculate Overall Safety Score = (0.3 * Total Safe Employees) + (0.2 * Total Safety Vehicles) + (0.15 * Active Assessments) + (0.20 * Total Number of Open Incidents)
+  const overallSafetyScore = Math.round(
+    (0.3 * (stats.totalEmployees || 0)) + 
+    (0.2 * (stats.totalVehicles || 0)) + 
+    (0.15 * (stats.activeAssessments || 0)) + 
+    (0.20 * stats.openIncidents)
   );
 
-  // Calculate incident severity (mock data based on open incidents)
-  const incidentSeverityScore = stats.openIncidents <= 2 ? 95 : 
-                               stats.openIncidents <= 5 ? 75 : 
-                               stats.openIncidents <= 10 ? 50 : 25;
+  console.log('🔍 Overall Safety Score Calculation:');
+  console.log('  - Total Safe Employees:', stats.totalEmployees || 0);
+  console.log('  - Total Safety Vehicles:', stats.totalVehicles || 0);
+  console.log('  - Active Assessments:', stats.activeAssessments || 0);
+  console.log('  - Total Number of Open Incidents:', stats.openIncidents);
+  console.log('  - Calculation: (0.3 *', stats.totalEmployees || 0, ') + (0.2 *', stats.totalVehicles || 0, ') + (0.15 *', stats.activeAssessments || 0, ') + (0.20 *', stats.openIncidents, ')');
+  console.log('  - Step 1: (0.3 *', stats.totalEmployees || 0, ') =', 0.3 * (stats.totalEmployees || 0));
+  console.log('  - Step 2: (0.2 *', stats.totalVehicles || 0, ') =', 0.2 * (stats.totalVehicles || 0));
+  console.log('  - Step 3: (0.15 *', stats.activeAssessments || 0, ') =', 0.15 * (stats.activeAssessments || 0));
+  console.log('  - Step 4: (0.20 *', stats.openIncidents, ') =', 0.20 * stats.openIncidents);
+  console.log('  - Sum:', (0.3 * (stats.totalEmployees || 0)) + (0.2 * (stats.totalVehicles || 0)) + (0.15 * (stats.activeAssessments || 0)) + (0.20 * stats.openIncidents));
+  console.log('  - Final Overall Safety Score (rounded):', overallSafetyScore);
+
+  console.log('📊 FINAL SAFETY PERFORMANCE GAUGES SUMMARY:');
+  console.log('  - Employee Compliance Score:', employeeComplianceScore, '%');
+  console.log('  - Vehicle Compliance Score:', vehicleComplianceScore, '%');
+  console.log('  - Incidents Score:', incidentsScore, '%');
+  console.log('  - Overall Safety Score:', overallSafetyScore, '%');
+  console.log('  - Raw stats received:', stats);
 
   const createGaugeData = (percentage: number, color: string) => [
     { name: 'Completed', value: percentage, color: color },
     { name: 'Remaining', value: 100 - percentage, color: '#e5e7eb' }
   ];
 
-  const getColorByScore = (score: number) => {
-    if (score >= 90) return '#10b981'; // green
-    if (score >= 70) return '#f59e0b'; // yellow
-    if (score >= 50) return '#f97316'; // orange
-    return '#ef4444'; // red
+  const getScoreInfo = (score: number) => {
+    console.log('🎨 Color/Status Determination for score:', score);
+    
+    if (score <= 20) {
+      console.log('  - Score <= 20: Poor (Red)');
+      return { color: '#ef4444', status: 'Poor', textColor: 'text-red-600', bgColor: 'bg-red-100', textBgColor: 'text-red-800' }; // red
+    } else if (score > 20 && score <= 40) {
+      console.log('  - Score > 20 && <= 40: Need Attention (Orange)');
+      return { color: '#f97316', status: 'Need Attention', textColor: 'text-orange-600', bgColor: 'bg-orange-100', textBgColor: 'text-orange-800' }; // orange
+    } else if (score > 40 && score <= 60) {
+      console.log('  - Score > 40 && <= 60: Good (Yellow)');
+      return { color: '#f59e0b', status: 'Good', textColor: 'text-yellow-600', bgColor: 'bg-yellow-100', textBgColor: 'text-yellow-800' }; // yellow
+    } else if (score > 60 && score <= 80) {
+      console.log('  - Score > 60 && <= 80: Fair (Green)');
+      return { color: '#10b981', status: 'Fair', textColor: 'text-green-600', bgColor: 'bg-green-100', textBgColor: 'text-green-800' }; // green
+    } else {
+      console.log('  - Score > 80: Excellent (Green)');
+      return { color: '#10b981', status: 'Excellent', textColor: 'text-green-600', bgColor: 'bg-green-100', textBgColor: 'text-green-800' }; // green
+    }
   };
 
   const gauges = [
     {
       title: 'Overall Safety Score',
-      value: safetyScore,
-      data: createGaugeData(safetyScore, getColorByScore(safetyScore)),
-      description: 'Comprehensive safety performance'
+      value: overallSafetyScore,
+      data: createGaugeData(overallSafetyScore, getScoreInfo(overallSafetyScore).color),
+      description: 'Comprehensive safety performance',
+      scoreInfo: getScoreInfo(overallSafetyScore)
     },
     {
       title: 'Employee Compliance',
-      value: employeeComplianceRate,
-      data: createGaugeData(employeeComplianceRate, getColorByScore(employeeComplianceRate)),
-      description: `${stats.employeesVerified}/${stats.totalEmployees} verified`
+      value: employeeComplianceScore,
+      data: createGaugeData(employeeComplianceScore, getScoreInfo(employeeComplianceScore).color),
+      description: `${stats.employeesVerified}/${stats.totalEmployees} verified`,
+      scoreInfo: getScoreInfo(employeeComplianceScore)
     },
     {
       title: 'Vehicle Compliance',
-      value: vehicleComplianceRate,
-      data: createGaugeData(vehicleComplianceRate, getColorByScore(vehicleComplianceRate)),
-      description: `${stats.vehiclesWithDocuments}/${stats.totalVehicles} compliant`
+      value: vehicleComplianceScore,
+      data: createGaugeData(vehicleComplianceScore, getScoreInfo(vehicleComplianceScore).color),
+      description: `${stats.vehiclesVerified || 0}/${stats.totalVehicles} compliant`,
+      scoreInfo: getScoreInfo(vehicleComplianceScore)
     },
     {
       title: 'Incident Management',
-      value: incidentSeverityScore,
-      data: createGaugeData(incidentSeverityScore, getColorByScore(incidentSeverityScore)),
-      description: `${stats.openIncidents} open incidents`
+      value: incidentsScore,
+      data: createGaugeData(incidentsScore, getScoreInfo(incidentsScore).color),
+      description: `${stats.openIncidents} open incidents`,
+      scoreInfo: getScoreInfo(incidentsScore)
     }
   ];
 
@@ -142,11 +207,7 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className={`text-2xl font-bold ${
-                      gauge.value >= 90 ? 'text-green-600' : 
-                      gauge.value >= 70 ? 'text-yellow-600' : 
-                      gauge.value >= 50 ? 'text-orange-600' : 'text-red-600'
-                    }`}>
+                    <div className={`text-2xl font-bold ${gauge.scoreInfo.textColor}`}>
                       {gauge.value}%
                     </div>
                   </div>
@@ -155,14 +216,8 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
               <div className="space-y-1">
                 <h4 className="text-sm font-medium text-gray-900">{gauge.title}</h4>
                 <p className="text-xs text-gray-600">{gauge.description}</p>
-                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  gauge.value >= 90 ? 'bg-green-100 text-green-800' : 
-                  gauge.value >= 70 ? 'bg-yellow-100 text-yellow-800' : 
-                  gauge.value >= 50 ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {gauge.value >= 90 ? 'Excellent' : 
-                   gauge.value >= 70 ? 'Good' : 
-                   gauge.value >= 50 ? 'Fair' : 'Needs Attention'}
+                <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${gauge.scoreInfo.bgColor} ${gauge.scoreInfo.textBgColor}`}>
+                  {gauge.scoreInfo.status}
                 </div>
               </div>
             </div>

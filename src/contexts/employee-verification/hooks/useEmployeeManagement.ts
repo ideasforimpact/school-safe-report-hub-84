@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { getActiveEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Employee } from '../types';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
@@ -40,7 +40,7 @@ export const useEmployeeManagement = () => {
       
       // SECURITY: Always pass clientId to ensure proper filtering
       // The enhanced API now includes document summaries
-      const employeesData = await getAllEmployeesFromApi(clientId, false);
+      const employeesData = await getActiveEmployeesFromApi(clientId, false);
       
       console.log(`Successfully loaded ${employeesData.length} employees with documents for client: ${clientId}`);
       

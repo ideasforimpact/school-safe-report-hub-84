@@ -35,21 +35,35 @@ serve(async (req) => {
     // Determine if we should apply employee filtering (default to super admin behavior if not specified)
     const shouldFilterByEmployee = is_super_admin === false && employee_id;
 
-    // Get status IDs for "New" and "Open" incidents
-    const { data: incidentStatuses } = await supabase
+    // Get all incident statuses for debugging
+    const { data: allIncidentStatuses } = await supabase
       .from('incident_status')
       .select('id, name')
-      .in('name', ['New', 'Open'])
+    
+    console.log('All incident statuses:', allIncidentStatuses)
 
-    const statusIds = incidentStatuses?.map(status => status.id) || []
-    console.log('Status IDs found:', statusIds)
+    // Get status ID for "Open" incidents only
+    const { data: openStatus } = await supabase
+      .from('incident_status')
+      .select('id, name')
+      .eq('name', 'Open')
+      .single()
+
+    const openStatusId = openStatus?.id
+    console.log('Open status ID found:', openStatusId)
 
     // Get open incidents count with role-based filtering
     let openIncidentsQuery = supabase
       .from('incidents')
-      .select('id', { count: 'exact' })
+      .select(`
+        id, 
+        status_id, 
+        people_involved, 
+        category_id,
+        incident_categories!inner(name)
+      `, { count: 'exact' })
       .eq('client_id', client_id)
-      .in('status_id', statusIds)
+      .eq('status_id', openStatusId)
 
     if (shouldFilterByEmployee) {
       openIncidentsQuery = openIncidentsQuery.eq('created_by', employee_id)
@@ -61,12 +75,55 @@ serve(async (req) => {
       console.error('Error fetching open incidents:', openIncidentsError)
     }
 
-    // Get active assessments count with role-based filtering
+    console.log('Open incidents found:', openIncidents)
+
+    // Debug: Let's also check ALL incidents for this client to see what statuses exist
+    const { data: allClientIncidents } = await supabase
+      .from('incidents')
+      .select('id, status_id, category')
+      .eq('client_id', client_id)
+    
+    console.log('All incidents for client:', allClientIncidents)
+    console.log('Status IDs in incidents:', allClientIncidents?.map(inc => inc.status_id))
+
+    // Calculate number of students involved in open incidents by category
+    let studentsInvolvedCount = 0
+    const categoryCounts: { [key: string]: number } = {}
+    
+    if (openIncidents && openIncidents.length > 0) {
+      openIncidents.forEach(incident => {
+        if (incident.people_involved && Array.isArray(incident.people_involved)) {
+          let incidentStudentCount = 0
+          incident.people_involved.forEach(person => {
+            if (person.role === 'Student') {
+              studentsInvolvedCount++
+              incidentStudentCount++
+            }
+          })
+          
+          // If this incident has students involved, count it for the category
+          if (incidentStudentCount > 0 && incident.incident_categories?.name) {
+            categoryCounts[incident.incident_categories.name] = (categoryCounts[incident.incident_categories.name] || 0) + incidentStudentCount
+          }
+        }
+      })
+    }
+
+    // Get top 3 categories by student count
+    const topCategories = Object.entries(categoryCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3)
+      .map(([category, count]) => ({ category, count }))
+
+    console.log('Students involved in open incidents:', studentsInvolvedCount)
+    console.log('Top categories by student count:', topCategories)
+
+    // Get active assessments count with role-based filtering (exclude Completed)
     let activeAssessmentsQuery = supabase
       .from('assessments')
-      .select('id', { count: 'exact' })
+      .select('id, target_completion_date, status')
       .eq('client_id', client_id)
-      .eq('status', 'New')
+      .neq('status', 'Completed')
 
     if (shouldFilterByEmployee) {
       activeAssessmentsQuery = activeAssessmentsQuery.eq('created_by', employee_id)
@@ -78,6 +135,167 @@ serve(async (req) => {
       console.error('Error fetching active assessments:', activeAssessmentsError)
     }
 
+    // Get breakdown of active assessment statuses
+    const newAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'New').length || 0
+    const draftAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Draft').length || 0
+    const submittedAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Submitted').length || 0
+
+    console.log('Assessment stats:', {
+      totalActive: activeAssessments?.length || 0,
+      newCount: newAssessmentsCount,
+      draftCount: draftAssessmentsCount,
+      submittedCount: submittedAssessmentsCount
+    })
+
+    // Get custom forms count for the client
+    const { data: customForms, error: customFormsError } = await supabase
+      .from('custom_forms')
+      .select('id')
+      .eq('client_id', client_id)
+
+    if (customFormsError) {
+      console.error('Error fetching custom forms:', customFormsError)
+    }
+
+    // Get form submissions for last 30, 60, 90 days
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+
+    // Get form submissions for last 30 days
+    const { data: submissions30Days, error: submissions30Error } = await supabase
+      .from('form_submissions')
+      .select('id')
+      .in('form_id', customForms?.map(form => form.id) || [])
+      .gte('created_at', thirtyDaysAgo.toISOString())
+
+    if (submissions30Error) {
+      console.error('Error fetching 30-day submissions:', submissions30Error)
+    }
+
+    // Get form submissions for last 60 days
+    const { data: submissions60Days, error: submissions60Error } = await supabase
+      .from('form_submissions')
+      .select('id')
+      .in('form_id', customForms?.map(form => form.id) || [])
+      .gte('created_at', sixtyDaysAgo.toISOString())
+
+    if (submissions60Error) {
+      console.error('Error fetching 60-day submissions:', submissions60Error)
+    }
+
+    // Get form submissions for last 90 days
+    const { data: submissions90Days, error: submissions90Error } = await supabase
+      .from('form_submissions')
+      .select('id')
+      .in('form_id', customForms?.map(form => form.id) || [])
+      .gte('created_at', ninetyDaysAgo.toISOString())
+
+    if (submissions90Error) {
+      console.error('Error fetching 90-day submissions:', submissions90Error)
+    }
+
+    console.log('Custom forms stats:', {
+      totalForms: customForms?.length || 0,
+      submissions30Days: submissions30Days?.length || 0,
+      submissions60Days: submissions60Days?.length || 0,
+      submissions90Days: submissions90Days?.length || 0
+    })
+
+    // Get vehicle verification stats
+    const { data: allVehicles, error: vehiclesError } = await supabase
+      .from('vehicles')
+      .select('id, verification_data')
+      .eq('client_id', client_id)
+
+    if (vehiclesError) {
+      console.error('Error fetching vehicles for verification stats:', vehiclesError)
+    }
+
+    // Calculate verification stats
+    let vehiclesToBeVerified = 0
+    let vehiclesFailedVerification = 0
+    let vehiclesVerified = 0
+
+    allVehicles?.forEach(vehicle => {
+      console.log(`Vehicle ${vehicle.id}: verification_data exists: ${!!vehicle.verification_data}, length: ${vehicle.verification_data?.length || 0}`)
+      
+      if (!vehicle.verification_data || vehicle.verification_data.length === 0) {
+        // No verification data - to be verified
+        vehiclesToBeVerified++
+        console.log(`Vehicle ${vehicle.id}: No verification data - to be verified`)
+      } else {
+        // Has verification data - check if any documents are expired/missing
+        const verificationData = vehicle.verification_data
+        
+        // Find verification_log entry
+        const logEntry = verificationData.find((item: any) => item.field === 'verification_log')
+        if (!logEntry || !logEntry.value) {
+          vehiclesToBeVerified++
+          console.log(`Vehicle ${vehicle.id}: No verification log - to be verified`)
+          return
+        }
+
+        // Get latest verification log
+        const timestamps = Object.keys(logEntry.value)
+        if (timestamps.length === 0) {
+          vehiclesToBeVerified++
+          console.log(`Vehicle ${vehicle.id}: No timestamps in log - to be verified`)
+          return
+        }
+
+        timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+        const latestLog = logEntry.value[timestamps[0]]
+
+        // Check document statuses
+        const fitnessField = latestLog.find((item: any) => item.field === 'fit_up_to')
+        const insuranceField = latestLog.find((item: any) => item.field === 'insurance_upto')
+        const pollutionField = latestLog.find((item: any) => item.field === 'pucc_upto')
+
+        console.log(`Vehicle ${vehicle.id}: fitness=${fitnessField?.value}, insurance=${insuranceField?.value}, pollution=${pollutionField?.value}`)
+
+        const currentDate = new Date()
+        let hasExpiredOrMissing = false
+
+        // Check if any document is expired or missing
+        ;[fitnessField, insuranceField, pollutionField].forEach(field => {
+          if (!field || !field.value) {
+            hasExpiredOrMissing = true
+            console.log(`Vehicle ${vehicle.id}: Missing field or value`)
+            return
+          }
+
+          try {
+            const expiryDate = new Date(field.value)
+            if (isNaN(expiryDate.getTime()) || expiryDate < currentDate) {
+              hasExpiredOrMissing = true
+              console.log(`Vehicle ${vehicle.id}: Expired or invalid date: ${field.value}`)
+            }
+          } catch (e) {
+            hasExpiredOrMissing = true
+            console.log(`Vehicle ${vehicle.id}: Error parsing date: ${field.value}`)
+          }
+        })
+
+        if (hasExpiredOrMissing) {
+          vehiclesFailedVerification++
+          console.log(`Vehicle ${vehicle.id}: Has expired/missing documents - failed verification`)
+        } else {
+          // All documents are valid - vehicle is verified
+          vehiclesVerified++
+          console.log(`Vehicle ${vehicle.id}: All documents valid - verified`)
+        }
+      }
+    })
+
+    console.log('Vehicle verification stats:', {
+      totalVehicles: allVehicles?.length || 0,
+      vehiclesToBeVerified,
+      vehiclesFailedVerification,
+      vehiclesVerified
+    })
+
     // Get total employees for the client (always client-wide)
     const { data: totalEmployees, error: totalEmployeesError } = await supabase
       .from('employees')
@@ -88,23 +306,99 @@ serve(async (req) => {
       console.error('Error fetching total employees:', totalEmployeesError)
     }
 
-    // Get employees with documents (always client-wide for team visibility)
-    const { data: employeesWithDocs, error: employeesWithDocsError } = await supabase
-      .from('employee_documents')
-      .select('employee_id')
-      .in('employee_id', await supabase
-        .from('employees')
-        .select('id')
-        .eq('client_id', client_id)
-        .then(res => res.data?.map(emp => emp.id) || [])
-      )
+    // Get total employees for this client
+    const employeeIds = await supabase
+      .from('employees')
+      .select('id')
+      .eq('client_id', client_id)
+      .then(res => res.data?.map(emp => emp.id) || [])
 
-    if (employeesWithDocsError) {
-      console.error('Error fetching employees with documents:', employeesWithDocsError)
+    // Fetch document status IDs for completed, governance, and rejected
+    const { data: completedStatus } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'completed')
+      .single()
+
+    const { data: governanceStatus } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'governance')
+      .single()
+
+    const { data: rejectedStatus } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'rejected')
+      .single()
+
+    // Get all employee documents to apply the same logic as employee-verification status column
+    const { data: allEmployeeDocs, error: allDocsError } = await supabase
+      .from('employee_documents')
+      .select('employee_id, verification_status')
+      .in('employee_id', employeeIds)
+
+    if (allDocsError) {
+      console.error('Error fetching all employee documents:', allDocsError)
     }
 
-    // Get unique employee IDs with documents
-    const uniqueEmployeesWithDocs = new Set(employeesWithDocs?.map(doc => doc.employee_id) || [])
+    // Group documents by employee and apply the same priority logic as employee-verification
+    const employeeStatusMap = new Map()
+    
+    // Initialize all employees as 'no-documents'
+    employeeIds.forEach(id => {
+      employeeStatusMap.set(id, 'no-documents')
+    })
+
+    // Group documents by employee
+    const employeeDocsMap = new Map()
+    allEmployeeDocs?.forEach(doc => {
+      if (!employeeDocsMap.has(doc.employee_id)) {
+        employeeDocsMap.set(doc.employee_id, [])
+      }
+      employeeDocsMap.get(doc.employee_id).push(doc)
+    })
+
+    // Apply the same priority logic as employee-verification status column
+    employeeDocsMap.forEach((docs, employeeId) => {
+      const verified = docs.filter(doc => doc.verification_status === 'verified' || doc.verification_status === 'completed')
+      const failed = docs.filter(doc => doc.verification_status === 'failed')
+      const pending = docs.filter(doc => doc.verification_status === 'pending')
+      
+      // Priority: Failed > Pending > Verified
+      if (failed.length > 0) {
+        employeeStatusMap.set(employeeId, 'failed')
+      } else if (pending.length > 0) {
+        employeeStatusMap.set(employeeId, 'pending')
+      } else if (verified.length > 0) {
+        employeeStatusMap.set(employeeId, 'verified')
+      }
+    })
+
+    // Count employees by status
+    const employeesVerified = Array.from(employeeStatusMap.entries()).filter(([_, status]) => status === 'verified').length
+    const employeesFailed = Array.from(employeeStatusMap.entries()).filter(([_, status]) => status === 'failed').length
+    const employeesPending = Array.from(employeeStatusMap.entries()).filter(([_, status]) => status === 'pending').length
+    const employeesNoDocuments = Array.from(employeeStatusMap.entries()).filter(([_, status]) => status === 'no-documents').length
+
+    // For dashboard purposes:
+    // - "Employees to be verified" = pending + no-documents (those who haven't failed and aren't verified)
+    // - "Employees failed verification" = failed
+    // - "Total Safe Employees" = total employees
+    const employeesToBeVerified = employeesPending + employeesNoDocuments                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+
+    console.log('Employee verification stats:', {
+      totalEmployees: employeeIds.length,
+      completedStatusId: completedStatus?.id,
+      governanceStatusId: governanceStatus?.id,
+      rejectedStatusId: rejectedStatus?.id,
+      allDocsCount: allEmployeeDocs?.length || 0,
+      employeesVerified: employeesVerified,
+      employeesFailed: employeesFailed,
+      employeesPending: employeesPending,
+      employeesNoDocuments: employeesNoDocuments,
+      employeesToBeVerified: employeesToBeVerified
+    })
 
     // Get total vehicles with role-based filtering
     let totalVehiclesQuery = supabase
@@ -261,6 +555,26 @@ serve(async (req) => {
       console.error('Error fetching draft assessments:', draftAssessmentsError)
     }
 
+    // Get overdue assessments count with role-based filtering
+    const currentDate = new Date().toISOString().split('T')[0] // Get current date in YYYY-MM-DD format
+    
+    let overdueAssessmentsQuery = supabase
+      .from('assessments')
+      .select('id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .neq('status', 'Completed')
+      .lt('target_completion_date', currentDate)
+
+    if (shouldFilterByEmployee) {
+      overdueAssessmentsQuery = overdueAssessmentsQuery.or(`created_by.eq.${employee_id},assigned_to.eq.${employee_id}`)
+    }
+
+    const { data: overdueAssessments, error: overdueAssessmentsError } = await overdueAssessmentsQuery
+
+    if (overdueAssessmentsError) {
+      console.error('Error fetching overdue assessments:', overdueAssessmentsError)
+    }
+
     // Get incidents from last month with role-based filtering
     const oneMonthAgo = new Date()
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
@@ -301,6 +615,53 @@ serve(async (req) => {
       console.error('Error fetching incidents last 6 months:', incidentsLast6MonthsError)
     }
 
+    // Get closed incidents count with role-based filtering
+    const { data: closedStatus } = await supabase
+      .from('incident_status')
+      .select('id')
+      .eq('name', 'Closed')
+      .single()
+
+    const closedStatusId = closedStatus?.id
+    console.log('Closed status ID found:', closedStatusId)
+
+    let closedIncidentsQuery = supabase
+      .from('incidents')
+      .select('id, status_id', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status_id', closedStatusId)
+
+    if (shouldFilterByEmployee) {
+      closedIncidentsQuery = closedIncidentsQuery.eq('created_by', employee_id)
+    }
+
+    const { data: closedIncidents, error: closedIncidentsError } = await closedIncidentsQuery
+
+    if (closedIncidentsError) {
+      console.error('Error fetching closed incidents:', closedIncidentsError)
+    }
+
+    console.log('Closed incidents found:', closedIncidents)
+
+    // Get reopened incidents count using the reopen column
+    let reopenedIncidentsQuery = supabase
+      .from('incidents')
+      .select('id, reopen', { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('reopen', 1)
+
+    if (shouldFilterByEmployee) {
+      reopenedIncidentsQuery = reopenedIncidentsQuery.eq('created_by', employee_id)
+    }
+
+    const { data: reopenedIncidents, error: reopenedIncidentsError } = await reopenedIncidentsQuery
+
+    if (reopenedIncidentsError) {
+      console.error('Error fetching reopened incidents:', reopenedIncidentsError)
+    }
+
+    console.log('Reopened incidents found:', reopenedIncidents)
+
     // Get monthly incidents data for chart with role-based filtering
     const monthlyIncidentsData = []
     for (let i = 5; i >= 0; i--) {
@@ -340,7 +701,7 @@ serve(async (req) => {
       const closedStatusId = closedStatus?.id
 
       const openCount = monthIncidents?.filter(incident => 
-        statusIds.includes(incident.status_id)
+        incident.status_id === openStatusId
       ).length || 0
 
       const closedCount = monthIncidents?.filter(incident => 
@@ -357,10 +718,24 @@ serve(async (req) => {
 
     const response = {
       openIncidents: openIncidents?.length || 0,
+      studentsInvolved: studentsInvolvedCount,
+      studentsInvolvedByCategory: topCategories,
       activeAssessments: activeAssessments?.length || 0,
-      totalEmployees: totalEmployees?.length || 0,
-      employeesVerified: uniqueEmployeesWithDocs.size,
-      totalVehicles: totalVehicles?.length || 0,
+      newAssessments: newAssessmentsCount,
+      draftAssessments: draftAssessmentsCount,
+      submittedAssessments: submittedAssessmentsCount,
+      totalCustomForms: customForms?.length || 0,
+      formSubmissions30Days: submissions30Days?.length || 0,
+      formSubmissions60Days: submissions60Days?.length || 0,
+      formSubmissions90Days: submissions90Days?.length || 0,
+      totalVehicles: allVehicles?.length || 0,
+      vehiclesToBeVerified,
+      vehiclesFailedVerification,
+      vehiclesVerified,
+      totalEmployees: employeeIds.length,
+      employeesVerified: employeesVerified, 
+      employeesFailed: employeesFailed,
+
       vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
       activeVehicles: activeVehicles?.length || 0,
       maintenanceVehicles: maintenanceVehicles?.length || 0,
@@ -368,9 +743,10 @@ serve(async (req) => {
       incidentsLastMonth: incidentsLastMonth?.length || 0,
       incidentsLast6Months: incidentsLast6Months?.length || 0,
       totalAssessments: totalAssessments?.length || 0,
-      newAssessments: newAssessments?.length || 0,
       completedAssessments: completedAssessments?.length || 0,
-      draftAssessments: draftAssessments?.length || 0,
+      closedIncidents: closedIncidents?.length || 0,
+      reopenedIncidents: reopenedIncidents?.length || 0,
+      overdueAssessments: overdueAssessments?.length || 0,
       monthlyIncidentsData
     }
 

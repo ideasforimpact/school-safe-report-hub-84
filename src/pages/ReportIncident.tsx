@@ -11,7 +11,7 @@ import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType } from '@/types/incident';
 import { Employee } from '@/types/employeeVerification';
-import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { getActiveEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,7 +89,16 @@ const ReportIncident = () => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
-        const fetchedEmployees = await getAllEmployeesFromApi();
+        // Get clientId from auth context
+        const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+        
+        if (!clientId) {
+          console.warn("Cannot fetch employees: No clientId available");
+          setEmployees([]);
+          return;
+        }
+        
+        const fetchedEmployees = await getActiveEmployeesFromApi(clientId);
         setEmployees(fetchedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
@@ -101,7 +110,7 @@ const ReportIncident = () => {
     };
 
     fetchEmployees();
-  }, []);
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

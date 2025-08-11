@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings } from 'lucide-react';
+import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -73,7 +73,14 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     const total = documents.length;
 
     if (total === 0) {
-      return <span className="text-gray-500 text-sm">No Documents</span>;
+      return (
+        <div className="flex items-center">
+          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
+            <FileX className="h-3.5 w-3.5 text-gray-600" />
+            No Documents
+          </Badge>
+        </div>
+      );
     }
 
     // Priority-based status logic (same as VerificationStatusSummary)

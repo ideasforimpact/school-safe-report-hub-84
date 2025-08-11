@@ -18,7 +18,7 @@ import { useEmployeeData } from '@/hooks/useEmployeeData';
 const SettingsPage = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { employeeData } = useEmployeeData();
+  const { employeeData } = useAuth();
   const [clientType, setClientType] = useState<string | null>(null);
   
   const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
