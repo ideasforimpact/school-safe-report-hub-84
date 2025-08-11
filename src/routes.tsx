@@ -63,7 +63,6 @@ import VerificationDashboardPage from './pages/employee-verification/Verificatio
 
 // Transport Safety pages
 import TransportSafetyPage from './pages/transport-safety/TransportSafetyPage';
-import DashboardPage from './pages/transport-safety/DashboardPage';
 import VehicleDetailPage from './pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from './pages/transport-safety/DocumentsPage';
 
@@ -366,13 +365,7 @@ const AppRoutes = () => {
           </ModuleGuard>
         </RouteGuard>
       } />
-      <Route path="/transport-safety/dashboard" element={
-        <RouteGuard requireAuth={true}>
-          <ModuleGuard requiredModules={['transport_safety']}>
-            <DashboardPage />
-          </ModuleGuard>
-        </RouteGuard>
-      } />
+
       <Route path="/transport-safety/vehicle/:vehicleId" element={
         <RouteGuard requireAuth={true}>
           <ModuleGuard requiredModules={['transport_safety']}>

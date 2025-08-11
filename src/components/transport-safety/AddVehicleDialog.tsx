@@ -99,14 +99,14 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         return;
       }
 
-      // Ensure numeric values are properly converted from strings or set to null if empty
-      const yearValue = data.year ? Number(data.year) : null;
-      const capacityValue = data.capacity ? Number(data.capacity) : null;
-      
+        // Ensure numeric values are properly converted from strings or set to null if empty
+        const yearValue = data.year ? Number(data.year) : null;
+        const capacityValue = data.capacity ? Number(data.capacity) : null;
+        
       if (!yearValue || yearValue < 1980 || yearValue > new Date().getFullYear() + 1) {
         toast.error('Year is required and must be between 1980 and ' + (new Date().getFullYear() + 1));
-        return;
-      }
+          return;
+        }
 
       // Prepare the payload with proper data transformation
       const vehicleData = {
@@ -114,13 +114,13 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         type: data.type,
         make: data.make.trim(),
         model: data.model.trim(),
-        year: yearValue,
+          year: yearValue,
         driver: data.driver.trim(),
         route: data.route.trim(),
-        capacity: capacityValue,
+          capacity: capacityValue,
         status: data.status,
-        clientId: employeeData.clientId, // Always use the current client's ID
-        employeeId: employeeData?.id // Use logged-in employee's ID
+          clientId: employeeData.clientId, // Always use the current client's ID
+          employeeId: employeeData?.id // Use logged-in employee's ID
       };
 
       console.log('Sending vehicle data:', {

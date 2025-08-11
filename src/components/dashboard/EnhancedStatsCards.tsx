@@ -16,11 +16,14 @@ import {
 interface EnhancedStatsCardsProps {
   stats: {
     openIncidents: number;
+    studentsInvolved?: number;
+    studentsInvolvedByCategory?: Array<{ category: string; count: number }>;
     activeAssessments: number;
     totalEmployees: number;
     employeesVerified: number;
+    employeesFailed?: number;
     totalVehicles: number;
-    vehiclesWithDocuments: number;
+    vehiclesVerified?: number;
     activeVehicles: number;
     maintenanceVehicles: number;
     inactiveVehicles: number;
@@ -30,6 +33,17 @@ interface EnhancedStatsCardsProps {
     newAssessments: number;
     completedAssessments: number;
     draftAssessments: number;
+    closedIncidents?: number;
+    reopenedIncidents?: number;
+    overdueAssessments?: number;
+    submittedAssessments?: number;
+    totalCustomForms?: number;
+    formSubmissions30Days?: number;
+    formSubmissions60Days?: number;
+    formSubmissions90Days?: number;
+    vehiclesToBeVerified?: number;
+    vehiclesFailedVerification?: number;
+    vehiclesWithDocuments?: number;
     monthlyIncidentsData: Array<{
       month: string;
       open: number;
@@ -41,9 +55,16 @@ interface EnhancedStatsCardsProps {
 }
 
 const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
-  // Calculate total incidents from monthly data
-  const totalIncidents = stats.monthlyIncidentsData?.reduce((sum, month) => sum + (month.total || 0), 0) || 0;
-  const closedIncidents = totalIncidents - stats.openIncidents;
+  console.log('🔍 EnhancedStatsCards - Raw stats received at:', new Date().toISOString(), stats);
+  console.log('🔍 EnhancedStatsCards - Key values:');
+  console.log('  - stats.totalEmployees:', stats.totalEmployees);
+  console.log('  - stats.employeesVerified:', stats.employeesVerified);
+  console.log('  - stats.totalVehicles:', stats.totalVehicles);
+  console.log('  - stats.vehiclesVerified:', stats.vehiclesVerified);
+
+  // Use provided incident data or calculate from monthly data as fallback
+  const totalIncidents = (stats.openIncidents || 0) + (stats.closedIncidents || 0) + (stats.reopenedIncidents || 0);
+  const closedIncidents = stats.closedIncidents || 0;
   
   // Calculate trend indicators
   const currentMonthIncidents = stats.monthlyIncidentsData?.[stats.monthlyIncidentsData.length - 1]?.total || 0;
@@ -61,8 +82,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     ? Math.round((stats.vehiclesWithDocuments / stats.totalVehicles) * 100) 
     : 0;
 
-  // Calculate average response time (mock calculation for demo)
-  const avgResponseTime = stats.openIncidents > 0 ? Math.round(24 + Math.random() * 48) : 12;
+
 
   // Calculate safety score based on multiple factors
   const safetyScore = Math.round(
@@ -73,77 +93,86 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
 
   const statsCards = [
     {
-      title: 'Total Incidents',
-      value: totalIncidents,
-      description: 'System-wide incident overview',
+      title: 'Total Number of Open Incidents',
+      value: stats.openIncidents || 0,
+      description: 'Incident Overview',
       icon: BarChart3,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       gradient: 'from-blue-50 to-blue-100',
       showBreakdown: true,
-      openIncidents: stats.openIncidents,
-      closedIncidents: closedIncidents
+      openIncidents: stats.openIncidents || 0,
+      closedIncidents: stats.closedIncidents || 0,
+      reopenedIncidents: stats.reopenedIncidents || 0
     },
     {
-      title: 'Employee Safety Overview',
-      value: stats.totalEmployees.toString(),
-      description: 'Employee verification status',
+      title: 'Total Safe Employees',
+      value: stats.totalEmployees || 0,
+      description: 'Empolyee vetrification status',
       icon: ShieldCheck,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       gradient: 'from-blue-50 to-blue-100',
       showEmployeeBreakdown: true,
-      totalEmployees: stats.totalEmployees,
-      verifiedEmployees: stats.employeesVerified,
-      failedEmployees: stats.totalEmployees - stats.employeesVerified
+      totalEmployees: stats.totalEmployees || 0,
+      verifiedEmployees: stats.employeesVerified || 0,
+      failedEmployees: stats.employeesFailed || 0,
+      toBeVerified: stats.employeesVerified || 0
     },
     {
-      title: 'Incident Trends',
-      value: currentMonthIncidents,
-      description: `${incidentTrend >= 0 ? '+' : ''}${incidentTrend.toFixed(1)}% vs last month`,
-      icon: incidentTrend >= 0 ? TrendingUp : TrendingDown,
-      color: incidentTrend <= 0 ? 'text-green-600' : incidentTrend <= 10 ? 'text-yellow-600' : 'text-red-600',
-      bgColor: incidentTrend <= 0 ? 'bg-green-50' : incidentTrend <= 10 ? 'bg-yellow-50' : 'bg-red-50',
-      gradient: incidentTrend <= 0 ? 'from-green-50 to-green-100' : incidentTrend <= 10 ? 'from-yellow-50 to-yellow-100' : 'from-red-50 to-red-100',
-      trend: incidentTrend,
-      direction: incidentTrend <= 0 ? 'Improving' : 'Increasing'
-    },
-    {
-      title: 'Assessment Status Overview',
-      value: `${stats.totalAssessments}`,
-      description: 'Assessment status overview',
+      title: 'Active Assessments',
+      value: stats.activeAssessments || 0,
+      description: `${stats.overdueAssessments || 0} Assessments overdue`,
       icon: FileCheck,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       gradient: 'from-purple-50 to-purple-100',
       showAssessmentBreakdown: true,
-      newAssessments: stats.newAssessments,
-      completedAssessments: stats.completedAssessments,
-      draftAssessments: stats.draftAssessments
+      activeAssessments: stats.activeAssessments || 0,
+      overdueAssessments: stats.overdueAssessments || 0,
+      newAssessments: stats.newAssessments || 0,
+      draftAssessments: stats.draftAssessments || 0,
+      submittedAssessments: stats.submittedAssessments || 0,
+      completedAssessments: 0 // Don't show completed in active assessments breakdown
     },
     {
-      title: 'Transport Safety Overview',
-      value: stats.totalVehicles.toString(),
-      description: 'Vehicle status overview',
+      title: 'Number Of Grievances',
+      value: stats.totalCustomForms || 0,
+      description: 'Form submissions overview',
+      icon: FileCheck,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      gradient: 'from-purple-50 to-purple-100',
+      showCustomFormsBreakdown: true,
+      totalCustomForms: stats.totalCustomForms || 0,
+      formSubmissions30Days: stats.formSubmissions30Days || 0,
+      formSubmissions60Days: stats.formSubmissions60Days || 0,
+      formSubmissions90Days: stats.formSubmissions90Days || 0
+    },
+    {
+      title: 'Total Safety Vehicles',
+      value: stats.totalVehicles || 0,
+      description: 'Vehicle vetrification status',
       icon: Truck,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       gradient: 'from-blue-50 to-blue-100',
-      showVehicleBreakdown: true,
-      activeVehicles: stats.activeVehicles,
-      maintenanceVehicles: stats.maintenanceVehicles,
-      inactiveVehicles: stats.inactiveVehicles
+      showVehicleVerificationBreakdown: true,
+      totalVehicles: stats.totalVehicles || 0,
+      vehiclesToBeVerified: stats.vehiclesToBeVerified || 0,
+      vehiclesFailedVerification: stats.vehiclesFailedVerification || 0,
+      vehiclesVerified: stats.vehiclesVerified || 0
     },
     {
-      title: 'Response Time',
-      value: `${avgResponseTime}h`,
-      description: `Average incident response time`,
-      icon: Clock,
-      color: avgResponseTime <= 24 ? 'text-green-600' : avgResponseTime <= 48 ? 'text-yellow-600' : 'text-red-600',
-      bgColor: avgResponseTime <= 24 ? 'bg-green-50' : avgResponseTime <= 48 ? 'bg-yellow-50' : 'bg-red-50',
-      gradient: avgResponseTime <= 24 ? 'from-green-50 to-green-100' : avgResponseTime <= 48 ? 'from-yellow-50 to-yellow-100' : 'from-red-50 to-red-100',
-      target: '< 24h',
-      performance: avgResponseTime <= 24 ? 'On Target' : avgResponseTime <= 48 ? 'Acceptable' : 'Needs Improvement'
+      title: 'Number of Students Involved',
+      value: stats.studentsInvolved || 0,
+      description: 'Students involved in open incidents',
+      icon: Users,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      gradient: 'from-orange-50 to-orange-100',
+      showStudentsBreakdown: true,
+      studentsInvolvedByCategory: stats.studentsInvolvedByCategory || []
     }
   ];
 
@@ -184,9 +213,9 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
             <CardContent>
               <div className={`text-3xl font-bold ${card.color} mb-2 flex items-center space-x-2`}>
                 <span>{card.value}</span>
-                {card.trend !== undefined && (
-                  <span className={`text-sm ${card.trend <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(1)}%
+                {(card as any).trend !== undefined && (
+                  <span className={`text-sm ${(card as any).trend <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(card as any).trend >= 0 ? '+' : ''}{(card as any).trend.toFixed(1)}%
                   </span>
                 )}
               </div>
@@ -195,16 +224,20 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                 {card.description}
               </p>
 
-              {/* Show breakdown for Total Incidents card */}
+              {/* Show breakdown for Total Number of Open Incidents card */}
               {(card as any).showBreakdown && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600 font-medium">Open Incidents:</span>
-                    <span className="font-semibold text-green-600">{(card as any).openIncidents}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
                     <span className="text-red-600 font-medium">Closed Incidents:</span>
                     <span className="font-semibold text-red-600">{(card as any).closedIncidents}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-orange-600 font-medium">Reopened Incidens:</span>
+                    <span className="font-semibold text-orange-600">{(card as any).reopenedIncidents}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-600 font-medium">Open Incidents:</span>
+                    <span className="font-semibold text-green-600">{(card as any).openIncidents}</span>
                   </div>
                 </div>
               )}
@@ -212,15 +245,28 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
               {(card as any).showEmployeeBreakdown && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600 font-medium">Verified:</span>
+                    <span className="text-green-600 font-medium">Employees verified:</span>
                     <span className="font-semibold text-green-600">{(card as any).verifiedEmployees}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-red-600 font-medium">Failed:</span>
+                    <span className="text-red-600 font-medium">Employees failed verification:</span>
                     <span className="font-semibold text-red-600">{(card as any).failedEmployees}</span>
                   </div>
                 </div>
-              )}
+                                  )}
+
+                    {(card as any).showVehicleVerificationBreakdown && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-green-600 font-medium">Vehicles verified:</span>
+                          <span className="font-semibold text-green-600">{(card as any).vehiclesVerified}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-red-600 font-medium">Vehicles failed verification:</span>
+                          <span className="font-semibold text-red-600">{(card as any).vehiclesFailedVerification}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {(card as any).showVehicleBreakdown && (
                       <div className="space-y-2">
@@ -239,6 +285,23 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                       </div>
                     )}
 
+                    {(card as any).showCustomFormsBreakdown && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600 font-medium">Last 30 days:</span>
+                          <span className="font-semibold text-gray-600">{(card as any).formSubmissions30Days}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-blue-600 font-medium">Last 60 days:</span>
+                          <span className="font-semibold text-blue-600">{(card as any).formSubmissions60Days}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-purple-600 font-medium">Last 90 days:</span>
+                          <span className="font-semibold text-purple-600">{(card as any).formSubmissions90Days}</span>
+                        </div>
+                      </div>
+                    )}
+
                     {(card as any).showAssessmentBreakdown && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
@@ -246,13 +309,24 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                           <span className="font-semibold text-gray-600">{(card as any).newAssessments}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-green-600 font-medium">Completed:</span>
-                          <span className="font-semibold text-green-600">{(card as any).completedAssessments}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
                           <span className="text-amber-600 font-medium">Draft:</span>
                           <span className="font-semibold text-amber-600">{(card as any).draftAssessments}</span>
                         </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-blue-600 font-medium">Submitted:</span>
+                          <span className="font-semibold text-blue-600">{(card as any).submittedAssessments}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {(card as any).showStudentsBreakdown && (
+                      <div className="space-y-2">
+                        {(card as any).studentsInvolvedByCategory.map((item: any, index: number) => (
+                          <div key={index} className="flex justify-between items-center text-sm">
+                            <span className="text-orange-600 font-medium">{item.category}:</span>
+                            <span className="font-semibold text-orange-600">{item.count}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
 

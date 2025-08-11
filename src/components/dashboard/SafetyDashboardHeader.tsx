@@ -1,8 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Shield, ShieldCheck, ShieldX, Calendar, Clock } from 'lucide-react';
+import { Shield, Calendar, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClient } from '@/contexts/ClientContext';
 
 interface SafetyDashboardHeaderProps {
   stats: {
@@ -10,7 +9,8 @@ interface SafetyDashboardHeaderProps {
     totalEmployees: number;
     employeesVerified: number;
     totalVehicles: number;
-    vehiclesWithDocuments: number;
+    vehiclesVerified?: number;
+    activeAssessments?: number;
     incidentsLastMonth: number;
   };
   loading: boolean;
@@ -22,31 +22,29 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
   // Use direct client object from employeeData
   const userClient = employeeData?.client || null;
 
-  // Calculate safety status based on open incidents and compliance
-  const employeeComplianceRate = stats.totalEmployees > 0 
-    ? (stats.employeesVerified / stats.totalEmployees) * 100 
-    : 0;
-    
-  const vehicleComplianceRate = stats.totalVehicles > 0 
-    ? (stats.vehiclesWithDocuments / stats.totalVehicles) * 100 
-    : 0;
+  // Overall Safety Score (same formula as gauges)
+  const overallSafetyScore = Math.round(
+    (0.3 * (stats.totalEmployees || 0)) +
+    (0.2 * (stats.totalVehicles || 0)) +
+    (0.15 * (stats.activeAssessments || 0)) +
+    (0.20 * stats.openIncidents)
+  );
 
-  const getSafetyStatus = () => {
-    const avgCompliance = (employeeComplianceRate + vehicleComplianceRate) / 2;
-    
-    if (stats.openIncidents <= 2 && avgCompliance >= 90) {
-      return { level: 'SAFE', color: 'text-green-600', bgColor: 'bg-green-50', icon: ShieldCheck };
-    } else if (stats.openIncidents <= 5 && avgCompliance >= 70) {
-      return { level: 'CAUTION', color: 'text-yellow-600', bgColor: 'bg-yellow-50', icon: Shield };
-    } else if (stats.openIncidents <= 10 && avgCompliance >= 50) {
-      return { level: 'ALERT', color: 'text-orange-600', bgColor: 'bg-orange-50', icon: AlertTriangle };
+  const getScoreInfo = (score: number) => {
+    if (score <= 20) {
+      return { color: '#ef4444', status: 'POOR', textColor: 'text-red-600', bgColor: 'bg-red-100', textBgColor: 'text-red-800' };
+    } else if (score > 20 && score <= 40) {
+      return { color: '#f97316', status: 'NEED ATTENTION', textColor: 'text-orange-600', bgColor: 'bg-orange-100', textBgColor: 'text-orange-800' };
+    } else if (score > 40 && score <= 60) {
+      return { color: '#f59e0b', status: 'GOOD', textColor: 'text-yellow-600', bgColor: 'bg-yellow-100', textBgColor: 'text-yellow-800' };
+    } else if (score > 60 && score <= 80) {
+      return { color: '#10b981', status: 'FAIR', textColor: 'text-green-600', bgColor: 'bg-green-100', textBgColor: 'text-green-800' };
     } else {
-      return { level: 'CRITICAL', color: 'text-red-600', bgColor: 'bg-red-50', icon: ShieldX };
+      return { color: '#10b981', status: 'EXCELLENT', textColor: 'text-green-600', bgColor: 'bg-green-100', textBgColor: 'text-green-800' };
     }
   };
 
-  const safetyStatus = getSafetyStatus();
-  const StatusIcon = safetyStatus.icon;
+  const safetyInfo = getScoreInfo(overallSafetyScore);
 
   if (loading) {
     return (
@@ -89,25 +87,25 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
           </div>
           
           <div className="flex items-center space-x-4">
-            {/* Safety Status Indicator */}
-            <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${safetyStatus.bgColor}`}>
-              <StatusIcon className={`h-6 w-6 ${safetyStatus.color}`} />
+            {/* Overall Safety Status */}
+            <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${safetyInfo.bgColor}`}>
+              <Shield className={`h-6 w-6 ${safetyInfo.textColor}`} />
               <div className="text-right">
-                <div className={`text-lg font-bold ${safetyStatus.color}`}>
-                  {safetyStatus.level}
+                <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
+                  {safetyInfo.status}
                 </div>
                 <div className="text-xs text-gray-600">Safety Status</div>
               </div>
             </div>
             
-            {/* Safety Streak */}
+            {/* Overall Safety Score */}
             <div className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-50">
-              <Clock className="h-6 w-6 text-gray-600" />
+              <Shield className="h-6 w-6 text-gray-600" />
               <div className="text-right">
-                <div className="text-lg font-bold text-gray-900">
-                  {stats.incidentsLastMonth === 0 ? '30+' : '<30'}
+                <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
+                  {overallSafetyScore}%
                 </div>
-                <div className="text-xs text-gray-600">Days Safe</div>
+                <div className="text-xs text-gray-600">Overall Safety Score</div>
               </div>
             </div>
           </div>

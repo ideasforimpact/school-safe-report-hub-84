@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bus, BarChart2, Plus } from 'lucide-react';
+import { Bus, Plus } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -31,17 +31,10 @@ const TransportSafetyPage = () => {
                 <Plus className="h-4 w-4" />
                 <span>Add Vehicle</span>
               </Button>
-              <Button asChild variant="outline" className="flex items-center gap-2">
-                <Link to="/transport-safety/dashboard">
-                  <BarChart2 className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </Button>
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
-            <h2 className="text-lg font-medium mb-4 text-left">Vehicle Fleet</h2>
             <VehiclesList showAddVehicle={showAddVehicle} setShowAddVehicle={setShowAddVehicle} />
           </div>
         </div>

@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
+import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -191,27 +191,27 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                       vehicleHasChallan ? (
                         <div className="flex justify-start">
                           <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1 w-fit">
-                            <Flag className="h-4 w-4 text-orange-600" />
-                            <span>Yes</span>
-                          </Badge>
+                          <Flag className="h-4 w-4 text-orange-600" />
+                          <span>Yes</span>
+                        </Badge>
                         </div>
                       ) : (
                         <div className="flex justify-start">
-                          <span className="text-gray-500 text-xs">-</span>
+                        <span className="text-gray-500 text-xs">-</span>
                         </div>
                       )
                     ) : (
                       <div className="flex justify-start">
-                        <span className="text-gray-400 text-xs">-</span>
+                      <span className="text-gray-400 text-xs">-</span>
                       </div>
                     )}
                   </TableCell>
                   <TableCell className="text-left">
                     <div className="flex justify-start gap-1">
                       <Button asChild variant="ghost" size="icon">
-                        <Link to={`/transport-safety/${vehicle.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
+                                                  <Link to={`/transport-safety/${vehicle.id}`}>
+                            <Settings className="h-4 w-4" />
+                          </Link>
                       </Button>
                       {onEditVehicle && (
                         <Button 

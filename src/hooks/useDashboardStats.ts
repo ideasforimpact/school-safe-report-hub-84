@@ -5,11 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardStats {
   openIncidents: number;
+  studentsInvolved?: number;
+  studentsInvolvedByCategory?: Array<{ category: string; count: number }>;
   activeAssessments: number;
   totalEmployees: number;
   employeesVerified: number;
+  employeesFailed?: number;
   totalVehicles: number;
-  vehiclesWithDocuments: number;
+  vehiclesVerified?: number;
   activeVehicles: number;
   maintenanceVehicles: number;
   inactiveVehicles: number;
@@ -19,6 +22,17 @@ interface DashboardStats {
   newAssessments: number;
   completedAssessments: number;
   draftAssessments: number;
+  closedIncidents?: number;
+  reopenedIncidents?: number;
+  overdueAssessments?: number;
+  submittedAssessments?: number;
+  totalCustomForms?: number;
+  formSubmissions30Days?: number;
+  formSubmissions60Days?: number;
+  formSubmissions90Days?: number;
+  vehiclesToBeVerified?: number;
+  vehiclesFailedVerification?: number;
+  vehiclesWithDocuments?: number;
   monthlyIncidentsData: Array<{
     month: string;
     open: number;
@@ -30,11 +44,14 @@ interface DashboardStats {
 export const useDashboardStats = () => {
   const [stats, setStats] = useState<DashboardStats>({
     openIncidents: 0,
+    studentsInvolved: 0,
+    studentsInvolvedByCategory: [],
     activeAssessments: 0,
     totalEmployees: 0,
     employeesVerified: 0,
+    employeesFailed: 0,
     totalVehicles: 0,
-    vehiclesWithDocuments: 0,
+    vehiclesVerified: 0,
     activeVehicles: 0,
     maintenanceVehicles: 0,
     inactiveVehicles: 0,
@@ -44,6 +61,17 @@ export const useDashboardStats = () => {
     newAssessments: 0,
     completedAssessments: 0,
     draftAssessments: 0,
+    closedIncidents: 0,
+    reopenedIncidents: 0,
+    overdueAssessments: 0,
+    submittedAssessments: 0,
+    totalCustomForms: 0,
+    formSubmissions30Days: 0,
+    formSubmissions60Days: 0,
+    formSubmissions90Days: 0,
+    vehiclesToBeVerified: 0,
+    vehiclesFailedVerification: 0,
+    vehiclesWithDocuments: 0,
     monthlyIncidentsData: []
   });
   const [loading, setLoading] = useState(false);
