@@ -196,14 +196,15 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const handleUploadSuccess = (result: any) => {
     console.log('Upload success:', result);
     
-    // Refresh the documents list
-    if (result.result && result.result[0] && result.result[0].documents) {
-      setUploadedDocuments(result.result[0].documents);
+    // Use documentData for the newly uploaded file, not the entire result array
+    if (result.documentData) {
+      // Add the new document to the existing list
+      setUploadedDocuments(prev => [...prev, result.documentData]);
     }
     
     toast({
-      title: 'Documents Uploaded',
-      description: 'Your documents have been uploaded successfully',
+      title: 'Document Uploaded',
+      description: 'Your document has been uploaded successfully',
     });
   };
   
@@ -403,22 +404,27 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         ) : uploadedDocuments.length > 0 ? (
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Documents</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {uploadedDocuments.map((doc, idx) => (
                 <div 
                   key={`${doc.name}-${idx}`} 
-                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50"
+                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 min-h-[60px]"
                 >
-                  <div className="flex items-center">
-                    <FileText className="h-5 w-5 text-gray-400 mr-3" />
-                    <div>
-                      <p className="font-medium">{doc.name}</p>
+                  <div className="flex items-center flex-1 min-w-0">
+                    <FileText className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{doc.name}</p>
                       <p className="text-xs text-gray-500">
                         Uploaded: {formatDate(new Date(doc.uploadedAt))}
+                        {doc.files && doc.files.length > 0 && (
+                          <span className="ml-2">
+                            • {doc.files.length} file{doc.files.length > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                     {doc.files && doc.files.length > 0 ? (
                       <div className="flex items-center">
                         <Button 
@@ -461,22 +467,27 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         {vehicle && vehicle.documents.length > 0 && (
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Legacy Documents</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {vehicle.documents.map((doc) => (
                 <div 
                   key={doc.id} 
-                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50"
+                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 min-h-[60px]"
                 >
-                  <div className="flex items-center">
-                    <FileText className="h-5 w-5 text-gray-400 mr-3" />
-                    <div>
-                      <p className="font-medium">{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</p>
+                  <div className="flex items-center flex-1 min-w-0">
+                    <FileText className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</p>
                       <p className="text-xs text-gray-500">
                         {doc.number} • Expires: {formatDate(new Date(doc.expiryDate))}
+                        {doc.fileUrls && doc.fileUrls.length > 0 && (
+                          <span className="ml-2">
+                            • {doc.fileUrls.length} file{doc.fileUrls.length > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                     {doc.fileUrls && doc.fileUrls.length > 0 ? (
                       <div className="flex items-center">
                         <Button 
@@ -505,12 +516,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </div>
         )}
         
-        <p className="text-gray-500 text-sm mt-4">
-          For detailed document management, including verification and updates, please visit the 
-          <Link to={`/transport-safety/${vehicleId}/documents`} className="text-primary ml-1">
-            Document Management
-          </Link> page.
-        </p>
+
       </TabsContent>
       
       {/* History Tab Content */}
@@ -586,7 +592,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       
       {/* Upload Document Dialog */}
       <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Upload Documents</DialogTitle>
             <DialogDescription>

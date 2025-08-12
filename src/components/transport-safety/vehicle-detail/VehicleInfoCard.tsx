@@ -14,7 +14,6 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { hasModulePermission, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -48,6 +47,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const [showVerificationResults, setShowVerificationResults] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
   const [showSafetyCheckConsent, setShowSafetyCheckConsent] = useState(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const navigate = useNavigate();
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
@@ -88,7 +88,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     return logEntry.value[dates[0]];
   };
 
-  const runSafetyCheck = async () => {
+
+
+  const handleSafetyCheckClick = () => {
+    setVerificationError(null); // Clear any previous errors
+    setShowSafetyCheckConsent(true);
+  };
+
+  const handleSafetyCheckConsent = async () => {
+    // Don't close popup immediately, keep it open for loading state
     setIsChecking(true);
     
     try {
@@ -99,7 +107,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       
       if (error) {
         console.error('Error verifying vehicle:', error);
-        toast.error('Vehicle verification failed');
+        // Show error in popup instead of toast
+        setVerificationError('Vehicle verification failed. Please try again.');
         return;
       }
       
@@ -120,22 +129,16 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         verifyDocument(vehicleId, doc.id, 'verified', 'api', 'Automatically verified through Surepass API');
       });
       
+      // Close popup only after successful response
+      setShowSafetyCheckConsent(false);
       // toast.success('Vehicle verified successfully through Surepass');
     } catch (err) {
       console.error('Failed to verify vehicle:', err);
-      toast.error('Verification failed. Please try again later.');
+      // Show error in popup instead of toast
+      setVerificationError('Verification failed. Please try again later.');
     } finally {
       setIsChecking(false);
     }
-  };
-
-  const handleSafetyCheckClick = () => {
-    setShowSafetyCheckConsent(true);
-  };
-
-  const handleSafetyCheckConsent = () => {
-    setShowSafetyCheckConsent(false);
-    runSafetyCheck();
   };
 
   const handleDeleteVehicle = () => {
@@ -274,24 +277,54 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       </CardContent>
 
       {/* Safety Check Consent Dialog */}
-      <AlertDialog open={showSafetyCheckConsent} onOpenChange={setShowSafetyCheckConsent}>
+      <AlertDialog open={showSafetyCheckConsent} onOpenChange={(open) => {
+        // Only allow closing if not currently checking
+        if (!isChecking) {
+          setShowSafetyCheckConsent(open);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Run Safety Check</AlertDialogTitle>
             <AlertDialogDescription>
-              This will initiate a comprehensive safety verification for {make} {model} ({registrationNumber}) 
-              through our secure verification system. The process will check vehicle registration, 
-              insurance status, fitness certificate, and pollution control compliance.
-              <br /><br />
-              This action will use external verification services and may take a few moments to complete.
-              Do you want to proceed with the safety check?
+              {!isChecking && !verificationError && (
+                <>
+                  This will initiate a comprehensive safety verification for {make} {model} ({registrationNumber}) 
+                  through our secure verification system. The process will check vehicle registration, 
+                  insurance status, fitness certificate, and pollution control compliance.
+                  <br /><br />
+                  This action will use external verification services and may take a few moments to complete.
+                  Do you want to proceed with the safety check?
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {isChecking && (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mr-3"></div>
+              <span>Running safety check... Please wait.</span>
+            </div>
+          )}
+          {verificationError && (
+            <div className="text-red-600 bg-red-50 p-3 rounded-md">
+              <strong>Error:</strong> {verificationError}
+            </div>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSafetyCheckConsent} className="bg-green-600 hover:bg-green-700">
-              Okay
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={isChecking}>Cancel</AlertDialogCancel>
+            {!isChecking && !verificationError && (
+              <Button 
+                onClick={handleSafetyCheckConsent} 
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Okay
+              </Button>
+            )}
+            {verificationError && (
+              <Button onClick={() => setShowSafetyCheckConsent(false)} className="bg-gray-600 hover:bg-gray-700 text-white">
+                Close
+              </Button>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -308,9 +341,9 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700">
+            <Button onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700 text-white">
               Delete
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

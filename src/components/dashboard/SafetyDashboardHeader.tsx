@@ -88,13 +88,9 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
           
           <div className="flex items-center space-x-4">
             {/* Overall Safety Status */}
-            <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${safetyInfo.bgColor}`}>
-              <Shield className={`h-6 w-6 ${safetyInfo.textColor}`} />
-              <div className="text-right">
-                <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
-                  {safetyInfo.status}
-                </div>
-                <div className="text-xs text-gray-600">Safety Status</div>
+            <div className={`flex items-center justify-center px-4 py-2 rounded-lg ${safetyInfo.bgColor}`}>
+              <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
+                {safetyInfo.status}
               </div>
             </div>
             

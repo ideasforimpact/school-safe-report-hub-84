@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { ResourceCategory, EduSafeResource } from '@/types/eduSafeTypes';
 import CategoryFilter from '@/components/edusafe/CategoryFilter';
 import ResourceList from '@/components/edusafe/ResourceList';
-import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
 
 const EduSafeResourcesContent = () => {
   const { resources, getMyResources, getSaasResources } = useEduSafe();
@@ -21,8 +20,6 @@ const EduSafeResourcesContent = () => {
   const [selectedTab, setSelectedTab] = useState<'all' | 'saas' | 'organisational'>('all');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedResource, setSelectedResource] = useState<EduSafeResource | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
   
   // Check client type from employeeData first, then from user
   const getClientTypeKey = () => {
@@ -104,10 +101,7 @@ const EduSafeResourcesContent = () => {
     return true;
   });
   
-  const handleViewResource = (resource: EduSafeResource) => {
-    setSelectedResource(resource);
-    setPreviewOpen(true);
-  };
+
   
   return (
     <div className="w-full py-6">
@@ -164,15 +158,8 @@ const EduSafeResourcesContent = () => {
       <Card className="p-6 mb-8 mx-6">
         <ResourceList 
           resources={filteredResources}
-          onViewResource={handleViewResource}
         />
       </Card>
-      
-      <ResourcePreviewDialog
-        resource={selectedResource}
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-      />
     </div>
   );
 };
