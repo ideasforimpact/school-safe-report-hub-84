@@ -20,8 +20,10 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
-    // We can process multiple files now
-    Array.from(fileList).forEach(file => {
+    // Only allow a single file
+    const file = fileList[0];
+    if (!file) return;
+
       // Simple file validation
       if (file.size > 10 * 1024 * 1024) {
         toast({
@@ -44,11 +46,10 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
           base64: base64,
         };
         
-        setFiles(prev => [...prev, newFile]);
+      setFiles([newFile]);
       };
       
       reader.readAsDataURL(file);
-    });
   };
 
   const removeFile = (fileId: string) => {
@@ -58,8 +59,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
   const uploadDocuments = async () => {
     if (files.length === 0) {
       toast({
-        title: 'No files selected',
-        description: 'Please select at least one file to upload',
+        title: 'No file selected',
+        description: 'Please select a file to upload',
         variant: 'destructive',
       });
       return;
@@ -68,12 +69,13 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
     try {
       setUploading(true);
       
-      // Prepare files for upload
-      const filesForUpload = files.map(file => ({
+      // Prepare single file for upload
+      const file = files[0];
+      const filesForUpload = [{
         fileName: file.name,
         contentType: file.type,
         base64Data: file.base64
-      }));
+      }];
       
       // Use "Vehicle Documents" as the default name
       const documentName = "Vehicle Documents";
@@ -124,19 +126,24 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
     <div className="space-y-4">
       {/* File List */}
       {files.length > 0 && (
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
           {files.map((file) => (
-            <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-              <div className="flex items-center">
-                <File className="h-4 w-4 mr-2 text-gray-500" />
-                <span className="text-sm truncate">{file.name}</span>
+            <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full">
+              <div className="flex items-center flex-1 min-w-0 max-w-full">
+                <File className="h-4 w-4 mr-2 text-gray-500 flex-shrink-0" />
+                <div className="min-w-0 flex-1 max-w-full">
+                  <span className="text-sm break-words block w-full">{file.name}</span>
+                  <span className="text-xs text-gray-500">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                </div>
               </div>
               <Button 
                 type="button" 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => removeFile(file.id)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 flex-shrink-0 ml-2"
               >
                 <X className="h-4 w-4 text-gray-500" />
               </Button>
@@ -146,17 +153,17 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
       )}
       
       {/* File Upload Button */}
-      <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center">
+      <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center w-full">
         <input 
           id="fileUpload"
           type="file" 
           className="hidden"
-          multiple
+          accept=".pdf,image/*"
           onChange={handleFileUpload} 
         />
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center w-full">
           <Upload className="h-8 w-8 text-gray-400 mb-2" />
-          <p className="text-sm text-gray-500 mb-1">Drag and drop files here, or click to select files</p>
+          <p className="text-sm text-gray-500 mb-1 break-words">Drag and drop files here, or click to select files</p>
           <p className="text-xs text-gray-400">PDF, JPG, PNG • Max size: 10MB</p>
           <Button 
             type="button" 

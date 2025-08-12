@@ -209,9 +209,9 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell className="text-left">
                     <div className="flex justify-start gap-1">
                       <Button asChild variant="ghost" size="icon">
-                                                  <Link to={`/transport-safety/${vehicle.id}`}>
+                        <Link to={`/transport-safety/${vehicle.id}`}>
                             <Settings className="h-4 w-4" />
-                          </Link>
+                        </Link>
                       </Button>
                       {onEditVehicle && (
                         <Button 

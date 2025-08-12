@@ -32,7 +32,7 @@ serve(async (req) => {
     const { vehicleId, files, documentInfo } = await req.json();
     
     console.log(`Processing upload for vehicle: ${vehicleId}`);
-    console.log(`Number of files: ${files.length}`);
+    console.log(`Number of files: ${files?.length ?? 0}`);
     
     // Ensure we have a valid vehicle ID
     if (!vehicleId) {
@@ -45,8 +45,11 @@ serve(async (req) => {
     const uploadTime = new Date().toISOString();
     const uploadResults = [];
     
-    // Upload each file to storage
-    for (const file of files) {
+    // Support only single file
+    const inputFiles = Array.isArray(files) ? files.slice(0, 1) : [];
+    
+    // Upload the single file to storage
+    for (const file of inputFiles) {
       const { fileName, contentType, base64Data } = file;
       
       // Remove the data:image/jpeg;base64, part
@@ -99,13 +102,21 @@ serve(async (req) => {
       name: documentInfo?.name || 'Uploaded Document',
       type: documentInfo?.type || 'general',
       uploadedAt: uploadTime,
-      files: uploadResults.filter(r => r.success).map(r => ({
+      files: uploadResults.filter(r => r.success).slice(0,1).map(r => ({
         name: r.fileName,
         path: r.filePath,
         url: r.publicUrl,
         uploadedAt: r.uploadTime
       }))
     };
+    
+    // If nothing uploaded successfully, return an error
+    if (documentData.files.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No file uploaded" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
     
     // Check if there's an existing record for this vehicle
     const { data: existingDocs, error: fetchError } = await supabase

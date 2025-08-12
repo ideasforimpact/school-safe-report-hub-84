@@ -107,7 +107,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     },
     {
       title: 'Total Safe Employees',
-      value: stats.totalEmployees || 0,
+      value: `${stats.employeesVerified || 0}/${stats.totalEmployees || 0}`,
       description: 'Empolyee vetrification status',
       icon: ShieldCheck,
       color: 'text-blue-600',
@@ -151,7 +151,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
     },
     {
       title: 'Total Safety Vehicles',
-      value: stats.totalVehicles || 0,
+      value: `${stats.vehiclesVerified || 0}/${stats.totalVehicles || 0}`,
       description: 'Vehicle vetrification status',
       icon: Truck,
       color: 'text-blue-600',
@@ -235,10 +235,6 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     <span className="text-orange-600 font-medium">Reopened Incidens:</span>
                     <span className="font-semibold text-orange-600">{(card as any).reopenedIncidents}</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600 font-medium">Open Incidents:</span>
-                    <span className="font-semibold text-green-600">{(card as any).openIncidents}</span>
-                  </div>
                 </div>
               )}
 
@@ -264,9 +260,9 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-600 font-medium">Vehicles failed verification:</span>
                           <span className="font-semibold text-red-600">{(card as any).vehiclesFailedVerification}</span>
-                        </div>
-                      </div>
-                    )}
+                  </div>
+                </div>
+              )}
 
                     {(card as any).showVehicleBreakdown && (
                       <div className="space-y-2">
@@ -295,10 +291,6 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                           <span className="text-blue-600 font-medium">Last 60 days:</span>
                           <span className="font-semibold text-blue-600">{(card as any).formSubmissions60Days}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-purple-600 font-medium">Last 90 days:</span>
-                          <span className="font-semibold text-purple-600">{(card as any).formSubmissions90Days}</span>
-                        </div>
                       </div>
                     )}
 
@@ -307,10 +299,6 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600 font-medium">New:</span>
                           <span className="font-semibold text-gray-600">{(card as any).newAssessments}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-amber-600 font-medium">Draft:</span>
-                          <span className="font-semibold text-amber-600">{(card as any).draftAssessments}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-blue-600 font-medium">Submitted:</span>

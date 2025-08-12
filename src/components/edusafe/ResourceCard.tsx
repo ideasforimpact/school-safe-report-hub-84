@@ -19,10 +19,9 @@ import {
 
 interface ResourceCardProps {
   resource: EduSafeResource;
-  onView: (resource: EduSafeResource) => void;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
+const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
   const { user } = useAuth();
   const { downloadResource, deleteResource } = useEduSafe();
   
@@ -34,6 +33,57 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
     e.preventDefault();
     e.stopPropagation();
     downloadResource(resource);
+  };
+
+  const handleView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Open the file in a new tab
+    if (resource.file.base64) {
+      const newWindow = window.open();
+      if (newWindow) {
+        const isImage = resource.file.type.startsWith('image/');
+        const isPdf = resource.file.type === 'application/pdf';
+        
+        newWindow.document.write(`
+          <html>
+            <head>
+              <title>${resource.title}</title>
+              <style>
+                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f0f2f5; }
+                img { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                iframe { width: 100%; height: 90vh; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+                .header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; text-align: center; }
+                .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
+                .description { color: #666; margin-bottom: 10px; }
+                .file-info { font-size: 12px; color: #999; }
+                .content-wrapper { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+              </style>
+            </head>
+            <body>
+              <div class="content-wrapper">
+                <div class="header">
+                  <div class="title">${resource.title}</div>
+                  <div class="description">${resource.description}</div>
+                  <div class="file-info">File: ${resource.file.name} | Size: ${(resource.file.size / 1024 / 1024).toFixed(2)} MB</div>
+                </div>
+                ${isImage 
+                  ? `<img src="${resource.file.base64}" alt="${resource.title}" />`
+                  : isPdf 
+                  ? `<iframe src="${resource.file.base64}"></iframe>`
+                  : `<div style="text-align: center; padding: 50px;">
+                       <p>Preview not available for this file type.</p>
+                       <p>Please download the file to view it.</p>
+                     </div>`
+                }
+              </div>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      }
+    }
   };
   
   const handleDelete = async (e: React.MouseEvent) => {
@@ -59,7 +109,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onClick={() => onView(resource)}>
+            <DropdownMenuItem onClick={handleView}>
               <Eye className="h-4 w-4 mr-2" />
               View
             </DropdownMenuItem>
@@ -134,7 +184,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
           
           <div className="flex justify-between items-center">
             <div className="flex space-x-1">
-              <Button size="sm" variant="ghost" onClick={() => onView(resource)} className="h-8 px-2">
+              <Button size="sm" variant="ghost" onClick={handleView} className="h-8 px-2">
                 <Eye className="h-3 w-3 mr-1" />
                 <span className="text-xs">View</span>
               </Button>

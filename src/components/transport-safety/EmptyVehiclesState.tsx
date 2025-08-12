@@ -19,13 +19,13 @@ const EmptyVehiclesState: React.FC<EmptyVehiclesStateProps> = ({ setShowAddVehic
       <h3 className="text-lg font-medium text-gray-700 mb-2">No Vehicles Found</h3>
       {!isInactiveFilter && (
         <>
-          <p className="text-gray-500 max-w-md mx-auto mb-6">
-            No vehicles match your current filters. Try changing your filters or add a new vehicle.
-          </p>
-          <Button onClick={() => setShowAddVehicle(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Vehicle
-          </Button>
+      <p className="text-gray-500 max-w-md mx-auto mb-6">
+        No vehicles match your current filters. Try changing your filters or add a new vehicle.
+      </p>
+      <Button onClick={() => setShowAddVehicle(true)}>
+        <Plus className="h-4 w-4 mr-2" />
+        Add New Vehicle
+      </Button>
         </>
       )}
     </div>

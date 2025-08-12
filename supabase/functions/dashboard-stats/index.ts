@@ -308,10 +308,10 @@ serve(async (req) => {
 
     // Get total employees for this client
     const employeeIds = await supabase
-      .from('employees')
-      .select('id')
-      .eq('client_id', client_id)
-      .then(res => res.data?.map(emp => emp.id) || [])
+        .from('employees')
+        .select('id')
+        .eq('client_id', client_id)
+        .then(res => res.data?.map(emp => emp.id) || [])
 
     // Fetch document status IDs for completed, governance, and rejected
     const { data: completedStatus } = await supabase
@@ -355,7 +355,7 @@ serve(async (req) => {
     allEmployeeDocs?.forEach(doc => {
       if (!employeeDocsMap.has(doc.employee_id)) {
         employeeDocsMap.set(doc.employee_id, [])
-      }
+    }
       employeeDocsMap.get(doc.employee_id).push(doc)
     })
 

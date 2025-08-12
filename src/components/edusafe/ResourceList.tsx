@@ -7,10 +7,9 @@ import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 
 interface ResourceListProps {
   resources: EduSafeResource[];
-  onViewResource: (resource: EduSafeResource) => void;
 }
 
-const ResourceList: React.FC<ResourceListProps> = ({ resources, onViewResource }) => {
+const ResourceList: React.FC<ResourceListProps> = ({ resources }) => {
   const { loading } = useEduSafe();
 
   if (loading) {
@@ -43,7 +42,6 @@ const ResourceList: React.FC<ResourceListProps> = ({ resources, onViewResource }
         <ResourceCard 
           key={resource.id} 
           resource={resource} 
-          onView={onViewResource}
         />
       ))}
     </div>
