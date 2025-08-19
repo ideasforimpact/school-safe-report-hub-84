@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'fetchAllClients':
         return await fetchAllClients()
+      case 'fetch-clients':
+        return await fetchAllClients()
       case 'fetchEmployeesByClient':
         return await fetchEmployeesByClient(payload.clientId)
       default:
@@ -43,11 +45,11 @@ Deno.serve(async (req) => {
 })
 
 async function fetchAllClients() {
-  console.log('🔍 Fetching all clients with service role...')
+  console.log('🔍 Fetching active clients with service role...')
   
   const { data, error } = await supabase
     .from('clients')
-    .select('id, name, email, active')
+    .select('*')
     .eq('active', true)
     .order('name')
 
@@ -56,7 +58,7 @@ async function fetchAllClients() {
     throw error
   }
 
-  console.log('✅ Successfully fetched clients:', data?.length || 0)
+  console.log('✅ Successfully fetched active clients:', data?.length || 0)
   return new Response(
     JSON.stringify({ success: true, data }),
     { 
@@ -70,12 +72,66 @@ async function fetchEmployeesByClient(clientId: string) {
     throw new Error('Client ID is required')
   }
 
-  console.log('🔍 Fetching employees for client:', clientId)
+  console.log('🔍 Fetching employees with manual documents for client:', clientId)
 
-  // Fetch employees
+  // First, get the manual document type ID
+  const { data: manualDocType, error: docTypeError } = await supabase
+    .from('employee_document_type')
+    .select('id')
+    .eq('name', 'manual')
+    .single()
+
+  if (docTypeError) {
+    console.error('Error fetching manual document type:', docTypeError)
+    throw docTypeError
+  }
+
+  if (!manualDocType) {
+    console.log('⚠️ Manual document type not found, returning empty result')
+    return new Response(
+      JSON.stringify({ success: true, data: [] }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
+  }
+
+  // Fetch all manual documents for this client
+  const { data: manualDocuments, error: documentsError } = await supabase
+    .from('employee_documents')
+    .select(`
+      employee_id,
+      verification_status,
+      document_type_id
+    `)
+    .eq('document_type_id', manualDocType.id)
+
+  if (documentsError) {
+    console.error('Error fetching manual documents:', documentsError)
+    throw documentsError
+  }
+
+  console.log('📊 Found manual documents:', manualDocuments?.length || 0)
+
+  // Get unique employee IDs from manual documents
+  const employeeIdsWithManualDocs = [...new Set(manualDocuments?.map(doc => doc.employee_id) || [])]
+  console.log('👥 Employee IDs with manual docs:', employeeIdsWithManualDocs)
+
+  if (employeeIdsWithManualDocs.length === 0) {
+    console.log('⚠️ No employees found with manual documents')
+    return new Response(
+      JSON.stringify({ success: true, data: [] }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
+  }
+
+  // Fetch employees who have manual documents
   const { data: employees, error: employeesError } = await supabase
     .from('employees')
     .select('id, employee_id, first_name, last_name, email, department, employee_type, client_id')
+    .in('id', employeeIdsWithManualDocs)
     .eq('client_id', clientId)
     .eq('status', true)
     .order('first_name')
@@ -85,57 +141,54 @@ async function fetchEmployeesByClient(clientId: string) {
     throw employeesError
   }
 
-  // Fetch document summaries
-  const employeeIds = employees?.map(emp => emp.id) || []
-  let documentSummaries: Record<string, any> = {}
+  console.log('👥 Found employees with manual docs:', employees?.length || 0)
+
+  // Group manual documents by employee and create summaries
+  const employeeMap = new Map()
   
-  if (employeeIds.length > 0) {
-    const { data: documents, error: documentsError } = await supabase
-      .from('employee_documents')
-      .select('employee_id, verification_status')
-      .in('employee_id', employeeIds)
-
-    if (!documentsError && documents) {
-      documentSummaries = documents.reduce((acc, doc) => {
-        if (!acc[doc.employee_id]) {
-          acc[doc.employee_id] = { total: 0, verified: 0, pending: 0, failed: 0 }
-        }
-        
-        acc[doc.employee_id].total++
-        
-        switch (doc.verification_status) {
-          case 'verified':
-          case 'completed':
-            acc[doc.employee_id].verified++
-            break
-          case 'pending':
-          case 'in-progress':
-            acc[doc.employee_id].pending++
-            break
-          case 'failed':
-          case 'rejected':
-            acc[doc.employee_id].failed++
-            break
-        }
-        
-        return acc
-      }, {} as Record<string, any>)
+  // Initialize employee map with employee data
+  employees?.forEach(emp => {
+    employeeMap.set(emp.id, {
+      id: emp.id,
+      employeeId: emp.employee_id || '',
+      name: `${emp.first_name} ${emp.last_name}`,
+      email: emp.email || '',
+      department: emp.department || '',
+      position: emp.employee_type || '',
+      clientId: emp.client_id,
+      documentsSummary: { total: 0, verified: 0, pending: 0, failed: 0 }
+    })
+  })
+  
+  // Add document summaries
+  manualDocuments?.forEach(doc => {
+    const employeeId = doc.employee_id
+    const employee = employeeMap.get(employeeId)
+    
+    if (employee) {
+      const summary = employee.documentsSummary
+      summary.total++
+      
+      switch (doc.verification_status) {
+        case 'verified':
+        case 'completed':
+          summary.verified++
+          break
+        case 'pending':
+        case 'in-progress':
+          summary.pending++
+          break
+        case 'failed':
+        case 'rejected':
+          summary.failed++
+          break
+      }
     }
-  }
+  })
 
-  // Map employees with document summaries
-  const result = (employees || []).map(emp => ({
-    id: emp.id,
-    employeeId: emp.employee_id || '',
-    name: `${emp.first_name} ${emp.last_name}`,
-    email: emp.email || '',
-    department: emp.department || '',
-    position: emp.employee_type || '',
-    clientId: emp.client_id,
-    documentsSummary: documentSummaries[emp.id] || { total: 0, verified: 0, pending: 0, failed: 0 }
-  }))
+  const result = Array.from(employeeMap.values())
 
-  console.log('✅ Successfully fetched employees:', result.length)
+  console.log('✅ Successfully fetched employees with manual documents:', result.length)
   return new Response(
     JSON.stringify({ success: true, data: result }),
     { 

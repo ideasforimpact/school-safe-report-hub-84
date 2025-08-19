@@ -42,6 +42,7 @@ import IncidentConfiguration from '@/pages/IncidentConfiguration';
 import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
+import PublicFormPage from '@/pages/PublicFormPage';
 import PublicFormSubmissionPage from '@/pages/PublicFormSubmissionPage';
 import PublicFormSubmissionSuccessPage from '@/pages/PublicFormSubmissionSuccessPage';
 import CaptchaVerificationPage from '@/pages/CaptchaVerificationPage';
@@ -144,6 +145,7 @@ function App() {
                   {/* Form routes */}
                   <Route path="/forms" element={<RouteGuard requireAuth={true}><FormsPage /></RouteGuard>} />
                   <Route path="/form-preview/:formId" element={<RouteGuard requireAuth={true}><FormPreviewPage /></RouteGuard>} />
+        <Route path="/form/:previewUrl" element={<PublicFormPage />} />
 
                   {/* Incident routes - Updated to use IncidentsList */}
                   <Route path="/incidents" element={<RouteGuard requireAuth={true}><IncidentsList /></RouteGuard>} />
@@ -292,6 +294,13 @@ function App() {
                   <Route path="/backoffice/edusafe-resources" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={BackofficeEduSafeResourcesPage} />
+                    </RouteGuard>
+                  } />
+
+                  {/* Backoffice Forms */}
+                  <Route path="/backoffice/forms" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={FormsPage} />
                     </RouteGuard>
                   } />
                   

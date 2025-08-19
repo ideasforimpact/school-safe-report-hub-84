@@ -83,8 +83,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           throw functionError;
         }
 
-        if (response?.clients) {
-          const mappedClients = response.clients.map((dbClient: any) => ({
+        if (response?.data) {
+          const mappedClients = response.data.map((dbClient: any) => ({
             ...mapDbClientToClient(dbClient),
             clientTypeId: dbClient.client_type_id
           }));

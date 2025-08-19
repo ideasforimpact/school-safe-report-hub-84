@@ -44,7 +44,7 @@ const VerificationTrends = () => {
     { name: 'Passport', value: documents.filter(doc => doc.documentTypeName === 'passport').length },
     { name: 'Bank Account', value: documents.filter(doc => doc.documentTypeName === 'bank_account').length },
     { name: 'Voter ID', value: documents.filter(doc => doc.documentTypeName === 'voter_id').length },
-    { name: 'Other', value: documents.filter(doc => doc.documentTypeName === 'other').length },
+    { name: 'Manual', value: documents.filter(doc => doc.documentTypeName === 'manual').length },
   ].filter(item => item.value > 0);
   
   // Employee type breakdown

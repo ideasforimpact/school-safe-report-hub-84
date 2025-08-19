@@ -115,8 +115,8 @@ const PublicFormSubmissionPage = () => {
 
       console.log('Form submitted successfully:', result.data);
       
-      // Redirect to success page after successful submission
-      navigate('/public-form-submission-success');
+      // Redirect to forms page after successful submission
+      navigate('/forms');
 
     } catch (err) {
       console.error('Unexpected error during form submission:', err);

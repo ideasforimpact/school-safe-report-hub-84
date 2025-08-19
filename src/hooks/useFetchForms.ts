@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getEmployeeData } from '@/store/employeeSelectors';
+import { useLocation } from 'react-router-dom';
+import { useClient } from '@/contexts/ClientContext';
 
 interface FormField {
   id: string;
@@ -36,7 +36,10 @@ export const useFetchForms = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { user, employeeData } = useAuth();
-  const clientId = employeeData?.clientId || user?.clientId;
+  const location = useLocation();
+  const isBackoffice = location.pathname.startsWith('/backoffice');
+  const { client } = useClient();
+  const clientId = isBackoffice ? client?.id : (employeeData?.clientId || user?.clientId);
 
   const fetchForms = async (clientId: string) => {
     try {
@@ -79,7 +82,7 @@ export const useFetchForms = () => {
       console.log('Client ID found, fetching forms:', clientId);
       fetchForms(clientId);
     } else {
-      console.log('No client ID available, waiting...');
+      console.log('No client ID available yet (backoffice likely waiting for ClientProvider)');
       setLoading(true);
       setError(null);
     }
