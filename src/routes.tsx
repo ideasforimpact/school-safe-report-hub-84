@@ -150,6 +150,13 @@ const AppRoutes = () => {
         </RouteGuard>
       } />
 
+      {/* Backoffice Forms */}
+      <Route path="/backoffice/forms" element={
+        <RouteGuard requireAuth={true} isBackoffice={true}>
+          <FormsPage />
+        </RouteGuard>
+      } />
+
       {/* Protected routes */}
       <Route path="/dashboard" element={
         <RouteGuard requireAuth={true}>

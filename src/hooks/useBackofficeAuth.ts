@@ -150,8 +150,13 @@ export const useBackofficeAuth = () => {
           key: module.name.toLowerCase().replace(/\s+/g, '_'),
           icon: module.icon || 'LayoutDashboard',
           level: module.level,
-          enabled: true,
-          accessLevel: {}
+          enabled: module.active,
+          accessLevel: {},
+          url: module.url,
+          order: module.order,
+          active: module.active,
+          created_at: module.created_at,
+          updated_at: module.updated_at
         }));
       }
 

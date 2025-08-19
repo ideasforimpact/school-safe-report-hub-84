@@ -65,6 +65,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     
     setIsLoading(true);
     try {
+      console.log('🔍 Fetching document types from database...');
       const { data, error } = await supabase
         .from('employee_document_type')
         .select('*')
@@ -72,8 +73,12 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
       
       if (error) {
         console.error('Error fetching document types:', error);
+        // Clear cache on error so we can retry
+        setLastFetchTime(prev => ({ ...prev, documentTypes: 0 }));
         return;
       }
+      
+      console.log('📊 Raw document types from DB:', data);
       
       // Map database fields to our DocumentType interface
       const mappedDocumentTypes: DocumentType[] = data.map(type => ({
@@ -84,10 +89,21 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
         updatedAt: type.updated_at
       }));
       
-      setDocumentTypes(mappedDocumentTypes.length > 0 ? mappedDocumentTypes : initialDocumentTypes);
-      setLastFetchTime(prev => ({ ...prev, documentTypes: now }));
+      console.log('📋 Mapped document types:', mappedDocumentTypes);
+      
+      if (mappedDocumentTypes.length > 0) {
+        setDocumentTypes(mappedDocumentTypes);
+        setLastFetchTime(prev => ({ ...prev, documentTypes: now }));
+        console.log('✅ Document types set successfully');
+      } else {
+        console.warn('⚠️ No document types found in database, clearing cache to allow retry');
+        // Clear cache if no data found so we can retry
+        setLastFetchTime(prev => ({ ...prev, documentTypes: 0 }));
+      }
     } catch (err) {
       console.error('Failed to fetch document types:', err);
+      // Clear cache on error so we can retry
+      setLastFetchTime(prev => ({ ...prev, documentTypes: 0 }));
     } finally {
       setIsLoading(false);
     }

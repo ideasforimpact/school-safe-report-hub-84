@@ -152,8 +152,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     }
   };
 
-  // Check if this is an "Other" document type with verification history
-  const showCommentsIcon = documentTypeName.toLowerCase() === 'other' && hasVerificationHistory();
+  // Check if this is a "Manual" document type with verification history
+  const showCommentsIcon = documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
 
   const handleCommentsClick = () => {
     console.log('BackofficeDocumentCard - Comments button clicked for document:', document.id);
@@ -165,11 +165,11 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     });
   };
 
-  // Check if this is an "Other" document with "in-progress" status
-  const isOtherInProgress = documentTypeName.toLowerCase() === 'other' && document.verificationStatus === 'in-progress';
+  // Check if this is a "Manual" document with "in-progress" status
+  const isManualInProgress = documentTypeName.toLowerCase() === 'manual' && document.verificationStatus === 'in-progress';
   
   console.log('BackofficeDocumentCard - Button conditions:', {
-    isOtherInProgress,
+    isManualInProgress,
     documentTypeName: documentTypeName.toLowerCase(),
     verificationStatus: document.verificationStatus,
     hasDocumentImage: !!document.documentImage,
@@ -281,8 +281,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 </Button>
               )}
               
-              {/* Verify button - only for "Other" documents with "in-progress" status */}
-              {isOtherInProgress && clientId && (
+              {/* Verify button - only for "Manual" documents with "in-progress" status */}
+              {isManualInProgress && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -294,8 +294,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 </Button>
               )}
               
-              {/* Re-upload button - only for "Other" document types with documentImage and clientId */}
-              {documentTypeName.toLowerCase() === 'other' && document.documentImage && clientId && (
+              {/* Re-upload button - only for "Manual" document types with documentImage and clientId */}
+              {documentTypeName.toLowerCase() === 'manual' && document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"

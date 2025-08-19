@@ -55,25 +55,25 @@ const BackofficeEmployeeVerificationPage = () => {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      console.log('🚀 BackofficeEmployeeVerificationPage: Starting client fetch');
+      console.log('🚀 BackofficeEmployeeVerificationPage: Starting active client fetch');
       
       const clientsData = await backofficeEmployeeService.fetchAllClients();
-      console.log('📊 Received clients data:', clientsData);
+      console.log('📊 Received active clients data:', clientsData);
       
       setClients(clientsData);
       
       // Auto-select first client if available
       if (clientsData.length > 0) {
         setSelectedClientId(clientsData[0].id);
-        console.log('✅ Auto-selected first client:', clientsData[0].name);
+        console.log('✅ Auto-selected first active client:', clientsData[0].name);
       } else {
-        console.log('⚠️ No clients available');
+        console.log('⚠️ No active clients available');
       }
     } catch (error) {
-      console.error('❌ Error fetching clients:', error);
+      console.error('❌ Error fetching active clients:', error);
       toast({
         title: "Error",
-        description: `Failed to fetch clients: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        description: `Failed to fetch active clients: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -87,10 +87,10 @@ const BackofficeEmployeeVerificationPage = () => {
       const employeesData = await backofficeEmployeeService.fetchEmployeesByClient(clientId);
       setEmployees(employeesData);
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error('Error fetching employees with manual documents:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch employees",
+        description: "Failed to fetch employees with manual documents",
         variant: "destructive",
       });
     } finally {
@@ -129,7 +129,7 @@ const BackofficeEmployeeVerificationPage = () => {
             <UserCheck className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold">Employee Verification Management</h1>
-              <p className="text-gray-500 mt-1">Manage employee document verification across clients</p>
+              <p className="text-gray-500 mt-1">Manage manual document verification for employees across active clients</p>
             </div>
           </div>
         </div>
@@ -138,27 +138,27 @@ const BackofficeEmployeeVerificationPage = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Employee Verification Overview</CardTitle>
+                <CardTitle>Manual Document Verification Overview</CardTitle>
                 <CardDescription>
-                  View and manage employee document verification status
+                  View and manage manual document verification status for employees
                 </CardDescription>
               </div>
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Client:</span>
-                  <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                    <SelectTrigger className="w-64">
-                      <SelectValue placeholder="Select a client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Active Client:</span>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue placeholder="Select an active client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
@@ -175,8 +175,8 @@ const BackofficeEmployeeVerificationPage = () => {
             {!selectedClientId ? (
               <div className="text-center py-12">
                 <UserCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Client</h3>
-                <p className="text-gray-500">Please select a client to view their employees and verification status</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Select an Active Client</h3>
+                <p className="text-gray-500">Please select an active client to view their employees and verification status</p>
               </div>
             ) : loadingEmployees ? (
               <div className="text-center py-12">
@@ -187,12 +187,12 @@ const BackofficeEmployeeVerificationPage = () => {
               <div className="text-center py-12">
                 <UserCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {searchTerm ? 'No Employees Found' : 'No Employees Available'}
+                  {searchTerm ? 'No Employees Found' : 'No Employees with Manual Documents'}
                 </h3>
                 <p className="text-gray-500">
                   {searchTerm 
-                    ? `No employees match the search term "${searchTerm}"`
-                    : 'This client has no employees registered yet'
+                    ? `No employees with manual documents match the search term "${searchTerm}"`
+                    : 'This client has no employees with uploaded manual documents yet'
                   }
                 </p>
               </div>

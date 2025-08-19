@@ -28,7 +28,7 @@ export interface EmployeeWithDocumentsSummary {
 export const backofficeEmployeeService = {
   async fetchAllClients(): Promise<BackofficeClient[]> {
     try {
-      console.log('🔍 Fetching clients via edge function...');
+      console.log('🔍 Fetching active clients via edge function...');
       
       // Use edge function with service role to bypass RLS issues
       const { data, error } = await supabase.functions.invoke('backoffice-client-management', {
@@ -44,7 +44,7 @@ export const backofficeEmployeeService = {
         throw new Error(data.error || 'Failed to fetch clients');
       }
 
-      console.log('✅ Successfully received clients:', data.data?.length || 0);
+      console.log('✅ Successfully received active clients:', data.data?.length || 0);
       return data.data || [];
     } catch (error) {
       console.error('Error in fetchAllClients:', error);
@@ -58,7 +58,7 @@ export const backofficeEmployeeService = {
         throw new Error('Client ID is required');
       }
 
-      console.log('🔍 Fetching employees for client via edge function:', clientId);
+      console.log('🔍 Fetching employees with manual documents for client via edge function:', clientId);
       
       // Use edge function with service role to bypass RLS issues
       const { data, error } = await supabase.functions.invoke('backoffice-client-management', {
@@ -74,7 +74,7 @@ export const backofficeEmployeeService = {
         throw new Error(data.error || 'Failed to fetch employees');
       }
 
-      console.log('✅ Successfully received employees:', data.data?.length || 0);
+      console.log('✅ Successfully received employees with manual documents:', data.data?.length || 0);
       return data.data || [];
     } catch (error) {
       console.error('Error in fetchEmployeesByClient:', error);

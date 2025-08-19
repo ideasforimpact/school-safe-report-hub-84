@@ -1,88 +1,65 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    // Create Supabase client with service role key
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    )
 
-    const { form_id, submitter_name, submitter_email, responses } = await req.json();
-    
-    if (!form_id || !responses) {
+    const { formData } = await req.json()
+
+    // Validate required fields
+    if (!formData.form_id || !formData.responses) {
       return new Response(
-        JSON.stringify({ 
-          error: 'form_id and responses are required',
-          code: 'MISSING_REQUIRED_FIELDS'
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    console.log(`Submitting form: ${form_id}`);
-
-    // Insert the form submission with 'open' status
-    const { data, error } = await supabaseClient
+    // Insert form submission
+    const { data: submission, error } = await supabaseClient
       .from('form_submissions')
-      .insert([{
-        form_id,
-        submitter_name,
-        submitter_email,
-        responses,
-        status: 'open', // Set initial status as 'open'
-        comments: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
+      .insert([formData])
       .select()
-      .single();
+      .single()
 
     if (error) {
-      console.error('Error submitting form:', error);
-      throw new Error(`Failed to submit form: ${error.message}`);
+      console.error('Error inserting submission:', error)
+      return new Response(
+        JSON.stringify({ error: 'Failed to submit form' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
-    console.log('Form submitted successfully:', data.id);
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: data,
-        message: 'Form submitted successfully'
-      }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+      JSON.stringify({ success: true, data: submission }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
 
   } catch (error) {
-    console.error('Error in submit-form function:', error);
+    console.error('Error:', error)
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        code: 'INTERNAL_ERROR'
-      }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
-});
+})

@@ -41,11 +41,20 @@ const SidebarContent = () => {
       return;
     }
     
+    console.log('SidebarContent Debug:', {
+      isSaasOwner,
+      isBackofficeRoute,
+      configuredModulesLength: configuredModules.length,
+      userRole: user?.role,
+      pathname: location.pathname
+    });
+    
     setIsLoading(true);
     
     try {
       // PRIORITY 1: Backoffice users - use cached modules from Redux store
-      if (isSaasOwner && isBackofficeRoute && configuredModules.length > 0) {
+      if (isBackofficeRoute && configuredModules.length > 0) {
+        console.log('Using cached backoffice modules for sidebar:', configuredModules.length);
         const items = convertModulesToSidebarItems(configuredModules, {}, '/backoffice');
         setDynamicMenuItems(items);
         setIsLoading(false);
@@ -86,8 +95,8 @@ const SidebarContent = () => {
       if (!user || !configuredModules || configuredModules.length === 0) {
         const loadModulesFromAPI = async () => {
           try {
-            const modules = await fetchModules(isSaasOwner && isBackofficeRoute, user);
-            const basePath = isSaasOwner && isBackofficeRoute ? '/backoffice' : '';
+            const modules = await fetchModules(isBackofficeRoute, user);
+            const basePath = isBackofficeRoute ? '/backoffice' : '';
             const items = convertModulesToSidebarItems(modules, {}, basePath);
             setDynamicMenuItems(items);
           } catch (error) {

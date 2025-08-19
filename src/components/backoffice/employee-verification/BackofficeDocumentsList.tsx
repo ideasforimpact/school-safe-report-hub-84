@@ -20,30 +20,63 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   const [filteredDocuments, setFilteredDocuments] = useState(employee.documents || []);
   const { documentTypes, fetchDocumentTypes } = useEmployeeVerification();
 
-  // Get the "Other" document type ID
-  const otherDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'other');
-  const otherDocumentTypeId = otherDocumentType?.id;
+  // Get the "Manual" document type ID
+  const manualDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'manual');
+  const manualDocumentTypeId = manualDocumentType?.id;
+
+  // Debug logging
+  console.log('🔍 BackofficeDocumentsList Debug:', {
+    documentTypes: documentTypes,
+    manualDocumentType,
+    manualDocumentTypeId,
+    employeeDocuments: employee.documents,
+    employeeId: employee.id
+  });
 
   useEffect(() => {
+    console.log('🔄 BackofficeDocumentsList: Fetching document types...');
     fetchDocumentTypes();
   }, [fetchDocumentTypes]);
 
   useEffect(() => {
     filterDocuments();
-  }, [timeFilter, employee.documents, otherDocumentTypeId]);
+  }, [timeFilter, employee.documents, manualDocumentTypeId]);
 
   const filterDocuments = () => {
     const documents = employee.documents || [];
     const now = new Date();
     
-    // First filter by document type (only "Other" documents)
+    console.log('🔍 Filtering documents:', {
+      totalDocuments: documents.length,
+      manualDocumentTypeId,
+      documentTypes: documentTypes.map(t => ({ id: t.id, name: t.name }))
+    });
+    
+    // First filter by document type (only "Manual" documents)
     let filtered = documents.filter(doc => {
-      if (otherDocumentTypeId) {
-        return doc.documentTypeId === otherDocumentTypeId;
+      console.log('🔍 Checking document:', {
+        docId: doc.id,
+        docTypeId: doc.documentTypeId,
+        docTypeName: doc.documentTypeName,
+        matchesManualId: manualDocumentTypeId ? doc.documentTypeId === manualDocumentTypeId : false
+      });
+      
+      if (manualDocumentTypeId) {
+        return doc.documentTypeId === manualDocumentTypeId;
       }
       // Fallback: filter by document type name if ID not found
       const docType = documentTypes.find(type => type.id === doc.documentTypeId);
-      return docType?.name.toLowerCase() === 'other';
+      const matchesByName = docType?.name.toLowerCase() === 'manual';
+      const matchesByDocName = doc.documentTypeName?.toLowerCase() === 'manual';
+      
+      console.log('🔍 Document type matching:', {
+        docType,
+        matchesByName,
+        matchesByDocName,
+        finalMatch: matchesByName || matchesByDocName
+      });
+      
+      return matchesByName || matchesByDocName;
     });
     
     // Then filter by time
@@ -82,22 +115,24 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   };
 
   const getDocumentCounts = () => {
-    // Count only "Other" documents
-    const otherDocuments = (employee.documents || []).filter(doc => {
-      if (otherDocumentTypeId) {
-        return doc.documentTypeId === otherDocumentTypeId;
+    // Count only "Manual" documents
+    const manualDocuments = (employee.documents || []).filter(doc => {
+      if (manualDocumentTypeId) {
+        return doc.documentTypeId === manualDocumentTypeId;
       }
       const docType = documentTypes.find(type => type.id === doc.documentTypeId);
-      return docType?.name.toLowerCase() === 'other';
+      const matchesByName = docType?.name.toLowerCase() === 'manual';
+      const matchesByDocName = doc.documentTypeName?.toLowerCase() === 'manual';
+      return matchesByName || matchesByDocName;
     });
     
-    const verified = otherDocuments.filter(doc => doc.verificationStatus === 'verified').length;
-    const completed = otherDocuments.filter(doc => doc.verificationStatus === 'completed').length;
-    const pending = otherDocuments.filter(doc => doc.verificationStatus === 'pending').length;
-    const inProgress = otherDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
-    const failed = otherDocuments.filter(doc => doc.verificationStatus === 'failed').length;
-    const rejected = otherDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
-    const total = otherDocuments.length;
+    const verified = manualDocuments.filter(doc => doc.verificationStatus === 'verified').length;
+    const completed = manualDocuments.filter(doc => doc.verificationStatus === 'completed').length;
+    const pending = manualDocuments.filter(doc => doc.verificationStatus === 'pending').length;
+    const inProgress = manualDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
+    const failed = manualDocuments.filter(doc => doc.verificationStatus === 'failed').length;
+    const rejected = manualDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
+    const total = manualDocuments.length;
     
     return { verified, completed, pending, inProgress, failed, rejected, total };
   };
@@ -111,7 +146,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             <div>
-              <CardTitle>Other Document Verification</CardTitle>
+              <CardTitle>Manual Document Verification</CardTitle>
               <p className="text-sm text-gray-500 mt-1">
                 {counts.total} documents • {counts.completed} completed • {counts.inProgress} in-progress • {counts.pending} pending • {counts.rejected} rejected
               </p>
@@ -138,12 +173,12 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           <div className="text-center py-12">
             <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {timeFilter === 'all' ? 'No Other Documents Available' : 'No Other Documents in Selected Timeframe'}
+              {timeFilter === 'all' ? 'No Manual Documents Available' : 'No Manual Documents in Selected Timeframe'}
             </h3>
             <p className="text-gray-500">
               {timeFilter === 'all' 
-                ? 'This employee has not uploaded any "Other" type verification documents yet.'
-                : `No "Other" type documents were uploaded in the selected timeframe (${timeFilter}).`
+                ? 'This employee has not uploaded any "Manual" type verification documents yet.'
+                : `No "Manual" type documents were uploaded in the selected timeframe (${timeFilter}).`
               }
             </p>
           </div>
