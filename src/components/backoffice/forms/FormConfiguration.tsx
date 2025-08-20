@@ -60,6 +60,8 @@ export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, on
   const getFieldTypeBadge = (type: string) => {
     const typeConfig = {
       text: { color: 'bg-blue-500', text: 'Text' },
+      email: { color: 'bg-cyan-600', text: 'Email' },
+      phone: { color: 'bg-amber-600', text: 'Phone' },
       select: { color: 'bg-purple-500', text: 'Dropdown' },
       textarea: { color: 'bg-green-500', text: 'Text Area' },
       file: { color: 'bg-orange-500', text: 'File Upload' },

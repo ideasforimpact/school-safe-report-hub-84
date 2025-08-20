@@ -29,17 +29,9 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
   useEffect(() => {
     const newVisibleFields = new Set<string>();
 
-    fields.forEach(field => {
-      if (!field.conditional) {
-        // Field has no conditions, always visible
-        newVisibleFields.add(field.id);
-      } else {
-        // Field has conditions, check if they're met
-        const dependencyValue = formData[field.conditional.dependsOn];
-        if (dependencyValue === field.conditional.showWhen) {
-          newVisibleFields.add(field.id);
-        }
-      }
+    fields.forEach((field: any) => {
+      // No conditional logic configured; always show
+      newVisibleFields.add(field.id);
     });
 
     setVisibleFields(newVisibleFields);
@@ -59,15 +51,99 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
     }
   };
 
-  const renderField = (field: FormField) => {
+  const renderField = (field: any) => {
     if (!visibleFields.has(field.id)) {
       return null;
     }
 
     const value = formData[field.id] || '';
 
-    switch (field.type) {
+    // Normalize legacy field types based on label keywords
+    const labelText = (field.label || field.field_label || '').toString().toLowerCase();
+    const idText = (field.id || '').toString().toLowerCase();
+    const normalizedType = (() => {
+      const isEmailLabel = /email/.test(labelText) || idText.includes('email');
+      const isPhoneLabel = /(phone|mobile)/.test(labelText) || idText.includes('phone') || idText.includes('mobile');
+      if ((field.type === 'text' || field.type === 'text_input') && isEmailLabel) return 'email';
+      if ((field.type === 'text' || field.type === 'text_input') && isPhoneLabel) return 'phone';
+      return field.type;
+    })();
+
+    switch (normalizedType) {
+      case 'phone':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={field.id}
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              maxLength={10}
+              placeholder={field.placeholder}
+              value={value}
+              onKeyDown={(e) => {
+                const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
+                if (allowed.includes(e.key)) return;
+                if (!/^[0-9]$/.test(e.key) || String(value).length >= 10) {
+                  e.preventDefault();
+                }
+              }}
+              onBeforeInput={(e: any) => {
+                const data = e?.nativeEvent?.data as string | null;
+                if (data && !/^\d$/.test(data)) {
+                  e.preventDefault();
+                }
+                const target = e.currentTarget as HTMLInputElement;
+                if (target?.value?.length >= 10) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                const text = (e.clipboardData || (window as any).clipboardData).getData('text');
+                if (!/^\d+$/.test(text)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                if (e.target.value !== onlyDigits) {
+                  e.target.value = onlyDigits;
+                }
+                handleFieldChange(field.id, onlyDigits);
+              }}
+              required={field.required}
+              disabled={isSubmitting}
+            />
+          </div>
+        );
+
+      case 'email':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={field.id}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder={field.placeholder}
+              value={value}
+              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              required={field.required}
+              disabled={isSubmitting}
+            />
+          </div>
+        );
+
       case 'text_input':
+      case 'text':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
@@ -77,6 +153,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
             <Input
               id={field.id}
               value={value}
+              placeholder={field.placeholder}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
               disabled={isSubmitting}
@@ -84,7 +161,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
           </div>
         );
 
-      case 'text_area':
+      case 'textarea':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
@@ -102,7 +179,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
           </div>
         );
 
-      case 'dropdown':
+      case 'select':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
@@ -118,7 +195,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
                 <SelectValue placeholder="Select an option" />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option) => (
+                {field.options?.map((option: string) => (
                   <SelectItem key={option} value={option}>
                     {option}
                   </SelectItem>

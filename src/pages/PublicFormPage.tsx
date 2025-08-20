@@ -312,8 +312,6 @@ const PublicFormPage = () => {
 
   const renderField = (field: FormField) => {
     switch (field.type) {
-      case 'text':
-      case 'email':
       case 'phone':
         return (
           <div key={field.id} className="space-y-2">
@@ -323,7 +321,78 @@ const PublicFormPage = () => {
             </Label>
             <Input
               id={field.id}
-              type={field.type}
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              maxLength={10}
+              placeholder={field.placeholder || 'Your phone number'}
+              value={formData[field.id] || ''}
+              onKeyDown={(e) => {
+                const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End'];
+                if (allowed.includes(e.key)) return;
+                if (!/^[0-9]$/.test(e.key) || String(formData[field.id] || '').length >= 10) {
+                  e.preventDefault();
+                }
+              }}
+              onBeforeInput={(e: any) => {
+                const data = e?.nativeEvent?.data as string | null;
+                if (data && !/^\d$/.test(data)) {
+                  e.preventDefault();
+                }
+                const target = e.currentTarget as HTMLInputElement;
+                if (target?.value?.length >= 10) {
+                  e.preventDefault();
+                }
+              }}
+              onPaste={(e) => {
+                const text = (e.clipboardData || (window as any).clipboardData).getData('text');
+                if (!/^\d+$/.test(text)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                if (e.target.value !== onlyDigits) {
+                  (e.target as HTMLInputElement).value = onlyDigits;
+                }
+                handleInputChange(field.id, onlyDigits);
+              }}
+              required={field.required}
+            />
+          </div>
+        );
+
+      case 'email':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={field.id}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder={field.placeholder || 'Your email address'}
+              value={formData[field.id] || ''}
+              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              maxLength={field.maxLength}
+              required={field.required}
+            />
+          </div>
+        );
+
+      case 'text':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={field.id}
+              type="text"
               placeholder={field.placeholder}
               value={formData[field.id] || ''}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
@@ -423,7 +492,7 @@ const PublicFormPage = () => {
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             {/* ALTCHA widget replaces math captcha */}
-            <AltchaWidget ref={altchaRef as any} onStateChange={(ev: any) => setCaptchaToken(ev?.detail?.payload || null)} />
+            <AltchaWidget onVerified={(t) => setCaptchaToken(t)} theme="auto" />
           </div>
         );
 
