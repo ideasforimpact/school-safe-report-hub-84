@@ -62,11 +62,18 @@ export const DEFAULT_GRIEVANCE_FIELDS: FormField[] = [
     placeholder: 'Your full name'
   },
   {
-    id: 'contact',
-    type: 'text',
-    label: 'Phone Number / Email',
+    id: 'phone',
+    type: 'phone',
+    label: 'Phone Number',
     required: false,
-    placeholder: 'Your contact information'
+    placeholder: 'Your phone number'
+  },
+  {
+    id: 'email',
+    type: 'email',
+    label: 'Email',
+    required: false,
+    placeholder: 'Your email address'
   },
   {
     id: 'submitter_type',

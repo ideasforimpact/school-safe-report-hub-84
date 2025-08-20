@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, Eye, EyeOff, FileText, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, QrCode } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { QRCodeSVG } from 'qrcode.react';
 import SimpleFormBuilder from './SimpleFormBuilder';
 import { useCustomForms } from '@/hooks/useCustomForms';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
@@ -53,6 +55,7 @@ const FormConfigurationContent = () => {
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   const handleCreateForm = () => {
     setEditingForm(null);
@@ -65,7 +68,15 @@ const FormConfigurationContent = () => {
   };
 
   const handlePreviewForm = (form: CustomForm) => {
-    navigate(`/form-preview/${form.id}`);
+    const formUrl = `${window.location.origin}/public-form/${form.id}`;
+    window.open(formUrl, '_blank');
+  };
+
+  const buildPreviewUrl = (form: CustomForm) => {
+    const clientId = getClientId();
+    const base = `${window.location.origin}/form/${form.id}`;
+    const qs = `?clientId=${encodeURIComponent(clientId || '')}&formId=${encodeURIComponent(form.id)}`;
+    return `${base}${qs}`;
   };
 
   const handleCopyFormUrl = async (form: CustomForm) => {
@@ -218,17 +229,6 @@ const FormConfigurationContent = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">Custom Forms</h3>
-          <p className="text-sm text-gray-500">Create and manage custom forms for data collection</p>
-        </div>
-        <Button onClick={handleCreateForm} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Form
-        </Button>
-      </div>
-
       {forms.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -245,82 +245,89 @@ const FormConfigurationContent = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Form Title</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead className="w-[320px]">Title</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right w-[160px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {forms.map((form) => (
-                  <TableRow key={form.id}>
-                    <TableCell className="font-medium">{form.title}</TableCell>
-                    <TableCell className="max-w-xs truncate">{form.description}</TableCell>
-                    <TableCell>
-                      <Badge variant={form.is_active ? "default" : "secondary"}>
-                        {form.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCopyFormUrl(form)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePreviewForm(form)}
-                          className="gap-1"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Preview
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleActive(form)}
-                          className="gap-1"
-                        >
-                          {form.is_active ? (
-                            <>
-                              <EyeOff className="h-4 w-4" />
-                              Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="h-4 w-4" />
-                              Activate
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditForm(form)}
-                          className="gap-1"
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteClick(form)}
-                          className="gap-1 text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {forms.map((form) => {
+                  const previewUrl = buildPreviewUrl(form);
+                  return (
+                    <TableRow key={form.id}>
+                      <TableCell>
+                        <div className="font-medium">{form.title}</div>
+                        {form.description && (
+                          <div className="text-sm text-gray-500 truncate max-w-[520px]">
+                            {form.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={form.is_active ? 'default' : 'secondary'}>
+                          {form.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {/* Preview (icon-only) */}
+                          <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          {/* QR (icon-only) */}
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                <QrCode className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Form QR Code</DialogTitle>
+                              </DialogHeader>
+                              <div className="flex flex-col items-center justify-center p-4">
+                                <div ref={qrCodeRef} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                  <QRCodeSVG value={previewUrl} size={220} />
+                                </div>
+                                <p className="text-sm text-gray-500 mt-4 text-center">
+                                  Scan to open the grievance form
+                                </p>
+                                <Button 
+                                  className="mt-4"
+                                  onClick={() => {
+                                    if (qrCodeRef.current) {
+                                      const svg = qrCodeRef.current.querySelector('svg') as SVGElement;
+                                      if (svg) {
+                                        const svgData = new XMLSerializer().serializeToString(svg);
+                                        const canvas = document.createElement('canvas');
+                                        const ctx = canvas.getContext('2d');
+                                        const img = new Image();
+                                        img.onload = () => {
+                                          canvas.width = img.width;
+                                          canvas.height = img.height;
+                                          ctx?.drawImage(img, 0, 0);
+                                          const link = document.createElement('a');
+                                          link.download = `form-qr-${form.id}.png`;
+                                          link.href = canvas.toDataURL();
+                                          link.click();
+                                        };
+                                        img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  Download QR Code
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

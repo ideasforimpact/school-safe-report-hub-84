@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePublicForm } from '@/hooks/usePublicForm';
@@ -9,12 +9,31 @@ import { AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { isCaptchaVerified, requireCaptchaVerification } from '@/utils/captchaUtils';
+import { FormField } from '@/types/formTypes';
 
 const PublicFormSubmissionPage = () => {
   const { formId } = useParams<{ formId: string }>();
   const { form, loading, error } = usePublicForm(formId);
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Normalize fields to ensure email/phone types are enforced
+  const normalizedFields: FormField[] = useMemo(() => {
+    const fields = form?.fields || [];
+    return fields.map((f: any) => {
+      const idLower = (f.id || '').toString().toLowerCase();
+      const labelLower = (f.label || f.field_label || '').toString().toLowerCase();
+      const isPhone = idLower.includes('phone') || idLower.includes('mobile') || /(phone|mobile)/.test(labelLower);
+      const isEmail = idLower.includes('email') || /email/.test(labelLower);
+      if (isPhone) {
+        return { ...f, type: 'phone', placeholder: f.placeholder || 'Your phone number' } as FormField;
+      }
+      if (isEmail) {
+        return { ...f, type: 'email', placeholder: f.placeholder || 'Your email address' } as FormField;
+      }
+      return f as FormField;
+    });
+  }, [form?.fields]);
 
   // Check CAPTCHA verification on component mount
   useEffect(() => {
@@ -71,11 +90,11 @@ const PublicFormSubmissionPage = () => {
 
       // Convert form data to responses array format
       const responses = Object.entries(data).map(([fieldId, value]) => {
-        const field = form.fields.find(f => f.id === fieldId);
+        const field = normalizedFields.find(f => f.id === fieldId);
         return {
           field_id: fieldId,
           field_label: field?.label || 'Unknown Field',
-          field_type: field?.type || 'text_input',
+          field_type: field?.type || 'text',
           value: value
         };
       });
@@ -141,12 +160,12 @@ const PublicFormSubmissionPage = () => {
           </CardHeader>
           
           <CardContent>
-            <ConditionalFormRenderer 
-              fields={form.fields} 
+            {/* <ConditionalFormRenderer 
+              fields={normalizedFields} 
               onSubmit={handleFormSubmit}
               isPreview={false}
               isSubmitting={isSubmitting}
-            />
+            /> */}
           </CardContent>
         </Card>
       </div>
