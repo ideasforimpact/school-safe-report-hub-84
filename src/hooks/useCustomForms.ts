@@ -35,6 +35,8 @@ interface DatabaseCustomForm {
   description?: string;
   fields: any; // JSON in database
   is_active: boolean;
+  preview_url?: string;
+  client_logo?: string;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
@@ -96,7 +98,8 @@ export const useCustomForms = () => {
         description: formData.description,
         fields: formData.fields,
         is_active: formData.is_active,
-        created_by: employeeId
+        created_by: employeeId,
+        client_logo: (formData as any).client_logo || null
       };
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
@@ -130,7 +133,7 @@ export const useCustomForms = () => {
         formId: id,
         client_id: clientId,
         ...formData
-      };
+      } as any;
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
         body: payload

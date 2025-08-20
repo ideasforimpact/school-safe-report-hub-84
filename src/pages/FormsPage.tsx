@@ -328,6 +328,8 @@ const FormsPage = () => {
         .update({
           status: 'acknowledged',
           comments: acknowledgeComment.trim(),
+          acknowledged_by_name: (employeeData?.firstName && employeeData?.lastName) ? `${employeeData.firstName} ${employeeData.lastName}` : (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : null),
+          acknowledged_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', acknowledgeSubmission.id);
@@ -363,12 +365,12 @@ const FormsPage = () => {
             <FileText className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold">
-                {isBackoffice ? 'Form Management' : 'Grievance Submissions'}
+                {isBackoffice ? 'Form Management' : 'Grievances'}
               </h1>
               <p className="text-gray-500 mt-1">
                 {isBackoffice 
                   ? 'Configure grievance forms for clients' 
-                  : 'View and manage grievance submission details'
+                  : 'Search and manage grievances'
                 }
               </p>
             </div>
@@ -512,7 +514,7 @@ const FormsPage = () => {
             {!isBackoffice && (
                 <Card>
                   <CardHeader>
-                  <CardTitle>Submission List</CardTitle>
+                  <CardTitle>Grievance List</CardTitle>
                   </CardHeader>
                   <CardContent>
                   {/* Filters Section */}
@@ -523,7 +525,7 @@ const FormsPage = () => {
                       <div className="relative w-64">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                         <Input
-                          placeholder="Search submissions..."
+                          placeholder="Search grievance..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10"
@@ -618,7 +620,7 @@ const FormsPage = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Submitter - Name</TableHead>
+                              <TableHead>Name</TableHead>
                               <TableHead>Mobile number</TableHead>
                               <TableHead>Description</TableHead>
                               <TableHead>Type</TableHead>
@@ -673,7 +675,7 @@ const FormsPage = () => {
 										<Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
 											<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
 																								<DialogHeader>
-													<DialogTitle>Submission Details</DialogTitle>
+																	<DialogTitle>Grievance Details</DialogTitle>
 												</DialogHeader>
 												<div className="space-y-6">
 													{/* Key information */}
@@ -703,10 +705,33 @@ const FormsPage = () => {
 															<div className="mt-1">{formatDate(viewSubmission.created_at)}</div>
 														</div>
 													</div>
-													{/* Status */}
+																													{/* Status and Acknowledgement */}
 													<div>
 														<div className="text-sm text-gray-600 mb-2">Status</div>
-                                {getStatusBadge(viewSubmission.status)}
+																	{getStatusBadge(viewSubmission.status)}
+																	{viewSubmission.status === 'acknowledged' && (
+																		<div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+																			<div className="text-sm font-semibold text-blue-800 mb-2">Acknowledgement</div>
+																			<div className="space-y-1 text-sm">
+																				<div>
+																					<span className="text-gray-700">Acknowledged by: </span>
+																					<span className="font-semibold text-blue-900 capitalize">{viewSubmission.acknowledged_by_name || '—'}</span>
+																				</div>
+																				{viewSubmission.acknowledged_at && (
+																					<div>
+																						<span className="text-gray-700">Acknowledged on: </span>
+																						<span className="font-semibold text-blue-900">{formatDate(viewSubmission.acknowledged_at)}</span>
+																					</div>
+																				)}
+																				{viewSubmission.comments && (
+																					<div className="mt-1">
+																						<span className="text-gray-700">Comment: </span>
+																						<span className="font-semibold text-blue-900 whitespace-pre-wrap">{viewSubmission.comments}</span>
+																					</div>
+																				)}
+																		</div>
+																	</div>
+																	)}
 													</div>
 													{/* Attachments */}
 													<div className="space-y-3">
@@ -771,10 +796,10 @@ const FormsPage = () => {
                                 >
                                   {isSubmittingAcknowledgment ? 'Acknowledging...' : 'Acknowledge'}
                                 </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+													</div>
+											</div>
+										</DialogContent>
+									</Dialog>
 								)}
                       </div>
                     )}

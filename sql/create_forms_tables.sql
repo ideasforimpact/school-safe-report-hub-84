@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS custom_forms (
   fields JSONB NOT NULL, -- Store form fields configuration
   is_active BOOLEAN DEFAULT true,
   preview_url VARCHAR(500) UNIQUE, -- Generated URL for form access
+  client_logo TEXT, -- URL to client logo for rendering on public preview
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id)
