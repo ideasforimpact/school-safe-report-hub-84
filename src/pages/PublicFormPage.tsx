@@ -23,6 +23,8 @@ const PublicFormPage = () => {
   const formIdQS = qs.get('formId') || undefined;
 
   const [form, setForm] = useState<CustomForm | null>(null);
+  const [clientName, setClientName] = useState<string | null>(null);
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -108,12 +110,27 @@ const PublicFormPage = () => {
         fields,
         is_active: (data as any).is_active ?? true,
         preview_url: (data as any).preview_url ?? '',
+        client_logo: (data as any).client_logo ?? undefined,
         created_at: (data as any).created_at,
         updated_at: (data as any).updated_at,
         created_by: (data as any).created_by ?? undefined,
       };
 
       setForm(mapped);
+      setClientLogoUrl(mapped.client_logo || null);
+
+      // Fallback: fetch client name/logo if not present on form
+      if (!mapped.client_logo || !clientName) {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('name, logo')
+          .eq('id', mapped.client_id)
+          .maybeSingle();
+        if (clientRow) {
+          setClientName((clientRow as any).name || null);
+          if (!mapped.client_logo) setClientLogoUrl((clientRow as any).logo || null);
+        }
+      }
 
       const initialData: Record<string, any> = {};
       fields.forEach((field: FormField) => {
@@ -127,8 +144,6 @@ const PublicFormPage = () => {
       setLoading(false);
     }
   };
-
-
 
   useEffect(() => {
     // No extra init needed for ALTCHA
@@ -158,7 +173,13 @@ const PublicFormPage = () => {
 
       const uploadedForField: any[] = [];
       for (const file of fieldFiles) {
-        const fileName = `${Date.now()}_${file.name}`;
+        // Sanitize file name to remove special characters and spaces
+        const sanitizedFileName = file.name
+          .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
+          .replace(/_+/g, '_') // Replace multiple underscores with single
+          .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+        
+        const fileName = `${Date.now()}_${sanitizedFileName}`;
         const path = `${targetPrefix}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -166,7 +187,8 @@ const PublicFormPage = () => {
           .upload(path, file);
 
         if (uploadError) {
-          throw uploadError;
+          console.error('Upload error:', uploadError);
+          throw new Error(`Failed to upload file: ${file.name}. Please try again.`);
         }
 
         const { data: urlData } = supabase.storage
@@ -175,7 +197,7 @@ const PublicFormPage = () => {
 
         uploadedForField.push({
           fieldId,
-          filename: file.name,
+          filename: file.name, // Keep original filename for display
           url: urlData.publicUrl,
           size: file.size
         });
@@ -216,11 +238,11 @@ const PublicFormPage = () => {
         status: 'pending'
       };
 
-             const { data: inserted, error: insertError } = await (supabase as any)
-         .from('form_submissions')
-         .insert([baseSubmission])
-         .select('*')
-         .single();
+      const { data: inserted, error: insertError } = await (supabase as any)
+        .from('form_submissions')
+        .insert([baseSubmission])
+        .select('*')
+        .single();
 
       if (insertError || !inserted) {
         throw insertError || new Error('Submission failed');
@@ -234,10 +256,10 @@ const PublicFormPage = () => {
 
         // Step 3: Try to update attachments column; if missing, merge into responses
         if (attachments && Object.keys(attachments).length > 0) {
-                     const { error: updateError } = await supabase
-             .from('form_submissions')
-             .update({ attachments: attachments as any })
-             .eq('id', inserted.id);
+          const { error: updateError } = await supabase
+            .from('form_submissions')
+            .update({ attachments: attachments as any })
+            .eq('id', inserted.id);
 
           if (updateError) {
             // Fallback: store attachments inside responses
@@ -256,16 +278,14 @@ const PublicFormPage = () => {
 
       toast.success('Form submitted successfully!');
 
-      // Redirect to forms page after successful submission
-      navigate('/forms');
+      // Redirect to success page after successful submission
+      const successUrl = `/public-form-submission-success?formTitle=${encodeURIComponent(form!.title)}&submissionId=${inserted.id}&formId=${encodeURIComponent(form!.id)}&clientId=${encodeURIComponent(form!.client_id)}`;
+      navigate(successUrl);
 
       // Reset form
       setFormData({});
       setFiles({});
       setCaptchaToken(null);
-      if (form && (form.fields as FormField[]).some(f => f.type === 'captcha')) {
-        // generateCaptcha(); // No longer needed for ALTCHA
-      }
     } catch (error: any) {
       console.error('Error submitting form:', error);
       const msg = error?.message || 'Failed to submit form. Please try again.';
@@ -295,17 +315,6 @@ const PublicFormPage = () => {
         }
       }
     }
-
-    // No longer required for ALTCHA
-    // if ((form.fields as FormField[]).some(f => f.type === 'captcha')) {
-    //   const expectedResult = captchaValue.split('=')[0].trim();
-    //   const [num1, , num2] = expectedResult.split(' ');
-    //   const expected = parseInt(num1) + parseInt(num2);
-    //   if (parseInt(captchaInput) !== expected) {
-    //     toast.error('Captcha verification failed');
-    //     return false;
-    //   }
-    // }
 
     return true;
   };
@@ -529,9 +538,20 @@ const PublicFormPage = () => {
       <div className="max-w-2xl mx-auto px-4">
         <Card>
           <CardHeader className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <FileText className="h-8 w-8 text-blue-600 mr-2" />
-              <CardTitle className="text-2xl">{form.title}</CardTitle>
+            <div className="flex flex-col items-center justify-center mb-4">
+              {clientLogoUrl ? (
+                <div className="h-16 w-16 rounded-full bg-white p-2 shadow ring-1 ring-gray-200 flex items-center justify-center overflow-hidden mb-2">
+                  <img src={clientLogoUrl} alt={clientName || 'Client logo'} className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : (
+                <FileText className="h-8 w-8 text-blue-600 mb-2" />)
+              }
+              {clientName && (
+                <div className="text-sm text-gray-500">{clientName}</div>
+              )}
+              <div className="flex items-center justify-center mt-1">
+                <CardTitle className="text-2xl">{form.title}</CardTitle>
+              </div>
             </div>
             {form.description && (
               <p className="text-gray-600">{form.description}</p>

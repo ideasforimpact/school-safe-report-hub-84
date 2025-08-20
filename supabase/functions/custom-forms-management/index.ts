@@ -26,6 +26,20 @@ interface CustomFormPayload {
   fields?: FormField[];
   is_active?: boolean;
   created_by?: string;
+  client_logo?: string | null;
+}
+
+async function fetchClientLogo(supabaseClient: any, clientId: string): Promise<string | null> {
+  const { data, error } = await supabaseClient
+    .from('clients')
+    .select('logo')
+    .eq('id', clientId)
+    .maybeSingle();
+  if (error) {
+    console.log('fetchClientLogo error (non-fatal):', error.message);
+    return null;
+  }
+  return (data as any)?.logo || null;
 }
 
 serve(async (req) => {
@@ -67,7 +81,7 @@ serve(async (req) => {
 
     switch (operation) {
       case 'create':
-        result = await createForm(supabaseClient, payload);
+        result = await createForm(supabaseClient, payload as CustomFormPayload);
         break;
       case 'update':
         if (!formId) {
@@ -79,7 +93,7 @@ serve(async (req) => {
             }
           );
         }
-        result = await updateForm(supabaseClient, formId, payload);
+        result = await updateForm(supabaseClient, formId, payload as CustomFormPayload);
         break;
       case 'delete':
         if (!formId) {
@@ -152,6 +166,8 @@ serve(async (req) => {
 
 async function createForm(supabaseClient: any, payload: CustomFormPayload) {
   console.log('Creating form for client:', payload.client_id);
+
+  const resolvedLogo = payload.client_logo ?? await fetchClientLogo(supabaseClient, payload.client_id);
   
   const { data, error } = await supabaseClient
     .from('custom_forms')
@@ -161,7 +177,8 @@ async function createForm(supabaseClient: any, payload: CustomFormPayload) {
       description: payload.description,
       fields: payload.fields || [],
       is_active: payload.is_active !== undefined ? payload.is_active : true,
-      created_by: payload.created_by
+      created_by: payload.created_by,
+      client_logo: resolvedLogo
     }])
     .select()
     .single();
@@ -180,7 +197,7 @@ async function updateForm(supabaseClient: any, formId: string, payload: CustomFo
   // First verify the form belongs to the client
   const { data: existingForm, error: fetchError } = await supabaseClient
     .from('custom_forms')
-    .select('client_id')
+    .select('client_id, client_logo')
     .eq('id', formId)
     .single();
 
@@ -198,6 +215,15 @@ async function updateForm(supabaseClient: any, formId: string, payload: CustomFo
   if (payload.description !== undefined) updateData.description = payload.description;
   if (payload.fields !== undefined) updateData.fields = payload.fields;
   if (payload.is_active !== undefined) updateData.is_active = payload.is_active;
+
+  // If caller explicitly sends null, populate from clients.logo
+  if (payload.client_logo === null) {
+    updateData.client_logo = await fetchClientLogo(supabaseClient, payload.client_id);
+  }
+  // If caller provided a value (string), use it
+  if (typeof payload.client_logo === 'string') {
+    updateData.client_logo = payload.client_logo;
+  }
 
   const { data, error } = await supabaseClient
     .from('custom_forms')

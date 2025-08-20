@@ -20,6 +20,7 @@ export interface CustomForm {
   excluded_fields?: string[]; // Array of field IDs to exclude from default fields
   is_active: boolean;
   preview_url: string;
+  client_logo?: string; // URL to client logo
   created_at: string;
   updated_at: string;
   created_by?: string;

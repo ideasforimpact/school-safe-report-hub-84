@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, ExternalLink, QrCode, Search, X } from 'lucide-react';
+import { Plus, ExternalLink, QrCode, X, ToggleLeft, ToggleRight, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -23,10 +23,11 @@ import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FormField {
   id: string;
-  type: string;
+  type: "select" | "textarea" | "text" | "email" | "phone" | "file" | "captcha";
   label: string;
   required: boolean;
   options?: string[];
@@ -46,20 +47,60 @@ interface CustomForm {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  client_logo?: string | null;
+  preview_url?: string;
 }
 
 const FormConfigurationContent = () => {
   const navigate = useNavigate();
-  const { forms, loading, saveForm, updateForm, deleteForm, toggleFormActive } = useCustomForms();
+  const { forms, loading, saveForm, updateForm, deleteForm, toggleFormActive, refetch } = useCustomForms();
   const { getClientId, getEmployeeId } = useEmployeeAccess();
   
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
+  const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
+  const [toggleTarget, setToggleTarget] = useState<CustomForm | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [formTypeFilter, setFormTypeFilter] = useState<string>('all');
+
+  // Get unique form titles for the dropdown
+  const formTitles = React.useMemo(() => {
+    const titles = (forms || []).map(f => f.title);
+    return ['all', ...Array.from(new Set(titles))];
+  }, [forms]);
+
+  const downloadQrPng = (fileName: string) => {
+    const svg = qrCodeRef.current?.querySelector('svg');
+    if (!svg) return;
+    const serializer = new XMLSerializer();
+    const source = serializer.serializeToString(svg);
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        const pngUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = `${fileName}.png`;
+        a.click();
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  };
 
   const filteredForms = React.useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -68,9 +109,19 @@ const FormConfigurationContent = () => {
         f.title.toLowerCase().includes(query) ||
         (f.description || '').toLowerCase().includes(query);
       const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? f.is_active : !f.is_active);
-      return matchesSearch && matchesStatus;
+      
+      // Form type filtering
+      const formTitle = f.title.toLowerCase();
+      const formDescription = (f.description || '').toLowerCase();
+      let matchesFormType = true;
+      
+      if (formTypeFilter !== 'all') {
+        matchesFormType = formTitle.includes(formTypeFilter.toLowerCase()) || formDescription.includes(formTypeFilter.toLowerCase());
+      }
+      
+      return matchesSearch && matchesStatus && matchesFormType;
     });
-  }, [forms, search, statusFilter]);
+  }, [forms, search, statusFilter, formTypeFilter]);
 
   const handleCreateForm = () => {
     setEditingForm(null);
@@ -111,7 +162,7 @@ const FormConfigurationContent = () => {
     }
   };
 
-  const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
+  const handleSaveForm = async (formData: any) => {
     try {
       const clientId = getClientId();
       const employeeId = getEmployeeId();
@@ -125,24 +176,37 @@ const FormConfigurationContent = () => {
         return;
       }
 
+      // Resolve client logo from clients table
+      let clientLogo: string | null = null;
+      try {
+        const { data: clientRow } = await supabase
+          .from('clients')
+          .select('logo')
+          .eq('id', clientId)
+          .maybeSingle();
+        clientLogo = (clientRow as any)?.logo || null;
+      } catch {}
+
       if (editingForm) {
-        // Update existing form - ensure client_id is included
+        // Update existing form - ensure client_id and client_logo are included
         const updateData = {
           ...formData,
-          client_id: clientId
-        };
+          client_id: clientId,
+          client_logo: formData.client_logo ?? clientLogo,
+        } as any;
         await updateForm(editingForm.id, updateData);
         toast({
           title: "Success",
           description: "Form updated successfully"
         });
       } else {
-        // Create new form - ensure client_id and created_by are included
+        // Create new form - include client_logo
         const newFormData = {
           ...formData,
           client_id: clientId,
-          created_by: employeeId
-        };
+          created_by: employeeId,
+          client_logo: formData.client_logo ?? clientLogo,
+        } as any;
         await saveForm(newFormData);
         toast({
           title: "Success", 
@@ -186,19 +250,24 @@ const FormConfigurationContent = () => {
     }
   };
 
-  const handleToggleActive = async (form: CustomForm) => {
+  const requestToggle = (form: CustomForm) => {
+    setToggleTarget(form);
+    setConfirmToggleOpen(true);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!toggleTarget) return;
     try {
-      await toggleFormActive(form.id, !form.is_active);
-      toast({
-        title: "Success",
-        description: `Form ${form.is_active ? 'deactivated' : 'activated'} successfully`
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update form status",
-        variant: "destructive"
-      });
+      setIsToggling(true);
+      await toggleFormActive(toggleTarget.id, !toggleTarget.is_active);
+      await refetch();
+      toast({ title: 'Success', description: `Form ${toggleTarget.is_active ? 'deactivated' : 'activated'} successfully` });
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to update form status', variant: 'destructive' });
+    } finally {
+      setIsToggling(false);
+      setConfirmToggleOpen(false);
+      setToggleTarget(null);
     }
   };
 
@@ -278,11 +347,25 @@ const FormConfigurationContent = () => {
                   </SelectContent>
                 </Select>
               </div>
-              {(search || statusFilter !== 'all') && (
+              <div>
+                <Select onValueChange={(value) => setFormTypeFilter(value)} defaultValue="all">
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formTitles.map(title => (
+                      <SelectItem key={title} value={title}>
+                        {title === 'all' ? 'All Types' : title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(search || statusFilter !== 'all' || formTypeFilter !== 'all') && (
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => { setSearch(''); setStatusFilter('all'); }}
+                  onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
                   className="text-sm text-blue-600"
                 >
                   <X className="h-4 w-4" />
@@ -290,20 +373,20 @@ const FormConfigurationContent = () => {
               )}
             </div>
             <div className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
+            <Table>
+              <TableHeader>
+                <TableRow>
                     <TableHead className="w-[320px]">Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
                     <TableHead className="text-right w-[160px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                   {filteredForms.map((form) => {
                     const previewUrl = buildPreviewUrl(form);
                     return (
-                      <TableRow key={form.id}>
+                  <TableRow key={form.id}>
                         <TableCell>
                           <div className="font-medium">{form.title}</div>
                           {form.description && (
@@ -312,14 +395,18 @@ const FormConfigurationContent = () => {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={form.is_active ? 'default' : 'secondary'}>
-                            {form.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                    <TableCell>
+                          {form.is_active ? (
+                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Active</Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Inactive</Badge>
+                          )}
+                    </TableCell>
+                    <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                            {form.is_active && (
+                              <>
                             {/* Preview */}
                             <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
                               <ExternalLink className="h-4 w-4" />
@@ -329,34 +416,45 @@ const FormConfigurationContent = () => {
                               <DialogTrigger asChild>
                                 <Button variant="outline" size="icon">
                                   <QrCode className="h-4 w-4" />
-                                </Button>
+                        </Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-md">
                                 <DialogHeader>
-                                  <DialogTitle>Form QR Code</DialogTitle>
+                                  <DialogTitle>{form.title} - QR Code</DialogTitle>
                                 </DialogHeader>
                                 <div ref={qrCodeRef} className="flex flex-col items-center justify-center p-4">
                                   <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                                     <QRCodeSVG value={previewUrl} size={220} />
                                   </div>
+                                  <Button onClick={() => downloadQrPng(`form-${form.id}-qr`)} className="mt-4" variant="outline">
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download QR Code
+                        </Button>
                                 </div>
                               </DialogContent>
                             </Dialog>
-                            {/* Edit */}
-                            <Button variant="outline" size="icon" onClick={() => handleEditForm(form)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            {/* Delete */}
-                            <Button variant="outline" size="icon" onClick={() => handleDeleteClick(form)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                              </>
+                            )}
+                            {/* Activate/Deactivate */}
+                        <Button
+                          variant="outline"
+                              size="icon"
+                              onClick={() => requestToggle(form)}
+                              title={form.is_active ? 'Deactivate' : 'Activate'}
+                        >
+                          {form.is_active ? (
+                                <ToggleLeft className="h-4 w-4 text-red-600" />
+                          ) : (
+                                <ToggleRight className="h-4 w-4 text-green-600" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                     );
                   })}
-                </TableBody>
-              </Table>
+              </TableBody>
+            </Table>
             </div>
           </CardContent>
         </Card>
@@ -374,6 +472,26 @@ const FormConfigurationContent = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Activate/Deactivate */}
+      <AlertDialog open={confirmToggleOpen} onOpenChange={setConfirmToggleOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{toggleTarget?.is_active ? 'Deactivate form?' : 'Activate form?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleTarget?.is_active
+                ? 'This form will be unavailable for new submissions until reactivated.'
+                : 'This form will be available for new submissions.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isToggling}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmToggle} disabled={isToggling}>
+              {isToggling ? 'Processing...' : (toggleTarget?.is_active ? 'Deactivate' : 'Activate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

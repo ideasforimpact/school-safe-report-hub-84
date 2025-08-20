@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { FormField, DEFAULT_GRIEVANCE_FIELDS } from '@/types/formTypes';
 import { toast } from 'sonner';
+import { Loader } from 'lucide-react';
 
 interface FormConfigurationProps {
   onSave: (form: any) => void;
@@ -21,6 +22,7 @@ export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, on
     description: initialForm?.description || 'Submit your grievance or complaint',
     excludedFields: initialForm?.excluded_fields || []
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleFieldToggle = (fieldId: string) => {
     setFormData(prev => ({
@@ -31,13 +33,12 @@ export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, on
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title.trim()) {
       toast.error('Form title is required');
       return;
     }
 
-    // Create the form with included fields only
     const includedFields = DEFAULT_GRIEVANCE_FIELDS.filter(
       field => !formData.excludedFields.includes(field.id)
     );
@@ -51,10 +52,16 @@ export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, on
       title: formData.title,
       description: formData.description,
       fields: includedFields,
-      excluded_fields: formData.excludedFields
+      excluded_fields: formData.excludedFields,
+      client_logo: null // backend will populate from client_id
     };
 
-    onSave(formConfig);
+    try {
+      setIsSaving(true);
+      await onSave(formConfig);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const getFieldTypeBadge = (type: string) => {
@@ -187,8 +194,10 @@ export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, on
       </Card>
 
       <div className="flex gap-2">
-        <Button onClick={handleSave}>Save Form Configuration</Button>
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? (<><Loader className="h-4 w-4 mr-2 animate-spin" /> Saving...</>) : 'Save Form Configuration'}
+        </Button>
+        <Button variant="outline" onClick={onCancel} disabled={isSaving}>Cancel</Button>
       </div>
     </div>
   );

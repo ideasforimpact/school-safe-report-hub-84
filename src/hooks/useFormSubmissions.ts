@@ -10,6 +10,8 @@ interface FormSubmission {
   responses: any[];
   status: string;
   comments: string | null;
+  acknowledged_by_name?: string | null;
+  acknowledged_at?: string | null;
   created_at: string;
   updated_at: string;
 }

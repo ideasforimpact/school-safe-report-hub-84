@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+async function fetchClientLogo(supabaseClient: any, clientId: string): Promise<string | null> {
+  const { data, error } = await supabaseClient
+    .from('clients')
+    .select('logo')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (error) {
+    console.log('fetchClientLogo (backoffice) error:', error.message)
+    return null
+  }
+  // @ts-ignore
+  return data?.logo || null
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -89,10 +103,15 @@ async function fetchForms(supabaseClient: any, data: any) {
 async function createForm(supabaseClient: any, data: any) {
   try {
     const { form } = data
+    // If client_logo missing/null, populate from clients.logo based on client_id
+    let payload = { ...form }
+    if (payload.client_id && (payload.client_logo === undefined || payload.client_logo === null)) {
+      payload.client_logo = await fetchClientLogo(supabaseClient, payload.client_id)
+    }
     
     const { data: newForm, error } = await supabaseClient
       .from('custom_forms')
-      .insert([form])
+      .insert([payload])
       .select()
       .single()
     
@@ -110,10 +129,14 @@ async function createForm(supabaseClient: any, data: any) {
 async function updateForm(supabaseClient: any, data: any) {
   try {
     const { id, updates } = data
+    const updatesCopy = { ...updates }
+    if (updatesCopy.client_id && updatesCopy.client_logo === null) {
+      updatesCopy.client_logo = await fetchClientLogo(supabaseClient, updatesCopy.client_id)
+    }
     
     const { data: updatedForm, error } = await supabaseClient
       .from('custom_forms')
-      .update(updates)
+      .update(updatesCopy)
       .eq('id', id)
       .select()
       .single()
