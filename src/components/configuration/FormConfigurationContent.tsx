@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, ExternalLink, QrCode } from 'lucide-react';
+import { Plus, Edit, Trash2, ExternalLink, QrCode, Search, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +21,8 @@ import SimpleFormBuilder from './SimpleFormBuilder';
 import { useCustomForms } from '@/hooks/useCustomForms';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface FormField {
   id: string;
@@ -56,6 +58,19 @@ const FormConfigurationContent = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
   const qrCodeRef = useRef<HTMLDivElement>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const filteredForms = React.useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return (forms || []).filter(f => {
+      const matchesSearch = !query ||
+        f.title.toLowerCase().includes(query) ||
+        (f.description || '').toLowerCase().includes(query);
+      const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? f.is_active : !f.is_active);
+      return matchesSearch && matchesStatus;
+    });
+  }, [forms, search, statusFilter]);
 
   const handleCreateForm = () => {
     setEditingForm(null);
@@ -241,95 +256,108 @@ const FormConfigurationContent = () => {
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[320px]">Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right w-[160px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {forms.map((form) => {
-                  const previewUrl = buildPreviewUrl(form);
-                  return (
-                    <TableRow key={form.id}>
-                      <TableCell>
-                        <div className="font-medium">{form.title}</div>
-                        {form.description && (
-                          <div className="text-sm text-gray-500 truncate max-w-[520px]">
-                            {form.description}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={form.is_active ? 'default' : 'secondary'}>
-                          {form.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {/* Preview (icon-only) */}
-                          <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          {/* QR (icon-only) */}
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="icon">
-                                <QrCode className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md">
-                              <DialogHeader>
-                                <DialogTitle>Form QR Code</DialogTitle>
-                              </DialogHeader>
-                              <div className="flex flex-col items-center justify-center p-4">
-                                <div ref={qrCodeRef} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                                  <QRCodeSVG value={previewUrl} size={220} />
-                                </div>
-                                <p className="text-sm text-gray-500 mt-4 text-center">
-                                  Scan to open the grievance form
-                                </p>
-                                <Button 
-                                  className="mt-4"
-                                  onClick={() => {
-                                    if (qrCodeRef.current) {
-                                      const svg = qrCodeRef.current.querySelector('svg') as SVGElement;
-                                      if (svg) {
-                                        const svgData = new XMLSerializer().serializeToString(svg);
-                                        const canvas = document.createElement('canvas');
-                                        const ctx = canvas.getContext('2d');
-                                        const img = new Image();
-                                        img.onload = () => {
-                                          canvas.width = img.width;
-                                          canvas.height = img.height;
-                                          ctx?.drawImage(img, 0, 0);
-                                          const link = document.createElement('a');
-                                          link.download = `form-qr-${form.id}.png`;
-                                          link.href = canvas.toDataURL();
-                                          link.click();
-                                        };
-                                        img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-                                      }
-                                    }
-                                  }}
-                                >
-                                  Download QR Code
+          <CardContent className="p-4 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative w-72">
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search forms..."
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <Select onValueChange={(value) => setStatusFilter(value as any)} defaultValue="all">
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {(search || statusFilter !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => { setSearch(''); setStatusFilter('all'); }}
+                  className="text-sm text-blue-600"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <div className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[320px]">Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right w-[160px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredForms.map((form) => {
+                    const previewUrl = buildPreviewUrl(form);
+                    return (
+                      <TableRow key={form.id}>
+                        <TableCell>
+                          <div className="font-medium">{form.title}</div>
+                          {form.description && (
+                            <div className="text-sm text-gray-500 truncate max-w-[520px]">
+                              {form.description}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={form.is_active ? 'default' : 'secondary'}>
+                            {form.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {/* Preview */}
+                            <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                            {/* QR */}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                  <QrCode className="h-4 w-4" />
                                 </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Form QR Code</DialogTitle>
+                                </DialogHeader>
+                                <div ref={qrCodeRef} className="flex flex-col items-center justify-center p-4">
+                                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                                    <QRCodeSVG value={previewUrl} size={220} />
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            {/* Edit */}
+                            <Button variant="outline" size="icon" onClick={() => handleEditForm(form)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {/* Delete */}
+                            <Button variant="outline" size="icon" onClick={() => handleDeleteClick(form)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}

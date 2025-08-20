@@ -272,13 +272,13 @@ const FormsPage = () => {
 
     // Search filter
     if (searchTerm.trim()) {
-      const s = searchTerm.toLowerCase();
+    const s = searchTerm.toLowerCase();
       filtered = filtered.filter((sub: any) =>
         (getName(sub) || '').toLowerCase().includes(s) ||
         (getPhone(sub) || '').toLowerCase().includes(s) ||
         (getDescription(sub) || '').toLowerCase().includes(s) ||
-        (sub.status || '').toLowerCase().includes(s)
-      );
+      (sub.status || '').toLowerCase().includes(s)
+    );
     }
 
     // Status filter
@@ -421,100 +421,100 @@ const FormsPage = () => {
             {/* Forms Management (backoffice only) */}
             {isBackoffice && (
               <>
-                {showFormConfig ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{editingForm ? 'Edit Form' : 'Create Form'}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <FormConfiguration 
-                        initialForm={editingForm as any}
-                        onSave={handleSaveFormConfig}
-                        onCancel={handleCancelFormConfig}
-                      />
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Forms</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {loading ? (
-                        <div className="text-center py-8">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                          <p className="text-gray-500">Loading forms...</p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
+              {showFormConfig ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{editingForm ? 'Edit Form' : 'Create Form'}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <FormConfiguration 
+                      initialForm={editingForm as any}
+                      onSave={handleSaveFormConfig}
+                      onCancel={handleCancelFormConfig}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Forms</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-500">Loading forms...</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[320px]">Title</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Created</TableHead>
+                              <TableHead className="text-right w-[160px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {forms.length === 0 ? (
                               <TableRow>
-                                <TableHead className="w-[320px]">Title</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Created</TableHead>
-                                <TableHead className="text-right w-[160px]">Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {forms.length === 0 ? (
-                                <TableRow>
                                   <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                                    No forms configured for this client
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                forms.map((form) => {
-                                  const previewUrl = buildPreviewUrl(form);
-                                  return (
-                                    <TableRow key={form.id}>
-                                      <TableCell>
-                                        <div className="font-medium">{form.title}</div>
-                                        {form.description && (
-                                          <div className="text-sm text-gray-500 truncate max-w-[520px]">
-                                            {form.description}
-                                          </div>
-                                        )}
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge variant={form.is_active ? 'default' : 'secondary'}>
-                                          {form.is_active ? 'Active' : 'Inactive'}
-                                        </Badge>
-                                      </TableCell>
-                                      <TableCell>{formatDate(form.created_at)}</TableCell>
-                                      <TableCell className="text-right">
-                                        <div className="flex justify-end gap-2">
-                                          {/* Preview (icon-only) */}
-                                          <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
-                                            <ExternalLink className="h-4 w-4" />
-                                          </Button>
-                                          {/* Backoffice extra actions (QR and Edit hidden) */}
-                                          <Button variant="outline" size="icon" onClick={() => handleDeleteForm(form.id)}>
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
+                                  No forms configured for this client
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              forms.map((form) => {
+                                const previewUrl = buildPreviewUrl(form);
+                                return (
+                                  <TableRow key={form.id}>
+                                    <TableCell>
+                                      <div className="font-medium">{form.title}</div>
+                                      {form.description && (
+                                        <div className="text-sm text-gray-500 truncate max-w-[520px]">
+                                          {form.description}
                                         </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant={form.is_active ? 'default' : 'secondary'}>
+                                        {form.is_active ? 'Active' : 'Inactive'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>{formatDate(form.created_at)}</TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex justify-end gap-2">
+                                        {/* Preview (icon-only) */}
+                                        <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
+                                          <ExternalLink className="h-4 w-4" />
+                                        </Button>
+                                          {/* Backoffice extra actions (QR and Edit hidden) */}
+                                            <Button variant="outline" size="icon" onClick={() => handleDeleteForm(form.id)}>
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
               </>
             )}
 
             {/* Submissions (normal view) - Show directly without tabs */}
             {!isBackoffice && (
-              <Card>
-                <CardHeader>
+                <Card>
+                  <CardHeader>
                   <CardTitle>Submission List</CardTitle>
-                </CardHeader>
-                <CardContent>
+                  </CardHeader>
+                  <CardContent>
                   {/* Filters Section */}
                   <div className="space-y-4 mb-6">
                     {/* Single Row: Search and All Filters */}
@@ -604,50 +604,50 @@ const FormsPage = () => {
                         Showing {filteredSubmissions.length} of {submissions.length} submissions
                       </div>
                     )}
-                  </div>
-
-                  {!selectedForm ? (
-                    <div className="text-center py-12 text-gray-500">Select a form to view submissions</div>
-                  ) : submissionsLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                      <p className="text-gray-500">Loading submissions...</p>
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Submitter - Name</TableHead>
-                            <TableHead>Mobile number</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Submission Date</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredSubmissions.length === 0 ? (
+
+                    {!selectedForm ? (
+                      <div className="text-center py-12 text-gray-500">Select a form to view submissions</div>
+                    ) : submissionsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-500">Loading submissions...</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
                             <TableRow>
+                              <TableHead>Submitter - Name</TableHead>
+                              <TableHead>Mobile number</TableHead>
+                              <TableHead>Description</TableHead>
+                              <TableHead>Type</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Submission Date</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredSubmissions.length === 0 ? (
+                              <TableRow>
                               <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                                 {hasActiveFilters ? 'No submissions match your filters' : 'No submissions found'}
                               </TableCell>
-                            </TableRow>
-                          ) : (
-                            filteredSubmissions.map((sub: any) => (
-                              <TableRow key={sub.id}>
-                                <TableCell>
-                                  <div className="font-medium">{getName(sub)}</div>
-                                </TableCell>
-                                <TableCell>{getPhone(sub) || '-'}</TableCell>
-                                <TableCell className="max-w-[360px] truncate">{getDescription(sub) || '-'}</TableCell>
-                                <TableCell>{getType(sub) || '-'}</TableCell>
-                                <TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredSubmissions.map((sub: any) => (
+                                <TableRow key={sub.id}>
+                                  <TableCell>
+                                    <div className="font-medium">{getName(sub)}</div>
+                                  </TableCell>
+                                  <TableCell>{getPhone(sub) || '-'}</TableCell>
+                                  <TableCell className="max-w-[360px] truncate">{getDescription(sub) || '-'}</TableCell>
+                                  <TableCell>{getType(sub) || '-'}</TableCell>
+                                  <TableCell>
                                   {getStatusBadge(sub.status)}
-                                </TableCell>
-                                <TableCell>{formatDate(sub.created_at)}</TableCell>
-                                <TableCell className="text-right">
+                                  </TableCell>
+                                  <TableCell>{formatDate(sub.created_at)}</TableCell>
+                                  <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <Button variant="outline" size="icon" onClick={() => setViewSubmission(sub)}>
                                       <Eye className="h-4 w-4" />
@@ -663,67 +663,67 @@ const FormsPage = () => {
                                       </Button>
                                     )}
                                   </div>
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                      {viewSubmission && (
-                        <Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
-                          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Submission Details</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-6">
-                              {/* Key information */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                                <div>
-                                  <div className="text-sm text-gray-600">Name</div>
-                                  <div className="mt-1">{viewSubmission.submitter_name || (viewSubmission.responses && (viewSubmission.responses.name || viewSubmission.responses.full_name || viewSubmission.responses.submitter_name)) || 'Anonymous'}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Phone</div>
-                                  <div className="mt-1">{viewSubmission.submitter_phone || (viewSubmission.responses && (viewSubmission.responses.phone || viewSubmission.responses.contact || viewSubmission.responses.mobile)) || 'Not provided'}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Subject</div>
-                                  <div className="mt-1">{viewSubmission.responses && (viewSubmission.responses.subject || viewSubmission.responses.heading || viewSubmission.responses.title) || 'Not provided'}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Description</div>
-                                  <div className="mt-1 whitespace-pre-wrap">{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Type</div>
-                                  <div className="mt-1">{viewSubmission.submitter_type || (viewSubmission.responses && (viewSubmission.responses.submitter_type || viewSubmission.responses.type)) || 'Not provided'}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-gray-600">Submitted</div>
-                                  <div className="mt-1">{formatDate(viewSubmission.created_at)}</div>
-                                </div>
-                              </div>
-                              {/* Status */}
-                              <div>
-                                <div className="text-sm text-gray-600 mb-2">Status</div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+									{viewSubmission && (
+										<Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
+											<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+																								<DialogHeader>
+													<DialogTitle>Submission Details</DialogTitle>
+												</DialogHeader>
+												<div className="space-y-6">
+													{/* Key information */}
+													<div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+														<div>
+															<div className="text-sm text-gray-600">Name</div>
+															<div className="mt-1">{viewSubmission.submitter_name || (viewSubmission.responses && (viewSubmission.responses.name || viewSubmission.responses.full_name || viewSubmission.responses.submitter_name)) || 'Anonymous'}</div>
+														</div>
+														<div>
+															<div className="text-sm text-gray-600">Phone</div>
+															<div className="mt-1">{viewSubmission.submitter_phone || (viewSubmission.responses && (viewSubmission.responses.phone || viewSubmission.responses.contact || viewSubmission.responses.mobile)) || 'Not provided'}</div>
+														</div>
+														<div>
+															<div className="text-sm text-gray-600">Subject</div>
+															<div className="mt-1">{viewSubmission.responses && (viewSubmission.responses.subject || viewSubmission.responses.heading || viewSubmission.responses.title) || 'Not provided'}</div>
+														</div>
+														<div>
+															<div className="text-sm text-gray-600">Description</div>
+															<div className="mt-1 whitespace-pre-wrap">{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}</div>
+														</div>
+														<div>
+															<div className="text-sm text-gray-600">Type</div>
+															<div className="mt-1">{viewSubmission.submitter_type || (viewSubmission.responses && (viewSubmission.responses.submitter_type || viewSubmission.responses.type)) || 'Not provided'}</div>
+														</div>
+														<div>
+															<div className="text-sm text-gray-600">Submitted</div>
+															<div className="mt-1">{formatDate(viewSubmission.created_at)}</div>
+														</div>
+													</div>
+													{/* Status */}
+													<div>
+														<div className="text-sm text-gray-600 mb-2">Status</div>
                                 {getStatusBadge(viewSubmission.status)}
-                              </div>
-                              {/* Attachments */}
-                              <div className="space-y-3">
-                                <div className="text-lg font-semibold">Attachments</div>
-                                {(() => {
-                                  const raw = (viewSubmission as any).attachments || ((viewSubmission as any).responses && (viewSubmission as any).responses.attachments);
-                                  const list = raw ? (Array.isArray(raw) ? raw : Object.values(raw).flat()) : [];
-                                  if (!list || list.length === 0) {
-                                    return <div className="text-sm text-gray-500">No attachments</div>;
-                                  }
-                                  return (
-                                    <div className="space-y-2">
+													</div>
+													{/* Attachments */}
+													<div className="space-y-3">
+														<div className="text-lg font-semibold">Attachments</div>
+														{(() => {
+															const raw = (viewSubmission as any).attachments || ((viewSubmission as any).responses && (viewSubmission as any).responses.attachments);
+															const list = raw ? (Array.isArray(raw) ? raw : Object.values(raw).flat()) : [];
+															if (!list || list.length === 0) {
+																return <div className="text-sm text-gray-500">No attachments</div>;
+															}
+															return (
+																<div className="space-y-2">
                                       <ul className="space-y-2">
-                                        {list.map((f: any, idx: number) => (
+																		{list.map((f: any, idx: number) => (
                                           <li key={idx} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
                                             <span className="text-sm truncate mr-3">
-                                              {f.filename || f.name || `Attachment ${idx + 1}`}
+																					{f.filename || f.name || `Attachment ${idx + 1}`}
                                             </span>
                                             <a
                                               href={(f.url || f.publicUrl)}
@@ -732,17 +732,17 @@ const FormsPage = () => {
                                               className="text-sm text-blue-600 hover:underline"
                                             >
                                               Download
-                                            </a>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+																				</a>
+																			</li>
+																	))}
+																</ul>
+																															</div>
+																);
+														})()}
+													</div>
+											</div>
+										</DialogContent>
+									</Dialog>
                       )}
                       {acknowledgeSubmission && (
                         <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null); }}>
@@ -775,11 +775,11 @@ const FormsPage = () => {
                             </div>
                           </DialogContent>
                         </Dialog>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+								)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
             )}
 
           </div>
