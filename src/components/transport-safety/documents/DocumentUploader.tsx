@@ -8,11 +8,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface DocumentUploaderProps {
   vehicleId: string;
+  clientId?: string;
   onClose: () => void;
   onSuccess?: (result: any) => void;
 }
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose, onSuccess }) => {
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId, onClose, onSuccess }) => {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [uploading, setUploading] = useState(false);
   
@@ -20,20 +21,45 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
-    // Only allow a single file
-    const file = fileList[0];
-    if (!file) return;
+    // Convert FileList to Array and validate each file
+    const fileArray = Array.from(fileList);
+    const maxFiles = 5; // Maximum 5 files allowed
+    
+    if (fileArray.length > maxFiles) {
+      toast({
+        title: 'Too many files',
+        description: `Please select a maximum of ${maxFiles} files`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
-      // Simple file validation
+    // Validate each file
+    const validFiles: FileItem[] = [];
+    
+    for (const file of fileArray) {
+      // File size validation (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: 'File too large',
-          description: 'Please upload a file smaller than 10MB',
+          description: `${file.name} is larger than 10MB. Please select a smaller file.`,
           variant: 'destructive',
         });
-        return;
+        continue;
       }
 
+      // File type validation
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: 'Invalid file type',
+          description: `${file.name} is not a supported file type. Please upload PDF, JPG, or PNG files.`,
+          variant: 'destructive',
+        });
+        continue;
+      }
+
+      // Read file as base64
       const reader = new FileReader();
       reader.onload = (e) => {
         const base64 = e.target?.result as string;
@@ -46,10 +72,11 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
           base64: base64,
         };
         
-      setFiles([newFile]);
+        setFiles(prev => [...prev, newFile]);
       };
       
       reader.readAsDataURL(file);
+    }
   };
 
   const removeFile = (fileId: string) => {
@@ -69,13 +96,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
     try {
       setUploading(true);
       
-      // Prepare single file for upload
-      const file = files[0];
-      const filesForUpload = [{
+      // Prepare multiple files for upload
+      const filesForUpload = files.map(file => ({
         fileName: file.name,
         contentType: file.type,
         base64Data: file.base64
-      }];
+      }));
       
       // Use "Vehicle Documents" as the default name
       const documentName = "Vehicle Documents";
@@ -84,6 +110,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
       const { data, error } = await supabase.functions.invoke('upload-vehicle-document', {
         body: {
           vehicleId,
+          clientId,
           files: filesForUpload,
           documentInfo: {
             name: documentName,
@@ -159,12 +186,13 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
           type="file" 
           className="hidden"
           accept=".pdf,image/*"
+          multiple
           onChange={handleFileUpload} 
         />
         <div className="flex flex-col items-center justify-center w-full">
           <Upload className="h-8 w-8 text-gray-400 mb-2" />
           <p className="text-sm text-gray-500 mb-1 break-words">Drag and drop files here, or click to select files</p>
-          <p className="text-xs text-gray-400">PDF, JPG, PNG • Max size: 10MB</p>
+          <p className="text-xs text-gray-400">PDF, JPG, PNG • Max size: 10MB • Max 5 files</p>
           <Button 
             type="button" 
             variant="outline" 

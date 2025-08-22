@@ -136,15 +136,15 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       completedAssessments: 0 // Don't show completed in active assessments breakdown
     },
     {
-      title: 'Number Of Grievances',
-      value: stats.totalCustomForms || 0,
-      description: 'Form submissions overview',
+      title: 'Number Of Open Grievances',
+      value: stats.formSubmissions30Days || 0,
+      description: 'Grievances overview',
       icon: FileCheck,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       gradient: 'from-purple-50 to-purple-100',
       showCustomFormsBreakdown: true,
-      totalCustomForms: stats.totalCustomForms || 0,
+      totalCustomForms: stats.formSubmissions30Days || 0,
       formSubmissions30Days: stats.formSubmissions30Days || 0,
       formSubmissions60Days: stats.formSubmissions60Days || 0,
       formSubmissions90Days: stats.formSubmissions90Days || 0

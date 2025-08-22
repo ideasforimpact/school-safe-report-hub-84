@@ -49,6 +49,14 @@ const GrievancesList = () => {
     // Replace underscores with spaces and capitalize each word
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
+
+  // Helper function to truncate text with ellipsis
+  const truncateText = (text: string, maxLength: number = 50): string => {
+    if (!text || text.length <= maxLength) {
+      return text;
+    }
+    return text.substring(0, maxLength) + '...';
+  };
   
   return <div>
       {/* Filters */}
@@ -99,8 +107,8 @@ const GrievancesList = () => {
                   <TableCell className="text-left">
                     {submission.submitterName}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate text-left">
-                    {getResponseValue(submission.id, 'Grievance Heading') || getResponseValue(submission.id, 'Description of Grievance').substring(0, 50) + '...'}
+                  <TableCell className="max-w-xs text-left">
+                    {truncateText(getResponseValue(submission.id, 'Grievance Heading') || getResponseValue(submission.id, 'Description of Grievance'), 15)}
                   </TableCell>
                   <TableCell className="text-left">
                     {submission.needsFollowup ? 'Yes' : 'No'}

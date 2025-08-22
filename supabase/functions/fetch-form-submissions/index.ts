@@ -25,13 +25,13 @@ serve(async (req) => {
       }
     );
 
-    const { form_id } = await req.json();
-    
-    if (!form_id) {
+    const { form_id, client_id } = await req.json();
+
+    if (!form_id && !client_id) {
       return new Response(
         JSON.stringify({ 
-          error: 'form_id is required',
-          code: 'MISSING_FORM_ID'
+          error: 'form_id or client_id is required',
+          code: 'MISSING_FILTER'
         }),
         { 
           status: 400,
@@ -40,20 +40,25 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Fetching submissions for form: ${form_id}`);
-
-    const { data, error } = await supabaseClient
+    let query = supabaseClient
       .from('form_submissions')
       .select('*')
-      .eq('form_id', form_id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) as any;
+
+    if (form_id) {
+      console.log(`Fetching submissions for form: ${form_id}`);
+      query = query.eq('form_id', form_id);
+    } else if (client_id) {
+      console.log(`Fetching submissions for client: ${client_id}`);
+      query = query.eq('client_id', client_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching submissions:', error);
       throw new Error(`Failed to fetch submissions: ${error.message}`);
     }
-
-    console.log(`Successfully fetched ${data?.length || 0} submissions for form ${form_id}`);
 
     return new Response(
       JSON.stringify({ 
@@ -71,7 +76,7 @@ serve(async (req) => {
     console.error('Error in fetch-form-submissions function:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Internal server error',
+        error: (error as Error).message || 'Internal server error',
         code: 'INTERNAL_ERROR'
       }),
       { 

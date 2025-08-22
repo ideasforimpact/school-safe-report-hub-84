@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
 
+
 const FormsPage = () => {
   const location = useLocation();
   const isBackoffice = location.pathname.startsWith('/backoffice');
@@ -46,6 +47,7 @@ const FormsPage = () => {
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [formTypeFilter, setFormTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
@@ -75,8 +77,10 @@ const FormsPage = () => {
   const getDescription = (sub: any) => {
     const v = extractFromResponses(sub.responses, ['description','message','details']) || '';
     const s = (typeof v === 'string') ? v : (v != null ? JSON.stringify(v) : '');
-    return s.length > 80 ? s.slice(0, 80) + '…' : s;
+    return s.length > 15 ? s.slice(0, 15) + '…' : s;
   };
+
+
   const getType = (sub: any) => sub.submitter_type || (extractFromResponses(sub.responses, ['submitter_type','type']) || '');
 
   // Helper function to get status badge with proper formatting and colors
@@ -119,7 +123,7 @@ const FormsPage = () => {
   };
 
   // Submissions hook (normal view)
-  const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useFormSubmissions(selectedForm?.id || null);
+  const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useFormSubmissions(selectedForm?.id || null, effectiveClientId || null);
 
   // For backoffice, preselect first active client when list loads
   useEffect(() => {
@@ -135,12 +139,8 @@ const FormsPage = () => {
     }
   }, [effectiveClientId]);
 
-  useEffect(() => {
-    // Auto-select first form for submissions (normal view)
-    if (!isBackoffice && forms && forms.length > 0 && !selectedForm) {
-      setSelectedForm(forms[0]);
-    }
-  }, [isBackoffice, forms, selectedForm]);
+  // Do not auto-select a form. Default view shows all forms for the client.
+  // User may explicitly choose a specific form elsewhere to scope the results.
 
   const fetchForms = async (clientId: string) => {
     setLoading(true);
@@ -286,6 +286,15 @@ const FormsPage = () => {
       filtered = filtered.filter((sub: any) => (sub.status || 'pending') === statusFilter);
     }
 
+    // Form type filter
+    if (formTypeFilter !== 'all') {
+      filtered = filtered.filter((sub: any) => {
+        const formId = sub.form_id;
+        const form = forms.find(f => f.id === formId);
+        return form && form.title === formTypeFilter;
+      });
+    }
+
     // Date range filter
     if (dateFrom) {
       filtered = filtered.filter((sub: any) => {
@@ -304,16 +313,17 @@ const FormsPage = () => {
     }
 
     return filtered;
-  }, [submissions, searchTerm, statusFilter, dateFrom, dateTo]);
+  }, [submissions, searchTerm, statusFilter, formTypeFilter, dateFrom, dateTo, forms]);
 
   const clearAllFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
+    setFormTypeFilter('all');
     setDateFrom(undefined);
     setDateTo(undefined);
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dateFrom || dateTo;
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || formTypeFilter !== 'all' || dateFrom || dateTo;
 
   const handleAcknowledgeSubmission = async () => {
     if (!acknowledgeSubmission || !acknowledgeComment.trim()) {
@@ -546,7 +556,24 @@ const FormsPage = () => {
                         </Select>
                       </div>
 
-                      {/* 3. Date Range Filter */}
+                      {/* 3. Form Type Filter */}
+                      <div className="w-48">
+                        <Select value={formTypeFilter} onValueChange={setFormTypeFilter}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            {forms.map((form) => (
+                              <SelectItem key={form.id} value={form.title}>
+                                {form.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* 4. Date Range Filter */}
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">Date Range:</span>
                         <Popover>
@@ -603,17 +630,20 @@ const FormsPage = () => {
                     {/* Results Info */}
                     {hasActiveFilters && (
                       <div className="text-sm text-muted-foreground">
-                        Showing {filteredSubmissions.length} of {submissions.length} submissions
+                        Showing {filteredSubmissions.length} of {submissions.length} grievances
                       </div>
                     )}
                     </div>
 
-                    {!selectedForm ? (
-                      <div className="text-center py-12 text-gray-500">Select a form to view submissions</div>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-500">Loading forms...</p>
+                      </div>
                     ) : submissionsLoading ? (
                       <div className="text-center py-8">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Loading submissions...</p>
+                        <p className="text-gray-500">Loading grievances...</p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
@@ -625,7 +655,7 @@ const FormsPage = () => {
                               <TableHead>Description</TableHead>
                               <TableHead>Type</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead>Submission Date</TableHead>
+                              <TableHead>Grievance Date</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -633,7 +663,7 @@ const FormsPage = () => {
                             {filteredSubmissions.length === 0 ? (
                               <TableRow>
                               <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                {hasActiveFilters ? 'No submissions match your filters' : 'No submissions found'}
+                                {hasActiveFilters ? 'No grievances match your filters' : 'No grievances found'}
                               </TableCell>
                               </TableRow>
                             ) : (
@@ -659,7 +689,7 @@ const FormsPage = () => {
                                         variant="outline" 
                                         size="icon" 
                                         onClick={() => setAcknowledgeSubmission(sub)}
-                                        title="Acknowledge submission"
+                                        title="Acknowledge grievance"
                                       >
                                         <CheckCircle className="h-4 w-4 text-green-600" />
                                       </Button>
@@ -694,7 +724,7 @@ const FormsPage = () => {
 														</div>
 														<div>
 															<div className="text-sm text-gray-600">Description</div>
-															<div className="mt-1 whitespace-pre-wrap">{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}</div>
+															<div className="mt-1 whitespace-pre-wrap break-words">{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}</div>
 														</div>
 														<div>
 															<div className="text-sm text-gray-600">Type</div>
@@ -773,18 +803,24 @@ const FormsPage = () => {
                         <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null); }}>
                           <DialogContent className="max-w-md">
                             <DialogHeader>
-                              <DialogTitle>Acknowledge Submission</DialogTitle>
+                              <DialogTitle>Acknowledge Grievance</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
                               <p className="text-sm text-gray-600">
-                                Are you sure you want to acknowledge this submission? This action cannot be undone.
+                                Are you sure you want to acknowledge this grievance? This action cannot be undone.
                               </p>
+                              <div className="space-y-2">
                               <Textarea
                                 placeholder="Enter comment (optional)"
                                 value={acknowledgeComment}
                                 onChange={(e) => setAcknowledgeComment(e.target.value)}
                                 className="min-h-[100px]"
+                                  maxLength={200}
                               />
+                                <div className="text-xs text-gray-500 text-right">
+                                  {acknowledgeComment.length}/200 characters
+                                </div>
+                              </div>
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline" onClick={() => setAcknowledgeSubmission(null)}>
                                   Cancel

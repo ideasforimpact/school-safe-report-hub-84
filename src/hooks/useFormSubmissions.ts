@@ -16,13 +16,14 @@ interface FormSubmission {
   updated_at: string;
 }
 
-export const useFormSubmissions = (formId: string | null) => {
+export const useFormSubmissions = (formId: string | null, clientId?: string | null) => {
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSubmissions = async () => {
-    if (!formId) {
+    // If neither is provided, clear and exit
+    if (!formId && !clientId) {
       setSubmissions([]);
       return;
     }
@@ -31,14 +32,15 @@ export const useFormSubmissions = (formId: string | null) => {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching submissions for form:', formId);
+      const body: any = {};
+      if (formId) body.form_id = formId;
+      else if (clientId) body.client_id = clientId;
 
       const { data, error } = await supabase.functions.invoke('fetch-form-submissions', {
-        body: { form_id: formId }
+        body
       });
 
       if (error) {
-        console.error('Error calling fetch-form-submissions function:', error);
         throw error;
       }
       
@@ -57,7 +59,7 @@ export const useFormSubmissions = (formId: string | null) => {
 
   useEffect(() => {
     fetchSubmissions();
-  }, [formId]);
+  }, [formId, clientId]);
 
   return {
     submissions,
