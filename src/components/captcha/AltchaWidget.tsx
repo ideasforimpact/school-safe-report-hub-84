@@ -9,11 +9,9 @@ interface AltchaProps {
 	challengeurl?: string
 	test?: boolean
 	className?: string
-	// New: emit solved token to parent
-	onVerified?: (token: string | null) => void
 }
 
-const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStateChange, challengeurl, test = true, className, onVerified }, ref) => {
+const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStateChange, challengeurl, test = true, className }, ref) => {
 	const widgetRef = useRef<HTMLElement>(null)
 	const [value, setValue] = useState<string | null>(null)
 
@@ -28,13 +26,11 @@ const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStat
 	useEffect(() => {
 		const handleStateChange = (ev: Event | CustomEvent) => {
 			if ('detail' in ev) {
-				// payload contains the base64 solution when state becomes verified
+				// payload contains the base64 solution
+				// when state becomes verified
 				// @ts-ignore
-				const payload = ev.detail?.payload || null
-				setValue(payload)
+				setValue(ev.detail?.payload || null)
 				onStateChange?.(ev)
-				// Notify parent directly
-				onVerified?.(payload)
 			}
 		}
 
@@ -43,13 +39,13 @@ const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStat
 			current.addEventListener('statechange', handleStateChange as any)
 			return () => current.removeEventListener('statechange', handleStateChange as any)
 		}
-	}, [onStateChange, onVerified])
+	}, [onStateChange])
 
 	return (
 		// Configure challengeurl in production and remove test
-		// eslint-disable-next-line react/no-unknown-property
 		<altcha-widget
 			ref={widgetRef as any}
+			class={className as any}
 			style={{ '--altcha-max-width': '100%' } as any}
 			{...(challengeurl ? { challengeurl } : {})}
 			{...(test ? { test: true, debug: true } : {})}
@@ -57,7 +53,6 @@ const AltchaWidget = forwardRef<{ value: string | null }, AltchaProps>(({ onStat
 	)
 })
 
-export { AltchaWidget };
 export default AltchaWidget
 
 // Allow TSX to accept the web component tag

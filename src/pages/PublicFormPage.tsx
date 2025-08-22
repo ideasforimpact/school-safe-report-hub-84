@@ -157,58 +157,38 @@ const PublicFormPage = () => {
   };
 
   const handleFileChange = (fieldId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files || []);
-    setFiles(prev => ({
-      ...prev,
-      [fieldId]: selectedFiles
-    }));
+    const newlySelected = Array.from(event.target.files || []);
+    setFiles(prev => {
+      const existing = prev[fieldId] || [];
+      const merged = [...existing, ...newlySelected].slice(0, 5);
+      if (existing.length + newlySelected.length > 5) {
+        toast.error('You can upload a maximum of 5 files. Extra files were ignored.');
+      }
+      return {
+        ...prev,
+        [fieldId]: merged
+      };
+    });
+    // Reset input value so the same file can be re-selected if needed
+    if (event.target) {
+      event.target.value = '';
+    }
   };
 
   const uploadFiles = async (submissionId: string) => {
+    // Deprecated in favor of server-side upload via Edge Function
     const attachments: Record<string, any[]> = {};
-    const targetPrefix = `${clientIdQS || 'unknown-client'}/${submissionId}`;
-
-    for (const [fieldId, fieldFiles] of Object.entries(files)) {
-      if (!fieldFiles || fieldFiles.length === 0) continue;
-
-      const uploadedForField: any[] = [];
-      for (const file of fieldFiles) {
-        // Sanitize file name to remove special characters and spaces
-        const sanitizedFileName = file.name
-          .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
-          .replace(/_+/g, '_') // Replace multiple underscores with single
-          .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
-        
-        const fileName = `${Date.now()}_${sanitizedFileName}`;
-        const path = `${targetPrefix}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('form-attachments')
-          .upload(path, file);
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error(`Failed to upload file: ${file.name}. Please try again.`);
-        }
-
-        const { data: urlData } = supabase.storage
-          .from('form-attachments')
-          .getPublicUrl(path);
-
-        uploadedForField.push({
-          fieldId,
-          filename: file.name, // Keep original filename for display
-          url: urlData.publicUrl,
-          size: file.size
-        });
-      }
-
-      if (uploadedForField.length > 0) {
-        attachments[fieldId] = uploadedForField;
-      }
-    }
-
     return attachments;
+  };
+
+  // Helper: read a File as base64 data URL
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -226,7 +206,7 @@ const PublicFormPage = () => {
     try {
       setSubmitting(true);
 
-      // Step 1: Insert submission WITHOUT attachments
+      // Build base submission payload
       const baseSubmission = {
         form_id: form!.id,
         client_id: form!.client_id,
@@ -238,46 +218,34 @@ const PublicFormPage = () => {
         status: 'pending'
       };
 
-      const { data: inserted, error: insertError } = await (supabase as any)
-        .from('form_submissions')
-        .insert([baseSubmission])
-        .select('*')
-        .single();
-
-      if (insertError || !inserted) {
-        throw insertError || new Error('Submission failed');
+      // Build files payload: { [fieldId]: [{ filename, size, contentType, base64Data }] }
+      const filesPayload: Record<string, Array<{ filename: string; size: number; contentType: string; base64Data: string }>> = {};
+      for (const [fieldId, fieldFiles] of Object.entries(files)) {
+        if (!fieldFiles || fieldFiles.length === 0) continue;
+        const capped = fieldFiles.slice(0, 5);
+        const encoded = await Promise.all(
+          capped.map(async (f) => ({
+            filename: f.name,
+            size: f.size,
+            contentType: f.type || 'application/octet-stream',
+            base64Data: await readFileAsBase64(f),
+          }))
+        );
+        filesPayload[fieldId] = encoded;
       }
 
-      // Step 2: Upload files AFTER successful insert, under clientId/submissionId
-      let attachments: Record<string, any[]> | null = null;
-      const hasFiles = Object.values(files).some(arr => arr && arr.length > 0);
-      if (hasFiles) {
-        attachments = await uploadFiles(inserted.id);
+      // Single call to Edge Function: create submission and upload attachments server-side
+      const { data: fnData, error: fnError } = await (supabase as any).functions.invoke('submit-form', {
+        body: { formData: baseSubmission, files: filesPayload },
+      });
 
-        // Step 3: Try to update attachments column; if missing, merge into responses
-        if (attachments && Object.keys(attachments).length > 0) {
-          const { error: updateError } = await supabase
-            .from('form_submissions')
-            .update({ attachments: attachments as any })
-            .eq('id', inserted.id);
-
-          if (updateError) {
-            // Fallback: store attachments inside responses
-            const patchedResponses = { ...baseSubmission.responses, attachments };
-            const { error: patchError } = await supabase
-              .from('form_submissions')
-              .update({ responses: patchedResponses })
-              .eq('id', inserted.id);
-
-            if (patchError) {
-              throw patchError;
-            }
-          }
-        }
+      if (fnError || !fnData?.data) {
+        throw new Error(fnError?.message || 'Failed to submit form');
       }
 
       toast.success('Form submitted successfully!');
 
+      const inserted = fnData.data;
       // Redirect to success page after successful submission
       const successUrl = `/public-form-submission-success?formTitle=${encodeURIComponent(form!.title)}&submissionId=${inserted.id}&formId=${encodeURIComponent(form!.id)}&clientId=${encodeURIComponent(form!.client_id)}`;
       navigate(successUrl);
@@ -386,7 +354,7 @@ const PublicFormPage = () => {
               placeholder={field.placeholder || 'Your email address'}
               value={formData[field.id] || ''}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              maxLength={field.maxLength}
+              maxLength={25}
               required={field.required}
             />
           </div>
@@ -405,7 +373,12 @@ const PublicFormPage = () => {
               placeholder={field.placeholder}
               value={formData[field.id] || ''}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              maxLength={field.maxLength}
+              maxLength={(() => {
+                const labelLc = (field.label || '').toLowerCase();
+                const isName = ['name', 'your full name', 'full name', 'your name'].includes(labelLc);
+                const isTitle = labelLc.includes('subject') || labelLc.includes('title');
+                return isName ? 15 : (isTitle ? 25 : field.maxLength);
+              })()}
               required={field.required}
             />
           </div>
@@ -423,7 +396,11 @@ const PublicFormPage = () => {
               placeholder={field.placeholder}
               value={formData[field.id] || ''}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
-              maxLength={field.maxLength}
+              maxLength={(() => {
+                const labelLc = (field.label || '').toLowerCase();
+                const isDescription = labelLc.includes('description');
+                return isDescription ? 100 : field.maxLength;
+              })()}
               required={field.required}
               rows={4}
             />
@@ -466,7 +443,7 @@ const PublicFormPage = () => {
               <input
                 id={field.id}
                 type="file"
-                multiple={field.maxFiles && field.maxFiles > 1}
+                multiple
                 accept={field.allowedFileTypes?.join(',')}
                 onChange={(e) => handleFileChange(field.id, e)}
                 className="hidden"
@@ -475,8 +452,7 @@ const PublicFormPage = () => {
                 <div className="text-center">
                   <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
                   <p className="text-sm text-gray-600">
-                    Click to upload files
-                    {field.maxFiles && field.maxFiles > 1 && ` (max ${field.maxFiles})`}
+                    Click to upload files (max 5)
                   </p>
                   {files[field.id] && files[field.id].length > 0 && (
                     <div className="mt-2">
@@ -501,7 +477,7 @@ const PublicFormPage = () => {
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             {/* ALTCHA widget replaces math captcha */}
-            <AltchaWidget onVerified={(t) => setCaptchaToken(t)} theme="auto" />
+            <AltchaWidget ref={altchaRef as any} onStateChange={(ev) => setCaptchaToken((ev as any)?.detail?.payload || null)} />
           </div>
         );
 
@@ -565,7 +541,7 @@ const PublicFormPage = () => {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={submitting}
+                  disabled={submitting || (((form!.fields as FormField[]) || []).some((f: FormField) => f.type === 'captcha') && !captchaToken)}
                 >
                   {submitting ? (
                     <>

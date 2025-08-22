@@ -347,20 +347,7 @@ const FormConfigurationContent = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Select onValueChange={(value) => setFormTypeFilter(value)} defaultValue="all">
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formTitles.map(title => (
-                      <SelectItem key={title} value={title}>
-                        {title === 'all' ? 'All Types' : title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Form type filter hidden */}
               {(search || statusFilter !== 'all' || formTypeFilter !== 'all') && (
                 <Button
                   variant="outline"

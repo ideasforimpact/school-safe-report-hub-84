@@ -40,7 +40,7 @@ const PublicFormSubmissionSuccessPage = () => {
             </div>
           </CardHeader>
           
-          <CardContent className="text-center">
+          {/* <CardContent className="text-center">
             <Button 
               onClick={handleSubmitAnother}
               className="px-8 py-3"
@@ -48,7 +48,7 @@ const PublicFormSubmissionSuccessPage = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Another Submission
             </Button>
-          </CardContent>
+          </CardContent> */}
         </Card>
       </div>
     </div>

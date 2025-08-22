@@ -147,60 +147,41 @@ serve(async (req) => {
       submittedCount: submittedAssessmentsCount
     })
 
-    // Get custom forms count for the client
-    const { data: customForms, error: customFormsError } = await supabase
-      .from('custom_forms')
-      .select('id')
-      .eq('client_id', client_id)
-
-    if (customFormsError) {
-      console.error('Error fetching custom forms:', customFormsError)
-    }
-
-    // Get form submissions for last 30, 60, 90 days
+    // Get form submissions for last 30, 60, 90 days (unacknowledged only)
     const now = new Date()
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
 
-    // Get form submissions for last 30 days
-    const { data: submissions30Days, error: submissions30Error } = await supabase
+    // Get all unacknowledged form submissions for the client
+    const { data: allUnacknowledgedSubmissions, error: allSubmissionsError } = await supabase
       .from('form_submissions')
-      .select('id')
-      .in('form_id', customForms?.map(form => form.id) || [])
-      .gte('created_at', thirtyDaysAgo.toISOString())
+      .select('id, created_at')
+      .eq('client_id', client_id)
+      .is('acknowledged_at', null)
 
-    if (submissions30Error) {
-      console.error('Error fetching 30-day submissions:', submissions30Error)
+    if (allSubmissionsError) {
+      console.error('Error fetching all unacknowledged submissions:', allSubmissionsError)
     }
 
-    // Get form submissions for last 60 days
-    const { data: submissions60Days, error: submissions60Error } = await supabase
-      .from('form_submissions')
-      .select('id')
-      .in('form_id', customForms?.map(form => form.id) || [])
-      .gte('created_at', sixtyDaysAgo.toISOString())
+    // Filter submissions by time windows
+    const submissions30Days = allUnacknowledgedSubmissions?.filter(sub => 
+      new Date(sub.created_at) >= thirtyDaysAgo
+    ) || []
 
-    if (submissions60Error) {
-      console.error('Error fetching 60-day submissions:', submissions60Error)
-    }
+    const submissions60Days = allUnacknowledgedSubmissions?.filter(sub => 
+      new Date(sub.created_at) >= sixtyDaysAgo
+    ) || []
 
-    // Get form submissions for last 90 days
-    const { data: submissions90Days, error: submissions90Error } = await supabase
-      .from('form_submissions')
-      .select('id')
-      .in('form_id', customForms?.map(form => form.id) || [])
-      .gte('created_at', ninetyDaysAgo.toISOString())
+    const submissions90Days = allUnacknowledgedSubmissions?.filter(sub => 
+      new Date(sub.created_at) >= ninetyDaysAgo
+    ) || []
 
-    if (submissions90Error) {
-      console.error('Error fetching 90-day submissions:', submissions90Error)
-    }
-
-    console.log('Custom forms stats:', {
-      totalForms: customForms?.length || 0,
-      submissions30Days: submissions30Days?.length || 0,
-      submissions60Days: submissions60Days?.length || 0,
-      submissions90Days: submissions90Days?.length || 0
+    console.log('Form submissions stats (unacknowledged):', {
+      totalUnacknowledged: allUnacknowledgedSubmissions?.length || 0,
+      submissions30Days: submissions30Days.length,
+      submissions60Days: submissions60Days.length,
+      submissions90Days: submissions90Days.length
     })
 
     // Get vehicle verification stats
@@ -724,7 +705,7 @@ serve(async (req) => {
       newAssessments: newAssessmentsCount,
       draftAssessments: draftAssessmentsCount,
       submittedAssessments: submittedAssessmentsCount,
-      totalCustomForms: customForms?.length || 0,
+      totalCustomForms: 0, // Removed custom forms count as we're now using direct client_id filtering
       formSubmissions30Days: submissions30Days?.length || 0,
       formSubmissions60Days: submissions60Days?.length || 0,
       formSubmissions90Days: submissions90Days?.length || 0,

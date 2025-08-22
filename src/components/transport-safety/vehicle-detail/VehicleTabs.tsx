@@ -49,9 +49,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           .from('vehicle_documents')
           .select('*')
           .eq('vehicle_id', vehicleId)
-          .single();
+          .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
           
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        if (error) {
           console.error('Error fetching documents:', error);
           toast({
             title: 'Error fetching documents',
@@ -405,53 +405,55 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Documents</h3>
             <div className="grid grid-cols-1 gap-4">
-              {uploadedDocuments.map((doc, idx) => (
-                <div 
-                  key={`${doc.name}-${idx}`} 
-                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 min-h-[60px]"
-                >
-                  <div className="flex items-center flex-1 min-w-0">
-                    <FileText className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{doc.name}</p>
-                      <p className="text-xs text-gray-500">
-                        Uploaded: {formatDate(new Date(doc.uploadedAt))}
-                        {doc.files && doc.files.length > 0 && (
-                          <span className="ml-2">
-                            • {doc.files.length} file{doc.files.length > 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </p>
+              {/* Flatten and render each file as a separate tile with actions */}
+              {uploadedDocuments.flatMap((doc, docIdx) => (
+                (doc.files || []).map((file, fileIdx) => (
+                  <div
+                    key={`${doc.name}-${docIdx}-${file.path || file.url || fileIdx}`}
+                    className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 min-h-[60px]"
+                  >
+                    <div className="flex items-center flex-1 min-w-0">
+                      <FileText className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{file.name || doc.name}</p>
+                        <p className="text-xs text-gray-500">
+                          Uploaded: {formatDate(new Date(file.uploadedAt || doc.uploadedAt))}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 px-2"
+                        onClick={() => {
+                          const url = file.url;
+                          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                        }}
+                      >
+                        <Eye className="h-4 w-4 text-gray-500 mr-1" /> View
+                      </Button>
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center h-8 px-2 text-sm rounded-md border hover:bg-gray-50"
+                      >
+                        <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
+                        Download
+                      </a>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        title="Delete file"
+                        onClick={() => handleDeleteFile(doc, fileIdx)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                    {doc.files && doc.files.length > 0 ? (
-                      <div className="flex items-center">
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 w-8 p-0 mr-1" 
-                          onClick={() => openUploadedFilePreview(doc, 0)}
-                        >
-                          <Eye className="h-4 w-4 text-gray-500" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" 
-                          title="Delete document"
-                          onClick={() => handleDeleteFile(doc, 0)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-1">
-                        No files
-                      </span>
-                    )}
-                  </div>
-                </div>
+                ))
               ))}
             </div>
           </div>
@@ -601,6 +603,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </DialogHeader>
           <DocumentUploader 
             vehicleId={vehicleId} 
+            clientId={vehicle?.clientId}
             onClose={() => setShowAddDocumentDialog(false)} 
             onSuccess={handleUploadSuccess}
           />

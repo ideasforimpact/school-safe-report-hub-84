@@ -29,9 +29,10 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get data from request
-    const { vehicleId, files, documentInfo } = await req.json();
+    const { vehicleId, files, documentInfo, clientId } = await req.json();
     
     console.log(`Processing upload for vehicle: ${vehicleId}`);
+    console.log(`Client ID: ${clientId}`);
     console.log(`Number of files: ${files?.length ?? 0}`);
     
     // Ensure we have a valid vehicle ID
@@ -42,13 +43,33 @@ serve(async (req) => {
       );
     }
 
+    // Get client ID from vehicle if not provided
+    let effectiveClientId = clientId;
+    if (!effectiveClientId) {
+      const { data: vehicleData, error: vehicleError } = await supabase
+        .from('vehicles')
+        .select('client_id')
+        .eq('id', vehicleId)
+        .single();
+        
+      if (vehicleError) {
+        console.error("Error fetching vehicle:", vehicleError);
+        return new Response(
+          JSON.stringify({ error: "Error fetching vehicle data" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      effectiveClientId = vehicleData.client_id;
+    }
+
     const uploadTime = new Date().toISOString();
     const uploadResults = [];
     
-    // Support only single file
-    const inputFiles = Array.isArray(files) ? files.slice(0, 1) : [];
+    // Support multiple files (up to 5)
+    const inputFiles = Array.isArray(files) ? files.slice(0, 5) : [];
     
-    // Upload the single file to storage
+    // Upload multiple files to storage
     for (const file of inputFiles) {
       const { fileName, contentType, base64Data } = file;
       
@@ -61,7 +82,9 @@ serve(async (req) => {
       // Add timestamp and random string to ensure uniqueness
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 10);
-      const filePath = `${vehicleId}/${timestamp}_${randomStr}_${cleanFileName}`;
+      
+      // Create folder structure: vehicle-documents/{client_id}/{vehicle_id}/
+      const filePath = `${effectiveClientId}/${vehicleId}/${timestamp}_${randomStr}_${cleanFileName}`;
       
       console.log(`Uploading ${filePath}`);
       
@@ -102,7 +125,7 @@ serve(async (req) => {
       name: documentInfo?.name || 'Uploaded Document',
       type: documentInfo?.type || 'general',
       uploadedAt: uploadTime,
-      files: uploadResults.filter(r => r.success).slice(0,1).map(r => ({
+      files: uploadResults.filter(r => r.success).map(r => ({
         name: r.fileName,
         path: r.filePath,
         url: r.publicUrl,
@@ -123,9 +146,9 @@ serve(async (req) => {
       .from('vehicle_documents')
       .select('*')
       .eq('vehicle_id', vehicleId)
-      .single();
+      .maybeSingle(); // Use maybeSingle() to handle no rows gracefully
       
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+    if (fetchError) {
       console.error("Error fetching existing documents:", fetchError);
       return new Response(
         JSON.stringify({ error: "Error fetching existing documents", details: fetchError }),
