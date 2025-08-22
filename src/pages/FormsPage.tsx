@@ -74,14 +74,14 @@ const FormsPage = () => {
 
   const getName = (sub: any) => sub.submitter_name || extractFromResponses(sub.responses, ['name','full_name','submitter_name']) || 'Anonymous';
   const getPhone = (sub: any) => sub.submitter_phone || extractFromResponses(sub.responses, ['phone','contact','mobile']) || '';
-  const getDescription = (sub: any) => {
-    const v = extractFromResponses(sub.responses, ['description','message','details']) || '';
+  const getTitle = (sub: any) => {
+    const v = extractFromResponses(sub.responses, ['subject','heading','title']) || '';
     const s = (typeof v === 'string') ? v : (v != null ? JSON.stringify(v) : '');
-    return s.length > 15 ? s.slice(0, 15) + '…' : s;
+    return s.length > 30 ? s.slice(0, 30) + '…' : s;
   };
 
-  const getFullDescription = (sub: any) => {
-    const v = extractFromResponses(sub.responses, ['description','message','details']) || '';
+  const getFullTitle = (sub: any) => {
+    const v = extractFromResponses(sub.responses, ['subject','heading','title']) || '';
     return (typeof v === 'string') ? v : (v != null ? JSON.stringify(v) : '');
   };
 
@@ -280,7 +280,7 @@ const FormsPage = () => {
       filtered = filtered.filter((sub: any) =>
         (getName(sub) || '').toLowerCase().includes(s) ||
         (getPhone(sub) || '').toLowerCase().includes(s) ||
-        (getDescription(sub) || '').toLowerCase().includes(s) ||
+        (getTitle(sub) || '').toLowerCase().includes(s) ||
       (sub.status || '').toLowerCase().includes(s)
     );
     }
@@ -655,8 +655,8 @@ const FormsPage = () => {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Name</TableHead>
+                              <TableHead>Title</TableHead>
                               <TableHead>Mobile number</TableHead>
-                              <TableHead>Description</TableHead>
                               <TableHead>Type</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Grievance Date</TableHead>
@@ -676,8 +676,8 @@ const FormsPage = () => {
                                   <TableCell>
                                     <div className="font-medium">{getName(sub)}</div>
                                   </TableCell>
+                                  <TableCell className="max-w-[360px] truncate" title={getFullTitle(sub) || '-'}>{getTitle(sub) || '-'}</TableCell>
                                   <TableCell>{getPhone(sub) || '-'}</TableCell>
-                                  <TableCell className="max-w-[360px] truncate" title={getFullDescription(sub) || '-'}>{getDescription(sub) || '-'}</TableCell>
                                   <TableCell>{getType(sub) || '-'}</TableCell>
                                   <TableCell>
                                   {getStatusBadge(sub.status)}
