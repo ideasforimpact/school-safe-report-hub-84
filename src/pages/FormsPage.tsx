@@ -80,6 +80,10 @@ const FormsPage = () => {
     return s.length > 15 ? s.slice(0, 15) + '…' : s;
   };
 
+  const getFullDescription = (sub: any) => {
+    const v = extractFromResponses(sub.responses, ['description','message','details']) || '';
+    return (typeof v === 'string') ? v : (v != null ? JSON.stringify(v) : '');
+  };
 
   const getType = (sub: any) => sub.submitter_type || (extractFromResponses(sub.responses, ['submitter_type','type']) || '');
 
@@ -673,7 +677,7 @@ const FormsPage = () => {
                                     <div className="font-medium">{getName(sub)}</div>
                                   </TableCell>
                                   <TableCell>{getPhone(sub) || '-'}</TableCell>
-                                  <TableCell className="max-w-[360px] truncate">{getDescription(sub) || '-'}</TableCell>
+                                  <TableCell className="max-w-[360px] truncate" title={getFullDescription(sub) || '-'}>{getDescription(sub) || '-'}</TableCell>
                                   <TableCell>{getType(sub) || '-'}</TableCell>
                                   <TableCell>
                                   {getStatusBadge(sub.status)}
