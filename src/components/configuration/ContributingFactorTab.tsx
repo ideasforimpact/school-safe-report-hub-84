@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
@@ -22,6 +22,12 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { contributingFactorService, ContributingFactorItem } from '@/services/incident/contributingFactorService';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+
+// Validation function for contributing factor names (no special characters, max 25 chars)
+const isValidContributingFactorName = (name: string) => {
+  const contributingFactorNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  return contributingFactorNameRegex.test(name);
+};
 
 interface ContributingFactorTabProps {
   factors: ContributingFactorItem[];
@@ -44,6 +50,10 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { employeeData } = useAuth();
   const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
   
@@ -98,9 +108,19 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
+    if (!isValidContributingFactorName(currentName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
+    if (!isValidContributingFactorName(currentName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
       setError(null);
-      setLoading(true);
+      setIsAdding(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.addContributingFactor(
         currentName.trim(), 
@@ -124,7 +144,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       console.error('Error adding contributing factor:', error);
       setError(error.message || 'Failed to add contributing factor');
     } finally {
-      setLoading(false);
+      setIsAdding(false);
     }
   };
 
@@ -139,9 +159,14 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
+    if (!isValidContributingFactorName(currentName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
       setError(null);
-      setLoading(true);
+      setIsUpdating(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.updateContributingFactor(
         currentId, 
@@ -161,7 +186,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       console.error('Error updating contributing factor:', error);
       setError(error.message || 'Failed to update contributing factor');
     } finally {
-      setLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -192,7 +217,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       error: null,
       onConfirm: async () => {
         try {
-          setLoading(true);
+          setIsDeleting(true);
           // Strictly using contributingFactorService and passing clientId
           await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
           
@@ -209,7 +234,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
           const errorMessage = error?.message || 'Failed to delete contributing factor';
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
         } finally {
-          setLoading(false);
+          setIsDeleting(false);
         }
       },
     });
@@ -377,10 +402,13 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                 id="name"
                 value={currentName}
                 onChange={(e) => setCurrentName(e.target.value)}
-                className={error ? 'border-red-500' : ''}
+                className={`${error ? 'border-red-500' : ''} ${currentName && !isValidContributingFactorName(currentName) ? 'border-red-500' : ''}`}
                 maxLength={25}
                 required
               />
+              {currentName && !isValidContributingFactorName(currentName) && (
+                <p className="text-xs text-red-500 mt-1">Name must be alphanumeric with spaces only, maximum 25 characters</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">
@@ -419,8 +447,15 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             }} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleAdd} disabled={loading || !!error}>
-              {loading ? 'Adding...' : 'Add'}
+            <Button onClick={handleAdd} disabled={isAdding || !!error}>
+              {isAdding ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -463,10 +498,13 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                 id="edit-name"
                 value={currentName}
                 onChange={(e) => setCurrentName(e.target.value)}
-                className={error ? 'border-red-500' : ''}
+                className={`${error ? 'border-red-500' : ''} ${currentName && !isValidContributingFactorName(currentName) ? 'border-red-500' : ''}`}
                 maxLength={25}
                 required
               />
+              {currentName && !isValidContributingFactorName(currentName) && (
+                <p className="text-xs text-red-500 mt-1">Name must be alphanumeric with spaces only, maximum 25 characters</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-description">
@@ -502,8 +540,15 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             }} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={loading || !!error}>
-              {loading ? 'Saving...' : 'Save Changes'}
+            <Button onClick={handleEdit} disabled={isUpdating || !!error}>
+              {isUpdating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

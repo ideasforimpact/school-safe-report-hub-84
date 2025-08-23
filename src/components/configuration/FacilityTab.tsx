@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -23,6 +23,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { ConfigItem, CampusItem } from '@/contexts/types';
+
+interface FacilityItem extends ConfigItem {
+  campusId: string;
+}
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
 import {
@@ -35,7 +39,7 @@ import {
 import { Label } from '@/components/ui/label';
 
 interface FacilityTabProps {
-  facilities: ConfigItem[];
+  facilities: FacilityItem[];
   campuses: CampusItem[];
   addFacility: (name: string, campusId: string) => void;
   updateFacility: (id: string, name: string, campusId: string) => void;
@@ -53,18 +57,42 @@ export const FacilityTab = ({
 }: FacilityTabProps) => {
   const [newFacility, setNewFacility] = useState('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
-  const [editingFacility, setEditingFacility] = useState<{id: string, name: string, campusId: string} | null>(null);
+  const [editingFacility, setEditingFacility] = useState<FacilityItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [facilityToDelete, setFacilityToDelete] = useState<{id: string, name: string} | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
   const [filterCampusId, setFilterCampusId] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Validation function for facility name (alphanumeric only, max 20 characters)
+  const isValidFacilityName = (name: string) => {
+    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    return nameRegex.test(name);
+  };
+
+  // Check for duplicate facility names within the same campus
+  const isDuplicateFacilityName = (name: string, campusId: string, excludeId?: string) => {
+    return facilities.some(facility => 
+      facility.name.toLowerCase() === name.toLowerCase() && 
+      facility.campusId === campusId &&
+      facility.id !== excludeId
+    );
+  };
 
   const handleFacilityAdd = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newFacility.trim()) {
+    const facilityName = newFacility.trim();
+    
+    if (!facilityName) {
       toast.error("Facility name cannot be empty");
+      return;
+    }
+    
+    if (!isValidFacilityName(facilityName)) {
+      toast.error("Facility name can only contain letters, numbers, and spaces (max 20 characters)");
       return;
     }
     
@@ -73,13 +101,18 @@ export const FacilityTab = ({
       return;
     }
     
-    addFacility(newFacility.trim(), selectedCampusId);
+    if (isDuplicateFacilityName(facilityName, selectedCampusId)) {
+      toast.error("A facility with this name already exists in the selected campus");
+      return;
+    }
+    
+    addFacility(facilityName, selectedCampusId);
     setNewFacility('');
     setSelectedCampusId('');
     toast.success("Facility added successfully");
   };
 
-  const handleDeleteClick = (facility: ConfigItem) => {
+  const handleDeleteClick = (facility: FacilityItem) => {
     setFacilityToDelete({
       id: facility.id,
       name: facility.name
@@ -101,7 +134,7 @@ export const FacilityTab = ({
     }
   };
 
-  const handleEditOpen = (facility: any) => {
+  const handleEditOpen = (facility: FacilityItem) => {
     console.log("Opening edit dialog for facility:", facility);
     setEditingFacility({
       id: facility.id,
@@ -112,8 +145,15 @@ export const FacilityTab = ({
   };
 
   const handleEditSave = (updatedName: string) => {
-    if (!updatedName.trim()) {
+    const facilityName = updatedName.trim();
+    
+    if (!facilityName) {
       toast.error("Facility name cannot be empty");
+      return;
+    }
+    
+    if (!isValidFacilityName(facilityName)) {
+      toast.error("Facility name can only contain letters, numbers, and spaces (max 20 characters)");
       return;
     }
     
@@ -123,8 +163,13 @@ export const FacilityTab = ({
         return;
       }
       
-      console.log("Updating facility:", editingFacility.id, updatedName.trim(), editingFacility.campusId);
-      updateFacility(editingFacility.id, updatedName.trim(), editingFacility.campusId);
+      if (isDuplicateFacilityName(facilityName, editingFacility.campusId, editingFacility.id)) {
+        toast.error("A facility with this name already exists in the selected campus");
+        return;
+      }
+      
+      console.log("Updating facility:", editingFacility.id, facilityName, editingFacility.campusId);
+      updateFacility(editingFacility.id, facilityName, editingFacility.campusId);
       handleEditClose();
       toast.success("Facility updated successfully");
     }
@@ -164,6 +209,21 @@ export const FacilityTab = ({
     return filtered;
   }, [facilities, searchFilter, filterCampusId]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredFacilities.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedFacilities = filteredFacilities.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchFilter, filterCampusId]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   const clearFilters = () => {
     setSearchFilter('');
     setFilterCampusId('');
@@ -201,10 +261,22 @@ export const FacilityTab = ({
               placeholder="New facility name (e.g., Laboratory)"
               value={newFacility}
               onChange={(e) => setNewFacility(e.target.value)}
+              maxLength={20}
+              className={newFacility && !isValidFacilityName(newFacility) ? 'border-red-500' : ''}
             />
+            {newFacility && !isValidFacilityName(newFacility) && (
+              <p className="text-xs text-red-500 mt-1">Facility name can only contain letters, numbers, and spaces (max 20 characters)</p>
+            )}
+            {newFacility && selectedCampusId && isDuplicateFacilityName(newFacility, selectedCampusId) && (
+              <p className="text-xs text-red-500 mt-1">A facility with this name already exists in the selected campus</p>
+            )}
           </div>
           <div className="self-end">
-            <Button type="submit" className="whitespace-nowrap w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="whitespace-nowrap w-full" 
+              disabled={loading || !newFacility.trim() || !isValidFacilityName(newFacility) || !selectedCampusId || isDuplicateFacilityName(newFacility, selectedCampusId)}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
@@ -296,7 +368,7 @@ export const FacilityTab = ({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredFacilities.map((facility: any) => (
+              paginatedFacilities.map((facility: FacilityItem) => (
                 <TableRow key={facility.id}>
                   <TableCell>{facility.name}</TableCell>
                   <TableCell>
@@ -328,6 +400,59 @@ export const FacilityTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        {filteredFacilities.length > itemsPerPage && (
+          <div className="flex items-center justify-center space-x-2 mt-4">
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex space-x-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+              >
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ‹
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                »
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -371,6 +496,10 @@ export const FacilityTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
+            maxLength={20}
+            validationFunction={isValidFacilityName}
+            validationMessage="Facility name can only contain letters, numbers, and spaces (max 20 characters)"
+            isRequired={true}
             extraFields={[
               {
                 type: "select",

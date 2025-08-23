@@ -174,32 +174,46 @@ export const categoryService = {
 
   deleteCategory: async (id: string, clientId: string) => {
     try {
+      console.log('Attempting to delete category:', { id, clientId });
+      
       if (!clientId) {
         throw new Error('Client ID is required');
       }
 
       // Check if category is referenced by incidents
       const referenceCheck = await incidentReferenceService.checkCategoryReferences(id, clientId);
+      console.log('Reference check result:', referenceCheck);
       
       if (referenceCheck.hasReferences) {
         throw new Error(referenceCheck.message);
       }
 
       // First, delete related subcategories
-      await supabase
+      console.log('Deleting related subcategories...');
+      const { error: subcatError } = await supabase
         .from('incident_subcategories')
         .delete()
-        .eq('category_id', id);
+        .eq('category_id', id)
+        .eq('client_id', clientId);
 
+      if (subcatError) {
+        console.error('Error deleting subcategories:', subcatError);
+        throw subcatError;
+      }
+
+      console.log('Deleting category...');
       const { error } = await supabase
         .from('incident_categories')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', clientId);
 
       if (error) {
+        console.error('Error deleting category:', error);
         throw error;
       }
 
+      console.log('Category deleted successfully');
       return true;
     } catch (error: any) {
       console.error('Error deleting category:', error);

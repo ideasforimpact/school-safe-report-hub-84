@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -49,17 +49,46 @@ export const CampusTab = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campusToDelete, setCampusToDelete] = useState<{id: string, name: string} | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
+  const [campusError, setCampusError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Validation function for campus name (alphanumeric only, max 20 characters)
+  const isValidCampusName = (name: string) => {
+    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    return nameRegex.test(name);
+  };
+
+  // Check for duplicate campus names
+  const isDuplicateCampusName = (name: string, excludeId?: string) => {
+    return campuses.some(campus => 
+      campus.name.toLowerCase() === name.toLowerCase() && 
+      campus.id !== excludeId
+    );
+  };
 
   const handleCampusAdd = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newCampus.trim()) {
+    const campusName = newCampus.trim();
+    
+    if (!campusName) {
       toast.error("Campus name cannot be empty");
       return;
     }
     
-    console.log("Adding campus:", newCampus.trim());
-    addCampus(newCampus.trim());
+    if (!isValidCampusName(campusName)) {
+      toast.error("Campus name can only contain letters, numbers, and spaces (max 20 characters)");
+      return;
+    }
+    
+    if (isDuplicateCampusName(campusName)) {
+      toast.error("A campus with this name already exists");
+      return;
+    }
+    
+    console.log("Adding campus:", campusName);
+    addCampus(campusName);
     setNewCampus('');
   };
 
@@ -92,14 +121,26 @@ export const CampusTab = ({
   };
 
   const handleEditSave = (updatedName: string) => {
-    if (!updatedName.trim()) {
+    const campusName = updatedName.trim();
+    
+    if (!campusName) {
       toast.error("Campus name cannot be empty");
       return;
     }
     
+    if (!isValidCampusName(campusName)) {
+      toast.error("Campus name can only contain letters, numbers, and spaces (max 20 characters)");
+      return;
+    }
+    
+    if (isDuplicateCampusName(campusName, editingCampus?.id)) {
+      toast.error("A campus with this name already exists");
+      return;
+    }
+    
     if (editingCampus) {
-      console.log("Updating campus:", editingCampus.id, "with name:", updatedName.trim());
-      updateCampus(editingCampus.id, updatedName.trim());
+      console.log("Updating campus:", editingCampus.id, "with name:", campusName);
+      updateCampus(editingCampus.id, campusName);
       handleEditClose();
     }
   };
@@ -118,6 +159,21 @@ export const CampusTab = ({
     );
   }, [campuses, searchFilter]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCampuses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCampuses = filteredCampuses.slice(startIndex, endIndex);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchFilter]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   const clearFilter = () => setSearchFilter('');
 
   return (
@@ -134,9 +190,21 @@ export const CampusTab = ({
                 placeholder="New campus name (e.g., Main Campus)"
                 value={newCampus}
                 onChange={(e) => setNewCampus(e.target.value)}
+                maxLength={20}
+                className={newCampus && !isValidCampusName(newCampus) ? 'border-red-500' : ''}
               />
+              {newCampus && !isValidCampusName(newCampus) && (
+                <p className="text-xs text-red-500 mt-1">Campus name can only contain letters, numbers, and spaces (max 20 characters)</p>
+              )}
+              {newCampus && isDuplicateCampusName(newCampus) && (
+                <p className="text-xs text-red-500 mt-1">A campus with this name already exists</p>
+              )}
             </div>
-            <Button type="submit" className="whitespace-nowrap" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="whitespace-nowrap" 
+              disabled={loading || !newCampus.trim() || !isValidCampusName(newCampus) || isDuplicateCampusName(newCampus)}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
@@ -206,7 +274,7 @@ export const CampusTab = ({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCampuses.map((campus) => (
+              paginatedCampuses.map((campus) => (
                 <TableRow key={campus.id}>
                   <TableCell>{campus.name}</TableCell>
                   <TableCell>
@@ -235,6 +303,59 @@ export const CampusTab = ({
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        {filteredCampuses.length > itemsPerPage && (
+          <div className="flex items-center justify-center space-x-2 mt-4">
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex space-x-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+              >
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ‹
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                »
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -274,8 +395,12 @@ export const CampusTab = ({
             open={isEditDialogOpen}
             onOpenChange={setIsEditDialogOpen}
             onChange={() => {}} // Not needed for this pattern
-            onSave={() => handleEditSave}
+            onSave={handleEditSave}
             onClose={handleEditClose}
+            maxLength={20}
+            validationFunction={isValidCampusName}
+            validationMessage="Campus name can only contain letters, numbers, and spaces (max 20 characters)"
+            isRequired={true}
           />
         )}
       </CardContent>

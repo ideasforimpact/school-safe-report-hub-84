@@ -68,6 +68,24 @@ const EditUserDialog = ({
     });
   };
 
+  // Email validation function
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Employee ID validation function (alphanumeric, max 15 characters)
+  const isValidEmployeeId = (employeeId: string) => {
+    const employeeIdRegex = /^[a-zA-Z0-9]{1,15}$/;
+    return employeeIdRegex.test(employeeId);
+  };
+
+  // Name validation function (letters and spaces only, no special characters)
+  const isValidName = (name: string) => {
+    const nameRegex = /^[a-zA-Z\s]{1,25}$/;
+    return nameRegex.test(name);
+  };
+
   const handleClose = () => {
     setIsOpen(false);
     resetForm();
@@ -132,35 +150,51 @@ const EditUserDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1">
+        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 px-4">
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
                 <Input
                   id="firstName"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  maxLength={25}
                   required
+                  className={formData.firstName && !isValidName(formData.firstName) ? 'border-red-500' : ''}
                 />
+                {formData.firstName && formData.firstName.length > 25 && (
+                  <p className="text-xs text-red-500">First name cannot exceed 25 characters</p>
+                )}
+                {formData.firstName && !isValidName(formData.firstName) && (
+                  <p className="text-xs text-red-500">First name can only contain letters and spaces</p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
                 <Input
                   id="lastName"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  maxLength={25}
                   required
+                  className={formData.lastName && !isValidName(formData.lastName) ? 'border-red-500' : ''}
                 />
+                {formData.lastName && formData.lastName.length > 25 && (
+                  <p className="text-xs text-red-500">Last name cannot exceed 25 characters</p>
+                )}
+                {formData.lastName && !isValidName(formData.lastName) && (
+                  <p className="text-xs text-red-500">Last name can only contain letters and spaces</p>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
               <Input
                 id="email"
                 type="email"
@@ -169,17 +203,24 @@ const EditUserDialog = ({
                 required
                 readOnly
               />
+              {formData.email && !isValidEmail(formData.email) && (
+                <p className="text-xs text-red-500">Please enter a valid email address</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="employeeId">Employee ID</Label>
+                <Label htmlFor="employeeId">Employee ID <span className="text-red-500">*</span></Label>
                 <Input
                   id="employeeId"
                   value={formData.employeeId || ''}
                   onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  maxLength={15}
                   readOnly
                 />
+                {formData.employeeId && !isValidEmployeeId(formData.employeeId) && (
+                  <p className="text-xs text-red-500">Employee ID must be alphanumeric and maximum 15 characters</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="joiningDate">Joining Date</Label>

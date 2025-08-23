@@ -18,6 +18,12 @@ import { priorityService } from '@/services/incident/priorityService';
 import { usePriorities } from '@/hooks/usePriorities';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
+// Validation function for priority names (no special characters, max 25 chars)
+const isValidPriorityName = (name: string) => {
+  const priorityNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  return priorityNameRegex.test(name);
+};
+
 interface PriorityItem {
   id: string;
   name: string;
@@ -50,6 +56,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   const [editPriorityColor, setEditPriorityColor] = useState('#10B981');
   const [editPriorityWeight, setEditPriorityWeight] = useState('0');
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
   // Confirmation dialog states
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -79,6 +86,11 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       return;
     }
 
+    if (!isValidPriorityName(newPriorityName.trim())) {
+      setError('Priority name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
       setError(null);
       await priorityService.addPriority(
@@ -105,6 +117,11 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   const handleEditPriority = async () => {
     if (!selectedPriority || !editPriorityName.trim()) {
       setError('Priority name cannot be empty');
+      return;
+    }
+
+    if (!isValidPriorityName(editPriorityName.trim())) {
+      setError('Priority name must be alphanumeric with spaces only, maximum 25 characters');
       return;
     }
 
@@ -202,6 +219,14 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     };
   };
 
+  // Filter priorities based on status
+  const filteredPriorities = priorities.filter(priority => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return priority.is_active;
+    if (statusFilter === 'inactive') return !priority.is_active;
+    return true;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -217,11 +242,49 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         </Button>
       </div>
 
+      {/* Status Filter */}
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium text-gray-700">Filter by status:</span>
+          <div className="flex space-x-1">
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+              className="text-xs"
+            >
+              All
+            </Button>
+            <Button
+              variant={statusFilter === 'active' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('active')}
+              className="text-xs"
+            >
+              Active
+            </Button>
+            <Button
+              variant={statusFilter === 'inactive' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('inactive')}
+              className="text-xs"
+            >
+              Inactive
+            </Button>
+          </div>
+        </div>
+        {statusFilter !== 'all' && (
+          <span className="text-sm text-gray-500">
+            Showing {filteredPriorities.length} of {priorities.length} priorities
+          </span>
+        )}
+      </div>
+
       {loading ? (
         <div className="text-center p-8 border rounded-md bg-gray-50">
           <p className="text-gray-500 text-lg">Loading priorities...</p>
         </div>
-      ) : priorities.length > 0 ? (
+      ) : filteredPriorities.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
@@ -234,7 +297,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {priorities.map((priority) => (
+            {filteredPriorities.map((priority) => (
               <TableRow key={priority.id} className={!priority.is_active ? "opacity-60" : ""}>
                 <TableCell>
                   <div style={getPriorityColorStyle(priority.color)}></div>
@@ -271,7 +334,12 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         </Table>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">No priorities have been added yet</p>
+          <p className="text-gray-500">
+            {priorities.length === 0 
+              ? "No priorities have been added yet" 
+              : `No ${statusFilter} priorities found`
+            }
+          </p>
         </div>
       )}
 
@@ -321,6 +389,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         ]}
         error={error}
         isLoading={loading}
+        validationFunction={isValidPriorityName}
+        validationMessage="Priority name must be alphanumeric with spaces only, maximum 25 characters"
       />
 
       {/* Edit Priority Dialog */}
@@ -365,6 +435,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         ]}
         error={error}
         isLoading={loading}
+        validationFunction={isValidPriorityName}
+        validationMessage="Priority name must be alphanumeric with spaces only, maximum 25 characters"
       />
 
       {/* Confirmation Dialog */}

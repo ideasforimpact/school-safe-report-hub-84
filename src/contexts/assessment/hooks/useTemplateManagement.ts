@@ -37,7 +37,6 @@ export const useTemplateManagement = (userId?: string) => {
       return id;
     } catch (error) {
       console.error('Error creating template:', error);
-      toast.error('Failed to create template');
       throw error;
     }
   };
@@ -49,7 +48,6 @@ export const useTemplateManagement = (userId?: string) => {
       await loadTemplates(); // Refresh the list
     } catch (error) {
       console.error('Error updating template:', error);
-      toast.error('Failed to update template');
       throw error;
     }
   };
