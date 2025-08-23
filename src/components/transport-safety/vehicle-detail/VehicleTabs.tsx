@@ -13,6 +13,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { VehicleDocument } from '@/types/transportSafety';
 import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +44,8 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const [selectedUploadedDocument, setSelectedUploadedDocument] = useState<UploadedDocument | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ document: UploadedDocument; fileIndex: number } | null>(null);
   
   const vehicle = getVehicle(vehicleId);
   
@@ -208,8 +219,17 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     });
   };
   
-  // Delete a file from storage and update database
-  const handleDeleteFile = async (document: UploadedDocument, fileIndex: number) => {
+  // Show delete confirmation dialog
+  const handleDeleteFile = (document: UploadedDocument, fileIndex: number) => {
+    setDocumentToDelete({ document, fileIndex });
+    setShowDeleteConfirm(true);
+  };
+
+  // Actually delete the file from storage and update database
+  const confirmDeleteFile = async () => {
+    if (!documentToDelete) return;
+    
+    const { document, fileIndex } = documentToDelete;
     try {
       const file = document.files[fileIndex];
       
@@ -335,6 +355,10 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         setSelectedFileIndex(document.files.length - 2);
       }
       
+      // Close the confirmation dialog and reset state
+      setShowDeleteConfirm(false);
+      setDocumentToDelete(null);
+      
     } catch (error) {
       console.error('Error in handleDeleteFile:', error);
       toast({
@@ -342,6 +366,10 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         description: 'An unexpected error occurred',
         variant: 'destructive',
       });
+      
+      // Close the confirmation dialog and reset state on error
+      setShowDeleteConfirm(false);
+      setDocumentToDelete(null);
     }
   };
   
@@ -710,6 +738,50 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Document Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-red-600">
+              <Trash2 className="h-5 w-5 mr-2" />
+              Delete Document
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-red-800 font-medium mb-2">
+                  Warning: This action cannot be undone!
+                </p>
+                <p className="text-red-700 text-sm">
+                  You are about to permanently delete the document <strong>
+                    {documentToDelete?.document.files[documentToDelete.fileIndex]?.name || 'Unknown file'}
+                  </strong>.
+                </p>
+              </div>
+              
+
+              
+              <p className="text-gray-600 text-sm">
+                Please confirm that you want to proceed with this deletion. 
+                This action will immediately remove the document and cannot be recovered.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">
+              Cancel
+            </AlertDialogCancel>
+            <Button 
+              onClick={confirmDeleteFile} 
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
+              variant="destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Yes, Delete Document
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Tabs>
   );
 };

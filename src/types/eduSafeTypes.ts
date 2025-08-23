@@ -15,5 +15,6 @@ export interface EduSafeResource {
   ownerType: 'school' | 'saas';
   clientId?: string;
   resourceType: 'Organisational Resource' | 'Global Resource';
-  file: FileItem;
+  document_url: string; // Direct URL to the file in Supabase storage
+  file?: FileItem; // Optional for backward compatibility
 }

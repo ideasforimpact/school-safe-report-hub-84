@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,8 @@ import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyC
 import { Vehicle } from '@/types/transportSafety';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -21,8 +22,9 @@ interface AddVehicleDialogProps {
 type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>;
 
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehicle }) => {
-  const { addVehicle, updateVehicle } = useTransportSafety();
+  const { addVehicle, updateVehicle, vehicles } = useTransportSafety();
   const { employeeData } = useAuth();
+  const [error, setError] = useState<string | null>(null);
   
   const isEditMode = !!vehicle;
   
@@ -63,39 +65,53 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   useEffect(() => {
     if (!open) {
       reset();
+      setError(null);
     }
   }, [open, reset]);
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
+    setError(null); // Clear any previous errors
+    
     try {
       if (!employeeData?.clientId) {
-        toast.error('No client selected. Please select a client first.');
+        setError('No client selected. Please select a client first.');
+        return;
+      }
+
+      // Check for duplicate registration number
+      const isDuplicate = vehicles.some(vehicle => 
+        vehicle.registrationNumber.toLowerCase() === data.registrationNumber?.toLowerCase() &&
+        (!isEditMode || vehicle.id !== vehicle?.id)
+      );
+      
+      if (isDuplicate) {
+        setError('A vehicle with this registration number already exists');
         return;
       }
 
       // Validate required fields
       if (!data.registrationNumber?.trim()) {
-        toast.error('Registration number is required');
+        setError('Registration number is required');
         return;
       }
 
       if (!data.make?.trim()) {
-        toast.error('Make is required');
+        setError('Make is required');
         return;
       }
 
       if (!data.model?.trim()) {
-        toast.error('Model is required');
+        setError('Model is required');
         return;
       }
 
       if (!data.driver?.trim()) {
-        toast.error('Driver name is required');
+        setError('Driver name is required');
         return;
       }
 
       if (!data.route?.trim()) {
-        toast.error('Route is required');
+        setError('Route is required');
         return;
       }
 
@@ -104,7 +120,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         const capacityValue = data.capacity ? Number(data.capacity) : null;
         
       if (!yearValue || yearValue < 1980 || yearValue > new Date().getFullYear() + 1) {
-        toast.error('Year is required and must be between 1980 and ' + (new Date().getFullYear() + 1));
+        setError('Year is required and must be between 1980 and ' + (new Date().getFullYear() + 1));
           return;
         }
 
@@ -147,7 +163,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       onClose();
     } catch (error) {
       console.error('Error saving vehicle:', error);
-      toast.error(`Failed to ${isEditMode ? 'update' : 'add'} vehicle. Please try again.`);
+      setError(`Failed to ${isEditMode ? 'update' : 'add'} vehicle. Please try again.`);
     }
   };
 
@@ -161,23 +177,39 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="registrationNumber">Registration Number*</Label>
+              <Label htmlFor="registrationNumber">Registration Number<span className="text-red-500">*</span></Label>
               <Input 
                 id="registrationNumber" 
-                {...register('registrationNumber', { required: "Registration number is required" })}
+                {...register('registrationNumber', { 
+                  required: "Registration number is required",
+                  maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" }
+                })}
                 placeholder="e.g., KA-01-AB-1234"
-                disabled={isSubmitting}
+                maxLength={10}
+                disabled={isSubmitting || isEditMode}
+                className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
               />
               {errors.registrationNumber && 
                 <p className="text-red-500 text-sm">{errors.registrationNumber.message}</p>
               }
+              {isEditMode && (
+                <p className="text-gray-500 text-xs mt-1">
+                  Registration number cannot be changed after vehicle creation
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="type">Vehicle Type*</Label>
+                <Label htmlFor="type">Vehicle Type<span className="text-red-500">*</span></Label>
                 <Select 
                   value={watch('type')} 
                   onValueChange={(value) => setValue('type', value as any)}
@@ -197,7 +229,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="status">Status*</Label>
+                <Label htmlFor="status">Status<span className="text-red-500">*</span></Label>
                 <Select 
                   value={watch('status')} 
                   onValueChange={(value) => setValue('status', value as any)}
@@ -217,11 +249,15 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="make">Make*</Label>
+                <Label htmlFor="make">Make<span className="text-red-500">*</span></Label>
                 <Input 
                   id="make" 
-                  {...register('make', { required: "Make is required" })}
+                  {...register('make', { 
+                    required: "Make is required",
+                    maxLength: { value: 10, message: "Make cannot exceed 10 characters" }
+                  })}
                   placeholder="e.g., TATA"
+                  maxLength={10}
                   disabled={isSubmitting}
                 />
                 {errors.make && 
@@ -230,11 +266,15 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="model">Model*</Label>
+                <Label htmlFor="model">Model<span className="text-red-500">*</span></Label>
                 <Input 
                   id="model" 
-                  {...register('model', { required: "Model is required" })}
+                  {...register('model', { 
+                    required: "Model is required",
+                    maxLength: { value: 10, message: "Model cannot exceed 10 characters" }
+                  })}
                   placeholder="e.g., Starbus"
+                  maxLength={10}
                   disabled={isSubmitting}
                 />
                 {errors.model && 
@@ -244,7 +284,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="year">Year*</Label>
+              <Label htmlFor="year">Year<span className="text-red-500">*</span></Label>
               <Input 
                 id="year" 
                 type="number"
@@ -263,11 +303,15 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="driver">Driver*</Label>
+                <Label htmlFor="driver">Driver<span className="text-red-500">*</span></Label>
                 <Input 
                   id="driver" 
-                  {...register('driver', { required: "Driver name is required" })}
+                  {...register('driver', { 
+                    required: "Driver name is required",
+                    maxLength: { value: 16, message: "Driver name cannot exceed 16 characters" }
+                  })}
                   placeholder="e.g., John Doe"
+                  maxLength={16}
                   disabled={isSubmitting}
                 />
                 {errors.driver && 
@@ -276,11 +320,15 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="route">Route*</Label>
+                <Label htmlFor="route">Route<span className="text-red-500">*</span></Label>
                 <Input 
                   id="route" 
-                  {...register('route', { required: "Route is required" })}
+                  {...register('route', { 
+                    required: "Route is required",
+                    maxLength: { value: 16, message: "Route cannot exceed 16 characters" }
+                  })}
                   placeholder="e.g., Main Campus"
+                  maxLength={16}
                   disabled={isSubmitting}
                 />
                 {errors.route && 
@@ -295,9 +343,11 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 id="capacity" 
                 type="number"
                 {...register('capacity', { 
-                  min: { value: 1, message: "Capacity must be at least 1" }
+                  min: { value: 1, message: "Capacity must be at least 1" },
+                  max: { value: 99, message: "Capacity cannot exceed 99" }
                 })}
                 placeholder="e.g., 45"
+                maxLength={2}
                 disabled={isSubmitting}
               />
               {errors.capacity && 

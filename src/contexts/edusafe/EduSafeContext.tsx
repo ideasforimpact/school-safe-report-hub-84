@@ -114,6 +114,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ownerType: 'school',
             clientId: record.client_id,
             resourceType: 'Organisational Resource',
+            document_url: record.document_url,
             file: {
               id: `file-${record.id}`,
               name: record.title,
@@ -138,6 +139,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ownerType: 'saas',
             clientId: user.clientId, // Use user's client ID for compatibility
             resourceType: 'Global Resource',
+            document_url: record.document_url,
             file: {
               id: `file-backoffice-${record.id}`,
               name: record.title,
@@ -182,7 +184,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           description: resource.description,
           category: resource.category,
           tags: resource.tags,
-          document_url: resource.file.base64,
+          document_url: resource.document_url || resource.file?.base64,
           uploaded_by: user?.id,
           client_id: user?.role === 'saas_owner' ? null : user?.clientId
         })
@@ -249,12 +251,37 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   
   const downloadResource = (resource: EduSafeResource) => {
     try {
+      let downloadUrl = resource.document_url;
+      let filename = `${resource.title}.pdf`;
+
+      if (!downloadUrl && resource.file?.base64) {
+        // Fallback to base64 if document_url is not available
+        downloadUrl = resource.file.base64;
+        filename = resource.file.name || `${resource.title}.pdf`;
+      }
+
+      if (!downloadUrl) {
+        toast.error('No file available to download');
+        return;
+      }
+
       // Create a link element
       const link = document.createElement('a');
       
       // Set link attributes
-      link.href = resource.file.base64;
-      link.download = resource.file.name;
+      link.href = downloadUrl;
+      
+      // Extract filename from URL if it's a document_url
+      if (resource.document_url) {
+        const urlParts = resource.document_url.split('/');
+        filename = urlParts[urlParts.length - 1] || filename;
+      }
+      
+      link.download = filename;
+      
+      // Set proper attributes
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       
       // Append to document
       document.body.appendChild(link);

@@ -9,6 +9,7 @@ import { formatFileSize } from '@/utils/fileUtils';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,50 +40,15 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Open the file in a new tab
-    if (resource.file.base64) {
-      const newWindow = window.open();
-      if (newWindow) {
-        const isImage = resource.file.type.startsWith('image/');
-        const isPdf = resource.file.type === 'application/pdf';
-        
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>${resource.title}</title>
-              <style>
-                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f0f2f5; }
-                img { max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-                iframe { width: 100%; height: 90vh; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-                .header { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; text-align: center; }
-                .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; color: #333; }
-                .description { color: #666; margin-bottom: 10px; }
-                .file-info { font-size: 12px; color: #999; }
-                .content-wrapper { max-width: 900px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-              </style>
-            </head>
-            <body>
-              <div class="content-wrapper">
-                <div class="header">
-                  <div class="title">${resource.title}</div>
-                  <div class="description">${resource.description}</div>
-                  <div class="file-info">File: ${resource.file.name} | Size: ${(resource.file.size / 1024 / 1024).toFixed(2)} MB</div>
-                </div>
-                ${isImage 
-                  ? `<img src="${resource.file.base64}" alt="${resource.title}" />`
-                  : isPdf 
-                  ? `<iframe src="${resource.file.base64}"></iframe>`
-                  : `<div style="text-align: center; padding: 50px;">
-                       <p>Preview not available for this file type.</p>
-                       <p>Please download the file to view it.</p>
-                     </div>`
-                }
-              </div>
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-      }
+    // Open the file in a new tab using document_url
+    if (resource.document_url) {
+      // Open the document URL directly in a new tab
+      window.open(resource.document_url, '_blank', 'noopener,noreferrer');
+    } else if (resource.file?.base64) {
+      // Fallback to base64 if document_url is not available
+      window.open(resource.file.base64, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error('No file available to view');
     }
   };
   
@@ -152,9 +118,9 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
         
         <div className="mt-4 text-left">
           <div className="text-xs text-gray-500 flex items-center space-x-2 mb-3">
-            <span>Type: {resource.file.type.split('/')[1]?.toUpperCase() || 'PDF'}</span>
+            <span>Type: PDF</span>
             <span>•</span>
-            <span>{formatFileSize(resource.file.size || 0)}</span>
+            <span>Unknown size</span>
           </div>
           
           <div className="flex flex-wrap gap-2">

@@ -249,6 +249,47 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
+  const handleViewResource = (resource: BackofficeEduSafeResource) => {
+    if (!resource.document_url) {
+      toast.error('No document available to view');
+      return;
+    }
+    
+    // Open the document in a new tab
+    window.open(resource.document_url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadResource = async (resource: BackofficeEduSafeResource) => {
+    if (!resource.document_url) {
+      toast.error('No document available to download');
+      return;
+    }
+
+    try {
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = resource.document_url;
+      
+      // Extract filename from URL or use resource title
+      const urlParts = resource.document_url.split('/');
+      const filename = urlParts[urlParts.length - 1] || `${resource.title}.pdf`;
+      
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Download started');
+    } catch (error) {
+      console.error('Error downloading resource:', error);
+      toast.error('Failed to download resource');
+    }
+  };
+
   const getClientTypeName = (clientTypeId: string) => {
     const clientType = clientTypes.find(ct => ct.id === clientTypeId);
     return clientType ? clientType.name : 'Unknown';
@@ -359,7 +400,20 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewResource(resource)}
+                            title="View document"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDownloadResource(resource)}
+                            title="Download document"
+                          >
                             <Download className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEditDialog(resource)}>
