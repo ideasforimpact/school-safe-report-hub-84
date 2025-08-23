@@ -45,17 +45,24 @@ export const CategoryTab = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCategoryAdd = (e: React.FormEvent) => {
+  const handleCategoryAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newCategory.trim()) {
-      toast.error("Category name cannot be empty");
+      setError("Category name cannot be empty");
       return;
     }
     
-    addCategory(newCategory.trim());
-    setNewCategory('');
+    try {
+      setError(null);
+      await addCategory(newCategory.trim());
+      setNewCategory('');
+    } catch (error: any) {
+      console.error('Error in handleCategoryAdd:', error);
+      setError(error.message || 'Failed to add category');
+    }
   };
 
   const handleCategoryDelete = (category: CategoryItem) => {
@@ -94,16 +101,22 @@ export const CategoryTab = ({
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSave = (updatedName: string) => {
+  const handleEditSave = async (updatedName: string) => {
     if (!updatedName.trim()) {
-      toast.error("Category name cannot be empty");
+      setError("Category name cannot be empty");
       return;
     }
     
     if (editingCategory) {
-      console.log("Updating category:", editingCategory.id, "with name:", updatedName.trim());
-      updateCategory(editingCategory.id, updatedName.trim());
-      handleEditClose();
+      try {
+        setError(null);
+        console.log("Updating category:", editingCategory.id, "with name:", updatedName.trim());
+        await updateCategory(editingCategory.id, updatedName.trim());
+        handleEditClose();
+      } catch (error: any) {
+        console.error('Error in handleEditSave:', error);
+        setError(error.message || 'Failed to update category');
+      }
     }
   };
 
@@ -125,6 +138,7 @@ export const CategoryTab = ({
             placeholder="New category name"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
+            maxLength={25}
           />
           <Button type="submit">
             <Plus className="mr-2 h-4 w-4" /> Add Category
@@ -182,12 +196,20 @@ export const CategoryTab = ({
             fieldLabel="Category name"
             value={editingCategory.name}
             open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) {
+                setError(null);
+              }
+            }}
             onChange={(value) => {
               setEditingCategory(prev => prev ? { ...prev, name: value } : null);
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
+            maxLength={25}
+            isRequired={true}
+            error={error}
           />
         )}
 

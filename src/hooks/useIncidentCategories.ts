@@ -66,8 +66,10 @@ export function useIncidentCategories() {
         [newCategory.id]: []
       }));
       toast.success('Category added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding category:', error);
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
@@ -83,8 +85,10 @@ export function useIncidentCategories() {
         cat.id === id ? { ...cat, name } : cat
       ));
       toast.success('Category updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating category:', error);
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
@@ -122,8 +126,10 @@ export function useIncidentCategories() {
         [categoryId]: [...(prev[categoryId] || []), newSubcategory]
       }));
       toast.success('Subcategory added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding subcategory:', error);
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 
@@ -142,8 +148,10 @@ export function useIncidentCategories() {
         )
       }));
       toast.success('Subcategory updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating subcategory:', error);
+      // The service already shows the error toast, so we don't need to show another one
+      throw error; // Re-throw to let the component handle it
     }
   };
 

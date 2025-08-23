@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { usePriorities } from '@/hooks/usePriorities';
+import { useActivePriorities } from '@/hooks/usePriorities';
 
 interface IncidentPrioritySectionProps {
   priority: string;
@@ -20,7 +20,7 @@ const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
   onChange,
   errors,
 }) => {
-  const { priorities, loading } = usePriorities();
+  const { priorities, loading } = useActivePriorities();
 
   return (
     <div className="space-y-2">

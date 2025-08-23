@@ -11,11 +11,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { StatusSwitch } from '@/components/ui/status-switch';
 import { EditDialog } from '@/components/configuration/EditDialog';
 import { toast } from 'sonner';
 import { priorityService } from '@/services/incident/priorityService';
 import { usePriorities } from '@/hooks/usePriorities';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 interface PriorityItem {
   id: string;
@@ -48,59 +49,83 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   const [editPriorityDescription, setEditPriorityDescription] = useState('');
   const [editPriorityColor, setEditPriorityColor] = useState('#10B981');
   const [editPriorityWeight, setEditPriorityWeight] = useState('0');
+  const [error, setError] = useState<string | null>(null);
+  
+  // Confirmation dialog states
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    itemName: string;
+    action: 'delete' | 'activate' | 'deactivate';
+    onConfirm: () => void;
+    error: string | null;
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    itemName: '',
+    action: 'delete',
+    onConfirm: () => {},
+    error: null,
+  });
   
   // Use the hook to get priorities with RLS - no manual client validation needed
   const { priorities, loading, refetch } = usePriorities();
 
   const handleAddPriority = async () => {
-    if (newPriorityName.trim()) {
-      try {
-        await priorityService.addPriority(
-          newPriorityName.trim(), 
-          newPriorityDescription.trim(), 
-          newPriorityColor, 
-          parseInt(newPriorityWeight) || 0
-        );
-        setNewPriorityName('');
-        setNewPriorityDescription('');
-        setNewPriorityColor('#10B981');
-        setNewPriorityWeight('0');
-        setIsAddDialogOpen(false);
-        // Refresh data immediately
-        await refetch();
-        toast.success('Priority added successfully');
-      } catch (error: any) {
-        console.error('Error adding priority:', error);
-        // Display the specific error message from the service
-        toast.error(error.message || 'Failed to add priority');
-      }
-    } else {
-      toast.error('Priority name cannot be empty');
+    if (!newPriorityName.trim()) {
+      setError('Priority name cannot be empty');
+      return;
+    }
+
+    try {
+      setError(null);
+      await priorityService.addPriority(
+        newPriorityName.trim(), 
+        newPriorityDescription.trim(), 
+        newPriorityColor, 
+        parseInt(newPriorityWeight) || 0
+      );
+      setNewPriorityName('');
+      setNewPriorityDescription('');
+      setNewPriorityColor('#10B981');
+      setNewPriorityWeight('0');
+      setIsAddDialogOpen(false);
+      // Refresh data immediately
+      await refetch();
+      toast.success('Priority added successfully');
+    } catch (error: any) {
+      console.error('Error adding priority:', error);
+      setError(error.message || 'Failed to add priority');
+      // Don't close the dialog when there's an error - keep it open so user can see the error message
     }
   };
 
   const handleEditPriority = async () => {
-    if (selectedPriority && editPriorityName.trim()) {
-      try {
-        await priorityService.updatePriority(
-          selectedPriority.id,
-          editPriorityName.trim(), 
-          editPriorityDescription.trim(), 
-          editPriorityColor, 
-          parseInt(editPriorityWeight) || 0
-        );
-        setIsEditDialogOpen(false);
-        setSelectedPriority(null);
-        // Refresh data immediately
-        await refetch();
-        toast.success('Priority updated successfully');
-      } catch (error: any) {
-        console.error('Error updating priority:', error);
-        // Display the specific error message from the service
-        toast.error(error.message || 'Failed to update priority');
-      }
-    } else {
-      toast.error('Priority name cannot be empty');
+    if (!selectedPriority || !editPriorityName.trim()) {
+      setError('Priority name cannot be empty');
+      return;
+    }
+
+    try {
+      setError(null);
+      await priorityService.updatePriority(
+        selectedPriority.id,
+        editPriorityName.trim(), 
+        editPriorityDescription.trim(), 
+        editPriorityColor, 
+        parseInt(editPriorityWeight) || 0
+      );
+      setIsEditDialogOpen(false);
+      setSelectedPriority(null);
+      // Refresh data immediately
+      await refetch();
+      toast.success('Priority updated successfully');
+    } catch (error: any) {
+      console.error('Error updating priority:', error);
+      setError(error.message || 'Failed to update priority');
+      // Don't close the dialog when there's an error - keep it open so user can see the error message
     }
   };
 
@@ -115,29 +140,55 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
 
   const handleToggleStatus = async (priority: PriorityItem) => {
     const newStatus = !priority.is_active;
-    try {
-      await priorityService.togglePriorityStatus(priority.id, newStatus);
-      // Refresh data immediately
-      await refetch();
-      toast.success(`Priority ${newStatus ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
-      console.error('Error toggling priority status:', error);
-      toast.error(`Failed to ${newStatus ? 'activate' : 'deactivate'} priority`);
-    }
+    const action = newStatus ? 'activate' as const : 'deactivate' as const;
+    
+    setConfirmationDialog({
+      open: true,
+      title: `${action === 'activate' ? 'Activate' : 'Deactivate'} Priority`,
+      description: `Please confirm that you want to ${action} this priority. This action will immediately ${action} the priority and may affect existing incidents.`,
+      itemName: priority.name,
+      action,
+      error: null,
+      onConfirm: async () => {
+        try {
+          await priorityService.togglePriorityStatus(priority.id, newStatus);
+          // Refresh data immediately
+          await refetch();
+          setConfirmationDialog(prev => ({ ...prev, open: false }));
+        } catch (error: any) {
+          console.error('Error toggling priority status:', error);
+          const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} priority`;
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+        }
+      },
+    });
   };
 
   const handleDeletePriority = async (id: string) => {
-    if (confirm('Are you sure you want to delete this priority?')) {
-      try {
-        await priorityService.deletePriority(id);
-        // Refresh data immediately
-        await refetch();
-        toast.success('Priority deleted successfully');
-      } catch (error) {
-        console.error('Error deleting priority:', error);
-        toast.error('Failed to delete priority');
-      }
-    }
+    // Find the priority to get its name for the confirmation message
+    const priority = priorities.find(p => p.id === id);
+    const priorityName = priority?.name || 'this priority';
+    
+    setConfirmationDialog({
+      open: true,
+      title: 'Delete Priority',
+      description: 'Please confirm that you want to proceed with this deletion. This action will immediately remove the priority and cannot be recovered.',
+      itemName: priorityName,
+      action: 'delete',
+      error: null,
+      onConfirm: async () => {
+        try {
+          await priorityService.deletePriority(id);
+          // Refresh data immediately
+          await refetch();
+          setConfirmationDialog(prev => ({ ...prev, open: false }));
+        } catch (error: any) {
+          console.error('Error deleting priority:', error);
+          const errorMessage = error?.message || 'Failed to delete priority';
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+        }
+      },
+    });
   };
 
   const getPriorityColorStyle = (color: string | null) => {
@@ -189,11 +240,12 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                   <div style={getPriorityColorStyle(priority.color)}></div>
                 </TableCell>
                 <TableCell className="font-medium">{priority.name}</TableCell>
-                <TableCell>{priority.description || '-'}</TableCell>
+                <TableCell title={priority.description || '-'}>{priority.description || '-'}</TableCell>
                 <TableCell>{priority.weight || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Switch 
+                    <StatusSwitch 
+                      variant="status"
                       checked={priority.is_active} 
                       onCheckedChange={() => handleToggleStatus(priority)}
                       aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
@@ -230,16 +282,29 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         fieldLabel="Name"
         value={newPriorityName}
         open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            // Clear error and reset form when dialog closes
+            setError(null);
+            setNewPriorityName('');
+            setNewPriorityDescription('');
+            setNewPriorityColor('#10B981');
+            setNewPriorityWeight('0');
+          }
+        }}
         onChange={setNewPriorityName}
         onSave={handleAddPriority}
         triggerButton={<Button className="hidden">Add</Button>}
+        maxLength={25}
+        isRequired={true}
         extraFields={[
           {
             type: 'text',
             label: 'Description',
             value: newPriorityDescription,
-            onChange: setNewPriorityDescription
+            onChange: setNewPriorityDescription,
+            maxLength: 100
           },
           {
             type: 'color',
@@ -254,6 +319,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
             onChange: setNewPriorityWeight
           }
         ]}
+        error={error}
+        isLoading={loading}
       />
 
       {/* Edit Priority Dialog */}
@@ -263,16 +330,25 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         fieldLabel="Name"
         value={editPriorityName}
         open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            // Clear error when dialog closes
+            setError(null);
+          }
+        }}
         onChange={setEditPriorityName}
         onSave={handleEditPriority}
         triggerButton={<Button className="hidden">Edit</Button>}
+        maxLength={25}
+        isRequired={true}
         extraFields={[
           {
             type: 'text',
             label: 'Description',
-            value: editPriorityDescription,
-            onChange: setEditPriorityDescription
+          value: editPriorityDescription,
+            onChange: setEditPriorityDescription,
+            maxLength: 100
           },
           {
             type: 'color',
@@ -287,6 +363,20 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
             onChange: setEditPriorityWeight
           }
         ]}
+        error={error}
+        isLoading={loading}
+      />
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmationDialog.open}
+        onOpenChange={(open) => setConfirmationDialog(prev => ({ ...prev, open }))}
+        onConfirm={confirmationDialog.onConfirm}
+        title={confirmationDialog.title}
+        description={confirmationDialog.description}
+        itemName={confirmationDialog.itemName}
+        action={confirmationDialog.action}
+        error={confirmationDialog.error}
       />
     </div>
   );

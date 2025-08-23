@@ -25,6 +25,7 @@ interface ExtraField {
   options?: SelectOption[];
   disabled?: boolean;
   onChange: (value: string) => void;
+  maxLength?: number;
 }
 
 interface EditDialogProps {
@@ -45,6 +46,12 @@ interface EditDialogProps {
   onClose?: () => void;
   triggerButton?: React.ReactNode;
   extraFields?: ExtraField[];
+  maxLength?: number;
+  // Error handling
+  error?: string | null;
+  isLoading?: boolean;
+  // Required field indicator
+  isRequired?: boolean;
 }
 
 export const EditDialog: React.FC<EditDialogProps> = ({
@@ -65,6 +72,12 @@ export const EditDialog: React.FC<EditDialogProps> = ({
   onClose,
   triggerButton,
   extraFields,
+  maxLength,
+  // Error handling
+  error,
+  isLoading = false,
+  // Required field indicator
+  isRequired = false,
 }) => {
   const [formData, setFormData] = React.useState<Record<string, string>>(initialValues);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -92,6 +105,13 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     }
   }, [dialogOpen, value]);
 
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!dialogOpen) {
+      setFormData(initialValues);
+    }
+  }, [dialogOpen, initialValues]);
+
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -108,6 +128,11 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     e.preventDefault();
     console.log("Form submitted");
     
+    // Don't submit if there's an error or loading
+    if (error || isLoading) {
+      return;
+    }
+    
     if (fields) {
       // For multi-field forms, pass the form data
       (onSave as (formData: Record<string, string>) => void)(formData);
@@ -116,11 +141,16 @@ export const EditDialog: React.FC<EditDialogProps> = ({
       (onSave as (value: string) => void)(localValue);
     }
     
-    setDialogOpen(false);
+    // Don't automatically close the dialog - let the parent component control this
+    // setDialogOpen(false);
   };
 
   const handleCancel = () => {
     console.log("Edit canceled");
+    // Reset form data and local value
+    setFormData(initialValues);
+    setLocalValue('');
+    
     if (onCancel) {
       onCancel();
     } else if (onClose) {
@@ -156,10 +186,12 @@ export const EditDialog: React.FC<EditDialogProps> = ({
             ))}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleCancel}>
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={isLoading || !!error}>
+              {isLoading ? 'Saving...' : 'Save'}
+            </Button>
           </DialogFooter>
         </form>
       );
@@ -168,10 +200,29 @@ export const EditDialog: React.FC<EditDialogProps> = ({
       return (
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
+            {/* Error message display at the top */}
+            {error && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <div className="col-span-4">
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-800">{error}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {fieldLabel && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <label htmlFor="field" className="text-right text-sm font-medium col-span-1">
-                  {fieldLabel}
+                  {fieldLabel} {isRequired && <span className="text-red-500">*</span>}
                 </label>
                 <div className="col-span-3">
                   <Input
@@ -179,8 +230,10 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                     name="field"
                     value={localValue}
                     onChange={(e) => handleFieldChange(e.target.value)}
-                    className="w-full"
+                    className={`w-full ${error ? 'border-red-500' : ''}`}
                     autoFocus
+                    maxLength={maxLength}
+                    required={isRequired}
                   />
                 </div>
               </div>
@@ -223,6 +276,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                       onChange={(e) => extraField.onChange(e.target.value)}
                       className="w-full"
                       disabled={extraField.disabled}
+                      maxLength={extraField.maxLength}
                     />
                   )}
                 </div>
@@ -230,10 +284,12 @@ export const EditDialog: React.FC<EditDialogProps> = ({
             ))}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleCancel}>
+            <Button type="button" variant="outline" onClick={handleCancel} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={isLoading || !!error}>
+              {isLoading ? 'Saving...' : 'Save'}
+            </Button>
           </DialogFooter>
         </form>
       );
@@ -255,6 +311,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                 {description && <DialogDescription>{description}</DialogDescription>}
               </DialogHeader>
             )}
+            
             {renderDialogContent()}
           </DialogContent>
         </Dialog>
@@ -272,6 +329,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
             {description && <DialogDescription>{description}</DialogDescription>}
           </DialogHeader>
         )}
+        
         {renderDialogContent()}
       </DialogContent>
     </Dialog>
