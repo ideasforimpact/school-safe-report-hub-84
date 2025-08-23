@@ -160,8 +160,14 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 className="min-h-[100px]"
+                maxLength={200}
                 required
               />
+              {rejectReason.length > 0 && (
+                <div className="text-xs text-muted-foreground text-right">
+                  {rejectReason.length}/200 characters
+                </div>
+              )}
             </div>
             <DialogFooter className="flex justify-center sm:justify-end mt-2 gap-2">
               <Button

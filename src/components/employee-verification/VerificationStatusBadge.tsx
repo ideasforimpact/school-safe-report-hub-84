@@ -293,7 +293,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
 
       {/* Reject Reason Dialog */}
       <Dialog open={rejectReasonDialogOpen} onOpenChange={setRejectReasonDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-w-[90vw] w-full">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-red-500" />
@@ -302,8 +302,23 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           </DialogHeader>
           <div className="p-4">
             <p className="text-sm text-gray-600 mb-3">This document was rejected for the following reason:</p>
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-sm text-red-800">{rejectReason}</p>
+            <div className="bg-red-50 border border-red-200 rounded-md p-3 w-full">
+              <div 
+                className="text-sm text-red-800 w-full"
+                style={{ 
+                  wordWrap: 'break-word',
+                  overflowWrap: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  width: '100%',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box',
+                  display: 'block',
+                  wordBreak: 'break-all',
+                  hyphens: 'auto'
+                }}
+              >
+                {rejectReason}
+              </div>
             </div>
           </div>
         </DialogContent>

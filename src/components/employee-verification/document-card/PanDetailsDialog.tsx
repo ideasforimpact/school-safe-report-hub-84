@@ -256,8 +256,14 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="Please provide a reason for rejecting this document..."
                 className="mt-1 min-h-[80px]"
+                maxLength={200}
                 required
               />
+              {rejectReason.length > 0 && (
+                <div className="text-xs text-muted-foreground text-right mt-1">
+                  {rejectReason.length}/200 characters
+                </div>
+              )}
             </div>
           </div>
         )}
