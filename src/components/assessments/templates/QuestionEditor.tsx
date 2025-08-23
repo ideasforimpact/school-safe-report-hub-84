@@ -75,6 +75,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           value={question.text}
           onChange={handleTextChange}
           placeholder="Enter yes/no question text"
+          maxLength={200}
           className="mb-3"
         />
         

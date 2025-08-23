@@ -700,6 +700,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                 </SelectContent>
               </Select>
 
+
+
               {/* Clear Filters Button */}
               {activeFiltersCount > 0 && (
                 <Button

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, ExternalLink, QrCode, X, ToggleLeft, ToggleRight, Download } from 'lucide-react';
+import { Plus, ExternalLink, QrCode, X, ToggleLeft, ToggleRight, Download, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -63,6 +63,7 @@ const FormConfigurationContent = () => {
   const [confirmToggleOpen, setConfirmToggleOpen] = useState(false);
   const [toggleTarget, setToggleTarget] = useState<CustomForm | null>(null);
   const [isToggling, setIsToggling] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -259,6 +260,7 @@ const FormConfigurationContent = () => {
     if (!toggleTarget) return;
     try {
       setIsToggling(true);
+      setIsPageLoading(true);
       await toggleFormActive(toggleTarget.id, !toggleTarget.is_active);
       await refetch();
       toast({ title: 'Success', description: `Form ${toggleTarget.is_active ? 'deactivated' : 'activated'} successfully` });
@@ -266,6 +268,7 @@ const FormConfigurationContent = () => {
       toast({ title: 'Error', description: 'Failed to update form status', variant: 'destructive' });
     } finally {
       setIsToggling(false);
+      setIsPageLoading(false);
       setConfirmToggleOpen(false);
       setToggleTarget(null);
     }
@@ -312,14 +315,24 @@ const FormConfigurationContent = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Loading Overlay */}
+      {isPageLoading && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-gray-600 font-medium">Updating form status...</p>
+          </div>
+        </div>
+      )}
+      
       {forms.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center">
               <h3 className="text-lg font-medium mb-2">No forms created yet</h3>
               <p className="text-gray-500 mb-6">Create your first custom form to start collecting data</p>
-              <Button onClick={handleCreateForm}>Create Form</Button>
+              <Button onClick={handleCreateForm} disabled={isPageLoading}>Create Form</Button>
             </div>
           </CardContent>
         </Card>
@@ -333,11 +346,12 @@ const FormConfigurationContent = () => {
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search forms..."
                   className="w-full border rounded px-3 py-2 text-sm"
+                  disabled={isPageLoading}
                 />
               </div>
               <div>
                 <Select onValueChange={(value) => setStatusFilter(value as any)} defaultValue="all">
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px]" disabled={isPageLoading}>
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,6 +368,7 @@ const FormConfigurationContent = () => {
                   size="icon"
                   onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
                   className="text-sm text-blue-600"
+                  disabled={isPageLoading}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -395,13 +410,13 @@ const FormConfigurationContent = () => {
                             {form.is_active && (
                               <>
                             {/* Preview */}
-                            <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
+                            <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')} disabled={isPageLoading}>
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                             {/* QR */}
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="outline" size="icon">
+                                <Button variant="outline" size="icon" disabled={isPageLoading}>
                                   <QrCode className="h-4 w-4" />
                         </Button>
                               </DialogTrigger>
@@ -428,6 +443,7 @@ const FormConfigurationContent = () => {
                               size="icon"
                               onClick={() => requestToggle(form)}
                               title={form.is_active ? 'Deactivate' : 'Activate'}
+                              disabled={isPageLoading}
                         >
                           {form.is_active ? (
                                 <ToggleLeft className="h-4 w-4 text-red-600" />

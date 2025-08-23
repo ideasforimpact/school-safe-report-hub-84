@@ -49,7 +49,7 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Assessment Templates</h2>
         {onCreateTemplate && (
-          <Button onClick={onCreateTemplate}>
+          <Button onClick={onCreateTemplate} className="ml-4">
             <Plus className="h-4 w-4 mr-2" />
             Create Template
           </Button>

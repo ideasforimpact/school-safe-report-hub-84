@@ -25,6 +25,30 @@ export interface DatabaseTemplate {
 }
 
 export const templateService = {
+  async checkDuplicateTemplate(title: string, excludeId?: string): Promise<boolean> {
+    try {
+      let query = supabase
+        .from('assessment_templates')
+        .select('id')
+        .eq('title', title.trim());
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw error;
+      }
+
+      return data && data.length > 0;
+    } catch (error: any) {
+      console.error('Error checking duplicate template:', error);
+      return false;
+    }
+  },
+
   async getTemplateCategories(): Promise<TemplateCategory[]> {
     const { data, error } = await supabase
       .from('template_categories')
@@ -65,6 +89,12 @@ export const templateService = {
     questions: AssessmentQuestion[];
   }): Promise<string> {
     console.log('Creating template with data:', template);
+    
+    // Check for duplicate title
+    const isDuplicate = await this.checkDuplicateTemplate(template.title);
+    if (isDuplicate) {
+      throw new Error('A template with this title already exists');
+    }
     
     // Get category ID by name
     const { data: category } = await supabase
@@ -132,7 +162,14 @@ export const templateService = {
   async updateTemplate(id: string, updates: Partial<AssessmentTemplate>): Promise<void> {
     const updateData: any = {};
 
-    if (updates.title) updateData.title = updates.title;
+    if (updates.title) {
+      // Check for duplicate title (excluding current template)
+      const isDuplicate = await this.checkDuplicateTemplate(updates.title, id);
+      if (isDuplicate) {
+        throw new Error('A template with this title already exists');
+      }
+      updateData.title = updates.title;
+    }
     if (updates.description) updateData.description = updates.description;
     if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
     

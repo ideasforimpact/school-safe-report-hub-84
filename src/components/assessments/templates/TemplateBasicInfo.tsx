@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,8 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
   isActive,
   setIsActive
 }) => {
+  const [titleError, setTitleError] = useState<string | null>(null);
+
   const templateTypes = [
     'Safety',
     'Compliance',
@@ -39,6 +41,29 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
     'Maintenance'
   ];
 
+  // Validation function for template title (no special characters allowed)
+  const isValidTemplateTitle = (value: string) => {
+    return /^[a-zA-Z0-9\s]{1,25}$/.test(value);
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTitle(value);
+    
+    // Clear error if field is empty (user is typing)
+    if (value === '') {
+      setTitleError(null);
+      return;
+    }
+    
+    // Validate as user types
+    if (!isValidTemplateTitle(value)) {
+      setTitleError('Template title can only contain letters, numbers, and spaces');
+    } else {
+      setTitleError(null);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -46,23 +71,29 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="title">Template Title</Label>
+          <Label htmlFor="title">Template Title <span className="text-red-500">*</span></Label>
           <Input
             id="title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={handleTitleChange}
             placeholder="Enter template title"
+            maxLength={25}
             required
+            className={titleError ? 'border-red-500' : ''}
           />
+          {titleError && (
+            <p className="text-sm text-red-500 mt-1">{titleError}</p>
+          )}
         </div>
         
         <div>
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">Description (Optional)</Label>
           <Textarea
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Enter template description"
+            maxLength={150}
             rows={3}
           />
         </div>

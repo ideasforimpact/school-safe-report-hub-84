@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch, FileUp } from 'lucide-react';
+import { PlusCircle, UserSearch, FileUp, Search, RefreshCw } from 'lucide-react';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
@@ -23,6 +23,8 @@ import {
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -31,7 +33,12 @@ interface StudentManagementProps {
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('all');
+  const [sectionFilter, setSectionFilter] = useState('all');
+  const [campusFilter, setCampusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -87,14 +94,56 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     }
   };
 
-  const filteredStudents = students.filter(
-    student =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.grade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.section.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.campus.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter students based on search query and filters
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      const matchesSearch = 
+        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.grade.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        student.campus.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesGrade = gradeFilter === 'all' || student.grade === gradeFilter;
+      const matchesSection = sectionFilter === 'all' || student.section === sectionFilter;
+      const matchesCampus = campusFilter === 'all' || student.campus === campusFilter;
+      
+      return matchesSearch && matchesGrade && matchesSection && matchesCampus;
+    });
+  }, [students, searchQuery, gradeFilter, sectionFilter, campusFilter]);
+
+  // Pagination logic
+  const totalItems = filteredStudents.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredStudents.slice(startIndex, endIndex);
+  }, [filteredStudents, currentPage, itemsPerPage]);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, gradeFilter, sectionFilter, campusFilter, itemsPerPage]);
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setGradeFilter('all');
+    setSectionFilter('all');
+    setCampusFilter('all');
+    setItemsPerPage(10);
+  };
+
+  // Get active filters count
+  const activeFiltersCount = [
+    searchQuery ? 1 : 0,
+    gradeFilter !== 'all' ? 1 : 0,
+    sectionFilter !== 'all' ? 1 : 0,
+    campusFilter !== 'all' ? 1 : 0,
+    itemsPerPage !== 10 ? 1 : 0,
+  ].reduce((sum, count) => sum + count, 0);
 
   const content = (
     <div className="space-y-6">
@@ -140,36 +189,126 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         </div>
       )}
 
-      {/* Search and filter */}
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <UserSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search students..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
+      <Card className="mx-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Students</CardTitle>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={refreshStudents}
+            disabled={isLoading}
+            title="Refresh student list"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </CardHeader>
+        
+        {/* Search and Filters Section - Inside the card */}
+        <CardContent className="pb-4">
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full mb-4">
+            {/* Search Bar */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search by name, student ID, grade, section, or campus..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-10"
+                />
+              </div>
+            </div>
+            
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              {/* Grade Filter */}
+              <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                <SelectTrigger className="w-[140px] h-10">
+                  <SelectValue placeholder="All Grades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grades</SelectItem>
+                  {Array.from(new Set(students.map(s => s.grade))).sort().map(grade => (
+                    <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-      {/* Loading state */}
-      {isLoading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      ) : (
-        /* Students list */
-        <StudentsList
-          students={filteredStudents}
-          onEditClick={handleEditClick}
-          onDeleteStudent={handleDeleteClick}
-        />
-      )}
+              {/* Section Filter */}
+              <Select value={sectionFilter} onValueChange={setSectionFilter}>
+                <SelectTrigger className="w-[140px] h-10">
+                  <SelectValue placeholder="All Sections" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sections</SelectItem>
+                  {Array.from(new Set(students.map(s => s.section))).sort().map(section => (
+                    <SelectItem key={section} value={section}>{section}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Campus Filter */}
+              <Select value={campusFilter} onValueChange={setCampusFilter}>
+                <SelectTrigger className="w-[140px] h-10">
+                  <SelectValue placeholder="All Campuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Campuses</SelectItem>
+                  {Array.from(new Set(students.map(s => s.campus))).sort().map(campus => (
+                    <SelectItem key={campus} value={campus}>{campus}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Clear Filters Button */}
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="text-gray-600 h-10"
+                >
+                  Clear Filters ({activeFiltersCount})
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          {/* Student count after search and filters */}
+          <div className="mb-6">
+            <p className="text-sm text-gray-600">
+              Showing {filteredStudents.length} of {students.length} students
+            </p>
+          </div>
+          
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div>
+              {filteredStudents && filteredStudents.length > 0 ? (
+                <StudentsList
+                  students={paginatedStudents}
+                  onEditClick={handleEditClick}
+                  onDeleteStudent={handleDeleteClick}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                />
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {searchQuery || gradeFilter !== 'all' || sectionFilter !== 'all' || campusFilter !== 'all' ? 'No students found matching your filters.' : 'No students found.'}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add Student Dialog */}
       <AddStudentDialog

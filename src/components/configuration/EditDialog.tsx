@@ -52,6 +52,9 @@ interface EditDialogProps {
   isLoading?: boolean;
   // Required field indicator
   isRequired?: boolean;
+  // Validation
+  validationFunction?: (value: string) => boolean;
+  validationMessage?: string;
 }
 
 export const EditDialog: React.FC<EditDialogProps> = ({
@@ -78,6 +81,9 @@ export const EditDialog: React.FC<EditDialogProps> = ({
   isLoading = false,
   // Required field indicator
   isRequired = false,
+  // Validation
+  validationFunction,
+  validationMessage,
 }) => {
   const [formData, setFormData] = React.useState<Record<string, string>>(initialValues);
   const [isOpen, setIsOpen] = React.useState(false);
@@ -131,6 +137,11 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     // Don't submit if there's an error or loading
     if (error || isLoading) {
       return;
+    }
+    
+    // Validate if validation function is provided
+    if (validationFunction && !validationFunction(localValue)) {
+      return; // Don't submit if validation fails
     }
     
     if (fields) {
@@ -230,11 +241,14 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                     name="field"
                     value={localValue}
                     onChange={(e) => handleFieldChange(e.target.value)}
-                    className={`w-full ${error ? 'border-red-500' : ''}`}
+                    className={`w-full ${error ? 'border-red-500' : ''} ${validationFunction && localValue && !validationFunction(localValue) ? 'border-red-500' : ''}`}
                     autoFocus
                     maxLength={maxLength}
                     required={isRequired}
                   />
+                  {validationFunction && localValue && !validationFunction(localValue) && validationMessage && (
+                    <p className="text-xs text-red-500 mt-1">{validationMessage}</p>
+                  )}
                 </div>
               </div>
             )}

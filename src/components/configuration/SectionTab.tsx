@@ -53,6 +53,23 @@ export const SectionTab = ({
   const [searchFilter, setSearchFilter] = useState('');
   const [filterCampusId, setFilterCampusId] = useState<string>('');
   const [filterClassId, setFilterClassId] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Validation function for section name (alphanumeric only, max 20 characters)
+  const isValidSectionName = (name: string) => {
+    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    return nameRegex.test(name);
+  };
+
+  // Check for duplicate section names within the same class
+  const isDuplicateSectionName = (name: string, classId: string, excludeId?: string) => {
+    return sections.some(section => 
+      section.name.toLowerCase() === name.toLowerCase() && 
+      section.classId === classId &&
+      section.id !== excludeId
+    );
+  };
 
   // Filter classes by selected campus
   useEffect(() => {
@@ -70,8 +87,15 @@ export const SectionTab = ({
   const handleSectionAdd = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newSection.trim()) {
+    const sectionName = newSection.trim();
+    
+    if (!sectionName) {
       toast.error("Section name cannot be empty");
+      return;
+    }
+    
+    if (!isValidSectionName(sectionName)) {
+      toast.error("Section name can only contain letters, numbers, and spaces (max 20 characters)");
       return;
     }
     
@@ -85,7 +109,12 @@ export const SectionTab = ({
       return;
     }
     
-    addSection(selectedClassId, selectedCampusId, newSection.trim());
+    if (isDuplicateSectionName(sectionName, selectedClassId)) {
+      toast.error("A section with this name already exists in the selected grade");
+      return;
+    }
+    
+    addSection(selectedClassId, selectedCampusId, sectionName);
     setNewSection('');
     setSelectedClassId('');
     setSelectedCampusId('');
@@ -108,8 +137,15 @@ export const SectionTab = ({
   };
 
   const handleEditSave = (updatedName: string) => {
-    if (!updatedName.trim()) {
+    const sectionName = updatedName.trim();
+    
+    if (!sectionName) {
       toast.error("Section name cannot be empty");
+      return;
+    }
+    
+    if (!isValidSectionName(sectionName)) {
+      toast.error("Section name can only contain letters, numbers, and spaces (max 20 characters)");
       return;
     }
     
@@ -124,12 +160,17 @@ export const SectionTab = ({
         return;
       }
       
-      console.log("Updating section:", editingSection.id, editingSection.classId, editingSection.campusId, updatedName.trim());
+      if (isDuplicateSectionName(sectionName, editingSection.classId, editingSection.id)) {
+        toast.error("A section with this name already exists in the selected grade");
+        return;
+      }
+      
+      console.log("Updating section:", editingSection.id, editingSection.classId, editingSection.campusId, sectionName);
       updateSection(
         editingSection.id, 
         editingSection.classId, 
         editingSection.campusId, 
-        updatedName.trim()
+        sectionName
       );
       handleEditClose();
       toast.success("Section updated successfully");
@@ -192,6 +233,21 @@ export const SectionTab = ({
     
     return filtered;
   }, [sections, searchFilter, filterCampusId, filterClassId]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredSections.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSections = filteredSections.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchFilter, filterCampusId, filterClassId]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   // Get classes filtered by selected campus for the class filter dropdown
   const availableClassesForFilter = useMemo(() => {
@@ -266,14 +322,22 @@ export const SectionTab = ({
               placeholder="New section name (e.g., Section A)"
               value={newSection}
               onChange={(e) => setNewSection(e.target.value)}
+              maxLength={20}
+              className={newSection && !isValidSectionName(newSection) ? 'border-red-500' : ''}
             />
+            {newSection && !isValidSectionName(newSection) && (
+              <p className="text-xs text-red-500 mt-1">Section name can only contain letters, numbers, and spaces (max 20 characters)</p>
+            )}
+            {newSection && selectedClassId && isDuplicateSectionName(newSection, selectedClassId) && (
+              <p className="text-xs text-red-500 mt-1">A section with this name already exists in the selected grade</p>
+            )}
           </div>
           
           <div className="self-end">
             <Button 
               type="submit" 
               className="whitespace-nowrap w-full" 
-              disabled={loading || !selectedCampusId || !selectedClassId}
+              disabled={loading || !newSection.trim() || !isValidSectionName(newSection) || !selectedCampusId || !selectedClassId || isDuplicateSectionName(newSection, selectedClassId)}
             >
               {loading ? (
                 <>
@@ -392,7 +456,7 @@ export const SectionTab = ({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredSections.map((section) => (
+              paginatedSections.map((section) => (
                 <TableRow key={section.id}>
                   <TableCell>{section.name}</TableCell>
                   <TableCell>{getClassName(section.classId)}</TableCell>
@@ -428,6 +492,59 @@ export const SectionTab = ({
           </TableBody>
         </Table>
 
+        {/* Pagination */}
+        {filteredSections.length > itemsPerPage && (
+          <div className="flex items-center justify-center space-x-2 mt-4">
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex space-x-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+              >
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ‹
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                »
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Edit Dialog */}
         {editingSection && (
           <EditDialog
@@ -442,6 +559,10 @@ export const SectionTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
+            maxLength={20}
+            validationFunction={isValidSectionName}
+            validationMessage="Section name can only contain letters, numbers, and spaces (max 20 characters)"
+            isRequired={true}
             extraFields={[
               {
                 type: "select",

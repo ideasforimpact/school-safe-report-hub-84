@@ -45,8 +45,14 @@ interface Section {
 }
 
 const formSchema = z.object({
-  studentId: z.string().min(1, { message: 'Student ID is required' }),
-  name: z.string().min(2, { message: 'Name is required and must be at least 2 characters' }),
+  studentId: z.string()
+    .min(1, { message: 'Student ID is required' })
+    .max(15, { message: 'Student ID cannot exceed 15 characters' })
+    .regex(/^[a-zA-Z0-9]+$/, { message: 'Student ID must be alphanumeric' }),
+  name: z.string()
+    .min(1, { message: 'Name is required' })
+    .max(25, { message: 'Name cannot exceed 25 characters' })
+    .regex(/^[a-zA-Z\s]+$/, { message: 'Name can only contain letters and spaces' }),
   campus: z.string().min(1, { message: 'Campus is required' }),
   grade: z.string().min(1, { message: 'Grade is required' }),
   section: z.string().min(1, { message: 'Section is required' })
@@ -128,6 +134,18 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
 
     validateStudentId();
   }, [debouncedStudentId, employeeData?.clientId, defaultValues?.studentId]);
+
+  // Student ID validation function (alphanumeric, max 15 characters)
+  const isValidStudentId = (studentId: string) => {
+    const studentIdRegex = /^[a-zA-Z0-9]{1,15}$/;
+    return studentIdRegex.test(studentId);
+  };
+
+  // Name validation function (letters and spaces only, no special characters)
+  const isValidName = (name: string) => {
+    const nameRegex = /^[a-zA-Z\s]{1,25}$/;
+    return nameRegex.test(name);
+  };
 
   // Handle student ID input change
   const handleStudentIdChange = (value: string) => {
@@ -292,13 +310,14 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           name="studentId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Student ID</FormLabel>
+              <FormLabel>Student ID <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <div className="relative">
                   <Input 
                     placeholder="Enter student ID" 
                     value={studentIdInput}
                     onChange={(e) => handleStudentIdChange(e.target.value)}
+                    maxLength={15}
                     className={`pr-10 ${studentIdExists ? 'border-red-500' : ''}`}
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -322,6 +341,9 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
                   {studentIdValidationMessage}
                 </p>
               )}
+              {studentIdInput && !isValidStudentId(studentIdInput) && (
+                <p className="text-xs text-red-500">Student ID must be alphanumeric and maximum 15 characters</p>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -332,10 +354,21 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Name</FormLabel>
+              <FormLabel>Name <span className="text-red-500">*</span></FormLabel>
               <FormControl>
-                <Input placeholder="Enter student name" {...field} />
+                <Input 
+                  placeholder="Enter student name" 
+                  maxLength={25}
+                  className={field.value && !isValidName(field.value) ? 'border-red-500' : ''}
+                  {...field} 
+                />
               </FormControl>
+              {field.value && field.value.length > 25 && (
+                <p className="text-xs text-red-500">Name cannot exceed 25 characters</p>
+              )}
+              {field.value && !isValidName(field.value) && (
+                <p className="text-xs text-red-500">Name can only contain letters and spaces</p>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -346,7 +379,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           name="campus"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Campus</FormLabel>
+              <FormLabel>Campus <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select 
                   value={field.value} 
@@ -375,7 +408,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           name="grade"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Grade</FormLabel>
+              <FormLabel>Grade <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select 
                   value={field.value} 
@@ -405,7 +438,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           name="section"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Section</FormLabel>
+              <FormLabel>Section <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Select 
                   value={field.value} 
@@ -430,7 +463,17 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
         <Button 
           type="submit" 
           className="w-full" 
-          disabled={isSubmitting || studentIdExists || isCheckingStudentId}
+          disabled={
+            isSubmitting || 
+            studentIdExists || 
+            isCheckingStudentId || 
+            !isValidStudentId(studentIdInput) ||
+            !form.getValues('name') ||
+            !isValidName(form.getValues('name')) ||
+            !form.getValues('campus') ||
+            !form.getValues('grade') ||
+            !form.getValues('section')
+          }
         >
           {isSubmitting ? 'Processing...' : 'Save Student'}
         </Button>

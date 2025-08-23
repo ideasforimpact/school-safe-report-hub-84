@@ -18,6 +18,12 @@ import { reportTypeService } from '@/services/incident/reportTypeService';
 import { useReportTypes } from '@/hooks/useReportTypes';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
+// Validation function for report type names (no special characters, max 25 chars)
+const isValidReportTypeName = (name: string) => {
+  const reportTypeNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  return reportTypeNameRegex.test(name);
+};
+
 interface ReportType {
   id: string;
   name: string;
@@ -44,6 +50,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   const [editTypeName, setEditTypeName] = useState('');
   const [editTypeDescription, setEditTypeDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
   // Confirmation dialog states
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -73,6 +80,11 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       return;
     }
 
+    if (!isValidReportTypeName(newTypeName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
+      return;
+    }
+
     try {
       setError(null);
       await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim());
@@ -92,6 +104,11 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   const handleEditReportType = async () => {
     if (!selectedType || !editTypeName.trim()) {
       setError('Name is required');
+      return;
+    }
+
+    if (!isValidReportTypeName(editTypeName.trim())) {
+      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
       return;
     }
 
@@ -170,6 +187,14 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     });
   };
 
+  // Filter report types based on status
+  const filteredReportTypes = reportTypes.filter(type => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return type.is_active;
+    if (statusFilter === 'inactive') return !type.is_active;
+    return true;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -186,11 +211,49 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         </Button>
       </div>
 
+      {/* Status Filter */}
+      <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium text-gray-700">Filter by status:</span>
+          <div className="flex space-x-1">
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('all')}
+              className="text-xs"
+            >
+              All
+            </Button>
+            <Button
+              variant={statusFilter === 'active' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('active')}
+              className="text-xs"
+            >
+              Active
+            </Button>
+            <Button
+              variant={statusFilter === 'inactive' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter('inactive')}
+              className="text-xs"
+            >
+              Inactive
+            </Button>
+          </div>
+        </div>
+        {statusFilter !== 'all' && (
+          <span className="text-sm text-gray-500">
+            Showing {filteredReportTypes.length} of {reportTypes.length} report types
+          </span>
+        )}
+      </div>
+
       {loading ? (
         <div className="text-center p-8 border rounded-md bg-gray-50">
           <p className="text-gray-500 text-lg">Loading report types...</p>
         </div>
-      ) : reportTypes.length > 0 ? (
+      ) : filteredReportTypes.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
@@ -201,7 +264,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {reportTypes.map((type) => (
+            {filteredReportTypes.map((type) => (
               <TableRow key={type.id} className={!type.is_active ? "opacity-60" : ""}>
                 <TableCell className="font-medium">{type.name}</TableCell>
                 <TableCell title={type.description || '-'}>{type.description || '-'}</TableCell>
@@ -245,7 +308,12 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         </Table>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">No report types have been added yet</p>
+          <p className="text-gray-500">
+            {reportTypes.length === 0 
+              ? "No report types have been added yet" 
+              : `No ${statusFilter} report types found`
+            }
+          </p>
         </div>
       )}
 
@@ -281,6 +349,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           ]}
           error={error}
           isLoading={loading}
+          validationFunction={isValidReportTypeName}
+          validationMessage="Name must be alphanumeric with spaces only, maximum 25 characters"
         />
 
       {/* Edit Dialog */}
@@ -313,6 +383,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           ]}
           error={error}
           isLoading={loading}
+          validationFunction={isValidReportTypeName}
+          validationMessage="Name must be alphanumeric with spaces only, maximum 25 characters"
         />
 
       {/* Confirmation Dialog */}

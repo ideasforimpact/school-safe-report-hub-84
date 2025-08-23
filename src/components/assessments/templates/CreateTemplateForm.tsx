@@ -96,6 +96,13 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       return false;
     }
     
+    // Validate template title format (no special characters allowed)
+    const isValidTemplateTitle = /^[a-zA-Z0-9\s]{1,25}$/.test(title.trim());
+    if (!isValidTemplateTitle) {
+      setFormError('Template title can only contain letters, numbers, and spaces');
+      return false;
+    }
+    
     if (questions.length === 0) {
       setFormError('At least one question is required');
       return false;
@@ -225,11 +232,11 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       } else {
         navigate('/assessments/templates');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving template:', error);
-      const errorMessage = isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.';
+      const errorMessage = error.message || (isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.');
       setFormError(errorMessage);
-      toast.error(errorMessage);
+      // Don't show toast error - let the form error handle it
     } finally {
       setIsSubmitting(false);
     }
@@ -278,6 +285,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
       </div>
       
       <form onSubmit={onFormSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        {/* Error message display at the top */}
+        {formError && <FormError error={formError} />}
+        
         <TemplateBasicInfo
           title={title}
           setTitle={setTitle}
@@ -297,8 +307,6 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           pendingFiles={pendingFiles}
           onPendingFilesChange={setPendingFiles}
         />
-        
-        {formError && <FormError error={formError} />}
         
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
           <Button 

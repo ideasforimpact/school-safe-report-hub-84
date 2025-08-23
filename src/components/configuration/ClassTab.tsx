@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -49,12 +49,36 @@ export const ClassTab = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [filterCampusId, setFilterCampusId] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Validation function for grade name (alphanumeric only, max 20 characters)
+  const isValidGradeName = (name: string) => {
+    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    return nameRegex.test(name);
+  };
+
+  // Check for duplicate grade names within the same campus
+  const isDuplicateGradeName = (name: string, campusId: string, excludeId?: string) => {
+    return classes.some(cls => 
+      cls.name.toLowerCase() === name.toLowerCase() && 
+      cls.campusId === campusId &&
+      cls.id !== excludeId
+    );
+  };
 
   const handleClassAdd = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newClass.trim()) {
+    const gradeName = newClass.trim();
+    
+    if (!gradeName) {
       toast.error("Grade name cannot be empty");
+      return;
+    }
+    
+    if (!isValidGradeName(gradeName)) {
+      toast.error("Grade name can only contain letters, numbers, and spaces (max 20 characters)");
       return;
     }
     
@@ -63,7 +87,12 @@ export const ClassTab = ({
       return;
     }
     
-    addClass(selectedCampusId, newClass.trim());
+    if (isDuplicateGradeName(gradeName, selectedCampusId)) {
+      toast.error("A grade with this name already exists in the selected campus");
+      return;
+    }
+    
+    addClass(selectedCampusId, gradeName);
     setNewClass('');
     toast.success("Grade added successfully");
   };
@@ -91,8 +120,15 @@ export const ClassTab = ({
   };
 
   const handleEditSave = (updatedName: string) => {
-    if (!updatedName.trim()) {
+    const gradeName = updatedName.trim();
+    
+    if (!gradeName) {
       toast.error("Grade name cannot be empty");
+      return;
+    }
+    
+    if (!isValidGradeName(gradeName)) {
+      toast.error("Grade name can only contain letters, numbers, and spaces (max 20 characters)");
       return;
     }
     
@@ -102,8 +138,13 @@ export const ClassTab = ({
         return;
       }
       
-      console.log("Updating class:", editingClass.id, editingClass.campusId, updatedName.trim());
-      updateClass(editingClass.id, editingClass.campusId, updatedName.trim());
+      if (isDuplicateGradeName(gradeName, editingClass.campusId, editingClass.id)) {
+        toast.error("A grade with this name already exists in the selected campus");
+        return;
+      }
+      
+      console.log("Updating class:", editingClass.id, editingClass.campusId, gradeName);
+      updateClass(editingClass.id, editingClass.campusId, gradeName);
       handleEditClose();
       toast.success("Grade updated successfully");
     }
@@ -143,6 +184,21 @@ export const ClassTab = ({
     return filtered;
   }, [classes, searchFilter, filterCampusId]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredClasses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedClasses = filteredClasses.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchFilter, filterCampusId]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   const clearFilters = () => {
     setSearchFilter('');
     setFilterCampusId('');
@@ -180,10 +236,22 @@ export const ClassTab = ({
               placeholder="New grade name (e.g., Grade 5)"
               value={newClass}
               onChange={(e) => setNewClass(e.target.value)}
+              maxLength={20}
+              className={newClass && !isValidGradeName(newClass) ? 'border-red-500' : ''}
             />
+            {newClass && !isValidGradeName(newClass) && (
+              <p className="text-xs text-red-500 mt-1">Grade name can only contain letters, numbers, and spaces (max 20 characters)</p>
+            )}
+            {newClass && selectedCampusId && isDuplicateGradeName(newClass, selectedCampusId) && (
+              <p className="text-xs text-red-500 mt-1">A grade with this name already exists in the selected campus</p>
+            )}
           </div>
           <div className="self-end">
-            <Button type="submit" className="whitespace-nowrap w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="whitespace-nowrap w-full" 
+              disabled={loading || !newClass.trim() || !isValidGradeName(newClass) || !selectedCampusId || isDuplicateGradeName(newClass, selectedCampusId)}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
@@ -275,7 +343,7 @@ export const ClassTab = ({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredClasses.map((cls) => (
+              paginatedClasses.map((cls) => (
                 <TableRow key={cls.id}>
                   <TableCell>{cls.name}</TableCell>
                   <TableCell>{getCampusName(cls.campusId)}</TableCell>
@@ -306,6 +374,59 @@ export const ClassTab = ({
           </TableBody>
         </Table>
 
+        {/* Pagination */}
+        {filteredClasses.length > itemsPerPage && (
+          <div className="flex items-center justify-center space-x-2 mt-4">
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex space-x-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+              >
+                «
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ‹
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                ›
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                »
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Edit Dialog */}
         {editingClass && (
           <EditDialog
@@ -320,6 +441,10 @@ export const ClassTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
+            maxLength={20}
+            validationFunction={isValidGradeName}
+            validationMessage="Grade name can only contain letters, numbers, and spaces (max 20 characters)"
+            isRequired={true}
             extraFields={[
               {
                 type: "select",

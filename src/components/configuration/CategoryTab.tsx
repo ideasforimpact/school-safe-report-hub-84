@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
 import { CategoryItem } from '@/services/incident/categoryService';
@@ -33,6 +33,12 @@ interface CategoryTabProps {
   updateCategory: (id: string, name: string) => void;
   deleteCategory: (id: string) => Promise<void>;
 }
+
+// Validation function for category names (no special characters, max 25 chars)
+const isValidCategoryName = (name: string) => {
+  const categoryNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  return categoryNameRegex.test(name);
+};
 
 export const CategoryTab = ({ 
   categories, 
@@ -46,6 +52,11 @@ export const CategoryTab = ({
   const [categoryToDelete, setCategoryToDelete] = useState<{id: string, name: string} | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleCategoryAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,14 +65,22 @@ export const CategoryTab = ({
       setError("Category name cannot be empty");
       return;
     }
+
+    if (!isValidCategoryName(newCategory.trim())) {
+      setError("Category name must be alphanumeric with spaces only, maximum 25 characters");
+      return;
+    }
     
     try {
       setError(null);
+      setIsAdding(true);
       await addCategory(newCategory.trim());
       setNewCategory('');
     } catch (error: any) {
       console.error('Error in handleCategoryAdd:', error);
       setError(error.message || 'Failed to add category');
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -70,19 +89,32 @@ export const CategoryTab = ({
       id: category.id,
       name: category.name
     });
+    setDeleteError(null); // Clear any previous error
     setIsDeleteDialogOpen(true);
   };
 
   const confirmCategoryDelete = async () => {
+    console.log('Component: confirmCategoryDelete called');
+    
     if (categoryToDelete) {
       try {
+        console.log('Component: Starting delete process for category:', categoryToDelete);
+        setIsDeleting(true);
+        setIsRefreshing(true);
+        setDeleteError(null); // Clear any previous error
         await deleteCategory(categoryToDelete.id);
+        console.log('Component: Delete completed successfully');
         setIsDeleteDialogOpen(false);
         setCategoryToDelete(null);
       } catch (error: any) {
-        // Error is already handled by the service with toast
-        setIsDeleteDialogOpen(false);
-        setCategoryToDelete(null);
+        console.error('Component: Error in confirmCategoryDelete:', error);
+        // Show the specific error message to the user
+        setDeleteError(error.message || 'Failed to delete category');
+        toast.error(error.message || 'Failed to delete category');
+        // Don't close the dialog on error - let user see the error message
+      } finally {
+        setIsDeleting(false);
+        setIsRefreshing(false);
       }
     }
   };
@@ -90,6 +122,7 @@ export const CategoryTab = ({
   const cancelCategoryDelete = () => {
     setIsDeleteDialogOpen(false);
     setCategoryToDelete(null);
+    setDeleteError(null); // Clear error when canceling
   };
 
   const handleEditOpen = (category: CategoryItem) => {
@@ -110,12 +143,15 @@ export const CategoryTab = ({
     if (editingCategory) {
       try {
         setError(null);
+        setIsUpdating(true);
         console.log("Updating category:", editingCategory.id, "with name:", updatedName.trim());
         await updateCategory(editingCategory.id, updatedName.trim());
         handleEditClose();
       } catch (error: any) {
         console.error('Error in handleEditSave:', error);
         setError(error.message || 'Failed to update category');
+      } finally {
+        setIsUpdating(false);
       }
     }
   };
@@ -139,9 +175,23 @@ export const CategoryTab = ({
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
             maxLength={25}
+            className={newCategory && !isValidCategoryName(newCategory) ? 'border-red-500' : ''}
           />
-          <Button type="submit">
-            <Plus className="mr-2 h-4 w-4" /> Add Category
+          {newCategory && !isValidCategoryName(newCategory) && (
+            <p className="text-xs text-red-500 mt-1">Category name must be alphanumeric with spaces only, maximum 25 characters</p>
+          )}
+          <Button type="submit" disabled={isAdding}>
+            {isAdding ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </>
+            )}
           </Button>
         </form>
         
@@ -153,7 +203,16 @@ export const CategoryTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.length === 0 ? (
+            {isRefreshing ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-4">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-gray-500">Refreshing data...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : categories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-center py-4 text-gray-500">
                   No categories found. Add one to get started.
@@ -169,6 +228,7 @@ export const CategoryTab = ({
                         variant="ghost" 
                         size="icon"
                         onClick={() => handleEditOpen(category)}
+                        disabled={isRefreshing}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -177,6 +237,8 @@ export const CategoryTab = ({
                         variant="ghost" 
                         size="icon" 
                         onClick={() => handleCategoryDelete(category)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        disabled={isRefreshing}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -210,6 +272,9 @@ export const CategoryTab = ({
             maxLength={25}
             isRequired={true}
             error={error}
+            isLoading={isUpdating}
+            validationFunction={isValidCategoryName}
+            validationMessage="Category name must be alphanumeric with spaces only, maximum 25 characters"
           />
         )}
 
@@ -224,9 +289,36 @@ export const CategoryTab = ({
                 the deletion will be prevented to maintain data integrity.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-800">{deleteError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={cancelCategoryDelete}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmCategoryDelete}>Delete</AlertDialogAction>
+              <AlertDialogCancel onClick={cancelCategoryDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmCategoryDelete} 
+                disabled={isDeleting}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -22,11 +22,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
+
+// Validation function for subcategory names (no special characters, max 25 chars)
+const isValidSubcategoryName = (name: string) => {
+  const subcategoryNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  return subcategoryNameRegex.test(name);
+};
 
 interface SubcategoryTabProps {
   categories: CategoryItem[];
@@ -50,6 +56,11 @@ export const SubcategoryTab = ({
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [subcategoryToDelete, setSubcategoryToDelete] = useState<{id: string, name: string} | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { employeeData } = useAuth();
   
   const handleAddSubcategory = async (e: React.FormEvent) => {
@@ -64,15 +75,23 @@ export const SubcategoryTab = ({
       setError("Subcategory name cannot be empty");
       return;
     }
+
+    if (!isValidSubcategoryName(newSubcategoryName.trim())) {
+      setError("Subcategory name must be alphanumeric with spaces only, maximum 25 characters");
+      return;
+    }
     
     try {
       setError(null);
+      setIsAdding(true);
       // Client ID check is now handled in the hook and service
       await addSubcategory(selectedCategoryId, newSubcategoryName.trim());
       setNewSubcategoryName('');
     } catch (error: any) {
       console.error('Error in handleAddSubcategory:', error);
       setError(error.message || 'Failed to add subcategory');
+    } finally {
+      setIsAdding(false);
     }
   };
   
@@ -81,19 +100,27 @@ export const SubcategoryTab = ({
       id: subcategory.id,
       name: subcategory.name
     });
+    setDeleteError(null); // Clear any previous error
     setDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
     if (subcategoryToDelete) {
       try {
+        setIsDeleting(true);
+        setIsRefreshing(true);
+        setDeleteError(null); // Clear any previous error
         await deleteSubcategory(selectedCategoryId, subcategoryToDelete.id);
         setDeleteDialogOpen(false);
         setSubcategoryToDelete(null);
       } catch (error: any) {
-        // Error handling is done in the hook, just close the dialog
-        setDeleteDialogOpen(false);
-        setSubcategoryToDelete(null);
+        console.error('Error in handleConfirmDelete:', error);
+        setDeleteError(error.message || 'Failed to delete subcategory');
+        toast.error(error.message || 'Failed to delete subcategory');
+        // Don't close the dialog on error - let user see the error message
+      } finally {
+        setIsDeleting(false);
+        setIsRefreshing(false);
       }
     }
   };
@@ -117,6 +144,7 @@ export const SubcategoryTab = ({
     if (editingSubcategory) {
       try {
         setError(null);
+        setIsUpdating(true);
         console.log("Updating subcategory:", editingSubcategory.id, "with name:", updatedName.trim());
         await updateSubcategory(
           editingSubcategory.categoryId, 
@@ -127,6 +155,8 @@ export const SubcategoryTab = ({
       } catch (error: any) {
         console.error('Error in handleEditSave:', error);
         setError(error.message || 'Failed to update subcategory');
+      } finally {
+        setIsUpdating(false);
       }
     }
   };
@@ -173,14 +203,30 @@ export const SubcategoryTab = ({
           
           {selectedCategoryId && (
             <form className="flex gap-4 mt-4" onSubmit={handleAddSubcategory}>
-              <Input
-                placeholder={`Add subcategory for ${selectedCategory?.name || 'selected category'}`}
-                value={newSubcategoryName}
-                onChange={(e) => setNewSubcategoryName(e.target.value)}
-                maxLength={25}
-              />
-              <Button type="submit">
-                <Plus className="mr-2 h-4 w-4" /> Add
+              <div className="flex-1">
+                <Input
+                  placeholder={`Add subcategory for ${selectedCategory?.name || 'selected category'}`}
+                  value={newSubcategoryName}
+                  onChange={(e) => setNewSubcategoryName(e.target.value)}
+                  maxLength={25}
+                  className={newSubcategoryName && !isValidSubcategoryName(newSubcategoryName) ? 'border-red-500' : ''}
+                />
+                {newSubcategoryName && !isValidSubcategoryName(newSubcategoryName) && (
+                  <p className="text-xs text-red-500 mt-1">Subcategory name must be alphanumeric with spaces only, maximum 25 characters</p>
+                )}
+              </div>
+              <Button type="submit" disabled={isAdding}>
+                {isAdding ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add
+                  </>
+                )}
               </Button>
             </form>
           )}
@@ -195,7 +241,16 @@ export const SubcategoryTab = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentSubcategories.length === 0 ? (
+              {isRefreshing ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center py-4">
+                    <div className="flex items-center justify-center space-x-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-gray-500">Refreshing data...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : currentSubcategories.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={2} className="text-center py-4 text-gray-500">
                     No subcategories found for this category. Add one to get started.
@@ -211,6 +266,7 @@ export const SubcategoryTab = ({
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleEditOpen(subcategory)}
+                          disabled={isRefreshing}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -219,6 +275,8 @@ export const SubcategoryTab = ({
                           variant="ghost" 
                           size="icon"
                           onClick={() => handleDeleteClick(subcategory)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={isRefreshing}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -248,18 +306,41 @@ export const SubcategoryTab = ({
                 deletion will be prevented.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-800">{deleteError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {
-                setDeleteDialogOpen(false);
-                setSubcategoryToDelete(null);
-              }}>
-                Cancel
-              </AlertDialogCancel>
+                          <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setSubcategoryToDelete(null);
+              setDeleteError(null); // Clear error when canceling
+            }} disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
               <AlertDialogAction 
                 onClick={handleConfirmDelete}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
               >
-                Delete
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -287,6 +368,9 @@ export const SubcategoryTab = ({
             maxLength={25}
             isRequired={true}
             error={error}
+            isLoading={isUpdating}
+            validationFunction={isValidSubcategoryName}
+            validationMessage="Subcategory name must be alphanumeric with spaces only, maximum 25 characters"
           />
         )}
       </CardContent>
