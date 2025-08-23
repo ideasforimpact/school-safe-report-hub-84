@@ -95,6 +95,11 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
       return;
     }
 
+    if (!description.trim()) {
+      toast.error('Please enter a description');
+      return;
+    }
+
     if (!user?.clientId) {
       toast.error('No client ID found. Please contact support.');
       return;
@@ -154,25 +159,38 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
+          <Label htmlFor="title">
+            Title <span className="text-red-500">*</span>
+          </Label>
           <Input 
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Resource title"
+            maxLength={15}
             required
           />
+          <div className="text-xs text-gray-500 text-right">
+            {title.length}/15 characters
+          </div>
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">
+            Description <span className="text-red-500">*</span>
+          </Label>
           <Textarea 
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide a brief description of this resource"
+            maxLength={100}
             rows={3}
+            required
           />
+          <div className="text-xs text-gray-500 text-right">
+            {description.length}/100 characters
+          </div>
         </div>
         
         <div className="space-y-2">
@@ -235,7 +253,9 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="file">Upload File</Label>
+          <Label htmlFor="file">
+            Upload File <span className="text-red-500">*</span>
+          </Label>
           
           {file ? (
             <div className="border rounded-md p-4 flex justify-between items-center">
@@ -275,6 +295,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
                   onChange={handleFileChange}
                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   disabled={isUploading}
+                  required
                 />
                 <label
                   htmlFor="file"
@@ -298,7 +319,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         </Button>
         <Button 
           type="submit" 
-          disabled={!file || !title.trim() || isUploading}
+          disabled={!file || !title.trim() || !description.trim() || isUploading}
         >
           {isUploading ? 'Uploading...' : 'Upload Resource'}
         </Button>
