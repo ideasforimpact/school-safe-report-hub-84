@@ -149,13 +149,17 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
     
-    // Filter out the verification_log, last_response, and status fields
+    // Filter out the verification_log, last_response, status, challan_details, and clientId fields
     let finalResponse = data
-      .filter((item: any) => 
-        item.field !== 'verification_log' && 
-        item.field !== 'last_response' && 
-        item.field !== 'status' && 
-        item.field !== 'challan_details')
+      .filter((item: any) => {
+        const fieldName = item.field.toLowerCase();
+        return fieldName !== 'verification_log' && 
+               fieldName !== 'last_response' && 
+               fieldName !== 'status' && 
+               fieldName !== 'challan_details' &&
+               !fieldName.includes('client') &&
+               !fieldName.includes('clientid');
+      })
       .map((item: any) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
@@ -258,9 +262,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 
                 <div className="border rounded-md divide-y overflow-y-auto">
                   {formatVerificationData(latestVerificationData).map((field: any, index: number) => (
-                    <div key={index} className="flex justify-between px-4 py-2">
-                      <span className="font-medium text-gray-500">{field.label}:</span>
-                      <span className="text-gray-900">{typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}</span>
+                    <div key={index} className="px-4 py-3">
+                      <div className="font-medium text-gray-500 mb-1">{field.label}:</div>
+                      <div className="text-gray-900 break-words">
+                        {typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -331,18 +337,52 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the vehicle {make} {model} ({registrationNumber}) 
-              and all of its associated documents.
+            <AlertDialogTitle className="flex items-center text-red-600">
+              <Trash2 className="h-5 w-5 mr-2" />
+              Delete Vehicle
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <p className="text-red-800 font-medium mb-2">
+                  Warning: This action cannot be undone!
+                </p>
+                <p className="text-red-700 text-sm">
+                  You are about to permanently delete the vehicle <strong>{make} {model}</strong> 
+                  with registration number <strong>{registrationNumber}</strong>.
+                </p>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                <p className="text-yellow-800 font-medium mb-2">
+                  The following will be deleted:
+                </p>
+                <ul className="text-yellow-700 text-sm space-y-1">
+                  <li>• Vehicle information and details</li>
+                  <li>• All associated documents and files</li>
+                  <li>• Verification history and safety check data</li>
+                  <li>• Any related incident reports</li>
+                </ul>
+              </div>
+              
+              <p className="text-gray-600 text-sm">
+                Please confirm that you want to proceed with this deletion. 
+                This action will immediately remove all data associated with this vehicle.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700 text-white">
-              Delete
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">
+              Cancel
+            </AlertDialogCancel>
+            <Button 
+              onClick={handleDeleteVehicle} 
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
+              variant="destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Yes, Delete Vehicle
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
