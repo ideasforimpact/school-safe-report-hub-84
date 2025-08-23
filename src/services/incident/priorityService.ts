@@ -53,14 +53,12 @@ export const priorityService = {
       
       if (error) {
         console.error('Error fetching priorities:', error);
-        toast.error(`Failed to fetch priorities: ${error.message}`);
         return [];
       }
 
       return data as PriorityItem[];
     } catch (error: any) {
       console.error('Error fetching priorities:', error);
-      toast.error(`Failed to fetch priorities: ${error.message}`);
       return [];
     }
   },
@@ -111,14 +109,12 @@ export const priorityService = {
 
       if (error) {
         console.error('Error adding priority:', error);
-        toast.error(`Failed to add priority: ${error.message}`);
         throw error;
       }
 
       return data as PriorityItem;
     } catch (error: any) {
       console.error('Error adding priority:', error);
-      toast.error(`Failed to add priority: ${error.message}`);
       throw error;
     }
   },
@@ -167,21 +163,18 @@ export const priorityService = {
 
       if (error) {
         console.error('Error updating priority:', error);
-        toast.error(`Failed to update priority: ${error.message}`);
         throw error;
       }
 
       if (!data) {
         const errorMsg = 'Priority not found or access denied';
         console.error(errorMsg);
-        toast.error(errorMsg);
         throw new Error(errorMsg);
       }
 
       return data as PriorityItem;
     } catch (error: any) {
       console.error('Error updating priority:', error);
-      toast.error(`Failed to update priority: ${error.message}`);
       throw error;
     }
   },
@@ -196,14 +189,12 @@ export const priorityService = {
 
       if (error) {
         console.error('Error deleting priority:', error);
-        toast.error(`Failed to delete priority: ${error.message}`);
         throw error;
       }
 
       return true;
     } catch (error: any) {
       console.error('Error deleting priority:', error);
-      toast.error(`Failed to delete priority: ${error.message}`);
       throw error;
     }
   },
@@ -222,21 +213,18 @@ export const priorityService = {
 
       if (error) {
         console.error('Error toggling priority status:', error);
-        toast.error(`Failed to update priority status: ${error.message}`);
         throw error;
       }
 
       if (!data) {
         const errorMsg = 'Priority not found or access denied';
         console.error(errorMsg);
-        toast.error(errorMsg);
         throw new Error(errorMsg);
       }
 
       return data as PriorityItem;
     } catch (error: any) {
       console.error('Error toggling priority status:', error);
-      toast.error(`Failed to update priority status: ${error.message}`);
       throw error;
     }
   }

@@ -7,12 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { usePriorities } from '@/hooks/usePriorities';
-import { useReportTypes } from '@/hooks/useReportTypes';
+import { useActiveReportTypes } from '@/hooks/useReportTypes';
+import { useActivePriorities } from '@/hooks/usePriorities';
 
 interface IncidentTypeSectionProps {
   type: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  priority: string;
   onSelectChange: (name: string, value: string) => void;
 }
 
@@ -22,8 +22,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   onSelectChange,
 }) => {
   // RLS handles client filtering automatically - no manual client checks needed
-  const { priorities, loading: prioritiesLoading } = usePriorities();
-  const { reportTypes, loading: reportTypesLoading } = useReportTypes();
+  const { priorities, loading: prioritiesLoading } = useActivePriorities();
+  const { reportTypes, loading: reportTypesLoading } = useActiveReportTypes();
 
   return (
     <>

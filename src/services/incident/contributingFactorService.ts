@@ -57,7 +57,6 @@ export const contributingFactorService = {
       return factors as ContributingFactorItem[];
     } catch (error: any) {
       console.error('Error fetching contributing factors:', error);
-      toast.error(`Failed to fetch contributing factors: ${error.message}`);
       return [];
     }
   },
@@ -100,7 +99,6 @@ export const contributingFactorService = {
       return data as ContributingFactorItem;
     } catch (error: any) {
       console.error('Error adding contributing factor:', error);
-      toast.error(`Failed to add contributing factor: ${error.message}`);
       throw error;
     }
   },
@@ -146,7 +144,6 @@ export const contributingFactorService = {
       return data as ContributingFactorItem;
     } catch (error: any) {
       console.error('Error updating contributing factor:', error);
-      toast.error(`Failed to update contributing factor: ${error.message}`);
       throw error;
     }
   },
@@ -171,7 +168,6 @@ export const contributingFactorService = {
       return true;
     } catch (error: any) {
       console.error('Error deleting contributing factor:', error);
-      toast.error(`Failed to delete contributing factor: ${error.message}`);
       throw error;
     }
   }

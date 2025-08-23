@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useReportTypes } from '@/hooks/useReportTypes';
+import { useActiveReportTypes } from '@/hooks/useReportTypes';
 
 interface IncidentTypeSectionProps {
   type: string;
@@ -18,7 +18,7 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   type,
   onChange,
 }) => {
-  const { reportTypes, loading } = useReportTypes();
+  const { reportTypes, loading } = useActiveReportTypes();
 
   return (
     <div className="space-y-2">

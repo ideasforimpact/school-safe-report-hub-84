@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { contributingFactorService, ContributingFactorItem } from '@/services/incident/contributingFactorService';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 interface ContributingFactorTabProps {
   factors: ContributingFactorItem[];
@@ -42,8 +43,28 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [currentWeight, setCurrentWeight] = useState('Medium');
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { employeeData } = useAuth();
   const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
+  
+  // Confirmation dialog states
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    itemName: string;
+    action: 'delete' | 'activate' | 'deactivate';
+    onConfirm: () => void;
+    error: string | null;
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    itemName: '',
+    action: 'delete',
+    onConfirm: () => {},
+    error: null,
+  });
   
   // Fetch contributing factors directly using the service
   useEffect(() => {
@@ -58,7 +79,6 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         setFactors(result);
       } catch (error) {
         console.error('Error fetching contributing factors:', error);
-        toast.error('Failed to fetch contributing factors');
       } finally {
         setLoading(false);
       }
@@ -69,16 +89,17 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
 
   const handleAdd = async () => {
     if (!employeeData?.clientId) {
-      toast.error('Client information not available');
+      setError('Client information not available');
       return;
     }
 
     if (!currentName.trim()) {
-      toast.error('Name is required');
+      setError('Name is required');
       return;
     }
 
     try {
+      setError(null);
       setLoading(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.addContributingFactor(
@@ -92,9 +113,6 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
       setFactors(updatedFactors);
       
-      // Call the prop function to notify parent 
-      // propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
-      
       // Reset form and close dialog
       setCurrentName('');
       setCurrentDescription('');
@@ -102,9 +120,9 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setIsAddDialogOpen(false);
       
       toast.success('Contributing factor added successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding contributing factor:', error);
-      toast.error('Failed to add contributing factor');
+      setError(error.message || 'Failed to add contributing factor');
     } finally {
       setLoading(false);
     }
@@ -112,16 +130,17 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
 
   const handleEdit = async () => {
     if (!employeeData?.clientId) {
-      toast.error('Client information not available');
+      setError('Client information not available');
       return;
     }
 
     if (!currentId || !currentName.trim()) {
-      toast.error('Name is required');
+      setError('Name is required');
       return;
     }
 
     try {
+      setError(null);
       setLoading(true);
       // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.updateContributingFactor(
@@ -136,14 +155,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
       setFactors(updatedFactors);
       
-      // Call the prop function to notify parent
-      // propUpdateFactor(currentId, currentName.trim(), currentDescription.trim(), currentWeight);
-      
       setIsEditDialogOpen(false);
       toast.success('Contributing factor updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating contributing factor:', error);
-      toast.error('Failed to update contributing factor');
+      setError(error.message || 'Failed to update contributing factor');
     } finally {
       setLoading(false);
     }
@@ -163,27 +179,40 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
-    if (confirm('Are you sure you want to delete this contributing factor?')) {
-      try {
-        setLoading(true);
-        // Strictly using contributingFactorService and passing clientId
-        await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
-        
-        // Refresh factors from service 
-        const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
-        setFactors(updatedFactors);
-        
-        // Call the prop function to notify parent
-        // propDeleteFactor(id);
-        
-        toast.success('Contributing factor deleted successfully');
-      } catch (error) {
-        console.error('Error deleting contributing factor:', error);
-        toast.error('Failed to delete contributing factor');
-      } finally {
-        setLoading(false);
-      }
-    }
+    // Find the contributing factor to get its name for the confirmation message
+    const factor = factors.find(f => f.id === id);
+    const factorName = factor?.name || 'this contributing factor';
+
+    setConfirmationDialog({
+      open: true,
+      title: 'Delete Contributing Factor',
+      description: 'Please confirm that you want to proceed with this deletion. This action will immediately remove the contributing factor and cannot be recovered.',
+      itemName: factorName,
+      action: 'delete',
+      error: null,
+      onConfirm: async () => {
+        try {
+          setLoading(true);
+          // Strictly using contributingFactorService and passing clientId
+          await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
+          
+          // Refresh factors from service 
+          const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+          setFactors(updatedFactors);
+          
+          // Call the prop function to notify parent
+          // propDeleteFactor(id);
+          
+          setConfirmationDialog(prev => ({ ...prev, open: false }));
+        } catch (error: any) {
+          console.error('Error deleting contributing factor:', error);
+          const errorMessage = error?.message || 'Failed to delete contributing factor';
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const getWeightBadgeClass = (weight: string | null | undefined) => {
@@ -276,7 +305,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <div className="truncate max-w-xs">
+                      <div className="truncate max-w-xs" title={factor.description || 'No description'}>
                         {factor.description || 'No description'}
                       </div>
                     </td>
@@ -309,40 +338,67 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       )}
 
       {/* Add Factor Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+        setIsAddDialogOpen(open);
+        if (!open) {
+          // Clear error and reset form when dialog closes
+          setError(null);
+          setCurrentName('');
+          setCurrentDescription('');
+          setCurrentWeight('Medium');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Contributing Factor</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
+          <div className="space-y-4 py-4">
+            {/* Error message display - moved to top */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                Name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
                 value={currentName}
                 onChange={(e) => setCurrentName(e.target.value)}
-                className="col-span-3"
+                className={error ? 'border-red-500' : ''}
+                maxLength={25}
+                required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="description">
                 Description
               </Label>
               <Input
                 id="description"
                 value={currentDescription}
                 onChange={(e) => setCurrentDescription(e.target.value)}
-                className="col-span-3"
+                maxLength={100}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="weight" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="weight">
                 Weight
               </Label>
               <Select value={currentWeight} onValueChange={setCurrentWeight}>
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger>
                   <SelectValue placeholder="Select weight" />
                 </SelectTrigger>
                 <SelectContent>
@@ -354,10 +410,16 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
+            <Button variant="outline" onClick={() => {
+              setIsAddDialogOpen(false);
+              setError(null);
+              setCurrentName('');
+              setCurrentDescription('');
+              setCurrentWeight('Medium');
+            }} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleAdd} disabled={!currentName || loading}>
+            <Button onClick={handleAdd} disabled={loading || !!error}>
               {loading ? 'Adding...' : 'Add'}
             </Button>
           </DialogFooter>
@@ -365,40 +427,64 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       </Dialog>
 
       {/* Edit Factor Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          // Clear error when dialog closes
+          setError(null);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Contributing Factor</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-name" className="text-right">
-                Name
+          <div className="space-y-4 py-4">
+            {/* Error message display - moved to top */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">
+                Name <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="edit-name"
                 value={currentName}
                 onChange={(e) => setCurrentName(e.target.value)}
-                className="col-span-3"
+                className={error ? 'border-red-500' : ''}
+                maxLength={25}
+                required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">
                 Description
               </Label>
               <Input
                 id="edit-description"
                 value={currentDescription}
                 onChange={(e) => setCurrentDescription(e.target.value)}
-                className="col-span-3"
+                maxLength={100}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-weight" className="text-right">
+            <div className="space-y-2">
+              <Label htmlFor="edit-weight">
                 Weight
               </Label>
               <Select value={currentWeight} onValueChange={setCurrentWeight}>
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger>
                   <SelectValue placeholder="Select weight" />
                 </SelectTrigger>
                 <SelectContent>
@@ -410,15 +496,30 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={loading}>
+            <Button variant="outline" onClick={() => {
+              setIsEditDialogOpen(false);
+              setError(null);
+            }} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={!currentName || loading}>
+            <Button onClick={handleEdit} disabled={loading || !!error}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmationDialog.open}
+        onOpenChange={(open) => setConfirmationDialog(prev => ({ ...prev, open }))}
+        onConfirm={confirmationDialog.onConfirm}
+        title={confirmationDialog.title}
+        description={confirmationDialog.description}
+        itemName={confirmationDialog.itemName}
+        action={confirmationDialog.action}
+        error={confirmationDialog.error}
+      />
     </div>
   );
 };

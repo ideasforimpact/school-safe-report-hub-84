@@ -47,26 +47,33 @@ export const SubcategoryTab = ({
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string, categoryId: string} | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [subcategoryToDelete, setSubcategoryToDelete] = useState<{id: string, name: string} | null>(null);
   const { employeeData } = useAuth();
   
-  const handleAddSubcategory = (e: React.FormEvent) => {
+  const handleAddSubcategory = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedCategoryId) {
-      toast.error("Please select a category");
+      setError("Please select a category");
       return;
     }
     
     if (!newSubcategoryName.trim()) {
-      toast.error("Subcategory name cannot be empty");
+      setError("Subcategory name cannot be empty");
       return;
     }
     
-    // Client ID check is now handled in the hook and service
-    addSubcategory(selectedCategoryId, newSubcategoryName.trim());
-    setNewSubcategoryName('');
+    try {
+      setError(null);
+      // Client ID check is now handled in the hook and service
+      await addSubcategory(selectedCategoryId, newSubcategoryName.trim());
+      setNewSubcategoryName('');
+    } catch (error: any) {
+      console.error('Error in handleAddSubcategory:', error);
+      setError(error.message || 'Failed to add subcategory');
+    }
   };
   
   const handleDeleteClick = (subcategory: SubcategoryItem) => {
@@ -101,20 +108,26 @@ export const SubcategoryTab = ({
     setIsEditDialogOpen(true);
   };
 
-  const handleEditSave = (updatedName: string) => {
+  const handleEditSave = async (updatedName: string) => {
     if (!updatedName.trim()) {
-      toast.error("Subcategory name cannot be empty");
+      setError("Subcategory name cannot be empty");
       return;
     }
     
     if (editingSubcategory) {
-      console.log("Updating subcategory:", editingSubcategory.id, "with name:", updatedName.trim());
-      updateSubcategory(
-        editingSubcategory.categoryId, 
-        editingSubcategory.id, 
-        updatedName.trim()
-      );
-      handleEditClose();
+      try {
+        setError(null);
+        console.log("Updating subcategory:", editingSubcategory.id, "with name:", updatedName.trim());
+        await updateSubcategory(
+          editingSubcategory.categoryId, 
+          editingSubcategory.id, 
+          updatedName.trim()
+        );
+        handleEditClose();
+      } catch (error: any) {
+        console.error('Error in handleEditSave:', error);
+        setError(error.message || 'Failed to update subcategory');
+      }
     }
   };
 
@@ -164,6 +177,7 @@ export const SubcategoryTab = ({
                 placeholder={`Add subcategory for ${selectedCategory?.name || 'selected category'}`}
                 value={newSubcategoryName}
                 onChange={(e) => setNewSubcategoryName(e.target.value)}
+                maxLength={25}
               />
               <Button type="submit">
                 <Plus className="mr-2 h-4 w-4" /> Add
@@ -259,12 +273,20 @@ export const SubcategoryTab = ({
             fieldLabel="Subcategory name"
             value={editingSubcategory.name}
             open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) {
+                setError(null);
+              }
+            }}
             onChange={(value) => {
               setEditingSubcategory(prev => prev ? { ...prev, name: value } : null);
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
+            maxLength={25}
+            isRequired={true}
+            error={error}
           />
         )}
       </CardContent>

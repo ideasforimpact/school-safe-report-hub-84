@@ -51,14 +51,12 @@ export const reportTypeService = {
       
       if (error) {
         console.error('Error fetching report types:', error);
-        toast.error(`Failed to fetch report types: ${error.message}`);
         return [];
       }
 
       return data as ReportTypeItem[];
     } catch (error: any) {
       console.error('Error fetching report types:', error);
-      toast.error(`Failed to fetch report types: ${error.message}`);
       return [];
     }
   },
@@ -107,14 +105,12 @@ export const reportTypeService = {
 
       if (error) {
         console.error('Error adding report type:', error);
-        toast.error(`Failed to add report type: ${error.message}`);
         throw error;
       }
 
       return data as ReportTypeItem;
     } catch (error: any) {
       console.error('Error adding report type:', error);
-      toast.error(`Failed to add report type: ${error.message}`);
       throw error;
     }
   },
@@ -161,21 +157,18 @@ export const reportTypeService = {
 
       if (error) {
         console.error('Error updating report type:', error);
-        toast.error(`Failed to update report type: ${error.message}`);
         throw error;
       }
 
       if (!data) {
         const errorMsg = 'Report type not found or access denied';
         console.error(errorMsg);
-        toast.error(errorMsg);
         throw new Error(errorMsg);
       }
 
       return data as ReportTypeItem;
     } catch (error: any) {
       console.error('Error updating report type:', error);
-      toast.error(`Failed to update report type: ${error.message}`);
       throw error;
     }
   },
@@ -190,14 +183,12 @@ export const reportTypeService = {
 
       if (error) {
         console.error('Error deleting report type:', error);
-        toast.error(`Failed to delete report type: ${error.message}`);
         throw error;
       }
 
       return true;
     } catch (error: any) {
       console.error('Error deleting report type:', error);
-      toast.error(`Failed to delete report type: ${error.message}`);
       throw error;
     }
   },
@@ -216,21 +207,18 @@ export const reportTypeService = {
 
       if (error) {
         console.error('Error toggling report type status:', error);
-        toast.error(`Failed to update report type status: ${error.message}`);
         throw error;
       }
 
       if (!data) {
         const errorMsg = 'Report type not found or access denied';
         console.error(errorMsg);
-        toast.error(errorMsg);
         throw new Error(errorMsg);
       }
 
       return data as ReportTypeItem;
     } catch (error: any) {
       console.error('Error toggling report type status:', error);
-      toast.error(`Failed to update report type status: ${error.message}`);
       throw error;
     }
   }
