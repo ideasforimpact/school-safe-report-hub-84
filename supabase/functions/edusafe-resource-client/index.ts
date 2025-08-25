@@ -113,6 +113,7 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
         ownerType: 'school' as const,
         clientId: resource.client_id,
         resourceType: 'Organisational Resource' as const,
+        document_url: resource.document_url, // Add the document_url field
         file: {
           name: resource.title,
           url: resource.document_url,
@@ -131,6 +132,7 @@ async function fetchResources(supabase: any, { client_id }: { client_id: string 
         ownerType: 'saas' as const,
         clientId: null,
         resourceType: 'Global Resource' as const,
+        document_url: resource.document_url, // Add the document_url field
         file: {
           name: resource.title,
           url: resource.document_url,

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText, Download, Edit, Trash, Eye, MoreVertical } from 'lucide-react';
+import { FileText, Download, Edit, Trash, Eye } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,13 +10,8 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 interface ResourceCardProps {
   resource: EduSafeResource;
@@ -25,22 +20,40 @@ interface ResourceCardProps {
 const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
   const { user } = useAuth();
   const { downloadResource, deleteResource } = useEduSafe();
+  const { state: employeeState } = useEmployeeStore();
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  
+  // Check if user has super admin access
+  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  
+  // Check if user has edu resources admin access
+  const hasEduResourcesAdmin = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    const eduResourcesModule = employeeState.configuredModules?.find(
+      module => module.name.toLowerCase() === 'edu resources' || 
+                module.name.toLowerCase() === 'edusafe' ||
+                module.name.toLowerCase() === 'edusafe resources'
+    );
+    
+    return eduResourcesModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
   
   // Check if the user can edit/delete the resource
-  const canModify = user?.role === 'saas_owner' || 
+  const canModify = hasEduResourcesAdmin || 
                    (resource.ownerType === 'school' && resource.uploaderId === user?.id);
   
-  const handleDownload = (e: React.MouseEvent) => {
+  const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    downloadResource(resource);
+    await downloadResource(resource);
   };
 
   const handleView = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Open the file in a new tab using document_url
+    // Check if we have a document URL
     if (resource.document_url) {
       // Open the document URL directly in a new tab
       window.open(resource.document_url, '_blank', 'noopener,noreferrer');
@@ -55,63 +68,23 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (window.confirm(`Are you sure you want to delete "${resource.title}"?`)) {
-      await deleteResource(resource.id);
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    await deleteResource(resource.id);
+    setShowDeleteConfirm(false);
   };
 
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-all duration-200 relative group">
-      {/* Action Menu positioned at top-right */}
-      <div className="absolute top-3 right-3 z-10">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white shadow-sm"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onClick={handleView}>
-              <Eye className="h-4 w-4 mr-2" />
-              View
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </DropdownMenuItem>
-            {canModify && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to={`/edusafe/edit/${resource.id}`} className="flex items-center">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleDelete}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
       <CardContent className="p-4 flex-grow">
         <div className="flex items-start">
           <div className="bg-blue-50 p-3 rounded-lg mr-3 flex-shrink-0">
             <FileText className="h-6 w-6 text-blue-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-lg text-left truncate pr-8">{resource.title}</h3>
+            <h3 className="font-medium text-lg text-left truncate">{resource.title}</h3>
             <p className="text-sm text-gray-500 mt-1 text-left line-clamp-2">{resource.description}</p>
           </div>
         </div>
@@ -187,6 +160,42 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
           </div>
         </div>
       </CardFooter>
+      
+      {/* Custom Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="bg-red-100 p-2 rounded-full mr-3">
+                <Trash className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Resource</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "<span className="font-medium">{resource.title}</span>"? 
+              This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+                className="px-4 py-2"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };
