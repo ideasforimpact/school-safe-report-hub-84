@@ -94,6 +94,11 @@ async function listAllResources(supabase: any) {
 async function createResource(supabase: any, data: any) {
   console.log('Creating resource for client type:', data.client_type_id)
   
+  // Validate required fields
+  if (!data.client_type_id) {
+    throw new Error('client_type_id is required');
+  }
+  
   let document_url = data.document_url;
   
   // If document_url contains base64 data, upload to storage
@@ -175,6 +180,11 @@ async function createResource(supabase: any, data: any) {
 async function updateResource(supabase: any, data: any) {
   console.log('Updating resource:', data.id)
   
+  // Validate required fields
+  if (!data.client_type_id) {
+    throw new Error('client_type_id is required for file uploads');
+  }
+  
   const updateData: any = {
     title: data.title,
     description: data.description,
@@ -193,7 +203,7 @@ async function updateResource(supabase: any, data: any) {
       
       // Generate unique filename
       const timestamp = new Date().getTime();
-      const filename = `${data.client_type_id || 'unknown'}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+      const filename = `${data.client_type_id}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
       
       // Convert base64 to blob
       const base64Data = data.document_url.split(',')[1];

@@ -54,8 +54,34 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     client_type_id: ''
   });
   const [newTag, setNewTag] = useState('');
+  const [titleError, setTitleError] = useState('');
+  const [tagError, setTagError] = useState('');
 
   const categories = ['posters', 'procedures', 'guidelines', 'forms', 'other'];
+
+  // Function to validate title - only allow letters, numbers, spaces, and basic punctuation
+  const validateTitle = (value: string) => {
+    // Allow letters, numbers, spaces, hyphens, and apostrophes
+    const validTitleRegex = /^[a-zA-Z0-9\s\-'()]+$/;
+    
+    if (!validTitleRegex.test(value)) {
+      return 'Title can only contain letters, numbers, spaces, hyphens, and apostrophes';
+    }
+    
+    return '';
+  };
+
+  // Function to validate tags - only allow letters, numbers, spaces, and basic punctuation
+  const validateTag = (value: string) => {
+    // Allow letters, numbers, spaces, hyphens, and apostrophes
+    const validTagRegex = /^[a-zA-Z0-9\s\-'()]+$/;
+    
+    if (!validTagRegex.test(value)) {
+      return 'Tags can only contain letters, numbers, spaces, hyphens, and apostrophes';
+    }
+    
+    return '';
+  };
 
   useEffect(() => {
     fetchClientTypes();
@@ -98,11 +124,19 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      // Validate the tag before adding
+      const error = validateTag(newTag.trim());
+      if (error) {
+        setTagError(error);
+        return;
+      }
+      
       setFormData(prev => ({
         ...prev,
         tags: [...prev.tags, newTag.trim()]
       }));
       setNewTag('');
+      setTagError(''); // Clear any previous errors
     }
   };
 
@@ -171,6 +205,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         body: {
           action: 'update',
           id: currentResource.id,
+          client_type_id: formData.client_type_id,
           title: formData.title,
           description: formData.description,
           category: formData.category,
@@ -234,6 +269,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     });
     setNewTag('');
     setCurrentResource(null);
+    setTitleError('');
+    setTagError('');
   };
 
   const openEditDialog = (resource: BackofficeEduSafeResource) => {
@@ -282,8 +319,6 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      toast.success('Download started');
     } catch (error) {
       console.error('Error downloading resource:', error);
       toast.error('Failed to download resource');
@@ -477,11 +512,18 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData({ ...formData, title: value });
+                  setTitleError(validateTitle(value));
+                }}
                 placeholder="Enter resource title"
                 required
                 disabled={uploadLoading}
               />
+              {titleError && (
+                <p className="text-xs text-red-500 mt-1">{titleError}</p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -523,7 +565,11 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   <Input
                     id="tags"
                     value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNewTag(value);
+                      setTagError(validateTag(value));
+                    }}
                     onKeyPress={handleKeyPress}
                     placeholder="Add a tag and press Enter"
                     className="flex-1"
@@ -532,11 +578,15 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   <Button 
                     type="button" 
                     onClick={handleAddTag} 
-                    disabled={!newTag.trim() || uploadLoading}
+                    disabled={!newTag.trim() || uploadLoading || !!tagError}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+                
+                {tagError && (
+                  <p className="text-xs text-red-500 mt-1">{tagError}</p>
+                )}
                 
                 {formData.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -579,7 +629,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </Button>
             <Button 
               onClick={handleAddResource} 
-              disabled={!formData.title || !formData.file || !formData.client_type_id || uploadLoading}
+              disabled={!formData.title || !formData.file || !formData.client_type_id || uploadLoading || !!titleError || !!tagError}
             >
               {uploadLoading ? (
                 <>
@@ -633,11 +683,18 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               <Input
                 id="edit-title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFormData({ ...formData, title: value });
+                  setTitleError(validateTitle(value));
+                }}
                 placeholder="Enter resource title"
                 required
                 disabled={updateLoading}
               />
+              {titleError && (
+                <p className="text-xs text-red-500 mt-1">{titleError}</p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -679,7 +736,11 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   <Input
                     id="edit-tags"
                     value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setNewTag(value);
+                      setTagError(validateTag(value));
+                    }}
                     onKeyPress={handleKeyPress}
                     placeholder="Add a tag and press Enter"
                     className="flex-1"
@@ -688,11 +749,15 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   <Button 
                     type="button" 
                     onClick={handleAddTag} 
-                    disabled={!newTag.trim() || updateLoading}
+                    disabled={!newTag.trim() || updateLoading || !!tagError}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+                
+                {tagError && (
+                  <p className="text-xs text-red-500 mt-1">{tagError}</p>
+                )}
                 
                 {formData.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -718,6 +783,46 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             
             <div className="space-y-2">
               <Label htmlFor="edit-file">File (optional - leave empty to keep current file)</Label>
+              
+              {/* Show current file information */}
+              {currentResource?.document_url && (
+                <div className="border rounded-md p-3 bg-gray-50 mb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="bg-blue-50 p-2 rounded-md">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Current File</p>
+                        <p className="text-xs text-gray-500">
+                          {currentResource.document_url.split('/').pop() || 'Document'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewResource(currentResource)}
+                        title="View current file"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownloadResource(currentResource)}
+                        title="Download current file"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <Input
                 id="edit-file"
                 type="file"
@@ -725,6 +830,9 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                 disabled={updateLoading}
               />
+              <p className="text-xs text-gray-500">
+                Select a new file to replace the current one, or leave empty to keep the existing file.
+              </p>
             </div>
           </div>
           
@@ -734,7 +842,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </Button>
             <Button 
               onClick={handleEditResource} 
-              disabled={!formData.title || !formData.client_type_id || updateLoading}
+              disabled={!formData.title || !formData.client_type_id || updateLoading || !!titleError || !!tagError}
             >
               {updateLoading ? (
                 <>

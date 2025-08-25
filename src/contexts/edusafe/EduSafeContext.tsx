@@ -65,7 +65,30 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return;
         }
 
-        setResources(resourcesData?.resources || []);
+        // Transform the data to match EduSafeResource structure
+        const transformedResources: EduSafeResource[] = (resourcesData?.resources || []).map((resource: any) => ({
+          id: resource.id,
+          title: resource.title,
+          description: resource.description || '',
+          category: resource.category,
+          tags: Array.isArray(resource.tags) ? resource.tags : [],
+          uploadDate: resource.uploadDate,
+          uploaderId: resource.uploaderId,
+          uploaderName: resource.uploaderName,
+          ownerType: resource.ownerType,
+          clientId: resource.clientId,
+          resourceType: resource.resourceType,
+          document_url: resource.document_url,
+          file: {
+            id: `file-${resource.id}`,
+            name: resource.title,
+            type: 'application/pdf',
+            size: 0,
+            base64: resource.document_url
+          }
+        }));
+
+        setResources(transformedResources);
       } else {
         // Backoffice context - use existing logic
         // Fetch regular edusafe_resources filtered by client_id
@@ -249,15 +272,15 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return resources.find(resource => resource.id === id);
   };
   
-  const downloadResource = (resource: EduSafeResource) => {
+  const downloadResource = async (resource: EduSafeResource) => {
     try {
       let downloadUrl = resource.document_url;
-      let filename = `${resource.title}.pdf`;
+      let filename = `${resource.title}`;
 
       if (!downloadUrl && resource.file?.base64) {
         // Fallback to base64 if document_url is not available
         downloadUrl = resource.file.base64;
-        filename = resource.file.name || `${resource.title}.pdf`;
+        filename = resource.file.name || `${resource.title}`;
       }
 
       if (!downloadUrl) {
@@ -265,34 +288,74 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
-      // Create a link element
-      const link = document.createElement('a');
-      
-      // Set link attributes
-      link.href = downloadUrl;
-      
-      // Extract filename from URL if it's a document_url
+      // Extract filename and extension from URL if it's a document_url
       if (resource.document_url) {
         const urlParts = resource.document_url.split('/');
-        filename = urlParts[urlParts.length - 1] || filename;
+        const lastPart = urlParts[urlParts.length - 1];
+        if (lastPart && lastPart.includes('.')) {
+          filename = lastPart;
+        } else {
+          // If no extension in URL, try to determine from content type or default to .pdf
+          const fileExtension = resource.document_url.split('.').pop()?.toLowerCase();
+          if (fileExtension && ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx', 'xls', 'xlsx'].includes(fileExtension)) {
+            filename = `${resource.title}.${fileExtension}`;
+          } else {
+            filename = `${resource.title}.pdf`;
+          }
+        }
+      } else {
+        // For base64 files, use the file name if available
+        filename = resource.file?.name || `${resource.title}.pdf`;
       }
-      
-      link.download = filename;
-      
-      // Set proper attributes
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      
-      // Append to document
-      document.body.appendChild(link);
-      
-      // Trigger download
-      link.click();
-      
-      // Clean up
+
+      // For Supabase storage URLs, we need to fetch the file as a blob to force download
+      if (resource.document_url && resource.document_url.includes('supabase.co')) {
+        try {
+          const response = await fetch(downloadUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          
+          // Create a link element
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          
+          // Append to document
+          document.body.appendChild(link);
+          
+          // Trigger download
+          link.click();
+          
+                // Clean up
       document.body.removeChild(link);
-      
-      toast.success('Download started');
+      window.URL.revokeObjectURL(url);
+        } catch (fetchError) {
+          console.error('Error fetching file:', fetchError);
+          // Fallback to direct link if fetch fails
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } else {
+        // For other URLs (like base64), use the original method
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (error) {
       toast.error('Failed to download resource');
       console.error('Download error:', error);

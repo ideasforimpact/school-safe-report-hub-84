@@ -34,7 +34,37 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
     downloadResource(resource);
   };
 
-  const isImage = resource.file.type.startsWith('image/');
+  // Determine file type from document_url or file data
+  const getFileType = () => {
+    if (resource.document_url) {
+      const fileExtension = resource.document_url.split('.').pop()?.toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '')) {
+        return 'image';
+      } else if (fileExtension === 'pdf') {
+        return 'pdf';
+      } else {
+        return 'other';
+      }
+    } else if (resource.file?.type) {
+      if (resource.file.type.startsWith('image/')) {
+        return 'image';
+      } else if (resource.file.type === 'application/pdf') {
+        return 'pdf';
+      } else {
+        return 'other';
+      }
+    }
+    return 'other';
+  };
+
+  const fileType = getFileType();
+  const isImage = fileType === 'image';
+  const isPdf = fileType === 'pdf';
+
+  // Get the source URL for display
+  const getSourceUrl = () => {
+    return resource.document_url || resource.file?.base64 || '';
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,16 +83,38 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
             {isImage ? (
               <div className="flex justify-center border rounded-md p-4 bg-gray-50">
                 <img 
-                  src={resource.file.base64}
+                  src={getSourceUrl()}
                   alt={resource.title}
                   className="max-h-[400px] object-contain"
                 />
+              </div>
+            ) : isPdf ? (
+              <div className="flex justify-center border rounded-md p-4 bg-gray-50">
+                <div className="w-full">
+                  <iframe
+                    src={getSourceUrl()}
+                    title={resource.title}
+                    className="w-full h-[400px] border-0"
+                    onError={() => {
+                      console.error('Error loading PDF');
+                    }}
+                  />
+                  <div className="mt-2 text-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open(getSourceUrl(), '_blank', 'noopener,noreferrer')}
+                    >
+                      Open in new tab
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center border rounded-md p-12 bg-gray-50">
                 <FileText className="h-16 w-16 text-gray-400 mb-4" />
                 <p className="text-sm text-gray-600">
-                  Preview not available for {resource.file.type.split('/')[1].toUpperCase()} files
+                  Preview not available for {fileType.toUpperCase()} files
                 </p>
                 <Button 
                   variant="outline" 
@@ -82,15 +134,15 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-500">File Name</p>
-                <p>{resource.file.name}</p>
+                <p>{resource.file?.name || resource.document_url?.split('/').pop()}</p>
               </div>
               <div>
                 <p className="text-gray-500">File Size</p>
-                <p>{formatFileSize(resource.file.size)}</p>
+                <p>{formatFileSize(resource.file?.size || 0)}</p>
               </div>
               <div>
                 <p className="text-gray-500">File Type</p>
-                <p>{resource.file.type}</p>
+                <p>{resource.file?.type || fileType.toUpperCase()}</p>
               </div>
               <div>
                 <p className="text-gray-500">Upload Date</p>

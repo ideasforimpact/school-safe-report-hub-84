@@ -32,10 +32,50 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   const [tagInput, setTagInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [titleError, setTitleError] = useState('');
+  const [tagError, setTagError] = useState('');
   
   const { refreshResources } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Function to validate title - only allow letters, numbers, spaces, and basic punctuation
+  const validateTitle = (value: string) => {
+    // Allow letters, numbers, spaces, hyphens, and apostrophes
+    const validTitleRegex = /^[a-zA-Z0-9\s\-'()]+$/;
+    
+    if (!validTitleRegex.test(value)) {
+      return 'Title can only contain letters, numbers, spaces, hyphens, and apostrophes';
+    }
+    
+    return '';
+  };
+  
+  // Function to validate tags - only allow letters, numbers, spaces, and basic punctuation
+  const validateTag = (value: string) => {
+    // Allow letters, numbers, spaces, hyphens, and apostrophes
+    const validTagRegex = /^[a-zA-Z0-9\s\-'()]+$/;
+    
+    if (!validTagRegex.test(value)) {
+      return 'Tags can only contain letters, numbers, spaces, hyphens, and apostrophes';
+    }
+    
+    return '';
+  };
+  
+  // Handle title change with validation
+  const handleTitleChange = (value: string) => {
+    setTitle(value);
+    const error = validateTitle(value);
+    setTitleError(error);
+  };
+  
+  // Handle tag input change with validation
+  const handleTagInputChange = (value: string) => {
+    setTagInput(value);
+    const error = validateTag(value);
+    setTagError(error);
+  };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -66,8 +106,16 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      // Validate the tag before adding
+      const error = validateTag(tagInput.trim());
+      if (error) {
+        setTagError(error);
+        return;
+      }
+      
       setTags([...tags, tagInput.trim()]);
       setTagInput('');
+      setTagError(''); // Clear any previous errors
     }
   };
   
@@ -92,6 +140,11 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     
     if (!title.trim()) {
       toast.error('Please enter a title');
+      return;
+    }
+
+    if (titleError) {
+      toast.error('Please fix the title format');
       return;
     }
 
@@ -165,11 +218,14 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
           <Input 
             id="title"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Resource title"
             maxLength={15}
             required
           />
+          {titleError && (
+            <p className="text-xs text-red-500 mt-1">{titleError}</p>
+          )}
           <div className="text-xs text-gray-500 text-right">
             {title.length}/15 characters
           </div>
@@ -218,7 +274,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
             <Input 
               id="tags"
               value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
+              onChange={(e) => handleTagInputChange(e.target.value)}
               placeholder="Add tags"
               onKeyDown={handleKeyDown}
             />
@@ -226,10 +282,15 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
               type="button"
               onClick={handleAddTag}
               variant="outline"
+              disabled={!!tagError}
             >
               Add
             </Button>
           </div>
+          
+          {tagError && (
+            <p className="text-xs text-red-500 mt-1">{tagError}</p>
+          )}
           
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -319,7 +380,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         </Button>
         <Button 
           type="submit" 
-          disabled={!file || !title.trim() || !description.trim() || isUploading}
+          disabled={!file || !title.trim() || !description.trim() || isUploading || !!titleError || !!tagError}
         >
           {isUploading ? 'Uploading...' : 'Upload Resource'}
         </Button>
