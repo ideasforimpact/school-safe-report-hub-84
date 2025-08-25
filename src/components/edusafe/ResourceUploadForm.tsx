@@ -34,10 +34,47 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   const [isUploading, setIsUploading] = useState(false);
   const [titleError, setTitleError] = useState('');
   const [tagError, setTagError] = useState('');
+  const [existingResourceTitles, setExistingResourceTitles] = useState<string[]>([]);
+  const [titlesLoading, setTitlesLoading] = useState(true);
   
   const { refreshResources } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Fetch existing resource titles for duplicate validation
+  React.useEffect(() => {
+    const fetchExistingTitles = async () => {
+      if (!user?.clientId) {
+        setTitlesLoading(false);
+        return;
+      }
+
+      try {
+        setTitlesLoading(true);
+        console.log('Fetching existing resource titles for client:', user.clientId);
+
+        const { data: resourcesData, error } = await supabase
+          .from('edusafe_resources')
+          .select('title')
+          .eq('client_id', user.clientId);
+
+        if (error) {
+          console.error('Error fetching existing resources:', error);
+          return;
+        }
+
+        const resourceTitles = resourcesData?.map(resource => resource.title.toLowerCase()) || [];
+        console.log('Existing resource titles:', resourceTitles);
+        setExistingResourceTitles(resourceTitles);
+      } catch (error) {
+        console.error('Error fetching existing resources:', error);
+      } finally {
+        setTitlesLoading(false);
+      }
+    };
+
+    fetchExistingTitles();
+  }, [user?.clientId]);
   
   // Function to validate title - only allow letters, numbers, spaces, and basic punctuation
   const validateTitle = (value: string) => {
@@ -66,7 +103,13 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   // Handle title change with validation
   const handleTitleChange = (value: string) => {
     setTitle(value);
-    const error = validateTitle(value);
+    let error = validateTitle(value);
+    
+    // Check for duplicate title
+    if (!error && value.trim() && existingResourceTitles.includes(value.toLowerCase().trim())) {
+      error = 'A resource with this title already exists. Please choose a different title.';
+    }
+    
     setTitleError(error);
   };
   
@@ -145,6 +188,12 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
 
     if (titleError) {
       toast.error('Please fix the title format');
+      return;
+    }
+
+    // Check for duplicate resource title
+    if (existingResourceTitles.includes(title.toLowerCase().trim())) {
+      toast.error('A resource with this title already exists. Please choose a different title.');
       return;
     }
 
@@ -380,7 +429,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         </Button>
         <Button 
           type="submit" 
-          disabled={!file || !title.trim() || !description.trim() || isUploading || !!titleError || !!tagError}
+          disabled={!file || !title.trim() || !description.trim() || isUploading || !!titleError || !!tagError || existingResourceTitles.includes(title.toLowerCase().trim())}
         >
           {isUploading ? 'Uploading...' : 'Upload Resource'}
         </Button>

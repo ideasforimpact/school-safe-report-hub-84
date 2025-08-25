@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -23,20 +22,25 @@ interface Assessment {
   assessment_id: number;
   name: string;
   status: string;
-  target_completion_date: string | null;
-  created_by: string | null;
-  assigned_to: string | null;
-  template_id: string | null;
+  target_completion_date: string;
+  created_by: string;
+  assigned_to: string;
+  template_id: string;
   created_at: string;
   score: number | null;
-  answers: any[] | null;
-  creator_name?: string;
-  assignee_name?: string;
+  answers: any[];
   client_id: string;
-  template?: AssessmentTemplate;
+  creator_name: string;
+  assignee_name: string;
+  template?: {
+    questions: any[];
+  };
 }
 
-const AssessmentsTable: React.FC = () => {
+interface AssessmentsTableProps {
+}
+
+const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
   const navigate = useNavigate();
   const { hasAssessmentAdmin, currentUserEmployeeId, clientId } = useAssessmentAccess();
   
@@ -360,61 +364,67 @@ const AssessmentsTable: React.FC = () => {
 
   if (!clientId) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Client Context Required</h3>
-            <p className="text-gray-500">Please ensure you are logged in with a valid client context to view assessments.</p>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Client Context Required</h3>
+              <p className="text-gray-500">Please ensure you are logged in with a valid client context to view assessments.</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p>Loading assessments...</p>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p>Loading assessments...</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Error Loading Assessments</h3>
-            <p className="text-gray-500 mb-4">{error}</p>
-            <Button onClick={fetchAssessments} variant="outline">
-              Try Again
-            </Button>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Error Loading Assessments</h3>
+              <p className="text-gray-500 mb-4">{error}</p>
+              <Button onClick={fetchAssessments} variant="outline">
+                Try Again
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
     <>
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
             <FileText className="h-5 w-5" />
-            Assessments
+            <h2 className="text-lg font-semibold">Assessments</h2>
             {!hasAssessmentAdmin && (
               <Badge variant="outline" className="ml-2">
                 Your Assessments Only
               </Badge>
             )}
-          </CardTitle>
+          </div>
           
           {/* Enhanced Filters */}
           <div className="space-y-4">
@@ -499,52 +509,30 @@ const AssessmentsTable: React.FC = () => {
               </Button>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="p-0">
+        <div className="p-0">
           {filteredAssessments.length === 0 ? (
-            <div className="text-center py-8 px-6">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No Assessments Found</h3>
-              <p className="text-gray-500">
-                {searchTerm || statusFilter !== 'all' || createdByFilter !== 'all' || assignedToFilter !== 'all' || targetDateFrom || targetDateTo
-                  ? 'No assessments match your current filters.' 
-                  : hasAssessmentAdmin 
-                    ? 'No assessments have been created yet.'
-                    : 'You have no assessments created by you or assigned to you.'}
-              </p>
+            <div className="p-8 text-center">
+              <p className="text-gray-500">No assessments found matching your filters</p>
             </div>
           ) : (
-            <div className="w-full overflow-x-auto">
-              <Table className="w-full min-w-[1200px]">
+            <div className="overflow-x-auto">
+              <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">Assessment ID</TableHead>
-                    <TableHead className="min-w-[200px]">Title</TableHead>
-                    <TableHead className="w-[130px]">Status</TableHead>
-                    <TableHead className="w-[140px]">Percentage Completed</TableHead>
-                    <TableHead className="w-[140px]">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        Target Date
-                      </div>
-                    </TableHead>
-                    <TableHead className="min-w-[150px]">Created By</TableHead>
-                    <TableHead className="min-w-[150px]">
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        Assigned To
-                      </div>
-                    </TableHead>
-                    <TableHead className="w-[180px] text-right">Actions</TableHead>
+                    <TableHead>Assessment Name</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Completion</TableHead>
+                    <TableHead>Target Date</TableHead>
+                    <TableHead>Created By</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAssessments.map((assessment) => (
                     <TableRow key={assessment.assessment_id}>
-                      <TableCell className="font-mono text-sm">
-                        #{assessment.assessment_id}
-                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="max-w-[200px] truncate" title={assessment.name}>
                           {assessment.name}
@@ -617,8 +605,8 @@ const AssessmentsTable: React.FC = () => {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Assessment View Dialog */}
       <AssessmentViewDialog

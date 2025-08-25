@@ -11,6 +11,16 @@ interface EnhancedGrievanceHeadingSectionProps {
 }
 
 const EnhancedGrievanceHeadingSection: React.FC<EnhancedGrievanceHeadingSectionProps> = ({ form }) => {
+  // Handle heading change with special character validation
+  const handleHeadingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Remove special characters except letters, numbers, spaces, hyphens, and apostrophes
+    const cleanedValue = value.replace(/[^a-zA-Z0-9\s\-'()]/g, '');
+    
+    // Update the form field with cleaned value
+    form.setValue('heading', cleanedValue);
+  };
+
   return (
     <div className="p-4 rounded-lg bg-white border border-gray-100 shadow-sm transition-all hover:border-primary-200 hover:shadow-md">
       <FormField
@@ -26,6 +36,7 @@ const EnhancedGrievanceHeadingSection: React.FC<EnhancedGrievanceHeadingSectionP
               <Input
                 placeholder="Brief title or subject of your grievance"
                 {...field}
+                onChange={handleHeadingChange}
                 className="bg-gray-50 transition-colors focus:bg-white"
               />
             </FormControl>

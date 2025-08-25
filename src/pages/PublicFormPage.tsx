@@ -372,7 +372,18 @@ const PublicFormPage = () => {
               type="text"
               placeholder={field.placeholder}
               value={formData[field.id] || ''}
-              onChange={(e) => handleInputChange(field.id, e.target.value)}
+              onChange={(e) => {
+                const labelLc = (field.label || '').toLowerCase();
+                const isTitle = labelLc.includes('subject') || labelLc.includes('title');
+                
+                if (isTitle) {
+                  // Remove special characters for subject/title fields
+                  const cleanedValue = e.target.value.replace(/[^a-zA-Z0-9\s\-'()]/g, '');
+                  handleInputChange(field.id, cleanedValue);
+                } else {
+                  handleInputChange(field.id, e.target.value);
+                }
+              }}
               maxLength={(() => {
                 const labelLc = (field.label || '').toLowerCase();
                 const isName = ['name', 'your full name', 'full name', 'your name'].includes(labelLc);

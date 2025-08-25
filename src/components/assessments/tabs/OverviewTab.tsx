@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
-import AssessmentSummaryCards from '@/components/assessments/AssessmentSummaryCards';
-import RecentAssessmentsTable from '@/components/assessments/RecentAssessmentsTable';
 import AssessmentsTable from '@/components/assessments/AssessmentsTable';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import { Badge } from '@/components/ui/badge';
@@ -56,11 +54,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
         </div>
       )}
       
-      <AssessmentSummaryCards data={summaryData} />
-      
-      <div className="mt-6">
-        <AssessmentsTable />
-      </div>
+              <AssessmentsTable />
     </div>
   );
 };

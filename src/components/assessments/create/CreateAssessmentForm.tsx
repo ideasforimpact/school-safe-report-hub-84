@@ -47,6 +47,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [existingAssessments, setExistingAssessments] = useState<string[]>([]);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(true);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -90,6 +92,41 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     fetchEmployees();
   }, [clientId]);
 
+  // Fetch existing assessment names for duplicate validation
+  React.useEffect(() => {
+    const fetchExistingAssessments = async () => {
+      if (!clientId) {
+        setAssessmentsLoading(false);
+        return;
+      }
+
+      try {
+        setAssessmentsLoading(true);
+        console.log('Fetching existing assessments for client:', clientId);
+
+        const { data: assessmentsData, error } = await supabase
+          .from('assessments')
+          .select('name')
+          .eq('client_id', clientId);
+
+        if (error) {
+          console.error('Error fetching existing assessments:', error);
+          return;
+        }
+
+        const assessmentNames = assessmentsData?.map(assessment => assessment.name.toLowerCase()) || [];
+        console.log('Existing assessment names:', assessmentNames);
+        setExistingAssessments(assessmentNames);
+      } catch (error) {
+        console.error('Error fetching existing assessments:', error);
+      } finally {
+        setAssessmentsLoading(false);
+      }
+    };
+
+    fetchExistingAssessments();
+  }, [clientId]);
+
   // Find the selected employee
   const selectedEmployee = employees.find(emp => emp.id === formData.assignedTo);
   const selectedEmployeeDisplay = selectedEmployee 
@@ -113,6 +150,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         setNameError(null);
       } else if (!isValidAssessmentName(value)) {
         setNameError('Assessment name can only contain letters, numbers, and spaces (max 25 characters)');
+      } else if (existingAssessments.includes(value.toLowerCase().trim())) {
+        setNameError('An assessment with this name already exists. Please choose a different name.');
       } else {
         setNameError(null);
       }
@@ -157,6 +196,12 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       toast.error('Please fix the assessment name validation errors');
       return;
     }
+    
+    // Check for duplicate assessment name
+    if (existingAssessments.includes(formData.name.toLowerCase().trim())) {
+      return;
+    }
+    
     if (!formData.templateId) {
       toast.error('Please select a template');
       return;
@@ -404,7 +449,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || templates.length === 0 || employees.length === 0}>
+              <Button type="submit" disabled={isSubmitting || templates.length === 0 || employees.length === 0 || nameError || !formData.name.trim() || !formData.templateId || !formData.assignedTo || !formData.targetCompletionDate}>
                 <Save className="h-4 w-4 mr-2" />
                 {isSubmitting ? 'Creating...' : 'Create Assessment'}
               </Button>
