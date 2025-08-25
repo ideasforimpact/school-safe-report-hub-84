@@ -207,15 +207,17 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
                       <Eye className="h-4 w-4" />
                       <span className="sr-only">View</span>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={(e) => handleEditClick(e, incident.id)}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
+                    {incident.status !== 'Closed' && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => handleEditClick(e, incident.id)}
+                      >
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

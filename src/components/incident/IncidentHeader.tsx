@@ -181,8 +181,8 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               </Button>
             )}
             
-            {/* Show Edit button only if not voided and user has permission */}
-            {!incident.isVoided && permissions.canEdit && (
+            {/* Show Edit button only if not voided, not closed, and user has permission */}
+            {!incident.isVoided && incident.status !== 'Closed' && permissions.canEdit && (
               <Button 
                 variant="outline" 
                 size="sm"

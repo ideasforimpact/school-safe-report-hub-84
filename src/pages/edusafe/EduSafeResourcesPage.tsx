@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FilePlus, Search } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
@@ -12,14 +12,33 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { ResourceCategory, EduSafeResource } from '@/types/eduSafeTypes';
 import CategoryFilter from '@/components/edusafe/CategoryFilter';
 import ResourceList from '@/components/edusafe/ResourceList';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 const EduSafeResourcesContent = () => {
   const { resources, getMyResources, getSaasResources } = useEduSafe();
   const { user, employeeData } = useAuth();
+  const { state: employeeState } = useEmployeeStore();
   
   const [selectedTab, setSelectedTab] = useState<'all' | 'saas' | 'organisational'>('all');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Check if user has super admin access
+  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  
+  // Check if user has edu resources admin access
+  const hasEduResourcesAdmin = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    const eduResourcesModule = employeeState.configuredModules?.find(
+      module => module.name.toLowerCase() === 'edu resources' || 
+                module.name.toLowerCase() === 'edusafe' ||
+                module.name.toLowerCase() === 'edusafe resources'
+    );
+    
+    return eduResourcesModule?.accessLevel?.is_admin === true;
+  }, [isSuperAdmin, employeeState.configuredModules]);
   
   // Check client type from employeeData first, then from user
   const getClientTypeKey = () => {
@@ -111,12 +130,14 @@ const EduSafeResourcesContent = () => {
           <p className="text-gray-500 mt-1 text-left">Browse and download safety resources</p>
         </div>
         
-        <Button asChild>
-          <Link to="/edusafe/upload">
-            <FilePlus className="h-4 w-4 mr-2" />
-            Upload Resource
-          </Link>
-        </Button>
+        {hasEduResourcesAdmin && (
+          <Button asChild>
+            <Link to="/edusafe/upload">
+              <FilePlus className="h-4 w-4 mr-2" />
+              Upload Resource
+            </Link>
+          </Button>
+        )}
       </div>
       
       <div className="mb-6 mx-6">

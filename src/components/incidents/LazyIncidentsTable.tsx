@@ -62,6 +62,9 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     // Don't show edit button for voided incidents (if the property exists and is true)
     if (incident.is_voided) return false;
     
+    // Don't show edit button for closed incidents
+    if (incident.status?.toLowerCase() === 'closed') return false;
+    
     const permissions = checkPermissions(
       incident.reportedById || '', 
       incident.ownerId

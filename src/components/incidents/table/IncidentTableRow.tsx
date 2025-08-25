@@ -43,8 +43,8 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   
   console.log('✅ Permission check result:', permissions);
   
-  // Show edit button only if user has edit permission AND incident is not voided
-  const canShowEditButton = permissions.canEdit && !incident.isVoided;
+  // Show edit button only if user has edit permission AND incident is not voided AND not closed
+  const canShowEditButton = permissions.canEdit && !incident.isVoided && incident.status !== 'Closed';
   
   console.log('🎯 Final decision - Show edit button:', canShowEditButton);
   
