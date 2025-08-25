@@ -294,7 +294,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
   const isCurrentUserCreator = assessment?.created_by === employeeData?.id;
   const isCompleteButtonEnabled = assessment?.status === 'Submitted' && isCurrentUserCreator;
-  const isReworkButtonEnabled = (hasAssessmentAdmin || isSuperAdmin) && assessment?.status !== 'Draft';
+  const isReworkButtonEnabled = (hasAssessmentAdmin || isSuperAdmin) && assessment?.status !== 'Draft' && assessment?.status !== 'New';
 
   if (!open) return null;
 
