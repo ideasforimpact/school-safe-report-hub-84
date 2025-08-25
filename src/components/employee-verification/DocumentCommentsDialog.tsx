@@ -174,9 +174,6 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     {getActionBadge(entry.action)}
-                    <span className="text-sm text-gray-600">
-                      Entry #{index + 1}
-                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -197,11 +194,6 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">Verified by:</span>
-                    <span>{entry.verified_by}</span>
-                  </div>
 
                   {/* Comments Section */}
                   <div>
@@ -227,12 +219,25 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
                         Attachments ({editingIndex === index ? editedAttachments.length : entry.attachments.length}):
                       </h4>
                       <div className="space-y-2">
-                        {(editingIndex === index ? editedAttachments : entry.attachments).map((attachment, attachmentIndex) => (
+                        {(editingIndex === index ? editedAttachments : entry.attachments).map((attachment, attachmentIndex) => {
+                          // Extract filename from URL or use default name
+                          const getFileName = (url: string) => {
+                            try {
+                              const urlObj = new URL(url);
+                              const pathname = urlObj.pathname;
+                              const filename = pathname.split('/').pop();
+                              return filename || `attachment-${attachmentIndex + 1}`;
+                            } catch {
+                              return `attachment-${attachmentIndex + 1}`;
+                            }
+                          };
+                          
+                          return (
                           <div key={attachmentIndex} className="flex items-center justify-between bg-white p-2 rounded border">
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-gray-400" />
                               <span className="text-sm">
-                                Attachment {attachmentIndex + 1}
+                                {getFileName(attachment)}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -257,7 +262,8 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
                               )}
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
                   )}

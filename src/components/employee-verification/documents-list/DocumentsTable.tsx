@@ -484,20 +484,54 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
                   </TableCell> */}
                   <TableCell>
-                    <VerificationStatusBadge 
-                      status={doc.verificationStatus} 
-                      documentStatusName={statusName}
-                      isGovernance={isGovernanceVerified}
-                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
-                      documentLogs={doc.employee_docs_log}
-                      documentId={doc.id}
-                      documentType={docType}
-                      rejectReason={doc.rejectReason}
-                    />
+                    <div className="flex items-center gap-2">
+                      <VerificationStatusBadge 
+                        status={doc.verificationStatus} 
+                        documentStatusName={statusName}
+                        isGovernance={isGovernanceVerified}
+                        onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                        documentLogs={doc.employee_docs_log}
+                        documentId={doc.id}
+                        documentType={docType}
+                        rejectReason={doc.rejectReason}
+                      />
+                      {/* Show comment icon for manual documents with verification history */}
+                      {docType === 'manual' && hasVerificationHistory(doc) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCommentsClick(doc)}
+                          title="View comments and verification history"
+                          className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                   {/* Verified by Column */}
                   <TableCell>
                     {(() => {
+                      // For manual documents, show "Backoffice - date time" using latest verification history
+                      if (docType === 'manual') {
+                        const history = (doc.params as any)?.verification_history;
+                        if (Array.isArray(history) && history.length > 0) {
+                          const latest = [...history].sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+                          const ts = latest?.timestamp || doc.updatedAt;
+                          return (
+                            <span className="text-sm text-gray-900">
+                              Backoffice{ts ? ` - ${format(new Date(ts), 'MMM dd, h:mm a')}` : ''}
+                            </span>
+                          );
+                        }
+                        // Fallback to updatedAt if no history
+                        if (doc.updatedAt) {
+                          return (
+                            <span className="text-sm text-gray-900">Backoffice - {format(new Date(doc.updatedAt), 'MMM dd, h:mm a')}</span>
+                          );
+                        }
+                        return <span className="text-muted-foreground">—</span>;
+                      }
                       const name = getVerifiedByName(doc);
                       const updatedAt = doc.updatedAt;
                       
@@ -512,15 +546,57 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   
                   {/* Actions Column */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     {(() => {
                       const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual';
                       const hasVerifyManual = onQuickVerify && docType !== 'manual';
                       
+                      // Special handling for manual documents
+                      if (docType === 'manual') {
+                        return (
+                          <div className="flex items-center justify-center space-x-2">
+                            {/* View and Download buttons - only if document has URL */}
+                            {doc.documentImage && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleViewDocument(doc.documentImage)}
+                                  title="View Document"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownloadDocument(doc.documentImage)}
+                                  title="Download Document"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            
+                            {/* Delete button for manual documents */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteDialog(doc.id)}
+                              title="Delete Document"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        );
+                      }
+                      
                       // If has Verify API, use left alignment (normal flow)
                       if (hasVerifyApi) {
                         return (
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center justify-center space-x-2">
       <Button
         variant="verifyApi"
         size="sm"
@@ -595,7 +671,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       
                       // If no Verify API, use right alignment for Verify Manual and menu
                       return (
-                        <div className="flex items-center justify-end space-x-2">
+                        <div className="flex items-center justify-center space-x-2">
                           {hasVerifyManual && (
       <Button
         variant="verifyManual"

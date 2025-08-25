@@ -42,6 +42,15 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     filterDocuments();
   }, [timeFilter, employee.documents, manualDocumentTypeId]);
 
+  const toTitleCase = (value: string) => {
+    return value
+      .replace(/_/g, ' ')
+      .split(' ')
+      .filter(Boolean)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const filterDocuments = () => {
     const documents = employee.documents || [];
     const now = new Date();
@@ -114,6 +123,19 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     return docType?.name || 'Unknown Document Type';
   };
 
+  // Compute a display-friendly document type name for manual docs
+  const getDisplayDocumentTypeName = (doc: Employee['documents'][number]) => {
+    const baseName = getDocumentTypeName(doc.documentTypeId);
+    if (baseName.toLowerCase() === 'manual') {
+      const params: any = doc.params || {};
+      const custom = params.document_name || params.otherType || params.selected;
+      if (typeof custom === 'string' && custom.trim().length > 0) {
+        return toTitleCase(custom.trim());
+      }
+    }
+    return baseName;
+  };
+
   const getDocumentCounts = () => {
     // Count only "Manual" documents
     const manualDocuments = (employee.documents || []).filter(doc => {
@@ -178,8 +200,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
             <p className="text-gray-500">
               {timeFilter === 'all' 
                 ? 'This employee has not uploaded any "Manual" type verification documents yet.'
-                : `No "Manual" type documents were uploaded in the selected timeframe (${timeFilter}).`
-              }
+                : `No "Manual" type documents were uploaded in the selected timeframe (${timeFilter}).`}
             </p>
           </div>
         ) : (
@@ -188,7 +209,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
               <BackofficeDocumentCard
                 key={document.id}
                 document={document}
-                documentTypeName={getDocumentTypeName(document.documentTypeId)}
+                documentTypeName={getDisplayDocumentTypeName(document)}
                 employee={employee}
                 onRefresh={onRefresh}
               />
