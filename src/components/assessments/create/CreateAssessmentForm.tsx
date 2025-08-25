@@ -46,6 +46,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     targetCompletionDate: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -95,11 +96,27 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     ? `${selectedEmployee.first_name} ${selectedEmployee.last_name} (${selectedEmployee.email})` 
     : '';
 
+  // Validation function for assessment name (no special characters allowed)
+  const isValidAssessmentName = (value: string) => {
+    return /^[a-zA-Z0-9\s]{1,25}$/.test(value);
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Validate assessment name
+    if (field === 'name') {
+      if (value === '') {
+        setNameError(null);
+      } else if (!isValidAssessmentName(value)) {
+        setNameError('Assessment name can only contain letters, numbers, and spaces (max 25 characters)');
+      } else {
+        setNameError(null);
+      }
+    }
   };
 
   const handleEmployeeSearch = (value: string) => {
@@ -134,6 +151,10 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     
     if (!formData.name.trim()) {
       toast.error('Assessment name is required');
+      return;
+    }
+    if (nameError) {
+      toast.error('Please fix the assessment name validation errors');
       return;
     }
     if (!formData.templateId) {
@@ -229,27 +250,22 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm" onClick={handleCancel}>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCancel} className="mr-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <h2 className="text-2xl font-semibold">Create Assessment</h2>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Assessment Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
+          Create Assessment
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
               {/* Assessment Name */}
               <div className="space-y-2">
-                <Label htmlFor="name">Assessment Name *</Label>
+                <Label htmlFor="name">Assessment Name <span className="text-red-500">*</span></Label>
                 <Input 
                   id="name" 
                   type="text" 
@@ -257,7 +273,15 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                   onChange={e => handleInputChange('name', e.target.value)} 
                   placeholder="Enter assessment name" 
                   required 
+                  maxLength={25}
+                  className={nameError ? 'border-red-500' : ''}
                 />
+                {nameError && (
+                  <p className="text-sm text-red-500 mt-1">{nameError}</p>
+                )}
+                <p className="text-xs text-gray-500 text-right">
+                  {formData.name.length}/25 characters
+                </p>
               </div>
 
               {/* Description */}
@@ -269,12 +293,16 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                   onChange={e => handleInputChange('description', e.target.value)} 
                   placeholder="Enter assessment description" 
                   rows={3} 
+                  maxLength={200}
                 />
+                <p className="text-xs text-gray-500 text-right">
+                  {formData.description.length}/200 characters
+                </p>
               </div>
 
               {/* Template Selection */}
               <div className="space-y-2">
-                <Label htmlFor="template">Select Template *</Label>
+                <Label htmlFor="template">Select Template <span className="text-red-500">*</span></Label>
                 <Select value={formData.templateId} onValueChange={value => handleInputChange('templateId', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a template" />
@@ -296,7 +324,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
               {/* Assigned To with Search */}
               <div className="space-y-2">
-                <Label htmlFor="assignedTo">Assign To *</Label>
+                <Label htmlFor="assignedTo">Assign To <span className="text-red-500">*</span></Label>
                 <div className="relative">
                   <div className="relative">
                     <Input
@@ -359,7 +387,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
               {/* Target Completion Date */}
               <div className="space-y-2">
-                <Label htmlFor="targetDate">Target Completion Date *</Label>
+                <Label htmlFor="targetDate">Target Completion Date <span className="text-red-500">*</span></Label>
                 <Input 
                   id="targetDate" 
                   type="date" 
@@ -384,7 +412,6 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
           </form>
         </CardContent>
       </Card>
-    </div>
   );
 };
 
