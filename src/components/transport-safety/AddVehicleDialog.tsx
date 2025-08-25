@@ -25,6 +25,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   const { addVehicle, updateVehicle, vehicles } = useTransportSafety();
   const { employeeData } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [registrationNumberError, setRegistrationNumberError] = useState<string | null>(null);
   
   const isEditMode = !!vehicle;
   
@@ -66,6 +67,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     if (!open) {
       reset();
       setError(null);
+      setRegistrationNumberError(null);
     }
   }, [open, reset]);
 
@@ -190,15 +192,33 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 id="registrationNumber" 
                 {...register('registrationNumber', { 
                   required: "Registration number is required",
-                  maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" }
+                  maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" },
+                  pattern: {
+                    value: /^[A-Za-z0-9-]+$/,
+                    message: "Registration number can only contain letters, numbers, and hyphens."
+                  }
                 })}
                 placeholder="e.g., KA-01-AB-1234"
                 maxLength={10}
                 disabled={isSubmitting || isEditMode}
                 className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Remove special characters except letters, numbers, and hyphens
+                  const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');
+                  
+                  if (value !== cleanedValue) {
+                    setRegistrationNumberError("Special characters are not allowed. Only letters, numbers, and hyphens are permitted.");
+                  } else {
+                    setRegistrationNumberError(null);
+                  }
+                  
+                  // Update the form value
+                  setValue('registrationNumber', cleanedValue);
+                }}
               />
-              {errors.registrationNumber && 
-                <p className="text-red-500 text-sm">{errors.registrationNumber.message}</p>
+              {(errors.registrationNumber || registrationNumberError) && 
+                <p className="text-red-500 text-sm">{errors.registrationNumber?.message || registrationNumberError}</p>
               }
               {isEditMode && (
                 <p className="text-gray-500 text-xs mt-1">

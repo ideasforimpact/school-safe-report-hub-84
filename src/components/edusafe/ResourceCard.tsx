@@ -40,8 +40,10 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
   }, [isSuperAdmin, employeeState.configuredModules]);
   
   // Check if the user can edit/delete the resource
-  const canModify = hasEduResourcesAdmin || 
-                   (resource.ownerType === 'school' && resource.uploaderId === user?.id);
+  // Global Resources cannot be edited/deleted by regular users (only by backoffice)
+  const canModify = (hasEduResourcesAdmin || 
+                   (resource.ownerType === 'school' && resource.uploaderId === user?.id)) &&
+                   resource.resourceType !== 'Global Resource';
   
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();

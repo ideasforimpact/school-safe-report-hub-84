@@ -11,7 +11,14 @@ import { FormResponse } from '@/contexts/grievances/types';
 export const formSchema = z.object({
   name: z.string().optional(),
   contactInfo: z.string().optional(),
-  heading: z.string().optional(),
+  heading: z.string().optional().refine((value) => {
+    if (!value || value.trim() === '') return true; // Allow empty values since it's optional
+    // Allow letters, numbers, spaces, hyphens, and apostrophes
+    const validHeadingRegex = /^[a-zA-Z0-9\s\-'()]+$/;
+    return validHeadingRegex.test(value);
+  }, {
+    message: "Subject/Title can only contain letters, numbers, spaces, hyphens, and apostrophes."
+  }),
   description: z.string().min(10, {
     message: "Description must be at least 10 characters.",
   }),
