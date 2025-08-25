@@ -220,7 +220,11 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
             placeholder="Describe what happened..."
             className="min-h-[120px] bg-white border-gray-300"
             required
+            maxLength={200}
           />
+          <p className="text-xs text-gray-500 text-right">
+            {formData.description.length}/200 characters
+          </p>
         </div>
 
         {/* Assignment Section */}

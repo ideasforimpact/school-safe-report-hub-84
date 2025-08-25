@@ -171,20 +171,26 @@ const CommentItem: React.FC<CommentItemProps> = ({
       </div>
 
       {/* Comment description - truncated if long */}
-      <div className="mt-2">
-        {isExpanded || comment.description.length <= 150 ? (
-          <p className="whitespace-pre-wrap">{comment.description}</p>
-        ) : (
-          <>
-            <p className="whitespace-pre-wrap">{truncateText(comment.description)}</p>
-            <button
-              className="text-blue-600 hover:text-blue-800 text-sm mt-1"
-              onClick={toggleExpand}
-            >
-              Read more
-            </button>
-          </>
-        )}
+      <div className="mt-3">
+        <div className="bg-white border border-gray-200 rounded-md p-3">
+          {isExpanded || comment.description.length <= 150 ? (
+            <p className="text-gray-800 leading-relaxed break-words whitespace-pre-wrap">
+              {comment.description}
+            </p>
+          ) : (
+            <>
+              <p className="text-gray-800 leading-relaxed break-words whitespace-pre-wrap">
+                {truncateText(comment.description)}
+              </p>
+              <button
+                className="text-blue-600 hover:text-blue-800 text-sm mt-2 font-medium"
+                onClick={toggleExpand}
+              >
+                Read more
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Attachments Section */}

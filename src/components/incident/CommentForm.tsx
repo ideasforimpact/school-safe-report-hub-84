@@ -107,7 +107,11 @@ const CommentForm: React.FC<CommentFormProps> = ({
               required
               className="min-h-[120px]"
               disabled={isLoading}
+              maxLength={200}
             />
+            <p className="text-xs text-gray-500 text-right">
+              {commentText.length}/200 characters
+            </p>
           </div>
 
           {/* Attachments section */}

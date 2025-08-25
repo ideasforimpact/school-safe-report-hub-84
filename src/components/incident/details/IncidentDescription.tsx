@@ -14,7 +14,11 @@ const IncidentDescription: React.FC<IncidentDescriptionProps> = ({
     <div className="space-y-4 text-left">
       <div className="space-y-2">
         <h3 className="font-medium text-sm text-gray-500">Description</h3>
-        <p className="whitespace-pre-wrap text-gray-800">{description}</p>
+        <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+          <p className="text-gray-800 leading-relaxed break-words whitespace-pre-wrap">
+            {description}
+          </p>
+        </div>
       </div>
 
       {image && (

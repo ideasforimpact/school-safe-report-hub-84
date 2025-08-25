@@ -97,7 +97,11 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
             onChange={(e) => setCommentText(e.target.value)}
             className="min-h-[80px] w-full resize-none"
             disabled={isSubmitting}
+            maxLength={200}
           />
+          <p className="text-xs text-gray-500 text-right">
+            {commentText.length}/200 characters
+          </p>
           
           {showFileUpload && (
             <div className="border-t pt-3 mt-2">
