@@ -165,7 +165,8 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
 
           const result = await incidentNotificationService.queueIncidentClosedNotification(
             incidentForNotification,
-            closer
+            closer,
+            state.employeeData
           );
           console.log('Closure notification result:', result);
         } else {

@@ -253,21 +253,18 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
             if (newAssignee) {
               await incidentNotificationService.queueIncidentAssignedNotification(
                 incidentForNotification,
-                newAssignee
+                newAssignee,
+                employeeData
               );
               console.log('Incident reassignment notification sent to new assignee');
             }
           }
 
           // Send update notification to current assignee (if different from updater)
-          console.log('Checking update notification conditions:', {
-            hasAssignee: !!formData.owner,
-            assigneeId: formData.owner,
-            updaterEmployeeId: updater.id,
-            isDifferentFromUpdater: formData.owner !== updater.id
-          });
-          
-          if (formData.owner && formData.owner !== updater.id && !wasReassigned) {
+
+          let ownerOfIncident = incidentData.created_by == employeeData.id
+        
+          if (ownerOfIncident && formData.owner && formData.owner !== updater.id && !wasReassigned) {
             console.log('=== SENDING UPDATE NOTIFICATION ===');
             const { data: assignee } = await supabase
               .from('employees')
@@ -282,7 +279,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               const result = await incidentNotificationService.queueIncidentUpdatedNotification(
                 incidentForNotification,
                 updater,
-                'Incident details have been updated'
+                'Incident details have been updated',
+                employeeData
               );
               console.log('Update notification result:', result);
             } else {

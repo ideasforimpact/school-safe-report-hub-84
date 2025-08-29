@@ -28,7 +28,7 @@ export class NotificationService {
   /**
    * Queue notification for later processing by cron job
    */
-  async queueNotification(notificationData: NotificationData): Promise<boolean> {
+  async queueNotification(notificationData: NotificationData, currentEmployeeData?: any): Promise<boolean> {
     try {
       console.log('Queueing notification:', {
         module: notificationData.module,
@@ -37,7 +37,7 @@ export class NotificationService {
       });
 
       // Check if notification should be skipped
-      const shouldSkip = await this.shouldSkipNotification(notificationData);
+      const shouldSkip = await this.shouldSkipNotification(notificationData, currentEmployeeData);
       if (shouldSkip) {
         console.log('Notification skipped due to rules');
         await this.logNotification({
@@ -109,8 +109,8 @@ export class NotificationService {
   /**
    * Legacy method - now queues instead of sending immediately
    */
-  async sendNotification(notificationData: NotificationData): Promise<boolean> {
-    return this.queueNotification(notificationData);
+  async sendNotification(notificationData: NotificationData, currentEmployeeData?: any): Promise<boolean> {
+    return this.queueNotification(notificationData, currentEmployeeData);
   }
 
   /**
@@ -189,7 +189,7 @@ export class NotificationService {
   /**
    * Check if notification should be skipped based on rules
    */
-  private async shouldSkipNotification(notificationData: NotificationData): Promise<string | null> {
+  private async shouldSkipNotification(notificationData: NotificationData, currentEmployeeData?: any): Promise<string | null> {
     try {
       // Get notification rules for this module and type
       const { data: rules, error } = await supabase
@@ -207,7 +207,7 @@ export class NotificationService {
       
       // Check each skip condition
       for (const condition of rule.skip_conditions || []) {
-        const shouldSkip = await this.evaluateSkipCondition(condition, notificationData);
+        const shouldSkip = await this.evaluateSkipCondition(condition, notificationData, currentEmployeeData);
         if (shouldSkip) {
           return condition;
         }
@@ -223,10 +223,10 @@ export class NotificationService {
   /**
    * Evaluate a specific skip condition
    */
-  private async evaluateSkipCondition(condition: string, notificationData: NotificationData): Promise<boolean> {
+  private async evaluateSkipCondition(condition: string, notificationData: NotificationData, currentEmployeeData?: any): Promise<boolean> {
     switch (condition) {
       case INCIDENT_SKIP_CONDITIONS.SELF_ACTION:
-        return this.checkSelfAction(notificationData);
+        return this.checkSelfAction(notificationData, currentEmployeeData);
       
       case INCIDENT_SKIP_CONDITIONS.INACTIVE_USER:
         return await this.checkInactiveUser(notificationData.recipientId);
@@ -245,11 +245,16 @@ export class NotificationService {
   /**
    * Check if user is performing action on their own incident
    */
-  private checkSelfAction(notificationData: NotificationData): boolean {
+  private checkSelfAction(notificationData: NotificationData, currentEmployeeData?: any): boolean {
     if (notificationData.module !== 'incident') return false;
     
     const incidentData = notificationData as IncidentNotificationData;
     
+    // Check if the current logged-in user is the recipient (self-action)
+    if (currentEmployeeData?.id != incidentData.metadata?.reportedBy) {
+      return true;
+    }
+
     // Check if the user is the one who reported the incident
     if (incidentData.metadata?.reportedBy === notificationData.recipientId) {
       return true;

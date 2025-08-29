@@ -30,7 +30,7 @@ export class IncidentNotificationService {
   /**
    * Queue incident assigned notification
    */
-  async queueIncidentAssignedNotification(incident: any, assignedEmployee: Employee): Promise<boolean> {
+  async queueIncidentAssignedNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
     try {
       // Validate required employee data
       if (!assignedEmployee?.id || !assignedEmployee?.email || !assignedEmployee?.first_name || !assignedEmployee?.last_name) {
@@ -79,7 +79,7 @@ export class IncidentNotificationService {
         recipientEmail: assignedEmployee.email
       });
 
-      return await notificationService.queueNotification(notificationData);
+      return await notificationService.queueNotification(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident assigned notification:', error);
       return false;
@@ -92,7 +92,8 @@ export class IncidentNotificationService {
   async queueIncidentUpdatedNotification(
     incident: any, 
     updatedBy: Employee, 
-    updateNotes?: string
+    updateNotes?: string,
+    currentEmployeeData?: any
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
@@ -124,7 +125,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData);
+      return await notificationService.queueNotification(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident updated notification:', error);
       return false;
@@ -136,7 +137,8 @@ export class IncidentNotificationService {
    */
   async queueIncidentClosedNotification(
     incident: any, 
-    closedBy: Employee
+    closedBy: Employee,
+    currentEmployeeData?: any
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
@@ -174,7 +176,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData);
+      return await notificationService.queueNotification(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident closed notification:', error);
       return false;
@@ -187,7 +189,8 @@ export class IncidentNotificationService {
   async queueIncidentReopenedNotification(
     incident: any, 
     reopenedBy: Employee, 
-    reopenReason?: string
+    reopenReason?: string,
+    currentEmployeeData?: any
   ): Promise<boolean> {
     try {
       const assignedEmployee = await this.getEmployeeById(incident.assigned_to);
@@ -219,7 +222,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData);
+      return await notificationService.queueNotification(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident reopened notification:', error);
       return false;
@@ -231,7 +234,8 @@ export class IncidentNotificationService {
    */
   async queueIncidentReminderNotification(
     incident: any, 
-    assignedEmployee: Employee
+    assignedEmployee: Employee,
+    currentEmployeeData?: any
   ): Promise<boolean> {
     try {
       const notificationData: NotificationData = {
@@ -261,7 +265,7 @@ export class IncidentNotificationService {
         }
       };
 
-      return await notificationService.queueNotification(notificationData);
+      return await notificationService.queueNotification(notificationData, currentEmployeeData);
     } catch (error) {
       console.error('Error queueing incident reminder notification:', error);
       return false;
@@ -339,24 +343,24 @@ export class IncidentNotificationService {
   }
 
   // Legacy methods for backward compatibility
-  async sendIncidentAssignedNotification(incident: any, assignedEmployee: Employee): Promise<boolean> {
-    return this.queueIncidentAssignedNotification(incident, assignedEmployee);
+  async sendIncidentAssignedNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
+    return this.queueIncidentAssignedNotification(incident, assignedEmployee, currentEmployeeData);
   }
 
-  async sendIncidentUpdatedNotification(incident: any, updatedBy: Employee, updateNotes?: string): Promise<boolean> {
-    return this.queueIncidentUpdatedNotification(incident, updatedBy, updateNotes);
+  async sendIncidentUpdatedNotification(incident: any, updatedBy: Employee, updateNotes?: string, currentEmployeeData?: any): Promise<boolean> {
+    return this.queueIncidentUpdatedNotification(incident, updatedBy, updateNotes, currentEmployeeData);
   }
 
-  async sendIncidentClosedNotification(incident: any, closedBy: Employee): Promise<boolean> {
-    return this.queueIncidentClosedNotification(incident, closedBy);
+  async sendIncidentClosedNotification(incident: any, closedBy: Employee, currentEmployeeData?: any): Promise<boolean> {
+    return this.queueIncidentClosedNotification(incident, closedBy, currentEmployeeData);
   }
 
-  async sendIncidentReopenedNotification(incident: any, reopenedBy: Employee, reopenReason?: string): Promise<boolean> {
-    return this.queueIncidentReopenedNotification(incident, reopenedBy, reopenReason);
+  async sendIncidentReopenedNotification(incident: any, reopenedBy: Employee, reopenReason?: string, currentEmployeeData?: any): Promise<boolean> {
+    return this.queueIncidentReopenedNotification(incident, reopenedBy, reopenReason, currentEmployeeData);
   }
 
-  async sendIncidentReminderNotification(incident: any, assignedEmployee: Employee): Promise<boolean> {
-    return this.queueIncidentReminderNotification(incident, assignedEmployee);
+  async sendIncidentReminderNotification(incident: any, assignedEmployee: Employee, currentEmployeeData?: any): Promise<boolean> {
+    return this.queueIncidentReminderNotification(incident, assignedEmployee, currentEmployeeData);
   }
 }
 
