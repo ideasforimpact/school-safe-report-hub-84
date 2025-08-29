@@ -130,6 +130,52 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         throw new Error(data.error);
       }
 
+      // Send notification about incident closure
+      try {
+        console.log('=== STARTING CLOSURE NOTIFICATION ===');
+        console.log('Employee ID:', state.employeeData?.id);
+        console.log('Incident:', incident);
+        
+        const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
+        
+        // Get closer details
+        console.log('Fetching closer details for employee ID:', state.employeeData?.id);
+        const { data: closer } = await supabase
+          .from('employees')
+          .select('id, email, first_name, last_name')
+          .eq('id', state.employeeData?.id)
+          .single();
+        
+        console.log('Closer data:', closer);
+
+        if (closer) {
+          const incidentForNotification = {
+            id: incident.id,
+            ticket_id: incident.ticketId,
+            description: incident.description || 'Incident',
+            created_at: incident.createdAt,
+            created_by: incident.reportedBy?.id,
+            assigned_to: incident.owner?.id,
+            client_id: state.employeeData.clientId
+          };
+          
+          console.log('=== CALLING CLOSURE NOTIFICATION ===');
+          console.log('Incident for notification:', incidentForNotification);
+          console.log('Closer:', closer);
+
+          const result = await incidentNotificationService.queueIncidentClosedNotification(
+            incidentForNotification,
+            closer
+          );
+          console.log('Closure notification result:', result);
+        } else {
+          console.log('No closer data found, skipping notification');
+        }
+      } catch (notificationError) {
+        console.error('Error sending incident closure notification:', notificationError);
+        // Don't fail the closure if notification fails
+      }
+      
       toast.success('Incident closed successfully');
       
       // Call the original onSubmit for any additional processing

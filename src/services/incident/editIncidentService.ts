@@ -24,6 +24,8 @@ export interface EditIncidentData {
   owner: string;
   ownerId: string;
   reportedBy: string;
+  created_by: string;
+  assigned_to: string;
   peopleInvolved: any[];
   createdAt: Date;
   updatedAt: Date;
@@ -123,6 +125,8 @@ export const fetchIncidentForEdit = async (incidentId: string, clientId: string)
       ownerId: incident.assigned_to || '',
       reportedBy: createdEmployee.data ? 
         `${createdEmployee.data.first_name} ${createdEmployee.data.last_name}` : '',
+      created_by: incident.created_by || '',
+      assigned_to: incident.assigned_to || '',
       peopleInvolved: Array.isArray(incident.people_involved) ? incident.people_involved : [],
       createdAt: new Date(incident.created_at),
       updatedAt: new Date(incident.updated_at)
