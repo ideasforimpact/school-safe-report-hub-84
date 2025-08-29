@@ -325,7 +325,8 @@ const ReportIncident = () => {
 
             const notificationResult = await incidentNotificationService.queueIncidentAssignedNotification(
               incidentDataForNotification,
-              assignedEmployee
+              assignedEmployee,
+              authEmployeeData
             );
             
             console.log('Notification service result:', notificationResult);

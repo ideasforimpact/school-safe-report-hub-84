@@ -2,10 +2,11 @@
 import { useState } from 'react';
 import { reopenIncident } from '@/services/incident/incidentReopenService';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts';
 
 export const useIncidentReopen = () => {
   const [isReopening, setIsReopening] = useState(false);
-
+  const { employeeData } = useAuth();
   const handleReopenIncident = async (
     incidentId: string,
     reopenedBy: string,
@@ -39,7 +40,8 @@ export const useIncidentReopen = () => {
             
               const queryTime = Date.now() - queryStart;
               console.log('Reopener data:', reopener,queryTime);
-          if (reopener && result.incident) {
+           let ownerIncident = result.incident.created_by ==  employeeData.id
+          if (ownerIncident && reopener && result.incident) {
             const incidentForNotification = {
               id: incidentId,
               ticket_id: result.incident.ticket_id || '',
@@ -58,7 +60,8 @@ export const useIncidentReopen = () => {
             const notificationResult = await incidentNotificationService.queueIncidentReopenedNotification(
               incidentForNotification,
               reopener,
-              reopenReason
+              reopenReason,
+              employeeData
             );
             console.log('Reopen notification result:', notificationResult);
           } else {
