@@ -200,6 +200,103 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       }
 
       console.log('Incident updated successfully');
+      
+      // Handle notifications for updates and reassignments
+      try {
+        console.log('=== STARTING NOTIFICATION LOGIC ===');
+        console.log('User ID:', user.id);
+        console.log('Form data owner (assigned_to):', formData.owner);
+        console.log('Original owner (ownerId):', incidentData.ownerId);
+        
+        const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
+        
+        // Get updater details
+        console.log('Fetching updater details for user ID:', user.id);
+        const { data: updater } = await supabase
+          .from('employees')
+          .select('id, email, first_name, last_name')
+          .eq('id', incidentData.created_by)
+          .limit(1)
+          .maybeSingle();
+        
+        console.log('Updater data:', updater);
+
+        if (updater) {
+          const incidentForNotification = {
+            id: id,
+            ticket_id: incidentData.ticket_id,
+            description: formData.description || 'Incident',
+            created_at: incidentData.createdAt,
+            created_by: incidentData.created_by,
+            assigned_to: formData.owner,
+            client_id: clientId
+          };
+
+          // Check if assignment changed (reassignment)
+          const wasReassigned = incidentData.ownerId !== formData.owner && formData.owner;
+          console.log('Checking reassignment:', {
+            originalOwner: incidentData.ownerId,
+            newOwner: formData.owner,
+            wasReassigned
+          });
+          
+          if (wasReassigned) {
+            // Send assignment notification to new assignee
+            console.log('=== INCIDENT WAS REASSIGNED ===');
+            console.log('Sending assignment notification to new assignee:', formData.owner);
+            const { data: newAssignee } = await supabase
+              .from('employees')
+              .select('id, email, first_name, last_name')
+              .eq('id', formData.owner)
+              .single();
+
+            if (newAssignee) {
+              await incidentNotificationService.queueIncidentAssignedNotification(
+                incidentForNotification,
+                newAssignee
+              );
+              console.log('Incident reassignment notification sent to new assignee');
+            }
+          }
+
+          // Send update notification to current assignee (if different from updater)
+          console.log('Checking update notification conditions:', {
+            hasAssignee: !!formData.owner,
+            assigneeId: formData.owner,
+            updaterEmployeeId: updater.id,
+            isDifferentFromUpdater: formData.owner !== updater.id
+          });
+          
+          if (formData.owner && formData.owner !== updater.id && !wasReassigned) {
+            console.log('=== SENDING UPDATE NOTIFICATION ===');
+            const { data: assignee } = await supabase
+              .from('employees')
+              .select('id, email, first_name, last_name')
+              .eq('id', formData.owner)
+              .single();
+
+            console.log('Assignee data for update notification:', assignee);
+
+            if (assignee) {
+              console.log('Calling queueIncidentUpdatedNotification...');
+              const result = await incidentNotificationService.queueIncidentUpdatedNotification(
+                incidentForNotification,
+                updater,
+                'Incident details have been updated'
+              );
+              console.log('Update notification result:', result);
+            } else {
+              console.log('No assignee found for update notification');
+            }
+          } else {
+            console.log('Skipping update notification - same user or no assignee');
+          }
+        }
+      } catch (notificationError) {
+        console.error('Error sending incident notifications:', notificationError);
+        // Don't fail the update if notification fails
+      }
+      
       toast.success("Incident updated successfully");
       
       // Navigate to incidents list instead of incident detail

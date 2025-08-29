@@ -272,6 +272,75 @@ const ReportIncident = () => {
       
       console.log('Incident created successfully:', incidentData);
 
+      // Send notification if incident is assigned to someone
+      if (formData.owner) {
+        console.log('Attempting to send notification for assigned incident:', {
+          owner: formData.owner,
+          incidentId: incidentData.id,
+          ticketId: incidentData.ticket_id
+        });
+        
+        try {
+          const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
+          console.log('Notification service imported successfully');
+          
+          // Get assignee details
+          const { data: assignee, error: assigneeError } = await supabase
+            .from('employees')
+            .select('id, email, first_name, last_name')
+            .eq('id', formData.owner)
+            .single();
+
+          if (assigneeError) {
+            console.error('Error fetching assignee:', assigneeError);
+            return;
+          }
+
+          if (assignee) {
+            console.log('Assignee found:', assignee);
+            
+            // Create the incident object with the correct structure
+            const incidentDataForNotification = {
+              id: incidentData.id,
+              ticket_id: incidentData.ticket_id,
+              description: formData.description || 'Incident',
+              created_at: new Date().toISOString(),
+              created_by: employeeId,
+              assigned_to: formData.owner,
+              client_id: clientId
+            };
+
+            // Create the employee object with the correct structure
+            const assignedEmployee = {
+              id: assignee.id,
+              email: assignee.email,
+              first_name: assignee.first_name || '',
+              last_name: assignee.last_name || ''
+            };
+
+            console.log('Calling notification service with:', {
+              incident: incidentDataForNotification,
+              employee: assignedEmployee
+            });
+
+            const notificationResult = await incidentNotificationService.queueIncidentAssignedNotification(
+              incidentDataForNotification,
+              assignedEmployee
+            );
+            
+            console.log('Notification service result:', notificationResult);
+            console.log('Incident assignment notification queued');
+          } else {
+            console.error('Assignee not found for ID:', formData.owner);
+          }
+        } catch (notificationError) {
+          console.error('Error queueing incident assignment notification:', notificationError);
+          // Don't fail the incident creation if notification fails
+        }
+      } else {
+        console.log('No owner assigned, skipping notification');
+      }
+
       // Upload supporting files if any exist - clientId is already validated above
       if (supportingFiles && supportingFiles.length > 0) {
         console.log('Uploading supporting files...');
