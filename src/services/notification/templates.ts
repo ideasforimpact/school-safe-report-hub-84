@@ -1,4 +1,5 @@
 import { NotificationModule, NotificationTemplate, NotificationType } from '@/types/notification';
+import { getAssessmentTemplate } from './assessmentTemplates';
 
 // Frontend-managed notification templates.
 // Keep values as valid HTML; placeholders like {{Incident_ID}} will be replaced by NotificationService.
@@ -171,5 +172,14 @@ export function getFrontendTemplate(module: NotificationModule, type: Notificati
       return incidentTemplates[type] || null;
     }
   }
+  
+  if (module === 'assessment') {
+    // Return assessment templates from separate file
+    if (type === 'assessment_assigned' || type === 'assessment_submitted' || type === 'assessment_completed' || 
+        type === 'assessment_rework_required' || type === 'assessment_due_5_days' || type === 'assessment_overdue') {
+      return getAssessmentTemplate(type);
+    }
+  }
+  
   return null;
 } 

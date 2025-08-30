@@ -289,6 +289,47 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         throw updateError;
       }
 
+      // Send notification to assessment creator (not self if self-submitted)
+      try {
+        // Get assessment details with creator info
+        const { data: fullAssessment, error: assessmentError } = await supabase
+          .from('assessments')
+          .select('id, name, created_by, assigned_to, client_id')
+          .eq('assessment_id', parseInt(assessmentId!))
+          .single();
+
+        if (assessmentError) {
+          console.error('Error fetching assessment details:', assessmentError);
+        } else if (fullAssessment && fullAssessment.created_by !== employeeData?.id) {
+          // Get submitter details (current user)
+          const submitter = {
+            id: employeeData?.id || '',
+            first_name: employeeData?.firstName || '',
+            last_name: employeeData?.lastName || '',
+            email: employeeData?.email || ''
+          };
+
+          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
+          
+          const notificationResult = await assessmentNotificationService.queueAssessmentSubmittedNotification(
+            {
+              id: fullAssessment.id,
+              title: fullAssessment.name,
+              created_by: fullAssessment.created_by,
+              assigned_to: fullAssessment.assigned_to,
+              client_id: fullAssessment.client_id
+            },
+            submitter,
+            employeeData
+          );
+          
+          console.log('Assessment submission notification queued:', notificationResult);
+        }
+      } catch (notificationError) {
+        console.error('Error queueing assessment submission notification:', notificationError);
+        // Don't fail the submission if notification fails
+      }
+
       toast.success('Assessment submitted successfully!', {
         description: `Your score: ${score}%`
       });

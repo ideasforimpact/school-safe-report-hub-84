@@ -9,7 +9,12 @@ export type NotificationType =
   | 'incident_reopened'
   | 'incident_reminder_10_days'
   | 'employee_verified'
+  | 'assessment_assigned'
+  | 'assessment_submitted'
   | 'assessment_completed'
+  | 'assessment_rework_required'
+  | 'assessment_due_5_days'
+  | 'assessment_overdue'
   | 'transport_incident'
   | 'grievance_submitted'
   | 'feedback_received';
@@ -92,6 +97,16 @@ export const INCIDENT_SKIP_CONDITIONS = {
 
 export type IncidentSkipCondition = typeof INCIDENT_SKIP_CONDITIONS[keyof typeof INCIDENT_SKIP_CONDITIONS];
 
+// Skip conditions for assessment notifications (same as incident)
+export const ASSESSMENT_SKIP_CONDITIONS = {
+  SELF_ACTION: 'self_action', // Don't notify if user performs action on their own assessment
+  ALREADY_NOTIFIED: 'already_notified', // Don't send duplicate notifications
+  INACTIVE_USER: 'inactive_user', // Don't notify inactive users
+  NO_EMAIL: 'no_email', // Don't notify users without email
+} as const;
+
+export type AssessmentSkipCondition = typeof ASSESSMENT_SKIP_CONDITIONS[keyof typeof ASSESSMENT_SKIP_CONDITIONS];
+
 // Notification configuration
 export interface NotificationConfig {
   enabled: boolean;
@@ -117,4 +132,31 @@ export interface IncidentEmailVariables {
   Closed_Date?: string;
   Reopened_By?: string;
   Reopen_Reason?: string;
+}
+
+// Assessment notification data interface
+export interface AssessmentNotificationData extends NotificationData {
+  metadata: {
+    assessmentId: string;
+    createdBy: string;
+    assignedTo?: string;
+    actionBy: string;
+  };
+}
+
+// Email template variables for assessment notifications
+export interface AssessmentEmailVariables {
+  User_Name: string;
+  Assessment_ID: string;
+  Assessment_Title: string;
+  Assigned_Date?: string;
+  Due_Date?: string;
+  Submitted_By?: string;
+  Submitted_Date?: string;
+  Completed_By?: string;
+  Completed_Date?: string;
+  Requested_By?: string;
+  Rework_Reason?: string;
+  Overdue_Days?: string;
+  Assessment_URL: string;
 } 

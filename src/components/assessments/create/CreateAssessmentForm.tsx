@@ -235,6 +235,45 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       if (error) throw error;
 
       console.log('Assessment created with client_id:', data);
+
+      // Send notification if assigned to someone (and not self-assigned)
+      if (formData.assignedTo && formData.assignedTo !== employeeData?.id) {
+        console.log('Sending assessment assigned notification...');
+        
+        try {
+          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
+          
+          // Get assignee details
+          const { data: assignee, error: assigneeError } = await supabase
+            .from('employees')
+            .select('id, email, first_name, last_name')
+            .eq('id', formData.assignedTo)
+            .single();
+
+          if (assigneeError) {
+            console.error('Error fetching assignee:', assigneeError);
+          } else if (assignee) {
+            const notificationResult = await assessmentNotificationService.queueAssessmentAssignedNotification(
+              {
+                id: data.id,
+                title: data.name,
+                target_completion_date: data.target_completion_date,
+                assigned_to: data.assigned_to,
+                created_by: data.created_by,
+                client_id: data.client_id
+              },
+              assignee,
+              employeeData
+            );
+            
+            console.log('Assessment assignment notification queued:', notificationResult);
+          }
+        } catch (notificationError) {
+          console.error('Error queueing assessment assignment notification:', notificationError);
+          // Don't fail the assessment creation if notification fails
+        }
+      }
+
       toast.success('Assessment created successfully');
       if (onCancel) {
         onCancel();
