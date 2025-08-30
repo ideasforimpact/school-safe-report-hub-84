@@ -53,6 +53,7 @@ interface AssessmentData {
   closure_comments?: string | null;
   rework_comments?: string | null;
   created_by?: string;
+  assigned_to?: string;
   template?: {
     title: string;
     description: string;
@@ -98,6 +99,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
           closure_comments,
           rework_comments,
           created_by,
+          assigned_to,
           creator:employees!assessments_created_by_fkey(first_name, last_name),
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
           completed_by_employee:employees!assessments_completed_by_fkey(first_name, last_name),
@@ -165,6 +167,40 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
       if (error) throw error;
 
+      // Send notification to assigned person (not self if self-completed)
+      console.log(assessment.assigned_to && assessment.assigned_to !== employeeData?.id,"checking assesigned",assessment);
+      
+      if (assessment.assigned_to && assessment.assigned_to !== employeeData?.id) {
+        try {
+          // Get completer details (current user)
+          const completer = {
+            id: employeeData?.id || '',
+            first_name: employeeData?.firstName || '',
+            last_name: employeeData?.lastName || '',
+            email: employeeData?.email || ''
+          };
+
+          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
+
+          const notificationResult = await assessmentNotificationService.queueAssessmentCompletedNotification(
+            {
+              id: assessment.id,
+              title: assessment.name,
+              assigned_to: assessment.assigned_to,
+              created_by: assessment.created_by,
+              client_id: clientId
+            },
+            completer,
+            employeeData
+          );
+          
+          console.log('Assessment completion notification queued:', notificationResult);
+        } catch (notificationError) {
+          console.error('Error queueing assessment completion notification:', notificationError);
+          // Don't fail the completion if notification fails
+        }
+      }
+
       setAssessment(prev => prev ? { 
         ...prev, 
         status: 'Completed',
@@ -210,6 +246,41 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
         .eq('client_id', clientId);
 
       if (error) throw error;
+
+      console.log(assessment.assigned_to && assessment.assigned_to !== employeeData?.id,"checking assesigned",assessment);
+
+      // Send notification to assigned person (not self if self-requested)
+      if (assessment.assigned_to && assessment.assigned_to !== employeeData?.id) {
+        try {
+          // Get requester details (current user)
+          const requester = {
+            id: employeeData?.id || '',
+            first_name: employeeData?.firstName || '',
+            last_name: employeeData?.lastName || '',
+            email: employeeData?.email || ''
+          };
+
+          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
+
+          const notificationResult = await assessmentNotificationService.queueAssessmentReworkRequiredNotification(
+            {
+              id: assessment.id,
+              title: assessment.name,
+              assigned_to: assessment.assigned_to,
+              created_by: assessment.created_by,
+              client_id: clientId
+            },
+            requester,
+            reworkComments.trim() || 'Please rework this assessment',
+            employeeData
+          );
+          
+          console.log('Assessment rework notification queued:', notificationResult);
+        } catch (notificationError) {
+          console.error('Error queueing assessment rework notification:', notificationError);
+          // Don't fail the rework request if notification fails
+        }
+      }
 
       setAssessment(prev => prev ? { 
         ...prev, 
@@ -294,7 +365,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
 
   const isCurrentUserCreator = assessment?.created_by === employeeData?.id;
   const isCompleteButtonEnabled = assessment?.status === 'Submitted' && isCurrentUserCreator;
-  const isReworkButtonEnabled = (hasAssessmentAdmin || isSuperAdmin) && assessment?.status !== 'Draft' && assessment?.status !== 'New';
+  const isReworkButtonEnabled = isCurrentUserCreator && assessment?.status !== 'Draft' && assessment?.status !== 'New';
 
   if (!open) return null;
 

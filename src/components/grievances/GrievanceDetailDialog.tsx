@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { toast } from '@/hooks/use-toast';
 import { SubmissionStatus } from '@/contexts/grievances/types';
+import { useGrievanceAccess } from '@/hooks/grievances/useGrievanceAccess';
 
 interface GrievanceDetailDialogProps {
   submissionId: string;
@@ -22,12 +23,16 @@ interface GrievanceDetailDialogProps {
 
 const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissionId, onClose }) => {
   const { submissions, updateSubmissionStatus } = useGrievance();
+  const { hasGrievanceAdmin, isSuperAdmin } = useGrievanceAccess();
   
   const submission = submissions.find(s => s.id === submissionId);
   const [status, setStatus] = useState<SubmissionStatus>(submission?.status || 'new');
   const [internalNote, setInternalNote] = useState('');
   
   if (!submission) return null;
+
+  // Check if user has admin access to acknowledge/update grievances
+  const canAcknowledgeGrievance = hasGrievanceAdmin || isSuperAdmin;
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -137,40 +142,45 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
             </p>
           </div>
           
-          <div className="border-t pt-4">
-            <h3 className="font-medium mb-2">Update Status</h3>
-            <div className="flex items-center gap-4">
-              <div className="w-64">
-                <Select value={status} onValueChange={handleStatusChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Admin-only sections - Update Status and Add Internal Note */}
+          {canAcknowledgeGrievance && (
+            <>
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-2">Update Status</h3>
+                <div className="flex items-center gap-4">
+                  <div className="w-64">
+                    <Select value={status} onValueChange={handleStatusChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">New</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleUpdateStatus}>Update Status</Button>
+                </div>
               </div>
-              <Button onClick={handleUpdateStatus}>Update Status</Button>
-            </div>
-          </div>
-          
-          <div className="border-t pt-4">
-            <h3 className="font-medium mb-2">Add Internal Note</h3>
-            <div className="space-y-2">
-              <Textarea
-                placeholder="Add notes for internal use only"
-                value={internalNote}
-                onChange={(e) => setInternalNote(e.target.value)}
-                rows={3}
-              />
-              <Button onClick={handleAddNote} disabled={!internalNote.trim()}>
-                Add Note
-              </Button>
-            </div>
-          </div>
+              
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-2">Add Internal Note</h3>
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Add notes for internal use only"
+                    value={internalNote}
+                    onChange={(e) => setInternalNote(e.target.value)}
+                    rows={3}
+                  />
+                  <Button onClick={handleAddNote} disabled={!internalNote.trim()}>
+                    Add Note
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
