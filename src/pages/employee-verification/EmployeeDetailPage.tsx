@@ -97,8 +97,8 @@ const EmployeeDetailPage = () => {
           }
 
           if (data.success) {
-            sonnerToast.success("Aadhaar verification completed", {
-              description: "Your Aadhaar has been successfully verified!"
+            sonnerToast.success("DigiLocker data retrieved", {
+              description: "Please review the Aadhaar details and approve or reject the verification."
             });
 
             // Store the verification data for the dialog
@@ -108,10 +108,10 @@ const EmployeeDetailPage = () => {
               response: data.data ? { data: data.data, success: data.success } : data
             });
 
-            // Refresh documents to show updated status
+            // Refresh documents to show updated status (with DigiLocker data)
             await refetchDocuments();
             
-            // Show the Aadhaar details dialog
+            // Show the Aadhaar details dialog for user to approve/reject
             setAadharDialogOpen(true);
           } else {
             throw new Error(data.error || "Verification failed");
