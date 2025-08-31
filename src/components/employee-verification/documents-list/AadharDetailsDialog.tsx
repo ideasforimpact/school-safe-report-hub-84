@@ -35,6 +35,51 @@ interface AadharAddress {
   zip?: string;
 }
 
+// DigiLocker response format
+interface DigiLockerAddress {
+  country?: string;
+  dist?: string;
+  state?: string;
+  po?: string;
+  house?: string;
+  loc?: string;
+  vtc?: string;
+  subdist?: string;
+  street?: string;
+  landmark?: string;
+}
+
+interface DigiLockerAadhaarData {
+  full_name?: string;
+  care_of?: string;
+  dob?: string;
+  yob?: string;
+  zip?: string;
+  profile_image?: string;
+  gender?: string;
+  masked_aadhaar?: string;
+  full_address?: string;
+  father_name?: string;
+  address?: DigiLockerAddress;
+}
+
+interface DigiLockerResponse {
+  data?: {
+    client_id?: string;
+    digilocker_metadata?: {
+      name?: string;
+      gender?: string;
+      dob?: string;
+    };
+    aadhaar_xml_data?: DigiLockerAadhaarData;
+    xml_url?: string;
+  };
+  status_code?: number;
+  success?: boolean;
+  message?: string;
+  message_code?: string;
+}
+
 interface AadharResponse {
   data?: {
     full_name?: string;
@@ -58,7 +103,7 @@ interface AadharDetailsDialogProps {
   aadharDetails: {
     timestamp?: string;
     action?: string;
-    response?: AadharResponse;
+    response?: AadharResponse | DigiLockerResponse;
   } | null;
   documentId?: string;
   onVerificationUpdate?: () => void;
@@ -82,26 +127,73 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
     return null;
   }
 
-  const { data } = aadharDetails.response;
-  const address = data.address || {};
-  const formattedAddress = [
-    address.house,
-    address.street,
-    address.landmark,
-    address.loc,
-    address.vtc,
-    address.subdist,
-    address.dist,
-    address.state,
-    address.zip,
-    address.country,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  // Determine if this is a DigiLocker response or old format response
+  const isDigiLockerResponse = (response: any): response is DigiLockerResponse => {
+    return response.data?.aadhaar_xml_data !== undefined;
+  };
+
+  const response = aadharDetails.response;
+  let data: any;
+  let address: any = {};
+  let formattedAddress = '';
+
+  if (isDigiLockerResponse(response)) {
+    // Handle DigiLocker response format
+    data = {
+      full_name: response.data?.aadhaar_xml_data?.full_name || response.data?.digilocker_metadata?.name,
+      aadhaar_number: response.data?.aadhaar_xml_data?.masked_aadhaar,
+      dob: response.data?.aadhaar_xml_data?.dob || response.data?.digilocker_metadata?.dob,
+      gender: response.data?.aadhaar_xml_data?.gender || response.data?.digilocker_metadata?.gender,
+      care_of: response.data?.aadhaar_xml_data?.father_name || response.data?.aadhaar_xml_data?.care_of,
+      profile_image: response.data?.aadhaar_xml_data?.profile_image,
+      mobile_verified: true // Assume verified if from DigiLocker
+    };
+    
+    // Use full_address if available, otherwise construct from address object
+    if (response.data?.aadhaar_xml_data?.full_address) {
+      formattedAddress = response.data.aadhaar_xml_data.full_address;
+    } else {
+      address = response.data?.aadhaar_xml_data?.address || {};
+      formattedAddress = [
+        address.house,
+        address.street,
+        address.landmark,
+        address.loc,
+        address.vtc,
+        address.subdist,
+        address.dist,
+        address.state,
+        response.data?.aadhaar_xml_data?.zip,
+        address.country,
+      ]
+        .filter(Boolean)
+        .join(', ');
+    }
+  } else {
+    // Handle old response format
+    data = response.data;
+    address = data.address || {};
+    formattedAddress = [
+      address.house,
+      address.street,
+      address.landmark,
+      address.loc,
+      address.vtc,
+      address.subdist,
+      address.dist,
+      address.state,
+      address.zip,
+      address.country,
+    ]
+      .filter(Boolean)
+      .join(', ');
+  }
 
   const verificationDate = aadharDetails.timestamp ? 
     format(new Date(aadharDetails.timestamp), 'PPP p') : 
     'Unknown';
+
+  const verificationType = isDigiLockerResponse(response) ? 'DigiLocker' : 'government Aadhaar database';
 
   const handleVerify = async () => {
     if (!documentId) return;
@@ -211,7 +303,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Aadhaar Verification Details</DialogTitle>
           <DialogDescription>
-            Verified through government Aadhaar database on {verificationDate}
+            Verified through {verificationType} on {verificationDate}
           </DialogDescription>
         </DialogHeader>
         
@@ -274,7 +366,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
             
             <div className="bg-gray-50 p-3 rounded-md">
               <h4 className="text-sm font-medium text-gray-700">Verification Method</h4>
-              <p className="text-sm text-gray-600">Government Aadhaar API Verification</p>
+              <p className="text-sm text-gray-600">{isDigiLockerResponse(response) ? 'DigiLocker API Verification' : 'Government Aadhaar API Verification'}</p>
             </div>
           </div>
         </ScrollArea>

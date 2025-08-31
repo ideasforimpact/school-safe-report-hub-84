@@ -55,8 +55,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 }) => {
   const { toast: shadcnToast } = useToast();
   
-  // Debug logging for props (removed to reduce console noise)
-  // console.log('VerificationDialog - Received props:', { documentId, documentType, quickStartMethod });
+  // Debug logging for props
+  console.log('VerificationDialog - Received props:', { documentId, documentType, quickStartMethod });
   
   // Wrapper for onDocumentAction that includes loading state
   const handleDocumentActionWithLoading = async () => {
@@ -67,7 +67,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
   
-  const isAadhar = documentType === 'aadhar';
+  const isAadhar = documentType?.toLowerCase().includes('aadhar') || 
+                   documentType?.toLowerCase().includes('aadhaar');
   const isPan = documentType === 'pan';
   const isVoterId = documentType === 'voter_id';
   const isDrivingLicense = documentType === 'driving_license';
@@ -864,6 +865,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
   const handleApiClick = async () => {
     if (isAadhar) {
+      console.log('VerificationDialog - isAadhar check:', isAadhar, 'documentType:', documentType);
       if (!documentNumber) {
         toast.error("Verification Failed", {
           description: "Aadhar number is required for verification"
@@ -874,75 +876,61 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       // Set loading state
       setIsRequestingOtp(true);
       
-      // Call the edge function to request OTP
+      // Call DigiLocker API through Supabase Edge Function to avoid CORS
       try {
-        console.log("Sending OTP request for document ID:", documentId);
+        console.log("Initializing DigiLocker verification for document ID:", documentId);
         
-        const { data, error } = await supabase.functions.invoke('employee-verification', {
-          method: 'POST',
-          body: { 
-            action: 'requestAadharOtp',
-            documentId, 
-            documentNumber // Send the plain document number
+        const baseUrl = import.meta.env.VITE_BASE_URL || window.location.origin;
+        const currentPath = window.location.pathname;
+        const redirectUrl = `${baseUrl}${currentPath}`;
+        
+        const { data, error } = await supabase.functions.invoke('digilocker-verification', {
+          body: {
+            action: 'initialize',
+            documentId,
+            redirectUrl
           }
         });
-        
-        console.log("OTP request response:", data, error);
+        console.log("DigiLocker initialization response:", data, error);
         
         if (error) {
-          console.error('Error requesting OTP:', error);
-          toast.error("OTP Request Failed", {
-            description: error.message || "Failed to request OTP. Please try again."
-          });
-          onOpenChange(false); // Close the dialog
-          if (onDocumentAction) {
-            await onDocumentAction(); // Refresh document data
-          }
-          return;
+          throw new Error(error.message || "Failed to initialize DigiLocker verification");
         }
         
-        // Check for success flag first, then handle errors
-        if (data?.success === false || data?.error) {
-          if (data.cooldownRemaining) {
-            // Handle cooldown period
-            startCooldownTimer(data.cooldownRemaining);
-          }
-          
-          toast.error("OTP Request Failed", {
-            description: data.error || "Failed to request OTP. Please try again."
-          });
-          onOpenChange(false); // Close the dialog
-          if (onDocumentAction) {
-            await onDocumentAction(); // Refresh document data
-          }
-          return;
+        if (!data.success || !data.data) {
+          throw new Error(data.error || data.message || "Failed to initialize DigiLocker verification");
         }
         
-        // Store transaction ID and client_id for OTP verification
-        if (data?.txnId) {
-          setTxnId(data.txnId);
-          console.log("Transaction ID stored:", data.txnId);
+        // Store client_id and other data for later use
+        if (data.data.client_id) {
+          setClientId(data.data.client_id);
+          console.log("DigiLocker Client ID stored:", data.data.client_id);
         }
         
-        if (data?.client_id) {
-          setClientId(data.client_id);
-          console.log("Client ID stored:", data.client_id);
+        // Store the client_id and document_id in localStorage for when we return
+        if (data.data.client_id) {
+          localStorage.setItem('digilocker_client_id', data.data.client_id);
+          localStorage.setItem('digilocker_document_id', documentId);
         }
         
-        setShowOtpInput(true);
-        // Start a 3-minute countdown for OTP validity
-        startCooldownTimer(3 * 60);
-        toast.success("OTP Sent", {
-          description: "A verification code has been sent to your registered mobile number"
+        toast.success("Redirecting to DigiLocker", {
+          description: "You will be redirected to complete the verification"
         });
+        
+        // Close the current dialog
+        onOpenChange(false);
+        
+        // Redirect to DigiLocker URL in the same tab
+        window.location.href = data.data.url;
+        
       } catch (err: any) {
-        console.error("Exception in handleApiClick:", err);
-        toast.error("OTP Request Error", {
-          description: err.message || "Failed to send OTP"
+        console.error("Exception in DigiLocker initialization:", err);
+        toast.error("DigiLocker Error", {
+          description: err.message || "Failed to initialize DigiLocker verification"
         });
-        onOpenChange(false); // Close the dialog
+        onOpenChange(false);
         if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
+          await onDocumentAction();
         }
       } finally {
         setIsRequestingOtp(false);
@@ -1036,100 +1024,108 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
-  const handleOtpSubmit = async () => {
-    console.log("handleOtpSubmit called - starting OTP verification process");
-    
-    if (otp.length !== 6) {
-      toast.error("Verification Error", {
-        description: "Please enter a valid 6-digit OTP"
-      });
-      return;
-    }
-    
-    // Start with setting the verifying state to true
-    setIsVerifyingOtp(true);
-    
-    try {
-      console.log("Submitting OTP verification with:", {
-        otp,
-        txnId,
-        clientId,
-        documentId
-      });
-      
-      const requestBody: any = {
-        action: 'verifyAadharOtp',
-        documentId,
-        otp
-      };
-      
-      // Add client_id if available
-      if (clientId) {
-        requestBody.client_id = clientId;
-      }
-      
-      // Add txnId if available, but don't require it
-      if (txnId) {
-        requestBody.txnId = txnId;
-      }
-      
-      // Make the API call to verify OTP
-      console.log("Invoking employee-verification edge function with requestBody:", requestBody);
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        method: 'POST',
-        body: requestBody
-      });
-      
-      console.log("OTP verification response:", data, error);
-      
-      if (error) {
-        console.error('Error verifying OTP:', error);
-        toast.error("Verification Failed", {
-          description: error.message || "Failed to verify OTP. Please try again."
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
-        setIsVerifyingOtp(false);
-        return;
-      }
-      
-      // Check for success flag first, then handle errors
-      if (data?.success === false || data?.error) {
-        toast.error("Verification Failed", {
-          description: data.error || "Failed to verify OTP. Please try again."
-        });
-        onOpenChange(false); // Close the dialog
-        if (onDocumentAction) {
-          await onDocumentAction(); // Refresh document data
-        }
-        setIsVerifyingOtp(false);
-        return;
-      }
-      
-      onVerify('api');
-      setShowOtpInput(false);
-      setOtp("");
-      setTxnId(null);
-      setClientId(null);
-      if (cooldownTimerId !== null) {
-        clearInterval(cooldownTimerId);
-        setCooldownTimerId(null);
-      }
-    } catch (err: any) {
-      console.error("Exception in handleOtpSubmit:", err);
-      toast.error("Verification Failed", {
-        description: err.message || "Failed to verify OTP"
-      });
-      onOpenChange(false); // Close the dialog
-      if (onDocumentAction) {
-        await onDocumentAction(); // Refresh document data
-      }
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
+     // COMMENTED OUT: Old OTP-based Aadhaar verification - replaced with DigiLocker
+   const handleOtpSubmit = async () => {
+     // Placeholder function - OTP verification no longer used for Aadhaar with DigiLocker
+     toast.error("No Action", {
+       description: "DigiLocker verification doesn't use OTP. Please use the Verify button instead."
+     });
+   };
+   
+   // const handleOtpSubmit = async () => {
+  //   console.log("handleOtpSubmit called - starting OTP verification process");
+  //   
+  //   if (otp.length !== 6) {
+  //     toast.error("Verification Error", {
+  //       description: "Please enter a valid 6-digit OTP"
+  //     });
+  //     return;
+  //   }
+  //   
+  //   // Start with setting the verifying state to true
+  //   setIsVerifyingOtp(true);
+  //   
+  //   try {
+  //     console.log("Submitting OTP verification with:", {
+  //       otp,
+  //       txnId,
+  //       clientId,
+  //       documentId
+  //     });
+  //     
+  //     const requestBody: any = {
+  //       action: 'verifyAadharOtp',
+  //       documentId,
+  //       otp
+  //     };
+  //     
+  //     // Add client_id if available
+  //     if (clientId) {
+  //       requestBody.client_id = clientId;
+  //     }
+  //     
+  //     // Add txnId if available, but don't require it
+  //     if (txnId) {
+  //       requestBody.txnId = txnId;
+  //     }
+  //     
+  //     // Make the API call to verify OTP
+  //     console.log("Invoking employee-verification edge function with requestBody:", requestBody);
+  //     const { data, error } = await supabase.functions.invoke('employee-verification', {
+  //       method: 'POST',
+  //       body: requestBody
+  //     });
+  //     
+  //     console.log("OTP verification response:", data, error);
+  //     
+  //     if (error) {
+  //       console.error('Error verifying OTP:', error);
+  //       toast.error("Verification Failed", {
+  //         description: error.message || "Failed to verify OTP. Please try again."
+  //       });
+  //       onOpenChange(false); // Close the dialog
+  //       if (onDocumentAction) {
+  //         await onDocumentAction(); // Refresh document data
+  //       }
+  //       setIsVerifyingOtp(false);
+  //       return;
+  //     }
+  //     
+  //     // Check for success flag first, then handle errors
+  //     if (data?.success === false || data?.error) {
+  //       toast.error("Verification Failed", {
+  //         description: data.error || "Failed to verify OTP. Please try again."
+  //       });
+  //       onOpenChange(false); // Close the dialog
+  //       if (onDocumentAction) {
+  //         await onDocumentAction(); // Refresh document data
+  //       }
+  //       setIsVerifyingOtp(false);
+  //       return;
+  //     }
+  //     
+  //     onVerify('api');
+  //     setShowOtpInput(false);
+  //     setOtp("");
+  //     setTxnId(null);
+  //     setClientId(null);
+  //     if (cooldownTimerId !== null) {
+  //       clearInterval(cooldownTimerId);
+  //       setCooldownTimerId(null);
+  //     }
+  //   } catch (err: any) {
+  //     console.error("Exception in handleOtpSubmit:", err);
+  //     toast.error("Verification Failed", {
+  //       description: err.message || "Failed to verify OTP"
+  //     });
+  //     onOpenChange(false); // Close the dialog
+  //     if (onDocumentAction) {
+  //       await onDocumentAction(); // Refresh document data
+  //     }
+  //   } finally {
+  //     setIsVerifyingOtp(false);
+  //   }
+  // };
 
   const handleCancel = () => {
     setShowOtpInput(false);
@@ -1160,6 +1156,66 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     
     // Close the dialog
     onOpenChange(false);
+  };
+
+  const handleDigilockerSuccess = async (clientId: string) => {
+    try {
+      console.log("Handling DigiLocker success for client ID:", clientId);
+      setIsVerificationLoading?.(true);
+      
+      // Call DigiLocker download API through Supabase Edge Function
+      const { data: aadhaarData, error } = await supabase.functions.invoke('digilocker-verification', {
+        body: {
+          action: 'downloadAadhaar',
+          clientId,
+          documentId
+        }
+      });
+      console.log("DigiLocker Aadhaar data response:", aadhaarData, error);
+      
+      if (error) {
+        throw new Error(error.message || "Failed to fetch Aadhaar data from DigiLocker");
+      }
+      
+      if (!aadhaarData.success || !aadhaarData.data) {
+        throw new Error(aadhaarData.error || aadhaarData.message || "Failed to fetch Aadhaar data from DigiLocker");
+      }
+      
+      toast.success("Verification Completed", {
+        description: "Aadhaar verification completed successfully via DigiLocker"
+      });
+      
+      // Refresh document data
+      if (onDocumentAction) {
+        await onDocumentAction();
+      }
+      
+      // Open the details dialog to show the verification results
+      setTimeout(() => {
+        setCurrentDocumentId(documentId);
+        setSelectedAadharDetails({
+          timestamp: new Date().toISOString(),
+          action: 'digilocker_verification',
+          response: aadhaarData.data ? { data: aadhaarData.data, success: aadhaarData.success } : aadhaarData
+        });
+        setAadharDialogOpen(true);
+      }, 500);
+      
+    } catch (err: any) {
+      console.error("Exception in handleDigilockerSuccess:", err);
+      
+      // No need to update document status here as the Edge Function handles it
+        
+      toast.error("Verification Failed", {
+        description: err.message || "Failed to complete DigiLocker verification"
+      });
+      
+      if (onDocumentAction) {
+        await onDocumentAction();
+      }
+    } finally {
+      setIsVerificationLoading?.(false);
+    }
   };
   
   const formatTime = (seconds: number) => {
@@ -1217,9 +1273,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <FileText className="h-6 w-6" />
             </div>
           </div>
-          <DialogTitle className="text-2xl font-semibold text-center">API Document Verification</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold text-center">
+            {isAadhar ? 'DigiLocker Verification' : 'API Document Verification'}
+          </DialogTitle>
           <DialogDescription className="text-center text-sm">
-            Verify employee data through automated API validation
+            {isAadhar 
+              ? 'Verify Aadhaar data through DigiLocker integration'
+              : 'Verify employee data through automated API validation'
+            }
           </DialogDescription>
         </DialogHeader>
         {!showOtpInput ? (
@@ -1227,7 +1288,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           <div className="flex flex-col gap-4 py-4">
 
             <div className="text-sm text-muted-foreground text-center">
-              Click the verify button to fetch and validate employee data through our secure API.
+              {isAadhar 
+                ? 'Click the verify button to open DigiLocker for Aadhaar verification.'
+                : 'Click the verify button to fetch and validate employee data through our secure API.'
+              }
             </div>
           </div>
         ) : (
@@ -1267,17 +1331,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={isVerifyingOtp || otp.length !== 6}
+                disabled={true}
                 className="ml-2"
               >
-                {isVerifyingOtp ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Process'
-                )}
+                Not Available
               </Button>
             </>
           ) : (

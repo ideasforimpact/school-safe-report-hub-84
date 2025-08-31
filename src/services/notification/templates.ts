@@ -1,5 +1,6 @@
 import { NotificationModule, NotificationTemplate, NotificationType } from '@/types/notification';
 import { getAssessmentTemplate } from './assessmentTemplates';
+import { getGrievanceTemplate } from './grievanceTemplates';
 
 // Frontend-managed notification templates.
 // Keep values as valid HTML; placeholders like {{Incident_ID}} will be replaced by NotificationService.
@@ -164,7 +165,7 @@ const incidentTemplates: Partial<Record<NotificationType, NotificationTemplate>>
   }
 };
 
-export function getFrontendTemplate(module: NotificationModule, type: NotificationType): NotificationTemplate | null {
+export function getFrontendTemplate(module: NotificationModule, type: NotificationType): NotificationTemplate | Partial<NotificationTemplate> | null {
   if (module === 'incident') {
     // Only return templates for incident types that we have defined
     if (type === 'incident_assigned' || type === 'incident_updated' || type === 'incident_closed' || 
@@ -178,6 +179,13 @@ export function getFrontendTemplate(module: NotificationModule, type: Notificati
     if (type === 'assessment_assigned' || type === 'assessment_submitted' || type === 'assessment_completed' || 
         type === 'assessment_rework_required' || type === 'assessment_due_5_days' || type === 'assessment_overdue') {
       return getAssessmentTemplate(type);
+    }
+  }
+  
+  if (module === 'grievance') {
+    // Return grievance templates from separate file
+    if (type === 'grievance_submitted') {
+      return getGrievanceTemplate(type);
     }
   }
   

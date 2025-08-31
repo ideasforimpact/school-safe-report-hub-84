@@ -36,18 +36,22 @@ export class NotificationService {
         recipient: notificationData.recipientEmail
       });
 
-      // Check if notification should be skipped
-      const shouldSkip = await this.shouldSkipNotification(notificationData, currentEmployeeData);
-      if (shouldSkip) {
-        console.log('Notification skipped due to rules');
-        await this.logNotification({
-          ...notificationData,
-          subject: '',
-          body: '',
-          status: 'skipped',
-          metadata: { skipReason: shouldSkip }
-        });
-        return false;
+      // Check if notification should be skipped (bypass for grievance notifications)
+      if (notificationData.module !== 'grievance') {
+        const shouldSkip = await this.shouldSkipNotification(notificationData, currentEmployeeData);
+        if (shouldSkip) {
+          console.log('Notification skipped due to rules');
+          await this.logNotification({
+            ...notificationData,
+            subject: '',
+            body: '',
+            status: 'skipped',
+            metadata: { skipReason: shouldSkip }
+          });
+          return false;
+        }
+      } else {
+        console.log('Grievance notification - bypassing skip condition checks');
       }
 
       // Get notification template from frontend registry
@@ -61,7 +65,7 @@ export class NotificationService {
       const processedTemplate = this.processTemplate(template, notificationData.variables);
       
       // Queue email in database
-      const emailQueued = await this.queueEmail({
+      const emailResult = await this.queueEmail({
         module_name: notificationData.module,
         notification_type: notificationData.type,
         client_id: notificationData.clientId,
@@ -79,17 +83,18 @@ export class NotificationService {
         priority: notificationData.priority === 'high' ? 1 : 0
       });
 
-      // Log notification
+      // Log notification with email_queue_id reference
       await this.logNotification({
         ...notificationData,
         subject: processedTemplate.subject,
         body: processedTemplate.body,
-        status: emailQueued ? 'pending' : 'failed',
+        status: emailResult.success ? 'pending' : 'failed',
         sentAt: undefined,
-        errorMessage: emailQueued ? undefined : 'Failed to queue email'
+        errorMessage: emailResult.success ? undefined : 'Failed to queue email',
+        emailQueueId: emailResult.emailQueueId
       });
 
-      return emailQueued;
+      return emailResult.success;
     } catch (error) {
       console.error('Error queueing notification:', error);
       
@@ -126,24 +131,36 @@ export class NotificationService {
     body: string;
     params: Record<string, any>;
     priority?: number;
-  }): Promise<boolean> {
+  }): Promise<{ success: boolean; emailQueueId?: string }> {
     try {
-      // Validate required fields
-      if (!emailData.module_name || !emailData.notification_type || !emailData.client_id || 
-          !emailData.recipient_email || !emailData.subject || !emailData.body) {
-        console.error('Missing required fields for email queue:', emailData);
-        return false;
+      // Validate required fields (relaxed validation for grievance module)
+      if (emailData.module_name === 'grievance') {
+        // For grievance notifications, only require basic module info and client_id
+        if (!emailData.client_id) {
+          console.error('Missing required fields for grievance email queue:', {
+            module_name: emailData.module_name,
+            client_id: emailData.client_id
+          });
+          return false;
+        }
+      } else {
+        // For other modules, require all fields
+        if (!emailData.module_name || !emailData.notification_type || !emailData.client_id || 
+            !emailData.recipient_email || !emailData.subject || !emailData.body) {
+          console.error('Missing required fields for email queue:', emailData);
+          return false;
+        }
       }
 
-      // Clean and validate data
+      // Clean and validate data (handle null values for grievance notifications)
       const queueData = {
         module_name: emailData.module_name.trim(),
         notification_type: emailData.notification_type.trim(),
         client_id: emailData.client_id.trim(),
-        recipient_email: emailData.recipient_email.trim(),
+        recipient_email: emailData.module_name === 'grievance' ? null : (emailData.recipient_email?.trim() || null),
         recipient_name: emailData.recipient_name?.trim() || null,
-        subject: emailData.subject.trim(),
-        body: emailData.body.trim(),
+        subject: emailData.module_name === 'grievance' ? (emailData.subject?.trim() || null) : emailData.subject.trim(),
+        body: emailData.module_name === 'grievance' ? (emailData.body?.trim() || null) : emailData.body.trim(),
         params: emailData.params || {},
         priority: emailData.priority || 0,
         is_sent: false,
@@ -161,10 +178,12 @@ export class NotificationService {
         subject: queueData.subject
       });
 
-      // Explicitly exclude id field and use upsert to handle potential conflicts
-      const { error } = await supabase
+      // Insert and return the created email_queue_id
+      const { data, error } = await supabase
         .from('email_queue')
-        .insert(queueData);
+        .insert(queueData)
+        .select('id')
+        .single();
 
       if (error) {
         console.error('Error queueing email:', error);
@@ -175,14 +194,14 @@ export class NotificationService {
           console.log('email_queue table does not exist, this should be handled by migration');
         }
         
-        return false;
+        return { success: false };
       }
 
-      console.log('Email queued successfully');
-      return true;
+      console.log('Email queued successfully with ID:', data.id);
+      return { success: true, emailQueueId: data.id };
     } catch (error) {
       console.error('Error queueing email:', error);
-      return false;
+      return { success: false };
     }
   }
 
@@ -349,11 +368,20 @@ export class NotificationService {
   /**
    * Log notification to database
    */
-  private async logNotification(logData: Omit<NotificationLog, 'id' | 'createdAt'>): Promise<void> {
+  private async logNotification(logData: Omit<NotificationLog, 'id' | 'createdAt'> & { emailQueueId?: string }): Promise<void> {
     try {
-      // Validate required fields
-      if (!logData.module || !logData.type || !logData.recipientId || !logData.recipientEmail) {
+      // Validate required fields (allow null recipients for grievance notifications)
+      if (!logData.module || !logData.type) {
         console.error('Missing required fields for notification log:', {
+          module: logData.module,
+          type: logData.type
+        });
+        return;
+      }
+
+      // For non-grievance notifications, require recipient information
+      if (logData.module !== 'grievance' && (!logData.recipientId || !logData.recipientEmail)) {
+        console.error('Missing recipient information for non-grievance notification log:', {
           module: logData.module,
           type: logData.type,
           recipientId: logData.recipientId,
@@ -372,6 +400,7 @@ export class NotificationService {
         status: logData.status,
         error_message: logData.errorMessage || null,
         sent_at: logData.sentAt || null,
+        email_queue_id: logData.emailQueueId || null,
         metadata: logData.metadata || {}
       };
 
