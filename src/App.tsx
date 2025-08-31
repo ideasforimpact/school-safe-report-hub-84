@@ -93,6 +93,8 @@ const BackofficeWrapper = ({ component: Component }) => {
   );
 };
 
+
+
 function App() {
   return (
     <EmployeeContextProvider>
@@ -102,6 +104,7 @@ function App() {
             <EmployeeVerificationProvider>
               <ModuleSyncProvider>
                 <AssessmentProvider>
+
                 <Routes>
                   {/* Public routes - no authentication required */}
                   <Route path="/login" element={<Login />} />

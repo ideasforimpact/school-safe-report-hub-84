@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, RefreshCcw, Upload, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -19,10 +19,14 @@ import {
 } from '@/components/ui/select';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { fetchEmployeeVerificationData, fetchEmployeeDocuments } from '@/services/employee/employeeVerificationService';
+import { supabase } from '@/integrations/supabase/client';
+import { toast as sonnerToast } from 'sonner';
+import AadharDetailsDialog from '@/components/employee-verification/documents-list/AadharDetailsDialog';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { fetchDocumentStatuses, fetchEmployees } = useEmployeeVerification();
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
@@ -36,8 +40,101 @@ const EmployeeDetailPage = () => {
   const [isVerificationLoading, setIsVerificationLoading] = useState(false);
   const [isDocumentRefreshing, setIsDocumentRefreshing] = useState(false);
   
+  // DigiLocker return handling states
+  const [isProcessingDigiLocker, setIsProcessingDigiLocker] = useState(false);
+  const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
+  const [aadharVerificationData, setAadharVerificationData] = useState<any>(null);
+  
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
+
+  // DigiLocker return handling function
+  const handleDigiLockerReturn = useCallback(async () => {
+    const urlParams = new URLSearchParams(location.search);
+    const gateway = urlParams.get('gateway');
+    const type = urlParams.get('type');
+    const digiLockerClientId = urlParams.get('client_id');
+    const status = urlParams.get('status');
+
+    // Check if this is a DigiLocker return
+    if (gateway === 'production' && type === 'digilocker' && digiLockerClientId && status === 'success') {
+      console.log('DigiLocker return detected:', { gateway, type, digiLockerClientId, status });
+      
+      // Find the document ID from localStorage or try to identify the Aadhaar document
+      const storedDocumentId = localStorage.getItem('digilocker_document_id');
+      let documentId = storedDocumentId;
+      
+      // If no stored document ID, try to find the Aadhaar document for this employee
+      if (!documentId && documents.length > 0) {
+        const aadharDoc = documents.find(doc => 
+          doc.documentTypeName?.toLowerCase().includes('aadhar') || 
+          doc.documentTypeName?.toLowerCase().includes('aadhaar')
+        );
+        if (aadharDoc) {
+          documentId = aadharDoc.id;
+        }
+      }
+
+      if (documentId) {
+        setIsProcessingDigiLocker(true);
+        
+        try {
+          sonnerToast.success("DigiLocker verification completed", {
+            description: "Processing your Aadhaar verification..."
+          });
+
+          // Call the Edge Function to download Aadhaar data
+          const { data, error } = await supabase.functions.invoke('digilocker-verification', {
+            body: {
+              action: 'downloadAadhaar',
+              digiLockerClientId,
+              documentId
+            }
+          });
+
+          if (error) {
+            throw new Error(error.message || "Failed to process DigiLocker verification");
+          }
+
+          if (data.success) {
+            sonnerToast.success("Aadhaar verification completed", {
+              description: "Your Aadhaar has been successfully verified!"
+            });
+
+            // Store the verification data for the dialog
+            setAadharVerificationData({
+              timestamp: new Date().toISOString(),
+              action: 'digilocker_verification',
+              response: data.data ? { data: data.data, success: data.success } : data
+            });
+
+            // Refresh documents to show updated status
+            await refetchDocuments();
+            
+            // Show the Aadhaar details dialog
+            setAadharDialogOpen(true);
+          } else {
+            throw new Error(data.error || "Verification failed");
+          }
+
+        } catch (err: any) {
+          console.error("DigiLocker return handling error:", err);
+          sonnerToast.error("Verification Error", {
+            description: err.message || "Failed to complete verification"
+          });
+        } finally {
+          setIsProcessingDigiLocker(false);
+        }
+
+        // Clean up localStorage and URL parameters
+        localStorage.removeItem('digilocker_client_id');
+        localStorage.removeItem('digilocker_document_id');
+        
+        // Navigate back to the same page without URL parameters
+        navigate(location.pathname, { replace: true });
+      }
+    }
+  }, [location, documents, navigate, employeeId]);
 
   // Define all callback functions
   const handleAddDocument = useCallback(() => {
@@ -181,6 +278,13 @@ const EmployeeDetailPage = () => {
     loadData();
   }, [employeeId, clientId, initialLoadComplete, loadEmployeeData, fetchDocumentStatuses, toast]);
 
+  // Handle DigiLocker return after documents are loaded
+  useEffect(() => {
+    if (initialLoadComplete && documents.length > 0) {
+      handleDigiLockerReturn();
+    }
+  }, [initialLoadComplete, documents, handleDigiLockerReturn]);
+
   // Early return for non-existent employee
   if (!isLoading && !employee && initialLoadComplete) {
     return (
@@ -285,6 +389,30 @@ const EmployeeDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* DigiLocker Processing Overlay */}
+      {isProcessingDigiLocker && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl max-w-md mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-3"></div>
+              <h3 className="text-lg font-semibold">Processing DigiLocker Verification</h3>
+            </div>
+            <p className="text-gray-600 text-center">
+              Please wait while we process your Aadhaar verification from DigiLocker...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Aadhaar Details Dialog */}
+      <AadharDetailsDialog
+        open={aadharDialogOpen}
+        onOpenChange={setAadharDialogOpen}
+        aadharDetails={aadharVerificationData}
+        documentId={aadharVerificationData?.documentId}
+        onVerificationUpdate={refetchDocuments}
+      />
     </Layout>
   );
 };

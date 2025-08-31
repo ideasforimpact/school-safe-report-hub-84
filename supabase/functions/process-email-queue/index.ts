@@ -182,20 +182,37 @@ async function sendQueuedEmail(supabase: any, email: EmailQueueItem): Promise<bo
  */
 async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean, errorMessage?: string): Promise<void> {
   try {
+    const currentTime = new Date().toISOString();
+    
     if (isSent) {
-      // Mark as sent
-      const { error } = await supabase
+      // Mark email as sent in email_queue
+      const { error: emailError } = await supabase
         .from('email_queue')
         .update({
           is_sent: true,
-          sent_at: new Date().toISOString(),
+          sent_at: currentTime,
           error_message: null
         })
         .eq('id', emailId);
 
-      if (error) {
-        console.error('Error updating email status to sent:', error);
+      if (emailError) {
+        console.error('Error updating email status to sent:', emailError);
       }
+
+      // Update corresponding notification_logs status
+      const { error: logError } = await supabase
+        .from('notification_logs')
+        .update({
+          status: 'sent',
+          sent_at: currentTime,
+          error_message: null
+        })
+        .eq('email_queue_id', emailId);
+
+      if (logError) {
+        console.error('Error updating notification log status to sent:', logError);
+      }
+
     } else {
       // First get the current retry count
       const { data: emailData, error: fetchError } = await supabase
@@ -209,8 +226,8 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         return;
       }
 
-      // Increment retry count and set error message
-      const { error } = await supabase
+      // Update email_queue with failure info
+      const { error: emailError } = await supabase
         .from('email_queue')
         .update({
           is_sent: false,
@@ -218,12 +235,25 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
           error_message: errorMessage,
           sent_at: null
         })
-        .eq('id', emailId);
+                .eq('id', emailId);
 
-             if (error) {
-         console.error('Error updating email status to failed:', error);
-       }
-     }
+      if (emailError) {
+        console.error('Error updating email status to failed:', emailError);
+      }
+
+      // Update corresponding notification_logs status
+      const { error: logError } = await supabase
+        .from('notification_logs')
+        .update({
+          status: 'failed',
+          error_message: errorMessage
+        })
+        .eq('email_queue_id', emailId);
+
+      if (logError) {
+        console.error('Error updating notification log status to failed:', logError);
+      }
+    }
   } catch (error) {
     console.error('Error updating email status:', error);
   }

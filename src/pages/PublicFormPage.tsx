@@ -191,6 +191,69 @@ const PublicFormPage = () => {
     });
   };
 
+  const queueGrievanceNotification = async (submission: any, form: CustomForm) => {
+    try {
+      console.log('🔔 Queueing grievance notification using notification service for submission:', submission.id);
+
+      // Extract grievance details from form responses
+      const responses = submission.responses || {};
+      const grievanceTitle = responses.title || responses.heading || responses.grievance_title || 'Grievance Submission';
+      const grievanceDescription = responses.description || responses.details || responses.grievance_description || 'No description provided';
+      const submitterName = submission.submitter_name || responses.name || 'Anonymous';
+
+      // Import notification service dynamically
+      const { notificationService } = await import('@/services/notification/notificationService');
+
+      // Create notification data following same pattern as assessments/incidents
+      const notificationData = {
+        module: 'grievance' as const,
+        type: 'grievance_submitted' as const,
+        recipientId: null, // Null for grievance - cron will find actual recipients
+        recipientEmail: null, // Null for grievance - cron will find actual recipients
+        recipientName: null, // Null for grievance - cron will find actual recipients
+        clientId: form.client_id,
+        priority: 'medium' as const,
+        variables: {
+          Grievance_ID: submission.id,
+          Grievance_Title: grievanceTitle,
+          Grievance_Description: grievanceDescription,
+          Submitted_Date: new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          client_id: form.client_id, // Required for cron job to find recipients
+          form_submission_id: submission.id
+        },
+        metadata: {
+          grievanceId: submission.id,
+          formSubmissionId: submission.id,
+          submitterName: submitterName,
+          clientId: form.client_id,
+          isSystemNotification: true // Flag to indicate this needs special processing
+        }
+      };
+
+      // Queue notification using the notification service
+      const result = await notificationService.queueNotification(notificationData);
+      
+      if (result) {
+        console.log(`✅ Successfully queued grievance notification using notification service`);
+      } else {
+        console.error('❌ Failed to queue grievance notification');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error in queueGrievanceNotification:', error);
+      throw error;
+    }
+  };
+
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -246,6 +309,17 @@ const PublicFormPage = () => {
       toast.success('Form submitted successfully!');
 
       const inserted = fnData.data;
+      
+      // Queue grievance notification if this is a grievance form
+      if (true) {
+        try {
+          await queueGrievanceNotification(inserted, form!);
+        } catch (notificationError) {
+          console.error('Error queueing grievance notification:', notificationError);
+          // Don't fail the submission if notification fails
+        }
+      }
+      
       // Redirect to success page after successful submission
       const successUrl = `/public-form-submission-success?formTitle=${encodeURIComponent(form!.title)}&submissionId=${inserted.id}&formId=${encodeURIComponent(form!.id)}&clientId=${encodeURIComponent(form!.client_id)}`;
       navigate(successUrl);
