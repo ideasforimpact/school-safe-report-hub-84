@@ -141,13 +141,13 @@ async function handleInitialize(payload: any, supabaseClient: any) {
 }
 
 async function handleDownloadAadhaar(payload: any, supabaseClient: any) {
-  const { clientId, documentId } = payload
+  const { digiLockerClientId, documentId } = payload
 
   try {
-    console.log('DigiLocker download payload:', { clientId, documentId })
+    console.log('DigiLocker download payload:', { digiLockerClientId, documentId })
     
     // Call DigiLocker download API
-    const response = await fetch(`${Deno.env.get("SUREPASS_PRODUCTION_BASE_URL")}/digilocker/download-aadhaar/${clientId}`, {
+    const response = await fetch(`${Deno.env.get("SUREPASS_PRODUCTION_BASE_URL")}/digilocker/download-aadhaar/${digiLockerClientId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${Deno.env.get('SUREPASS_PRODUCTION_API_KEY')}` 
@@ -172,20 +172,21 @@ async function handleDownloadAadhaar(payload: any, supabaseClient: any) {
       throw new Error(data.message || 'Failed to download Aadhaar data from DigiLocker')
     }
 
-    // Update the document with complete verification data
+    // Store the DigiLocker data without updating verification status
+    // Status will be updated when user clicks Approve/Reject in the popup
     if (documentId) {
       const { error: updateError } = await supabaseClient
         .from('employee_documents')
         .update({
           api_response_data: data,
-          api_verification_status: 'completed',
+          api_verification_status: 'pending', // Keep as pending until user action
           api_verification_date: new Date().toISOString(),
           api_verification_method: 'digilocker'
         })
         .eq('id', documentId)
 
       if (updateError) {
-        console.error('Error updating document with Aadhaar data:', updateError)
+        console.error('Error storing DigiLocker data:', updateError)
         throw updateError
       }
     }
