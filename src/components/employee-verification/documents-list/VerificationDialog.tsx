@@ -1158,66 +1158,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     onOpenChange(false);
   };
 
-  const handleDigilockerSuccess = async (clientId: string) => {
-    try {
-      console.log("Handling DigiLocker success for client ID:", clientId);
-      setIsVerificationLoading?.(true);
-      
-      // Call DigiLocker download API through Supabase Edge Function
-      const { data: aadhaarData, error } = await supabase.functions.invoke('digilocker-verification', {
-        body: {
-          action: 'downloadAadhaar',
-          clientId,
-          documentId
-        }
-      });
-      console.log("DigiLocker Aadhaar data response:", aadhaarData, error);
-      
-      if (error) {
-        throw new Error(error.message || "Failed to fetch Aadhaar data from DigiLocker");
-      }
-      
-      if (!aadhaarData.success || !aadhaarData.data) {
-        throw new Error(aadhaarData.error || aadhaarData.message || "Failed to fetch Aadhaar data from DigiLocker");
-      }
-      
-      toast.success("Verification Completed", {
-        description: "Aadhaar verification completed successfully via DigiLocker"
-      });
-      
-      // Refresh document data
-      if (onDocumentAction) {
-        await onDocumentAction();
-      }
-      
-      // Open the details dialog to show the verification results
-      setTimeout(() => {
-        setCurrentDocumentId(documentId);
-        setSelectedAadharDetails({
-          timestamp: new Date().toISOString(),
-          action: 'digilocker_verification',
-          response: aadhaarData.data ? { data: aadhaarData.data, success: aadhaarData.success } : aadhaarData
-        });
-        setAadharDialogOpen(true);
-      }, 500);
-      
-    } catch (err: any) {
-      console.error("Exception in handleDigilockerSuccess:", err);
-      
-      // No need to update document status here as the Edge Function handles it
-        
-      toast.error("Verification Failed", {
-        description: err.message || "Failed to complete DigiLocker verification"
-      });
-      
-      if (onDocumentAction) {
-        await onDocumentAction();
-      }
-    } finally {
-      setIsVerificationLoading?.(false);
-    }
-  };
-  
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
