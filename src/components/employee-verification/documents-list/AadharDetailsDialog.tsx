@@ -123,6 +123,12 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
+  
+  // Debug logging
+  console.log('AadharDetailsDialog - aadharDetails:', aadharDetails);
+  console.log('AadharDetailsDialog - documentId:', documentId);
+  console.log('AadharDetailsDialog - onVerificationUpdate:', onVerificationUpdate);
+  
   if (!aadharDetails?.response?.data) {
     return null;
   }
@@ -299,7 +305,11 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent 
+        className="sm:max-w-lg"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Aadhaar Verification Details</DialogTitle>
           <DialogDescription>
@@ -397,7 +407,8 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
         )}
         
         <DialogFooter className="flex gap-3 pt-4 border-t">
-          {documentId && onVerificationUpdate && (
+          {/* Show buttons for DigiLocker verification results */}
+          {aadharDetails && (
             <>
               {showRejectForm ? (
                 <>
@@ -428,7 +439,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
                   <Button
                     variant="outline"
                     onClick={handleReject}
-                    disabled={isRejecting || isApproving}
+                    disabled={isRejecting || isApproving || !documentId}
                     className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
                   >
                     {isRejecting ? (
@@ -440,7 +451,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
                   </Button>
                   <Button
                     onClick={handleVerify}
-                    disabled={isApproving || isRejecting}
+                    disabled={isApproving || isRejecting || !documentId}
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                   >
                     {isApproving ? (
