@@ -73,6 +73,7 @@ async function handleInitialize(payload: any, supabaseClient: any) {
         data: {
           signup_flow: true,
           redirect_url: redirectUrl,
+          skip_main_screen : true
         }
       })
     })
@@ -146,8 +147,10 @@ async function handleDownloadAadhaar(payload: any, supabaseClient: any) {
   try {
     console.log('DigiLocker download payload:', { digiLockerClientId, documentId })
     
+    console.log(`https://kyc-api.surepass.app/api/v1/digilocker/download-aadhaar/${digiLockerClientId}`,"url");
+    
     // Call DigiLocker download API
-    const response = await fetch(`${Deno.env.get("SUREPASS_PRODUCTION_BASE_URL")}/digilocker/download-aadhaar/${digiLockerClientId}`, {
+    const response = await fetch(`https://kyc-api.surepass.app/api/v1/digilocker/download-aadhaar/${digiLockerClientId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${Deno.env.get('SUREPASS_PRODUCTION_API_KEY')}` 

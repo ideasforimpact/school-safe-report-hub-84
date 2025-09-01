@@ -105,7 +105,8 @@ const EmployeeDetailPage = () => {
             setAadharVerificationData({
               timestamp: new Date().toISOString(),
               action: 'digilocker_verification',
-              response: data.data ? { data: data.data, success: data.success } : data
+              response: data.data ? { data: data.data, success: data.success } : data,
+              documentId: documentId // Include documentId for actions
             });
 
             // Refresh documents to show updated status (with DigiLocker data)
