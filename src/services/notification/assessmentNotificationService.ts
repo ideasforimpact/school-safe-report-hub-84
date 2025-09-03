@@ -69,6 +69,8 @@ export class AssessmentNotificationService {
           User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
           Assigned_Date: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -131,6 +133,8 @@ export class AssessmentNotificationService {
           User_Name: `${createdByEmployee.first_name} ${createdByEmployee.last_name}`,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
           Submitted_By: `${submittedBy.first_name} ${submittedBy.last_name}`,
           Submitted_Date: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
@@ -183,6 +187,8 @@ export class AssessmentNotificationService {
           User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
           Completed_By: `${completedBy.first_name} ${completedBy.last_name}`,
           Completed_Date: new Date().toLocaleDateString('en-US', {
             year: 'numeric',
@@ -236,6 +242,8 @@ export class AssessmentNotificationService {
           User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
           Requested_By: `${requestedBy.first_name} ${requestedBy.last_name}`,
           Rework_Reason: reworkReason,
           Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
@@ -276,6 +284,8 @@ export class AssessmentNotificationService {
           User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
           Due_Date: assessment.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -320,6 +330,8 @@ export class AssessmentNotificationService {
           User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
           Assessment_ID: assessment.id,
           Assessment_Title: assessment.title,
+          created_by: assessment.created_by,
+          assigned_to: assessment.assigned_to,
           Due_Date: assessment.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',

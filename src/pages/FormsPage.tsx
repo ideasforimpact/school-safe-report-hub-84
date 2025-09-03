@@ -712,6 +712,8 @@ const FormsPage = () => {
 																	<DialogTitle>Grievance Details</DialogTitle>
 												</DialogHeader>
 												<div className="space-y-6">
+												
+
 													{/* Key information */}
 													<div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
 														<div>
@@ -727,10 +729,6 @@ const FormsPage = () => {
 															<div className="mt-1">{viewSubmission.responses && (viewSubmission.responses.subject || viewSubmission.responses.heading || viewSubmission.responses.title) || 'Not provided'}</div>
 														</div>
 														<div>
-															<div className="text-sm text-gray-600">Description</div>
-															<div className="mt-1 whitespace-pre-wrap break-words">{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}</div>
-														</div>
-														<div>
 															<div className="text-sm text-gray-600">Type</div>
 															<div className="mt-1">{viewSubmission.submitter_type || (viewSubmission.responses && (viewSubmission.responses.submitter_type || viewSubmission.responses.type)) || 'Not provided'}</div>
 														</div>
@@ -741,6 +739,15 @@ const FormsPage = () => {
 													</div>
 																													{/* Status and Acknowledgement */}
 													<div>
+                            	{/* Description - Full Width Above Status */}
+													<div className="space-y-2 mb-2">
+														<div className="text-sm text-gray-600">Description</div>
+														<div className="w-full">
+															<div className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded-md border">
+																{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}
+															</div>
+														</div>
+													</div>
 														<div className="text-sm text-gray-600 mb-2">Status</div>
 																	{getStatusBadge(viewSubmission.status)}
 																	{viewSubmission.status === 'acknowledged' && (

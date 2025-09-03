@@ -55,12 +55,13 @@ serve(async (req) => {
  */
 async function processAssessmentNotifications(supabase: any) {
   try {
-    // Fetch pending assessment notifications from email queue
+    // Fetch pending assessment notifications from email queue (active only)
     const { data: queuedEmails, error: fetchError } = await supabase
       .from('email_queue')
       .select('*')
       .eq('is_sent', false)
       .eq('module_name', 'assessment')
+      .eq('active', true)
       .lt('retry_count', 3)
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
@@ -86,6 +87,24 @@ async function processAssessmentNotifications(supabase: any) {
       processed++;
       
       try {
+        // Validate assessment like incident validation
+        const validation = await validateAssessmentNotification(supabase, email);
+        if (!validation.isValid) {
+          // Mark queue inactive and update notification_log
+          await supabase
+            .from('email_queue')
+            .update({ active: false, error_message: validation.reason })
+            .eq('id', email.id);
+
+          await supabase
+            .from('notification_logs')
+            .update({ status: 'failed', error_message: validation.reason })
+            .eq('email_queue_id', email.id);
+
+          failed++;
+          continue;
+        }
+
         // Call the send-notification-email function
         const { data, error } = await supabase.functions.invoke('send-notification-email', {
           body: {
@@ -120,6 +139,45 @@ async function processAssessmentNotifications(supabase: any) {
   } catch (error: any) {
     console.error('Error in processAssessmentNotifications:', error);
     throw error;
+  }
+}
+
+/**
+ * Validate assessment notification against current assessment state
+ */
+async function validateAssessmentNotification(supabase: any, email: any): Promise<{ isValid: boolean; reason?: string }> {
+  try {
+    const params = email.params || {};
+    const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
+    const paramCreatedBy = params.created_by;
+    const paramAssignedTo = params.assigned_to;
+
+    if (!assessmentId) {
+      return { isValid: false, reason: 'Missing Assessment_ID in params' };
+    }
+
+    // Fetch current assessment state
+    const { data: assessment, error } = await supabase
+      .from('assessments')
+      .select('created_by, assigned_to')
+      .eq('id', assessmentId)
+      .single();
+
+    if (error || !assessment) {
+      return { isValid: false, reason: `Assessment not found with id: ${assessmentId}` };
+    }
+
+    if (assessment.created_by !== paramCreatedBy) {
+      return { isValid: false, reason: 'Creator changed since email was queued' };
+    }
+
+    if (assessment.assigned_to !== paramAssignedTo) {
+      return { isValid: false, reason: 'Assignee changed since email was queued' };
+    }
+
+    return { isValid: true };
+  } catch (e: any) {
+    return { isValid: false, reason: `Validation error: ${e.message}` };
   }
 }
 

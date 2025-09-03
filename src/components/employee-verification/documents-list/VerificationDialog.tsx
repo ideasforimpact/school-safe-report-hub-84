@@ -885,9 +885,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         const redirectUrl = `${baseUrl}${currentPath}`;
         
         const { data, error } = await supabase.functions.invoke('digilocker-verification', {
-          body: {
+          body: { 
             action: 'initialize',
-            documentId,
+            documentId, 
             redirectUrl
           }
         });
@@ -1025,7 +1025,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
      // COMMENTED OUT: Old OTP-based Aadhaar verification - replaced with DigiLocker
-   const handleOtpSubmit = async () => {
+  const handleOtpSubmit = async () => {
      // Placeholder function - OTP verification no longer used for Aadhaar with DigiLocker
      toast.error("No Action", {
        description: "DigiLocker verification doesn't use OTP. Please use the Verify button instead."
@@ -1158,7 +1158,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     onOpenChange(false);
   };
 
-
+  
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;

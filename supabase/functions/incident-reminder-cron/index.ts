@@ -7,16 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-interface CronJobRequest {
-  action: 'check_reminders';
-  clientId?: string;
-  days?: number;
-}
+
 
 interface CronJobResponse {
   success: boolean;
   message: string;
   processedCount?: number;
+  failedCount?: number;
+  skippedCount?: number;
   error?: string;
 }
 
@@ -34,54 +32,99 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { action, clientId, days = 10 }: CronJobRequest = await req.json();
+    // Fixed days threshold - no need to rely on request
+    const days = 10;
 
-    if (action !== 'check_reminders') {
-      throw new Error('Invalid action specified');
+    console.log(`Processing incident reminders for emails with days threshold: ${days}`);
+
+    // Fetch active email_queue entries that haven't had remainder cron started
+    const { data: pendingEmails, error: fetchError } = await supabase
+      .from('email_queue')
+      .select('*')
+      .eq('active', true)
+      .eq('is_remainder_cron_started', false)
+      .eq('module_name', 'incident') // Only process incident-related emails
+      .order('created_at', { ascending: true });
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch pending emails: ${fetchError.message}`);
     }
 
-    console.log(`Checking for incidents open for more than ${days} days`);
-
-    // Get all clients if no specific clientId provided
-    let clients: any[] = [];
-    
-    if (clientId) {
-      // Get specific client
-      const { data: client, error: clientError } = await supabase
-        .from('clients')
-        .select('id, name')
-        .eq('id', clientId)
-        .single();
-
-      if (clientError || !client) {
-        throw new Error(`Client not found: ${clientId}`);
-      }
-      
-      clients = [client];
-    } else {
-      // Get all active clients
-      const { data: allClients, error: clientsError } = await supabase
-        .from('clients')
-        .select('id, name')
-        .eq('status', true);
-
-      if (clientsError) {
-        throw new Error(`Failed to fetch clients: ${clientsError.message}`);
-      }
-      
-      clients = allClients || [];
+    if (!pendingEmails || pendingEmails.length === 0) {
+      console.log("No pending incident emails found for remainder processing");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "No pending incident emails found for remainder processing",
+          processedCount: 0,
+          failedCount: 0,
+          skippedCount: 0
+        } as CronJobResponse),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    let totalProcessed = 0;
+    console.log(`Found ${pendingEmails.length} pending incident emails to process`);
 
-    // Process each client
-    for (const client of clients) {
-      console.log(`Processing client: ${client.name} (${client.id})`);
-      
-      const processedCount = await processClientIncidents(supabase, client.id, days);
-      totalProcessed += processedCount;
-      
-      console.log(`Processed ${processedCount} incidents for client ${client.name}`);
+    let processedCount = 0;
+    let failedCount = 0;
+    let skippedCount = 0;
+
+    // Process each email
+    for (const email of pendingEmails) {
+      try {
+        console.log(`Processing email ID: ${email.id} for incident notification`);
+
+        // Validate incident notification - same logic as process-email-queue
+        const validationResult = await validateIncidentNotification(supabase, email);
+        if (!validationResult.isValid) {
+          console.log(`Validation failed for email ${email.id}: ${validationResult.reason}`);
+          await updateRemainderStatus(supabase, email.id, false, validationResult.reason);
+          failedCount++;
+          continue;
+        }
+
+        // Extract Incident_ID from params to check the 10-day rule
+        const incidentId = email.params?.Incident_ID;
+        if (!incidentId) {
+          console.log(`No Incident_ID found in params for email ${email.id}`);
+          await updateRemainderStatus(supabase, email.id, false, 'Missing Incident_ID in params');
+          failedCount++;
+          continue;
+        }
+
+        // Check if incident meets the day threshold (10 days old)
+        const dayCheckResult = await checkIncidentDayThreshold(supabase, incidentId, days);
+        if (!dayCheckResult.meetsThreshold) {
+          console.log(`Incident ${incidentId} does not meet ${days} day threshold: ${dayCheckResult.reason}`);
+          await updateRemainderStatus(supabase, email.id, false, dayCheckResult.reason);
+          skippedCount++;
+          continue;
+        }
+
+        if(dayCheckResult.meetsThreshold){
+          // If we rech here, the incident meets all criteria for reminder
+          console.log(`Incident ${incidentId} meets criteria - sending reminder email`);
+          
+          // Send the actual reminder email
+          const emailSent = await sendReminderEmail(supabase, email, incidentId, days);
+          
+          if (emailSent) {
+            await updateRemainderStatus(supabase, email.id, true, `Incident ${incidentId} reminder email sent successfully for ${days}-day threshold`);
+            processedCount++;
+          } else {
+            await updateRemainderStatus(supabase, email.id, false, `Failed to send reminder email for incident ${incidentId}`);
+            failedCount++;
+          }
+
+        }
+
+
+      } catch (emailError) {
+        console.error(`Error processing email ${email.id}:`, emailError);
+        await updateRemainderStatus(supabase, email.id, false, `Processing error: ${emailError.message}`);
+        failedCount++;
+      }
     }
 
     console.log("Incident Reminder Cron Job: Completed successfully");
@@ -89,8 +132,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Successfully processed ${totalProcessed} incident reminders`,
-        processedCount: totalProcessed
+        message: `Successfully processed incident reminders - ${processedCount} processed, ${failedCount} failed, ${skippedCount} skipped`,
+        processedCount,
+        failedCount,
+        skippedCount
       } as CronJobResponse),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -110,176 +155,178 @@ serve(async (req) => {
 });
 
 /**
- * Process incidents for a specific client
+ * Validate incident notification before processing - same logic as process-email-queue
  */
-async function processClientIncidents(supabase: any, clientId: string, days: number): Promise<number> {
+async function validateIncidentNotification(supabase: any, email: any): Promise<{ isValid: boolean; reason?: string }> {
   try {
-    const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    // Extract Incident_ID from params
+    const incidentId = email.params?.Incident_ID;
+    if (!incidentId) {
+      return { isValid: false, reason: 'Missing Incident_ID in params' };
+    }
+
+    // Extract created_by and assigned_to from params
+    const originalCreatedBy = email.params?.created_by;
+    const originalAssignedTo = email.params?.assigned_to;
     
-    console.log(`Looking for incidents created before: ${cutoffDate.toISOString()}`);
+    if (!originalCreatedBy || !originalAssignedTo) {
+      return { isValid: false, reason: 'Missing created_by or assigned_to in params' };
+    }
 
-    // Get incidents that are open for more than specified days
-    const { data: incidents, error } = await supabase
+    // Check current incident data from incidents table
+    const { data: incident, error: incidentError } = await supabase
       .from('incidents')
-      .select(`
-        id,
-        ticket_id,
-        description,
-        created_at,
-        assigned_to,
-        status:incident_status(name)
-      `)
-      .eq('client_id', clientId)
-      .lt('created_at', cutoffDate.toISOString())
-      .neq('status', 'Closed');
+      .select('created_by, assigned_to')
+      .eq('ticket_id',incidentId)
+      .single();
 
-    if (error) {
-      console.error(`Error fetching incidents for client ${clientId}:`, error);
-      return 0;
+    if (incidentError || !incident) {
+      return { isValid: false, reason: `Incident not found with ticket_id: ${incidentId}` };
     }
 
-    if (!incidents || incidents.length === 0) {
-      console.log(`No old incidents found for client ${clientId}`);
-      return 0;
+    // Compare current vs original values
+    if (incident.created_by !== originalCreatedBy) {
+      return { 
+        isValid: false, 
+        reason: `Incident created_by changed from ${originalCreatedBy} to ${incident.created_by}` 
+      };
     }
 
-    console.log(`Found ${incidents.length} incidents open for more than ${days} days`);
-
-    let processedCount = 0;
-
-    // Process each incident
-    for (const incident of incidents) {
-      try {
-        // Check if we already sent a reminder recently (within last 24 hours)
-        const { data: recentReminders, error: reminderError } = await supabase
-          .from('notification_logs')
-          .select('created_at')
-          .eq('module', 'incident')
-          .eq('type', 'incident_reminder_10_days')
-          .eq('metadata->incidentId', incident.id)
-          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-          .limit(1);
-
-        if (reminderError) {
-          console.error(`Error checking recent reminders for incident ${incident.id}:`, reminderError);
-          continue;
-        }
-
-        // Skip if we already sent a reminder recently
-        if (recentReminders && recentReminders.length > 0) {
-          console.log(`Skipping incident ${incident.id} - reminder already sent recently`);
-          continue;
-        }
-
-        // Get assigned employee details
-        if (!incident.assigned_to) {
-          console.log(`Skipping incident ${incident.id} - no assignee`);
-          continue;
-        }
-
-        const { data: employee, error: employeeError } = await supabase
-          .from('employees')
-          .select('id, email, first_name, last_name, status')
-          .eq('id', incident.assigned_to)
-          .single();
-
-        if (employeeError || !employee) {
-          console.log(`Skipping incident ${incident.id} - assignee not found`);
-          continue;
-        }
-
-        if (!employee.status) {
-          console.log(`Skipping incident ${incident.id} - assignee is inactive`);
-          continue;
-        }
-
-        if (!employee.email) {
-          console.log(`Skipping incident ${incident.id} - assignee has no email`);
-          continue;
-        }
-
-        // Send reminder notification
-        const success = await sendReminderNotification(supabase, {
-          incident,
-          employee,
-          days
-        });
-
-        if (success) {
-          processedCount++;
-          console.log(`Sent reminder for incident ${incident.id} to ${employee.email}`);
-        }
-
-      } catch (incidentError) {
-        console.error(`Error processing incident ${incident.id}:`, incidentError);
-      }
+    if (incident.assigned_to !== originalAssignedTo) {
+      return { 
+        isValid: false, 
+        reason: `Incident assigned_to changed from ${originalAssignedTo} to ${incident.assigned_to}` 
+      };
     }
 
-    return processedCount;
+    return { isValid: true };
 
   } catch (error) {
-    console.error(`Error processing incidents for client ${clientId}:`, error);
-    return 0;
+    console.error('Error validating incident notification:', error);
+    return { isValid: false, reason: `Validation error: ${error.message}` };
   }
 }
 
 /**
- * Send reminder notification for an incident
+ * Check if incident meets the day threshold for reminder
  */
-async function sendReminderNotification(supabase: any, data: {
-  incident: any;
-  employee: any;
-  days: number;
-}): Promise<boolean> {
+async function checkIncidentDayThreshold(supabase: any, incidentId: string, days: number): Promise<{ meetsThreshold: boolean; reason?: string }> {
   try {
-    const { incident, employee, days } = data;
-
-    // Prepare email variables
-    const variables = {
-      User_Name: `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || employee.email,
-      Incident_ID: incident.ticket_id,
-      Incident_Title: incident.description || 'Incident',
-      Reported_Date: new Date(incident.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    };
-
-    // Get notification template
-    const { data: template, error: templateError } = await supabase
-      .from('notification_templates')
-      .select('*')
-      .eq('module', 'incident')
-      .eq('type', 'incident_reminder_10_days')
-      .eq('is_active', true)
+    console.log(`Checking incident day threshold for ticket_id: "${incidentId}" (type: ${typeof incidentId}, length: ${incidentId?.length})`);
+    
+    // Fetch incident by exact ticket_id, pulling status_id (not a non-existent status column)
+    const { data: incident, error: incidentError } = await supabase
+      .from('incidents')
+      .select('created_at, status_id, ticket_id')
+      .eq('ticket_id', incidentId)
       .single();
 
-    if (templateError || !template) {
-      console.error('No reminder template found');
+    if (incidentError || !incident) {
+      console.log(`Database error for ticket_id "${incidentId}":`, incidentError, incident);
+      return { meetsThreshold: false, reason: `Incident not found with ticket_id: ${incidentId}` };
+    }
+
+    // Resolve status name from incident_status table
+    let statusName = '';
+    if (incident.status_id) {
+      const { data: statusRow, error: statusError } = await supabase
+        .from('incident_status')
+        .select('name')
+        .eq('id', incident.status_id)
+        .single();
+      if (statusError) {
+        console.log(`Failed to resolve status for status_id ${incident.status_id}:`, statusError);
+      }
+      statusName = statusRow?.name || '';
+    }
+
+    // Treat as closed if status name equals Closed (case-insensitive)
+    if (statusName && statusName.toLowerCase() === 'closed') {
+      return { meetsThreshold: false, reason: `Incident ${incidentId} is already closed` };
+    }
+
+    // Calculate days since creation
+    const createdDate = new Date(incident.created_at);
+    const currentDate = new Date();
+    const daysDifference = Math.floor((currentDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    console.log(`Incident ${incidentId} created ${daysDifference} days ago (threshold: ${days} days)`);
+
+    if (daysDifference < days) {
+      return { 
+        meetsThreshold: false, 
+        reason: `Incident ${incidentId} is only ${daysDifference} days old, less than ${days} day threshold` 
+      };
+    }
+
+    return { 
+      meetsThreshold: true, 
+      reason: `Incident ${incidentId} is ${daysDifference} days old, meets ${days} day threshold` 
+    };
+
+  } catch (error) {
+    console.error('Error checking incident day threshold:', error);
+    return { meetsThreshold: false, reason: `Day threshold check error: ${error.message}` };
+  }
+}
+
+/**
+ * Send reminder email using the original email template but with reminder context
+ */
+async function sendReminderEmail(supabase: any, originalEmail: any, incidentId: string, days: number): Promise<boolean> {
+  try {
+    console.log(`Sending reminder email for incident ${incidentId} to ${originalEmail.recipient_email}`);
+
+    // Get incident details for updated variables
+    const { data: incident, error: incidentError } = await supabase
+      .from('incidents')
+      .select('*')
+      .eq('ticket_id', incidentId)
+      .single();
+
+    if (incidentError || !incident) {
+      console.error(`Failed to fetch incident details for ${incidentId}:`, incidentError);
       return false;
     }
 
-    // Process template
-    let subject = template.subject;
-    let body = template.body;
+    // Prepare reminder-specific variables (merge with original email params)
+    const reminderVariables = {
+      ...originalEmail.params, // Keep original email variables
+      Days_Overdue: days,
+      Reminder_Message: `This incident has been open for ${days} days and requires your attention.`,
+      Original_Date: new Date(incident.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric'
+      })
+    };
 
-    for (const [key, value] of Object.entries(variables)) {
-      const placeholder = `{{${key}}}`;
-      subject = subject.replace(new RegExp(placeholder, 'g'), String(value));
-      body = body.replace(new RegExp(placeholder, 'g'), String(value));
-    }
+    // Update subject and body to include reminder context
+    const reminderSubject = `REMINDER: ${originalEmail.subject} - ${days} Days Overdue`;
+    const reminderBody = `
+      <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 16px; margin-bottom: 16px; border-radius: 8px;">
+        <h3 style="color: #dc2626; margin: 0 0 8px 0;">⚠️ Incident Reminder - ${days} Days Overdue</h3>
+        <p style="color: #991b1b; margin: 0;">This incident has been open since ${reminderVariables.Original_Date} and requires immediate attention.</p>
+      </div>
+      
+      ${originalEmail.body}
+      
+      <div style="background-color: #f3f4f6; padding: 16px; margin-top: 16px; border-radius: 8px;">
+        <p style="color: #374151; font-size: 14px; margin: 0;">
+          <strong>Please take action on this incident as soon as possible.</strong><br>
+          If you need assistance or want to reassign this incident, please contact your supervisor.
+        </p>
+      </div>
+    `;
 
-    // Send email
+    // Send the reminder email
     const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-notification-email', {
       body: {
-        to: employee.email,
-        toName: variables.User_Name,
-        subject,
-        body,
-        priority: 'high'
+        to: originalEmail.recipient_email,
+        toName: originalEmail.recipient_name,
+        subject: reminderSubject,
+        body: reminderBody,
+        priority: 'high' // Mark reminders as high priority
       }
     });
 
@@ -288,32 +335,81 @@ async function sendReminderNotification(supabase: any, data: {
       return false;
     }
 
-    // Log the notification
-    const { error: logError } = await supabase
-      .from('notification_logs')
-      .insert([{
-        module: 'incident',
-        type: 'incident_reminder_10_days',
-        recipient_id: employee.id,
-        recipient_email: employee.email,
-        subject,
-        body,
-        status: 'sent',
-        sent_at: new Date().toISOString(),
-        metadata: {
-          incidentId: incident.id,
-          daysOpen: days
-        }
-      }]);
-
-    if (logError) {
-      console.error('Error logging reminder notification:', logError);
-    }
-
+    console.log(`Successfully sent reminder email for incident ${incidentId}`);
     return true;
 
   } catch (error) {
-    console.error('Error sending reminder notification:', error);
+    console.error('Error sending reminder email:', error);
     return false;
   }
-} 
+}
+
+/**
+ * Update remainder status in both email_queue and notification_logs
+ */
+async function updateRemainderStatus(supabase: any, emailId: string, success: boolean, logMessage: string): Promise<void> {
+  try {
+    const currentTime = new Date().toISOString();
+
+    // Update email_queue - set is_remainder_cron_started to true
+    const { error: emailError } = await supabase
+      .from('email_queue')
+      .update({
+        is_remainder_cron_started: true,
+        updated_at: currentTime
+      })
+      .eq('id', emailId);
+
+    if (emailError) {
+      console.error('Error updating email_queue remainder status:', emailError);
+    } else {
+      console.log(`Updated email_queue ${emailId} - is_remainder_cron_started: true`);
+    }
+
+    // Update corresponding notification_logs
+    const { error: logError } = await supabase
+      .from('notification_logs')
+      .update({
+        remainder_cron_status: success,
+        remainder_cron_logs: logMessage,
+        updated_at: currentTime
+      })
+      .eq('email_queue_id', emailId);
+
+    if (logError) {
+      console.error('Error updating notification_logs remainder status:', logError);
+      
+      // Try alternative update if email_queue_id relationship doesn't exist
+      const { data: emailData, error: emailFetchError } = await supabase
+        .from('email_queue')
+        .select('module_name, notification_type, recipient_email')
+        .eq('id', emailId)
+        .single();
+
+      if (!emailFetchError && emailData) {
+        const { error: alternativeUpdateError } = await supabase
+          .from('notification_logs')
+          .update({
+            remainder_cron_status: success,
+            remainder_cron_logs: logMessage,
+            updated_at: currentTime
+          })
+          .eq('module', emailData.module_name)
+          .eq('type', emailData.notification_type)
+          .eq('recipient_email', emailData.recipient_email)
+          .is('email_queue_id', null);
+
+        if (alternativeUpdateError) {
+          console.error('Error with alternative notification_logs update:', alternativeUpdateError);
+        } else {
+          console.log(`Updated notification_logs via alternative method for email ${emailId}`);
+        }
+      }
+    } else {
+      console.log(`Updated notification_logs ${emailId} - remainder_cron_status: ${success}`);
+    }
+
+  } catch (error) {
+    console.error('Error updating remainder status:', error);
+  }
+}

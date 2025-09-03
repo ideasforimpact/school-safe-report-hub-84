@@ -84,11 +84,12 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
   };
 
   try {
-    // Fetch pending emails (not sent, within retry limit, ordered by priority and creation time)
+    // Fetch pending emails (not sent, within retry limit, active, ordered by priority and creation time)
     const { data: queuedEmails, error: fetchError } = await supabase
       .from('email_queue')
       .select('*')
       .eq('is_sent', false)
+      .eq('active', true) // Only process active emails
       .lt('retry_count', 3) // Only process emails that haven't exceeded max retries
       .order('priority', { ascending: false }) // High priority first
       .order('created_at', { ascending: true }) // Oldest first
@@ -110,6 +111,23 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
       result.processed++;
       
       try {
+        // Validate incident notifications before processing
+        if (email.module_name === 'incident') {
+          console.log(`Validating incident notification for email ${email.id}`);
+          const validationResult = await validateIncidentNotification(supabase, email);
+          if (!validationResult.isValid) {
+            console.log(`Incident validation failed for email ${email.id}: ${validationResult.reason}`);
+            console.log(`Calling deactivateEmailAndUpdateLogs for email ${email.id}`);
+            await deactivateEmailAndUpdateLogs(supabase, email.id, validationResult.reason);
+            console.log(`deactivateEmailAndUpdateLogs completed for email ${email.id}`);
+            result.failed++;
+            result.errors.push(`Incident validation failed: ${validationResult.reason}`);
+            continue; // Skip this email
+          } else {
+            console.log(`Incident validation passed for email ${email.id}`);
+          }
+        }
+        
         const emailSent = await sendQueuedEmail(supabase, email);
         
         if (emailSent) {
@@ -205,7 +223,8 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         .update({
           status: 'sent',
           sent_at: currentTime,
-          error_message: null
+          error_message: null,
+          updated_at: currentTime
         })
         .eq('email_queue_id', emailId);
 
@@ -246,7 +265,8 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         .from('notification_logs')
         .update({
           status: 'failed',
-          error_message: errorMessage
+          error_message: errorMessage,
+          updated_at: currentTime
         })
         .eq('email_queue_id', emailId);
 
@@ -256,5 +276,157 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
     }
   } catch (error) {
     console.error('Error updating email status:', error);
+  }
+}
+
+/**
+ * Validate incident notification before processing
+ */
+async function validateIncidentNotification(supabase: any, email: any): Promise<{ isValid: boolean; reason?: string }> {
+  try {
+    // Extract Incident_ID from params
+    const incidentId = email.params?.Incident_ID;
+    if (!incidentId) {
+      return { isValid: false, reason: 'Missing Incident_ID in params' };
+    }
+
+    // Extract created_by and assigned_to from params
+    const originalCreatedBy = email.params?.created_by;
+    const originalAssignedTo = email.params?.assigned_to;
+    
+    if (!originalCreatedBy || !originalAssignedTo) {
+      return { isValid: false, reason: 'Missing created_by or assigned_to in params' };
+    }
+
+    // Check current incident data from incidents table
+    const { data: incident, error: incidentError } = await supabase
+      .from('incidents')
+      .select('created_by, assigned_to')
+      .eq('ticket_id', incidentId)
+      .single();
+
+    if (incidentError || !incident) {
+      return { isValid: false, reason: `Incident not found with ticket_id: ${incidentId}` };
+    }
+
+    // Compare current vs original values
+    if (incident.created_by !== originalCreatedBy) {
+      return { 
+        isValid: false, 
+        reason: `Incident created_by changed from ${originalCreatedBy} to ${incident.created_by}` 
+      };
+    }
+
+    if (incident.assigned_to !== originalAssignedTo) {
+      return { 
+        isValid: false, 
+        reason: `Incident assigned_to changed from ${originalAssignedTo} to ${incident.assigned_to}` 
+      };
+    }
+
+    // All validations passed
+    return { isValid: true };
+  } catch (error) {
+    console.error('Error validating incident notification:', error);
+    return { isValid: false, reason: `Validation error: ${error.message}` };
+  }
+}
+
+/**
+ * Deactivate email and update notification logs
+ */
+async function deactivateEmailAndUpdateLogs(supabase: any, emailId: string, reason: string): Promise<void> {
+  try {
+    const currentTime = new Date().toISOString();
+    
+    console.log(`Deactivating email ${emailId} with reason: ${reason}`);
+    
+    // Deactivate the email in email_queue
+    const { error: emailError } = await supabase
+      .from('email_queue')
+      .update({
+        active: false,
+        error_message: reason, // Add error message to email_queue as well
+        updated_at: currentTime
+      })
+      .eq('id', emailId);
+
+    if (emailError) {
+      console.error('Error deactivating email:', emailError);
+    } else {
+      console.log(`Email ${emailId} deactivated successfully`);
+    }
+
+    // First, let's check if there are any notification logs for this email
+    const { data: existingLogs, error: fetchError } = await supabase
+      .from('notification_logs')
+      .select('id, email_queue_id, status, module, type, recipient_email')
+      .eq('email_queue_id', emailId);
+
+    if (fetchError) {
+      console.error('Error fetching notification logs:', fetchError);
+    } else {
+      console.log(`Found ${existingLogs?.length || 0} notification logs for email ${emailId}`);
+      if (existingLogs && existingLogs.length > 0) {
+        console.log('Notification log details:', existingLogs[0]);
+      }
+    }
+
+    // Update corresponding notification_logs status to failed
+    const { error: logError } = await supabase
+      .from('notification_logs')
+      .update({
+        status: 'failed',
+        error_message: reason,
+        updated_at: currentTime
+      })
+      .eq('email_queue_id', emailId);
+
+    if (logError) {
+      console.error('Error updating notification log status to failed:', logError);
+      console.log('This might mean no notification_logs entry exists with email_queue_id:', emailId);
+      
+      // Try to find notification logs by other means (module and type)
+      const { data: emailData, error: emailFetchError } = await supabase
+        .from('email_queue')
+        .select('module_name, notification_type, recipient_email')
+        .eq('id', emailId)
+        .single();
+      
+      if (!emailFetchError && emailData) {
+        console.log('Email data found:', emailData);
+        
+        // Try to update notification_logs by matching module, type, and recipient
+        console.log('Attempting alternative notification log update with:', {
+          module: emailData.module_name,
+          type: emailData.notification_type,
+          recipient_email: emailData.recipient_email
+        });
+        
+        const { error: alternativeUpdateError } = await supabase
+          .from('notification_logs')
+          .update({
+            status: 'failed',
+            error_message: reason,
+            updated_at: currentTime
+          })
+          .eq('module', emailData.module_name)
+          .eq('type', emailData.notification_type)
+          .eq('recipient_email', emailData.recipient_email)
+          .is('email_queue_id', null); // Only update logs without email_queue_id
+          
+        if (alternativeUpdateError) {
+          console.error('Alternative notification log update also failed:', alternativeUpdateError);
+        } else {
+          console.log('Updated notification logs using alternative method');
+        }
+      }
+    } else {
+      console.log(`Notification logs updated successfully for email ${emailId}`);
+    }
+
+    console.log(`Email ${emailId} deactivation process completed`);
+  } catch (error) {
+    console.error('Error deactivating email and updating logs:', error);
   }
 } 
