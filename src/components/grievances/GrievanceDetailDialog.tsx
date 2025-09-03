@@ -94,6 +94,16 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Description Section - Full Width */}
+          <div className="border-t pt-4">
+            <h3 className="font-medium mb-2">Description</h3>
+            <div className="w-full">
+              <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border break-words">
+                {submission.responses.find(r => r.question === 'Description of Grievance')?.answer || 'No description provided.'}
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <h3 className="font-medium mb-2">Submitter Information</h3>
@@ -126,13 +136,6 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
                 </div>
               </div>
             </div>
-          </div>
-          
-          <div className="border-t pt-4">
-            <h3 className="font-medium mb-2">Grievance Description</h3>
-            <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border">
-              {submission.responses.find(r => r.question === 'Description of Grievance')?.answer || 'No description provided.'}
-            </p>
           </div>
           
           <div className="border-t pt-4">

@@ -63,7 +63,9 @@ export class IncidentNotificationService {
             hour: '2-digit',
             minute: '2-digit'
           }),
-          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`
+          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`,
+          created_by: incident.created_by,
+          assigned_to: incident.assigned_to
         },
         metadata: {
           incidentId: incident.id,
@@ -116,7 +118,9 @@ export class IncidentNotificationService {
           Incident_Title: incident.description,
           Updated_By: `${updatedBy.first_name} ${updatedBy.last_name}`,
           Update_Notes: updateNotes || 'Incident has been updated',
-          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`
+          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`,
+          created_by: incident.created_by,
+          assigned_to: incident.assigned_to
         },
         metadata: {
           incidentId: incident.id,
@@ -167,7 +171,9 @@ export class IncidentNotificationService {
             hour: '2-digit',
             minute: '2-digit'
           }),
-          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`
+          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`,
+          created_by: incident.created_by,
+          assigned_to: incident.assigned_to
         },
         metadata: {
           incidentId: incident.id,
@@ -213,7 +219,9 @@ export class IncidentNotificationService {
           Incident_Title: incident.description,
           Reopened_By: `${reopenedBy.first_name} ${reopenedBy.last_name}`,
           Reopen_Reason: reopenReason || 'Incident has been reopened',
-          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`
+          Incident_URL: `${this.getBaseUrl()}/incidents/${incident.id}`,
+          created_by: incident.created_by,
+          assigned_to: incident.assigned_to
         },
         metadata: {
           incidentId: incident.id,
@@ -256,7 +264,9 @@ export class IncidentNotificationService {
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-          })
+          }),
+          created_by: incident.created_by,
+          assigned_to: incident.assigned_to
         },
         metadata: {
           incidentId: incident.id,
