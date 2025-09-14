@@ -54,6 +54,7 @@ export const useClientManagement = () => {
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modulesLoading, setModulesLoading] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
 
   // Filter clients based on status
@@ -227,6 +228,29 @@ export const useClientManagement = () => {
 
   const handleEditClick = (client: Client) => {
     setCurrentClient(client);
+    // Open the dialog immediately and show a loading state while fetching
+    setIsEditDialogOpen(true);
+    setEditLoading(true);
+
+    // Prefill basic client info so user can see something immediately
+    setFormData(prev => ({
+      ...prev,
+      name: client.name,
+      email: client.email,
+      contactPerson: client.contactPerson,
+      phone: client.phone,
+      active: client.active,
+      logo: client.logo || '',
+      institutionType: (client.institutionType as InstitutionType) || 'Other',
+      allowedDomains: client.allowedDomains || [],
+      clientTypeId: client.clientTypeId || '',
+      superAdminAllowedDomains: client.superAdminAllowedDomains || [],
+      authProviders: {
+        google: client.authProviders?.google ?? false,
+        microsoft: client.authProviders?.microsoft ?? false,
+        zoho: client.authProviders?.zoho ?? false
+      }
+    }));
     
     // Get the client modules and super admin employee for this client
     const fetchClientData = async (clientId: string) => {
@@ -237,7 +261,7 @@ export const useClientManagement = () => {
           .from('client_modules')
           .select('*')
           .eq('client_id', clientId);
-          
+        
         if (modulesError) {
           console.error('Error fetching client modules:', modulesError);
           toast.error('Failed to load client modules data');
@@ -270,32 +294,18 @@ export const useClientManagement = () => {
           toast.error('Failed to load super admin data');
         }
         
-        // Set the form data with all information - preserve existing logo
-        setFormData({
-          name: client.name,
-          email: client.email,
-          contactPerson: client.contactPerson,
-          phone: client.phone,
-          active: client.active,
-          logo: client.logo || '', // Keep existing logo data
-          institutionType: (client.institutionType as InstitutionType) || 'Other',
-          allowedDomains: client.allowedDomains || [],
+        // Update the remaining fields once data arrives
+        setFormData(prev => ({
+          ...prev,
           superAdminEmail: employeeData?.email || '',
-          clientTypeId: client.clientTypeId || '',
-          superAdminAllowedDomains: client.superAdminAllowedDomains || [], 
-          authProviders: {
-            google: client.authProviders?.google ?? false,
-            microsoft: client.authProviders?.microsoft ?? false,
-            zoho: client.authProviders?.zoho ?? false
-          },
           moduleInfoArray: moduleInfoArray
-        });
+        }));
       } catch (err) {
         console.error('Error in fetchClientData:', err);
         toast.error('Failed to load client data for editing');
+      } finally {
+        setEditLoading(false);
       }
-      
-      setIsEditDialogOpen(true);
     };
     
     fetchClientData(client.id);
@@ -419,6 +429,7 @@ export const useClientManagement = () => {
     isSuperAdminEmailDomainAllowed,
     handleAddDialogOpen,
     modulesLoading,
+    editLoading,
     statusFilter,
     setStatusFilter
   };

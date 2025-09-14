@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
 import ImageUpload from '@/components/ImageUpload';
+import DocumentFileUploader from './DocumentFileUploader';
 import BankStatementUploader from './BankStatementUploader';
 import DocumentNumberInput from './DocumentNumberInput';
 import DocumentDisplay from './DocumentDisplay';
@@ -51,6 +52,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [otherType, setOtherType] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [bankStatementFiles, setBankStatementFiles] = useState<FileItem[]>([]);
+  const [genericFiles, setGenericFiles] = useState<FileItem[]>([]);
   
   // Custom document fields
   const [customDocumentName, setCustomDocumentName] = useState('');
@@ -65,6 +67,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   // Get document type details
   const documentType = documentTypes.find(type => type.id === selectedTypeId);
   const isDrivingLicense = documentType?.name === 'driving_license';
+  const isPassport = documentType?.name === 'passport';
   const isBankAccount = documentType?.name === 'bank_account';
   const isManualType = documentType?.name === 'manual';
   const isOtherDocuments = documentType?.name === 'other_documents';
@@ -387,8 +390,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         />
       )}
 
-      {/* Date of Birth for Driving License */}
-      {isDrivingLicense && (
+      {/* Date of Birth for Driving License/Passport */}
+      {(isDrivingLicense || isPassport) && (
         <div>
           <Label className="text-sm font-medium">
             Date of Birth <span className="text-red-500">*</span>
@@ -428,21 +431,25 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       {/* Manual Type Options */}
       {renderManualTypeOptions()}
 
-      {/* Document Image Upload */}
+      {/* Document File Upload (allow images and PDF) */}
       {!isBankAccount && !isManualType && !isOtherDocuments && (
         <div>
           <Label className="text-sm font-medium">
-            Document Image <span className="text-red-500">*</span>
+            Document Image / PDF <span className="text-red-500">*</span>
           </Label>
           <div className="mt-1">
-            <ImageUpload
-              onImageChange={(base64) => {
+            <DocumentFileUploader
+              files={genericFiles}
+              setFiles={setGenericFiles}
+              onFileUploaded={(base64) => {
                 if (base64) {
                   setDocumentImage(base64);
                   onFileUploaded(base64);
                 }
               }}
-              className="w-full"
+              acceptedFileTypes="image/*,.pdf"
+              documentType={documentType?.name || ''}
+              maxFileSize={5}
             />
           </div>
         </div>

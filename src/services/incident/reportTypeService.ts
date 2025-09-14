@@ -62,31 +62,37 @@ export const reportTypeService = {
   },
 
   // Add report type - RLS handles client validation automatically
-  addReportType: async (name: string, description: string | null = null) => {
+  addReportType: async (name: string, description: string | null = null, clientId?: string) => {
     try {
       const trimmedName = name.trim();
       if (!trimmedName) {
         throw new Error('Report type name cannot be empty');
       }
 
-      // Get client_id from current user's employee record for data attribution
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
+      let finalClientId = clientId;
 
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
+      // If clientId not provided, get it from current user's employee record
+      if (!finalClientId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
 
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
+        }
+
+        finalClientId = employee.client_id;
       }
 
       // Check for duplicate
-      const isDuplicate = await reportTypeService.checkDuplicateReportType(trimmedName, employee.client_id);
+      const isDuplicate = await reportTypeService.checkDuplicateReportType(trimmedName, finalClientId);
       if (isDuplicate) {
         throw new Error('A report type with this name already exists');
       }
@@ -97,7 +103,7 @@ export const reportTypeService = {
           { 
             name: trimmedName, 
             description: description || null, 
-            client_id: employee.client_id 
+            client_id: finalClientId 
           }
         ])
         .select()

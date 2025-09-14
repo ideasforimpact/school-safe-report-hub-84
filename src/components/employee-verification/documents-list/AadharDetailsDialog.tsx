@@ -107,6 +107,7 @@ interface AadharDetailsDialogProps {
   } | null;
   documentId?: string;
   onVerificationUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
@@ -114,7 +115,8 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
   onOpenChange,
   aadharDetails,
   documentId,
-  onVerificationUpdate
+  onVerificationUpdate,
+  readOnly = false
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -129,7 +131,8 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
   console.log('AadharDetailsDialog - documentId:', documentId);
   console.log('AadharDetailsDialog - onVerificationUpdate:', onVerificationUpdate);
   
-  if (!aadharDetails?.response?.data) {
+  // Allow rendering when provider returns payload at root (not nested under .data)
+  if (!aadharDetails?.response) {
     return null;
   }
 
@@ -138,10 +141,13 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
     return response.data?.aadhaar_xml_data !== undefined;
   };
 
-  const response = aadharDetails.response;
+  const response = aadharDetails.response as any;
   let data: any;
   let address: any = {};
   let formattedAddress = '';
+
+  // Many providers nest the payload as response.data.data; normalize once here
+  const payload = (response && (response.data?.data ?? response.data ?? response)) || {};
 
   if (isDigiLockerResponse(response)) {
     // Handle DigiLocker response format
@@ -176,8 +182,29 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
         .join(', ');
     }
   } else {
-    // Handle old response format
-    data = response.data;
+    // Handle Surepass submit-otp and other providers
+    const raw = payload;
+    data = {
+      full_name: raw.full_name ?? raw.name ?? raw.fullName,
+      aadhaar_number: raw.aadhaar_number ?? raw.masked_aadhaar ?? raw.aadhaar ?? raw.maskedAadhaar,
+      dob: raw.dob ?? raw.date_of_birth ?? raw.yob,
+      gender: raw.gender,
+      care_of: raw.care_of ?? raw.father_name ?? raw.careOf,
+      profile_image: raw.profile_image,
+      mobile_verified: raw.mobile_verified ?? true,
+      address: raw.address || {
+        house: raw.house,
+        street: raw.street,
+        landmark: raw.landmark,
+        loc: raw.loc,
+        vtc: raw.vtc,
+        subdist: raw.subdist,
+        dist: raw.dist,
+        state: raw.state,
+        zip: raw.zip,
+        country: raw.country,
+      },
+    };
     address = data.address || {};
     formattedAddress = [
       address.house,
@@ -200,6 +227,15 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
     'Unknown';
 
   const verificationType = isDigiLockerResponse(response) ? 'DigiLocker' : 'government Aadhaar database';
+
+  // Prepare profile image source supporting URL or raw base64 string
+  const profileImageSrc = (() => {
+    const value = data?.profile_image;
+    if (!value || typeof value !== 'string') return undefined;
+    if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
+    // Assume raw base64 without prefix
+    return `data:image/jpeg;base64,${value}`;
+  })();
 
   const handleVerify = async () => {
     if (!documentId) return;
@@ -319,13 +355,16 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
         
         <ScrollArea className="max-h-[60vh]">
           <div className="space-y-4 p-1">
-            {data.profile_image && (
+            {profileImageSrc && (
               <div className="flex justify-center mb-4">
                 <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
                   <img 
-                    src={data.profile_image} 
+                    src={profileImageSrc} 
                     alt="Aadhaar Profile" 
                     className="w-32 h-32 object-cover"
+                    crossOrigin="anonymous"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 </div>
               </div>
@@ -406,6 +445,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
           </div>
         )}
         
+        {!readOnly && (
         <DialogFooter className="flex gap-3 pt-4 border-t">
           {/* Show buttons for DigiLocker verification results */}
           {aadharDetails && (
@@ -466,6 +506,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
             </>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

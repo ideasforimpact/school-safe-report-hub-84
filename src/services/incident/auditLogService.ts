@@ -190,6 +190,50 @@ const resolveFieldValue = async (fieldName: string, value: string): Promise<stri
           .single();
         return facility?.name || value;
         
+      case 'people_involved':
+        try {
+          const people = JSON.parse(value);
+          if (!Array.isArray(people) || people.length === 0) {
+            return 'None';
+          }
+          return people.map(person => {
+            const role = person.role || 'Other';
+            const name = person.name || 'Unknown';
+            return `${role} (${name})`;
+          }).join(', ');
+        } catch (error) {
+          console.error('Error parsing people_involved:', error);
+          return value;
+        }
+        
+      case 'documents':
+        try {
+          const documents = JSON.parse(value);
+          if (!Array.isArray(documents) || documents.length === 0) {
+            return 'None';
+          }
+          return documents.map(doc => doc.name || 'Unknown Document').join(', ');
+        } catch (error) {
+          console.error('Error parsing documents:', error);
+          return value;
+        }
+        
+      case 'date':
+        try {
+          const date = new Date(value);
+          return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+        } catch (error) {
+          console.error('Error parsing date:', error);
+          return value;
+        }
+        
       default:
         return value;
     }
@@ -211,10 +255,11 @@ const formatFieldName = (fieldName: string): string => {
     'facility_id': 'Facility',
     'type_id': 'Type',
     'description': 'Description',
+    'date': 'Date and Time',
     'root_cause_analysis': 'Root Cause Analysis',
     'action_taken': 'Action Taken',
     'comments': 'Comments',
-    'documents': 'Documents',
+    'documents': 'Supporting Documents',
     'people_involved': 'People Involved',
     'multiple_fields': 'Multiple Fields'
   };
@@ -276,7 +321,66 @@ export const formatAuditLogEntries = async (entries: AuditLogEntry[]): Promise<F
           const newValue = change.new_value ? await resolveFieldValue(change.field, change.new_value) : 'None';
           
           if (oldValue !== 'None' && newValue !== 'None') {
-            details = `${fieldName} changed from "${oldValue}" to "${newValue}"`;
+            // Special handling for people involved and documents to show actual changes
+            if (change.field === 'people_involved' || change.field === 'documents') {
+              try {
+                const oldItems = JSON.parse(change.old_value || '[]');
+                const newItems = JSON.parse(change.new_value || '[]');
+                
+                // Find what was added and removed
+                const added = newItems.filter((newItem: any) => {
+                  if (change.field === 'people_involved') {
+                    return !oldItems.some((oldItem: any) => oldItem.name === newItem.name);
+                  } else {
+                    return !oldItems.some((oldItem: any) => oldItem.name === newItem.name);
+                  }
+                });
+                
+                const removed = oldItems.filter((oldItem: any) => {
+                  if (change.field === 'people_involved') {
+                    return !newItems.some((newItem: any) => newItem.name === oldItem.name);
+                  } else {
+                    return !newItems.some((newItem: any) => newItem.name === oldItem.name);
+                  }
+                });
+                
+                // Build the description based on what actually changed
+                const changes = [];
+                
+                if (removed.length > 0) {
+                  const removedStr = removed.map((item: any) => {
+                    if (change.field === 'people_involved') {
+                      return `${item.role} (${item.name})`;
+                    } else {
+                      return item.name;
+                    }
+                  }).join(', ');
+                  changes.push(`Removed "${removedStr}"`);
+                }
+                
+                if (added.length > 0) {
+                  const addedStr = added.map((item: any) => {
+                    if (change.field === 'people_involved') {
+                      return `${item.role} (${item.name})`;
+                    } else {
+                      return item.name;
+                    }
+                  }).join(', ');
+                  changes.push(`Added "${addedStr}"`);
+                }
+                
+                if (changes.length > 0) {
+                  details = `${fieldName}: ${changes.join(', ')}`;
+                } else {
+                  details = `${fieldName} updated`;
+                }
+              } catch (error) {
+                console.error('Error parsing items for change description:', error);
+                details = `${fieldName} changed from "${oldValue}" to "${newValue}"`;
+              }
+            } else {
+              details = `${fieldName} changed from "${oldValue}" to "${newValue}"`;
+            }
           } else if (newValue !== 'None') {
             details = `${fieldName} set to "${newValue}"`;
           } else if (oldValue !== 'None') {

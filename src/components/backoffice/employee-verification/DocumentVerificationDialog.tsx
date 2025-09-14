@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, Upload, X, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DocumentVerificationDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
   const [comments, setComments] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const { toast } = useToast();
 
   const clientId = employee.clientId || (employee as any).client_id;
@@ -44,6 +46,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
 
   const handleVerificationAction = async (action: 'completed' | 'rejected') => {
     if (!clientId) {
+      setErrorMessage('Client ID not found. Please check employee data.');
       toast({
         title: "Error",
         description: "Client ID not found. Please check employee data.",
@@ -53,6 +56,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
     }
 
     if (!comments.trim()) {
+      setErrorMessage('Please provide verification comments before proceeding.');
       toast({
         title: "Comments Required",
         description: "Please provide verification comments before proceeding.",
@@ -63,32 +67,34 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
 
     setIsProcessing(true);
     try {
-      // Upload attachments first if any
-      const attachmentUrls: string[] = [];
-      
-      for (const file of attachments) {
-        try {
-          const url = await backofficeDocumentService.uploadToStorage(file, clientId, employee.id);
-          attachmentUrls.push(url);
-        } catch (error) {
-          console.error('Error uploading attachment:', error);
-          toast({
-            title: "Upload Error",
-            description: `Failed to upload ${file.name}. Continuing without this attachment.`,
-            variant: "destructive",
-          });
-        }
+      setErrorMessage('');
+      // Build single optional attachment (no loop). If multiple selected, take the first one
+      let attachment: { name: string; type: string; size: number; base64: string } | null = null;
+      if (attachments.length > 0) {
+        const file = attachments[0];
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = (e) => reject(e);
+          reader.readAsDataURL(file);
+        });
+        attachment = { name: file.name, type: file.type, size: file.size, base64 };
       }
 
-      // Call the verification service
-      await backofficeDocumentService.verifyDocument({
-        documentId: document.id,
-        clientId: clientId,
-        employeeId: employee.id,
-        action: action,
-        comments: comments.trim(),
-        attachments: attachmentUrls
+      // Invoke edge function to perform upload+verification atomically
+      const { data, error } = await supabase.functions.invoke('backoffice-document-verification', {
+        body: {
+          documentId: document.id,
+          clientId,
+          employeeId: employee.id,
+          action,
+          comments: comments.trim(),
+          attachment,
+          verifiedBy: 'SafeSchool'
+        }
       });
+
+      if (error) throw new Error(error.message || 'Verification failed');
 
       toast({
         title: "Document Verified",
@@ -103,9 +109,11 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
 
     } catch (error) {
       console.error('Error verifying document:', error);
+      const message = error instanceof Error ? error.message : 'Failed to verify document. Please try again.';
+      setErrorMessage(message);
       toast({
         title: "Verification Error",
-        description: error instanceof Error ? error.message : "Failed to verify document. Please try again.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -130,6 +138,11 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
             Verify Document - {employee.name}
           </DialogTitle>
         </DialogHeader>
+        {errorMessage && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
         
         <div className="space-y-6">
           {/* Document Info */}

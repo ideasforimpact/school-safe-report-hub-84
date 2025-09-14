@@ -25,8 +25,9 @@ const defaultDocumentTypes = [
   { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50', enabled: true },
   { id: '6', name: 'voter_id', description: 'Voter ID', icon: Users, bgColor: 'bg-pink-50', enabled: true },
   { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50', enabled: true },
-  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50', enabled: true },
-  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50', enabled: false },
+  // Bank Account temporarily disabled in upload selector
+  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50', enabled: false },
+  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50', enabled: true },
   { id: '7', name: 'manual', description: 'Manual', icon: Wallet, bgColor: 'bg-orange-50', enabled: true },
   { id: '8', name: 'other_documents', description: 'Other', icon: FileText, bgColor: 'bg-gray-50', enabled: true },
 ];
@@ -43,7 +44,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
   const typesToDisplay = documentTypes.length > 0 ? 
     // Sort according to the specified order if we have API data and filter enabled types
     [...documentTypes]
-      .filter(type => type.name !== 'passport') // Hide passport for now
+      .filter(type => type.name !== 'bank_account') // Hide bank account only
       .sort((a, b) => {
         const orderMap: Record<string, number> = {
           'aadhar': 1,
@@ -58,7 +59,7 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
         return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
       }) : 
     // Filter enabled types from default types
-    defaultDocumentTypes.filter(type => type.enabled);
+    defaultDocumentTypes.filter(type => type.enabled && type.name !== 'bank_account');
   
   // Helper function to get icon for document type
   const getIconForType = (typeName: string) => {

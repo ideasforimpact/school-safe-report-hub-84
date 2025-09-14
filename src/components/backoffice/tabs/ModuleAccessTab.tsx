@@ -94,7 +94,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
 
   // Fetch modules function - simplified and isolated
   const fetchModules = useCallback(async () => {
-    if (loading || !mountedRef.current) return;
+    if (loading) return;
     
     console.log("Fetching modules...");
     setLoading(true);
@@ -110,17 +110,18 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
         return;
       }
 
-      if (data && data.modules && mountedRef.current) {
-        console.log("Modules fetched successfully:", data.modules);
-        setModules(data.modules);
-      }
+      // Support multiple response shapes from edge function
+      // Either { modules: [...] } or direct array [...]
+      console.log(mountedRef.current,"mountedRef.current");
+      
+      const fetchedModules: Module[] = (data && (data.modules || data)) || [];
+      console.log("Modules fetched successfully (count):", fetchedModules.length);
+      setModules(Array.isArray(fetchedModules) ? fetchedModules : []);
     } catch (error) {
       console.error("Error in fetchModules:", error);
       toast.error("Error loading modules");
     } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   }, [loading]);
 
@@ -197,8 +198,8 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
   // Effect to fetch modules on mount
   useEffect(() => {
     console.log("Mount effect - fetching modules");
+    mountedRef.current = true;
     fetchModules();
-    
     return () => {
       mountedRef.current = false;
     };
@@ -206,6 +207,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
 
   // Effect to initialize state when modules are available
   useEffect(() => {
+    if (!mountedRef.current) return;
     if (modules.length > 0 && !initializedRef.current) {
       console.log("Modules available, initializing state...");
       const moduleInfoToUse = preloadedModules || formData.moduleInfoArray;
@@ -239,23 +241,6 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
     );
   }, []);
 
-  // Handle admin badge clicks
-  const handleAdminBadgeClick = useCallback((moduleId: string) => {
-    if (!mountedRef.current) return;
-    
-    console.log("Admin badge clicked:", moduleId);
-    setModuleAccessState(prev => 
-      prev.map(m => 
-        m.module_id === moduleId 
-          ? { 
-              ...m, 
-              is_admin: !m.is_admin,
-              level: { ...m.level, isAdmin: !m.is_admin }
-            } 
-          : m
-      )
-    );
-  }, []);
 
   console.log("Render state:", { 
     loading, 
@@ -318,12 +303,11 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
                         <Badge
                           variant={isAdminEnabled ? "default" : "outline"}
                           className={cn(
-                            "relative pr-7 transition-all duration-200 cursor-pointer",
+                            "relative pr-7 transition-all duration-200 cursor-not-allowed opacity-60",
                             isAdminEnabled 
-                              ? "bg-green-500 text-white hover:bg-green-600" 
-                              : "text-muted-foreground hover:bg-gray-100"
+                              ? "bg-green-500 text-white" 
+                              : "text-muted-foreground"
                           )}
-                          onClick={() => handleAdminBadgeClick(module.id)}
                         >
                           Admin
                           {isAdminEnabled && (

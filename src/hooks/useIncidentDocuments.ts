@@ -23,21 +23,12 @@ export const useIncidentDocuments = (incidentId?: string) => {
     setIsUploading(true);
     
     try {
-      // Upload files to storage with hierarchical path
-      const uploadedDocs = await incidentDocumentService.uploadFiles(incidentId, clientId, files);
-      console.log('Files uploaded to storage:', uploadedDocs.length);
+      // Upload files and update incident in one operation using edge function
+      const uploadedDocs = await incidentDocumentService.uploadFilesAndUpdateIncident(incidentId, clientId, files);
+      console.log('Files uploaded and incident updated:', uploadedDocs.length);
       
-      // Get existing documents
-      const existingDocs = await incidentDocumentService.getIncidentDocuments(incidentId);
-      console.log('Existing documents:', existingDocs.length);
-      
-      // Combine existing and new documents
-      const allDocuments = [...existingDocs, ...uploadedDocs];
-      
-      // Update incident with all documents
-      await incidentDocumentService.updateIncidentDocuments(incidentId, allDocuments);
-      
-      setDocuments(allDocuments);
+      // Update local state with new documents
+      setDocuments(prev => [...prev, ...uploadedDocs]);
       setSupportingFiles([]); // Clear the form files after successful upload
       
       toast.success(`${uploadedDocs.length} file(s) uploaded successfully`);

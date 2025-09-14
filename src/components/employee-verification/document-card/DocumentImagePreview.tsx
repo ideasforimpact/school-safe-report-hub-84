@@ -26,37 +26,55 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
       // If the URL already contains bucket structure, extract just the file path
       if (url.includes('employee_other_documents/')) {
         filePath = url.split('employee_other_documents/')[1] || url;
-        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_documents/${filePath}`;
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        return `${normalizedBase}/employee_other_documents/${filePath}`;
       }
       
       if (url.includes('employee_other_type_statement/')) {
         filePath = url.split('employee_other_type_statement/')[1] || url;
-        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${filePath}`;
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        return `${normalizedBase}/employee_other_type_statement/${filePath}`;
       }
       
       if (url.includes('employee-documents/')) {
         filePath = url.split('employee-documents/')[1] || url;
-        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`;
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        return `${normalizedBase}/employee-documents/${filePath}`;
       }
       
       // Check document type based on path indicators
       if (url.includes('bank_statement') || url.includes('court_case') || url.includes('police_verification') || url.includes('other_type')) {
-        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${filePath}`;
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        return `${normalizedBase}/employee_other_type_statement/${filePath}`;
       }
       
       // Check if it's a custom document (uploaded via custom-document-verification)
       // Custom documents are stored with employee_id/document_type_id/timestamp_filename format
       if (url.includes('/') && url.split('/').length >= 3) {
         // This looks like a custom document path, use employee_other_documents bucket
-        return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_documents/${filePath}`;
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        return `${normalizedBase}/employee_other_documents/${filePath}`;
       }
       
       // Default to employee-documents bucket for other documents
-      return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`;
+      {
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        return `${normalizedBase}/employee-documents/${filePath}`;
+      }
     }
     
     // For simple filenames without path, default to employee-documents
-    return `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+    {
+      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+      const normalizedBase = base.replace(/\/$/, '');
+      return `${normalizedBase}/employee-documents/${url}`;
+    }
   };
   
   const handleViewDocument = () => {

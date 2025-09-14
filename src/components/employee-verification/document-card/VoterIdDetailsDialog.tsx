@@ -28,6 +28,7 @@ interface VoterIdDetailsDialogProps {
   voterIdDetails: any;
   documentId?: string;
   onVerificationUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
@@ -35,7 +36,8 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
   onOpenChange,
   voterIdDetails,
   documentId,
-  onVerificationUpdate
+  onVerificationUpdate,
+  readOnly = false
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -49,6 +51,14 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
   // Extract useful information from the Voter ID verification response
   const voterInfo = voterIdDetails?.data || {};
   const isSuccess = voterIdDetails?.success === true && voterIdDetails?.status_code === 200;
+
+  // Prepare profile image source if available
+  const profileImageSrc = (() => {
+    const value = (voterInfo as any)?.profile_image || (voterInfo as any)?.photo || (voterInfo as any)?.image || (voterInfo as any)?.image_url;
+    if (!value || typeof value !== 'string') return undefined;
+    if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
+    return `data:image/jpeg;base64,${value}`;
+  })();
 
   // Helper function to format field names
   const formatFieldName = (key: string) => {
@@ -67,7 +77,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
   };
 
   const getAdditionalFields = () => {
-    const excludeKeys = ['name_v1', 'name_v2', 'name_v3', 'epic_no', 'relation_name', 'relation_type', 'gender', 'age', 
+    const excludeKeys = ['id', 'name_v1', 'name_v2', 'name_v3', 'epic_no', 'relation_name', 'relation_type', 'gender', 'age', 
                         'district_name', 'part_name', 'part_number', 'ac_name', 'pc_name', 'state_name', 'polling_station', 'client_id'];
     return Object.entries(voterInfo).filter(([key]) => !excludeKeys.includes(key) && voterInfo[key] !== null && voterInfo[key] !== undefined);
   };
@@ -201,6 +211,20 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
         <ScrollArea className="h-[400px] rounded-md border">
           {(isSuccess && Object.keys(voterInfo).length > 0) ? (
             <div className="p-4 space-y-6">
+              {profileImageSrc && (
+                <div className="flex justify-center">
+                  <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                    <img 
+                      src={profileImageSrc} 
+                      alt="Voter Profile" 
+                      className="w-32 h-32 object-cover"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
               {/* Error message for failed verification */}
               {!isSuccess && (
                 <div className="bg-red-50 p-3 rounded-md border border-red-200">
@@ -334,6 +358,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
           </div>
         )}
 
+        {!readOnly && (
         <DialogFooter className="flex gap-3 pt-4 border-t">
           {showRejectForm ? (
             <>
@@ -389,6 +414,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
             </>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

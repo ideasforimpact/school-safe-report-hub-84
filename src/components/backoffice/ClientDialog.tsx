@@ -182,7 +182,11 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent 
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Client' : 'Add New Client'}</DialogTitle>
           <DialogDescription>
@@ -198,13 +202,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           onStepClick={handleStepClick}
         />
 
-        {/* Show loading message when modules are loading for new client */}
-        {!isEdit && modulesLoading && currentStep === 1 && (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-            <span>Loading modules for client setup...</span>
-          </div>
-        )}
+        {/* ModuleAccessTab handles its own loading state; avoid double overlays here */}
 
         {/* Step Content - No form wrapper to prevent auto-submission */}
         <div className="min-h-[400px] py-4">

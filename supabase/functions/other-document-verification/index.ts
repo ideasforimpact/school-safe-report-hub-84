@@ -314,7 +314,9 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     console.log("Using in-progress status ID:", inProgressStatus?.id);
     
     // Create storage URL for the uploaded file using employee-documents bucket
-    const storageUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`;
+    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+    const normalizedBase = storageBase.replace(/\/$/, '');
+    const storageUrl = `${normalizedBase}/employee-documents/${filePath}`;
     
     // Add initial log entry for bank statement analysis
     const initialLogEntry = {
@@ -455,7 +457,7 @@ async function handleCourtCaseCheck(requestBody, supabase, corsHeaders) {
       employee_id: employeeId,
       document_type_id: documentTypeId,
       document_number: documentNumber,
-      document_url: 'not-required-for-court-check',
+      document_url: '',
       verification_status: 'in-progress',
       document_status_id: inProgressStatus?.id,
       employee_docs_log: [initialLogEntry],
@@ -493,7 +495,7 @@ async function handleCourtCaseCheck(requestBody, supabase, corsHeaders) {
       documentTypeId: insertData.document_type_id,
       documentTypeName: insertData.document_type?.name || '',
       documentNumber: insertData.document_number,
-      documentImage: 'not-required-for-court-check',
+      documentImage: '',
       verificationStatus: insertData.verification_status,
       documentStatusId: insertData.document_status_id,
       documentStatusName: insertData.document_status?.name || '',
@@ -572,7 +574,7 @@ async function handlePoliceVerification(requestBody, supabase, corsHeaders) {
       employee_id: employeeId,
       document_type_id: documentTypeId,
       document_number: documentNumber,
-      document_url: 'not-required-for-police-verification',
+      document_url: '',
       verification_status: 'in-progress',
       document_status_id: inProgressStatus?.id,
       employee_docs_log: [initialLogEntry],
@@ -610,7 +612,7 @@ async function handlePoliceVerification(requestBody, supabase, corsHeaders) {
       documentTypeId: insertData.document_type_id,
       documentTypeName: insertData.document_type?.name || '',
       documentNumber: insertData.document_number,
-      documentImage: 'not-required-for-police-verification',
+      documentImage: '',
       verificationStatus: insertData.verification_status,
       documentStatusId: insertData.document_status_id,
       documentStatusName: insertData.document_status?.name || '',

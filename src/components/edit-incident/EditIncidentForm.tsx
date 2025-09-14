@@ -14,6 +14,7 @@ import { Person } from '@/types/incident';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import { EditIncidentData } from '@/services/incident/editIncidentService';
 import { useIncidentDocuments } from '@/hooks/useIncidentDocuments';
+import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import AssignmentSection from './AssignmentSection';
 import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
@@ -49,6 +50,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     uploadAndSaveDocuments,
     loadDocuments
   } = useIncidentDocuments(id);
+
+  // Add validation hook
+  const { validateForm } = useIncidentFormValidation();
 
   // Log all incident information for debugging
   useEffect(() => {
@@ -157,6 +161,18 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
 
     console.log('=== SUBMITTING FORM ===');
     console.log('Form data:', formData);
+
+    // Validate form including people involved
+    const validationResult = validateForm(formData, peopleInvolved);
+    
+    if (!validationResult.isValid) {
+      // Prioritize description error if it exists, otherwise show first error
+      const descriptionError = validationResult.errors.description;
+      const firstError = Object.values(validationResult.errors)[0];
+      const errorMessage = descriptionError || firstError || "Please fill in all required fields";
+      toast.error(errorMessage);
+      return;
+    }
 
     setIsSubmitting(true);
     

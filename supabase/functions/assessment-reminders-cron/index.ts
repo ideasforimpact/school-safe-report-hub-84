@@ -81,68 +81,96 @@ async function processAssessmentReminders(supabase: any) {
  */
 async function processDueIn5DaysReminders(supabase: any, today: Date, result: any) {
   try {
-    const fiveDaysFromNow = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000);
-    const fiveDaysEnd = new Date(fiveDaysFromNow.getTime() + 24 * 60 * 60 * 1000);
+    console.log('Scanning active assessment queue for 5-day reminders...');
+    const { data: queue, error } = await supabase
+      .from('email_queue')
+      .select('*')
+      .eq('module_name', 'assessment')
+      .eq('active', true)
+      .eq('is_sent', false)
+      .eq('is_due_reminder_sent', false);
 
-    console.log('Checking assessments due in 5 days...');
-    console.log('Date range:', fiveDaysFromNow.toISOString(), 'to', fiveDaysEnd.toISOString());
-
-    // Find assessments due in exactly 5 days that are still assigned/in-progress
-    const { data: dueAssessments, error: dueError } = await supabase
-      .from('assessments')
-      .select(`
-        id, title, target_completion_date, assigned_to, created_by, client_id,
-        assigned_employee:employees!assigned_to(id, first_name, last_name, email, status)
-      `)
-      .in('status', ['assigned', 'in_progress', 'submitted'])
-      .not('target_completion_date', 'is', null)
-      .gte('target_completion_date', fiveDaysFromNow.toISOString().split('T')[0])
-      .lt('target_completion_date', fiveDaysEnd.toISOString().split('T')[0]);
-
-    if (dueError) {
-      console.error('Error fetching due assessments:', dueError);
+    if (error) {
+      console.error('Error fetching active assessment queue (5-day):', error);
       result.errors++;
       return;
     }
 
-    console.log(`Found ${dueAssessments?.length || 0} assessments due in 5 days`);
+    console.log(queue,"queue (5-day):");
+    
 
-    for (const assessment of dueAssessments || []) {
-      if (!assessment.assigned_employee || !assessment.assigned_employee.status) {
-        console.log(`Skipping assessment ${assessment.id} - no active assigned employee`);
-        continue;
-      }
-
+    for (const email of queue || []) {
       try {
-        // Check if we already sent a reminder today for this assessment
-        const alreadySent = await checkIfReminderSentToday(supabase, assessment.id, 'assessment_due_5_days');
-        if (alreadySent) {
-          console.log(`Reminder already sent today for assessment ${assessment.id}`);
+        const validation = await validateAssessmentNotification(supabase, email);
+        if (!validation.isValid) {
+          await supabase.from('email_queue').update({ active: false, error_message: validation.reason }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'failed', error_message: validation.reason }).eq('email_queue_id', email.id);
+          result.errors++;
           continue;
         }
 
-        // Queue the due reminder notification
-        await queueAssessmentNotification(supabase, {
-          assessment,
-          employee: assessment.assigned_employee,
-          type: 'assessment_due_5_days',
-          variables: {
-            User_Name: `${assessment.assigned_employee.first_name} ${assessment.assigned_employee.last_name}`,
-            Assessment_ID: assessment.id,
-            Assessment_Title: assessment.title,
-            Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            }),
-            Assessment_URL: `${getBaseUrl()}/assessments/${assessment.id}`
-          }
-        });
+        // Ensure it is actually 5 days before due date
+        const params = email.params || {};
+        const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
+        const { data: assessment } = await supabase
+          .from('assessments')
+          .select('title, target_completion_date, assigned_to, created_by, client_id')
+          .eq('id', assessmentId)
+          .single();
+        if (!assessment?.target_completion_date) {
+          continue;
+        }
+        const today = new Date(); today.setHours(0,0,0,0);
+        const dueDate = new Date(assessment.target_completion_date); dueDate.setHours(0,0,0,0);
+        const daysDiff = Math.round((dueDate.getTime() - today.getTime()) / (24*60*60*1000));
+        if (daysDiff !== 5) {
+          continue;
+        }
 
-        result.dueReminders++;
-        console.log(`Queued 5-day reminder for assessment ${assessment.id}`);
-      } catch (error: any) {
-        console.error(`Error processing due reminder for assessment ${assessment.id}:`, error);
+        // Build 5th-day reminder email (inline template like incident cron)
+        const variables = {
+          User_Name: email.recipient_name,
+          Assessment_ID: assessmentId,
+          Assessment_Title: assessment.title,
+          Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+          Assessment_URL: (Deno.env.get('FRONTEND_URL') || 'https://school-safe-report-hub.vercel.app') + `/assessments`
+        };
+
+        const subject = `Reminder – 5 Days Left for Assessment Due Date [Assessment ID: ${variables.Assessment_ID}]`;
+        const body = `
+Hello ${variables.User_Name},
+
+This is a reminder that your assessment is due in 5 days.
+
+Details:
+
+Assessment ID: ${variables.Assessment_ID}
+
+Title: ${variables.Assessment_Title}
+
+Due Date: ${variables.Due_Date}
+
+Kindly complete and submit it on time.
+
+Regards,
+Safe School Team
+        `.trim();
+        const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
+          body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: email.priority > 0 ? 'high' : 'normal' },
+          headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` }
+        });
+        if (!sendErr && sendRes?.success) {
+          const nowIso = new Date().toISOString();
+          await supabase.from('email_queue').update({ is_sent: true, is_due_reminder_sent: true, sent_at: nowIso, error_message: null }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'sent', sent_at: nowIso, error_message: null }).eq('email_queue_id', email.id);
+          result.dueReminders++;
+        } else {
+          await supabase.from('email_queue').update({ retry_count: (email.retry_count || 0) + 1, error_message: sendErr?.message || 'Send failed' }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'failed', error_message: sendErr?.message || 'Send failed' }).eq('email_queue_id', email.id);
+          result.errors++;
+        }
+      } catch (e) {
+        console.error('Error validating 5-day queue email:', e);
         result.errors++;
       }
     }
@@ -157,68 +185,97 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
  */
 async function processOverdueReminders(supabase: any, today: Date, result: any) {
   try {
-    console.log('Checking overdue assessments...');
+    console.log('Scanning active assessment queue for overdue reminders...');
+    const { data: queue, error } = await supabase
+      .from('email_queue')
+      .select('*')
+      .eq('module_name', 'assessment')
+      .eq('active', true)
+      .eq('is_sent', false)
+      .eq('is_remainder_cron_started', false);
 
-    // Find overdue assessments
-    const { data: overdueAssessments, error: overdueError } = await supabase
-      .from('assessments')
-      .select(`
-        id, title, target_completion_date, assigned_to, created_by, client_id,
-        assigned_employee:employees!assigned_to(id, first_name, last_name, email, status)
-      `)
-      .in('status', ['assigned', 'in_progress', 'submitted'])
-      .not('target_completion_date', 'is', null)
-      .lt('target_completion_date', today.toISOString().split('T')[0]);
-
-    if (overdueError) {
-      console.error('Error fetching overdue assessments:', overdueError);
+    if (error) {
+      console.error('Error fetching active assessment queue (overdue):', error);
       result.errors++;
       return;
     }
 
-    console.log(`Found ${overdueAssessments?.length || 0} overdue assessments`);
+    console.log(queue,"Over due reminder");
+    
 
-    for (const assessment of overdueAssessments || []) {
-      if (!assessment.assigned_employee || !assessment.assigned_employee.status) {
-        console.log(`Skipping assessment ${assessment.id} - no active assigned employee`);
-        continue;
-      }
-
+    for (const email of queue || []) {
       try {
-        // Check if we already sent an overdue reminder today
-        const alreadySent = await checkIfReminderSentToday(supabase, assessment.id, 'assessment_overdue');
-        if (alreadySent) {
-          console.log(`Overdue reminder already sent today for assessment ${assessment.id}`);
+        const validation = await validateAssessmentNotification(supabase, email);
+        if (!validation.isValid) {
+          await supabase.from('email_queue').update({ active: false, error_message: validation.reason }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'failed', error_message: validation.reason }).eq('email_queue_id', email.id);
+          result.errors++;
           continue;
         }
 
-        // Calculate overdue days
-        const dueDate = new Date(assessment.target_completion_date);
-        const overdueDays = Math.floor((today.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000));
+        // Ensure it is actually overdue
+        const params = email.params || {};
+        const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
+        const { data: assessment } = await supabase
+          .from('assessments')
+          .select('title, target_completion_date, assigned_to, created_by, client_id')
+          .eq('id', assessmentId)
+          .single();
+        if (!assessment?.target_completion_date) {
+          continue;
+        }
+        const today = new Date(); today.setHours(0,0,0,0);
+        const dueDate = new Date(assessment.target_completion_date); dueDate.setHours(0,0,0,0);
+        if (!(dueDate.getTime() < today.getTime())) {
+          continue;
+        }
 
-        // Queue the overdue notification
-        await queueAssessmentNotification(supabase, {
-          assessment,
-          employee: assessment.assigned_employee,
-          type: 'assessment_overdue',
-          variables: {
-            User_Name: `${assessment.assigned_employee.first_name} ${assessment.assigned_employee.last_name}`,
-            Assessment_ID: assessment.id,
-            Assessment_Title: assessment.title,
-            Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
-            }),
-            Overdue_Days: overdueDays.toString(),
-            Assessment_URL: `${getBaseUrl()}/assessments/${assessment.id}`
-          }
+        // Build overdue reminder email (inline template like incident cron)
+        const overdueDays = Math.floor((today.getTime() - dueDate.getTime()) / (24*60*60*1000));
+        const variables = {
+          User_Name: email.recipient_name,
+          Assessment_ID: assessmentId,
+          Assessment_Title: assessment.title,
+          Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+          Overdue_Days: overdueDays.toString(),
+          Assessment_URL: (Deno.env.get('FRONTEND_URL') || 'https://school-safe-report-hub.vercel.app') + `/assessments`
+        };
+
+        const subject = `Assessment Overdue by ${variables.Overdue_Days} Days – [Assessment ID: ${variables.Assessment_ID}]`;
+        const body = `
+Hello ${variables.User_Name},
+
+The following assessment is overdue by ${variables.Overdue_Days} days and requires immediate attention.
+
+Details:
+
+Assessment ID: ${variables.Assessment_ID}
+
+Title: ${variables.Assessment_Title}
+
+Due Date: ${variables.Due_Date}
+
+Please submit it at the earliest to avoid escalation.
+
+Regards,
+Safe School Team
+        `.trim();
+        const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
+          body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: 'high' },
+          headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` }
         });
-
-        result.overdueReminders++;
-        console.log(`Queued overdue reminder for assessment ${assessment.id} (${overdueDays} days overdue)`);
-      } catch (error: any) {
-        console.error(`Error processing overdue reminder for assessment ${assessment.id}:`, error);
+        if (!sendErr && sendRes?.success) {
+          const nowIso = new Date().toISOString();
+          await supabase.from('email_queue').update({ is_sent: true, is_remainder_cron_started: true, sent_at: nowIso, error_message: null }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'sent', sent_at: nowIso, error_message: null }).eq('email_queue_id', email.id);
+          result.overdueReminders++;
+        } else {
+          await supabase.from('email_queue').update({ retry_count: (email.retry_count || 0) + 1, error_message: sendErr?.message || 'Send failed' }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'failed', error_message: sendErr?.message || 'Send failed' }).eq('email_queue_id', email.id);
+          result.errors++;
+        }
+      } catch (e) {
+        console.error('Error validating overdue queue email:', e);
         result.errors++;
       }
     }
@@ -261,80 +318,40 @@ async function checkIfReminderSentToday(supabase: any, assessmentId: string, not
 }
 
 /**
- * Queue assessment notification
+ * Validate assessment notification helper (shared with processor)
  */
-async function queueAssessmentNotification(supabase: any, data: any) {
+async function validateAssessmentNotification(supabase: any, email: any): Promise<{ isValid: boolean; reason?: string }> {
   try {
-    // Get the template
-    const { data: template, error: templateError } = await supabase
-      .from('notification_templates')
-      .select('subject, body')
-      .eq('module', 'assessment')
-      .eq('type', data.type)
-      .eq('is_active', true)
+    const params = email.params || {};
+    const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
+    const paramCreatedBy = params.created_by;
+    const paramAssignedTo = params.assigned_to;
+
+    if (!assessmentId) {
+      return { isValid: false, reason: 'Missing Assessment_ID in params' };
+    }
+
+    const { data: assessment, error } = await supabase
+      .from('assessments')
+      .select('created_by, assigned_to')
+      .eq('id', assessmentId)
       .single();
 
-    if (templateError || !template) {
-      throw new Error(`Template not found for ${data.type}`);
+    if (error || !assessment) {
+      return { isValid: false, reason: `Assessment not found with id: ${assessmentId}` };
     }
 
-    // Process template variables
-    let subject = template.subject;
-    let body = template.body;
-
-    for (const [key, value] of Object.entries(data.variables)) {
-      const placeholder = `{{${key}}}`;
-      subject = subject.replace(new RegExp(placeholder, 'g'), String(value));
-      body = body.replace(new RegExp(placeholder, 'g'), String(value));
+    if (assessment.created_by !== paramCreatedBy) {
+      return { isValid: false, reason: 'Creator changed since email was queued' };
     }
 
-    // Queue email
-    const { error: queueError } = await supabase
-      .from('email_queue')
-      .insert({
-        module_name: 'assessment',
-        notification_type: data.type,
-        client_id: data.assessment.client_id,
-        recipient_email: data.employee.email,
-        recipient_name: `${data.employee.first_name} ${data.employee.last_name}`,
-        subject,
-        body,
-        params: data.variables,
-        priority: data.type === 'assessment_overdue' ? 1 : 0,
-        is_sent: false,
-        retry_count: 0,
-        max_retries: 3,
-        scheduled_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (queueError) {
-      throw new Error(`Failed to queue notification: ${queueError.message}`);
+    if (assessment.assigned_to !== paramAssignedTo) {
+      return { isValid: false, reason: 'Assignee changed since email was queued' };
     }
 
-    // Log notification
-    await supabase
-      .from('notification_logs')
-      .insert({
-        module: 'assessment',
-        type: data.type,
-        recipient_id: data.employee.id,
-        recipient_email: data.employee.email,
-        subject,
-        body,
-        status: 'pending',
-        metadata: {
-          assessmentId: data.assessment.id,
-          createdBy: data.assessment.created_by,
-          assignedTo: data.assessment.assigned_to,
-          actionBy: data.assessment.assigned_to
-        }
-      });
-
-  } catch (error: any) {
-    console.error('Error queueing assessment notification:', error);
-    throw error;
+    return { isValid: true };
+  } catch (e: any) {
+    return { isValid: false, reason: `Validation error: ${e.message}` };
   }
 }
 

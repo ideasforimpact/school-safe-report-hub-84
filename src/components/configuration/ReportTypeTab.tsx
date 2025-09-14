@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { reportTypeService } from '@/services/incident/reportTypeService';
 import { useReportTypes } from '@/hooks/useReportTypes';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Validation function for report type names (no special characters, max 25 chars)
 const isValidReportTypeName = (name: string) => {
@@ -51,6 +52,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   const [editTypeDescription, setEditTypeDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [isSaving, setIsSaving] = useState(false);
   
   // Confirmation dialog states
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -60,6 +62,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     itemName: string;
     action: 'delete' | 'activate' | 'deactivate';
     onConfirm: () => void;
+    isLoading?: boolean;
     error: string | null;
   }>({
     open: false,
@@ -68,8 +71,12 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     itemName: '',
     action: 'delete',
     onConfirm: () => {},
+    isLoading: false,
     error: null,
   });
+  
+  // Get client ID from auth context
+  const { employeeData } = useAuth();
   
   // Use the hook to get report types with RLS - no manual client validation needed
   const { reportTypes, loading, fetchReportTypes } = useReportTypes();
@@ -87,7 +94,13 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
     try {
       setError(null);
-      await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim());
+      setIsSaving(true);
+      // Pass client ID from auth context
+      await reportTypeService.addReportType(
+        newTypeName.trim(), 
+        newTypeDescription.trim(), 
+        employeeData?.clientId
+      );
       setNewTypeName('');
       setNewTypeDescription('');
       setIsAddDialogOpen(false);
@@ -98,6 +111,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       console.error('Error adding report type:', error);
       setError(error.message || 'Failed to add report type');
       // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -114,6 +129,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
     try {
       setError(null);
+      setIsSaving(true);
       await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
       setIsEditDialogOpen(false);
       setSelectedType(null);
@@ -124,6 +140,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       console.error('Error updating report type:', error);
       setError(error.message || 'Failed to update report type');
       // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -146,17 +164,21 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       action,
       onConfirm: async () => {
         try {
+          setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
           await reportTypeService.toggleReportTypeStatus(type.id, newStatus);
           // Refresh data immediately
           await fetchReportTypes();
-          setConfirmationDialog(prev => ({ ...prev, open: false }));
+          setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success(`Report type ${newStatus ? 'activated' : 'deactivated'} successfully`);
         } catch (error: any) {
           console.error('Error toggling report type status:', error);
           const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} report type`;
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+          toast.error(errorMessage);
         }
       },
       error: null,
+      isLoading: false,
     });
   };
 
@@ -173,17 +195,21 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       action: 'delete',
       onConfirm: async () => {
         try {
+          setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
           await reportTypeService.deleteReportType(id);
           // Refresh data immediately
           await fetchReportTypes();
-          setConfirmationDialog(prev => ({ ...prev, open: false }));
+          setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success('Report type deleted successfully');
         } catch (error: any) {
           console.error('Error deleting report type:', error);
           const errorMessage = error?.message || 'Failed to delete report type';
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+          toast.error(errorMessage);
         }
       },
       error: null,
+      isLoading: false,
     });
   };
 
@@ -333,7 +359,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
               setNewTypeDescription('');
             }
           }}
-          onChange={setNewTypeName}
+          onChange={(val) => { setNewTypeName(val); if (error) setError(null); }}
           onSave={handleAddReportType}
           triggerButton={<Button className="hidden">Add</Button>}
           maxLength={25}
@@ -348,7 +374,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           }
           ]}
           error={error}
-          isLoading={loading}
+          isLoading={isSaving}
           validationFunction={isValidReportTypeName}
           validationMessage="Name must be alphanumeric with spaces only, maximum 25 characters"
         />
@@ -367,7 +393,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
               setError(null);
             }
           }}
-          onChange={setEditTypeName}
+          onChange={(val) => { setEditTypeName(val); if (error) setError(null); }}
           onSave={handleEditReportType}
           triggerButton={<Button className="hidden">Edit</Button>}
           maxLength={25}
@@ -382,7 +408,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           }
           ]}
           error={error}
-          isLoading={loading}
+          isLoading={isSaving}
           validationFunction={isValidReportTypeName}
           validationMessage="Name must be alphanumeric with spaces only, maximum 25 characters"
         />
@@ -396,6 +422,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         description={confirmationDialog.description}
         itemName={confirmationDialog.itemName}
         action={confirmationDialog.action}
+        isLoading={confirmationDialog.isLoading}
         error={confirmationDialog.error}
       />
     </div>

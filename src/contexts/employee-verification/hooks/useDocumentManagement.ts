@@ -129,7 +129,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         
         // If document_url is a storage path, convert to full URL
         if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-          documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+          const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+          const normalizedBase = base.replace(/\/$/, '');
+          documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
         }
         
         return {
@@ -190,138 +192,74 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
 
     try {
-      // Verify the employee belongs to the current client
-      const { data: employee, error: empError } = await supabase
-        .from('employees')
-        .select('id, client_id')
-        .eq('id', document.employeeId)
-        .eq('client_id', clientId)
-        .single();
+      // Use unified edge function for fast single-file upload
+      if (document.documentImage.startsWith('data:')) {
+        console.log('Using unified edge function for document upload...');
+        
+        // Extract file info from base64
+        const base64Data = document.documentImage;
+        const mimeType = base64Data.split(':')[1].split(';')[0];
+        const fileExtension = mimeType.includes('pdf') ? 'pdf' : 'jpg';
+        const fileName = `document-${Date.now()}.${fileExtension}`;
 
-      if (empError || !employee) {
-        toast.error('Employee not found or access denied');
+        const { data, error } = await supabase.functions.invoke('unified-document-upload', {
+          body: {
+            employeeId: document.employeeId,
+            clientId: clientId,
+            documentTypeId: document.documentTypeId,
+            documentNumber: document.documentNumber,
+            documentFile: {
+              name: fileName,
+              type: mimeType,
+              size: Math.round((base64Data.length * 3) / 4), // Approximate size
+              base64: base64Data
+            },
+            params: document.params || {}
+          }
+        });
+
+        if (error) {
+          throw new Error(error.message || 'Upload failed');
+        }
+
+        // Convert response to VerificationDocument format
+        const newDocument: VerificationDocument = {
+          id: data.document.id,
+          employeeId: data.document.employeeId,
+          documentTypeId: data.document.documentTypeId,
+          documentTypeName: data.document.documentTypeName,
+          documentNumber: data.document.documentNumber || '',
+          documentImage: data.document.documentImage, // Already has full URL
+          verificationStatus: data.document.verificationStatus as 'verified' | 'failed' | 'pending',
+          documentStatusId: data.document.documentStatusId,
+          documentStatusName: data.document.documentStatusName,
+          verificationDate: null,
+          verificationNotes: '',
+          verificationMethod: 'manual',
+          params: data.document.params,
+          cronActivate: false,
+          cronActivatedDate: undefined,
+          cronUpdatedDate: undefined,
+          cronLog: [],
+          createdAt: data.document.createdAt,
+          updatedAt: data.document.updatedAt
+        };
+
+        setDocuments(prev => [...prev, newDocument]);
+        toast.success('Document uploaded successfully');
+        
+        return newDocument;
+      } else {
+        // Fallback for non-base64 documents (shouldn't happen in normal flow)
+        toast.error('Invalid document format');
         return;
       }
-
-      let documentUrlForDB = document.documentImage;
-
-      // If it's a base64 document, upload to storage first
-      if (document.documentImage.startsWith('data:')) {
-        console.log('Uploading base64 document to storage...');
-        const storagePath = await uploadDocumentToStorage(
-          document.documentImage, 
-          document.employeeId, 
-          document.documentTypeName || 'document'
-        );
-        documentUrlForDB = storagePath; // Store path in database
-        console.log('Document uploaded to storage, path:', storagePath);
-      }
-
-      // Get document type ID if not provided
-      let documentTypeId = document.documentTypeId;
-      if (!documentTypeId) {
-        const { data: docType } = await supabase
-          .from('employee_document_type')
-          .select('id')
-          .eq('name', document.documentTypeName)
-          .single();
-        documentTypeId = docType?.id;
-      }
-
-      // Get pending status ID if not provided
-      let documentStatusId = document.documentStatusId;
-      if (!documentStatusId) {
-        const { data: pendingStatus } = await supabase
-          .from('document_status')
-          .select('id')
-          .eq('name', 'pending')
-          .single();
-        documentStatusId = pendingStatus?.id;
-      }
-
-      console.log('Inserting document with data:', {
-        employee_id: document.employeeId,
-        document_type_id: documentTypeId,
-        document_status_id: documentStatusId,
-        document_url: documentUrlForDB,
-        document_number: document.documentNumber || null,
-        verification_status: document.verificationStatus,
-        params: document.params || {},
-        cron_activate: document.cronActivate || false,
-        cron_activated_date: document.cronActivatedDate || null,
-        cron_updated_date: document.cronUpdatedDate || null,
-        cron_log: document.cronLog || [],
-        reject_reason: document.rejectReason || null
-      });
-
-      const { data, error } = await supabase
-        .from('employee_documents')
-        .insert([{
-          employee_id: document.employeeId,
-          document_type_id: documentTypeId,
-          document_status_id: documentStatusId,
-          document_url: documentUrlForDB,
-          document_number: document.documentNumber || null,
-          verification_status: document.verificationStatus,
-          params: document.params || {},
-          cron_activate: document.cronActivate || false,
-          cron_activated_date: document.cronActivatedDate || null,
-          cron_updated_date: document.cronUpdatedDate || null,
-          cron_log: document.cronLog || [],
-          reject_reason: document.rejectReason || null
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-
-      // Create the document object with proper URL for frontend display
-      let displayUrl = data.document_url;
-      if (!displayUrl.startsWith('data:') && !displayUrl.startsWith('https://')) {
-        displayUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${displayUrl}`;
-      }
-
-      const newDocument: VerificationDocument = {
-        id: data.id,
-        employeeId: data.employee_id,
-        documentTypeId: documentTypeId || '',
-        documentTypeName: document.documentTypeName || '',
-        documentNumber: data.document_number || '',
-        documentImage: displayUrl,
-        verificationStatus: data.verification_status as 'verified' | 'failed' | 'pending',
-        documentStatusId: documentStatusId,
-        documentStatusName: 'pending',
-        verificationDate: null,
-        verificationNotes: '',
-        verificationMethod: 'manual',
-        params: document.params,
-        cronActivate: data.cron_activate || false,
-        cronActivatedDate: data.cron_activated_date || undefined,
-        cronUpdatedDate: data.cron_updated_date || undefined,
-        cronLog: Array.isArray(data.cron_log) ? (data.cron_log as Array<{
-          timestamp: string;
-          action: string;
-          status: string;
-          details?: any;
-          error?: string;
-        }>) : [],
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      };
-
-      setDocuments(prev => [...prev, newDocument]);
-      toast.success('Document uploaded successfully to storage');
-      
-      return newDocument;
     } catch (error) {
       console.error('Error adding document:', error);
       toast.error('Failed to upload document: ' + (error?.message || 'Unknown error'));
       throw error;
     }
-  }, [clientId]);
+  }, [clientId, supabase]);
 
   const verifyDocument = useCallback(async (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual' = 'manual', notes?: string) => {
     try {

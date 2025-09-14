@@ -116,7 +116,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     if (!dialogOpen) {
       setFormData(initialValues);
     }
-  }, [dialogOpen, initialValues]);
+  }, [dialogOpen]); // Removed initialValues from dependency array to prevent infinite re-renders
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));

@@ -13,6 +13,7 @@ export interface AssessmentContextType {
   updateTemplate: (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => Promise<void>;
   deleteTemplate: (id: string) => Promise<void>;
   getTemplateById: (id: string) => AssessmentTemplate | undefined;
+  refreshTemplates: () => Promise<void>;
   
   // Questions
   addQuestion: (templateId: string, question: Omit<AssessmentQuestion, 'id'>) => Promise<string>;

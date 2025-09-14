@@ -1,225 +1,269 @@
-
 import { supabase } from '@/integrations/supabase/client';
-import { AssessmentTemplate, AssessmentQuestion } from '@/types/assessment';
+import { AssessmentQuestion, AssessmentTemplate } from '@/types/assessment';
 
-export interface TemplateCategory {
-  id: string;
-  name: string;
-  description: string | null;
+export interface CreateTemplateRequest {
+  title: string;
+  description: string;
+  type: string;
+  isActive: boolean;
+  questions: AssessmentQuestion[];
+  clientId: string;
+  employeeId: string;
+  templateId?: string; // For updates
 }
 
-export interface DatabaseTemplate {
-  id: string;
-  client_id: string | null;
-  title: string;
-  description: string | null;
-  category_id: string | null;
-  questions: any;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-  is_active: boolean;
-  template_categories?: {
-    name: string;
-  };
+export interface CreateTemplateResponse {
+  success: boolean;
+  templateId: string;
+  message: string;
+}
+
+// Convert File to base64
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = error => reject(error);
+  });
+}
+
+// Convert pending files to base64 format for the edge function
+async function convertFilesToBase64(questions: AssessmentQuestion[]): Promise<any[]> {
+  const processedQuestions = await Promise.all(
+    questions.map(async (question) => {
+      if (!question.files || question.files.length === 0) {
+        return question;
+      }
+
+      // Convert files to base64 format
+      console.log(`Converting files for question ${question.id}:`, question.files);
+      const base64Files = await Promise.all(
+        question.files.map(async (file: any) => {
+          console.log('Processing file in convertFilesToBase64:', file);
+          console.log('File instanceof File:', file instanceof File);
+          console.log('File.file instanceof File:', file.file instanceof File);
+          console.log('File.fileData:', file.fileData);
+          // If file is already a File object (from pending files), convert to base64
+          if (file instanceof File) {
+            console.log('File is instanceof File, converting to base64');
+            const base64Data = await fileToBase64(file);
+            return {
+              id: file.name + '_' + Date.now(), // Generate unique ID
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              fileData: base64Data
+            };
+          }
+          
+          // If file has a file property (from prepareQuestionsWithFiles), convert to base64
+          if (file.file && file.file instanceof File) {
+            console.log('File has file property, converting to base64');
+            const base64Data = await fileToBase64(file.file);
+            return {
+              id: file.id,
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              fileData: base64Data
+            };
+          }
+          
+          // If file is already processed (has URL), return as is
+          console.log('File is already processed, returning as is');
+          return {
+            id: file.id,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: file.url,
+            path: file.path,
+            uploadedAt: file.uploadedAt
+          };
+        })
+      );
+
+      console.log(`Converted files for question ${question.id}:`, base64Files);
+      return {
+        ...question,
+        files: base64Files
+      };
+    })
+  );
+
+  return processedQuestions;
 }
 
 export const templateService = {
-  async checkDuplicateTemplate(title: string, excludeId?: string): Promise<boolean> {
+  // Get all templates for a client
+  getTemplates: async (clientId: string): Promise<AssessmentTemplate[]> => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('assessment_templates')
-        .select('id')
-        .eq('title', title.trim());
-
-      if (excludeId) {
-        query = query.neq('id', excludeId);
-      }
-
-      const { data, error } = await query;
+        .select(`
+          id,
+          title,
+          description,
+          category_id,
+          is_active,
+          questions,
+          created_at,
+          created_by,
+          template_categories!inner(
+            id,
+            name,
+            description
+          )
+        `)
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
 
       if (error) {
-        throw error;
+        console.error('Error fetching templates:', error);
+        throw new Error(`Failed to fetch templates: ${error.message}`);
       }
 
-      return data && data.length > 0;
-    } catch (error: any) {
-      console.error('Error checking duplicate template:', error);
-      return false;
-    }
-  },
-
-  async getTemplateCategories(): Promise<TemplateCategory[]> {
-    const { data, error } = await supabase
-      .from('template_categories')
-      .select('*')
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching template categories:', error);
-      throw error;
-    }
-
-    return data || [];
-  },
-
-  async getTemplates(): Promise<AssessmentTemplate[]> {
-    const { data, error } = await supabase
-      .from('assessment_templates')
-      .select(`
-        *,
-        template_categories (
-          name
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching templates:', error);
-      throw error;
-    }
-
-    return (data || []).map(this.mapDatabaseTemplateToAssessmentTemplate);
-  },
-
-  async createTemplate(template: {
-    title: string;
-    description: string;
-    type: string;
-    questions: AssessmentQuestion[];
-  }): Promise<string> {
-    console.log('Creating template with data:', template);
-    
-    // Check for duplicate title
-    const isDuplicate = await this.checkDuplicateTemplate(template.title);
-    if (isDuplicate) {
-      throw new Error('A template with this title already exists');
-    }
-    
-    // Get category ID by name
-    const { data: category } = await supabase
-      .from('template_categories')
-      .select('id')
-      .eq('name', template.type)
-      .single();
-
-    // Add IDs to questions if they don't have them, preserve existing files
-    const questionsWithIds = template.questions.map((q, index) => ({
-      ...q,
-      id: q.id || `q_${Date.now()}_${index}`,
-      files: q.files || [] // Preserve existing files or initialize empty array
-    }));
-    
-    console.log('Questions being saved to database:', JSON.stringify(questionsWithIds, null, 2));
-
-    // Try to get the current user, but don't fail if not authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('Current user:', user);
-    
-    let employeeId = null;
-    let clientId = null;
-
-    // Only try to get employee data if user is authenticated
-    if (user) {
-      const { data: employee } = await supabase
-        .from('employees')
-        .select('id, client_id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (employee) {
-        employeeId = employee.id;
-        clientId = employee.client_id;
-      }
-    }
-
-    console.log('Employee ID:', employeeId);
-    console.log('Client ID:', clientId);
-
-    const { data, error } = await supabase
-      .from('assessment_templates')
-      .insert({
-        client_id: clientId,
+      // Transform data to include type from category relationship
+      const templates = data?.map(template => ({
+        id: template.id,
         title: template.title,
         description: template.description,
-        category_id: category?.id || null,
-        questions: questionsWithIds as any,
-        created_by: employeeId,
-        is_active: true
-      })
-      .select()
-      .single();
+        type: template.template_categories?.name || 'Unknown',
+        category_id: template.category_id,
+        questions: template.questions as unknown as AssessmentQuestion[],
+        createdAt: template.created_at,
+        createdBy: template.created_by,
+        isActive: template.is_active
+      })) || [];
 
-    if (error) {
-      console.error('Error creating template:', error);
+      return templates;
+    } catch (error) {
+      console.error('Error in getTemplates:', error);
       throw error;
     }
-
-    console.log('Template created successfully:', data);
-    return data.id;
   },
 
-  async updateTemplate(id: string, updates: Partial<AssessmentTemplate>): Promise<void> {
-    const updateData: any = {};
-
-    if (updates.title) {
-      // Check for duplicate title (excluding current template)
-      const isDuplicate = await this.checkDuplicateTemplate(updates.title, id);
-      if (isDuplicate) {
-        throw new Error('A template with this title already exists');
-      }
-      updateData.title = updates.title;
-    }
-    if (updates.description) updateData.description = updates.description;
-    if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
-    
-    if (updates.type) {
-      const { data: category } = await supabase
-        .from('template_categories')
-        .select('id')
-        .eq('name', updates.type)
+  // Create template (legacy method for backward compatibility)
+  createTemplate: async (templateData: any): Promise<string> => {
+    try {
+      // This is a simplified version that doesn't handle files
+      // For file handling, use createOrUpdateTemplate instead
+      const { data, error } = await supabase
+        .from('assessment_templates')
+        .insert({
+          title: templateData.title,
+          description: templateData.description,
+          category_id: templateData.category_id,
+          questions: templateData.questions || [],
+          created_by: templateData.createdBy || '',
+          client_id: templateData.clientId || ''
+        })
+        .select()
         .single();
-      updateData.category_id = category?.id || null;
-    }
 
-    if (updates.questions) {
-      console.log('Updating template with questions:', JSON.stringify(updates.questions, null, 2));
-      updateData.questions = updates.questions as any;
-    }
+      if (error) {
+        throw new Error(`Failed to create template: ${error.message}`);
+      }
 
-    const { error } = await supabase
-      .from('assessment_templates')
-      .update(updateData)
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error updating template:', error);
+      return data.id;
+    } catch (error) {
+      console.error('Error in createTemplate:', error);
       throw error;
     }
   },
 
-  async deleteTemplate(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('assessment_templates')
-      .delete()
-      .eq('id', id);
+  // Update template (legacy method for backward compatibility)
+  updateTemplate: async (id: string, updates: any): Promise<void> => {
+    try {
+      const updateData: any = {};
+      
+      if (updates.title) updateData.title = updates.title;
+      if (updates.description) updateData.description = updates.description;
+      if (updates.category_id) updateData.category_id = updates.category_id;
+      if (updates.questions) updateData.questions = updates.questions;
+      if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
+      
+      updateData.updated_at = new Date().toISOString();
 
-    if (error) {
-      console.error('Error deleting template:', error);
+      const { error } = await supabase
+        .from('assessment_templates')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        throw new Error(`Failed to update template: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error in updateTemplate:', error);
       throw error;
     }
   },
 
-  mapDatabaseTemplateToAssessmentTemplate(dbTemplate: DatabaseTemplate): AssessmentTemplate {
-    return {
-      id: dbTemplate.id,
-      title: dbTemplate.title,
-      description: dbTemplate.description || '',
-      type: dbTemplate.template_categories?.name || 'Safety',
-      questions: Array.isArray(dbTemplate.questions) ? dbTemplate.questions : [],
-      createdAt: dbTemplate.created_at,
-      createdBy: dbTemplate.created_by || 'unknown',
-      isActive: dbTemplate.is_active
-    };
+  // Delete template
+  deleteTemplate: async (id: string): Promise<void> => {
+    try {
+      const { error } = await supabase
+        .from('assessment_templates')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw new Error(`Failed to delete template: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error in deleteTemplate:', error);
+      throw error;
+    }
+  },
+
+  // Create or update template using single edge function (for file handling)
+  createOrUpdateTemplate: async (request: CreateTemplateRequest): Promise<CreateTemplateResponse> => {
+    try {
+      console.log(`${request.templateId ? 'Updating' : 'Creating'} template via edge function:`, {
+        templateId: request.templateId,
+        title: request.title,
+        type: request.type,
+        questionCount: request.questions.length
+      });
+
+      // Convert files to base64 format
+      const processedQuestions = await convertFilesToBase64(request.questions);
+
+      // Call the single edge function
+      const { data, error } = await supabase.functions.invoke('create-assessment-template', {
+        body: {
+          title: request.title,
+          description: request.description,
+          type: request.type,
+          isActive: request.isActive,
+          questions: processedQuestions,
+          clientId: request.clientId,
+          employeeId: request.employeeId,
+          templateId: request.templateId // Will be undefined for creates
+        }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Failed to ${request.templateId ? 'update' : 'create'} template: ${error.message}`);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || `Failed to ${request.templateId ? 'update' : 'create'} template`);
+      }
+
+      console.log(`Template ${request.templateId ? 'updated' : 'created'} successfully:`, data.templateId);
+      return data;
+
+    } catch (error) {
+      console.error('Error in createOrUpdateTemplate:', error);
+      throw error;
+    }
   }
 };

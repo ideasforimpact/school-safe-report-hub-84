@@ -31,15 +31,23 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [youtubeLink, setYoutubeLink] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [titleError, setTitleError] = useState('');
   const [tagError, setTagError] = useState('');
+  const [youtubeError, setYoutubeError] = useState('');
   const [existingResourceTitles, setExistingResourceTitles] = useState<string[]>([]);
   const [titlesLoading, setTitlesLoading] = useState(true);
   
   const { refreshResources } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // YouTube URL validation function
+  const isValidYouTubeUrl = (url: string): boolean => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/)[\w-]+/;
+    return youtubeRegex.test(url);
+  };
   
   // Fetch existing resource titles for duplicate validation
   React.useEffect(() => {
@@ -176,9 +184,23 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!file) {
-      toast.error('Please upload a file');
-      return;
+    // For YouTube category, file is optional but YouTube link is required
+    if (category === 'youtube') {
+      if (!youtubeLink.trim()) {
+        toast.error('Please enter a YouTube link');
+        return;
+      }
+      
+      if (!isValidYouTubeUrl(youtubeLink.trim())) {
+        toast.error('Please enter a valid YouTube URL');
+        return;
+      }
+    } else {
+      // For other categories, file is required
+      if (!file) {
+        toast.error('Please upload a file');
+        return;
+      }
     }
     
     if (!title.trim()) {
@@ -212,17 +234,35 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     try {
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append('file', file);
+      
+      // Only append file if it exists (not required for YouTube category)
+      if (file) {
+        formData.append('file', file);
+      }
+      
       formData.append('title', title.trim());
       formData.append('description', description.trim());
       formData.append('category', category);
       formData.append('tags', JSON.stringify(tags));
       formData.append('client_id', user.clientId);
+      
+      // Add YouTube link if category is YouTube
+      if (category === 'youtube' && youtubeLink.trim()) {
+        formData.append('youtube_link', youtubeLink.trim());
+      }
+      
       if (user.id) {
         formData.append('uploaded_by', user.id);
       }
 
       console.log('Uploading resource with client_id:', user.clientId);
+      console.log('Form data being sent:', {
+        category,
+        hasFile: !!file,
+        hasYoutubeLink: !!youtubeLink,
+        title: title.trim(),
+        clientId: user.clientId
+      });
 
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
@@ -312,10 +352,42 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
               <SelectItem value="procedures">Procedures</SelectItem>
               <SelectItem value="guidelines">Guidelines</SelectItem>
               <SelectItem value="forms">Forms</SelectItem>
+              <SelectItem value="youtube">YouTube Link</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        
+        {/* YouTube Link Input - Only show when category is 'youtube' */}
+        {category === 'youtube' && (
+          <div className="space-y-2">
+            <Label htmlFor="youtubeLink">
+              YouTube Link <span className="text-red-500">*</span>
+            </Label>
+            <Input 
+              id="youtubeLink"
+              value={youtubeLink}
+              onChange={(e) => {
+                setYoutubeLink(e.target.value);
+                // Validate YouTube URL
+                if (e.target.value.trim() && !isValidYouTubeUrl(e.target.value.trim())) {
+                  setYoutubeError('Please enter a valid YouTube URL');
+                } else {
+                  setYoutubeError('');
+                }
+              }}
+              placeholder="https://www.youtube.com/watch?v=..."
+              required
+              className={youtubeError ? 'border-red-500' : ''}
+            />
+            {youtubeError && (
+              <p className="text-xs text-red-500 mt-1">{youtubeError}</p>
+            )}
+            <p className="text-xs text-gray-500">
+              Enter a valid YouTube URL (e.g., https://www.youtube.com/watch?v=... or https://youtu.be/...)
+            </p>
+          </div>
+        )}
         
         <div className="space-y-2">
           <Label htmlFor="tags">Tags</Label>
@@ -362,10 +434,12 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
           )}
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="file">
-            Upload File <span className="text-red-500">*</span>
-          </Label>
+        {/* File Upload Section - Only show for non-YouTube categories */}
+        {category !== 'youtube' && (
+          <div className="space-y-2">
+            <Label htmlFor="file">
+              Upload File <span className="text-red-500">*</span>
+            </Label>
           
           {file ? (
             <div className="border rounded-md p-4 flex justify-between items-center">
@@ -416,7 +490,8 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
       
       <div className="flex justify-end space-x-2">
@@ -429,7 +504,16 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         </Button>
         <Button 
           type="submit" 
-          disabled={!file || !title.trim() || !description.trim() || isUploading || !!titleError || !!tagError || existingResourceTitles.includes(title.toLowerCase().trim())}
+          disabled={
+            isUploading || 
+            !title.trim() || 
+            !description.trim() || 
+            !!titleError || 
+            !!tagError || 
+            !!youtubeError ||
+            existingResourceTitles.includes(title.toLowerCase().trim()) ||
+            (category === 'youtube' ? !youtubeLink.trim() : !file)
+          }
         >
           {isUploading ? 'Uploading...' : 'Upload Resource'}
         </Button>

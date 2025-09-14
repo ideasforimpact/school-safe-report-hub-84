@@ -64,31 +64,39 @@ export const priorityService = {
   },
 
   // Add priority - RLS handles client validation automatically
-  addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0) => {
+  addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string) => {
     try {
       const trimmedName = name.trim();
       if (!trimmedName) {
         throw new Error('Priority name cannot be empty');
       }
 
-      // Get client_id from current user's employee record for data attribution
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
+      let finalClientId = clientId;
 
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', user.id)
-        .single();
+      // If clientId not provided, get it from current user's employee record
+      if (!finalClientId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
 
-      if (employeeError || !employee) {
-        throw new Error('Employee record not found');
+        console.log(user.id,"userData");
+        
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
+        }
+
+        finalClientId = employee.client_id;
       }
 
       // Check for duplicate
-      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, employee.client_id);
+      const isDuplicate = await priorityService.checkDuplicatePriority(trimmedName, finalClientId);
       if (isDuplicate) {
         throw new Error('A priority with this name already exists');
       }
@@ -101,7 +109,7 @@ export const priorityService = {
             description: description || null, 
             color: color || null,
             weight: weight || 0,
-            client_id: employee.client_id 
+            client_id: finalClientId 
           }
         ])
         .select()

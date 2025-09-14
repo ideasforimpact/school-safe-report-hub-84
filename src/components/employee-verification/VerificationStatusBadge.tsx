@@ -109,7 +109,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   const hasVerificationLogs = documentLogs && documentLogs.length > 0;
   
                                                                                                                                                                                                                           // Determine if badge should be clickable - Verified status should not be clickable
-  const isClickable = false; // Disable clicking for all status badges
+  const isClickable = !!onClick; // Enable clicking when a handler is provided
   
   // Define docType at component level so it can be accessed everywhere
   const docType = documentType?.toLowerCase();
@@ -230,7 +230,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
             className,
             isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
           )}
-          onClick={isClickable ? handleClick : undefined}
+          onClick={isClickable ? handleClick : onClick}
         >
           <Icon className="h-3.5 w-3.5" />
           {text}

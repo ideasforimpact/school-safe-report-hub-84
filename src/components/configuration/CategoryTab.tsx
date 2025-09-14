@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { EditDialog } from './EditDialog';
-import { toast } from 'sonner';
 import { CategoryItem } from '@/services/incident/categoryService';
 
 interface CategoryTabProps {
@@ -110,7 +109,6 @@ export const CategoryTab = ({
         console.error('Component: Error in confirmCategoryDelete:', error);
         // Show the specific error message to the user
         setDeleteError(error.message || 'Failed to delete category');
-        toast.error(error.message || 'Failed to delete category');
         // Don't close the dialog on error - let user see the error message
       } finally {
         setIsDeleting(false);
@@ -306,7 +304,7 @@ export const CategoryTab = ({
             <AlertDialogFooter>
               <AlertDialogCancel onClick={cancelCategoryDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
               <AlertDialogAction 
-                onClick={confirmCategoryDelete} 
+                onClick={(e) => { e.preventDefault(); confirmCategoryDelete(); }} 
                 disabled={isDeleting}
                 className="bg-red-600 text-white hover:bg-red-700"
               >

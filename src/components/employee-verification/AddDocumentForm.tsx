@@ -62,6 +62,12 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     return docType?.name === 'driving_license' || typeId === '4';
   };
 
+  // Check if selected type is passport
+  const isPassport = (typeId: string): boolean => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.name === 'passport' || typeId === '5';
+  };
+
   // Check if selected type is bank account
   const isBankAccount = (typeId: string): boolean => {
     const docType = documentTypes.find(type => type.id === typeId);
@@ -173,11 +179,11 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       return;
     }
 
-    // For driving license, validate date of birth
-    if (isDrivingLicense(selectedTypeId) && !values.dateOfBirth) {
+    // For driving license and passport, validate date of birth
+    if ((isDrivingLicense(selectedTypeId) || isPassport(selectedTypeId)) && !values.dateOfBirth) {
       toast({
         title: 'Error',
-        description: 'Please provide date of birth for driving license',
+        description: 'Please provide date of birth for this document',
         variant: 'destructive',
       });
       return;
@@ -200,7 +206,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
       // Prepare params object based on document type
       let params;
-      if (isDrivingLicense(selectedTypeId) && values.dateOfBirth) {
+      if ((isDrivingLicense(selectedTypeId) || isPassport(selectedTypeId)) && values.dateOfBirth) {
         params = { DOB: values.dateOfBirth };
       } else if (isBankAccount(selectedTypeId)) {
         params = { 

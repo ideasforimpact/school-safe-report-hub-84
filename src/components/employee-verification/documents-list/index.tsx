@@ -186,6 +186,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         return 'pan-verification';
       case 'driving_license':
         return 'driving-license';
+      case 'passport':
+        return 'passport-verification';
       case 'voter_id':
         return 'voter-verification';
       case 'other':
@@ -314,6 +316,25 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   // Find the selected document to get its details
   const selectedDocument = documents.find(doc => doc.id === selectedDocumentId);
 
+  // Sort documents by verification status in required order
+  const statusOrder: Record<string, number> = {
+    'pending': 1,
+    'in-progress': 2,
+    'verified': 3,
+    'failed': 4,
+  };
+  const sortedDocuments = [...documents].sort((a, b) => {
+    const aKey = (a.verificationStatus || '').toLowerCase();
+    const bKey = (b.verificationStatus || '').toLowerCase();
+    const aRank = statusOrder[aKey] ?? 99;
+    const bRank = statusOrder[bKey] ?? 99;
+    if (aRank !== bRank) return aRank - bRank;
+    // Tie-breaker: keep stable by createdAt or updatedAt desc
+    const aTime = (a.updatedAt || a.createdAt) ? new Date(a.updatedAt || a.createdAt!).getTime() : 0;
+    const bTime = (b.updatedAt || b.createdAt) ? new Date(b.updatedAt || b.createdAt!).getTime() : 0;
+    return bTime - aTime;
+  });
+
   return (
     <>
       <div className="relative">
@@ -327,7 +348,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         )}
         
         <DocumentsTable
-          documents={documents}
+          documents={sortedDocuments}
           onViewDocument={handleViewDocument}
           onDownloadDocument={handleDownloadDocument}
           onVerifyDocument={handleVerifyDocument}

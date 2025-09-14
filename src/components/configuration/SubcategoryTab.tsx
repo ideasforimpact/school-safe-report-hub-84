@@ -25,7 +25,6 @@ import {
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
 import { EditDialog } from './EditDialog';
-import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
 
 // Validation function for subcategory names (no special characters, max 25 chars)
@@ -116,7 +115,6 @@ export const SubcategoryTab = ({
       } catch (error: any) {
         console.error('Error in handleConfirmDelete:', error);
         setDeleteError(error.message || 'Failed to delete subcategory');
-        toast.error(error.message || 'Failed to delete subcategory');
         // Don't close the dialog on error - let user see the error message
       } finally {
         setIsDeleting(false);
@@ -329,7 +327,7 @@ export const SubcategoryTab = ({
               Cancel
             </AlertDialogCancel>
               <AlertDialogAction 
-                onClick={handleConfirmDelete}
+                onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={isDeleting}
               >

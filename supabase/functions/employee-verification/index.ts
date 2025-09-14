@@ -84,7 +84,8 @@ serve(async (req) => {
       txnId,
       client_id,
       verification_notes,
-      reject_reason
+      reject_reason,
+      verified_by_employee_id
     } = requestBody;
     
     console.log(`Received ${action} request`, { 
@@ -93,7 +94,8 @@ serve(async (req) => {
       hasTxnId: !!txnId, 
       hasOtp: !!otp,
       hasClientId: !!client_id,
-      hasVerificationNotes: !!verification_notes
+      hasVerificationNotes: !!verification_notes,
+      documentNumber
     });
     
     // Initialize Supabase client
@@ -237,6 +239,7 @@ serve(async (req) => {
             verification_status: 'verified',
             employee_docs_log: [...existingLogs, logEntry],
             document_status_id: manualStatusId, // Use manual status ID
+            verified_by: verified_by_employee_id || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId)
@@ -449,73 +452,36 @@ serve(async (req) => {
         
         // Check status_code in API response
         if (data.success && data.status_code === 200) {
-          // Update document status to verified and store API response in logs
+          // Persist API response meta for faster UI rendering; do NOT auto-approve
           if (documentId) {
-            // First fetch the current logs
-            const { data: document, error: fetchError } = await supabase
+            const { data: document } = await supabase
               .from('employee_documents')
               .select('employee_docs_log')
               .eq('id', documentId)
               .single();
-              
-            if (fetchError) {
-              console.error("Error fetching document for logging:", fetchError);
-            } else {
-              // Get existing logs or initialize empty array
-              const existingLogs = document?.employee_docs_log || [];
-              
-              // Create log entry with timestamp and API response
-              const logEntry = {
-                timestamp: new Date().toISOString(),
-                action: "verify_aadhar_otp",
-                response: data
-              };
-              
-              // Update document with verification status, log entry and governance status
-              const { error: updateError } = await supabase
-                .from('employee_documents')
-                .update({
-                  verification_status: 'verified',
-                  employee_docs_log: [...existingLogs, logEntry],
-                  document_status_id: governanceStatusId,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', documentId);
-                
-              if (updateError) {
-                console.error("Error updating document with verification data:", updateError);
-              }
-            }
-            
-            // Get employee ID from the document
-            const { data: documentData } = await supabase
+            const existingLogs = document?.employee_docs_log || [];
+            const logEntry = {
+              timestamp: new Date().toISOString(),
+              action: "verify_aadhar_otp",
+              response: data
+            };
+            await supabase
               .from('employee_documents')
-              .select('employee_id')
-              .eq('id', documentId)
-              .single();
-            
-            if (documentData?.employee_id) {
-              // Check if all employee documents are verified
-              const { data: documents } = await supabase
-                .from('employee_documents')
-                .select('verification_status')
-                .eq('employee_id', documentData.employee_id);
-              
-              const allVerified = documents?.every(doc => doc.verification_status === 'verified');
-              
-              if (allVerified) {
-                await supabase
-                  .from('employees')
-                  .update({ status: true })
-                  .eq('id', documentData.employee_id);
-              }
-            }
+              .update({
+                employee_docs_log: [...existingLogs, logEntry],
+                api_response_data: data,
+                api_verification_status: 'complete',
+                api_verification_method: 'api',
+                api_verification_date: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
           }
-          
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Aadhar verification successful" 
+              message: "Aadhar OTP verified. Awaiting approval.",
+              data
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -545,6 +511,10 @@ serve(async (req) => {
                   employee_docs_log: [...existingLogs, logEntry],
                   document_status_id: rejectedStatusId,
                   verification_status: 'failed',
+                  api_response_data: data,
+                  api_verification_status: String(data?.status_code ?? 'failed'),
+                  api_verification_method: 'api',
+                  api_verification_date: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', documentId);
@@ -607,6 +577,7 @@ serve(async (req) => {
               employee_docs_log: [...existingLogs, logEntry],
               document_status_id: rejectedStatusId,
               verification_status: 'failed',
+              verified_by: verified_by_employee_id || null,
               reject_reason: reject_reason || "Document verification rejected",
               updated_at: new Date().toISOString()
             })
@@ -663,6 +634,7 @@ serve(async (req) => {
               employee_docs_log: [...existingLogs, logEntry],
               document_status_id: governanceStatusId,
               verification_status: 'verified',
+              verified_by: verified_by_employee_id || null,
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);

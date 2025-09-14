@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { priorityService } from '@/services/incident/priorityService';
 import { usePriorities } from '@/hooks/usePriorities';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Validation function for priority names (no special characters, max 25 chars)
 const isValidPriorityName = (name: string) => {
@@ -57,6 +58,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   const [editPriorityWeight, setEditPriorityWeight] = useState('0');
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [isSaving, setIsSaving] = useState(false);
   
   // Confirmation dialog states
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -66,6 +68,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     itemName: string;
     action: 'delete' | 'activate' | 'deactivate';
     onConfirm: () => void;
+    isLoading?: boolean;
     error: string | null;
   }>({
     open: false,
@@ -74,8 +77,12 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     itemName: '',
     action: 'delete',
     onConfirm: () => {},
+    isLoading: false,
     error: null,
   });
+  
+  // Get client ID from auth context
+  const { employeeData } = useAuth();
   
   // Use the hook to get priorities with RLS - no manual client validation needed
   const { priorities, loading, refetch } = usePriorities();
@@ -93,11 +100,14 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
 
     try {
       setError(null);
+      setIsSaving(true);
+      // Pass client ID from auth context
       await priorityService.addPriority(
         newPriorityName.trim(), 
         newPriorityDescription.trim(), 
         newPriorityColor, 
-        parseInt(newPriorityWeight) || 0
+        parseInt(newPriorityWeight) || 0,
+        employeeData?.clientId
       );
       setNewPriorityName('');
       setNewPriorityDescription('');
@@ -111,6 +121,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       console.error('Error adding priority:', error);
       setError(error.message || 'Failed to add priority');
       // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -127,6 +139,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
 
     try {
       setError(null);
+      setIsSaving(true);
       await priorityService.updatePriority(
         selectedPriority.id,
         editPriorityName.trim(), 
@@ -143,6 +156,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       console.error('Error updating priority:', error);
       setError(error.message || 'Failed to update priority');
       // Don't close the dialog when there's an error - keep it open so user can see the error message
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -165,17 +180,21 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       description: `Please confirm that you want to ${action} this priority. This action will immediately ${action} the priority and may affect existing incidents.`,
       itemName: priority.name,
       action,
+      isLoading: false,
       error: null,
       onConfirm: async () => {
         try {
+          setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
           await priorityService.togglePriorityStatus(priority.id, newStatus);
           // Refresh data immediately
           await refetch();
-          setConfirmationDialog(prev => ({ ...prev, open: false }));
+          setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success(`Priority ${newStatus ? 'activated' : 'deactivated'} successfully`);
         } catch (error: any) {
           console.error('Error toggling priority status:', error);
           const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} priority`;
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+          toast.error(errorMessage);
         }
       },
     });
@@ -192,17 +211,21 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       description: 'Please confirm that you want to proceed with this deletion. This action will immediately remove the priority and cannot be recovered.',
       itemName: priorityName,
       action: 'delete',
+      isLoading: false,
       error: null,
       onConfirm: async () => {
         try {
+          setConfirmationDialog(prev => ({ ...prev, isLoading: true, error: null }));
           await priorityService.deletePriority(id);
           // Refresh data immediately
           await refetch();
-          setConfirmationDialog(prev => ({ ...prev, open: false }));
+          setConfirmationDialog(prev => ({ ...prev, open: false, isLoading: false }));
+          toast.success('Priority deleted successfully');
         } catch (error: any) {
           console.error('Error deleting priority:', error);
           const errorMessage = error?.message || 'Failed to delete priority';
-          setConfirmationDialog(prev => ({ ...prev, error: errorMessage }));
+          setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
+          toast.error(errorMessage);
         }
       },
     });
@@ -361,7 +384,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
             setNewPriorityWeight('0');
           }
         }}
-        onChange={setNewPriorityName}
+        onChange={(val) => { setNewPriorityName(val); if (error) setError(null); }}
         onSave={handleAddPriority}
         triggerButton={<Button className="hidden">Add</Button>}
         maxLength={25}
@@ -388,7 +411,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           }
         ]}
         error={error}
-        isLoading={loading}
+        isLoading={isSaving}
         validationFunction={isValidPriorityName}
         validationMessage="Priority name must be alphanumeric with spaces only, maximum 25 characters"
       />
@@ -407,7 +430,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
             setError(null);
           }
         }}
-        onChange={setEditPriorityName}
+        onChange={(val) => { setEditPriorityName(val); if (error) setError(null); }}
         onSave={handleEditPriority}
         triggerButton={<Button className="hidden">Edit</Button>}
         maxLength={25}
@@ -434,7 +457,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           }
         ]}
         error={error}
-        isLoading={loading}
+        isLoading={isSaving}
         validationFunction={isValidPriorityName}
         validationMessage="Priority name must be alphanumeric with spaces only, maximum 25 characters"
       />
@@ -448,6 +471,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         description={confirmationDialog.description}
         itemName={confirmationDialog.itemName}
         action={confirmationDialog.action}
+        isLoading={confirmationDialog.isLoading}
         error={confirmationDialog.error}
       />
     </div>

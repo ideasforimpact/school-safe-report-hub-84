@@ -26,6 +26,7 @@ interface PanDetailsDialogProps {
   panDetails: any;
   documentId?: string;
   onVerificationUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
@@ -33,7 +34,8 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
   onOpenChange,
   panDetails,
   documentId,
-  onVerificationUpdate
+  onVerificationUpdate,
+  readOnly = false
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -64,6 +66,14 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
 
   // Format date if available
   const formattedDob = dob ? format(new Date(dob), 'dd MMM yyyy') : 'Not available';
+  
+  // Render profile image if provided by provider
+  const profileImageSrc = (() => {
+    const value = (panDetails?.data as any)?.profile_image || (panDetails as any)?.profile_image;
+    if (!value || typeof value !== 'string') return undefined;
+    if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
+    return `data:image/jpeg;base64,${value}`;
+  })();
 
   const handleVerify = async () => {
     // console.log('PanDetailsDialog - handleVerify called, documentId:', documentId);
@@ -191,6 +201,20 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
         </DialogHeader>
 
         <div className="space-y-4 my-2">
+          {profileImageSrc && (
+            <div className="flex justify-center">
+              <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                <img 
+                  src={profileImageSrc} 
+                  alt="PAN Profile" 
+                  className="w-32 h-32 object-cover"
+                  crossOrigin="anonymous"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+            </div>
+          )}
           <Card className="border border-green-100 bg-green-50">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -268,6 +292,7 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
           </div>
         )}
 
+        {!readOnly && (
         <DialogFooter className="flex gap-3 pt-4 border-t">
           {showRejectForm ? (
             <>
@@ -329,6 +354,7 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
             </>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

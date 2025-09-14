@@ -33,7 +33,8 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     updateTemplate, 
     deleteTemplate, 
     getTemplateById,
-    setTemplates
+    setTemplates,
+    refreshTemplates
   } = useTemplateManagement(user?.id);
   
   // Set up assignment management
@@ -78,6 +79,7 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     updateTemplate,
     deleteTemplate: handleDeleteTemplate,
     getTemplateById,
+    refreshTemplates,
     
     addQuestion,
     updateQuestion,

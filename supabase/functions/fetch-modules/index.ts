@@ -195,7 +195,8 @@ serve(async (req) => {
               .from('modules')
               .select('*')
               .in('id', moduleIds)
-              .eq('active', true);
+              .eq('active', true)
+              .order('order', { ascending: true });
               
             if (modulesError) {
               console.error('Error fetching modules by IDs for super admin:', modulesError);
@@ -249,7 +250,8 @@ serve(async (req) => {
               .from('modules')
               .select('*')
               .in('id', moduleIds)
-              .eq('active', true);
+              .eq('active', true)
+              .order('order', { ascending: true });
               
             if (modulesError) {
               console.error('Error fetching modules by IDs for employee:', modulesError);
@@ -313,10 +315,11 @@ serve(async (req) => {
       } else if (level === 'client') {
         // For client users, fetch modules with level != 'backoffice'
         console.log('Fetching client modules');
-        query = query.neq('level', 'backoffice');
+        query = query.neq('level', 'backoffice').order('order', { ascending: true });
       } else if (level === 'all') {
         // Fetch all active modules if explicitly requested
         console.log('Fetching all active modules');
+        query = query.order('order', { ascending: true });
       }
       
       const { data, error } = await query;

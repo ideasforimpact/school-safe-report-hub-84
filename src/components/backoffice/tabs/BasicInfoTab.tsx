@@ -143,6 +143,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           value={formData.name}
           onChange={(e) => setFormData({...formData, name: e.target.value})}
           placeholder="Enter client name"
+          maxLength={50}
           required
         />
       </div>
@@ -201,6 +202,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           value={formData.superAdminEmail || ''}
           onChange={(e) => setFormData({...formData, superAdminEmail: e.target.value})}
           placeholder="Enter super admin email"
+          inputMode="email"
           required
         />
       </div>
@@ -214,6 +216,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           value={formData.contactPerson}
           onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
           placeholder="Enter contact person name"
+          maxLength={20}
           required
         />
       </div>
@@ -227,6 +230,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           value={formData.email}
           onChange={(e) => setFormData({...formData, email: e.target.value})}
           placeholder="Enter email"
+          inputMode="email"
           required
         />
       </div>
@@ -236,6 +240,10 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
         </RequiredFieldLabel>
         <Input
           id="phone"
+          type="tel"
+          inputMode="tel"
+          pattern="[0-9+()\-\s]{7,20}"
+          title="Enter a valid phone number"
           value={formData.phone}
           onChange={(e) => setFormData({...formData, phone: e.target.value})}
           placeholder="Enter phone number"

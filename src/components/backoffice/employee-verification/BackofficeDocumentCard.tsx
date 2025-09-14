@@ -132,7 +132,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         documentId: document.id,
         clientId: clientId!,
         employeeId: employee.id,
-        verificationHistory: updatedHistory
+        verificationHistory: updatedHistory,
       });
       
       // Call the refresh function to reload the document data
@@ -153,7 +153,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   // Check if this is a "Manual" document type with verification history
-  const showCommentsIcon = documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
+  const showCommentsIcon = document.documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
 
   const handleCommentsClick = () => {
     console.log('BackofficeDocumentCard - Comments button clicked for document:', document.id);
@@ -166,14 +166,15 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   };
 
   // Check if this is a "Manual" document with "in-progress" status
-  const isManualInProgress = documentTypeName.toLowerCase() === 'manual' && document.verificationStatus === 'in-progress';
+  const isManualInProgress = document.documentTypeName.toLowerCase() === 'manual' && document.verificationStatus === 'in-progress';
   
   console.log('BackofficeDocumentCard - Button conditions:', {
     isManualInProgress,
     documentTypeName: documentTypeName.toLowerCase(),
     verificationStatus: document.verificationStatus,
     hasDocumentImage: !!document.documentImage,
-    hasClientId: !!clientId
+    hasClientId: !!clientId,
+    document:document
   });
 
   return (
@@ -295,7 +296,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
               )}
               
               {/* Re-upload button - only for "Manual" document types with documentImage and clientId */}
-              {documentTypeName.toLowerCase() === 'manual' && document.documentImage && clientId && (
+              {document.documentTypeName.toLowerCase() === 'manual' && document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"

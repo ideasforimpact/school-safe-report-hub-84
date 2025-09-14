@@ -26,65 +26,106 @@ interface IncidentDocumentRecord {
 }
 
 export const incidentDocumentService = {
-  // Upload files to storage and return document info
+  // Helper function to generate public URL from path
+  getPublicUrl(path: string): string {
+    const { data } = supabase.storage
+      .from('incident-documents')
+      .getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  // Upload files using edge function and return document info
   async uploadFiles(incidentId: string, clientId: string, files: FileItem[]): Promise<IncidentDocument[]> {
-    const uploadedDocuments: IncidentDocument[] = [];
+    try {
+      console.log('Uploading files via edge function:', {
+        incidentId,
+        clientId,
+        filesCount: files.length
+      });
 
-    for (const file of files) {
-      try {
-        // Generate unique file path with hierarchical structure: incidents/{clientId}/{incidentId}/
-        const timestamp = Date.now();
-        const fileExtension = file.name.split('.').pop() || '';
-        const fileName = `incidents/${clientId}/${incidentId}/${timestamp}_${file.id}.${fileExtension}`;
-        
-        // Convert base64 to blob
-        const base64Data = file.base64.split(',')[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('upload-incident-documents', {
+        body: {
+          incidentId,
+          clientId,
+          files
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: file.type });
+      });
 
-        // Upload to storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('incident-documents')
-          .upload(fileName, blob, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType: file.type
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw uploadError;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('incident-documents')
-          .getPublicUrl(fileName);
-
-        const document: IncidentDocument = {
-          id: file.id,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: urlData.publicUrl,
-          path: fileName,
-          uploadedAt: new Date().toISOString()
-        };
-
-        uploadedDocuments.push(document);
-        console.log('Successfully uploaded file:', file.name, 'to:', urlData.publicUrl);
-      } catch (error) {
-        console.error('Error uploading file:', file.name, error);
-        throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Failed to upload files: ${error.message}`);
       }
-    }
 
-    return uploadedDocuments;
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Unknown error occurred during file upload');
+      }
+
+      console.log('Successfully uploaded files via edge function:', data.documents?.length || 0);
+
+      // Convert edge function response to IncidentDocument format
+      const uploadedDocuments: IncidentDocument[] = (data.documents || []).map((doc: any) => ({
+        id: doc.id,
+        name: doc.name,
+        type: doc.type,
+        size: doc.size,
+        url: '', // Edge function only returns path, URL will be generated when needed
+        path: doc.path,
+        uploadedAt: doc.uploadedAt
+      }));
+
+      return uploadedDocuments;
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      throw error;
+    }
+  },
+
+  // Upload files and update incident in one operation using edge function
+  async uploadFilesAndUpdateIncident(incidentId: string, clientId: string, files: FileItem[]): Promise<IncidentDocument[]> {
+    try {
+      console.log('Uploading files and updating incident via edge function:', {
+        incidentId,
+        clientId,
+        filesCount: files.length
+      });
+
+      // Call the edge function which handles both upload and incident update
+      const { data, error } = await supabase.functions.invoke('upload-incident-documents', {
+        body: {
+          incidentId,
+          clientId,
+          files
+        }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Failed to upload files and update incident: ${error.message}`);
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.error || 'Unknown error occurred during file upload and incident update');
+      }
+
+      console.log('Successfully uploaded files and updated incident via edge function:', data.documents?.length || 0);
+
+      // Convert edge function response to IncidentDocument format
+      const uploadedDocuments: IncidentDocument[] = (data.documents || []).map((doc: any) => ({
+        id: doc.id,
+        name: doc.name,
+        type: doc.type,
+        size: doc.size,
+        url: '', // Edge function only returns path, URL will be generated when needed
+        path: doc.path,
+        uploadedAt: doc.uploadedAt
+      }));
+
+      return uploadedDocuments;
+    } catch (error) {
+      console.error('Error uploading files and updating incident:', error);
+      throw error;
+    }
   },
 
   // Update incident with documents
@@ -133,7 +174,7 @@ export const incidentDocumentService = {
       name: doc.name || '',
       type: doc.type || '',
       size: doc.size || 0,
-      url: doc.url || '',
+      url: doc.path ? this.getPublicUrl(doc.path) : (doc.url || ''), // Generate URL from path if available
       path: doc.path || '',
       uploadedAt: doc.uploadedAt || new Date().toISOString()
     }));

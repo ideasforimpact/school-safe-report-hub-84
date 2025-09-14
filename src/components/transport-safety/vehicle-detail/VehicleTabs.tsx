@@ -134,18 +134,27 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   
   const verificationHistory = getVerificationHistory();
   
-  // Format verification data - updated to remove challan_details completely
+  // Format verification data - remove internal/noisy fields
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
     
     // Filter out fields we don't want to show in the details popup
     return data
       .filter((item: any) => {
-        // Skip verification_log, last_response, status, and challan_details
-        if (item.field === 'verification_log' || 
-            item.field === 'last_response' || 
-            item.field === 'status' ||
-            item.field === 'challan_details') {
+        const fieldName = String(item.field || '').toLowerCase();
+        // Skip verification_log, last_response, status, challan_details, response metadata,
+        // less info, and any client identifiers
+        if (fieldName === 'verification_log' || 
+            fieldName === 'last_response' || 
+            fieldName === 'status' ||
+            fieldName === 'challan_details' ||
+            fieldName === 'response_metadata' ||
+            fieldName.includes('response metadata') ||
+            fieldName === 'less_info' ||
+            fieldName.includes('less info') ||
+            fieldName === 'client_id' ||
+            fieldName === 'clientid' ||
+            fieldName.includes('client id')) {
           return false;
         }
         

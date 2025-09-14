@@ -103,7 +103,10 @@ export function useIncidentFormValidation() {
     
     setErrors(newErrors);
     
-    return Object.keys(newErrors).length === 0;
+    return {
+      isValid: Object.keys(newErrors).length === 0,
+      errors: newErrors
+    };
   };
 
   return {

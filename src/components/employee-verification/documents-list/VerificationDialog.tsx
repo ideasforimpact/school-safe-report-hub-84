@@ -20,6 +20,7 @@ import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
 import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
+import PassportDetailsDialog from '../document-card/PassportDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 
 interface VerificationDialogProps {
@@ -72,6 +73,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isPan = documentType === 'pan';
   const isVoterId = documentType === 'voter_id';
   const isDrivingLicense = documentType === 'driving_license';
+  const isPassport = documentType === 'passport';
   const isBankAccount = documentType === 'bank_account';
   const isOther = documentType === 'other';
   const isOtherDocuments = documentType === 'other_documents';
@@ -86,6 +88,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isPanVerifying, setIsPanVerifying] = useState(false);
   const [isVoterIdVerifying, setIsVoterIdVerifying] = useState(false);
   const [isDrivingLicenseVerifying, setIsDrivingLicenseVerifying] = useState(false);
+  const [isPassportVerifying, setIsPassportVerifying] = useState(false);
   const [isBankAccountVerifying, setIsBankAccountVerifying] = useState(false);
   const [isAadharManualVerifying, setIsAadharManualVerifying] = useState(false);
   const [isOtherVerifying, setIsOtherVerifying] = useState(false);
@@ -99,6 +102,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [panDialogOpen, setPanDialogOpen] = useState(false);
   const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
+  const [passportDialogOpen, setPassportDialogOpen] = useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
   
   // Cleanup effect to reset loading state when dialog closes
@@ -114,6 +118,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [selectedPanDetails, setSelectedPanDetails] = useState<any>(null);
   const [selectedVoterIdDetails, setSelectedVoterIdDetails] = useState<any>(null);
   const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = useState<any>(null);
+  const [selectedPassportDetails, setSelectedPassportDetails] = useState<any>(null);
   const [selectedBankStatementDetails, setSelectedBankStatementDetails] = useState<any>(null);
   const [currentDocumentId, setCurrentDocumentId] = useState<string>('');
 
@@ -154,17 +159,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsOtherVerifying(false);
       setIsOtherRejecting(false);
 
-      // Reset detail dialog states
-      setAadharDialogOpen(false);
-      setPanDialogOpen(false);
-      setVoterIdDialogOpen(false);
-      setDrivingLicenseDialogOpen(false);
-      setBankStatementDialogOpen(false);
-      setSelectedAadharDetails(null);
-      setSelectedPanDetails(null);
-      setSelectedVoterIdDetails(null);
-      setSelectedDrivingLicenseDetails(null);
-      setSelectedBankStatementDetails(null);
+      // Note: Do NOT reset detail dialog states here.
+      // We may need to immediately open a details dialog (e.g., Aadhaar) after
+      // closing the OTP popup. Resetting would create a race condition that
+      // prevents the details dialog from opening with the fetched data.
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -233,7 +231,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data?.success) {
+      if (data?.success && data?.data) {
         console.log('VerificationDialog - Bank Statement verification successful, response data:', data);
         // No toaster for API verification completion
         
@@ -262,7 +260,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }, 100);
       } else {
         // Use the user-friendly error message from the API
-        const errorMessage = data.error || "Bank Statement verification failed. Please try manual verification.";
+        const errorMessage = data?.message || data?.error || "Bank Statement verification failed. Please contact administrator.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -351,6 +349,76 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  // Passport handlers
+  const handlePassportApiVerification = async () => {
+    setIsPassportVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('passport-verification', {
+        body: { action: 'apiVerify', documentId }
+      });
+      if (error) {
+        setErrorMessage(error.message || 'Something went wrong during Passport verification.');
+        return;
+      }
+      // Treat missing/empty data as an error and keep the popup open
+      if (data?.success && data?.data) {
+        onOpenChange(false);
+        if (onDocumentAction) await onDocumentAction();
+        setTimeout(() => {
+          setCurrentDocumentId(documentId);
+          const formatted = { data: data.data, success: data.success, status_code: data.status_code, message: data.message };
+          setSelectedPassportDetails(formatted);
+          setPassportDialogOpen(true);
+        }, 100);
+      } else {
+        const msg = data?.message || data?.error || 'No data found. Please contact administrator.';
+        setErrorMessage(msg);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Passport verification error.');
+    } finally {
+      setIsPassportVerifying(false);
+    }
+  };
+
+  const handlePassportManualVerification = async () => {
+    setIsPassportVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('passport-verification', {
+        body: { action: 'manualVerify', documentId }
+      });
+      if (error) {
+        toast.error('Verification Failed', { description: error.message || 'Failed to manually verify Passport.' });
+        return;
+      }
+      toast.success('Passport Manually Verified', { description: data?.message || 'The Passport has been manually verified successfully.' });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error('Verification Error', { description: err.message || 'Failed to manually verify Passport' });
+    } finally {
+      setIsPassportVerifying(false);
+    }
+  };
+
+  const handlePassportRejection = async () => {
+    setIsPassportVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('passport-verification', {
+        body: { action: 'reject', documentId, verification_notes: 'Document verification rejected by staff.' }
+      });
+      if (error) {
+        toast.error('Rejection Failed', { description: error.message || 'Failed to reject Passport. Please try again.' });
+        return;
+      }
+      toast.success('Passport Rejected', { description: data?.message || 'The Passport has been rejected successfully.' });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error('Rejection Error', { description: err.message || 'Failed to reject Passport' });
+    } finally {
+      setIsPassportVerifying(false);
+    }
+  };
+
   // Separate handler for PAN API verification
   const handlePanApiVerification = async () => {
     setIsPanVerifying(true);
@@ -378,7 +446,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data.success) {
+      if (data.success && data.data) {
         console.log('PAN verification SUCCESS - entering success block');
         // No toaster for API verification completion
         
@@ -414,7 +482,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }, 100); // Small delay to ensure verification dialog closes completely
       } else {
         // Use the user-friendly error message from the API
-        const errorMessage = data.error || "PAN verification failed. Please try manual verification.";
+        const errorMessage = data.message || data.error || "PAN verification failed. Please contact administrator.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -448,7 +516,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data?.success) {
+      if (data?.success && data?.data) {
         console.log('VerificationDialog - Driving License verification successful, response data:', data);
         // No toaster for API verification completion
         
@@ -477,7 +545,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }, 100);
       } else {
         // Use the user-friendly error message from the API
-        const errorMessage = data?.error || "Driving License verification failed. Please try manual verification.";
+        const errorMessage = data?.message || data?.error || "Driving License verification failed. Please contact administrator.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -668,7 +736,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data.success) {
+      if (data.success && data.data) {
         // No toaster for API verification completion
         
         // Close verification popup FIRST
@@ -696,7 +764,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }, 100);
       } else {
         // Use the user-friendly error message from the API
-        const errorMessage = data.error || "Voter ID verification failed. Please try manual verification.";
+        const errorMessage = data.message || data.error || "Voter ID verification failed. Please contact administrator.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -865,73 +933,42 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
   const handleApiClick = async () => {
     if (isAadhar) {
-      console.log('VerificationDialog - isAadhar check:', isAadhar, 'documentType:', documentType);
+      console.log('VerificationDialog - Aadhaar OTP flow');
       if (!documentNumber) {
         toast.error("Verification Failed", {
-          description: "Aadhar number is required for verification"
+          description: "Aadhaar number is required for verification"
         });
         return;
       }
-      
-      // Set loading state
+      const sanitizedAadhaar = (documentNumber || '').replace(/\D/g, '');
+      if (sanitizedAadhaar.length !== 12) {
+        setErrorMessage('Please enter a valid 12-digit Aadhaar number');
+        return;
+      }
       setIsRequestingOtp(true);
-      
-      // Call DigiLocker API through Supabase Edge Function to avoid CORS
       try {
-        console.log("Initializing DigiLocker verification for document ID:", documentId);
-        
-        const baseUrl = import.meta.env.VITE_BASE_URL || window.location.origin;
-        const currentPath = window.location.pathname;
-        const redirectUrl = `${baseUrl}${currentPath}`;
-        
-        const { data, error } = await supabase.functions.invoke('digilocker-verification', {
-          body: { 
-            action: 'initialize',
-            documentId, 
-            redirectUrl
+        const { data, error } = await supabase.functions.invoke('employee-verification', {
+          body: {
+            action: 'requestAadharOtp',
+            documentId,
+            documentNumber: sanitizedAadhaar
           }
         });
-        console.log("DigiLocker initialization response:", data, error);
-        
-        if (error) {
-          throw new Error(error.message || "Failed to initialize DigiLocker verification");
+        if (error) throw new Error(error.message || 'Failed to request OTP');
+        if (data?.error) throw new Error(data.error);
+        // Store client_id from response for OTP verification
+        if (data?.client_id) {
+          setClientId(String(data.client_id));
         }
-        
-        if (!data.success || !data.data) {
-          throw new Error(data.error || data.message || "Failed to initialize DigiLocker verification");
+        setShowOtpInput(true);
+        if (typeof data?.expires_in === 'number') {
+          startCooldownTimer(data.expires_in);
+        } else {
+          startCooldownTimer(300);
         }
-        
-        // Store client_id and other data for later use
-        if (data.data.client_id) {
-          setClientId(data.data.client_id);
-          console.log("DigiLocker Client ID stored:", data.data.client_id);
-        }
-        
-        // Store the client_id and document_id in localStorage for when we return
-        if (data.data.client_id) {
-          localStorage.setItem('digilocker_client_id', data.data.client_id);
-          localStorage.setItem('digilocker_document_id', documentId);
-        }
-        
-        toast.success("Redirecting to DigiLocker", {
-          description: "You will be redirected to complete the verification"
-        });
-        
-        // Close the current dialog
-        onOpenChange(false);
-        
-        // Redirect to DigiLocker URL in the same tab
-        window.location.href = data.data.url;
-        
       } catch (err: any) {
-        console.error("Exception in DigiLocker initialization:", err);
-        toast.error("DigiLocker Error", {
-          description: err.message || "Failed to initialize DigiLocker verification"
-        });
-        onOpenChange(false);
-        if (onDocumentAction) {
-          await onDocumentAction();
-        }
+        console.error('requestAadharOtp error:', err);
+        setErrorMessage(err.message || 'Failed to request OTP. Please try again.');
       } finally {
         setIsRequestingOtp(false);
       }
@@ -944,6 +981,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else if (isDrivingLicense) {
       // Use dedicated Driving License verification handler directly
       await handleDrivingLicenseApiVerification();
+    } else if (isPassport) {
+      await handlePassportApiVerification();
     } else if (isBankAccount) {
       // Use dedicated Bank Account verification handler directly
       await handleBankAccountApiVerification();
@@ -965,6 +1004,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handleVoterIdManualVerification();
     } else if (isDrivingLicense) {
       await handleDrivingLicenseManualVerification();
+    } else if (isPassport) {
+      await handlePassportManualVerification();
     } else if (isBankAccount) {
       await handleBankAccountManualVerification();
     } else {
@@ -1016,6 +1057,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handleVoterIdRejection();
     } else if (isDrivingLicense) {
       await handleDrivingLicenseRejection();
+    } else if (isPassport) {
+      await handlePassportRejection();
     } else if (isBankAccount) {
       await handleBankAccountRejection();
     } else {
@@ -1024,13 +1067,40 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
-     // COMMENTED OUT: Old OTP-based Aadhaar verification - replaced with DigiLocker
+     // COMMENTED OUT: Old OTP-based Aadhaar verification - replaced with secure government integration
   const handleOtpSubmit = async () => {
-     // Placeholder function - OTP verification no longer used for Aadhaar with DigiLocker
-     toast.error("No Action", {
-       description: "DigiLocker verification doesn't use OTP. Please use the Verify button instead."
-     });
-   };
+    console.log('handleOtpSubmit - Aadhaar OTP verification');
+    if (otp.length !== 6) {
+      toast.error("Verification Error", { description: "Please enter a valid 6-digit OTP" });
+      return;
+    }
+    setIsVerifyingOtp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('employee-verification', {
+        body: {
+          action: 'verifyAadharOtp',
+          documentId,
+          otp,
+          client_id: clientId || undefined
+        }
+      });
+      if (error) throw new Error(error.message || 'Failed to verify OTP');
+      if (data?.error || data?.success === false) throw new Error(data?.error || 'OTP verification failed');
+      // Close consent dialog, then open Aadhaar details dialog on next tick
+      setCurrentDocumentId(documentId);
+      setSelectedAadharDetails({ response: data });
+      setTimeout(() => {
+        onOpenChange(false);
+        setAadharDialogOpen(true);
+      }, 50);
+      if (onDocumentAction) await onDocumentAction();
+    } catch (err: any) {
+      console.error('verifyAadharOtp error:', err);
+      setErrorMessage(err.message || 'Failed to verify OTP. Please try again.');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
    
    // const handleOtpSubmit = async () => {
   //   console.log("handleOtpSubmit called - starting OTP verification process");
@@ -1166,12 +1236,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(newOpen) => {
-      if (!newOpen) {
-        // When dialog is closing, reset all states
-        handleCancel();
-      }
-    }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
@@ -1179,6 +1244,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
             "max-w-lg mx-auto"
           )}
+          onInteractOutside={(e) => { if (showOtpInput) e.preventDefault(); }}
+          onEscapeKeyDown={(e) => { if (showOtpInput) e.preventDefault(); }}
         >
         {/* Error Message Display */}
         {errorMessage && (
@@ -1215,11 +1282,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             </div>
           </div>
           <DialogTitle className="text-2xl font-semibold text-center">
-            {isAadhar ? 'DigiLocker Verification' : 'API Document Verification'}
+            {isAadhar ? 'Aadhaar Verification' : 'API Document Verification'}
           </DialogTitle>
           <DialogDescription className="text-center text-sm">
             {isAadhar 
-              ? 'Verify Aadhaar data through DigiLocker integration'
+              ? 'Verify Aadhaar data through secure government integration'
               : 'Verify employee data through automated API validation'
             }
           </DialogDescription>
@@ -1230,7 +1297,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
             <div className="text-sm text-muted-foreground text-center">
               {isAadhar 
-                ? 'Click the verify button to open DigiLocker for Aadhaar verification.'
+                ? 'Click the verify button to open secure government portal for Aadhaar verification.'
                 : 'Click the verify button to fetch and validate employee data through our secure API.'
               }
             </div>
@@ -1272,10 +1339,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={true}
+                disabled={isVerifyingOtp || otp.length !== 6}
                 className="ml-2"
               >
-                Not Available
+                {isVerifyingOtp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                OK
               </Button>
             </>
           ) : (
@@ -1288,12 +1356,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 onClick={handleApiClick}
               disabled={
                 isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                isDrivingLicenseVerifying || isPassportVerifying || isBankAccountVerifying || isAadharManualVerifying ||
                 isOtherVerifying || isOtherRejecting
               }
             >
                 {isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                 isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                 isDrivingLicenseVerifying || isPassportVerifying || isBankAccountVerifying || isAadharManualVerifying ||
                  isOtherVerifying ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
@@ -1334,6 +1402,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         open={drivingLicenseDialogOpen}
         onOpenChange={setDrivingLicenseDialogOpen}
         licenseDetails={selectedDrivingLicenseDetails}
+        documentId={currentDocumentId || documentId}
+        onVerificationUpdate={handleDocumentActionWithLoading}
+      />
+      
+      <PassportDetailsDialog
+        open={passportDialogOpen}
+        onOpenChange={setPassportDialogOpen}
+        passportDetails={selectedPassportDetails}
         documentId={currentDocumentId || documentId}
         onVerificationUpdate={handleDocumentActionWithLoading}
       />

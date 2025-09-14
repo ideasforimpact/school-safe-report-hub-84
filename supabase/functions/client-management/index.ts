@@ -914,7 +914,7 @@ async function handleUpdateClient(clientData: any) {
     if (clientInfo.authProviders !== undefined) {
       updateData.auth_providers = JSON.stringify(clientInfo.authProviders);
     }
-    if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
+    // if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
     
     if (clientTypeId) {
       updateData.client_type_id = clientTypeId;
