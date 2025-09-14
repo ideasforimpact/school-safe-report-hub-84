@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -152,7 +152,11 @@ export function ConfirmationDialog({
             onClick={onConfirm}
             disabled={isLoading || !!error}
           >
-            {getIcon()}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              getIcon()
+            )}
             Yes, {getActionText()} {action === 'delete' ? 'Item' : 'Item'}
           </Button>
         </DialogFooter>

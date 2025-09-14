@@ -55,18 +55,54 @@ async function handleUpload(req: Request) {
   const tags = formData.get('tags') as string
   const clientId = formData.get('client_id') as string
   const uploadedBy = formData.get('uploaded_by') as string
+  const youtubeLink = formData.get('youtube_link') as string
 
   console.log('Received upload request for client:', clientId)
+  console.log('Form data received:', {
+    category,
+    hasFile: !!file,
+    hasTitle: !!title,
+    hasYoutubeLink: !!youtubeLink,
+    hasClientId: !!clientId
+  })
 
-  // Validate required fields
-  if (!file || !title || !category || !clientId) {
-    return new Response(
-      JSON.stringify({ error: 'Missing required fields: file, title, category, client_id' }),
-      { 
-        status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
+  // Validate required fields based on category
+  if (category === 'youtube') {
+    // For YouTube category, file is optional but YouTube link is required
+    if (!youtubeLink || !title || !category || !clientId) {
+      console.log('YouTube validation failed:', {
+        youtubeLink: !!youtubeLink,
+        title: !!title,
+        category: !!category,
+        clientId: !!clientId
+      })
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: youtube_link, title, category, client_id' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    console.log('YouTube validation passed - file is optional for YouTube category')
+  } else {
+    // For other categories, file is required
+    if (!file || !title || !category || !clientId) {
+      console.log('File validation failed:', {
+        file: !!file,
+        title: !!title,
+        category: !!category,
+        clientId: !!clientId
+      })
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: file, title, category, client_id' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    console.log('File validation passed')
   }
 
   // Validate client_id exists and is valid
@@ -90,36 +126,43 @@ async function handleUpload(req: Request) {
 
   console.log('Client validated:', clientData.name)
 
-  // Generate unique filename
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-  const filePath = `${clientId}/${fileName}`
+  let documentUrl = ''
+  
+  // Only upload file if it exists (not required for YouTube category)
+  if (file) {
+    // Generate unique filename
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `${clientId}/${fileName}`
 
-  // Upload file to storage
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('edusafe-resources')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false
-    })
+    // Upload file to storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('edusafe-resources')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
 
-  if (uploadError) {
-    console.error('Storage upload error:', uploadError)
-    return new Response(
-      JSON.stringify({ error: 'Failed to upload file to storage' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    )
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to upload file to storage' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('File uploaded to storage:', uploadData.path)
+
+    // Get public URL for the uploaded file
+    const { data: urlData } = supabase.storage
+      .from('edusafe-resources')
+      .getPublicUrl(filePath)
+    
+    documentUrl = urlData.publicUrl
   }
-
-  console.log('File uploaded to storage:', uploadData.path)
-
-  // Get public URL for the uploaded file
-  const { data: urlData } = supabase.storage
-    .from('edusafe-resources')
-    .getPublicUrl(filePath)
 
   // Parse tags
   let parsedTags: string[] = []
@@ -139,7 +182,8 @@ async function handleUpload(req: Request) {
       description: description || null,
       category,
       tags: parsedTags,
-      document_url: urlData.publicUrl,
+      document_url: documentUrl,
+      youtube_link: youtubeLink || null,
       uploaded_by: uploadedBy || null,
       client_id: clientId
     })
@@ -149,10 +193,15 @@ async function handleUpload(req: Request) {
   if (insertError) {
     console.error('Database insert error:', insertError)
     
-    // Clean up uploaded file if database insert fails
-    await supabase.storage
-      .from('edusafe-resources')
-      .remove([filePath])
+    // Clean up uploaded file if database insert fails (only if file was uploaded)
+    if (file) {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `${clientId}/${fileName}`
+      await supabase.storage
+        .from('edusafe-resources')
+        .remove([filePath])
+    }
 
     return new Response(
       JSON.stringify({ error: 'Failed to save resource record' }),

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus, ExternalLink, QrCode, X, ToggleLeft, ToggleRight, Download, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -53,6 +53,8 @@ interface CustomForm {
 
 const FormConfigurationContent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isBackoffice = location.pathname.startsWith('/backoffice');
   const { forms, loading, saveForm, updateForm, deleteForm, toggleFormActive, refetch } = useCustomForms();
   const { getClientId, getEmployeeId } = useEmployeeAccess();
   
@@ -330,9 +332,17 @@ const FormConfigurationContent = () => {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center">
-              <h3 className="text-lg font-medium mb-2">No forms created yet</h3>
-              <p className="text-gray-500 mb-6">Create your first custom form to start collecting data</p>
-              <Button onClick={handleCreateForm} disabled={isPageLoading}>Create Form</Button>
+              <h3 className="text-lg font-medium mb-2">
+                {isBackoffice ? 'No forms created yet' : 'No forms available'}
+              </h3>
+              <p className="text-gray-500 mb-6">
+                {isBackoffice 
+                  ? 'Create your first custom form to start collecting data'
+                  : 'There are no forms configured for your organisation yet.'}
+              </p>
+              {isBackoffice && (
+                <Button onClick={handleCreateForm} disabled={isPageLoading}>Create Form</Button>
+              )}
             </div>
           </CardContent>
         </Card>

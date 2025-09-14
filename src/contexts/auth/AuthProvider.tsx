@@ -409,6 +409,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logoutUser();
       
       // Sign out from Supabase (for SSO users)
+       await supabase.auth.signOut();
       if (!isBackofficeUser) {
         try {
           await supabase.auth.signOut();

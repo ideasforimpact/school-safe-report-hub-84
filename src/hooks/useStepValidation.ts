@@ -3,8 +3,12 @@ import { useMemo } from 'react';
 import { ClientFormData } from './useClientManagement';
 
 export const useStepValidation = (formData: ClientFormData) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isValidEmail = (email?: string) => !!email && emailRegex.test(email);
+  const isValidPhone = (phone?: string) => !!phone && /[0-9+()\-\s]{7,20}/.test(phone);
+
   const validateStep1 = useMemo(() => {
-    return !!(
+    const hasRequired = !!(
       formData.name &&
       formData.email &&
       formData.contactPerson &&
@@ -13,6 +17,15 @@ export const useStepValidation = (formData: ClientFormData) => {
       formData.clientTypeId &&
       formData.institutionType
     );
+    if (!hasRequired) return false;
+
+    // Field-specific rules
+    if (formData.name.length > 50) return false;
+    if (formData.contactPerson.length > 20) return false;
+    if (!isValidEmail(formData.email)) return false;
+    if (!isValidEmail(formData.superAdminEmail)) return false;
+    if (!isValidPhone(formData.phone)) return false;
+    return true;
   }, [
     formData.name,
     formData.email,

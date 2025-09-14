@@ -12,12 +12,14 @@ interface ModuleAccessProps {
   selectedModules: ModuleAccessItem[];
   onModuleChange: (moduleAccessItems: ModuleAccessItem[]) => void;
   employeeId?: string;
+  isSuperAdmin?: boolean;
 }
 
 const ModuleAccess: React.FC<ModuleAccessProps> = ({
   selectedModules,
   onModuleChange,
-  employeeId
+  employeeId,
+  isSuperAdmin = false
 }) => {
   const { state } = useEmployeeStore();
   
@@ -93,6 +95,13 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 
   return (
     <div className="w-full">
+      {isSuperAdmin && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-700">
+            <strong>Super Admin Access:</strong> This user has full access to all modules. Module access controls are disabled.
+          </p>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -112,18 +121,25 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
                   <Checkbox
                     id={`module-checkbox-${module.module_id}`}
                     checked={isSelected}
+                    disabled={isSuperAdmin}
                     onCheckedChange={(checked) => handleModuleChange(
                       module.key, 
                       module.name, 
                       module.module_id,
                       checked === true
                     )}
+                    className={cn(
+                      isSuperAdmin && "opacity-50 cursor-not-allowed"
+                    )}
                   />
                 </TableCell>
                 <TableCell>
                   <label 
                     htmlFor={`module-checkbox-${module.module_id}`}
-                    className="cursor-pointer"
+                    className={cn(
+                      "cursor-pointer",
+                      isSuperAdmin && "opacity-50 cursor-not-allowed"
+                    )}
                   >
                     {module.name}
                   </label>
@@ -131,8 +147,11 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
                 <TableCell>
                   {isSelected && (
                     <div 
-                      className="flex items-center cursor-pointer"
-                      onClick={() => handleAdminToggle(module.module_id)}
+                      className={cn(
+                        "flex items-center",
+                        isSuperAdmin ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                      )}
+                      onClick={isSuperAdmin ? undefined : () => handleAdminToggle(module.module_id)}
                     >
                       {isAdmin ? (
                         <ToggleRight className="text-green-500 h-6 w-6 mr-2" />
@@ -141,7 +160,8 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
                       )}
                       <span className={cn(
                         "text-sm font-medium",
-                        isAdmin ? "text-green-600" : "text-gray-500"
+                        isAdmin ? "text-green-600" : "text-gray-500",
+                        isSuperAdmin && "opacity-50"
                       )}>
                         Admin
                       </span>

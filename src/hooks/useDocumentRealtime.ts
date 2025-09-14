@@ -32,7 +32,14 @@ export const useDocumentRealtime = (
               documentTypeId: payload.new.document_type_id,
               documentNumber: payload.new.document_number || '',
               documentImage: payload.new.document_url ? 
-                `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${payload.new.document_url}` : '',
+                (() => {
+                  if (payload.new.document_url) {
+                    const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+                    const normalizedBase = base.replace(/\/$/, '');
+                    return `${normalizedBase}/employee-documents/${payload.new.document_url}`;
+                  }
+                  return '';
+                })(),
               verificationStatus: payload.new.verification_status as any || 'pending',
               documentStatusId: payload.new.document_status_id,
               employee_docs_log: payload.new.employee_docs_log || [],

@@ -55,25 +55,33 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - Calculation: max(100 - 20 *', stats.openIncidents, ', 0) = max(', 100 - 20 * stats.openIncidents, ', 0) =', incidentsScore);
   console.log('  - Final Incidents Score:', incidentsScore);
 
-  // Calculate Overall Safety Score = (0.3 * Total Safe Employees) + (0.2 * Total Safety Vehicles) + (0.15 * Active Assessments) + (0.20 * Total Number of Open Incidents)
+  // Calculate Overall Safety Score = weighted average of individual scores
+  // Employee Compliance (30%) + Vehicle Compliance (20%) + Assessment Activity (15%) + Incident Management (35%)
+  const assessmentActivityScore = stats.activeAssessments ? Math.min(100, (stats.activeAssessments / 10) * 100) : 0; // Normalize to 0-100 based on assessment count
+  
   const overallSafetyScore = Math.round(
-    (0.3 * (stats.totalEmployees || 0)) + 
-    (0.2 * (stats.totalVehicles || 0)) + 
-    (0.15 * (stats.activeAssessments || 0)) + 
-    (0.20 * stats.openIncidents)
+    (0.3 * employeeComplianceScore) + 
+    (0.2 * vehicleComplianceScore) + 
+    (0.15 * assessmentActivityScore) + 
+    (0.20 * incidentsScore)
   );
 
-  console.log('🔍 Overall Safety Score Calculation:');
-  console.log('  - Total Safe Employees:', stats.totalEmployees || 0);
-  console.log('  - Total Safety Vehicles:', stats.totalVehicles || 0);
+  console.log('🔍 Assessment Activity Score Calculation:');
   console.log('  - Active Assessments:', stats.activeAssessments || 0);
-  console.log('  - Total Number of Open Incidents:', stats.openIncidents);
-  console.log('  - Calculation: (0.3 *', stats.totalEmployees || 0, ') + (0.2 *', stats.totalVehicles || 0, ') + (0.15 *', stats.activeAssessments || 0, ') + (0.20 *', stats.openIncidents, ')');
-  console.log('  - Step 1: (0.3 *', stats.totalEmployees || 0, ') =', 0.3 * (stats.totalEmployees || 0));
-  console.log('  - Step 2: (0.2 *', stats.totalVehicles || 0, ') =', 0.2 * (stats.totalVehicles || 0));
-  console.log('  - Step 3: (0.15 *', stats.activeAssessments || 0, ') =', 0.15 * (stats.activeAssessments || 0));
-  console.log('  - Step 4: (0.20 *', stats.openIncidents, ') =', 0.20 * stats.openIncidents);
-  console.log('  - Sum:', (0.3 * (stats.totalEmployees || 0)) + (0.2 * (stats.totalVehicles || 0)) + (0.15 * (stats.activeAssessments || 0)) + (0.20 * stats.openIncidents));
+  console.log('  - Calculation: min(100, (', stats.activeAssessments || 0, '/ 10) * 100) =', assessmentActivityScore);
+  console.log('  - Final Assessment Activity Score:', assessmentActivityScore);
+
+  console.log('🔍 Overall Safety Score Calculation:');
+  console.log('  - Employee Compliance Score:', employeeComplianceScore, '(weight: 30%)');
+  console.log('  - Vehicle Compliance Score:', vehicleComplianceScore, '(weight: 20%)');
+  console.log('  - Assessment Activity Score:', assessmentActivityScore, '(weight: 15%)');
+  console.log('  - Incident Management Score:', incidentsScore, '(weight: 35%)');
+  console.log('  - Calculation: (0.30 *', employeeComplianceScore, ') + (0.20 *', vehicleComplianceScore, ') + (0.15 *', assessmentActivityScore, ') + (0.35 *', incidentsScore, ')');
+  console.log('  - Step 1: (0.30 *', employeeComplianceScore, ') =', 0.30 * employeeComplianceScore);
+  console.log('  - Step 2: (0.20 *', vehicleComplianceScore, ') =', 0.20 * vehicleComplianceScore);
+  console.log('  - Step 3: (0.15 *', assessmentActivityScore, ') =', 0.15 * assessmentActivityScore);
+  console.log('  - Step 4: (0.35 *', incidentsScore, ') =', 0.35 * incidentsScore);
+  console.log('  - Sum:', (0.30 * employeeComplianceScore) + (0.20 * vehicleComplianceScore) + (0.15 * assessmentActivityScore) + (0.35 * incidentsScore));
   console.log('  - Final Overall Safety Score (rounded):', overallSafetyScore);
 
   console.log('📊 FINAL SAFETY PERFORMANCE GAUGES SUMMARY:');

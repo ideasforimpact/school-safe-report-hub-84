@@ -10,6 +10,36 @@ import { User, EmployeeData } from '@/contexts/auth/types';
 import { generateBackofficeToken } from '@/utils/jwtUtils';
 import { saveAuthState } from '@/store/authPersistence';
 
+// Helper function to create fresh Supabase auth user with email provider
+const createSupabaseAuthUser = async (email: string, password: string): Promise<boolean> => {
+  try {
+    console.log('Creating fresh Supabase auth user with email provider:', email);
+    
+    // Use Supabase's native signUp for fresh email provider authentication
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+     
+    });
+
+    if (error) {
+      console.error('Error creating Supabase auth user:', error);
+      return false;
+    }
+
+    if (data.user) {
+      console.log('Successfully created fresh Supabase auth user:', data.user.id);
+      console.log('User will need to confirm email before they can use Supabase auth');
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Unexpected error creating Supabase auth user:', error);
+    return false;
+  }
+};
+
 export const useBackofficeAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,24 +77,56 @@ export const useBackofficeAuth = () => {
         return false;
       }
 
-      // Step 2: Verify credentials using RPC function
-      const { data: isValidCredentials, error: verifyError } = await supabase.rpc('verify_password', { 
-        email: cleanedEmail, 
-        password_attempt: password 
-      });
+      // Step 2: Try Supabase auth first, then fallback to custom verification
+      let authUser = null;
+      let isValidCredentials = false;
 
-      if (verifyError) {
-        console.error('Password verification error:', verifyError);
-        setError("Authentication error occurred. Please try again.");
-        setIsLoading(false);
-        return false;
+      await supabase.auth.signOut();
+      // First, try Supabase's built-in email authentication
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanedEmail,
+          password: password
+        });
+
+         authUser = authData.user;
+
+         console.log(authError,authData,"authData");
+         
+
+        if (!authError && authData.user) {
+          console.log('Successfully authenticated with Supabase auth:', authData.user.id);
+          authUser = authData.user;
+          isValidCredentials = true;
+        }
+      } catch (authErr) {
+        console.log('Supabase auth failed, trying custom verification:', authErr);
       }
 
+      // If Supabase auth failed, try custom RPC verification
       if (!isValidCredentials) {
-        console.log('Invalid password for user:', cleanedEmail);
-        setError("Invalid password. Please try again.");
-        setIsLoading(false);
-        return false;
+        console.log('Trying custom password verification...');
+        const { data: customAuthResult, error: verifyError } = await supabase.rpc('verify_password', { 
+          email: cleanedEmail, 
+          password_attempt: password 
+        });
+
+        if (verifyError) {
+          console.error('Password verification error:', verifyError);
+          setError("Authentication error occurred. Please try again.");
+          setIsLoading(false);
+          return false;
+        }
+
+        if (!customAuthResult) {
+          console.log('Invalid password for user:', cleanedEmail);
+          setError("Invalid password. Please try again.");
+          setIsLoading(false);
+          return false;
+        }
+
+        isValidCredentials = true;
+        console.log('Custom authentication successful, will attempt to create Supabase auth user');
       }
 
       // Step 3: Fetch backoffice user information
@@ -90,13 +152,27 @@ export const useBackofficeAuth = () => {
 
       console.log('Successfully retrieved backoffice user:', { id: backofficeUser.id, email: backofficeUser.email });
 
-      // Step 3: Update last_signed_in timestamp
+      // Step 3: If custom auth was used and no Supabase auth user exists, create one
+      // if (!authUser && isValidCredentials) {
+      //   console.log('Creating fresh Supabase auth user for future logins...');
+      //   const authUserCreated = await createSupabaseAuthUser(cleanedEmail, password);
+      //   if (authUserCreated) {
+      //     console.log('Fresh Supabase auth user created successfully for future use');
+      //   } else {
+      //     console.log('Failed to create Supabase auth user, but continuing with custom auth');
+      //   }
+      // }
+      
+      console.log(authUser.id ,"authUser.id ");
+      
+
+      // Step 4: Update last_signed_in timestamp
       await supabase
         .from('backoffice_users')
-        .update({ last_signed_in: new Date().toISOString() })
+        .update({ last_signed_in: new Date().toISOString(),auth_user_id : authUser.id })
         .eq('id', backofficeUser.id);
 
-      // Step 4: Create User object for Redux
+      // Step 5: Create User object for Redux
       const saasUser: User = {
         id: backofficeUser.id,
         firstName: 'Backoffice',
@@ -120,7 +196,7 @@ export const useBackofficeAuth = () => {
         clientType: null
       };
 
-      // Step 5: Create EmployeeData object for Redux
+      // Step 6: Create EmployeeData object for Redux
       const backofficeEmployeeData: EmployeeData = {
         id: backofficeUser.id,
         clientId: null,
@@ -134,7 +210,7 @@ export const useBackofficeAuth = () => {
         clientType: null
       };
 
-      // Step 6: Fetch backoffice modules from database
+      // Step 7: Fetch backoffice modules from database
       const { data: modulesData, error: modulesError } = await supabase
         .from('modules')
         .select('*')
@@ -160,18 +236,18 @@ export const useBackofficeAuth = () => {
         }));
       }
 
-      // Step 7: Generate browser-compatible token with 24-hour expiration
+      // Step 8: Generate browser-compatible token with 24-hour expiration
       const jwtToken = generateBackofficeToken(backofficeUser.id, backofficeUser.email);
       const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now
 
-      // Step 8: Update Redux state with all necessary data
+      // Step 9: Update Redux state with all necessary data
       dispatch(setCurrentUser(saasUser));
       dispatch(setBackofficeUser(true));
       dispatch(setAuthStatus(true));
       dispatch(setEmployeeData(backofficeEmployeeData));
       dispatch(setConfiguredModules(backofficeModules));
 
-      // Step 9: Save auth state with JWT token to sessionStorage
+      // Step 10: Save auth state with JWT token to sessionStorage
       saveAuthState({
         currentUser: saasUser,
         isAuthenticated: true,

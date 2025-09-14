@@ -40,16 +40,7 @@ const BankStatementUploader: React.FC<BankStatementUploaderProps> = ({
 
     const file = fileList[0];
     
-    // File type validation - only PDF allowed
-    if (!file.type.includes('pdf')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Bank statements must be uploaded as PDF files only',
-        variant: 'destructive',
-      });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
+    // Allow all file types for manual verification uploads
     
     // File size validation
     const maxSizeBytes = maxFileSize * 1024 * 1024;
@@ -97,14 +88,14 @@ const BankStatementUploader: React.FC<BankStatementUploaderProps> = ({
     <div className="space-y-2">
       <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50">
         <FileType className="h-8 w-8 text-gray-400 mb-2" />
-        <p className="text-sm text-gray-500 mb-2">Drag and drop bank statement here, or click to select file</p>
-        <p className="text-xs text-gray-400">Supported format: PDF only • Max file size: {maxFileSize}MB</p>
+        <p className="text-sm text-gray-500 mb-2">Drag and drop file here, or click to select file</p>
+        <p className="text-xs text-gray-400">Supported formats: Any • Max file size: {maxFileSize}MB</p>
         <Input 
           id="file-upload" 
           type="file" 
           className="hidden"
           ref={fileInputRef}
-          accept="application/pdf"
+          accept="*/*"
           onChange={handleFileUpload}
         />
         <Button 

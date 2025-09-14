@@ -16,6 +16,7 @@ import IncidentDocumentUploader from './IncidentDocumentUploader';
 import { formatFileSize, viewDocument } from '@/utils/fileUtils';
 import { incidentDocumentAggregator } from '@/services/incident/incidentDocumentAggregator';
 import { Badge } from '@/components/ui/badge';
+import { incidentDocumentService } from '@/services/incident/incidentDocumentService';
 
 interface SupportingDocumentsProps {
   incidentId: string;
@@ -86,15 +87,21 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
   };
 
   const handleView = (doc: IncidentDocument) => {
-    viewDocument(doc.url, doc.name || 'document');
+    // Generate URL from path if URL is not available
+    const url = doc.url || incidentDocumentService.getPublicUrl(doc.path);
+    viewDocument(url, doc.name || 'document');
   };
 
   const handleDownload = (doc: IncidentDocument) => {
     try {
+      // Generate URL from path if URL is not available
+      const url = doc.url || incidentDocumentService.getPublicUrl(doc.path);
+      
       const link = window.document.createElement('a');
-      link.href = doc.url;
+      link.href = url;
       link.download = doc.name || 'document';
       link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
@@ -202,10 +209,10 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                           {formatFileSize(document.size)}
                         </p>
                         
-                        {isImage && document.url && (
+                        {isImage && (document.url || document.path) && (
                           <div className="mt-3">
                             <img
-                              src={document.url}
+                              src={document.url || incidentDocumentService.getPublicUrl(document.path)}
                               alt={document.name}
                               className="w-full h-24 object-cover rounded cursor-pointer"
                               onClick={() => handlePreview(document)}
@@ -263,7 +270,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
           <div className="flex justify-center items-center py-4">
             {selectedDocument && (
               <img
-                src={selectedDocument.url}
+                src={selectedDocument.url || incidentDocumentService.getPublicUrl(selectedDocument.path)}
                 alt={selectedDocument.name}
                 className="max-h-[70vh] max-w-full object-contain rounded-md"
               />

@@ -1,14 +1,16 @@
 
 import React from 'react';
-import { FileText, Download, Edit, Trash, Eye } from 'lucide-react';
+import { FileText, Download, Edit, Trash, Eye, Play } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { formatFileSize } from '@/utils/fileUtils';
+import { extractYouTubeVideoId, getYouTubeThumbnail } from '@/utils/youtubeUtils';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { Link } from 'react-router-dom';
+import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
@@ -22,6 +24,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
   const { downloadResource, deleteResource } = useEduSafe();
   const { state: employeeState } = useEmployeeStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [showPreview, setShowPreview] = React.useState(false);
   
   // Check if user has super admin access
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
@@ -55,6 +58,12 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Handle YouTube resources
+    if (isYouTubeResource && resource.youtube_link) {
+      window.open(resource.youtube_link, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
     // Check if we have a document URL
     if (resource.document_url) {
       // Open the document URL directly in a new tab
@@ -78,24 +87,74 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
     setShowDeleteConfirm(false);
   };
 
+  // Check if this is a YouTube resource
+  const isYouTubeResource = resource.category === 'youtube' && resource.youtube_link;
+  const youtubeVideoId = isYouTubeResource ? extractYouTubeVideoId(resource.youtube_link) : null;
+  const youtubeThumbnail = youtubeVideoId ? getYouTubeThumbnail(youtubeVideoId, 'medium') : null;
+  console.log(isYouTubeResource,"isYouTubeResource",resource);
+  
+  // Debug logging for YouTube resources
+  if (isYouTubeResource) {
+    console.log('YouTube Resource Debug:', {
+      category: resource.category,
+      youtube_link: resource.youtube_link,
+      youtubeVideoId,
+      youtubeThumbnail,
+      isYouTubeResource
+    });
+  }
+
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-all duration-200 relative group">
       <CardContent className="p-4 flex-grow">
         <div className="flex items-start">
-          <div className="bg-blue-50 p-3 rounded-lg mr-3 flex-shrink-0">
-            <FileText className="h-6 w-6 text-blue-600" />
-          </div>
+          {isYouTubeResource ? (
+            <div className="relative mr-3 flex-shrink-0">
+              {youtubeThumbnail ? (
+                <div className="relative w-16 h-12 rounded-lg overflow-hidden">
+                  <img 
+                    src={youtubeThumbnail} 
+                    alt={`${resource.title} thumbnail`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Hide image and show fallback
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.parentElement?.querySelector('.youtube-fallback') as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                  <div className="youtube-fallback bg-red-50 p-3 rounded-lg w-full h-full items-center justify-center hidden absolute inset-0">
+                    <Play className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-black bg-opacity-60 rounded-full p-1">
+                      <Play className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50 p-3 rounded-lg w-16 h-12 flex items-center justify-center">
+                  <Play className="h-6 w-6 text-red-600" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-blue-50 p-3 rounded-lg mr-3 flex-shrink-0">
+              <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-lg text-left truncate">{resource.title}</h3>
             <p className="text-sm text-gray-500 mt-1 text-left line-clamp-2">{resource.description}</p>
           </div>
         </div>
+
         
         <div className="mt-4 text-left">
           <div className="text-xs text-gray-500 flex items-center space-x-2 mb-3">
-            <span>Type: PDF</span>
+            <span>Type: {isYouTubeResource ? 'YouTube Video' : 'PDF'}</span>
             <span>•</span>
-            <span>Unknown size</span>
+            <span>{isYouTubeResource ? 'Video' : 'Unknown size'}</span>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -125,15 +184,29 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
           
           <div className="flex justify-between items-center">
             <div className="flex space-x-1">
-              <Button size="sm" variant="ghost" onClick={handleView} className="h-8 px-2">
-                <Eye className="h-3 w-3 mr-1" />
-                <span className="text-xs">View</span>
-              </Button>
-              
-              <Button size="sm" variant="ghost" onClick={handleDownload} className="h-8 px-2">
-                <Download className="h-3 w-3 mr-1" />
-                <span className="text-xs">Download</span>
-              </Button>
+              {isYouTubeResource ? (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={handleView} 
+                  className="h-8 px-2"
+                >
+                  <Play className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Watch</span>
+                </Button>
+              ) : (
+                <>
+                  <Button size="sm" variant="ghost" onClick={handleView} className="h-8 px-2">
+                    <Eye className="h-3 w-3 mr-1" />
+                    <span className="text-xs">View</span>
+                  </Button>
+                  
+                  <Button size="sm" variant="ghost" onClick={handleDownload} className="h-8 px-2">
+                    <Download className="h-3 w-3 mr-1" />
+                    <span className="text-xs">Download</span>
+                  </Button>
+                </>
+              )}
             </div>
 
             {canModify && (
@@ -162,6 +235,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
           </div>
         </div>
       </CardFooter>
+      <ResourcePreviewDialog
+        resource={resource}
+        open={showPreview}
+        onOpenChange={setShowPreview}
+      />
       
       {/* Custom Delete Confirmation Dialog */}
       {showDeleteConfirm && (

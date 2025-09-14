@@ -90,12 +90,12 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
         };
       case 'passport':
         return {
-          label: 'Passport Number',
-          placeholder: 'A1234567',
-          maxLength: 8,
-          pattern: /^[A-Z]\d{7}$/,
+          label: 'File Number',
+          placeholder: 'DL1061291XXXXXX',
+          maxLength: 20,
+          pattern: /^[A-Z0-9-]+$/,
           format: (val: string) => val.toUpperCase(),
-          validate: (val: string) => /^[A-Z]\d{7}$/.test(val)
+          validate: (val: string) => /^[A-Z0-9-]{8,20}$/.test(val)
         };
       default:
         return {

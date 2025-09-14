@@ -7,6 +7,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to format client name for ticket ID
+function formatClientNameForTicketId(clientName: string): string {
+  if (!clientName || typeof clientName !== 'string') {
+    return 'CLI'; // Default fallback
+  }
+
+  // Clean the client name (remove extra spaces, special characters)
+  const cleanName = clientName.trim().replace(/[^a-zA-Z\s]/g, '');
+  
+  // Split into words
+  const words = cleanName.split(/\s+/).filter(word => word.length > 0);
+  
+  if (words.length === 0) {
+    return 'CLI'; // Fallback if no valid words
+  }
+  
+  if (words.length === 1) {
+    // Single word: use first 3 characters
+    const word = words[0];
+    return word.substring(0, 3).toUpperCase();
+  } else {
+    // Multiple words: use first letter of each word
+    return words.map(word => word.charAt(0).toUpperCase()).join('');
+  }
+}
+
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -37,8 +64,45 @@ serve(async (req) => {
 
     console.log('Creating incident with optimized approach');
 
-    // Generate a ticket ID
-    const ticketId = `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // Generate a ticket ID based on client name using optimized query
+    // First, fetch the client name
+    const { data: clientData, error: clientError } = await supabaseClient
+      .from('clients')
+      .select('name')
+      .eq('id', clientId)
+      .single();
+    
+    const clientName = clientData?.name || 'Unknown Client';
+    const prefix = formatClientNameForTicketId(clientName);
+    
+    // Optimized query: Get the highest numbered ticket ID for this client prefix
+    const { data: existingIncidents, error: incidentsError } = await supabaseClient
+      .from('incidents')
+      .select('ticket_id')
+      .eq('client_id', clientId)
+      .like('ticket_id', `${prefix}-%`)
+      .order('ticket_id', { ascending: false })
+      .limit(1);
+    
+    let nextNumber = 1; // Default to 001 for first ticket
+    
+    if (existingIncidents && existingIncidents.length > 0) {
+      // Extract the number from the highest ticket ID
+      const highestTicketId = existingIncidents[0].ticket_id;
+      const match = highestTicketId.match(/-(\d+)$/);
+      
+      if (match) {
+        const currentNumber = parseInt(match[1], 10);
+        nextNumber = currentNumber + 1;
+        console.log('Found existing ticket ID:', highestTicketId, 'Next number:', nextNumber);
+      }
+    } else {
+      console.log('No existing ticket IDs found for prefix:', prefix, 'Starting with 001');
+    }
+    
+    // Format with leading zeros (3 digits)
+    const formattedNumber = nextNumber.toString().padStart(3, '0');
+    const ticketId = `${prefix}-${formattedNumber}`;
 
     // Use a single efficient query to get the "Open" status ID
     const { data: statusData, error: statusError } = await supabaseClient

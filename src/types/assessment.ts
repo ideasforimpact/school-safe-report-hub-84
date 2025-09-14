@@ -24,7 +24,8 @@ export interface AssessmentTemplate {
   id: string;
   title: string;
   description: string;
-  type: string; // Safety, Compliance, Risk, etc.
+  type: string; // Safety, Compliance, Risk, etc. - for frontend display
+  category_id: string; // Database foreign key to template_categories
   questions: AssessmentQuestion[];
   createdAt: string;
   createdBy: string;

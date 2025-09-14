@@ -45,14 +45,49 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
 
   const handleDownloadAttachment = async (attachmentUrl: string, index: number) => {
     try {
-      // Create a download link
-      const link = document.createElement('a');
-      link.href = attachmentUrl;
-      link.download = `attachment-${index + 1}`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Extract filename from URL
+      const getFileName = (url: string) => {
+        try {
+          const urlObj = new URL(url);
+          const pathname = urlObj.pathname;
+          const filename = pathname.split('/').pop();
+          return filename || `attachment-${index + 1}`;
+        } catch {
+          return `attachment-${index + 1}`;
+        }
+      };
+
+      const fileName = getFileName(attachmentUrl);
+      
+      // For Supabase storage URLs, we need to fetch the file and create a blob
+      if (attachmentUrl.includes('supabase.co/storage')) {
+        const response = await fetch(attachmentUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(url);
+      } else {
+        // For other URLs, use the direct approach
+        const link = document.createElement('a');
+        link.href = attachmentUrl;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
       
       toast({
         title: "Download Started",

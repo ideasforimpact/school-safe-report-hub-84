@@ -10,7 +10,7 @@ import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
-import { questionFileService } from '@/services/assessment/questionFileService';
+import { templateService } from '@/services/assessment/templateService';
 import { FileItem } from '@/types/fileTypes';
 
 interface CreateTemplateFormProps {
@@ -25,7 +25,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   isEditMode = false 
 }) => {
   const navigate = useNavigate();
-  const { createTemplate, updateTemplate, getTemplateById } = useAssessment();
+  const { createTemplate, updateTemplate, getTemplateById, refreshTemplates } = useAssessment();
   const { user, employeeData } = useAuth();
   
   // Form state
@@ -119,66 +119,68 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     return true;
   };
 
-  const uploadPendingFiles = async (): Promise<AssessmentQuestion[]> => {
-    if (!employeeData?.clientId || !employeeData?.id) {
-      throw new Error('User information not available for file upload');
-    }
-
-    const questionsWithUploadedFiles = [...questions];
+  // Convert pending files to questions with files
+  const prepareQuestionsWithFiles = (): AssessmentQuestion[] => {
+    console.log('prepareQuestionsWithFiles called with:');
+    console.log('- questions:', questions);
+    console.log('- pendingFiles:', pendingFiles);
     
-    for (const [questionId, files] of Object.entries(pendingFiles)) {
-      if (files.length === 0) continue;
+    const questionsWithFiles = [...questions];
+    
+    // Process each question
+    questionsWithFiles.forEach((question, questionIndex) => {
+      const questionId = question.id;
+      const pendingFilesForQuestion = pendingFiles[questionId] || [];
       
-      const questionIndex = questionsWithUploadedFiles.findIndex(q => q.id === questionId);
-      if (questionIndex === -1) continue;
+      console.log(`Processing question ${questionId}:`);
+      console.log('- existing files:', question.files || []);
+      console.log('- pending files:', pendingFilesForQuestion);
       
-      const questionNumber = questionIndex + 1;
-      
-      console.log(`Processing ${files.length} files for question ${questionNumber}:`, files.map(f => f.name));
-      
-      // Convert to UploadFileInput format for the improved service
-      const uploadInputs = files.map(file => ({
-        file: file.file,
-        id: file.id
-      }));
-
-      try {
-        // Upload files using the improved service
-        const uploadedFiles = await questionFileService.uploadQuestionFiles(
-          uploadInputs,
-          employeeData.clientId,
-          employeeData.id,
-          title || 'Untitled Template',
-          questionNumber
-        );
-
-        console.log(`Successfully uploaded ${uploadedFiles.length} files for question ${questionNumber}`);
-
-        // Convert to QuestionFile format
-        const questionFiles: QuestionFile[] = uploadedFiles.map(file => ({
+      if (pendingFilesForQuestion.length > 0) {
+        // If there are pending files, completely replace existing files with pending files
+        // Convert pending files to QuestionFile format
+        const questionFiles: any[] = pendingFilesForQuestion.map(file => ({
           id: file.id,
           name: file.name,
           size: file.size,
           type: file.type,
-          url: file.url,
-          path: file.path,
-          uploadedAt: file.uploadedAt.toISOString()
+          url: '', // Will be set by edge function
+          path: '', // Will be set by edge function
+          uploadedAt: new Date().toISOString(),
+          file: file.file // Include the actual File object for the edge function
         }));
 
-        // Update question with uploaded files
-        questionsWithUploadedFiles[questionIndex] = {
-          ...questionsWithUploadedFiles[questionIndex],
-          files: [...(questionsWithUploadedFiles[questionIndex].files || []), ...questionFiles]
-        };
+        console.log(`Completely replacing existing files with ${questionFiles.length} pending files for question ${questionId}`);
+        console.log(`Old files being replaced:`, question.files);
+        console.log(`New files replacing them:`, questionFiles);
         
-        console.log(`Updated question ${questionIndex} with files:`, JSON.stringify(questionsWithUploadedFiles[questionIndex], null, 2));
-      } catch (error) {
-        console.error(`Failed to upload files for question ${questionNumber}:`, error);
-        throw new Error(`Failed to upload files for question ${questionNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Completely replace files (since we only allow single file per question)
+        questionsWithFiles[questionIndex] = {
+          ...question,
+          files: questionFiles
+        };
+      } else {
+        // No pending files, keep existing files as they are
+        console.log(`No pending files for question ${questionId}, keeping existing files:`, question.files);
+        // Keep all existing files as they are - don't filter them out
+        questionsWithFiles[questionIndex] = {
+          ...question,
+          files: question.files || []
+        };
       }
-    }
+    });
 
-    return questionsWithUploadedFiles;
+    // Log final result
+    questionsWithFiles.forEach((question, index) => {
+      if (question.files && question.files.length > 0) {
+        console.log(`Question ${index + 1} final files:`, question.files);
+      } else {
+        console.log(`Question ${index + 1} has no files`);
+      }
+    });
+
+    console.log('Final questionsWithFiles:', questionsWithFiles);
+    return questionsWithFiles;
   };
 
   const onFormSubmit = async (e: React.FormEvent) => {
@@ -189,38 +191,74 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     if (!validateForm()) {
       return;
     }
+
+    if (!employeeData?.clientId || !employeeData?.id) {
+      setFormError('User information not available');
+      return;
+    }
     
     try {
       setIsSubmitting(true);
       
-      // Upload pending files first
-      const questionsWithFiles = await uploadPendingFiles();
-      console.log('Questions with files after upload:', JSON.stringify(questionsWithFiles, null, 2));
+      // Prepare questions with files (no upload yet)
+      const questionsWithFiles = prepareQuestionsWithFiles();
+      console.log('Questions with files prepared:', JSON.stringify(questionsWithFiles, null, 2));
+      console.log('Pending files state:', pendingFiles);
+      console.log('Current questions state:', questions);
       
       if (isEditMode && templateId) {
-        // Update existing template
-        await updateTemplate(templateId, {
+        // For updates, use the edge function directly since context doesn't handle file updates
+        const result = await templateService.createOrUpdateTemplate({
           title,
           description,
           type,
           isActive,
-          questions: questionsWithFiles
+          questions: questionsWithFiles,
+          clientId: employeeData.clientId,
+          employeeId: employeeData.id,
+          templateId: templateId
         });
-        console.log('Template updated successfully');
+        
+        console.log('Template updated successfully:', result.templateId);
         toast.success('Template updated successfully');
+        
+        // Refresh templates in context to get the updated data
+        if (refreshTemplates) {
+          await refreshTemplates();
+        }
       } else {
-        // Create new template
+        // For creates, use the context method which handles refresh
         const templateData = {
           title,
           description,
           type,
-          questions: questionsWithFiles
+          isActive,
+          questions: questionsWithFiles,
+          clientId: employeeData.clientId,
+          createdBy: employeeData.id
         };
         
-        console.log('Creating template with data:', templateData);
-        const newTemplateId = await createTemplate(templateData);
-        console.log('Template created with ID:', newTemplateId);
+        // Use the edge function for file handling, then update context
+        const result = await templateService.createOrUpdateTemplate({
+          title,
+          description,
+          type,
+          isActive,
+          questions: questionsWithFiles,
+          clientId: employeeData.clientId,
+          employeeId: employeeData.id
+        });
+        
+        console.log('Template created successfully:', result.templateId);
         toast.success('Template created successfully');
+        
+        // Manually refresh templates since we used edge function directly
+        if (refreshTemplates) {
+          // Add a small delay to ensure database is updated
+          setTimeout(async () => {
+            await refreshTemplates();
+          }, 1000);
+        }
       }
       
       // Clear pending files after successful save

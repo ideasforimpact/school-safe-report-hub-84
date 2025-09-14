@@ -131,6 +131,36 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
       };
     }
 
+    // Check for added/removed pattern (People Involved, Supporting Documents)
+    const addedMatch = text.match(/(.+?):\s+Added\s+"([^"]+)"/);
+    if (addedMatch) {
+      return {
+        type: 'added',
+        field: addedMatch[1].trim(),
+        value: addedMatch[2]
+      };
+    }
+
+    const removedMatch = text.match(/(.+?):\s+Removed\s+"([^"]+)"/);
+    if (removedMatch) {
+      return {
+        type: 'removed',
+        field: removedMatch[1].trim(),
+        value: removedMatch[2]
+      };
+    }
+
+    // Check for combined added/removed pattern
+    const combinedMatch = text.match(/(.+?):\s+Removed\s+"([^"]+)",\s+Added\s+"([^"]+)"/);
+    if (combinedMatch) {
+      return {
+        type: 'combined',
+        field: combinedMatch[1].trim(),
+        removedValue: combinedMatch[2],
+        addedValue: combinedMatch[3]
+      };
+    }
+
     return { type: 'plain', text };
   };
 
@@ -189,6 +219,43 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
               {parsed.oldValue}
             </Badge>
             <span className="text-gray-600">)</span>
+          </div>
+        );
+
+      case 'added':
+        return (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">{parsed.field}:</span>
+            <span className="text-gray-600">Added</span>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {parsed.value}
+            </Badge>
+          </div>
+        );
+
+      case 'removed':
+        return (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">{parsed.field}:</span>
+            <span className="text-gray-600">Removed</span>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+              {parsed.value}
+            </Badge>
+          </div>
+        );
+
+      case 'combined':
+        return (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-medium text-gray-900">{parsed.field}:</span>
+            <span className="text-gray-600">Removed</span>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+              {parsed.removedValue}
+            </Badge>
+            <span className="text-gray-600">, Added</span>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {parsed.addedValue}
+            </Badge>
           </div>
         );
 

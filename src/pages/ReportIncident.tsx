@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
 import { incidentDataService } from '@/services/incident/incidentDataService';
+import { TicketIdService } from '@/services/incident/ticketIdService';
 import { FileItem } from '@/types/fileTypes';
 import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
 
@@ -148,11 +149,14 @@ const ReportIncident = () => {
     }
 
     // Validate form including people involved
-    const isValid = validateForm(formData, peopleInvolved);
+    const validationResult = validateForm(formData, peopleInvolved);
     
-    if (!isValid) {
-      const firstError = Object.values(errors)[0];
-      toast.error(firstError || "Please fill in all required fields");
+    if (!validationResult.isValid) {
+      // Prioritize description error if it exists, otherwise show first error
+      const descriptionError = validationResult.errors.description;
+      const firstError = Object.values(validationResult.errors)[0];
+      const errorMessage = descriptionError || firstError || "Please fill in all required fields";
+      toast.error(errorMessage);
       return;
     }
     
@@ -234,8 +238,9 @@ const ReportIncident = () => {
         .eq('name', 'Open')
         .maybeSingle();
 
-      // Generate unique ticket ID
-      const ticketId = `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate unique ticket ID based on client name
+      const clientName = authEmployeeData?.client?.name || 'Unknown Client';
+      const ticketId = await TicketIdService.generateNextTicketId(clientName, clientId);
 
       // First, create the incident record without documents
       const incidentRecord = {
@@ -349,11 +354,8 @@ const ReportIncident = () => {
           // Import the document service here to avoid circular imports
           const { incidentDocumentService } = await import('@/services/incident/incidentDocumentService');
           
-          // Upload files to storage with clientId (already validated)
-          const uploadedDocuments = await incidentDocumentService.uploadFiles(incidentData.id, clientId, supportingFiles);
-          
-          // Update incident with document URLs
-          await incidentDocumentService.updateIncidentDocuments(incidentData.id, uploadedDocuments);
+          // Upload files and update incident in one operation using edge function
+          const uploadedDocuments = await incidentDocumentService.uploadFilesAndUpdateIncident(incidentData.id, clientId, supportingFiles);
           
           console.log('Supporting files uploaded successfully');
           toast.success(`${uploadedDocuments.length} supporting document(s) uploaded`);

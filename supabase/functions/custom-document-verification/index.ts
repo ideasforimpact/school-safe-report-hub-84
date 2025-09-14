@@ -194,64 +194,58 @@ if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
     }
 
     // Validate total file size (30MB limit)
-    const totalSize = documentFiles.reduce((sum, file) => sum + file.size, 0);
     const maxSize = 30 * 1024 * 1024; // 30MB in bytes
+    const firstFile = documentFiles[0];
+    const totalSize = firstFile.size;
 
     if (totalSize > maxSize) {
       throw new Error('Total file size exceeds 30MB limit');
     }
 
-    console.log(`Custom Document Verification: Processing ${documentFiles.length} files for employee ${employeeIdFinal}`);
+    console.log(`Custom Document Verification: Processing single file upload for employee ${employeeIdFinal}`);
 
-    // Upload files to storage
-    const uploadedFiles: string[] = [];
-    
-    for (const file of documentFiles) {
-      try {
-        // Convert base64 to blob
-        const base64Data = file.base64.split(',')[1] || file.base64;
-        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-        
-        // Generate unique file path with sanitized filename
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const sanitizedFileName = sanitizeFilename(file.name);
-        const fileName = `${employeeIdFinal}/${documentTypeId}/${timestamp}_${sanitizedFileName}`;
-        
-        console.log(`Custom Document Verification: Uploading file: ${fileName}`);
-        
-        // Upload to employee-documents bucket
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('employee-documents')
-          .upload(fileName, binaryData, {
-            contentType: file.type,
-            upsert: false
-          });
+    // Upload a single file to storage (no loop needed)
+    let uploadedFilePath = '';
+    try {
+      const base64Data = firstFile.base64.split(',')[1] || firstFile.base64;
+      const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
-        if (uploadError) {
-          console.error(`Custom Document Verification: Upload error for ${file.name}:`, uploadError);
-          throw new Error(`Failed to upload file ${file.name}: ${uploadError.message}`);
-        }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const sanitizedFileName = sanitizeFilename(firstFile.name);
+      const fileName = `${employeeIdFinal}/${documentTypeId}/${timestamp}_${sanitizedFileName}`;
 
-        console.log(`Custom Document Verification: Successfully uploaded: ${fileName}`);
-        uploadedFiles.push(fileName);
-        
-      } catch (fileError) {
-        console.error(`Custom Document Verification: Error processing file ${file.name}:`, fileError);
-        throw new Error(`Failed to process file ${file.name}: ${fileError.message}`);
+      console.log(`Custom Document Verification: Uploading file: ${fileName}`);
+
+      const { error: uploadError } = await supabase.storage
+        .from('employee-documents')
+        .upload(fileName, binaryData, {
+          contentType: firstFile.type,
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error(`Custom Document Verification: Upload error for ${firstFile.name}:`, uploadError);
+        throw new Error(`Failed to upload file ${firstFile.name}: ${uploadError.message}`);
       }
+
+      uploadedFilePath = fileName;
+      console.log(`Custom Document Verification: Successfully uploaded: ${uploadedFilePath}`);
+    } catch (fileError) {
+      console.error(`Custom Document Verification: Error processing file ${firstFile.name}:`, fileError);
+      throw new Error(`Failed to process file ${firstFile.name}: ${fileError.message}`);
     }
 
     // Create document record in database
     const documentData = {
       employee_id: employeeIdFinal,
       document_type_id: documentTypeId,
-      document_url: uploadedFiles[0], // Primary file
+      document_url: uploadedFilePath, // Primary file
       verification_status: 'pending',
       params: {
         document_name: documentName,
-        uploaded_files: uploadedFiles,
-        file_count: uploadedFiles.length,
-        total_size: totalSize,
+        uploaded_files: uploadedFilePath,
+        file_count: 1,
+        total_size: totalSize, // single file size
         custom_document: true
       },
       created_at: new Date().toISOString(),
@@ -275,14 +269,14 @@ if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
 
     const response = {
       success: true,
-      message: `Custom document "${documentName}" uploaded successfully with ${uploadedFiles.length} files`,
+      message: `Custom document "${documentName}" uploaded successfully`,
       data: {
         documentId: documentRecord.id,
         employeeId: employeeIdFinal,
         documentName,
-        filesUploaded: uploadedFiles.length,
+        filesUploaded: 1,
         totalSize,
-        uploadedFiles
+        uploadedFiles: uploadedFilePath
       }
     };
 

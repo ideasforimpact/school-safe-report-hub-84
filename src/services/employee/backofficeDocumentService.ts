@@ -205,7 +205,7 @@ export const backofficeDocumentService = {
         comments,
         attachments,
         timestamp: new Date().toISOString(),
-        verified_by: 'backoffice_user' // TODO: Replace with actual backoffice user ID when available
+        verified_by: 'SafeSchool' // TODO: Replace with actual backoffice user ID when available
       };
 
       // Get existing params or initialize - properly type cast the params
@@ -338,7 +338,9 @@ export const backofficeDocumentService = {
       console.log('File uploaded successfully to storage:', data.path);
       
       // Construct the full public URL
-      const publicUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee_other_type_statement/${data.path}`;
+      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+      const normalizedBase = base.replace(/\/$/, '');
+      const publicUrl = `${normalizedBase}/employee_other_type_statement/${data.path}`;
       console.log('Generated public URL:', publicUrl);
       
       return publicUrl;

@@ -111,7 +111,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
         {/* File Upload Section */}
         <div className="mt-4 pt-4 border-t border-gray-200">
           <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Question Files (Optional)
+            Question File (Optional)
           </Label>
           <QuestionFileUpload
             questionId={question.id}

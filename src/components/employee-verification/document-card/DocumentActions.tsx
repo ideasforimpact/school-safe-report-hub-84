@@ -39,6 +39,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         return 'pan-verification';
       case 'driving_license':
         return 'driving-license';
+      case 'passport':
+        return 'passport-verification';
       case 'voter_id':
         return 'voter-verification';
       case 'other':
@@ -102,6 +104,15 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
               documentId: document.id,
               documentNumber: document.documentNumber || '',
               dateOfBirth: document.details?.dateOfBirth || ''
+            }
+          });
+          break;
+
+        case 'passport':
+          result = await supabase.functions.invoke('passport-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id
             }
           });
           break;

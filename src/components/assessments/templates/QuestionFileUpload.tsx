@@ -41,45 +41,48 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
     setSelecting(true);
 
     try {
-      const newPendingFiles: PendingFile[] = [];
+      // Only take the first file since we only allow single file upload
+      const file = selectedFiles[0];
       
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        
-        // Check file size (30MB limit)
-        if (file.size > 30 * 1024 * 1024) {
-          toast.error(`${file.name} exceeds 30MB limit`);
-          continue;
-        }
-
-        // Check for duplicate files
-        const isDuplicate = [...files, ...pendingFiles].some(
-          existingFile => existingFile.name === file.name && existingFile.size === file.size
-        );
-
-        if (isDuplicate) {
-          toast.error(`${file.name} is already added`);
-          continue;
-        }
-
-        newPendingFiles.push({
-          id: crypto.randomUUID(),
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          file,
-          status: 'pending'
-        });
+      // Check file size (30MB limit)
+      if (file.size > 30 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 30MB limit`);
+        return;
       }
 
-      if (newPendingFiles.length > 0) {
-        onPendingFilesChange([...pendingFiles, ...newPendingFiles]);
-        toast.success(`Added ${newPendingFiles.length} file(s) for upload`);
+      // Check for duplicate files
+      const isDuplicate = [...files, ...pendingFiles].some(
+        existingFile => existingFile.name === file.name && existingFile.size === file.size
+      );
+
+      if (isDuplicate) {
+        toast.error(`${file.name} is already added`);
+        return;
       }
+
+      // Clear existing files and add the new single file
+      const newPendingFile: PendingFile = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        file,
+        status: 'pending'
+      };
+
+      // Replace any existing pending files with the new single file
+      onPendingFilesChange([newPendingFile]);
+      
+      // Also clear any existing uploaded files since we only allow one file per question
+      if (files.length > 0) {
+        onFilesChange([]);
+      }
+      
+      toast.success(`File selected for upload`);
 
     } catch (error) {
-      console.error('Error selecting files:', error);
-      toast.error('Failed to select files');
+      console.error('Error selecting file:', error);
+      toast.error('Failed to select file');
     } finally {
       setSelecting(false);
     }
@@ -89,14 +92,14 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
   };
 
   const handleRemoveFile = (fileToRemove: QuestionFile) => {
-    const updatedFiles = files.filter(file => file.id !== fileToRemove.id);
-    onFilesChange(updatedFiles);
+    // Since we only allow one file, clear all files when removing one
+    onFilesChange([]);
     toast.success('File removed successfully');
   };
 
   const handleRemovePendingFile = (fileToRemove: PendingFile) => {
-    const updatedPendingFiles = pendingFiles.filter(file => file.id !== fileToRemove.id);
-    onPendingFilesChange(updatedPendingFiles);
+    // Since we only allow one file, clear all pending files when removing one
+    onPendingFilesChange([]);
     toast.success('File removed successfully');
   };
 
@@ -116,7 +119,6 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
           type="file"
           id={`file-upload-${questionId}`}
           className="sr-only"
-          multiple
           onChange={handleFileSelect}
           disabled={selecting}
         />
@@ -131,72 +133,75 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
           ) : (
             <Upload className="h-4 w-4 mr-2" />
           )}
-          {selecting ? 'Selecting...' : 'Select Files (Max 30MB each)'}
+          {selecting ? 'Selecting...' : 'Select File (Max 30MB)'}
         </Label>
       </div>
 
-      {/* Files list */}
+      {/* Files list - Only show one file (single file per question) */}
       {(files.length > 0 || pendingFiles.length > 0) && (
         <div className="space-y-2">
-          <Label className="text-sm text-gray-600">Files:</Label>
+          <Label className="text-sm text-gray-600">File:</Label>
           <div className="space-y-1">
-            {/* Uploaded files */}
-            {files.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between bg-green-50 border border-green-200 rounded-md p-2"
-              >
-                <div className="flex items-center min-w-0 flex-1">
-                  <File className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      {formatFileSize(file.size)} • Uploaded
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveFile(file)}
-                  className="h-6 w-6 p-0 text-gray-500 hover:text-red-500 flex-shrink-0 ml-2"
+            {/* Show pending files first (if any), otherwise show uploaded files */}
+            {pendingFiles.length > 0 ? (
+              // Show pending file (new file being uploaded)
+              pendingFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-md p-2"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            
-            {/* Pending files */}
-            {pendingFiles.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between bg-yellow-50 border border-yellow-200 rounded-md p-2"
-              >
-                <div className="flex items-center min-w-0 flex-1">
-                  <Clock className="h-4 w-4 text-yellow-600 mr-2 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-yellow-600">
-                      {formatFileSize(file.size)} • Pending upload
-                    </p>
+                  <div className="flex items-center min-w-0 flex-1">
+                    <Clock className="h-4 w-4 text-yellow-600 mr-2 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-yellow-600">
+                        {formatFileSize(file.size)} • Pending upload
+                      </p>
+                    </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemovePendingFile(file)}
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-red-500 flex-shrink-0 ml-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemovePendingFile(file)}
-                  className="h-6 w-6 p-0 text-gray-500 hover:text-red-500 flex-shrink-0 ml-2"
+              ))
+            ) : (
+              // Show uploaded file (existing file)
+              files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between bg-green-50 border border-green-200 rounded-md p-2"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center min-w-0 flex-1">
+                    <File className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-green-600">
+                        {formatFileSize(file.size)} • Uploaded
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveFile(file)}
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-red-500 flex-shrink-0 ml-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

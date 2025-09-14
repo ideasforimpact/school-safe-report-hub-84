@@ -74,11 +74,14 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           tags: Array.isArray(resource.tags) ? resource.tags : [],
           uploadDate: resource.uploadDate,
           uploaderId: resource.uploaderId,
-          uploaderName: resource.uploaderName,
+          uploaderName: resource.uploaderName || (resource.uploaderId && user?.id === resource.uploaderId
+            ? formatUserFullName(user)
+            : 'Unknown'),
           ownerType: resource.ownerType,
           clientId: resource.clientId,
           resourceType: resource.resourceType,
           document_url: resource.document_url,
+          youtube_link: (resource as any)?.youtube_link as string | undefined,
           file: {
             id: `file-${resource.id}`,
             name: resource.title,
@@ -125,6 +128,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Process regular edusafe_resources
         (regularResources || []).forEach(record => {
+          const youtubeLink = (record as any)?.youtube_link as string | undefined;
           transformedResources.push({
             id: record.id,
             title: record.title,
@@ -133,11 +137,12 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
             uploadDate: record.created_at,
             uploaderId: record.uploaded_by || 'unknown',
-            uploaderName: 'User',
+            uploaderName: formatUserFullName(user),
             ownerType: 'school',
             clientId: record.client_id,
             resourceType: 'Organisational Resource',
             document_url: record.document_url,
+            youtube_link: youtubeLink,
             file: {
               id: `file-${record.id}`,
               name: record.title,
@@ -150,6 +155,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Process backoffice resources (Global Resources)
         backofficeResources.forEach(record => {
+          const youtubeLink = (record as any)?.youtube_link as string | undefined;
           transformedResources.push({
             id: `backoffice-${record.id}`,
             title: record.title,
@@ -158,11 +164,12 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
             uploadDate: record.created_at,
             uploaderId: record.uploaded_by || 'unknown',
-            uploaderName: 'Admin',
+            uploaderName: 'EduSafe Team',
             ownerType: 'saas',
             clientId: user.clientId, // Use user's client ID for compatibility
             resourceType: 'Global Resource',
             document_url: record.document_url,
+            youtube_link: youtubeLink,
             file: {
               id: `file-backoffice-${record.id}`,
               name: record.title,
@@ -178,6 +185,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
         );
 
+        console.log(transformedResources,"transformedResources");
+        
         setResources(transformedResources);
       }
     } catch (error) {

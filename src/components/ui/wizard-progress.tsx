@@ -33,7 +33,7 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
     <div className="w-full py-4">
       <div className="flex items-center justify-between">
         {steps.map((step, index) => (
-          <React.Fragment key={index}>
+          <React.Fragment key={`step-${index}`}>
             <div className="flex flex-col items-center">
               <button
                 onClick={() => handleStepClick(index)}

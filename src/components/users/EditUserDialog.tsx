@@ -12,6 +12,8 @@ import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -46,6 +48,8 @@ const EditUserDialog = ({
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const { clientId } = useEmployeeData();
+  const { state: employeeState } = useEmployeeStore();
+  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
   
   // Initialize selected modules from formData when dialog opens
   useEffect(() => {
@@ -216,8 +220,12 @@ const EditUserDialog = ({
                   value={formData.employeeId || ''}
                   onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                   maxLength={15}
-                  readOnly
+                  required
+                  className={formData.employeeId && !isValidEmployeeId(formData.employeeId) ? 'border-red-500' : ''}
                 />
+                {formData.employeeId && formData.employeeId.length > 15 && (
+                  <p className="text-xs text-red-500">Employee ID cannot exceed 15 characters</p>
+                )}
                 {formData.employeeId && !isValidEmployeeId(formData.employeeId) && (
                   <p className="text-xs text-red-500">Employee ID must be alphanumeric and maximum 15 characters</p>
                 )}
@@ -279,6 +287,7 @@ const EditUserDialog = ({
                 selectedModules={selectedModules}
                 onModuleChange={handleModuleChange}
                 employeeId={formData.employeeId}
+                isSuperAdmin={isSuperAdmin}
               />
             </div>
           </div>

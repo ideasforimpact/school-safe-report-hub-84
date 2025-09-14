@@ -100,7 +100,8 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
   // Get helper text based on document type
   const getHelperText = () => {
     if (documentType === 'bank_account') {
-      return 'Supported format: PDF only • Max file size: 5MB';
+      // For manual verification we allow any file type
+      return 'Supported formats: Any • Max file size: 5MB';
     }
     return 'Supported formats: JPG, PNG, PDF • Max file size: 5MB';
   };

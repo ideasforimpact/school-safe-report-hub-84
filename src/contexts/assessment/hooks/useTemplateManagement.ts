@@ -3,29 +3,39 @@ import { useState, useEffect } from 'react';
 import { AssessmentTemplate } from '@/types/assessment';
 import { toast } from 'sonner';
 import { templateService } from '@/services/assessment/templateService';
+import { useAuth } from '@/contexts/auth';
 
 export const useTemplateManagement = (userId?: string) => {
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
+  const { employeeData } = useAuth();
 
   // Load templates from Supabase
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const data = await templateService.getTemplates();
+      
+      if (!employeeData?.clientId) {
+        throw new Error('Client ID not available. Please ensure you are properly authenticated.');
+      }
+      
+      const data = await templateService.getTemplates(employeeData.clientId);
       console.log('Loaded templates:', data);
       setTemplates(data);
     } catch (error) {
       console.error('Failed to load templates:', error);
-      toast.error('Failed to load templates');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load templates';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTemplates();
-  }, []);
+    if (employeeData?.clientId) {
+      loadTemplates();
+    }
+  }, [employeeData?.clientId]);
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {

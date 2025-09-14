@@ -10,9 +10,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Image } from 'lucide-react';
+import { Download, FileText, Image, Play } from 'lucide-react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { formatFileSize } from '@/utils/fileUtils';
+import { extractYouTubeVideoId, getYouTubeEmbedUrl } from '@/utils/youtubeUtils';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 
 interface ResourcePreviewDialogProps {
@@ -60,6 +61,11 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
   const fileType = getFileType();
   const isImage = fileType === 'image';
   const isPdf = fileType === 'pdf';
+  
+  // Check if this is a YouTube resource
+  const isYouTubeResource = resource.category === 'youtube' && resource.youtube_link;
+  const youtubeVideoId = isYouTubeResource ? extractYouTubeVideoId(resource.youtube_link) : null;
+  const youtubeEmbedUrl = youtubeVideoId ? getYouTubeEmbedUrl(youtubeVideoId) : null;
 
   // Get the source URL for display
   const getSourceUrl = () => {
@@ -78,9 +84,36 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 
         <div className="py-4 space-y-4">
           <div className="space-y-2">
-            <h4 className="text-sm font-medium text-left">Document Preview</h4>
+            <h4 className="text-sm font-medium text-left">
+              {isYouTubeResource ? 'Video Preview' : 'Document Preview'}
+            </h4>
             
-            {isImage ? (
+            {isYouTubeResource && youtubeEmbedUrl ? (
+              <div className="flex justify-center border rounded-md p-4 bg-gray-50">
+                <div className="w-full">
+                  <iframe
+                    src={youtubeEmbedUrl}
+                    title={resource.title}
+                    className="w-full h-[400px] border-0 rounded-lg"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    onError={() => {
+                      console.error('Error loading YouTube video');
+                    }}
+                  />
+                  <div className="mt-2 text-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.open(resource.youtube_link, '_blank', 'noopener,noreferrer')}
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Watch on YouTube
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : isImage ? (
               <div className="flex justify-center border rounded-md p-4 bg-gray-50">
                 <img 
                   src={getSourceUrl()}
@@ -130,20 +163,54 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
           </div>
 
           <div className="space-y-2 text-left">
-            <h4 className="text-sm font-medium">Document Information</h4>
+            <h4 className="text-sm font-medium">
+              {isYouTubeResource ? 'Video Information' : 'Document Information'}
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500">File Name</p>
-                <p>{resource.file?.name || resource.document_url?.split('/').pop()}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">File Size</p>
-                <p>{formatFileSize(resource.file?.size || 0)}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">File Type</p>
-                <p>{resource.file?.type || fileType.toUpperCase()}</p>
-              </div>
+              {isYouTubeResource ? (
+                <>
+                  <div>
+                    <p className="text-gray-500">Video Title</p>
+                    <p>{resource.title}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">YouTube Link</p>
+                    <p className="truncate">
+                      <a 
+                        href={resource.youtube_link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {resource.youtube_link}
+                      </a>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Video ID</p>
+                    <p>{youtubeVideoId || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Resource Type</p>
+                    <p>YouTube Video</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-gray-500">File Name</p>
+                    <p>{resource.file?.name || resource.document_url?.split('/').pop()}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">File Size</p>
+                    <p>{formatFileSize(resource.file?.size || 0)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">File Type</p>
+                    <p>{resource.file?.type || fileType.toUpperCase()}</p>
+                  </div>
+                </>
+              )}
               <div>
                 <p className="text-gray-500">Upload Date</p>
                 <p>{new Date(resource.uploadDate).toLocaleDateString()}</p>
@@ -186,10 +253,17 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
         </div>
 
         <DialogFooter>
-          <Button onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
+          {isYouTubeResource ? (
+            <Button onClick={() => window.open(resource.youtube_link, '_blank', 'noopener,noreferrer')}>
+              <Play className="h-4 w-4 mr-2" />
+              Watch on YouTube
+            </Button>
+          ) : (
+            <Button onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

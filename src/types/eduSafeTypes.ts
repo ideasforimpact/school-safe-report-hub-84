@@ -1,7 +1,7 @@
 
 import { FileItem } from './fileTypes';
 
-export type ResourceCategory = 'posters' | 'procedures' | 'guidelines' | 'forms' | 'other';
+export type ResourceCategory = 'posters' | 'procedures' | 'guidelines' | 'forms' | 'youtube' | 'other';
 
 export interface EduSafeResource {
   id: string;
@@ -16,5 +16,6 @@ export interface EduSafeResource {
   clientId?: string;
   resourceType: 'Organisational Resource' | 'Global Resource';
   document_url: string; // Direct URL to the file in Supabase storage
+  youtube_link?: string; // YouTube URL for video resources
   file?: FileItem; // Optional for backward compatibility
 }

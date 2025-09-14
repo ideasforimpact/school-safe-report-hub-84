@@ -31,19 +31,12 @@ const IncidentDocumentUploader: React.FC<IncidentDocumentUploaderProps> = ({
 
     setIsUploading(true);
     try {
-      // Upload files using the new hierarchical structure
-      const uploadedDocs = await incidentDocumentService.uploadFiles(
+      // Upload files and update incident in one operation using edge function
+      const uploadedDocs = await incidentDocumentService.uploadFilesAndUpdateIncident(
         incidentId,
         user.clientId,
         selectedFiles
       );
-
-      // Get existing documents and combine
-      const existingDocs = await incidentDocumentService.getIncidentDocuments(incidentId);
-      const allDocuments = [...existingDocs, ...uploadedDocs];
-
-      // Update incident with all documents
-      await incidentDocumentService.updateIncidentDocuments(incidentId, allDocuments);
 
       setSelectedFiles([]);
       onDocumentsUploaded?.(uploadedDocs.length);

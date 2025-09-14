@@ -80,6 +80,30 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       documents.filter(doc => doc.documentTypeName?.toLowerCase().includes('driving')));
   }, [documents]);
 
+  // Function to sort documents by verification status priority
+  const sortDocumentsByStatus = (docs: VerificationDocument[]): VerificationDocument[] => {
+    const statusPriority = {
+      'pending': 1,
+      'in-progress': 2,
+      'verified': 3,
+      'completed': 4,
+      'failed': 5,
+      'rejected': 6
+    };
+
+    return [...docs].sort((a, b) => {
+      const priorityA = statusPriority[a.verificationStatus] || 999;
+      const priorityB = statusPriority[b.verificationStatus] || 999;
+      
+      // If same priority, sort by creation date (newest first)
+      if (priorityA === priorityB) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      
+      return priorityA - priorityB;
+    });
+  };
+
   const handleViewDocument = (documentImage: string) => {
     if (!documentImage) {
       toast({
@@ -212,32 +236,26 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     console.log('DocumentsTable - Badge clicked for document:', doc);
     console.log('DocumentsTable - cron_log data:', doc.cronLog);
     
-    const statusName = getDocumentStatusName(doc);
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    
-    // Check if this is a governance verified document with logs
-    if (doc.verificationStatus !== 'verified' || statusName !== 'governance' || !hasLogs) {
-      console.log('DocumentsTable - Not governance verified or no logs, showing info toast');
-      if (statusName && doc.verificationStatus === 'verified') {
-        toast({
-          title: "Information",
-          description: `This document is verified with status: ${statusName}`
-        });
-      }
-      return;
-    }
+    const apiResponse: any = (doc as any).api_response_data;
     
     const docType = doc.documentTypeName?.toLowerCase();
     console.log('DocumentsTable - Document type (lowercase):', docType);
     setSelectedDocumentId(doc.id);
     
     if (docType?.includes('aadhar')) {
-      // Find the most recent successful verification log for Aadhar
+      if (apiResponse) {
+        setSelectedDocumentDetails({
+          timestamp: (doc as any).api_verification_date || doc.updatedAt,
+          action: 'api_verification',
+          response: apiResponse
+        });
+      } else if (hasLogs) {
       const verificationLog = doc.employee_docs_log
-        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+          .filter(log => log.action === 'verify_aadhar_otp' && log.response)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      
       setSelectedDocumentDetails(verificationLog || doc.employee_docs_log[0]);
+      }
       setDialogOpen(true);
       toast({
         title: "Viewing Aadhar verification details",
@@ -245,92 +263,61 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       });
     } 
     else if (docType === 'pan') {
-      // Find PAN verification log
-      const panVerificationLog = doc.employee_docs_log.find(log => 
-        log.action === 'verify_pan_api' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
+      if (apiResponse) {
+        setSelectedPanDetails(apiResponse);
+        setPanDialogOpen(true);
+        toast({ title: "Viewing PAN verification details", description: "Showing verification information for this document." });
+      } else if (hasLogs) {
+        const panVerificationLog = doc.employee_docs_log.find(log => log.action === 'verify_pan_api' && log.response);
       if (panVerificationLog) {
         setSelectedPanDetails(panVerificationLog.response);
         setPanDialogOpen(true);
-        toast({
-          title: "Viewing PAN verification details",
-          description: "Showing verification information for this document."
-        });
+          toast({ title: "Viewing PAN verification details", description: "Showing verification information for this document." });
+        }
       }
     }
     else if (docType === 'voter_id') {
-      // Find Voter ID verification log
-      const voterIdVerificationLog = doc.employee_docs_log.find(log => 
-        log.action === 'verify_voter_id_api' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
+      if (apiResponse) {
+        setSelectedVoterIdDetails(apiResponse);
+        setVoterIdDialogOpen(true);
+        toast({ title: "Viewing Voter ID verification details", description: "Showing verification information for this document." });
+      } else if (hasLogs) {
+        const voterIdVerificationLog = doc.employee_docs_log.find(log => log.action === 'verify_voter_id_api' && log.response);
       if (voterIdVerificationLog) {
         setSelectedVoterIdDetails(voterIdVerificationLog.response);
         setVoterIdDialogOpen(true);
-        toast({
-          title: "Viewing Voter ID verification details",
-          description: "Showing verification information for this document."
-        });
+          toast({ title: "Viewing Voter ID verification details", description: "Showing verification information for this document." });
+        }
       }
     }
     else if (docType?.includes('driving') || docType?.includes('license')) {
-      console.log('DocumentsTable - This is a driving license document');
-      console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
-      
-      // Attempt to find any log with driving license verification data
-      const drivingLicenseLog = doc.employee_docs_log?.find(log => 
-        (log.action?.includes('driving') || log.action?.includes('license')) && 
-        log.response
-      );
-      
-      console.log('DocumentsTable - Found driving license log:', drivingLicenseLog);
-      
-      if (drivingLicenseLog) {
-        // Set the driving license details and open the dialog
-        setSelectedDrivingLicenseDetails(drivingLicenseLog.response);
+      if (apiResponse) {
+        setSelectedDrivingLicenseDetails(apiResponse);
         setDrivingLicenseDialogOpen(true);
-        
-        toast({
-          title: "Viewing Driving License verification details",
-          description: "Showing verification information for this document."
-        });
+        toast({ title: "Viewing Driving License verification details", description: "Showing verification information for this document." });
+      } else if (hasLogs) {
+        const drivingLicenseLog = doc.employee_docs_log?.find(log => (log.action?.includes('driving') || log.action?.includes('license')) && log.response);
+        if (drivingLicenseLog) {
+          setSelectedDrivingLicenseDetails(drivingLicenseLog.response);
+          setDrivingLicenseDialogOpen(true);
+          toast({ title: "Viewing Driving License verification details", description: "Showing verification information for this document." });
+        }
       }
     }
     else if (docType === 'bank account' || docType?.includes('bank')) {
-      console.log('DocumentsTable - This is a bank account document');
-      console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
-      
-      // Find the bank verification log specifically
-      const bankVerificationLog = doc.employee_docs_log?.find(log => 
-        log.action === 'bank_verification' && 
-        log.response?.success === true && 
-        log.response?.status_code === 200
-      );
-      
-      console.log('DocumentsTable - Looking for bank verification log');
-      console.log('DocumentsTable - Available logs:', doc.employee_docs_log?.map(log => log.action));
-      console.log('DocumentsTable - Found bank verification log:', bankVerificationLog);
-      
-      if (bankVerificationLog) {
-        // console.log('DocumentsTable - Opening Bank Statement dialog with bank_verification log');
-        setSelectedBankStatementDetails(bankVerificationLog.response);
+      if (apiResponse) {
+        setSelectedBankStatementDetails(apiResponse);
         setBankStatementDialogOpen(true);
-        
-        toast({
-          title: "Viewing Bank Account verification details",
-          description: "Showing verification information for this document."
-        });
+        toast({ title: "Viewing Bank Account verification details", description: "Showing verification information for this document." });
+      } else if (hasLogs) {
+        const bankVerificationLog = doc.employee_docs_log?.find(log => log.action === 'bank_verification' && log.response);
+        if (bankVerificationLog) {
+          setSelectedBankStatementDetails(bankVerificationLog.response);
+          setBankStatementDialogOpen(true);
+          toast({ title: "Viewing Bank Account verification details", description: "Showing verification information for this document." });
       } else {
-        console.log('DocumentsTable - No bank_verification log found');
-        toast({
-          title: "No verification details",
-          description: "No bank verification details available for this document."
-        });
+          toast({ title: "No verification details", description: "No bank verification details available for this document." });
+        }
       }
     }
   };
@@ -424,11 +411,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               {/* <TableHead>Uploaded</TableHead> */}
               <TableHead>Status</TableHead>
               <TableHead className="w-80">Verified by</TableHead>
-              <TableHead className="w-80 text-center">Actions</TableHead>
+              <TableHead className="w-80 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {documents.map((doc) => {
+            {sortDocumentsByStatus(documents).map((doc) => {
               const statusName = getDocumentStatusName(doc);
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
@@ -489,7 +476,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         status={doc.verificationStatus} 
                         documentStatusName={statusName}
                         isGovernance={isGovernanceVerified}
-                        onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                        onClick={doc.verificationStatus === 'pending' ? undefined : () => handleBadgeClick(doc)}
                         documentLogs={doc.employee_docs_log}
                         documentId={doc.id}
                         documentType={docType}
@@ -546,22 +533,29 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   
                   {/* Actions Column */}
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     {(() => {
-                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual';
-                      const hasVerifyManual = onQuickVerify && docType !== 'manual';
+                      // Check if document is verified via API method
+                      const isApiVerified = doc.verificationStatus === 'verified' && 
+                        (doc.verificationMethod === 'api' || 
+                         doc.apiVerificationStatus === 'completed' || 
+                         doc.apiResponseData);
+                      
+                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual' && !isApiVerified;
+                      const hasVerifyManual = onQuickVerify && docType !== 'manual' && !isApiVerified;
                       
                       // Special handling for manual documents
                       if (docType === 'manual') {
+                        const docUrl = (doc.params as any)?.document_url || doc.documentImage;
                         return (
-                          <div className="flex items-center justify-center space-x-2">
+                          <div className="flex items-center justify-end space-x-2 w-full">
                             {/* View and Download buttons - only if document has URL */}
-                            {doc.documentImage && (
+                            {docUrl && (
                               <>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleViewDocument(doc.documentImage)}
+                                  onClick={() => handleViewDocument(docUrl)}
                                   title="View Document"
                                   className="h-8 w-8 p-0"
                                 >
@@ -570,7 +564,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleDownloadDocument(doc.documentImage)}
+                                  onClick={() => handleDownloadDocument(docUrl)}
                                   title="Download Document"
                                   className="h-8 w-8 p-0"
                                 >
@@ -633,28 +627,33 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     )}
 
                             {/* Actions Menu Dropdown */}
+                            {(() => { const docUrl = (doc.params as any)?.document_url || doc.documentImage; return (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" title="More actions">
+                                <Button variant="outline" size="sm" title="More actions" className="ml-auto">
                                   <MoreVertical className="h-4 w-4" />
                                   <span className="sr-only">More actions</span>
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-40 bg-white border shadow-lg z-50">
-                                <DropdownMenuItem 
-                                  onClick={() => handleViewDocument(doc.documentImage)}
-                                  className="cursor-pointer"
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  onClick={() => handleDownloadDocument(doc.documentImage)}
-                                  className="cursor-pointer"
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </DropdownMenuItem>
+                                {docUrl && (
+                                  <>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleViewDocument(docUrl)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDownloadDocument(docUrl)}
+                                      className="cursor-pointer"
+                                    >
+                                      <Download className="h-4 w-4 mr-2" />
+                                      Download
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   onClick={() => openDeleteDialog(doc.id)}
@@ -665,13 +664,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                            ); })()}
                           </div>
                         );
                       } 
                       
                       // If no Verify API, use right alignment for Verify Manual and menu
                       return (
-                        <div className="flex items-center justify-center space-x-2">
+                        <div className="flex items-center justify-end space-x-2 w-full">
                           {hasVerifyManual && (
       <Button
         variant="verifyManual"
@@ -700,26 +700,30 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                        {/* Actions Menu Dropdown */}
                        <DropdownMenu>
                          <DropdownMenuTrigger asChild>
-                           <Button variant="outline" size="sm" title="More actions">
+                           <Button variant="outline" size="sm" title="More actions" className="ml-auto">
                              <MoreVertical className="h-4 w-4" />
                              <span className="sr-only">More actions</span>
                            </Button>
                          </DropdownMenuTrigger>
                          <DropdownMenuContent align="end" className="w-40 bg-white border shadow-lg z-50">
-                           <DropdownMenuItem 
-                             onClick={() => handleViewDocument(doc.documentImage)}
-                             className="cursor-pointer"
-                           >
-                             <Eye className="h-4 w-4 mr-2" />
-                             View
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             onClick={() => handleDownloadDocument(doc.documentImage)}
-                             className="cursor-pointer"
-                           >
-                             <Download className="h-4 w-4 mr-2" />
-                             Download
-                           </DropdownMenuItem>
+                           {(doc.documentImage || (doc.params as any)?.document_url) && (
+                             <>
+                               <DropdownMenuItem 
+                                 onClick={() => handleViewDocument((doc.params as any)?.document_url || doc.documentImage)}
+                                 className="cursor-pointer"
+                               >
+                                 <Eye className="h-4 w-4 mr-2" />
+                                 View
+                               </DropdownMenuItem>
+                               <DropdownMenuItem 
+                                 onClick={() => handleDownloadDocument((doc.params as any)?.document_url || doc.documentImage)}
+                                 className="cursor-pointer"
+                               >
+                                 <Download className="h-4 w-4 mr-2" />
+                                 Download
+                               </DropdownMenuItem>
+                             </>
+                           )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => openDeleteDialog(doc.id)}
@@ -746,6 +750,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         aadharDetails={selectedDocumentDetails}
+        readOnly
       />
       
       <PanDetailsDialog
@@ -753,6 +758,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         onOpenChange={setPanDialogOpen}
         panDetails={selectedPanDetails}
         documentId={selectedDocumentId}
+        readOnly
       />
       
       <VoterIdDetailsDialog
@@ -760,6 +766,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         onOpenChange={setVoterIdDialogOpen}
         voterIdDetails={selectedVoterIdDetails}
         documentId={selectedDocumentId}
+        readOnly
       />
       
       <DrivingLicenseDetailsDialog
@@ -767,6 +774,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         onOpenChange={setDrivingLicenseDialogOpen}
         licenseDetails={selectedDrivingLicenseDetails}
         documentId={selectedDocumentId}
+        readOnly
       />
       
       <BankStatementDetailsDialog
@@ -774,6 +782,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         onOpenChange={setBankStatementDialogOpen}
         statementDetails={selectedBankStatementDetails}
         documentId={selectedDocumentId}
+        readOnly
       />
 
       {/* Comments Dialog */}

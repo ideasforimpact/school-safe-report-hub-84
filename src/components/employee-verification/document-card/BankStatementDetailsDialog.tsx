@@ -28,6 +28,7 @@ interface BankStatementDetailsDialogProps {
   statementDetails: any;
   documentId?: string;
   onVerificationUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
@@ -35,7 +36,8 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   onOpenChange,
   statementDetails,
   documentId,
-  onVerificationUpdate
+  onVerificationUpdate,
+  readOnly = false
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -234,10 +236,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   };
   
   return (
-    <Dialog open={open} onOpenChange={(newOpenState) => {
-      // console.log('BankStatementDetailsDialog - Dialog open state changing to:', newOpenState);
-      onOpenChange(newOpenState);
-    }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
@@ -411,6 +410,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
           </div>
         )}
 
+        {!readOnly && (
         <DialogFooter className="flex justify-end gap-3 pt-4 border-t mt-auto">
           {showRejectForm ? (
             <>
@@ -464,6 +464,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
             </>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

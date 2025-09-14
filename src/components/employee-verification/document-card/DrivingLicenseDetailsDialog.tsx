@@ -27,6 +27,7 @@ interface DrivingLicenseDetailsDialogProps {
   licenseDetails: any;
   documentId?: string;
   onVerificationUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = ({
@@ -34,7 +35,8 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   onOpenChange,
   licenseDetails,
   documentId,
-  onVerificationUpdate
+  onVerificationUpdate,
+  readOnly = false
 }) => {
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -46,6 +48,14 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   // Extract relevant information from the driving license response
   const data = licenseDetails?.data || {};
   const isSuccessful = licenseDetails?.success && licenseDetails?.status_code === 200;
+  
+  // Prepare profile image source supporting URL or raw base64 string
+  const profileImageSrc = (() => {
+    const value = (data as any)?.profile_image || (data as any)?.photo || (data as any)?.image || (data as any)?.image_url;
+    if (!value || typeof value !== 'string') return undefined;
+    if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
+    return `data:image/jpeg;base64,${value}`;
+  })();
   
   // Comprehensive debugging logs
   // console.log('DrivingLicenseDetailsDialog - Dialog open state:', open);
@@ -170,10 +180,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   };
   
   return (
-    <Dialog open={open} onOpenChange={(newOpenState) => {
-      // console.log('DrivingLicenseDetailsDialog - Dialog open state changing to:', newOpenState);
-      onOpenChange(newOpenState);
-    }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
@@ -192,6 +199,20 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
         <ScrollArea className="h-[400px] rounded-md border">
           {(isSuccessful || Object.keys(data).length > 0) ? (
             <div className="p-4">
+              {profileImageSrc && (
+                <div className="flex justify-center mb-4">
+                  <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                    <img 
+                      src={profileImageSrc} 
+                      alt="Driving License Profile" 
+                      className="w-32 h-32 object-cover"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -200,12 +221,17 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(data).map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell className="font-medium">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableCell>
-                      <TableCell>{String(value)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {Object.entries(data)
+                    .filter(([key]) => ![
+                      'profile_image', 'photo', 'image', 'image_url',
+                      'client_id', 'has_image', 'less_info', 'doi', 'current_status', 'additional_check'
+                    ].includes(key))
+                    .map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell className="font-medium">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableCell>
+                        <TableCell>{String(value)}</TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </div>
@@ -244,6 +270,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
           </div>
         )}
 
+        {!readOnly && (
         <DialogFooter className="flex gap-3 pt-4 border-t">
           {showRejectForm ? (
             <>
@@ -299,6 +326,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
             </>
           )}
         </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

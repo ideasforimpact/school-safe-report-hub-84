@@ -149,7 +149,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
     
-    // Filter out the verification_log, last_response, status, challan_details, and clientId fields
+    // Filter out the verification_log, last_response, status, challan_details, client identifiers,
+    // and noisy metadata like response_metadata or less_info
     let finalResponse = data
       .filter((item: any) => {
         const fieldName = item.field.toLowerCase();
@@ -157,8 +158,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                fieldName !== 'last_response' && 
                fieldName !== 'status' && 
                fieldName !== 'challan_details' &&
+               fieldName !== 'client_id' &&
+               fieldName !== 'clientid' &&
+               !fieldName.includes('client id') &&
+               !fieldName.includes('client_id') &&
                !fieldName.includes('client') &&
-               !fieldName.includes('clientid');
+               fieldName !== 'response_metadata' &&
+               !fieldName.includes('response metadata') &&
+               fieldName !== 'less_info' &&
+               !fieldName.includes('less info');
       })
       .map((item: any) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 

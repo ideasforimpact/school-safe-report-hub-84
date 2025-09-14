@@ -22,12 +22,28 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
   // Use direct client object from employeeData
   const userClient = employeeData?.client || null;
 
+  // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
+  const employeeComplianceScore = stats.totalEmployees > 0 
+    ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees)) 
+    : 0;
+
+  // Calculate Vehicle Compliance score = 100 * (number of verified vehicles / number of vehicles)
+  const vehicleComplianceScore = stats.totalVehicles > 0 
+    ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles)) 
+    : 0;
+
+  // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
+  const incidentsScore = Math.max(100 - 20 * stats.openIncidents, 0);
+
+  // Calculate Assessment Activity Score
+  const assessmentActivityScore = stats.activeAssessments ? Math.min(100, (stats.activeAssessments / 10) * 100) : 0;
+
   // Overall Safety Score (same formula as gauges)
   const overallSafetyScore = Math.round(
-    (0.3 * (stats.totalEmployees || 0)) +
-    (0.2 * (stats.totalVehicles || 0)) +
-    (0.15 * (stats.activeAssessments || 0)) +
-    (0.20 * stats.openIncidents)
+    (0.3 * employeeComplianceScore) + 
+    (0.2 * vehicleComplianceScore) + 
+    (0.15 * assessmentActivityScore) + 
+    (0.20 * incidentsScore)
   );
 
   const getScoreInfo = (score: number) => {

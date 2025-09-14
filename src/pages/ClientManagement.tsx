@@ -34,6 +34,7 @@ const ClientManagement = () => {
     resetForm,
     handleAddDialogOpen,
     modulesLoading,
+    editLoading,
     statusFilter,
     setStatusFilter
   } = useClientManagement();
@@ -114,7 +115,7 @@ const ClientManagement = () => {
           resetForm();
         }}
         isEdit={true}
-        isLoading={loading}
+        isLoading={loading || editLoading}
       />
     </Layout>
   );
