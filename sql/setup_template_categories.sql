@@ -12,3 +12,4 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Verify the categories were created
 SELECT * FROM template_categories ORDER BY name;
+
