@@ -33,9 +33,10 @@ interface BasicInfoTabProps {
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  showErrors?: boolean;
 }
 
-const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabProps) => {
+const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,6 +147,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           maxLength={50}
           required
         />
+        {showErrors && !formData.name && (
+          <p className="text-xs text-red-600">Client name is required.</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -168,6 +172,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
             ))}
           </SelectContent>
         </Select>
+        {showErrors && !formData.clientTypeId && (
+          <p className="text-xs text-red-600">Client type is required.</p>
+        )}
       </div>
       
       <div className="space-y-2">
@@ -190,6 +197,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
             ))}
           </SelectContent>
         </Select>
+        {showErrors && !formData.institutionType && (
+          <p className="text-xs text-red-600">Institution type is required.</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -205,6 +215,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           inputMode="email"
           required
         />
+        {showErrors && !formData.superAdminEmail && (
+          <p className="text-xs text-red-600">Super admin email is required.</p>
+        )}
       </div>
       
       <div className="space-y-2">
@@ -219,6 +232,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           maxLength={20}
           required
         />
+        {showErrors && !formData.contactPerson && (
+          <p className="text-xs text-red-600">Contact person is required.</p>
+        )}
       </div>
       <div className="space-y-2">
         <RequiredFieldLabel>
@@ -233,6 +249,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           inputMode="email"
           required
         />
+        {showErrors && !formData.email && (
+          <p className="text-xs text-red-600">Email is required.</p>
+        )}
       </div>
       <div className="space-y-2">
         <RequiredFieldLabel>
@@ -249,6 +268,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           placeholder="Enter phone number"
           required
         />
+        {showErrors && !formData.phone && (
+          <p className="text-xs text-red-600">Phone is required.</p>
+        )}
       </div>
 
       <div className="flex items-center space-x-2 pt-2">

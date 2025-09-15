@@ -13,7 +13,7 @@ interface AuthProvidersSectionProps {
 const AuthProvidersSection = ({ authProviders, onProviderChange }: AuthProvidersSectionProps) => {
   return (
     <div className="space-y-2 border-t pt-4 mt-4">
-      <label className="font-medium">Authentication Providers</label>
+      <label className="font-medium">Authentication Providers <span className="text-red-500">*</span></label>
       <p className="text-sm text-gray-500">
         Select which authentication providers this client can use for login
       </p>

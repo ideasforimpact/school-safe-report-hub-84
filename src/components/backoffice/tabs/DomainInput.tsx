@@ -23,7 +23,7 @@ const DomainInput = ({ domains, onAdd, onRemove }: DomainInputProps) => {
 
   return (
     <div className="space-y-2">
-      <label className="font-medium">Allowed Email Domains</label>
+      <label className="font-medium">Allowed Email Domains <span className="text-red-500">*</span></label>
       <p className="text-sm text-gray-500">
         Only users with email addresses from these domains can access this client's portal
       </p>

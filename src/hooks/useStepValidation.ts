@@ -8,6 +8,7 @@ export const useStepValidation = (formData: ClientFormData) => {
   const isValidPhone = (phone?: string) => !!phone && /[0-9+()\-\s]{7,20}/.test(phone);
 
   const validateStep1 = useMemo(() => {
+    // Presence-only validation for smoother UX on step navigation
     const hasRequired = !!(
       formData.name &&
       formData.email &&
@@ -17,15 +18,7 @@ export const useStepValidation = (formData: ClientFormData) => {
       formData.clientTypeId &&
       formData.institutionType
     );
-    if (!hasRequired) return false;
-
-    // Field-specific rules
-    if (formData.name.length > 50) return false;
-    if (formData.contactPerson.length > 20) return false;
-    if (!isValidEmail(formData.email)) return false;
-    if (!isValidEmail(formData.superAdminEmail)) return false;
-    if (!isValidPhone(formData.phone)) return false;
-    return true;
+    return hasRequired;
   }, [
     formData.name,
     formData.email,
@@ -41,13 +34,12 @@ export const useStepValidation = (formData: ClientFormData) => {
   }, [formData.moduleInfoArray]);
 
   const validateStep3 = useMemo(() => {
-    // Check if user has configured any authentication settings
-    const hasAllowedDomains = formData.allowedDomains && formData.allowedDomains.length > 0;
-    const hasSuperAdminDomains = formData.superAdminAllowedDomains && formData.superAdminAllowedDomains.length > 0;
-    const hasAuthProviders = formData.authProviders && Object.values(formData.authProviders).some(enabled => enabled === true);
-    
-    // Step 3 is valid if at least one authentication setting is configured
-    return hasAllowedDomains || hasSuperAdminDomains || hasAuthProviders;
+    // Require all three: at least one allowed domain, one super admin domain, and one auth provider enabled
+    const hasAllowedDomains = !!(formData.allowedDomains && formData.allowedDomains.length > 0);
+    const hasSuperAdminDomains = !!(formData.superAdminAllowedDomains && formData.superAdminAllowedDomains.length > 0);
+    const hasAuthProviders = !!(formData.authProviders && Object.values(formData.authProviders).some(enabled => enabled === true));
+
+    return hasAllowedDomains && hasSuperAdminDomains && hasAuthProviders;
   }, [formData.allowedDomains, formData.superAdminAllowedDomains, formData.authProviders]);
 
   const isStepValid = (step: number): boolean => {

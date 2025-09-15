@@ -8,13 +8,15 @@ interface WizardProgressProps {
   currentStep: number;
   completedSteps: number[];
   onStepClick?: (step: number) => void;
+  errorSteps?: number[];
 }
 
 const WizardProgress: React.FC<WizardProgressProps> = ({
   steps,
   currentStep,
   completedSteps,
-  onStepClick
+  onStepClick,
+  errorSteps = []
 }) => {
   const handleStepClick = (stepIndex: number) => {
     if (onStepClick) {
@@ -22,11 +24,9 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
     }
   };
 
-  const isStepClickable = (stepIndex: number) => {
-    // Step is clickable if it's completed, current, or the next step after current
-    return completedSteps.includes(stepIndex) || 
-           stepIndex === currentStep || 
-           stepIndex === currentStep + 1;
+  const isStepClickable = (_stepIndex: number) => {
+    // Always allow clicking; parent handler decides whether navigation is permitted
+    return true;
   };
 
   return (
@@ -43,6 +43,8 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
                   "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                   completedSteps.includes(index)
                     ? "bg-green-500 border-green-500 text-white"
+                    : currentStep === index && errorSteps.includes(index)
+                    ? "border-red-500 text-red-600 bg-red-50"
                     : currentStep === index
                     ? "border-primary text-primary bg-primary/10"
                     : "border-gray-300 text-gray-300",
@@ -59,10 +61,14 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
               <span
                 className={cn(
                   "mt-2 text-xs font-medium text-center max-w-20",
-                  currentStep === index
+                  currentStep === index && errorSteps.includes(index)
+                    ? "text-red-600"
+                    : currentStep === index
                     ? "text-primary"
                     : completedSteps.includes(index)
                     ? "text-green-600"
+                    : errorSteps.includes(index)
+                    ? "text-red-600"
                     : "text-gray-400"
                 )}
               >
@@ -75,6 +81,8 @@ const WizardProgress: React.FC<WizardProgressProps> = ({
                   "flex-1 h-0.5 mx-2 transition-all",
                   completedSteps.includes(index)
                     ? "bg-green-500"
+                    : errorSteps.includes(index)
+                    ? "bg-red-500"
                     : "bg-gray-300"
                 )}
               />
