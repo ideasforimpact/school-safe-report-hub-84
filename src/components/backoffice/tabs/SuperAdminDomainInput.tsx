@@ -23,7 +23,7 @@ const SuperAdminDomainInput = ({ domains, onAdd, onRemove }: SuperAdminDomainInp
 
   return (
     <div className="space-y-2 mt-6">
-      <label className="font-medium">Allowed Super Admin Email Domains</label>
+      <label className="font-medium">Allowed Super Admin Email Domains <span className="text-red-500">*</span></label>
       <p className="text-sm text-gray-500">
         Only super admins with email addresses from these domains can access this client's portal
       </p>

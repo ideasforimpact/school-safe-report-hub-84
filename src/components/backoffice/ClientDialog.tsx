@@ -44,6 +44,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(new Set());
   
   const { isStepValid, getCompletedSteps, canProceedToNext, canSubmit } = useStepValidation(formData);
 
@@ -51,6 +52,10 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(0);
+      setAttemptedSteps(new Set());
+    } else {
+      // Ensure residual validation state is cleared when dialog closes
+      setAttemptedSteps(new Set());
     }
   }, [isOpen]);
 
@@ -68,8 +73,12 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   };
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1 && canProceedToNext(currentStep)) {
-      setCurrentStep(currentStep + 1);
+    if (currentStep < steps.length - 1) {
+      if (canProceedToNext(currentStep)) {
+        setCurrentStep(currentStep + 1);
+      } else {
+        setAttemptedSteps(prev => new Set(prev).add(currentStep));
+      }
     }
   };
 
@@ -80,14 +89,29 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   };
 
   const handleStepClick = (stepIndex: number) => {
-    const completedSteps = getCompletedSteps();
-    
-    // Allow navigation to completed steps or the next valid step
-    if (completedSteps.includes(stepIndex) || 
-        stepIndex === currentStep || 
-        (stepIndex === currentStep + 1 && canProceedToNext(currentStep))) {
-      setCurrentStep(stepIndex);
+    if (stepIndex === currentStep) return;
+
+    // If leaving current step and it's invalid, mark it as attempted so errors show and header turns red
+    if (!isStepValid(currentStep)) {
+      setAttemptedSteps(prev => new Set(prev).add(currentStep));
     }
+
+    if (stepIndex < currentStep) {
+      setCurrentStep(stepIndex);
+      return;
+    }
+
+    // Forward navigation allowed, but flag any invalid previous steps
+    const invalidPrevSteps = Array.from({ length: stepIndex }, (_, i) => i)
+      .filter((i) => !isStepValid(i));
+    if (invalidPrevSteps.length > 0) {
+      setAttemptedSteps(prev => {
+        const next = new Set(prev);
+        invalidPrevSteps.forEach(s => next.add(s));
+        return next;
+      });
+    }
+    setCurrentStep(stepIndex);
   };
 
   const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
@@ -144,6 +168,17 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   };
 
   const isProcessing = isSubmitting || isLoading || modulesLoading;
+  const handleCancelClick = () => {
+    setAttemptedSteps(new Set());
+    onCancel();
+  };
+
+  // Mark as error any previous step that is invalid, plus any attempted invalid steps
+  const previousInvalidSteps = Array.from({ length: currentStep }, (_, i) => i).filter(step => !isStepValid(step));
+  const errorSteps = Array.from(new Set([
+    ...previousInvalidSteps,
+    ...Array.from(attemptedSteps).filter(step => !isStepValid(step))
+  ]));
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -153,6 +188,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             formData={safeFormData} 
             setFormData={setFormData} 
             handleLogoUpload={() => {}}
+            showErrors={attemptedSteps.has(0)}
           />
         );
       case 1:
@@ -173,6 +209,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             onAddSuperAdminDomain={addSuperAdminDomain}
             onRemoveSuperAdminDomain={removeSuperAdminDomain}
             onProviderChange={handleAuthProviderChange}
+            showErrors={attemptedSteps.has(2)}
           />
         );
       default:
@@ -200,6 +237,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           currentStep={currentStep}
           completedSteps={getCompletedSteps()}
           onStepClick={handleStepClick}
+          errorSteps={errorSteps}
         />
 
         {/* ModuleAccessTab handles its own loading state; avoid double overlays here */}
@@ -215,7 +253,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             <Button 
               type="button" 
               variant="outline" 
-              onClick={onCancel} 
+              onClick={handleCancelClick} 
               disabled={isProcessing}
             >
               Cancel
