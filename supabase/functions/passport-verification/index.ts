@@ -74,15 +74,37 @@ serve(async (req) => {
 
         const apiResponse = await response.json();
 
-        await supabase.from('employee_documents').update({
-          verification_status: 'pending',
-          employee_docs_log: [...existingLogs, { timestamp: new Date().toISOString(), action: 'verify_passport_api', response: apiResponse }]
-        }).eq('id', documentId);
+        // Always append a log entry
+        const logEntry = { timestamp: new Date().toISOString(), action: 'verify_passport_api', response: apiResponse };
+
+        // On success (status_code 200), persist api_* columns and keep verification pending
+        if (apiResponse?.success && apiResponse?.status_code === 200) {
+          await supabase.from('employee_documents').update({
+            verification_status: 'pending',
+            employee_docs_log: [...existingLogs, logEntry],
+            api_response_data: apiResponse,
+            api_verification_status: 'completed',
+            api_verification_method: 'api',
+            api_verification_date: new Date().toISOString()
+          }).eq('id', documentId);
+        } else {
+          // Failure path: mark API attempt and store response
+          await supabase.from('employee_documents').update({
+            employee_docs_log: [...existingLogs, logEntry],
+            api_response_data: apiResponse,
+            api_verification_status: 'failed',
+            api_verification_method: 'api',
+            api_verification_date: new Date().toISOString()
+          }).eq('id', documentId);
+        }
 
         return new Response(JSON.stringify({ success: true, data: apiResponse }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       } catch (error: any) {
         await supabase.from('employee_documents').update({
-          employee_docs_log: [...(document.employee_docs_log || []), { timestamp: new Date().toISOString(), action: 'verify_passport_api_error', response: { error: error.message } }]
+          employee_docs_log: [...(document.employee_docs_log || []), { timestamp: new Date().toISOString(), action: 'verify_passport_api_error', response: { error: error.message } }],
+          api_verification_status: 'failed',
+          api_verification_method: 'api',
+          api_verification_date: new Date().toISOString()
         }).eq('id', documentId);
 
         return new Response(JSON.stringify({ error: error.message || 'Passport API verification failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -100,6 +122,7 @@ serve(async (req) => {
       await supabase.from('employee_documents').update({
         document_status_id: governanceStatusId,
         verification_status: 'verified',
+        verified_by: verified_by_employee_id || null,
         employee_docs_log: [...logs, { timestamp: new Date().toISOString(), action: 'verify_passport_manual', notes: verification_notes || 'Document manually verified by staff.' }]
       }).eq('id', documentId);
 

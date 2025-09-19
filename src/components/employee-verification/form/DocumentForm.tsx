@@ -268,6 +268,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             <option value="bank_statement_analysis">Bank Statement Analysis</option>
             <option value="court_case_check">Court Case Check</option>
             <option value="police_verification">Police Verification</option>
+            <option value="drug_check">Drug Check</option>
           </select>
         </div>
 
@@ -329,12 +330,36 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             </CardContent>
           </Card>
         )}
+
+        {otherType === 'drug_check' && (
+          <Card className="border-2 border-dashed border-gray-300">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-medium mb-2">Drug Check</h3>
+              <p className="text-gray-600 mb-4">Submit a request for drug/background screening</p>
+              <Button
+                type="button"
+                onClick={() => handleDirectSubmission('drug_check')}
+                disabled={isProcessing}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Submit for Drug Check'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   };
 
   // Don't show the submit button for court case check, police verification, and custom documents
-  const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification');
+  const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check');
   const shouldShowForm = !isOtherDocuments; // Hide the default form for custom documents
 
   // If document already exists, show display mode instead of form

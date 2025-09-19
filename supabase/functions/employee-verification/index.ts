@@ -470,7 +470,7 @@ serve(async (req) => {
               .update({
                 employee_docs_log: [...existingLogs, logEntry],
                 api_response_data: data,
-                api_verification_status: 'complete',
+                api_verification_status: 'completed',
                 api_verification_method: 'api',
                 api_verification_date: new Date().toISOString(),
                 updated_at: new Date().toISOString()

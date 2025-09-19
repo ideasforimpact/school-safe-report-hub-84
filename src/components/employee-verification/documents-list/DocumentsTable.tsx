@@ -32,6 +32,7 @@ import PanDetailsDialog from '../document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
+import PassportDetailsDialog from '../document-card/PassportDetailsDialog';
 import DocumentCommentsDialog from '../DocumentCommentsDialog';
 
 interface DocumentsTableProps {
@@ -64,11 +65,13 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
   const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
+  const [passportDialogOpen, setPassportDialogOpen] = React.useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = React.useState(false);
   const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
   const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
   const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
   const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
+  const [selectedPassportDetails, setSelectedPassportDetails] = React.useState<any>(null);
   const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<any[]>([]);
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
   
@@ -276,6 +279,20 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         }
       }
     }
+    else if (docType === 'passport') {
+      if (apiResponse) {
+        setSelectedPassportDetails(apiResponse);
+        setPassportDialogOpen(true);
+        toast({ title: 'Viewing Passport verification details', description: 'Showing verification information for this document.' });
+      } else if (hasLogs) {
+        const passportLog = doc.employee_docs_log?.find(log => log.action === 'verify_passport_api' && log.response);
+        if (passportLog) {
+          setSelectedPassportDetails(passportLog.response);
+          setPassportDialogOpen(true);
+          toast({ title: 'Viewing Passport verification details', description: 'Showing verification information for this document.' });
+        }
+      }
+    }
     else if (docType === 'voter_id') {
       if (apiResponse) {
         setSelectedVoterIdDetails(apiResponse);
@@ -470,18 +487,31 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   {/* <TableCell>
                     {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
                   </TableCell> */}
-                  <TableCell>
+                  <TableCell className="w-[260px]">
                     <div className="flex items-center gap-2">
-                      <VerificationStatusBadge 
-                        status={doc.verificationStatus} 
-                        documentStatusName={statusName}
-                        isGovernance={isGovernanceVerified}
-                        onClick={doc.verificationStatus === 'pending' ? undefined : () => handleBadgeClick(doc)}
-                        documentLogs={doc.employee_docs_log}
-                        documentId={doc.id}
-                        documentType={docType}
-                        rejectReason={doc.rejectReason}
-                      />
+                      {(() => {
+                        const isGovApi = (doc as any).api_verification_method === 'api' 
+                          || doc.apiVerificationMethod === 'api' 
+                          || doc.apiVerificationStatus === 'completed';
+                        const labelOverride = isGovApi
+                          ? 'Verified by Government'
+                          : (doc.verifiedByEmployeeId ? 'Verified by Manual' : undefined);
+
+                        return (
+                          <VerificationStatusBadge 
+                            status={doc.verificationStatus} 
+                            documentStatusName={statusName}
+                            isGovernance={isGovernanceVerified}
+                            onClick={doc.verificationStatus === 'pending' ? undefined : () => handleBadgeClick(doc)}
+                            documentLogs={doc.employee_docs_log}
+                            documentId={doc.id}
+                            documentType={docType}
+                            rejectReason={doc.rejectReason}
+                            labelOverride={labelOverride}
+                            truncate={true}
+                          />
+                        );
+                      })()}
                       {/* Show comment icon for manual documents with verification history */}
                       {docType === 'manual' && hasVerificationHistory(doc) && (
                         <Button
@@ -494,12 +524,21 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           <MessageCircle className="h-4 w-4" />
                         </Button>
                       )}
+      {/* Passport Details Dialog */}
+      <PassportDetailsDialog
+        open={passportDialogOpen}
+        onOpenChange={setPassportDialogOpen}
+        passportDetails={selectedPassportDetails}
+        documentId={selectedDocumentId}
+        onVerificationUpdate={onDocumentAction}
+        readOnly={true}
+      />
                     </div>
                   </TableCell>
                   {/* Verified by Column */}
                   <TableCell>
                     {(() => {
-                      // For manual documents, show "Backoffice - date time" using latest verification history
+                      // For manual documents, show "SafeSchool - date time" using latest verification history
                       if (docType === 'manual') {
                         const history = (doc.params as any)?.verification_history;
                         if (Array.isArray(history) && history.length > 0) {
@@ -507,14 +546,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           const ts = latest?.timestamp || doc.updatedAt;
                           return (
                             <span className="text-sm text-gray-900">
-                              Backoffice{ts ? ` - ${format(new Date(ts), 'MMM dd, h:mm a')}` : ''}
+                              SafeSchool{ts ? ` - ${format(new Date(ts), 'MMM dd, h:mm a')}` : ''}
                             </span>
                           );
                         }
                         // Fallback to updatedAt if no history
                         if (doc.updatedAt) {
                           return (
-                            <span className="text-sm text-gray-900">Backoffice - {format(new Date(doc.updatedAt), 'MMM dd, h:mm a')}</span>
+                            <span className="text-sm text-gray-900">SafeSchool - {format(new Date(doc.updatedAt), 'MMM dd, h:mm a')}</span>
                           );
                         }
                         return <span className="text-muted-foreground">—</span>;
