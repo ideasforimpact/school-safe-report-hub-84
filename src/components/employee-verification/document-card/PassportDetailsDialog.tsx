@@ -45,13 +45,13 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
   
-  // Extract relevant information from the passport response
-  const data = passportDetails?.data || {};
+  // Extract relevant information from the passport response (normalize nested shapes)
+  const payload = (passportDetails?.data?.data ?? passportDetails?.data ?? {}) as any;
   const isSuccessful = passportDetails?.success && passportDetails?.status_code === 200;
   
   // Prepare profile image source supporting URL or raw base64 string
   const profileImageSrc = (() => {
-    const value = (data as any)?.profile_image || (data as any)?.photo || (data as any)?.image || (data as any)?.image_url;
+    const value = (payload as any)?.profile_image || (payload as any)?.photo || (payload as any)?.image || (payload as any)?.image_url;
     if (!value || typeof value !== 'string') return undefined;
     if (value.startsWith('http') || value.startsWith('https') || value.startsWith('data:')) return value;
     return `data:image/jpeg;base64,${value}`;
@@ -97,6 +97,9 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
         console.error('PassportDetailsDialog - Edge function error:', error);
         throw error;
       }
+
+      console.log(data,"poass");
+      
 
       if (data?.success) {
         // No toaster for approve action in detail dialog
@@ -153,6 +156,8 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
         console.error('PassportDetailsDialog - Edge function error:', error);
         throw error;
       }
+      console.log(data,"data");
+      
 
       if (data?.success) {
         // No toaster for reject action in detail dialog
@@ -192,12 +197,12 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
             )}
           </DialogTitle>
           <DialogDescription>
-            Details retrieved from government database for passport {data?.passport_number || data?.passport_no || passportDetails?.passport_number || 'verification'}
+            Details retrieved from government database for passport {payload?.passport_number || payload?.passport_no || passportDetails?.passport_number || 'verification'}
           </DialogDescription>
         </DialogHeader>
         
         <ScrollArea className="h-[400px] rounded-md border">
-          {(isSuccessful || Object.keys(data).length > 0) ? (
+          {(isSuccessful || Object.keys(payload).length > 0) ? (
             <div className="p-4">
               {profileImageSrc && (
                 <div className="flex justify-center mb-4">
@@ -213,6 +218,7 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
                   </div>
                 </div>
               )}
+              {/* User-facing summary table */}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -221,17 +227,19 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {Object.entries(data)
-                    .filter(([key]) => ![
-                      'profile_image', 'photo', 'image', 'image_url',
-                      'client_id', 'has_image', 'less_info', 'doi', 'current_status', 'additional_check'
-                    ].includes(key))
-                    .map(([key, value]) => (
-                      <TableRow key={key}>
-                        <TableCell className="font-medium">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</TableCell>
-                        <TableCell>{String(value)}</TableCell>
-                      </TableRow>
-                    ))}
+                  {[
+                    ['Passport Number', payload?.passport_number || payload?.passport_no || '—'],
+                    ['Full Name', payload?.full_name || payload?.name || '—'],
+                    ['File Number', payload?.file_number || '—'],
+                    ['Date of Birth', payload?.dob || '—'],
+                    ['Date of Application', payload?.date_of_application || payload?.application_date || '—'],
+                    ['Application Status', payload?.application_status || payload?.current_status || payload?.status || '—'],
+                  ].map(([label, value]) => (
+                    <TableRow key={String(label)}>
+                      <TableCell className="font-medium">{String(label)}</TableCell>
+                      <TableCell>{String(value)}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>

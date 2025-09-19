@@ -222,9 +222,9 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
       .join(', ');
   }
 
-  const verificationDate = aadharDetails.timestamp ? 
-    format(new Date(aadharDetails.timestamp), 'PPP p') : 
-    'Unknown';
+  const verificationDate = aadharDetails.timestamp 
+    ? format(new Date(aadharDetails.timestamp), 'PPP p') 
+    : '';
 
   const verificationType = isDigiLockerResponse(response) ? 'DigiLocker' : 'government Aadhaar database';
 
@@ -349,7 +349,8 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Aadhaar Verification Details</DialogTitle>
           <DialogDescription>
-            Verified through {verificationType} on {verificationDate}
+            Verified through {verificationType}
+            {verificationDate ? ` on ${verificationDate}` : ''}
           </DialogDescription>
         </DialogHeader>
         

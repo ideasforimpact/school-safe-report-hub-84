@@ -23,6 +23,8 @@ interface VerificationStatusBadgeProps {
   documentId?: string;
   documentType?: string;
   rejectReason?: string;
+  labelOverride?: string;
+  truncate?: boolean; // enable single-line truncate with ellipsis
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
@@ -34,7 +36,9 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   documentLogs,
   documentId,
   documentType,
-  rejectReason
+  rejectReason,
+  labelOverride,
+  truncate
 }) => {
   const [panDialogOpen, setPanDialogOpen] = useState(false);
   const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
@@ -103,6 +107,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   };
 
   const { icon: Icon, text, bgColor } = getStatusConfig();
+  const finalText = labelOverride || text;
 
   // Check if this document has details that can be shown in a dialog
   const isGovernanceVerified = (status === 'verified' || status === 'completed') && documentStatusName === 'governance';
@@ -228,12 +233,14 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
             'gap-1 px-2 py-1 font-medium text-xs', 
             bgColor, 
             className,
-            isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
+            isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80',
+            truncate && 'max-w-[20ch] whitespace-nowrap overflow-hidden text-ellipsis'
           )}
+          title={finalText}
           onClick={isClickable ? handleClick : onClick}
         >
           <Icon className="h-3.5 w-3.5" />
-          {text}
+          {finalText}
           {isClickable && (
             <span className="sr-only">(click to view details)</span>
           )}

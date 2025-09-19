@@ -98,6 +98,8 @@ export const getManualVerificationDisplayName = (selected?: string) => {
       return 'Bank Statement Analysis';
     case 'police_verification':
       return 'Police Verification';
+    case 'drug_check':
+      return 'Drug Check';
     case 'employment_verification':
       return 'Employment Verification';
     case 'education_verification':
