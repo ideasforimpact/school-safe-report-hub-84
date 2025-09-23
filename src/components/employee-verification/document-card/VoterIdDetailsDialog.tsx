@@ -76,8 +76,29 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
   };
 
   const getAdditionalFields = () => {
-    const excludeKeys = ['id', 'name_v1', 'name_v2', 'name_v3', 'epic_no', 'relation_name', 'relation_type', 'gender', 'age', 
-                        'district_name', 'part_name', 'part_number', 'ac_name', 'pc_name', 'state_name', 'polling_station', 'client_id'];
+    const excludeKeys = [
+      'id',
+      'name_v1',
+      'name_v2',
+      'name_v3',
+      'epic_no',
+      'relation_name',
+      'relation_type',
+      'gender',
+      'age',
+      'district_name',
+      'part_name',
+      'part_number',
+      'ac_name',
+      'pc_name',
+      'state_name',
+      'polling_station',
+      'client_id',
+      // Explicitly hide noisy/unnecessary fields from the popup
+      'additional_check',
+      'ps_lat_long',
+      'rln_name_v3'
+    ];
     return Object.entries(voterInfo).filter(([key]) => !excludeKeys.includes(key) && voterInfo[key] !== null && voterInfo[key] !== undefined);
   };
 
