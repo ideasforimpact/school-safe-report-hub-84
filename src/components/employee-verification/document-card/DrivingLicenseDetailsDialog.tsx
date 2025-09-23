@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -185,11 +184,6 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <span>Driving License Details</span>
-            {isSuccessful && (
-              <Badge className="bg-green-100 text-green-800 border-green-200">
-                Verified
-              </Badge>
-            )}
           </DialogTitle>
           <DialogDescription>
             Details retrieved from government database for driving license {data?.license_number || licenseDetails?.license_number || 'verification'}

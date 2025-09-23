@@ -195,7 +195,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthError: (error: string | null) => dispatch(setAuthError(error)),
     authInitCompleteRef,
     setEmployeeData: (employeeData: EmployeeData | null) => dispatch(setEmployeeData(employeeData)),
-    dispatch
+    dispatch,
+    navigate
   });
 
   // Setup Supabase auth listener for SSO authentication with enhanced logout handling

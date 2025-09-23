@@ -201,6 +201,8 @@ serve(async (req) => {
             verification_status: 'failed',
             employee_docs_log: [logEntry],
             document_status_id: rejectedStatusId,
+            verified_by: null,
+            api_verification_date: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);

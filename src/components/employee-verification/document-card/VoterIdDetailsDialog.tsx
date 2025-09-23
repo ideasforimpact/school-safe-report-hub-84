@@ -9,7 +9,6 @@ import {
   DialogFooter,
   DialogClose
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -191,17 +190,6 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
           <DialogTitle className="flex items-center space-x-2">
             <FileText className="h-5 w-5 text-blue-600" />
             <span>Voter ID Verification Details</span>
-            {isSuccess ? (
-              <Badge className="bg-green-100 text-green-800 border-green-200">
-                <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                Verified
-              </Badge>
-            ) : (
-              <Badge className="bg-red-100 text-red-800 border-red-200">
-                <X className="h-3.5 w-3.5 mr-1" />
-                Failed
-              </Badge>
-            )}
           </DialogTitle>
           <DialogDescription>
             Details retrieved from voter ID verification service

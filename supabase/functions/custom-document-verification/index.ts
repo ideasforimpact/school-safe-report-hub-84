@@ -159,7 +159,8 @@ if (!['uploadCustomDocument', 'manualVerify', 'reject'].includes(action)) {
         .from('employee_documents')
         .update({
           verification_status: 'failed',
-          verified_by: verified_by_employee_id,
+          verified_by: null,
+          api_verification_date: null,
           updated_at: new Date().toISOString(),
           employee_docs_log: [
             {

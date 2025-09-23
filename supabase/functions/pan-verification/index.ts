@@ -212,7 +212,7 @@ serve(async (req) => {
               verification_status: 'failed',
               api_verification_status: 'failed',
               api_verification_method: 'api',
-              api_verification_date: new Date().toISOString(),
+              api_verification_date: null,
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
@@ -379,8 +379,9 @@ serve(async (req) => {
             verification_status: 'failed',
             employee_docs_log: [...existingLogs, logEntry],
             document_status_id: rejectedStatusId,
-            verified_by: verified_by_employee_id,
+            verified_by: null,
             reject_reason: reject_reason || "Document verification rejected",
+            api_verification_date: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);

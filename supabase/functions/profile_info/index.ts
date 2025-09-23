@@ -34,10 +34,20 @@ serve(async (req) => {
       );
     }
     
-    // Fetch employee details
+    // Fetch employee details with client information in a single query
     const { data: employeeData, error: employeeError } = await supabase
       .from('employees')
-      .select('id, first_name, last_name, email, employee_type, department, is_super_admin, client_id')
+      .select(`
+        id, 
+        first_name, 
+        last_name, 
+        email, 
+        employee_type, 
+        department, 
+        is_super_admin, 
+        client_id,
+        clients!inner(id, name)
+      `)
       .eq('id', employee_id)
       .single();
     
@@ -52,100 +62,73 @@ serve(async (req) => {
     // Determine which client ID to use
     const clientIdToUse = employeeData.client_id || client_id;
     
-    // Fetch client information
+    // Extract client information from the joined data
     let clientInfo = { name: 'Unknown', id: clientIdToUse || '' };
-    if (clientIdToUse) {
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select('id, name')
-        .eq('id', clientIdToUse)
-        .single();
-      
-      if (!clientError && clientData) {
-        clientInfo = { name: clientData.name, id: clientData.id };
-      } else {
-        console.log('Client not found or error:', clientError);
-      }
+    if (employeeData.clients) {
+      clientInfo = { 
+        name: employeeData.clients.name, 
+        id: employeeData.clients.id 
+      };
     }
     
-    // Fetch module access information
-    let moduleAccess = [];
+    // Fetch module access information with module details in a single query
+    let moduleAccess: Array<{
+      id: string;
+      name: string;
+      key: string;
+      access_level: any;
+    }> = [];
     const { data: employeeModules, error: modulesError } = await supabase
       .from('employee_modules')
-      .select('module_id, access_level')
+      .select(`
+        module_id, 
+        access_level,
+        modules!inner(id, name)
+      `)
       .eq('employee_id', employee_id);
     
     if (modulesError) {
       console.error('Error fetching employee modules:', modulesError);
     } else if (employeeModules && employeeModules.length > 0) {
-      // Get all module details for the employee
-      const moduleIds = employeeModules.map(module => module.module_id);
-      
-      const { data: modulesData, error: moduleDetailsError } = await supabase
-        .from('modules')
-        .select('id, name')
-        .in('id', moduleIds);
-      
-      if (!moduleDetailsError && modulesData) {
-        // Create a map of module access levels
-        const accessLevelsByModuleId = {};
-        employeeModules.forEach(module => {
-          if (module.module_id) {
-            accessLevelsByModuleId[module.module_id] = module.access_level || {};
-          }
-        });
-        
-        // Map module details with access levels
-        moduleAccess = modulesData.map(module => ({
-          id: module.id,
-          name: module.name,
-          key: module.name.toLowerCase().replace(/\s+/g, '_'),
-          access_level: accessLevelsByModuleId[module.id] || {}
-        }));
-      } else {
-        console.error('Error fetching module details:', moduleDetailsError);
-      }
+      // Map module details with access levels directly from joined data
+      moduleAccess = employeeModules.map(employeeModule => ({
+        id: employeeModule.modules.id,
+        name: employeeModule.modules.name,
+        key: employeeModule.modules.name.toLowerCase().replace(/\s+/g, '_'),
+        access_level: employeeModule.access_level || {}
+      }));
     }
     
-    // If the employee is a super admin, fetch all client modules too
+    // If the employee is a super admin, fetch all client modules with module details in a single query
     if (employeeData.is_super_admin === true && clientIdToUse) {
       const { data: clientModules, error: clientModulesError } = await supabase
         .from('client_modules')
-        .select('module_id, access_level')
+        .select(`
+          module_id, 
+          access_level,
+          modules!inner(id, name)
+        `)
         .eq('client_id', clientIdToUse);
       
       if (!clientModulesError && clientModules && clientModules.length > 0) {
-        const moduleIds = clientModules.map(module => module.module_id);
-        
-        // Get module details that are not already in the employee modules
+        // Get existing module IDs to avoid duplicates
         const existingModuleIds = moduleAccess.map(m => m.id);
-        const newModuleIds = moduleIds.filter(id => !existingModuleIds.includes(id));
         
-        if (newModuleIds.length > 0) {
-          const { data: additionalModules, error: additionalModulesError } = await supabase
-            .from('modules')
-            .select('id, name')
-            .in('id', newModuleIds);
+        // Filter out modules that are already in employee modules
+        const additionalModules = clientModules.filter(clientModule => 
+          !existingModuleIds.includes(clientModule.modules.id)
+        );
+        
+        if (additionalModules.length > 0) {
+          // Add additional modules to the list
+          const additionalModuleAccess = additionalModules.map(clientModule => ({
+            id: clientModule.modules.id,
+            name: clientModule.modules.name,
+            key: clientModule.modules.name.toLowerCase().replace(/\s+/g, '_'),
+            access_level: { ...clientModule.access_level, is_admin: true } // Super admins are admins for all modules
+          }));
           
-          if (!additionalModulesError && additionalModules) {
-            // Create a map of module access levels
-            const accessLevelsByModuleId = {};
-            clientModules.forEach(module => {
-              if (module.module_id) {
-                accessLevelsByModuleId[module.module_id] = module.access_level || {};
-              }
-            });
-            
-            // Add additional modules to the list
-            const additionalModuleAccess = additionalModules.map(module => ({
-              id: module.id,
-              name: module.name,
-              key: module.name.toLowerCase().replace(/\s+/g, '_'),
-              access_level: { ...accessLevelsByModuleId[module.id], is_admin: true } // Super admins are admins for all modules
-            }));
-            
-            moduleAccess = [...moduleAccess, ...additionalModuleAccess];
-          }
+          moduleAccess = [...moduleAccess, ...additionalModuleAccess];
         }
       }
     }

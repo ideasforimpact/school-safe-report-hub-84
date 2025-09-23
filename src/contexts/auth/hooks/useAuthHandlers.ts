@@ -7,6 +7,7 @@ import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId 
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
+import { NavigateFunction } from 'react-router-dom';
 
 // Define the SupabaseUser type that's missing
 interface SupabaseUser {
@@ -63,6 +64,7 @@ interface UseAuthHandlersProps {
   authInitCompleteRef: React.MutableRefObject<boolean>;
   setEmployeeData: (employeeData: EmployeeData | null) => void;
   dispatch?: any; // Add dispatch prop for Redux actions
+  navigate: NavigateFunction; // Add navigate function for proper routing
 }
 
 export const useAuthHandlers = ({
@@ -73,7 +75,8 @@ export const useAuthHandlers = ({
   setAuthError,
   authInitCompleteRef,
   setEmployeeData,
-  dispatch
+  dispatch,
+  navigate
 }: UseAuthHandlersProps) => {
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
 
@@ -474,10 +477,10 @@ export const useAuthHandlers = ({
         
         setIsProcessingAuth(false);
         
-        // Force redirect to login page
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        // Wait a moment for the user to see the error message, then redirect
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 3000); // 3 second delay to allow user to read the error
         
         return;
       }
@@ -527,10 +530,10 @@ export const useAuthHandlers = ({
           
           setIsProcessingAuth(false);
           
-          // Force redirect to login page
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
+          // Wait a moment for the user to see the error message, then redirect
+          setTimeout(() => {
+            navigate('/login', { replace: true });
+          }, 3000); // 3 second delay to allow user to read the error
           
           return;
         }
@@ -706,14 +709,14 @@ export const useAuthHandlers = ({
         dispatch(resetEmployee());
       }
       
-      // Force redirect to login page on error
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      // Wait a moment for the user to see the error message, then redirect
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 3000); // 3 second delay to allow user to read the error
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo, navigate]);
 
   return {
     handleUserAuthentication

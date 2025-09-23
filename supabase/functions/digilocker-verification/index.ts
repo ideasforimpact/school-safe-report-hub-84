@@ -215,7 +215,7 @@ async function handleDownloadAadhaar(payload: any, supabaseClient: any) {
         .from('employee_documents')
         .update({
           api_verification_status: 'failed',
-          api_verification_date: new Date().toISOString()
+          api_verification_date: null
         })
         .eq('id', documentId)
     }

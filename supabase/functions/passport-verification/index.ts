@@ -94,7 +94,7 @@ serve(async (req) => {
             api_response_data: apiResponse,
             api_verification_status: 'failed',
             api_verification_method: 'api',
-            api_verification_date: new Date().toISOString()
+            api_verification_date: null
           }).eq('id', documentId);
         }
 
@@ -104,7 +104,7 @@ serve(async (req) => {
           employee_docs_log: [...(document.employee_docs_log || []), { timestamp: new Date().toISOString(), action: 'verify_passport_api_error', response: { error: error.message } }],
           api_verification_status: 'failed',
           api_verification_method: 'api',
-          api_verification_date: new Date().toISOString()
+          api_verification_date: null
         }).eq('id', documentId);
 
         return new Response(JSON.stringify({ error: error.message || 'Passport API verification failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -139,7 +139,9 @@ serve(async (req) => {
       await supabase.from('employee_documents').update({
         document_status_id: rejectedStatusId,
         verification_status: 'failed',
+        verified_by: null,
         reject_reason: reject_reason || 'Document verification rejected by staff.',
+        api_verification_date: null,
         employee_docs_log: [...logs, { timestamp: new Date().toISOString(), action: 'reject_passport', notes: reject_reason || 'Document verification rejected by staff.' }]
       }).eq('id', documentId);
 

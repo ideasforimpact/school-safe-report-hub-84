@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -190,11 +189,6 @@ const PassportDetailsDialog: React.FC<PassportDetailsDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <span>Passport Details</span>
-            {isSuccessful && (
-              <Badge className="bg-green-100 text-green-800 border-green-200">
-                Verified
-              </Badge>
-            )}
           </DialogTitle>
           <DialogDescription>
             Details retrieved from government database for passport {payload?.passport_number || payload?.passport_no || passportDetails?.passport_number || 'verification'}

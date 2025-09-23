@@ -493,7 +493,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                         const isGovApi = (doc as any).api_verification_method === 'api' 
                           || doc.apiVerificationMethod === 'api' 
                           || doc.apiVerificationStatus === 'completed';
-                        const labelOverride = isGovApi
+                        
+                        // Check if API verification failed with rejection reason
+                        const isApiFailedWithReason = isGovApi && 
+                          doc.verificationStatus === 'failed' && 
+                          doc.rejectReason;
+                        
+                        const labelOverride = isApiFailedWithReason
+                          ? 'Verification Rejected'
+                          : isGovApi
                           ? 'Verified by Government'
                           : (doc.verifiedByEmployeeId ? 'Verified by Manual' : undefined);
 
