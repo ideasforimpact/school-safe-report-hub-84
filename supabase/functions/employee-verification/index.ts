@@ -301,6 +301,59 @@ serve(async (req) => {
         );
       }
     }
+
+    // Approve after API verification (Aadhaar flow)
+    if (action === 'approveAfterApi') {
+      if (!documentId) {
+        return new Response(
+          JSON.stringify({ error: "Document ID is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!verified_by_employee_id) {
+        return new Response(
+          JSON.stringify({ error: "Employee ID is required for approval" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      try {
+        // Fetch current logs
+        const { data: document } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+        const existingLogs = document?.employee_docs_log || [];
+
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: 'approve_after_api',
+          notes: verification_notes || 'Approved after Aadhaar API check',
+          verified_by: verified_by_employee_id
+        };
+
+        await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'verified',
+            document_status_id: governanceStatusId,
+            verified_by: verified_by_employee_id,
+            employee_docs_log: [...existingLogs, logEntry],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to approve document' }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {

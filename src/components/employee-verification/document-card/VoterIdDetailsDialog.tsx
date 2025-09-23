@@ -90,7 +90,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
       // Call the voter-verification edge function directly
       const { data, error } = await supabase.functions.invoke('voter-verification', {
         body: {
-          action: 'manualVerify',
+          action: 'approveAfterApi',
           documentId: documentId,
           verification_notes: 'Verified after Voter ID API check',
           verified_by_employee_id: employeeData?.id || user?.id

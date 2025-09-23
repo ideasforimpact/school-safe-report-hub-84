@@ -246,7 +246,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
       // Call the employee-verification edge function directly for Aadhar
       const { data, error } = await supabase.functions.invoke('employee-verification', {
         body: {
-          action: 'manualVerify',
+          action: 'approveAfterApi',
           documentId: documentId,
           verification_notes: 'Verified after Aadhar API check',
           verified_by_employee_id: employeeData?.id || user?.id

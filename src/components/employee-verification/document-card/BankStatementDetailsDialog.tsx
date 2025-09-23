@@ -141,7 +141,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
       // Call the bank-statement edge function directly
       const { data, error } = await supabase.functions.invoke('bank-statement', {
         body: {
-          action: 'manualVerify',
+          action: 'approveAfterApi',
           documentId: documentId,
           verification_notes: 'Verified after Bank Statement API check',
           verified_by_employee_id: employeeData?.id || user?.id

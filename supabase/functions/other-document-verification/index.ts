@@ -73,6 +73,24 @@ serve(async (req) => {
         corsHeaders
       );
     }
+
+    // Handle Digital Credibility Check processing
+    if (action === 'processDigitalCredibilityCheck') {
+      return await handleDigitalCredibilityCheck(
+        requestBody,
+        supabase,
+        corsHeaders
+      );
+    }
+
+    // Handle Social Persona Check processing
+    if (action === 'processSocialPersonaCheck') {
+      return await handleSocialPersonaCheck(
+        requestBody,
+        supabase,
+        corsHeaders
+      );
+    }
     
     // First, fetch document status IDs for manual and rejected statuses
     const { data: manualStatus, error: manualError } = await supabase
@@ -637,6 +655,130 @@ async function handlePoliceVerification(requestBody, supabase, corsHeaders) {
     return new Response(
       JSON.stringify({ error: error.message || "Failed to process police verification" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Function to handle Digital Credibility Check
+async function handleDigitalCredibilityCheck(requestBody, supabase, corsHeaders) {
+  const { employeeId, clientId, documentTypeId, params } = requestBody;
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  try {
+    const { data: inProgressStatus } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    const timestamp = new Date().getTime();
+    const documentNumber = `DCC_${timestamp}`;
+    const initialLogEntry = { timestamp: new Date().toISOString(), action: 'digital_credibility_check_initiated', response: { documentTypeId, documentStatusId: inProgressStatus?.id } };
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert({
+        employee_id: employeeId,
+        document_type_id: documentTypeId,
+        document_number: documentNumber,
+        document_url: '',
+        verification_status: 'in-progress',
+        document_status_id: inProgressStatus?.id,
+        employee_docs_log: [initialLogEntry],
+        params: params || { selected: 'digital_credibility_check' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    if (insertError) throw insertError;
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: '',
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    return new Response(
+      JSON.stringify({ success: true, message: 'Digital credibility check initiated and processing started', document: documentResponse }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message || 'Failed to process digital credibility check' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// Function to handle Social Persona Check
+async function handleSocialPersonaCheck(requestBody, supabase, corsHeaders) {
+  const { employeeId, clientId, documentTypeId, params } = requestBody;
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  try {
+    const { data: inProgressStatus } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    const timestamp = new Date().getTime();
+    const documentNumber = `SPC_${timestamp}`;
+    const initialLogEntry = { timestamp: new Date().toISOString(), action: 'social_persona_check_initiated', response: { documentTypeId, documentStatusId: inProgressStatus?.id } };
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert({
+        employee_id: employeeId,
+        document_type_id: documentTypeId,
+        document_number: documentNumber,
+        document_url: '',
+        verification_status: 'in-progress',
+        document_status_id: inProgressStatus?.id,
+        employee_docs_log: [initialLogEntry],
+        params: params || { selected: 'social_persona_check' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    if (insertError) throw insertError;
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: '',
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    return new Response(
+      JSON.stringify({ success: true, message: 'Social persona check initiated and processing started', document: documentResponse }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message || 'Failed to process social persona check' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 }

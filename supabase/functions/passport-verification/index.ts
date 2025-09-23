@@ -129,6 +129,23 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (action === 'approveAfterApi') {
+      if (!documentId) {
+        return new Response(JSON.stringify({ error: 'Document ID is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (!verified_by_employee_id) {
+        return new Response(JSON.stringify({ error: 'Employee ID is required for approval' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      await supabase.from('employee_documents').update({
+        document_status_id: governanceStatusId,
+        verification_status: 'verified',
+        verified_by: verified_by_employee_id,
+        employee_docs_log: [...( (await supabase.from('employee_documents').select('employee_docs_log').eq('id', documentId).single()).data?.employee_docs_log || []), { timestamp: new Date().toISOString(), action: 'approve_after_api', notes: verification_notes || 'Approved after Passport API check' } ]
+      }).eq('id', documentId);
+
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     if (action === 'reject') {
       if (!documentId) {
         return new Response(JSON.stringify({ error: 'Document ID is required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

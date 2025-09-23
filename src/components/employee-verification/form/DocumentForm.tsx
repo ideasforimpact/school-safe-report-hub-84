@@ -98,8 +98,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
 
-  // Handle direct edge function calls for Court Case Check and Police Verification
-  const handleDirectSubmission = async (verificationType: 'court_case_check' | 'police_verification') => {
+  // Handle direct edge function calls for Court Case Check, Police Verification, Digital Credibility and Social Persona
+  const handleDirectSubmission = async (verificationType: 'court_case_check' | 'police_verification' | 'digital_credibility_check' | 'social_persona_check' | 'drug_check') => {
     const clientId = employeeData?.clientId || state.clientId;
     if (!clientId) {
       toast({
@@ -114,7 +114,16 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     try {
       console.log(`Calling other-document-verification edge function for ${verificationType}`);
       
-      const action = verificationType === 'court_case_check' ? 'processCourtCaseCheck' : 'processPoliceVerification';
+    const action =
+      verificationType === 'court_case_check'
+        ? 'processCourtCaseCheck'
+        : verificationType === 'police_verification'
+        ? 'processPoliceVerification'
+        : verificationType === 'digital_credibility_check'
+        ? 'processDigitalCredibilityCheck'
+        : verificationType === 'social_persona_check'
+        ? 'processSocialPersonaCheck'
+        : 'processDrugCheck';
       
       const { data, error } = await supabase.functions.invoke('other-document-verification', {
         body: {
@@ -134,9 +143,16 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       console.log(`${verificationType} response:`, data);
 
       if (data?.success) {
+        const successTitleMap: Record<string, string> = {
+          court_case_check: 'Court Case Check Initiated',
+          police_verification: 'Police Verification Initiated',
+          digital_credibility_check: 'Digital Credibility Check Initiated',
+          social_persona_check: 'Social Persona Check Initiated',
+          drug_check: 'Drug Check Initiated',
+        };
         toast({
-          title: verificationType === 'court_case_check' ? 'Court Case Check Initiated' : 'Police Verification Initiated',
-          description: data.message || `${verificationType === 'court_case_check' ? 'Court case check' : 'Police verification'} has been started successfully.`,
+          title: successTitleMap[verificationType],
+          description: data.message || 'Request has been started successfully.',
         });
         
         // Refresh employee documents to show the new document
@@ -154,9 +170,16 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       }
     } catch (error) {
       console.error(`Error submitting ${verificationType}:`, error);
+      const errorTitleMap: Record<string, string> = {
+        court_case_check: 'court case check',
+        police_verification: 'police verification',
+        digital_credibility_check: 'digital credibility check',
+        social_persona_check: 'social persona check',
+        drug_check: 'drug check',
+      };
       toast({
         title: 'Error',
-        description: `Failed to initiate ${verificationType === 'court_case_check' ? 'court case check' : 'police verification'}. Please try again.`,
+        description: `Failed to initiate ${errorTitleMap[verificationType]}. Please try again.`,
         variant: 'destructive',
       });
     } finally {
@@ -268,6 +291,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             <option value="bank_statement_analysis">Bank Statement Analysis</option>
             <option value="court_case_check">Court Case Check</option>
             <option value="police_verification">Police Verification</option>
+            <option value="digital_credibility_check">Digital Credibility Check</option>
+            <option value="social_persona_check">Social Persona Check</option>
             <option value="drug_check">Drug Check</option>
           </select>
         </div>
@@ -331,6 +356,54 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </Card>
         )}
 
+        {otherType === 'digital_credibility_check' && (
+          <Card className="border-2 border-dashed border-gray-300">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-medium mb-2">Digital Credibility Check</h3>
+              <p className="text-gray-600 mb-4">Submit a request for digital credibility screening</p>
+              <Button
+                type="button"
+                onClick={() => handleDirectSubmission('digital_credibility_check')}
+                disabled={isProcessing}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Submit for Digital Credibility Check'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {otherType === 'social_persona_check' && (
+          <Card className="border-2 border-dashed border-gray-300">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-medium mb-2">Social Persona Check</h3>
+              <p className="text-gray-600 mb-4">Submit a request for social persona/background screening</p>
+              <Button
+                type="button"
+                onClick={() => handleDirectSubmission('social_persona_check')}
+                disabled={isProcessing}
+                className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  'Submit for Social Persona Check'
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {otherType === 'drug_check' && (
           <Card className="border-2 border-dashed border-gray-300">
             <CardContent className="p-6 text-center">
@@ -359,7 +432,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   };
 
   // Don't show the submit button for court case check, police verification, and custom documents
-  const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check');
+  const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check' && otherType !== 'digital_credibility_check' && otherType !== 'social_persona_check');
   const shouldShowForm = !isOtherDocuments; // Hide the default form for custom documents
 
   // If document already exists, show display mode instead of form

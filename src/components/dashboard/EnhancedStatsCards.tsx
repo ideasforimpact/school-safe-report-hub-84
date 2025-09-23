@@ -258,9 +258,9 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                           <span className="font-semibold text-green-600">{(card as any).vehiclesVerified}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
-                          <span className="text-red-600 font-medium">Vehicles failed verification:</span>
+                          <span className="text-red-600 font-medium">Vehicles with issues:</span>
                           <span className="font-semibold text-red-600">{(card as any).vehiclesFailedVerification}</span>
-                  </div>
+                        </div>
                 </div>
               )}
 

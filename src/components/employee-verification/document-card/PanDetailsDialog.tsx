@@ -88,7 +88,7 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
       // Call the pan-verification edge function directly
       const { data, error } = await supabase.functions.invoke('pan-verification', {
         body: {
-          action: 'manualVerify',
+          action: 'approveAfterApi',
           documentId: documentId,
           verification_notes: 'Verified after PAN API check',
           verified_by_employee_id: employeeData?.id || user?.id

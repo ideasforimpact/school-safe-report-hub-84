@@ -85,7 +85,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
       // Call the driving-license edge function directly
       const { data, error } = await supabase.functions.invoke('driving-license', {
         body: {
-          action: 'manualVerify',
+          action: 'approveAfterApi',
           documentId: documentId,
           verification_notes: 'Verified after Driving License API check',
           verified_by_employee_id: employeeData?.id || user?.id

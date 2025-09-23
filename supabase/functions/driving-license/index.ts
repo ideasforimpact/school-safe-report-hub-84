@@ -366,6 +366,41 @@ serve(async (req) => {
         );
       }
     }
+    else if (action === 'approveAfterApi') {
+      try {
+        if (!verified_by_employee_id) {
+          return new Response(
+            JSON.stringify({ error: "Employee ID is required for approval" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: "approve_after_api",
+          notes: verification_notes || "Approved after Driving License API check",
+          verified_by: verified_by_employee_id
+        };
+        const { error: updateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'verified',
+            document_status_id: governanceStatusId,
+            verified_by: verified_by_employee_id,
+            employee_docs_log: [...existingLogs, logEntry],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: "Failed to approve document" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: "Approval failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
     // Reject verification
     else if (action === 'reject') {
       if (!documentId) {
