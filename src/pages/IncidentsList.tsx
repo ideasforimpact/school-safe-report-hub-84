@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
 
 interface PaginationInfo {
@@ -37,6 +37,8 @@ interface ServerFilters {
 const IncidentsList = () => {
   // All incidents loaded from server (based on current filters)
   const [allIncidents, setAllIncidents] = useState<IncidentRecord[]>([]);
+  // Original incidents (unfiltered) - preserved for restoration
+  const [originalIncidents, setOriginalIncidents] = useState<IncidentRecord[]>([]);
   // Currently displayed incidents (client-side pagination slice)
   const [displayedIncidents, setDisplayedIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ const IncidentsList = () => {
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   // Get filter options from database
   const { 
@@ -83,6 +86,7 @@ const IncidentsList = () => {
     );
     return incidentsModule?.accessLevel?.is_admin === true;
   }, [isSuperAdmin, employeeState.configuredModules]);
+
 
   // Client-side pagination function
   const applyClientSidePagination = useCallback((incidents: IncidentRecord[], page: number, pageSize: number) => {
@@ -162,12 +166,25 @@ const IncidentsList = () => {
       );
 
       console.log(`✅ Server returned ${response.totalCount} total incidents (ALL matching records)`);
-      
-      // Store ALL incidents
-      setAllIncidents(response.data);
-      
+
+      // Always preserve original incidents for restoration
+      setOriginalIncidents(response.data);
+
+      // Apply URL-driven client-side filter: students_involved => include incidents with at least one Student
+      const studentsFilterActive = searchParams.get('filter') === 'students_involved';
+      const filteredByStudents = studentsFilterActive
+        ? response.data.filter((incident: any) => {
+            const people = (incident as any)?.peopleInvolved || (incident as any)?.people_involved;
+            if (!Array.isArray(people) || people.length === 0) return false;
+            return people.some((p: any) => (p?.role || '').toLowerCase() === 'student');
+          })
+        : response.data;
+
+      // Store incidents after optional filter
+      setAllIncidents(filteredByStudents);
+
       // Apply client-side pagination to show first page
-      applyClientSidePagination(response.data, 1, pagination.pageSize);
+      applyClientSidePagination(filteredByStudents, 1, pagination.pageSize);
 
     } catch (error: any) {
       console.error('❌ Error fetching incidents:', error);
@@ -191,6 +208,89 @@ const IncidentsList = () => {
     // Fetch with new filters (this will load ALL matching records)
     fetchIncidents(newFilters, false);
   }, [filters, fetchIncidents]);
+
+  // Parse URL parameters and set initial filters
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam) {
+      console.log('🔍 URL filter parameter found:', filterParam);
+      
+      // Map filter parameter to status filter
+      let initialStatus = '';
+      switch (filterParam) {
+        case 'open':
+          initialStatus = 'Open';
+          break;
+        case 'closed':
+          initialStatus = 'Closed';
+          break;
+        case 'reopen':
+          initialStatus = 'Reopen';
+          break;
+        case 'students_involved':
+          // For students involved, we'll keep status empty but could add additional logic
+          initialStatus = '';
+          break;
+        default:
+          initialStatus = '';
+      }
+      
+      if (initialStatus) {
+        console.log('🎯 Setting initial status filter to:', initialStatus);
+        const newFilters = {
+          search: '',
+          category: '',
+          subcategory: '',
+          status: initialStatus,
+          priority: '',
+          location: '',
+          facility: '',
+          dateFrom: '',
+          dateTo: ''
+        };
+        setFilters(newFilters);
+        
+        // Trigger data fetch with the new filter
+        if (employeeState.employeeData?.clientId || authEmployeeData?.clientId) {
+          fetchIncidents(newFilters, true);
+        }
+      }
+    } else {
+      // If URL has no filter param, reset filters to defaults and refresh data
+      const resetFilters = {
+        search: '',
+        category: '',
+        subcategory: '',
+        status: '',
+        priority: '',
+        location: '',
+        facility: '',
+        dateFrom: '',
+        dateTo: ''
+      };
+      // Only reset if current filters are not already default
+      const isDefault = Object.entries(resetFilters).every(([k, v]) => (filters as any)[k] === v);
+      if (!isDefault) {
+        console.log('🔄 URL filter cleared; resetting incident filters to default');
+        setFilters(resetFilters);
+        if (employeeState.employeeData?.clientId || authEmployeeData?.clientId) {
+          fetchIncidents(resetFilters, true);
+        }
+      }
+    }
+  }, [searchParams, employeeState.employeeData?.clientId, authEmployeeData?.clientId, fetchIncidents]);
+
+  // Handle query parameter removal - restore original incidents
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    
+    // If no filter param and we have original incidents, restore them
+    if (!filterParam && originalIncidents.length > 0) {
+      console.log('🔄 Query filter removed; restoring original incidents');
+      setAllIncidents(originalIncidents);
+      applyClientSidePagination(originalIncidents, 1, pagination.pageSize);
+    }
+  }, [searchParams, originalIncidents, pagination.pageSize, applyClientSidePagination]);
 
   // Clear all filters (triggers server request)
   const clearFilters = useCallback(() => {
@@ -237,21 +337,8 @@ const IncidentsList = () => {
       // This ensures fresh data especially after incident creation
       const forceRefresh = true;
       
-      // Start with empty filters on initial load
-      const initialFilters = {
-        search: '',
-        category: '',
-        subcategory: '',
-        status: '',
-        priority: '',
-        location: '',
-        facility: '',
-        dateFrom: '',
-        dateTo: ''
-      };
-      
-      setFilters(initialFilters);
-      fetchIncidents(initialFilters, forceRefresh);
+      // Use current filters (which may include URL-based filters)
+      fetchIncidents(filters, forceRefresh);
     } else {
       console.log('⏳ Waiting for employee data or configured modules...');
     }
@@ -261,7 +348,8 @@ const IncidentsList = () => {
     user?.email,
     employeeState.configuredModules,
     hasIncidentAdmin,
-    location.pathname // Re-run when location changes
+    location.pathname, // Re-run when location changes
+    filters // Re-run when filters change (including URL-based filters)
   ]);
 
   console.log('📋 IncidentsList render (EAGER LOADING) - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);

@@ -12,10 +12,12 @@ import {
   BarChart3,
   AlertCircle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface EnhancedStatsCardsProps {
   stats: {
     openIncidents: number;
+    openIncidentOlder7days?: number;
     studentsInvolved?: number;
     studentsInvolvedByCategory?: Array<{ category: string; count: number }>;
     activeAssessments: number;
@@ -41,6 +43,7 @@ interface EnhancedStatsCardsProps {
     formSubmissions30Days?: number;
     formSubmissions60Days?: number;
     formSubmissions90Days?: number;
+    totalUnacknowledged?: number;
     vehiclesToBeVerified?: number;
     vehiclesFailedVerification?: number;
     vehiclesWithDocuments?: number;
@@ -55,12 +58,46 @@ interface EnhancedStatsCardsProps {
 }
 
 const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
+  const navigate = useNavigate();
+
+  const handleCardClick = (cardType: string) => {
+    const baseUrl = window.location.origin;
+    let targetUrl = '';
+    
+    switch (cardType) {
+      case 'open_incidents':
+        targetUrl = `${baseUrl}/incidents?filter=open`;
+        break;
+      case 'safe_employees':
+        targetUrl = `${baseUrl}/employee-verification?filter=verified`;
+        break;
+      case 'active_assessments':
+        targetUrl = `${baseUrl}/assessments?filter=active`;
+        break;
+      case 'open_grievances':
+        targetUrl = `${baseUrl}/forms?filter=open`;
+        break;
+      case 'safety_vehicles':
+        targetUrl = `${baseUrl}/transport-safety?filter=verified`;
+        break;
+      case 'students_involved':
+        targetUrl = `${baseUrl}/incidents?filter=students_involved`;
+        break;
+      default:
+        return;
+    }
+    
+    // Open in new tab
+    window.open(targetUrl, '_blank');
+  };
+
   console.log('🔍 EnhancedStatsCards - Raw stats received at:', new Date().toISOString(), stats);
   console.log('🔍 EnhancedStatsCards - Key values:');
   console.log('  - stats.totalEmployees:', stats.totalEmployees);
   console.log('  - stats.employeesVerified:', stats.employeesVerified);
   console.log('  - stats.totalVehicles:', stats.totalVehicles);
   console.log('  - stats.vehiclesVerified:', stats.vehiclesVerified);
+  console.log('  - stats.totalUnacknowledged:', stats.totalUnacknowledged);
 
   // Use provided incident data or calculate from monthly data as fallback
   const totalIncidents = (stats.openIncidents || 0) + (stats.closedIncidents || 0) + (stats.reopenedIncidents || 0);
@@ -103,7 +140,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       showBreakdown: true,
       openIncidents: stats.openIncidents || 0,
       closedIncidents: stats.closedIncidents || 0,
-      reopenedIncidents: stats.reopenedIncidents || 0
+      reopenedIncidents: stats.reopenedIncidents || 0,
+      cardType: 'open_incidents'
     },
     {
       title: 'Total Safe Employees',
@@ -117,7 +155,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       totalEmployees: stats.totalEmployees || 0,
       verifiedEmployees: stats.employeesVerified || 0,
       failedEmployees: stats.employeesFailed || 0,
-      toBeVerified: stats.employeesVerified || 0
+      toBeVerified: stats.employeesVerified || 0,
+      cardType: 'safe_employees'
     },
     {
       title: 'Active Assessments',
@@ -133,11 +172,12 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       newAssessments: stats.newAssessments || 0,
       draftAssessments: stats.draftAssessments || 0,
       submittedAssessments: stats.submittedAssessments || 0,
-      completedAssessments: 0 // Don't show completed in active assessments breakdown
+      completedAssessments: 0, // Don't show completed in active assessments breakdown
+      cardType: 'active_assessments'
     },
     {
       title: 'Number Of Open Grievances',
-      value: stats.formSubmissions30Days || 0,
+      value: stats.totalUnacknowledged || 0,
       description: 'Grievances overview',
       icon: FileCheck,
       color: 'text-purple-600',
@@ -147,7 +187,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       totalCustomForms: stats.formSubmissions30Days || 0,
       formSubmissions30Days: stats.formSubmissions30Days || 0,
       formSubmissions60Days: stats.formSubmissions60Days || 0,
-      formSubmissions90Days: stats.formSubmissions90Days || 0
+      formSubmissions90Days: stats.formSubmissions90Days || 0,
+      cardType: 'open_grievances'
     },
     {
       title: 'Total Safety Vehicles',
@@ -161,7 +202,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       totalVehicles: stats.totalVehicles || 0,
       vehiclesToBeVerified: stats.vehiclesToBeVerified || 0,
       vehiclesFailedVerification: stats.vehiclesFailedVerification || 0,
-      vehiclesVerified: stats.vehiclesVerified || 0
+      vehiclesVerified: stats.vehiclesVerified || 0,
+      cardType: 'safety_vehicles'
     },
     {
       title: 'Number of Students Involved',
@@ -172,7 +214,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       bgColor: 'bg-orange-50',
       gradient: 'from-orange-50 to-orange-100',
       showStudentsBreakdown: true,
-      studentsInvolvedByCategory: stats.studentsInvolvedByCategory || []
+      studentsInvolvedByCategory: stats.studentsInvolvedByCategory || [],
+      cardType: 'students_involved'
     }
   ];
 
@@ -201,7 +244,11 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       {statsCards.map((card, index) => {
         const Icon = card.icon;
         return (
-          <Card key={index} className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
+          <Card 
+            key={index} 
+            className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
+            onClick={() => handleCardClick((card as any).cardType)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-700">
                 {card.title}

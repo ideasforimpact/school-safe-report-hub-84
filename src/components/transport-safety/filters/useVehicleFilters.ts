@@ -1,11 +1,13 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { 
   hasExpiredDocuments, 
   hasExpiringDocuments, 
-  hasAllValidDocuments 
+  hasAllValidDocuments,
+  hasValidVehicle
 } from '@/utils/transport-safety/documentStatusUtils';
+import { useSearchParams } from 'react-router-dom';
 
 interface DocumentStatusFilters {
   valid: boolean;
@@ -14,6 +16,7 @@ interface DocumentStatusFilters {
 }
 
 export const useVehicleFilters = (vehicles: Vehicle[]) => {
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -23,6 +26,45 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     expired: false,
     expiring_soon: false,
   });
+
+  // Parse URL parameters and set initial filters
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam) {
+      console.log('🔍 Transport Safety - URL filter parameter found:', filterParam);
+      
+      // Map filter parameter to document status filters
+      switch (filterParam) {
+        case 'verified':
+          // Show only vehicles with all valid documents
+          setDocumentStatusFilters({
+            valid: true,
+            expired: false,
+            expiring_soon: false,
+          });
+          break;
+        case 'expired':
+          // Show only vehicles with expired documents
+          setDocumentStatusFilters({
+            valid: false,
+            expired: true,
+            expiring_soon: false,
+          });
+          break;
+        case 'expiring_soon':
+          // Show only vehicles with expiring soon documents
+          setDocumentStatusFilters({
+            valid: false,
+            expired: false,
+            expiring_soon: true,
+          });
+          break;
+        default:
+          // No specific filter applied
+          break;
+      }
+    }
+  }, [searchParams]);
 
   // Use the exact type values from the Vehicle type
   const vehicleTypes = useMemo(() => {
@@ -79,8 +121,8 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
       
       if (hasActiveDocumentStatusFilters) {
         if (documentStatusFilters.valid && !documentStatusFilters.expired && !documentStatusFilters.expiring_soon) {
-          // Only valid selected - show vehicles with ALL valid documents
-          matchesDocumentStatus = hasAllValidDocuments(vehicle);
+          // Only valid selected - show vehicles that are considered valid (at least 2/3 certificates valid or expiring soon)
+          matchesDocumentStatus = hasValidVehicle(vehicle);
         } else if (documentStatusFilters.expired && !documentStatusFilters.valid && !documentStatusFilters.expiring_soon) {
           // Only expired selected - show vehicles with ANY expired documents
           matchesDocumentStatus = hasExpiredDocuments(vehicle);
@@ -90,7 +132,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
         } else {
           // Multiple filters selected - OR logic between the different statuses
           matchesDocumentStatus = 
-            (documentStatusFilters.valid && hasAllValidDocuments(vehicle)) || 
+            (documentStatusFilters.valid && hasValidVehicle(vehicle)) || 
             (documentStatusFilters.expired && hasExpiredDocuments(vehicle)) || 
             (documentStatusFilters.expiring_soon && hasExpiringDocuments(vehicle));
         }

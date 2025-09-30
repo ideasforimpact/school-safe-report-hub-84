@@ -5,11 +5,13 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 interface SafetyPerformanceGaugesProps {
   stats: {
     openIncidents: number;
+    openIncidentOlder7days?: number;
     totalEmployees: number;
     employeesVerified: number;
     totalVehicles: number;
     vehiclesVerified?: number;
     activeAssessments?: number;
+    overdueAssessments?: number;
     incidentsLastMonth: number;
   };
   loading: boolean;
@@ -48,22 +50,30 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - Final Vehicle Compliance Score:', vehicleComplianceScore);
 
   // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
-  const incidentsScore = Math.max(100 - 20 * stats.openIncidents, 0);
+  const incidentsScore = Math.max(100 - 20 * stats.openIncidentOlder7days, 0);
 
   console.log('🔍 Incidents Score Calculation:');
   console.log('  - Number of open incidents:', stats.openIncidents);
   console.log('  - Calculation: max(100 - 20 *', stats.openIncidents, ', 0) = max(', 100 - 20 * stats.openIncidents, ', 0) =', incidentsScore);
   console.log('  - Final Incidents Score:', incidentsScore);
+  console.log('  - Number of open incidents older than 7 days:', stats.openIncidentOlder7days);
+  
 
-  // Calculate Overall Safety Score = weighted average of individual scores
-  // Employee Compliance (30%) + Vehicle Compliance (20%) + Assessment Activity (15%) + Incident Management (35%)
-  const assessmentActivityScore = stats.activeAssessments ? Math.min(100, (stats.activeAssessments / 10) * 100) : 0; // Normalize to 0-100 based on assessment count
+  // Calculate Assessment Activity Score (new formula)
+  // CASE WHEN ActiveAssessments = 0 THEN 100
+  //      WHEN OverdueAssessments = 0 THEN 100
+  //      ELSE 100 * (OverdueAssessments / ActiveAssessments)
+  const activeA = stats.activeAssessments || 0;
+  const overdueA = stats.overdueAssessments || 0;
+  const assessmentActivityScore = activeA === 0 || overdueA === 0
+    ? 100
+    : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA)));
   
   const overallSafetyScore = Math.round(
     (0.3 * employeeComplianceScore) + 
     (0.2 * vehicleComplianceScore) + 
-    (0.15 * assessmentActivityScore) + 
-    (0.20 * incidentsScore)
+    (0.25 * assessmentActivityScore) + 
+    (0.25 * incidentsScore)
   );
 
   console.log('🔍 Assessment Activity Score Calculation:');

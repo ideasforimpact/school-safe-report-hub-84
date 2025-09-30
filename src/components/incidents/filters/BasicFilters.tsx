@@ -82,10 +82,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
             onValueChange={(value) => onFilterChange('status', value === 'all' ? '' : value)}
           >
             <SelectTrigger className="bg-white">
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent className="bg-white border shadow-lg z-50">
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               {statusOptions.map((status) => (
                 <SelectItem key={status} value={status}>
                   {status}

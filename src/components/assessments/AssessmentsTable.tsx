@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,7 @@ interface AssessmentsTableProps {
 
 const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { hasAssessmentAdmin, currentUserEmployeeId, clientId } = useAssessmentAccess();
   
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -50,6 +51,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [urlFilter, setUrlFilter] = useState<string | null>(null); // e.g., 'active'
   const [createdByFilter, setCreatedByFilter] = useState('all');
   const [assignedToFilter, setAssignedToFilter] = useState('all');
   const [targetDateFrom, setTargetDateFrom] = useState<Date | undefined>(undefined);
@@ -249,11 +251,16 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
       );
     }
 
-    // Filter by status
+    // Filter by status (dropdown)
     if (statusFilter !== 'all') {
       filtered = filtered.filter(assessment => 
         assessment.status.toLowerCase() === statusFilter.toLowerCase()
       );
+    }
+
+    // URL-driven filter: active => exclude Completed
+    if (urlFilter === 'active') {
+      filtered = filtered.filter(assessment => assessment.status !== 'Completed');
     }
 
     // Filter by created by
@@ -284,7 +291,45 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
     }
 
     setFilteredAssessments(filtered);
-  }, [assessments, searchTerm, statusFilter, createdByFilter, assignedToFilter, targetDateFrom, targetDateTo]);
+  }, [assessments, searchTerm, statusFilter, createdByFilter, assignedToFilter, targetDateFrom, targetDateTo, urlFilter]);
+
+  // Parse URL parameters and set initial filters
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    setUrlFilter(filterParam);
+
+    if (filterParam && filterParam !== 'active') {
+      // Map other query filters to status dropdown
+      let initialStatus = '';
+      switch (filterParam) {
+        case 'completed':
+          initialStatus = 'completed';
+          break;
+        case 'new':
+          initialStatus = 'new';
+          break;
+        case 'draft':
+          initialStatus = 'draft';
+          break;
+        case 'submitted':
+          initialStatus = 'submitted';
+          break;
+        default:
+          initialStatus = '';
+      }
+      if (initialStatus) {
+        setStatusFilter(initialStatus);
+      } else {
+        setStatusFilter('all');
+      }
+    } else if (filterParam === 'active') {
+      // Ensure dropdown remains at All while URL filter is applied
+      setStatusFilter('all');
+    } else {
+      // No URL filter: restore dropdown and data to defaults
+      setStatusFilter('all');
+    }
+  }, [searchParams]);
 
   const clearAllFilters = () => {
     setSearchTerm('');

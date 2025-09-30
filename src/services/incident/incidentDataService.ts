@@ -272,7 +272,7 @@ class IncidentDataService {
       
       // Perform parallel ID lookups for filters
       const [statusId, categoryId, subcategoryId, priorityId, locationId, facilityId] = await Promise.all([
-        filters.status ? this.getStatusId(clientId, filters.status) : Promise.resolve(null),
+        (filters.status && filters.status !== 'Reopen') ? this.getStatusId(clientId, filters.status) : Promise.resolve(null),
         filters.category ? this.getCategoryId(clientId, filters.category) : Promise.resolve(null),
         filters.subcategory ? this.getSubcategoryId(clientId, filters.subcategory) : Promise.resolve(null),
         filters.priority ? this.getPriorityId(clientId, filters.priority) : Promise.resolve(null),
@@ -295,9 +295,11 @@ class IncidentDataService {
           id,
           ticket_id,
           description,
+          people_involved,
           date,
           created_at,
           updated_at,
+          reopen,
           created_by,
           assigned_to,
           incident_report_types!type_id(id, name),
@@ -339,7 +341,10 @@ class IncidentDataService {
         console.log(`   - Applied search filter: ${filters.search}`);
       }
 
-      if (statusId) {
+      if (filters.status === 'Reopen') {
+        query = query.eq('reopen', 1);
+        console.log('   - Applied reopen filter: reopen = 1');
+      } else if (statusId) {
         query = query.eq('status_id', statusId);
         console.log(`   - Applied status filter: ${filters.status} (ID: ${statusId})`);
       } else if (filters.status) {
@@ -412,10 +417,11 @@ class IncidentDataService {
         category: inc.incident_categories?.name || 'Unknown',
         subcategory: inc.incident_subcategories?.name || '',
         description: inc.description || '',
+        peopleInvolved: Array.isArray(inc.people_involved) ? inc.people_involved : [],
         date: new Date(inc.date),
         location: inc.campuses?.name || 'Unknown',
         facility: inc.facilities?.name || '',
-        status: inc.incident_status?.name || 'Unknown',
+        status: inc.incident_status?.name || (inc.reopen === 1 ? 'Reopen' : 'Unknown'),
         priority: inc.incident_priorities?.name || 'Medium',
         reportedBy: inc.created_by_employee ? 
           `${inc.created_by_employee.first_name} ${inc.created_by_employee.last_name}` : 

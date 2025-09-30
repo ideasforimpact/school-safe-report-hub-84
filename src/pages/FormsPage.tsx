@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const FormsPage = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const isBackoffice = location.pathname.startsWith('/backoffice');
 
   const { client, clients, loading: clientsLoading } = useClient();
@@ -46,10 +47,31 @@ const FormsPage = () => {
   const [isSubmittingAcknowledgment, setIsSubmittingAcknowledgment] = useState(false);
 
   // Filter states
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const initialStatusFromQuery = (() => {
+    const filterParam = searchParams.get('filter');
+    switch (filterParam) {
+      case 'open':
+        return 'pending';
+      case 'acknowledged':
+        return 'acknowledged';
+      case 'pending':
+        return 'pending';
+      default:
+        return 'all';
+    }
+  })();
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatusFromQuery);
   const [formTypeFilter, setFormTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  // Keep status filter in sync when query param changes after mount
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (!filterParam) return;
+    const mapped = filterParam === 'open' ? 'pending' : (filterParam === 'acknowledged' ? 'acknowledged' : (filterParam === 'pending' ? 'pending' : 'all'));
+    setStatusFilter(mapped);
+  }, [searchParams]);
 
   // Helpers to extract values from mixed response shapes (array or object)
   const extractFromResponses = (responses: any, keys: string[]) => {

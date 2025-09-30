@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -32,7 +33,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset, setValue, watch } = useForm<VehicleFormData>({
     defaultValues: {
       registrationNumber: '',
-      type: 'bus',
+      type: 'other',
       make: '',
       model: '',
       year: new Date().getFullYear(),
@@ -96,49 +97,24 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         setError('Registration number is required');
         return;
       }
-
-      if (!data.make?.trim()) {
-        setError('Make is required');
-        return;
-      }
-
-      if (!data.model?.trim()) {
-        setError('Model is required');
-        return;
-      }
-
-      if (!data.driver?.trim()) {
-        setError('Driver name is required');
-        return;
-      }
-
-      if (!data.route?.trim()) {
-        setError('Route is required');
-        return;
-      }
-
-        // Ensure numeric values are properly converted from strings or set to null if empty
-        const yearValue = data.year ? Number(data.year) : null;
-        const capacityValue = data.capacity ? Number(data.capacity) : null;
-        
-      if (!yearValue || yearValue < 1980 || yearValue > new Date().getFullYear() + 1) {
-        setError('Year is required and must be between 1980 and ' + (new Date().getFullYear() + 1));
-          return;
-        }
+      // Ensure numeric values are properly converted from strings or set to null if empty
+      // For add mode, we only require registration number. Use defaults for the rest.
+      const yearValue = data.year ? Number(data.year) : new Date().getFullYear();
+      const capacityValue = data.capacity ? Number(data.capacity) : null;
 
       // Prepare the payload with proper data transformation
       const vehicleData = {
         registrationNumber: data.registrationNumber.trim(),
-        type: data.type,
-        make: data.make.trim(),
-        model: data.model.trim(),
-          year: yearValue,
-        driver: data.driver.trim(),
-        route: data.route.trim(),
-          capacity: capacityValue,
-        status: data.status,
-          clientId: employeeData.clientId, // Always use the current client's ID
-          employeeId: employeeData?.id // Use logged-in employee's ID
+        type: data.type || 'other',
+        make: (data.make || '').trim(),
+        model: (data.model || '').trim(),
+        year: yearValue,
+        driver: (data.driver || '').trim(),
+        route: (data.route || '').trim(),
+        capacity: capacityValue,
+        status: data.status || 'active',
+        clientId: employeeData.clientId, // Always use the current client's ID
+        employeeId: employeeData?.id // Use logged-in employee's ID
       };
 
       console.log('Sending vehicle data:', {
@@ -226,154 +202,43 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 </p>
               )}
             </div>
+            {/* Legacy input fields removed per new UX requirement */}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Vehicle Type<span className="text-red-500">*</span></Label>
-                <Select 
-                  value={watch('type')} 
-                  onValueChange={(value) => setValue('type', value as any)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bus">Bus</SelectItem>
-                    <SelectItem value="car">Car</SelectItem>
-                    <SelectItem value="van">Van</SelectItem>
-                    <SelectItem value="truck">Truck</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status<span className="text-red-500">*</span></Label>
-                <Select 
-                  value={watch('status')} 
-                  onValueChange={(value) => setValue('status', value as any)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="make">Make<span className="text-red-500">*</span></Label>
-                <Input 
-                  id="make" 
-                  {...register('make', { 
-                    required: "Make is required",
-                    maxLength: { value: 10, message: "Make cannot exceed 10 characters" }
-                  })}
-                  placeholder="e.g., TATA"
-                  maxLength={10}
-                  disabled={isSubmitting}
-                />
-                {errors.make && 
-                  <p className="text-red-500 text-sm">{errors.make.message}</p>
-                }
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="model">Model<span className="text-red-500">*</span></Label>
-                <Input 
-                  id="model" 
-                  {...register('model', { 
-                    required: "Model is required",
-                    maxLength: { value: 10, message: "Model cannot exceed 10 characters" }
-                  })}
-                  placeholder="e.g., Starbus"
-                  maxLength={10}
-                  disabled={isSubmitting}
-                />
-                {errors.model && 
-                  <p className="text-red-500 text-sm">{errors.model.message}</p>
-                }
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="year">Year<span className="text-red-500">*</span></Label>
-              <Input 
-                id="year" 
-                type="number"
-                {...register('year', { 
-                  required: "Year is required",
-                  min: { value: 1980, message: "Year must be after 1980" },
-                  max: { value: new Date().getFullYear() + 1, message: `Year must be before ${new Date().getFullYear() + 1}` }
-                })}
-                placeholder="e.g., 2023"
-                disabled={isSubmitting}
-              />
-              {errors.year && 
-                <p className="text-red-500 text-sm">{errors.year.message}</p>
-              }
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="driver">Driver<span className="text-red-500">*</span></Label>
-                <Input 
-                  id="driver" 
-                  {...register('driver', { 
-                    required: "Driver name is required",
-                    maxLength: { value: 16, message: "Driver name cannot exceed 16 characters" }
-                  })}
-                  placeholder="e.g., John Doe"
-                  maxLength={16}
-                  disabled={isSubmitting}
-                />
-                {errors.driver && 
-                  <p className="text-red-500 text-sm">{errors.driver.message}</p>
-                }
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="route">Route<span className="text-red-500">*</span></Label>
-                <Input 
-                  id="route" 
-                  {...register('route', { 
-                    required: "Route is required",
-                    maxLength: { value: 16, message: "Route cannot exceed 16 characters" }
-                  })}
-                  placeholder="e.g., Main Campus"
-                  maxLength={16}
-                  disabled={isSubmitting}
-                />
-                {errors.route && 
-                  <p className="text-red-500 text-sm">{errors.route.message}</p>
-                }
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="capacity">Capacity (optional)</Label>
-              <Input 
-                id="capacity" 
-                type="number"
-                {...register('capacity', { 
-                  min: { value: 1, message: "Capacity must be at least 1" },
-                  max: { value: 99, message: "Capacity cannot exceed 99" }
-                })}
-                placeholder="e.g., 45"
-                maxLength={2}
-                disabled={isSubmitting}
-              />
-              {errors.capacity && 
-                <p className="text-red-500 text-sm">{errors.capacity.message}</p>
-              }
-            </div>
+            {/* Verified details shown as input boxes (disabled) from latest verification log */}
+            {vehicle?.verificationData && vehicle.verificationData.length > 0 && (() => {
+              const latest = getLatestVerificationLog(vehicle);
+              const getVal = (key: string) => findVerificationField(latest, key)?.value || '-';
+              const model = getVal('maker_model');
+              const makerDesc = getVal('maker_description');
+              return (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 col-span-2">
+                    <Label>First Owner Name</Label>
+                    <Input disabled value={getVal('owner_name')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vehicle Category</Label>
+                    <Input disabled value={getVal('vehicle_category')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vehicle Engine Number</Label>
+                    <Input disabled value={getVal('vehicle_engine_number')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Model</Label>
+                    <Input disabled value={`${model}${makerDesc && model !== '-' ? ` (${makerDesc})` : ''}`} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Vehicle Type</Label>
+                    <Input disabled value={getVal('body_type')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Year</Label>
+                    <Input disabled value={getVal('manufacturing_date')} />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex justify-end gap-2">

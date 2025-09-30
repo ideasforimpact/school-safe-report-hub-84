@@ -9,6 +9,7 @@ export interface IncidentRecord {
   category: string;
   subcategory: string;
   description: string;
+  peopleInvolved?: Array<{ name?: string; role?: string; notes?: string }>;
   date: Date;
   location: string;
   facility: string;
@@ -34,6 +35,7 @@ export const incidentService = {
           id,
           ticket_id,
           description,
+          reopen,
           date,
           created_at,
           updated_at,
@@ -65,7 +67,7 @@ export const incidentService = {
         date: new Date(inc.date),
         location: inc.campuses?.name || 'Unknown',
         facility: inc.facilities?.name || '',
-        status: inc.incident_status?.name || 'Unknown',
+        status: inc.incident_status?.name || (inc.reopen === 1 ? 'Reopen' : 'Unknown'),
         priority: inc.incident_priorities?.name || 'Medium',
         reportedBy: inc.created_by_employee ? 
           `${inc.created_by_employee.first_name} ${inc.created_by_employee.last_name}` : 

@@ -59,7 +59,11 @@ export const useFilterOptions = () => {
         if (statusError) {
           console.error('Error fetching status options:', statusError);
         } else {
-          const dbStatusOptions = statusData?.map(status => status.name) || [];
+          let dbStatusOptions = statusData?.map(status => status.name) || [];
+          // Ensure Reopen is present as an option alongside DB statuses
+          if (!dbStatusOptions.includes('Reopen')) {
+            dbStatusOptions = [...dbStatusOptions, 'Reopen'];
+          }
           setStatusOptions(dbStatusOptions);
           console.log('Status options loaded from database:', dbStatusOptions);
         }

@@ -64,12 +64,45 @@ serve(async (req) => {
       `, { count: 'exact' })
       .eq('client_id', client_id)
       .eq('status_id', openStatusId)
+      // Only include incidents that have been open for more than 7 days
+      // .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
 
     if (shouldFilterByEmployee) {
       openIncidentsQuery = openIncidentsQuery.eq('created_by', employee_id)
     }
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    let openIncidentOlder7daysQuery = supabase
+      .from('incidents')
+      .select(`
+        id, 
+        status_id, 
+        people_involved, 
+        category_id,
+        incident_categories!inner(name)
+      `, { count: 'exact' })
+      .eq('client_id', client_id)
+      .eq('status_id', openStatusId)
+      // Only include incidents that have been open for more than 7 days
+      // .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+
+      if (shouldFilterByEmployee) {
+        openIncidentOlder7daysQuery = openIncidentOlder7daysQuery.eq('created_by', employee_id)
+      }
+
+
+    openIncidentOlder7daysQuery = openIncidentOlder7daysQuery.lt('date', sevenDaysAgo)
+
+    const { data: openIncidentOlder7days, error: openIncidentOlder7daysError } = await openIncidentOlder7daysQuery
+
+    if(openIncidentOlder7daysError){
+      console.log('Error fetching open incidents older than 7 days:', openIncidentOlder7daysError); 
+    }
 
     const { data: openIncidents, error: openIncidentsError } = await openIncidentsQuery
+
+    console.log("openIncidents",[openIncidentOlder7days.length,openIncidents.length]);
+    
 
     if (openIncidentsError) {
       console.error('Error fetching open incidents:', openIncidentsError)
@@ -292,6 +325,7 @@ serve(async (req) => {
         .from('employees')
         .select('id')
         .eq('client_id', client_id)
+        .eq('status',true)
         .then(res => res.data?.map(emp => emp.id) || [])
 
     // Fetch document status IDs for completed, governance, and rejected
@@ -699,6 +733,7 @@ serve(async (req) => {
 
     const response = {
       openIncidents: openIncidents?.length || 0,
+      openIncidentOlder7days:openIncidentOlder7days?.length || 0,
       studentsInvolved: studentsInvolvedCount,
       studentsInvolvedByCategory: topCategories,
       activeAssessments: activeAssessments?.length || 0,
@@ -706,6 +741,7 @@ serve(async (req) => {
       draftAssessments: draftAssessmentsCount,
       submittedAssessments: submittedAssessmentsCount,
       totalCustomForms: 0, // Removed custom forms count as we're now using direct client_id filtering
+      totalUnacknowledged: allUnacknowledgedSubmissions?.length || 0,
       formSubmissions30Days: submissions30Days?.length || 0,
       formSubmissions60Days: submissions60Days?.length || 0,
       formSubmissions90Days: submissions90Days?.length || 0,

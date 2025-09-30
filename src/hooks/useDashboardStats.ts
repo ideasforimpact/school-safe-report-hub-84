@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardStats {
   openIncidents: number;
+  openIncidentOlder7days?: number;
   studentsInvolved?: number;
   studentsInvolvedByCategory?: Array<{ category: string; count: number }>;
   activeAssessments: number;
@@ -30,6 +31,7 @@ interface DashboardStats {
   formSubmissions30Days?: number;
   formSubmissions60Days?: number;
   formSubmissions90Days?: number;
+  totalUnacknowledged?: number;
   vehiclesToBeVerified?: number;
   vehiclesFailedVerification?: number;
   vehiclesWithDocuments?: number;
@@ -44,6 +46,7 @@ interface DashboardStats {
 export const useDashboardStats = () => {
   const [stats, setStats] = useState<DashboardStats>({
     openIncidents: 0,
+    openIncidentOlder7days: 0,
     studentsInvolved: 0,
     studentsInvolvedByCategory: [],
     activeAssessments: 0,
@@ -69,6 +72,7 @@ export const useDashboardStats = () => {
     formSubmissions30Days: 0,
     formSubmissions60Days: 0,
     formSubmissions90Days: 0,
+    totalUnacknowledged: 0,
     vehiclesToBeVerified: 0,
     vehiclesFailedVerification: 0,
     vehiclesWithDocuments: 0,

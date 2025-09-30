@@ -5,11 +5,12 @@ import EmployeesList from '@/components/employee-verification/EmployeesList';
 import FilterBar from '@/components/employee-verification/filters/FilterBar';
 import { FileCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
+  const [searchParams] = useSearchParams();
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,6 +66,35 @@ const EmployeeVerificationPage = () => {
       return true;
     });
   }, [employees, searchTerm, documentStatusFilter]);
+
+  // Parse URL parameters and set initial filters
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    if (filterParam) {
+      console.log('🔍 Employee Verification - URL filter parameter found:', filterParam);
+      
+      // Map filter parameter to document status filter
+      let initialStatus = '';
+      switch (filterParam) {
+        case 'verified':
+          initialStatus = 'verified';
+          break;
+        case 'pending':
+          initialStatus = 'pending';
+          break;
+        case 'failed':
+          initialStatus = 'failed';
+          break;
+        default:
+          initialStatus = '';
+      }
+      
+      if (initialStatus) {
+        console.log('🎯 Setting initial document status filter to:', initialStatus);
+        setDocumentStatusFilter(initialStatus);
+      }
+    }
+  }, [searchParams]);
 
   // Fetch employees when component mounts
   useEffect(() => {

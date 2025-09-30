@@ -205,6 +205,30 @@ export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
 };
 
 /**
+ * Check if vehicle is considered valid (at least 2 out of 3 certificates valid or expiring soon)
+ * This is used for the "valid" filter to be more lenient
+ */
+export const hasValidVehicle = (vehicle: Vehicle): boolean => {
+  // If no verification data, can't be valid
+  if (!vehicle.verificationData || vehicle.verificationData.length === 0) {
+    return false;
+  }
+  
+  const fitnessStatus = getDocumentStatus(vehicle, 'fitness').status;
+  const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
+  const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
+  
+  // Count valid certificates (valid or expiring soon are both considered "good enough")
+  let validCount = 0;
+  if (fitnessStatus === 'valid' || fitnessStatus === 'expiring_soon') validCount++;
+  if (insuranceStatus === 'valid' || insuranceStatus === 'expiring_soon') validCount++;
+  if (pollutionStatus === 'valid' || pollutionStatus === 'expiring_soon') validCount++;
+  
+  // Vehicle is valid if at least 2 out of 3 certificates are valid/expiring soon
+  return validCount >= 2;
+};
+
+/**
  * Get vehicle row className based on document statuses
  */
 export const getVehicleRowClassName = (vehicle: Vehicle): string => {

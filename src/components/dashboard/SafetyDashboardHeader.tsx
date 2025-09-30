@@ -11,7 +11,9 @@ interface SafetyDashboardHeaderProps {
     totalVehicles: number;
     vehiclesVerified?: number;
     activeAssessments?: number;
+    overdueAssessments?: number;
     incidentsLastMonth: number;
+    openIncidentOlder7days: number
   };
   loading: boolean;
 }
@@ -33,17 +35,26 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
     : 0;
 
   // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
-  const incidentsScore = Math.max(100 - 20 * stats.openIncidents, 0);
+  const incidentsScore = Math.max(100 - 20 * stats.openIncidentOlder7days, 0);
 
-  // Calculate Assessment Activity Score
-  const assessmentActivityScore = stats.activeAssessments ? Math.min(100, (stats.activeAssessments / 10) * 100) : 0;
+  console.log(stats.openIncidentOlder7days,'openIncidentOlder7days');
+  
+  // Calculate Assessment Activity Score (new formula)
+  // CASE WHEN ActiveAssessments = 0 THEN 100
+  //      WHEN OverdueAssessments = 0 THEN 100
+  //      ELSE 100 * (OverdueAssessments / ActiveAssessments)
+  const activeA = stats.activeAssessments || 0;
+  const overdueA = stats.overdueAssessments || 0;
+  const assessmentActivityScore = activeA === 0 || overdueA === 0
+    ? 100
+    : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA)));
 
   // Overall Safety Score (same formula as gauges)
   const overallSafetyScore = Math.round(
     (0.3 * employeeComplianceScore) + 
     (0.2 * vehicleComplianceScore) + 
-    (0.15 * assessmentActivityScore) + 
-    (0.20 * incidentsScore)
+    (0.25 * assessmentActivityScore) + 
+    (0.25 * incidentsScore)
   );
 
   const getScoreInfo = (score: number) => {
