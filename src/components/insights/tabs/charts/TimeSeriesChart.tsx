@@ -12,7 +12,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({ data }) => {
     <div className="h-[400px]">
       <Card className="h-full">
         <CardHeader className="flex flex-col items-start">
-          <CardTitle className="text-left">Incidents Over Time</CardTitle>
+          <CardTitle className="text-lg font-semibold text-left">Incidents Over Time</CardTitle>
           <CardDescription className="text-left">
             Monthly trend of incidents with statistical analysis
           </CardDescription>
