@@ -32,7 +32,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   // If user is logged in as employee and is a super admin
   if (isSuperAdmin) {
     return (
-      <Badge variant="default" className="bg-purple-600 hover:bg-purple-700 flex items-center gap-1">
+      <Badge variant="default" className="bg-[#1e40af] hover:bg-[#1e40af] flex items-center gap-1">
         <Shield className="h-3 w-3" />
         Super Admin {department ? `(${formatDepartment(department)})` : ''}
       </Badge>

@@ -359,7 +359,7 @@ const IncidentsList = () => {
   return (
     <Layout>
       <div className="space-y-6 p-6 w-full">
-        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
           <div className="w-full">
             <IncidentsHeader hasIncidentAdmin={hasIncidentAdmin} />
           </div>

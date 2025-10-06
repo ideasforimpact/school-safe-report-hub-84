@@ -112,11 +112,9 @@ const AssessmentsPage = () => {
   return (
     <Layout>
       <div className="w-full py-6">
-        {/* Gradient Header Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg mb-8 text-white mx-6">
-          <div className="p-8">
-            <AssessmentsHeader onCreateTemplate={handleCreateAssessment} />
-          </div>
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
+          <AssessmentsHeader onCreateTemplate={handleCreateAssessment} />
         </div>
 
         {/* Main Content Card */}

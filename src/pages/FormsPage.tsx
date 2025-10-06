@@ -396,19 +396,21 @@ const FormsPage = () => {
     <div className="w-full py-6">
       <div className="mx-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <FileText className="h-8 w-8 text-blue-600" />
-            <div>
-              <h1 className="text-3xl font-bold">
-                {isBackoffice ? 'Form Management' : 'Grievances'}
-              </h1>
-              <p className="text-gray-500 mt-1">
-                {isBackoffice 
-                  ? 'Configure grievance forms for clients' 
-                  : 'Search and manage grievances'
-                }
-              </p>
+        <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <FileText className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {isBackoffice ? 'Form Management' : 'Grievances'}
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  {isBackoffice 
+                    ? 'Configure grievance forms for clients' 
+                    : 'Search and manage grievances'
+                  }
+                </p>
+              </div>
             </div>
           </div>
         </div>

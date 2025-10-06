@@ -606,28 +606,30 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const content = (
     <div className="space-y-6">
       {!embedded && (
-        <div className="flex justify-between items-center mx-6">
-          <h1 className="text-2xl font-bold">User Management</h1>
-          {hasUserManagementAdminAccess && (
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => setIsImportDialogOpen(true)}
-                className="flex items-center gap-2"
-                variant="secondary"
-                disabled={isLoading}
-              >
-                <FileUp className="h-4 w-4" />
-                <span>Import Employees</span>
-              </Button>
-              <Button 
-                onClick={() => setIsAddDialogOpen(true)}
-                disabled={isLoading}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Employee
-              </Button>
-            </div>
-          )}
+        <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold">User Management</h1>
+            {hasUserManagementAdminAccess && (
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="flex items-center gap-2"
+                  variant="secondary"
+                  disabled={isLoading}
+                >
+                  <FileUp className="h-4 w-4" />
+                  <span>Import Employees</span>
+                </Button>
+                <Button 
+                  onClick={() => setIsAddDialogOpen(true)}
+                  disabled={isLoading}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Employee
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

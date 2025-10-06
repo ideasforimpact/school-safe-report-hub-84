@@ -71,9 +71,9 @@ const SettingsPage = () => {
     <Layout>
       <div className="w-full py-6">
         <div className="space-y-8">
-          <div className="mx-6">
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-gray-500 mt-1">Configure system settings</p>
+          <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
+            <h1 className="text-2xl font-bold">Settings</h1>
+            <p className="text-gray-600 mt-1">Configure system settings</p>
           </div>
           
           <Tabs defaultValue={defaultTab} className="w-full mx-6">

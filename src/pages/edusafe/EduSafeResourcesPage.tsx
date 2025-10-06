@@ -124,20 +124,21 @@ const EduSafeResourcesContent = () => {
   
   return (
     <div className="w-full py-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 mx-6">
-        <div>
-          <h1 className="text-3xl font-bold text-left">EduSafe Resources</h1>
-          <p className="text-gray-500 mt-1 text-left">Browse and download safety resources</p>
+      <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-left">EduSafe Resources</h1>
+            <p className="text-gray-600 mt-1 text-left">Browse and download safety resources</p>
+          </div>
+          {hasEduResourcesAdmin && (
+            <Button asChild>
+              <Link to="/edusafe/upload">
+                <FilePlus className="h-4 w-4 mr-2" />
+                Upload Resource
+              </Link>
+            </Button>
+          )}
         </div>
-        
-        {hasEduResourcesAdmin && (
-          <Button asChild>
-            <Link to="/edusafe/upload">
-              <FilePlus className="h-4 w-4 mr-2" />
-              Upload Resource
-            </Link>
-          </Button>
-        )}
       </div>
       
       <div className="mb-6 mx-6">

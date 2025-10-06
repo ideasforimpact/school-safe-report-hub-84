@@ -12,7 +12,7 @@ const Sidebar = () => {
   return (
     <aside 
       className={cn(
-        "fixed top-0 left-0 bottom-0 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900 transition-all duration-300 flex flex-col z-50 shadow-2xl border-r border-blue-800/30",
+        "fixed top-0 left-0 bottom-0 bg-[#1e40af] transition-all duration-300 flex flex-col z-50 shadow-2xl border-r border-blue-800/30",
         collapsed ? "w-24" : "w-28" // slightly increased width for better readability
       )}
     >
