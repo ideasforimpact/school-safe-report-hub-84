@@ -25,7 +25,7 @@ const BulkResourceUploadInner: React.FC = () => {
   const [files, setFiles] = useState<FileList | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<ResourceCategory>('procedures');
+  const [category, setCategory] = useState<ResourceCategory>('policy');
   const [tags, setTags] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
@@ -86,7 +86,8 @@ const BulkResourceUploadInner: React.FC = () => {
             description,
             category,
             tags: tagArray,
-            file: fileItem
+            file: fileItem,
+            document_url: fileItem.base64
           });
           
           successCount++;
@@ -123,7 +124,7 @@ const BulkResourceUploadInner: React.FC = () => {
     }
   };
 
-  const categories: ResourceCategory[] = ['posters', 'procedures', 'guidelines', 'forms', 'other'];
+  const categories: ResourceCategory[] = ['posters', 'policy', 'guidelines', 'forms', 'other'];
 
   return (
     <div className="space-y-6">
@@ -171,7 +172,7 @@ const BulkResourceUploadInner: React.FC = () => {
             <Label htmlFor="tags">Tags (Comma-separated)</Label>
             <Input
               id="tags"
-              placeholder="safety, emergency, procedures"
+              placeholder="safety, emergency, policy"
               value={tags}
               onChange={e => setTags(e.target.value)}
             />

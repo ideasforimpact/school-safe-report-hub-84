@@ -1,7 +1,7 @@
 
 import { FileItem } from './fileTypes';
 
-export type ResourceCategory = 'posters' | 'procedures' | 'guidelines' | 'forms' | 'youtube' | 'other';
+export type ResourceCategory = 'posters' | 'policy' | 'guidelines' | 'forms' | 'youtube' | 'other';
 
 export interface EduSafeResource {
   id: string;

@@ -27,9 +27,9 @@ import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryServi
 import { EditDialog } from './EditDialog';
 import { useAuth } from '@/contexts/auth/useAuth';
 
-// Validation function for subcategory names (no special characters, max 25 chars)
+// Validation: allow any characters, up to 50 characters
 const isValidSubcategoryName = (name: string) => {
-  const subcategoryNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  const subcategoryNameRegex = /^.{1,50}$/;
   return subcategoryNameRegex.test(name);
 };
 
@@ -76,7 +76,7 @@ export const SubcategoryTab = ({
     }
 
     if (!isValidSubcategoryName(newSubcategoryName.trim())) {
-      setError("Subcategory name must be alphanumeric with spaces only, maximum 25 characters");
+      setError("Subcategory name must be 1–50 characters");
       return;
     }
     
@@ -206,11 +206,11 @@ export const SubcategoryTab = ({
                   placeholder={`Add subcategory for ${selectedCategory?.name || 'selected category'}`}
                   value={newSubcategoryName}
                   onChange={(e) => setNewSubcategoryName(e.target.value)}
-                  maxLength={25}
+                  maxLength={50}
                   className={newSubcategoryName && !isValidSubcategoryName(newSubcategoryName) ? 'border-red-500' : ''}
                 />
                 {newSubcategoryName && !isValidSubcategoryName(newSubcategoryName) && (
-                  <p className="text-xs text-red-500 mt-1">Subcategory name must be alphanumeric with spaces only, maximum 25 characters</p>
+                  <p className="text-xs text-red-500 mt-1">Subcategory name must be 1–50 characters</p>
                 )}
               </div>
               <Button type="submit" disabled={isAdding}>
@@ -363,12 +363,12 @@ export const SubcategoryTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={25}
+            maxLength={50}
             isRequired={true}
             error={error}
             isLoading={isUpdating}
             validationFunction={isValidSubcategoryName}
-            validationMessage="Subcategory name must be alphanumeric with spaces only, maximum 25 characters"
+            validationMessage="Subcategory name must be 1–50 characters"
           />
         )}
       </CardContent>

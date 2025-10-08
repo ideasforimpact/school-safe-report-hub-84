@@ -48,7 +48,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'procedures',
+    category: 'policy',
     tags: [] as string[],
     file: null as File | null,
     client_type_id: ''
@@ -57,7 +57,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   const [titleError, setTitleError] = useState('');
   const [tagError, setTagError] = useState('');
 
-  const categories = ['posters', 'procedures', 'guidelines', 'forms', 'other'];
+  const categories = ['posters', 'policy', 'guidelines', 'forms', 'other'];
 
   // Function to validate title - only allow letters, numbers, spaces, and basic punctuation
   const validateTitle = (value: string) => {
@@ -262,7 +262,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     setFormData({
       title: '',
       description: '',
-      category: 'procedures',
+      category: 'policy',
       tags: [],
       file: null,
       client_type_id: ''

@@ -18,7 +18,7 @@ export const initialResources: EduSafeResource[] = [
       base64: 'data:application/pdf;base64,JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1szIDAgUl0+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA2MTIgNzkyXS9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjQgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCjUgMCBvYmoKPDwvTGVuZ3RoIDY4Pj5zdHJlYW0KQlQKMTAwIDcwMCBUZAovRjEgMTIgVGYKKFRoaXMgaXMgYSBzYW1wbGUgUERGIGRvY3VtZW50IGZvciBFZHVTYWZlIFJlc291cmNlcykgVGoKRVQKZW5kc3RyZWFtCmVuZG9iago2IDAgb2JqCjw8L1N0ZXUtMT4+CmVuZG9iagp4cmVmCjAgNwowMDAwMDAwMDAwIDY1NTM1IGYNCjAwMDAwMDAwMDkgMDAwMDAgbg0KMDAwMDAwMDA1OCAwMDAwMCBuDQowMDAwMDAwMTExIDAwMDAwIG4NCjAwMDAwMDAyMjYgMDAwMDAgbg0KMDAwMDAwMDI5MyAwMDAwMCBuDQowMDAwMDAwNDEwIDAwMDAwIG4NCnRyYWlsZXIKPDwvU2l6ZSA3L1Jvb3QgMSAwIFI+PgpzdGFydHhyZWYKNDQxCiUlRU9GCg=='
     },
     category: 'posters',
-    tags: ['safety', 'emergency', 'procedures'],
+    tags: ['safety', 'emergency', 'policy'],
     uploadDate: currentDate,
     uploaderId: 'admin-1',
     uploaderName: 'System Administrator',
@@ -55,8 +55,8 @@ export const initialResources: EduSafeResource[] = [
       size: 1548000,
       base64: 'data:application/pdf;base64,JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1szIDAgUl0+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCA2MTIgNzkyXS9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjQgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCjUgMCBvYmoKPDwvTGVuZ3RoIDY4Pj5zdHJlYW0KQlQKMTAwIDcwMCBUZAovRjEgMTIgVGYKKEVtZXJnZW5jeSByZXNwb25zZSBwcm9jZWR1cmVzIGZvciBzY2hvb2xzKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjYgMCBvYmoKPDwvU3RldS0xPj4KZW5kb2JqCnhyZWYKMCA3CjAwMDAwMDAwMDAgNjU1MzUgZg0KMDAwMDAwMDAwOSAwMDAwMCBuDQowMDAwMDAwMDU4IDAwMDAwIG4NCjAwMDAwMDAxMTEgMDAwMDAgbg0KMDAwMDAwMDIyNiAwMDAwMCBuDQowMDAwMDAwMjkzIDAwMDAwIG4NCjAwMDAwMDA0MTAgMDAwMDAgbg0KdHJhaWxlcgo8PC9TaXplIDcvUm9vdCAxIDAgUj4+CnN0YXJ0eHJlZgo0NDEKJSVFT0YK'
     },
-    category: 'procedures',
-    tags: ['emergency', 'response', 'procedures'],
+    category: 'policy',
+    tags: ['emergency', 'response', 'policy'],
     uploadDate: currentDate,
     uploaderId: 'admin-1',
     uploaderName: 'System Administrator',

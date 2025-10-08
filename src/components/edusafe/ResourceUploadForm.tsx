@@ -349,7 +349,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="posters">Posters</SelectItem>
-              <SelectItem value="procedures">Procedures</SelectItem>
+              <SelectItem value="policy">Policy</SelectItem>
               <SelectItem value="guidelines">Guidelines</SelectItem>
               <SelectItem value="forms">Forms</SelectItem>
               <SelectItem value="youtube">YouTube Link</SelectItem>

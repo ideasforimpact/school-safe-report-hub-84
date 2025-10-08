@@ -8,7 +8,7 @@ interface CategoryFilterProps {
   onSelectCategory: (category: ResourceCategory | 'all') => void;
 }
 
-const categories: Array<ResourceCategory | 'all'> = ['all', 'posters', 'procedures', 'guidelines', 'forms', 'other'];
+const categories: Array<ResourceCategory | 'all'> = ['all', 'posters', 'policy', 'guidelines', 'forms', 'other'];
 
 const CategoryFilter: React.FC<CategoryFilterProps> = ({ selectedCategory, onSelectCategory }) => {
   return (

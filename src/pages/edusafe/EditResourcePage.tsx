@@ -225,7 +225,7 @@ const EditResourceContent = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="posters">Posters</SelectItem>
-                    <SelectItem value="procedures">Procedures</SelectItem>
+                    <SelectItem value="policy">Policy</SelectItem>
                     <SelectItem value="guidelines">Guidelines</SelectItem>
                     <SelectItem value="forms">Forms</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
@@ -301,7 +301,7 @@ const EditResourceContent = () => {
   );
 };
 
-const EditResourcePage = () => {
+export default function EditResourcePage() {
   return (
     <Layout>
       <EduSafeProvider>
@@ -309,6 +309,4 @@ const EditResourcePage = () => {
       </EduSafeProvider>
     </Layout>
   );
-};
-
-export default EditResourcePage;
+}

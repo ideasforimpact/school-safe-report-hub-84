@@ -33,9 +33,9 @@ interface CategoryTabProps {
   deleteCategory: (id: string) => Promise<void>;
 }
 
-// Validation function for category names (no special characters, max 25 chars)
+// Validation: allow any characters, up to 50 characters
 const isValidCategoryName = (name: string) => {
-  const categoryNameRegex = /^[a-zA-Z0-9\s]{1,25}$/;
+  const categoryNameRegex = /^.{1,50}$/;
   return categoryNameRegex.test(name);
 };
 
@@ -66,7 +66,7 @@ export const CategoryTab = ({
     }
 
     if (!isValidCategoryName(newCategory.trim())) {
-      setError("Category name must be alphanumeric with spaces only, maximum 25 characters");
+      setError("Category name must be 1–50 characters");
       return;
     }
     
@@ -172,11 +172,11 @@ export const CategoryTab = ({
             placeholder="New category name"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            maxLength={25}
+            maxLength={50}
             className={newCategory && !isValidCategoryName(newCategory) ? 'border-red-500' : ''}
           />
           {newCategory && !isValidCategoryName(newCategory) && (
-            <p className="text-xs text-red-500 mt-1">Category name must be alphanumeric with spaces only, maximum 25 characters</p>
+            <p className="text-xs text-red-500 mt-1">Category name must be 1–50 characters</p>
           )}
           <Button type="submit" disabled={isAdding}>
             {isAdding ? (
@@ -267,12 +267,12 @@ export const CategoryTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={25}
+            maxLength={50}
             isRequired={true}
             error={error}
             isLoading={isUpdating}
             validationFunction={isValidCategoryName}
-            validationMessage="Category name must be alphanumeric with spaces only, maximum 25 characters"
+            validationMessage="Category name must be 1–50 characters"
           />
         )}
 
