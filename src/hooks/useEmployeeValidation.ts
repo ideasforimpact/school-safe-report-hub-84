@@ -59,7 +59,7 @@ export const useEmployeeValidation = () => {
       
       // If validation fails and not already logging out, log out and redirect
       if ((error || !data?.valid) && !state.isLoggingOut) {
-        console.error('Employee validation failed:', error?.message || data?.message);
+        console.error('Employee validation failed:', error?.message || data?.message,error,"error",employeeData.id,employeeData.clientId,employeeData, new Date());
         toast.error('Your session has expired. Please log in again.');
         logout();
       }

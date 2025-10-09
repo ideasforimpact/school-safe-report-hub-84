@@ -149,7 +149,6 @@ const EmployeeDetailPage = () => {
     
     setIsLoading(true);
     try {
-      console.log('Loading employee data for:', employeeId);
       const data = await fetchEmployeeVerificationData(employeeId, clientId);
       
       if (data.employee) {
@@ -286,6 +285,12 @@ const EmployeeDetailPage = () => {
     }
   }, [initialLoadComplete, documents, handleDigiLockerReturn]);
 
+    const getEmployeeTypeDisplay = (type?: string) => {
+    if (!type) return 'Not Specified';
+    
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   // Early return for non-existent employee
   if (!isLoading && !employee && initialLoadComplete) {
     return (
@@ -327,7 +332,7 @@ const EmployeeDetailPage = () => {
           </Button>
             <div>
               <h1 className="text-2xl font-bold text-left">{employee.name}</h1>
-              <p className="text-gray-500">{employee.position} • {employee.employeeId}</p>
+              <p className="text-gray-500">{getEmployeeTypeDisplay(employee.employeeType)} • {employee.employeeId}</p>
             </div>
           </div>
 

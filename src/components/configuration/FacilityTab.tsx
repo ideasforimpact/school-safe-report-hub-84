@@ -66,9 +66,9 @@ export const FacilityTab = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Validation function for facility name (alphanumeric only, max 20 characters)
+  // Validation: allow any characters, max 50 length
   const isValidFacilityName = (name: string) => {
-    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    const nameRegex = /^.{1,50}$/;
     return nameRegex.test(name);
   };
 
@@ -92,7 +92,7 @@ export const FacilityTab = ({
     }
     
     if (!isValidFacilityName(facilityName)) {
-      toast.error("Facility name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Facility name can be up to 50 characters");
       return;
     }
     
@@ -153,7 +153,7 @@ export const FacilityTab = ({
     }
     
     if (!isValidFacilityName(facilityName)) {
-      toast.error("Facility name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Facility name can be up to 50 characters");
       return;
     }
     
@@ -261,7 +261,7 @@ export const FacilityTab = ({
               placeholder="New facility name (e.g., Laboratory)"
               value={newFacility}
               onChange={(e) => setNewFacility(e.target.value)}
-              maxLength={20}
+              maxLength={50}
               className={newFacility && !isValidFacilityName(newFacility) ? 'border-red-500' : ''}
             />
             {newFacility && !isValidFacilityName(newFacility) && (

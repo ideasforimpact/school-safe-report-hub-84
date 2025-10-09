@@ -13,7 +13,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -22,6 +21,8 @@ interface EditUserDialogProps {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
+    designation?: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -49,13 +50,15 @@ const EditUserDialog = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const { clientId } = useEmployeeData();
   const { state: employeeState } = useEmployeeStore();
-  const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+  // Determine super admin flag based on the TARGET user being edited, not the current operator
+  const targetIsSuperAdmin = currentUser?.isSuperAdmin === true;
   
   // Initialize selected modules from formData when dialog opens
   useEffect(() => {
     if (isOpen && formData.moduleAccessPayload) {
       setSelectedModules(formData.moduleAccessPayload);
     }
+    
   }, [isOpen, formData.moduleAccessPayload]);
 
   // Module change handler that updates selectedModules state and formData
@@ -90,6 +93,16 @@ const EditUserDialog = ({
     return nameRegex.test(name);
   };
 
+  const isValidPhone = (phone: string) => {
+    const phoneRegex = /^\d{10}$/;
+    return phoneRegex.test(phone);
+  };
+
+  const isValidDesignation = (name: string) => {
+    const nameRegex = /^[a-zA-Z\s]{0,25}$/;
+    return nameRegex.test(name);
+  };
+
   const handleClose = () => {
     setIsOpen(false);
     resetForm();
@@ -111,6 +124,9 @@ const EditUserDialog = ({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        employeeId: formData.employeeId,
+        phone: formData.phone,
+        designation: formData.designation,
         employeeType: formData.employeeType,
         department: formData.department,
         moduleAccessPayload: selectedModules,
@@ -198,17 +214,49 @@ const EditUserDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
                 readOnly
               />
               {formData.email && !isValidEmail(formData.email) && (
                 <p className="text-xs text-red-500">Please enter a valid email address</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                inputMode="numeric"
+                value={formData.phone || ''}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({ ...formData, phone: digitsOnly });
+                }}
+                maxLength={10}
+              />
+              {formData.phone && !isValidPhone(formData.phone) && (
+                <p className="text-xs text-red-500">Enter a valid 10-digit mobile number</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="designation">Designation</Label>
+              <Input
+                id="designation"
+                value={formData.designation || ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 25);
+                  setFormData({ ...formData, designation: value });
+                }}
+                maxLength={25}
+              />
+              {formData.designation && !isValidDesignation(formData.designation) && (
+                <p className="text-xs text-red-500">Only letters and spaces, max 25 characters</p>
               )}
             </div>
 
@@ -280,16 +328,18 @@ const EditUserDialog = ({
               </div>
             </div>
 
-            {/* Module Access Section */}
-            <div className="space-y-2">
-              <Label>Module Access</Label>
-              <ModuleAccess
-                selectedModules={selectedModules}
-                onModuleChange={handleModuleChange}
-                employeeId={formData.employeeId}
-                isSuperAdmin={isSuperAdmin}
-              />
-            </div>
+            {/* Module Access Section - only when email provided */}
+            {formData.email && (
+              <div className="space-y-2">
+                <Label>Module Access</Label>
+                <ModuleAccess
+                  selectedModules={selectedModules}
+                  onModuleChange={handleModuleChange}
+                  employeeId={formData.employeeId}
+                  isSuperAdmin={targetIsSuperAdmin}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={isUpdating || isLoading}>

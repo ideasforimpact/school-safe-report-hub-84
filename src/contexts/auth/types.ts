@@ -53,6 +53,7 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   role: UserRole;
   isActive: boolean;
   modulePermissions?: ModulePermissions;

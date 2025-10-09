@@ -56,9 +56,9 @@ export const SectionTab = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Validation function for section name (alphanumeric only, max 20 characters)
+  // Validation: allow any characters, max 50 length
   const isValidSectionName = (name: string) => {
-    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    const nameRegex = /^.{1,50}$/;
     return nameRegex.test(name);
   };
 
@@ -95,7 +95,7 @@ export const SectionTab = ({
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error("Section name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Section name can be up to 50 characters");
       return;
     }
     
@@ -322,7 +322,7 @@ export const SectionTab = ({
               placeholder="New section name (e.g., Section A)"
               value={newSection}
               onChange={(e) => setNewSection(e.target.value)}
-              maxLength={20}
+              maxLength={50}
               className={newSection && !isValidSectionName(newSection) ? 'border-red-500' : ''}
             />
             {newSection && !isValidSectionName(newSection) && (
@@ -559,9 +559,9 @@ export const SectionTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={20}
+            maxLength={50}
             validationFunction={isValidSectionName}
-            validationMessage="Section name can only contain letters, numbers, and spaces (max 20 characters)"
+            validationMessage="Section name can be up to 50 characters"
             isRequired={true}
             extraFields={[
               {

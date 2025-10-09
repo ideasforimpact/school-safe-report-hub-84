@@ -53,9 +53,9 @@ export const CampusTab = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Validation function for campus name (alphanumeric only, max 20 characters)
+  // Validation: allow any characters, max 50 length
   const isValidCampusName = (name: string) => {
-    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    const nameRegex = /^.{1,50}$/;
     return nameRegex.test(name);
   };
 
@@ -78,7 +78,7 @@ export const CampusTab = ({
     }
     
     if (!isValidCampusName(campusName)) {
-      toast.error("Campus name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Campus name can be up to 50 characters");
       return;
     }
     
@@ -129,7 +129,7 @@ export const CampusTab = ({
     }
     
     if (!isValidCampusName(campusName)) {
-      toast.error("Campus name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Campus name can be up to 50 characters");
       return;
     }
     
@@ -190,11 +190,11 @@ export const CampusTab = ({
                 placeholder="New campus name (e.g., Main Campus)"
                 value={newCampus}
                 onChange={(e) => setNewCampus(e.target.value)}
-                maxLength={20}
+                maxLength={50}
                 className={newCampus && !isValidCampusName(newCampus) ? 'border-red-500' : ''}
               />
               {newCampus && !isValidCampusName(newCampus) && (
-                <p className="text-xs text-red-500 mt-1">Campus name can only contain letters, numbers, and spaces (max 20 characters)</p>
+                <p className="text-xs text-red-500 mt-1">Campus name can be up to 50 characters</p>
               )}
               {newCampus && isDuplicateCampusName(newCampus) && (
                 <p className="text-xs text-red-500 mt-1">A campus with this name already exists</p>

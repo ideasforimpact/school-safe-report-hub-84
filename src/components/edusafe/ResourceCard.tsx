@@ -103,6 +103,12 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
       isYouTubeResource
     });
   }
+  const getEmployeeTypeDisplay = (type?: string) => {
+    if (!type) return 'Not Specified';
+    
+    return type.charAt(0).toUpperCase()  + type.slice(1);;
+  };
+
 
   return (
     <Card className="h-full flex flex-col hover:shadow-lg transition-all duration-200 relative group">
@@ -159,7 +165,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
           
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
-              {resource.category}
+              {getEmployeeTypeDisplay(resource.category)}
             </Badge>
             
             <Badge 

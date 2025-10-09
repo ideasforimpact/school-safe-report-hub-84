@@ -8,3 +8,4 @@ SET category = 'policy'
 WHERE category = 'procedures';
 
 COMMIT;
+

@@ -83,18 +83,20 @@ interface UserManagementProps {
 const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const { user } = useAuth();
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
-  const { state } = useEmployeeStore();
+  const { employeeData } = useAuth();
+    const { state } = useEmployeeStore();
+
   
   // Force refresh of employee data
-  const { refetchModules } = useEmployeeData();
+  // const { refetchModules } = useEmployeeData();
   
-  useEffect(() => {
-    // Ensure employee data is loaded
-    refetchModules();
-  }, []);
+  // useEffect(() => {
+  //   // Ensure employee data is loaded
+  //   refetchModules();
+  // }, []);
   
   // Get employee data directly from Redux
-  const employeeData = getEmployeeData(state);
+  // const employeeData = getEmployeeData(state);
   // Determine admin status from Redux store
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
@@ -149,6 +151,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
+    designation?: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -159,6 +163,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
+    designation: '',
     clientId: clientId,
     moduleAccessPayload: []
   });
@@ -237,6 +243,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             firstName: employee.firstName,
             lastName: employee.lastName,
             email: employee.email,
+            phone: (employee as any).phone,
+            designation: (employee as any).designation,
             employeeId: employee.employeeId,
             employeeType: employee.employeeType as any,
             department: employee.department as any,
@@ -311,6 +319,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               firstName: formData.firstName,
               lastName: formData.lastName,
               email: formData.email,
+              phone: formData.phone,
+              designation: formData.designation,
               employeeType: formData.employeeType as any,
               department: formData.department as any,
               joiningDate: formData.joiningDate,
@@ -558,6 +568,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       firstName: '',
       lastName: '',
       email: '',
+      phone: '',
+      designation: '',
       clientId: clientId,
       moduleAccessPayload: []
     });
@@ -740,6 +752,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       firstName: user.firstName,
                       lastName: user.lastName,
                       email: user.email,
+                    phone: (user as any).phone,
+                    designation: (user as any).designation,
                       employeeId: user.employeeId,
                       employeeType: user.employeeType,
                       department: user.department,

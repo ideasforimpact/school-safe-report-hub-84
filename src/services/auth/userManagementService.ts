@@ -10,6 +10,7 @@ export const addNewUser = async (
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
     password: string;
     role: UserRole;
     modulePermissions: ModulePermissions;

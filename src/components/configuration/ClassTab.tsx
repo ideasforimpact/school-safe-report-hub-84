@@ -52,9 +52,9 @@ export const ClassTab = ({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Validation function for grade name (alphanumeric only, max 20 characters)
+  // Validation: allow any characters, max 50 length
   const isValidGradeName = (name: string) => {
-    const nameRegex = /^[a-zA-Z0-9\s]{1,20}$/;
+    const nameRegex = /^.{1,50}$/;
     return nameRegex.test(name);
   };
 
@@ -78,7 +78,7 @@ export const ClassTab = ({
     }
     
     if (!isValidGradeName(gradeName)) {
-      toast.error("Grade name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Grade name can be up to 50 characters");
       return;
     }
     
@@ -236,11 +236,11 @@ export const ClassTab = ({
               placeholder="New grade name (e.g., Grade 5)"
               value={newClass}
               onChange={(e) => setNewClass(e.target.value)}
-              maxLength={20}
+              maxLength={50}
               className={newClass && !isValidGradeName(newClass) ? 'border-red-500' : ''}
             />
             {newClass && !isValidGradeName(newClass) && (
-              <p className="text-xs text-red-500 mt-1">Grade name can only contain letters, numbers, and spaces (max 20 characters)</p>
+              <p className="text-xs text-red-500 mt-1">Grade name can be up to 50 characters</p>
             )}
             {newClass && selectedCampusId && isDuplicateGradeName(newClass, selectedCampusId) && (
               <p className="text-xs text-red-500 mt-1">A grade with this name already exists in the selected campus</p>
@@ -441,9 +441,9 @@ export const ClassTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={20}
+            maxLength={50}
             validationFunction={isValidGradeName}
-            validationMessage="Grade name can only contain letters, numbers, and spaces (max 20 characters)"
+            validationMessage="Grade name can be up to 50 characters"
             isRequired={true}
             extraFields={[
               {

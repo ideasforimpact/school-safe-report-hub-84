@@ -20,6 +20,8 @@ interface AddUserDialogProps {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
+    designation?: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -172,14 +174,27 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return employeeIdRegex.test(employeeId);
   };
 
+  // Phone validation (E.164 basic or 10-15 digits allowing +, space, hyphen)
+  // Phone validation (digits only, exactly 10 digits)
+  const isValidPhone = (phone: string) => {
+    const phoneRegex = /^\d{10}$/;
+    return phoneRegex.test(phone);
+  };
+
   // Name validation function (letters and spaces only, no special characters)
   const isValidName = (name: string) => {
     const nameRegex = /^[a-zA-Z\s]{1,25}$/;
     return nameRegex.test(name);
   };
 
+  const isValidDesignation = (name: string) => {
+    const nameRegex = /^[a-zA-Z\s]{0,25}$/;
+    return nameRegex.test(name);
+  };
+
   // Check if form is valid for submission
   const isFormValid = () => {
+    const hasValidEmail = !formData.email || isValidEmail(formData.email);
     return (
       formData.firstName &&
       formData.firstName.length <= 25 &&
@@ -187,8 +202,9 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       formData.lastName &&
       formData.lastName.length <= 25 &&
       isValidName(formData.lastName) &&
-      formData.email &&
-      isValidEmail(formData.email) &&
+      hasValidEmail &&
+      (!formData.phone || isValidPhone(formData.phone)) &&
+      (!formData.designation || isValidDesignation(formData.designation)) &&
       formData.employeeId &&
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation === 'available' &&
@@ -242,16 +258,50 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
               />
               {formData.email && !isValidEmail(formData.email) && (
                 <p className="text-xs text-red-500">Please enter a valid email address</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                inputMode="numeric"
+                value={formData.phone || ''}
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData({ ...formData, phone: digitsOnly });
+                }}
+                placeholder="10-digit mobile number"
+                maxLength={10}
+              />
+              {formData.phone && !isValidPhone(formData.phone) && (
+                <p className="text-xs text-red-500">Enter a valid 10-digit mobile number</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="designation">Designation</Label>
+              <Input
+                id="designation"
+                value={formData.designation || ''}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 25);
+                  setFormData({ ...formData, designation: value });
+                }}
+                placeholder="e.g. Admin Officer"
+                maxLength={25}
+              />
+              {formData.designation && !isValidDesignation(formData.designation) && (
+                <p className="text-xs text-red-500">Only letters and spaces, max 25 characters</p>
               )}
             </div>
 
@@ -344,15 +394,17 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
               value={formData.clientId || clientId || ''} 
             />
 
-            {/* Module Access Section */}
-            <div className="space-y-2">
-              <Label>Module Access</Label>
-              <ModuleAccess
-                selectedModules={selectedModules}
-                onModuleChange={handleModuleChange}
-                employeeId={formData.employeeId}
-              />
-            </div>
+            {/* Module Access Section - only when email provided */}
+            {formData.email && (
+              <div className="space-y-2">
+                <Label>Module Access</Label>
+                <ModuleAccess
+                  selectedModules={selectedModules}
+                  onModuleChange={handleModuleChange}
+                  employeeId={formData.employeeId}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>

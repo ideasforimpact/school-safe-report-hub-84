@@ -319,6 +319,8 @@ async function handleCreate(supabaseClient: any, employee: any) {
     first_name: employee.firstName,
     last_name: employee.lastName,
     email: employee.email,
+    phone: employee.phone || null,
+    designation: employee.designation || null,
     employee_type: employee.employeeType,
     department: employee.department,
     joining_date: employee.joiningDate,
@@ -479,6 +481,8 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     first_name: employee.firstName,
     last_name: employee.lastName,
     email: employee.email,
+    phone: employee.phone || null,
+    designation: employee.designation || null,
     employee_type: employee.employeeType,
     department: employee.department
   };

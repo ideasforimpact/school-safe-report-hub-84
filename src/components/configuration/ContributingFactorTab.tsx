@@ -46,7 +46,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentName, setCurrentName] = useState('');
   const [currentDescription, setCurrentDescription] = useState('');
-  const [currentWeight, setCurrentWeight] = useState('Medium');
+  const [currentWeight, setCurrentWeight] = useState('');
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +136,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       // Reset form and close dialog
       setCurrentName('');
       setCurrentDescription('');
-      setCurrentWeight('Medium');
+      setCurrentWeight(null);
       setIsAddDialogOpen(false);
       
       toast.success('Contributing factor added successfully');
@@ -194,7 +194,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     setCurrentId(factor.id);
     setCurrentName(factor.name);
     setCurrentDescription(factor.description || '');
-    setCurrentWeight(factor.weight || 'Medium');
+    setCurrentWeight(null);
     setIsEditDialogOpen(true);
   };
 
@@ -291,12 +291,12 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                 >
                   Name
                 </th>
-                <th
+                {/* <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Weight
-                </th>
+                </th> */}
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -324,14 +324,14 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {factor.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs ${getWeightBadgeClass(factor.weight)}`}>
                         {factor.weight || 'Medium'}
                       </span>
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 text-sm">
                       <div className="truncate max-w-xs" title={factor.description || 'No description'}>
-                        {factor.description || 'No description'}
+                        {factor.description || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -370,7 +370,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
           setError(null);
           setCurrentName('');
           setCurrentDescription('');
-          setCurrentWeight('Medium');
+          setCurrentWeight(null);
         }
       }}>
         <DialogContent>
@@ -421,7 +421,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                 maxLength={100}
               />
             </div>
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="weight">
                 Weight
               </Label>
@@ -435,7 +435,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                   <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -443,7 +443,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
               setError(null);
               setCurrentName('');
               setCurrentDescription('');
-              setCurrentWeight('Medium');
+              setCurrentWeight(null);
             }} disabled={loading}>
               Cancel
             </Button>
@@ -517,7 +517,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                 maxLength={100}
               />
             </div>
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="edit-weight">
                 Weight
               </Label>
@@ -531,7 +531,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                   <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {

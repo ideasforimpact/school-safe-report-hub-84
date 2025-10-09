@@ -181,7 +181,6 @@ const UserList = ({
           <TableHead>Department</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>Joining Date</TableHead>
-          <TableHead>Role</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="w-[150px]">Actions</TableHead>
         </TableRow>
@@ -194,14 +193,18 @@ const UserList = ({
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
             <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
-            <TableCell>{user.joiningDate || '-'}</TableCell>
-            <TableCell>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                user.role === 'admin' || user.role === 'saas_owner' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'
-              }`}>
-                {user.role === 'admin' ? 'Admin' : user.role === 'saas_owner' ? 'SaaS Owner' : 'Reporter'}
-              </span>
-            </TableCell>
+            <TableCell>{(() => {
+              if (!user.joiningDate) return '-';
+              // Normalize both 'YYYY-MM-DD' and ISO strings to DD-MM-YYYY
+              const s = String(user.joiningDate);
+              const iso = /T/.test(s) ? new Date(s) : new Date(`${s}T00:00:00`);
+              if (isNaN(iso.getTime())) return s;
+              const dd = String(iso.getDate()).padStart(2, '0');
+              const mm = String(iso.getMonth() + 1).padStart(2, '0');
+              const yyyy = iso.getFullYear();
+              return `${dd}-${mm}-${yyyy}`;
+            })()}</TableCell>
+            
             <TableCell>
               {user.isActive ? (
                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
