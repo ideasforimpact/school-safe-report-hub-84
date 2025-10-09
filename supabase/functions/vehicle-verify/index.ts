@@ -185,6 +185,62 @@ serve(async (req) => {
     if (surepassData.data) {
       const data = surepassData.data;
       
+      // After successful verification, update the vehicles table fields based on registration_number
+      try {
+        // Only proceed when we have a valid registration number and data
+        const registrationNum = registrationNumber;
+        if (registrationNum) {
+          // Derive fields from verification response
+          const makerModel = data.maker_model || null;
+          const ownerName = data.owner_name || null;
+          const seatCapacityRaw = data.seat_capacity;
+          const seatCapacity = typeof seatCapacityRaw === 'number' ? seatCapacityRaw : (seatCapacityRaw ? parseInt(String(seatCapacityRaw)) : null);
+          const registrationDateStr = data.registration_date || null; // e.g., 2007-08-16
+          const registrationYear = registrationDateStr ? new Date(registrationDateStr).getFullYear() : null;
+
+          // Directly update by registration_number to avoid extra queries
+          const updates: Record<string, any> = {
+            type: 'bus',
+            model: makerModel,
+            driver: ownerName,
+            route: null,
+            capacity: seatCapacity,
+          };
+          if (registrationYear && !Number.isNaN(registrationYear)) {
+            updates.year = registrationYear;
+          }
+
+          const { error: vehicleUpdateError } = await supabase
+            .from('vehicles')
+            .update(updates)
+            .eq('registration_number', registrationNum);
+
+          if (vehicleUpdateError) {
+            console.error('Error updating vehicle core fields after verification:', vehicleUpdateError);
+          } else {
+            console.log('Vehicle fields updated after verification for', registrationNum);
+          }
+
+          // Add helper display values to the verification data for the UI
+          if (makerModel) {
+            currentVerificationData.push({
+              field: 'display_type',
+              value: makerModel,
+              verified: true
+            });
+          }
+          if (registrationYear) {
+            currentVerificationData.push({
+              field: 'display_year',
+              value: registrationYear,
+              verified: true
+            });
+          }
+        }
+      } catch (postUpdateErr) {
+        console.error('Post-verification vehicle update error:', postUpdateErr);
+      }
+      
       // Add each field as a separate object in the array
       Object.keys(data).forEach(key => {
         if (data[key] !== null && key !== 'challan_details') {

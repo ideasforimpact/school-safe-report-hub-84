@@ -31,6 +31,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { getLatestVerificationFieldValue } from '@/utils/transport-safety/documentStatusUtils';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
@@ -197,12 +198,19 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       <CardContent>
         <div className="grid grid-cols-2 gap-4 mb-6 text-left">
           <div className="text-left">
-            <div className="text-sm font-medium text-gray-500">Type</div>
-            <div className="text-left">{type.charAt(0).toUpperCase() + type.slice(1)}</div>
+            <div className="text-sm font-medium text-gray-500">Model</div>
+            <div className="text-left">{model || (getLatestVerificationFieldValue(vehicle, 'maker_model') as string) || '-'}</div>
           </div>
           <div className="text-left">
-            <div className="text-sm font-medium text-gray-500">Year</div>
-            <div className="text-left">{year}</div>
+            <div className="text-sm font-medium text-gray-500">Registration Year</div>
+            <div className="text-left">{(() => {
+              if (year) return year;
+              const regDate = getLatestVerificationFieldValue(vehicle, 'registration_date') as string | undefined;
+              if (!regDate) return '-';
+              const match = String(regDate).match(/^\d{4}/);
+              const yr = match ? Number(match[0]) : new Date(regDate).getFullYear();
+              return yr || '-';
+            })()}</div>
           </div>
         </div>
         

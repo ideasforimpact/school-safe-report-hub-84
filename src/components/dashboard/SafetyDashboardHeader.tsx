@@ -95,7 +95,7 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-gray-900">
-              {userClient?.name || 'Your Organization'} Safety Management
+              {userClient?.name || 'Your Organization'} School Safety Command Center
             </h1>
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <div className="flex items-center space-x-1">

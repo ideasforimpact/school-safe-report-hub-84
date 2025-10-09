@@ -14,7 +14,8 @@ import {
   getDocumentStatus, 
   getDocumentStatusColor, 
   getVehicleRowClassName,
-  getLatestVerificationLog
+  getLatestVerificationLog,
+  getLatestVerificationFieldValue
 } from '@/utils/transport-safety/documentStatusUtils';
 import { toast } from 'sonner';
 
@@ -125,13 +126,13 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
-                      <VehicleTypeIcon type={vehicle.type} />
+                      <VehicleTypeIcon type="bus" />
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center text-left">
                       <div className="text-left">
-                        <div className="font-medium text-left">{vehicle.make} {vehicle.model}</div>
+                        <div className="font-medium text-left">{vehicle.model || (getLatestVerificationFieldValue(vehicle, 'maker_model') as string) || '-'}</div>
                       </div>
                     </div>
                   </TableCell>

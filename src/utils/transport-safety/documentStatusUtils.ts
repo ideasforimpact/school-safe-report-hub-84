@@ -43,6 +43,21 @@ export const findVerificationField = (
 };
 
 /**
+ * Get a specific field's value from the latest verification_log
+ * Returns undefined if not found. Use this for UI fallbacks.
+ */
+export const getLatestVerificationFieldValue = (
+  vehicle: Vehicle,
+  fieldName: string
+): any | undefined => {
+  if (!vehicle?.verificationData || vehicle.verificationData.length === 0) return undefined;
+  const latestLog = getLatestVerificationLog(vehicle);
+  if (!latestLog) return undefined;
+  const item = findVerificationField(latestLog, fieldName);
+  return item?.value;
+};
+
+/**
  * Get document status based on expiry date
  */
 export const getDocumentStatusFromDate = (expiryDateStr: string | undefined): DocumentStatus => {

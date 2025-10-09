@@ -250,13 +250,14 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
             >
               Cancel
             </Button>
+            {!isEditMode ? 
             <Button 
               type="submit"
               disabled={isSubmitting}
             >
               {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Vehicle' : 'Add Vehicle')}
               {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            </Button>
+            </Button> : <></>}
           </div>
         </form>
       </DialogContent>
