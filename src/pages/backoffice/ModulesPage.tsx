@@ -156,7 +156,7 @@ const ModulesPage = () => {
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-8 p-[50px]">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Settings className="h-8 w-8 text-blue-600" />

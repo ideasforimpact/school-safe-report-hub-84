@@ -4,9 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UploadCloud, FileCheck } from 'lucide-react';
+import { Loader2, UploadCloud, FileCheck, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
+import { downloadExcelTemplate, downloadCSVTemplate, getTemplateFormatInfo } from '@/services/employee/utils/templateGenerator';
 
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
@@ -121,8 +122,39 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
+          {/* Template Download Section */}
+          <div className="flex flex-col gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <Label className="text-sm font-medium text-blue-800">Sample Template Available</Label>
+            </div>
+            <p className="text-xs text-blue-700">
+              Download a sample file with the correct format and column headers to get started
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadExcelTemplate}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                Excel Template
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadCSVTemplate}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                CSV Template
+              </Button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2">
-            <Label htmlFor="file-upload">Upload Excel file</Label>
+            <Label htmlFor="file-upload">Upload file</Label>
             <div 
               className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer"
               onClick={triggerFileSelect}
@@ -136,7 +168,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
                 type="file"
                 className="hidden"
                 ref={fileInputRef}
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv"
                 onChange={handleFileChange}
               />
               <Button 
@@ -151,7 +183,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
                 Select File
               </Button>
               <p className="text-xs text-gray-500 mt-2">
-                Supported formats: XLSX, XLS
+                Supported formats: XLSX, XLS, CSV
               </p>
             </div>
           </div>

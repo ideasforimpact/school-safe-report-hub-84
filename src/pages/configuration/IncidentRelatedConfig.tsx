@@ -80,7 +80,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   togglePriorityStatus
 }) => {
   return (
-    <Card>
+    <Card className="w-[99%]">
       <CardContent className="pt-6">
         <Tabs defaultValue="categories" value={activeTab || 'categories'} onValueChange={setActiveTab}>
           <TabsList className="mb-4">

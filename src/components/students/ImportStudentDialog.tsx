@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Upload, FileUp, AlertCircle, Check, Loader2 } from 'lucide-react';
+import { Upload, FileUp, AlertCircle, Check, Loader2, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
+import { downloadStudentExcelTemplate, downloadStudentCSVTemplate } from '@/services/student/utils/templateGenerator';
 import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Progress } from '@/components/ui/progress';
@@ -170,6 +171,37 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Template Download Section */}
+          <div className="flex flex-col gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <Label className="text-sm font-medium text-blue-800">Sample Template Available</Label>
+            </div>
+            <p className="text-xs text-blue-700">
+              Download a sample file with the correct format and column headers to get started
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadStudentExcelTemplate}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                Excel Template
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadStudentCSVTemplate}
+                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                CSV Template
+              </Button>
+            </div>
+          </div>
+
           {/* Show client info for debugging */}
           {!employeeData?.clientId && (
             <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">

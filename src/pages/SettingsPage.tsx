@@ -76,7 +76,7 @@ const SettingsPage = () => {
             <p className="text-gray-600 mt-1">Configure system settings</p>
           </div>
           
-          <Tabs defaultValue={defaultTab} className="w-full mx-6">
+          <Tabs defaultValue={defaultTab} className="w-full pl-5 pr-[25px]">
             <TabsList className="mb-6">
               <TabsTrigger value="incident" className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
@@ -121,7 +121,7 @@ const SettingsPage = () => {
             </TabsContent>
             
             <TabsContent value="assessment">
-              <Card>
+              <Card className="w-full">
                 <CardHeader>
                   <CardTitle>Assessment Configuration</CardTitle>
                   <CardDescription>Create and manage assessment templates with yes/no questions</CardDescription>
@@ -133,7 +133,7 @@ const SettingsPage = () => {
             </TabsContent>
             
             <TabsContent value="form">
-              <Card>
+              <Card className="w-full">
                 <CardHeader>
                   <CardTitle>Form Configuration</CardTitle>
                   <CardDescription>Create and manage custom forms with a simple form builder</CardDescription>
@@ -145,7 +145,7 @@ const SettingsPage = () => {
             </TabsContent>
             
             <TabsContent value="user" className="p-0">
-              <Card>
+              <Card className="w-full">
                 <CardHeader>
                   <CardTitle>User Management</CardTitle>
                   <CardDescription>Manage users and their permissions in your institution</CardDescription>
@@ -159,7 +159,7 @@ const SettingsPage = () => {
             {showEducationalTabs && (
               <>
                 <TabsContent value="student" className="p-0">
-                  <Card>
+                  <Card className="w-full">
                     <CardHeader>
                       <CardTitle>Student Management</CardTitle>
                       <CardDescription>Manage students in your institution</CardDescription>
@@ -170,8 +170,8 @@ const SettingsPage = () => {
                   </Card>
                 </TabsContent>
                 
-                <TabsContent value="educational" className="p-0 bg-white rounded-md">
-                  <Card>
+                <TabsContent value="educational" className="p-0">
+                  <Card className="w-full">
                     <CardHeader>
                       <CardTitle>Educational Structure Configuration</CardTitle>
                       <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>

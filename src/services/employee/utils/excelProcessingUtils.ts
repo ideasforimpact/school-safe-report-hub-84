@@ -3,6 +3,146 @@ import * as XLSX from 'xlsx';
 import { RawEmployeeData } from '../types/importTypes';
 
 /**
+ * Parse a CSV file into structured employee data
+ */
+export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          if (!e.target || !e.target.result) {
+            reject(new Error('Failed to read CSV file'));
+            return;
+          }
+          
+          const csvText = e.target.result as string;
+          const lines = csvText.split('\n').filter(line => line.trim() !== '');
+          
+          if (lines.length < 2) {
+            reject(new Error('CSV file must contain at least a header row and one data row'));
+            return;
+          }
+          
+          // Parse header row
+          const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+          console.log("CSV headers:", headers);
+          
+          // Parse data rows
+          const jsonData = lines.slice(1).map((line, index) => {
+            const values = line.split(',').map(value => value.trim().replace(/"/g, ''));
+            const row: any = {};
+            
+            headers.forEach((header, i) => {
+              row[header] = values[i] || '';
+            });
+            
+            return row;
+          });
+          
+          console.log("Raw CSV data:", JSON.stringify(jsonData));
+          
+          // Use the same mapping logic as Excel
+          const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
+            const getFieldValue = (fieldNames: string[]): string => {
+              for (const name of fieldNames) {
+                if (row[name] !== undefined) return String(row[name]);
+                
+                const lowerName = name.toLowerCase();
+                for (const key of Object.keys(row)) {
+                  if (key.toLowerCase() === lowerName) return String(row[key]);
+                }
+              }
+              return '';
+            };
+            
+            const findEmailField = (): string => {
+              const knownFieldNames = ['Email', 'email', 'EMAIL', 'EmailAddress', 'Email Address', 
+                'email_address', 'Mail', 'E-Mail', 'e-mail', 'E Mail', 'email_id', 'Email ID'];
+              
+              for (const name of knownFieldNames) {
+                if (row[name] !== undefined && row[name] !== '') {
+                  return String(row[name]);
+                }
+              }
+              
+              for (const key of Object.keys(row)) {
+                if ((key.toLowerCase().includes('email') || key.toLowerCase().includes('mail')) && row[key] !== '') {
+                  console.log(`Found email in column: ${key} = ${row[key]}`);
+                  return String(row[key]);
+                }
+              }
+              
+              for (const key of Object.keys(row)) {
+                const value = row[key];
+                if (typeof value === 'string' && value.includes('@')) {
+                  console.log(`Found email by @ symbol in column: ${key} = ${value}`);
+                  return value;
+                }
+              }
+              
+              return '';
+            };
+            
+            const mappedData: RawEmployeeData = {
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
+              firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME', 'Name', 'First', 'Given Name']),
+              lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
+              email: findEmailField(),
+              phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date']) || 
+                          (new Date().toISOString().split('T')[0]),
+              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active'
+            };
+            
+            console.log(`Mapped CSV row ${index + 1}:`, mappedData);
+            
+            if (!mappedData.email) {
+              console.warn(`Warning: CSV Row ${index + 1} is missing email address. Original row:`, row);
+              console.warn(`Available columns for this row:`, Object.keys(row));
+            }
+            
+            return mappedData;
+          });
+          
+          console.log("Processed CSV employee data:", employeeData);
+          resolve(employeeData);
+        } catch (error) {
+          console.error("Error parsing CSV file:", error);
+          reject(error);
+        }
+      };
+      
+      reader.onerror = (error) => {
+        console.error("FileReader error:", error);
+        reject(error);
+      };
+      
+      reader.readAsText(file);
+    } catch (error) {
+      console.error("Exception in parseCSVFile:", error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Parse an Excel or CSV file into structured employee data
+ */
+export const parseEmployeeFile = async (file: File): Promise<RawEmployeeData[]> => {
+  const fileExtension = file.name.toLowerCase().split('.').pop();
+  
+  if (fileExtension === 'csv') {
+    return parseCSVFile(file);
+  } else {
+    return parseExcelFile(file);
+  }
+};
+
+/**
  * Parse an Excel file into structured employee data
  */
 export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => {

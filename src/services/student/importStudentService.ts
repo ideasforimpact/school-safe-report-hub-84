@@ -1,6 +1,6 @@
 
 import { Student } from '@/types/student';
-import { parseExcelFile } from './utils/excelProcessingUtils';
+import { parseStudentFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processStudentData, showImportResultNotifications } from './importProcessingService';
 import { toast } from 'sonner';
@@ -19,8 +19,8 @@ export const processStudentExcel = async (file: File, clientId?: string): Promis
 
     console.log('Starting import process for client:', clientId);
 
-    // Parse the Excel/CSV file
-    const rawData = await parseExcelFile(file);
+    // Parse the file (Excel or CSV)
+    const rawData = await parseStudentFile(file);
     console.log('Parsed data:', rawData.length, 'records');
     
     // Show status message for large imports
@@ -66,8 +66,8 @@ export const validateStudentExcel = async (file: File, clientId?: string): Promi
       return ['Client information not available. Please ensure you are logged in properly.'];
     }
 
-    // Parse the Excel/CSV file
-    const rawData = await parseExcelFile(file);
+    // Parse the file (Excel or CSV)
+    const rawData = await parseStudentFile(file);
     
     // Validate the data (includes client-specific duplicate checking)
     const errors = await validateExcelData(rawData, clientId);

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import Layout from '@/components/layout/Layout';
 
 interface BackofficeEduSafeResource {
   id: string;
@@ -337,526 +338,528 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/backoffice/dashboard')} className="mr-2">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-2xl font-bold">EduSafe Resources Management</h1>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>All Resources</CardTitle>
-              <CardDescription>Manage EduSafe resources for all client types</CardDescription>
-            </div>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Resource
+    <Layout>
+      <div className="flex flex-col w-full p-[50px]">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/backoffice/dashboard')} className="mr-2">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
             </Button>
+            <h1 className="text-2xl font-bold">EduSafe Resources Management</h1>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* Search */}
-          <div className="flex items-center space-x-2 mb-4">
-            <Search className="h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Search resources..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
-          </div>
+        </div>
 
-          {/* Resources Table */}
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Client Type</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>All Resources</CardTitle>
+                <CardDescription>Manage EduSafe resources for all client types</CardDescription>
+              </div>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Resource
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Search */}
+            <div className="flex items-center space-x-2 mb-4">
+              <Search className="h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search resources..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+
+            {/* Resources Table */}
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      Loading resources...
-                    </TableCell>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Client Type</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Tags</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : filteredResources.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                      {searchTerm ? 'No resources match your search' : 'No resources found'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredResources.map((resource) => (
-                    <TableRow key={resource.id}>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <FileText className="h-4 w-4 mr-2 text-gray-400" />
-                          <div>
-                            <div className="font-medium">{resource.title}</div>
-                            <div className="text-sm text-gray-500">{resource.description}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {getClientTypeName(resource.client_type_id)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">
-                          {resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {resource.tags.map((tag, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(resource.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleViewResource(resource)}
-                            title="View document"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleDownloadResource(resource)}
-                            title="Download document"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(resource)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => handleDeleteResource(resource.id)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        Loading resources...
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                  ) : filteredResources.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        {searchTerm ? 'No resources match your search' : 'No resources found'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredResources.map((resource) => (
+                      <TableRow key={resource.id}>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                            <div>
+                              <div className="font-medium">{resource.title}</div>
+                              <div className="text-sm text-gray-500">{resource.description}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {getClientTypeName(resource.client_type_id)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {resource.tags.map((tag, i) => (
+                              <Badge key={i} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(resource.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleViewResource(resource)}
+                              title="View document"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDownloadResource(resource)}
+                              title="Download document"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(resource)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => handleDeleteResource(resource.id)}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Upload Resource Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload Resource
-            </DialogTitle>
-            <DialogDescription>
-              Add a new EduSafe resource for a specific client type
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="client-type">Client Type *</Label>
-              <Select 
-                value={formData.client_type_id} 
-                onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
-                disabled={uploadLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientTypes.map((clientType) => (
-                    <SelectItem key={clientType.id} value={clientType.id}>
-                      {clientType.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData({ ...formData, title: value });
-                  setTitleError(validateTitle(value));
-                }}
-                placeholder="Enter resource title"
-                required
-                disabled={uploadLoading}
-              />
-              {titleError && (
-                <p className="text-xs text-red-500 mt-1">{titleError}</p>
-              )}
-            </div>
+        {/* Upload Resource Dialog */}
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Upload Resource
+              </DialogTitle>
+              <DialogDescription>
+                Add a new EduSafe resource for a specific client type
+              </DialogDescription>
+            </DialogHeader>
             
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Provide a brief description of this resource"
-                rows={3}
-                disabled={uploadLoading}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Select 
-                value={formData.category} 
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-                disabled={uploadLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="tags">Tags</Label>
+            <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="tags"
-                    value={newTag}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setNewTag(value);
-                      setTagError(validateTag(value));
-                    }}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Add a tag and press Enter"
-                    className="flex-1"
-                    disabled={uploadLoading}
-                  />
-                  <Button 
-                    type="button" 
-                    onClick={handleAddTag} 
-                    disabled={!newTag.trim() || uploadLoading || !!tagError}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {tagError && (
-                  <p className="text-xs text-red-500 mt-1">{tagError}</p>
+                <Label htmlFor="client-type">Client Type *</Label>
+                <Select 
+                  value={formData.client_type_id} 
+                  onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
+                  disabled={uploadLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select client type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientTypes.map((clientType) => (
+                      <SelectItem key={clientType.id} value={clientType.id}>
+                        {clientType.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, title: value });
+                    setTitleError(validateTitle(value));
+                  }}
+                  placeholder="Enter resource title"
+                  required
+                  disabled={uploadLoading}
+                />
+                {titleError && (
+                  <p className="text-xs text-red-500 mt-1">{titleError}</p>
                 )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Provide a brief description of this resource"
+                  rows={3}
+                  disabled={uploadLoading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  disabled={uploadLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags</Label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="tags"
+                      value={newTag}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewTag(value);
+                        setTagError(validateTag(value));
+                      }}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Add a tag and press Enter"
+                      className="flex-1"
+                      disabled={uploadLoading}
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleAddTag} 
+                      disabled={!newTag.trim() || uploadLoading || !!tagError}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {tagError && (
+                    <p className="text-xs text-red-500 mt-1">{tagError}</p>
+                  )}
+                  
+                  {formData.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.tags.map((tag, index) => (
+                        <div key={index} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
+                          <span className="text-sm">{tag}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                            onClick={() => handleRemoveTag(tag)}
+                            disabled={uploadLoading}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="file">File *</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  required
+                  disabled={uploadLoading}
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={uploadLoading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddResource} 
+                disabled={!formData.title || !formData.file || !formData.client_type_id || uploadLoading || !!titleError || !!tagError}
+              >
+                {uploadLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Upload Resource'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Resource Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                Edit Resource
+              </DialogTitle>
+              <DialogDescription>
+                Update the EduSafe resource details
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-client-type">Client Type *</Label>
+                <Select 
+                  value={formData.client_type_id} 
+                  onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
+                  disabled={updateLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select client type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientTypes.map((clientType) => (
+                      <SelectItem key={clientType.id} value={clientType.id}>
+                        {clientType.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Title *</Label>
+                <Input
+                  id="edit-title"
+                  value={formData.title}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, title: value });
+                    setTitleError(validateTitle(value));
+                  }}
+                  placeholder="Enter resource title"
+                  required
+                  disabled={updateLoading}
+                />
+                {titleError && (
+                  <p className="text-xs text-red-500 mt-1">{titleError}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Provide a brief description of this resource"
+                  rows={3}
+                  disabled={updateLoading}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category *</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  disabled={updateLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-tags">Tags</Label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      id="edit-tags"
+                      value={newTag}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setNewTag(value);
+                        setTagError(validateTag(value));
+                      }}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Add a tag and press Enter"
+                      className="flex-1"
+                      disabled={updateLoading}
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleAddTag} 
+                      disabled={!newTag.trim() || updateLoading || !!tagError}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {tagError && (
+                    <p className="text-xs text-red-500 mt-1">{tagError}</p>
+                  )}
+                  
+                  {formData.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.tags.map((tag, index) => (
+                        <div key={index} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
+                          <span className="text-sm">{tag}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 hover:bg-transparent"
+                            onClick={() => handleRemoveTag(tag)}
+                            disabled={updateLoading}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-file">File (optional - leave empty to keep current file)</Label>
                 
-                {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag, index) => (
-                      <div key={index} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
-                        <span className="text-sm">{tag}</span>
+                {/* Show current file information */}
+                {currentResource?.document_url && (
+                  <div className="border rounded-md p-3 bg-gray-50 mb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-blue-50 p-2 rounded-md">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">Current File</p>
+                          <p className="text-xs text-gray-500">
+                            {currentResource.document_url.split('/').pop() || 'Document'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => handleRemoveTag(tag)}
-                          disabled={uploadLoading}
+                          onClick={() => handleViewResource(currentResource)}
+                          title="View current file"
                         >
-                          <X className="h-3 w-3" />
+                          <FileText className="h-4 w-4" />
                         </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="file">File *</Label>
-              <Input
-                id="file"
-                type="file"
-                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                required
-                disabled={uploadLoading}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={uploadLoading}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAddResource} 
-              disabled={!formData.title || !formData.file || !formData.client_type_id || uploadLoading || !!titleError || !!tagError}
-            >
-              {uploadLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                'Upload Resource'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Resource Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5" />
-              Edit Resource
-            </DialogTitle>
-            <DialogDescription>
-              Update the EduSafe resource details
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-client-type">Client Type *</Label>
-              <Select 
-                value={formData.client_type_id} 
-                onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
-                disabled={updateLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientTypes.map((clientType) => (
-                    <SelectItem key={clientType.id} value={clientType.id}>
-                      {clientType.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-title">Title *</Label>
-              <Input
-                id="edit-title"
-                value={formData.title}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData({ ...formData, title: value });
-                  setTitleError(validateTitle(value));
-                }}
-                placeholder="Enter resource title"
-                required
-                disabled={updateLoading}
-              />
-              {titleError && (
-                <p className="text-xs text-red-500 mt-1">{titleError}</p>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Provide a brief description of this resource"
-                rows={3}
-                disabled={updateLoading}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-category">Category *</Label>
-              <Select 
-                value={formData.category} 
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-                disabled={updateLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(cat => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-tags">Tags</Label>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    id="edit-tags"
-                    value={newTag}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setNewTag(value);
-                      setTagError(validateTag(value));
-                    }}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Add a tag and press Enter"
-                    className="flex-1"
-                    disabled={updateLoading}
-                  />
-                  <Button 
-                    type="button" 
-                    onClick={handleAddTag} 
-                    disabled={!newTag.trim() || updateLoading || !!tagError}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {tagError && (
-                  <p className="text-xs text-red-500 mt-1">{tagError}</p>
-                )}
-                
-                {formData.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.tags.map((tag, index) => (
-                      <div key={index} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
-                        <span className="text-sm">{tag}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => handleRemoveTag(tag)}
-                          disabled={updateLoading}
+                          onClick={() => handleDownloadResource(currentResource)}
+                          title="Download current file"
                         >
-                          <X className="h-3 w-3" />
+                          <Download className="h-4 w-4" />
                         </Button>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 )}
+                
+                <Input
+                  id="edit-file"
+                  type="file"
+                  onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  disabled={updateLoading}
+                />
+                <p className="text-xs text-gray-500">
+                  Select a new file to replace the current one, or leave empty to keep the existing file.
+                </p>
               </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="edit-file">File (optional - leave empty to keep current file)</Label>
-              
-              {/* Show current file information */}
-              {currentResource?.document_url && (
-                <div className="border rounded-md p-3 bg-gray-50 mb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-blue-50 p-2 rounded-md">
-                        <FileText className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Current File</p>
-                        <p className="text-xs text-gray-500">
-                          {currentResource.document_url.split('/').pop() || 'Document'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewResource(currentResource)}
-                        title="View current file"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownloadResource(currentResource)}
-                        title="Download current file"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <Input
-                id="edit-file"
-                type="file"
-                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                disabled={updateLoading}
-              />
-              <p className="text-xs text-gray-500">
-                Select a new file to replace the current one, or leave empty to keep the existing file.
-              </p>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={updateLoading}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleEditResource} 
-              disabled={!formData.title || !formData.client_type_id || updateLoading || !!titleError || !!tagError}
-            >
-              {updateLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                'Update Resource'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={updateLoading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleEditResource} 
+                disabled={!formData.title || !formData.client_type_id || updateLoading || !!titleError || !!tagError}
+              >
+                {updateLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Resource'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </Layout>
   );
 };
 
