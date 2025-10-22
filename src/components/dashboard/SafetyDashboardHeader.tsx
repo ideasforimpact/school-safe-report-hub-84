@@ -13,7 +13,13 @@ interface SafetyDashboardHeaderProps {
     activeAssessments?: number;
     overdueAssessments?: number;
     incidentsLastMonth: number;
-    openIncidentOlder7days: number
+    openIncidentOlder7days: number;
+    // Add existence checks
+    IncidentRecordsExist: boolean;
+    AssessmentRecordsExist: boolean;
+    VehicleRecordsExist: boolean;
+    EmployeeRecordsExist: boolean;
+    FormSubmissionRecordsExist: boolean;
   };
   loading: boolean;
 }
@@ -24,18 +30,26 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
   // Use direct client object from employeeData
   const userClient = employeeData?.client || null;
 
+  // Check if all required data exists
+  const allDataExists = stats.IncidentRecordsExist && 
+                       stats.AssessmentRecordsExist && 
+                       stats.VehicleRecordsExist && 
+                       stats.EmployeeRecordsExist 
+
   // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
-  const employeeComplianceScore = stats.totalEmployees > 0 
+  const employeeComplianceScore = stats.EmployeeRecordsExist && stats.totalEmployees > 0 
     ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees)) 
     : 0;
 
   // Calculate Vehicle Compliance score = 100 * (number of verified vehicles / number of vehicles)
-  const vehicleComplianceScore = stats.totalVehicles > 0 
+  const vehicleComplianceScore = stats.VehicleRecordsExist && stats.totalVehicles > 0 
     ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles)) 
     : 0;
 
   // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
-  const incidentsScore = Math.max(100 - 20 * stats.openIncidentOlder7days, 0);
+  const incidentsScore = stats.IncidentRecordsExist 
+    ? Math.max(100 - 20 * stats.openIncidentOlder7days, 0)
+    : 0;
 
   console.log(stats.openIncidentOlder7days,'openIncidentOlder7days');
   
@@ -43,21 +57,26 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
   // CASE WHEN ActiveAssessments = 0 THEN 100
   //      WHEN OverdueAssessments = 0 THEN 100
   //      ELSE 100 * (OverdueAssessments / ActiveAssessments)
-  const activeA = stats.activeAssessments || 0;
-  const overdueA = stats.overdueAssessments || 0;
+  const activeA = stats.AssessmentRecordsExist ? (stats.activeAssessments || 0) : 0;
+  const overdueA = stats.AssessmentRecordsExist ? (stats.overdueAssessments || 0) : 0;
   const assessmentActivityScore = activeA === 0 || overdueA === 0
     ? 100
     : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA)));
 
-  // Overall Safety Score (same formula as gauges)
-  const overallSafetyScore = Math.round(
-    (0.3 * employeeComplianceScore) + 
-    (0.2 * vehicleComplianceScore) + 
-    (0.25 * assessmentActivityScore) + 
-    (0.25 * incidentsScore)
-  );
+  // Overall Safety Score - only calculate if all data exists
+  const overallSafetyScore = allDataExists 
+    ? Math.round(
+        (0.3 * employeeComplianceScore) + 
+        (0.2 * vehicleComplianceScore) + 
+        (0.25 * assessmentActivityScore) + 
+        (0.25 * incidentsScore)
+      )
+    : null;
 
-  const getScoreInfo = (score: number) => {
+  const getScoreInfo = (score: number | null) => {
+    if (score === null) {
+      return { color: '#9ca3af', status: 'SETUP REQUIRED', textColor: 'text-gray-500', bgColor: 'bg-gray-100', textBgColor: 'text-gray-600' };
+    }
     if (score <= 20) {
       return { color: '#ef4444', status: 'POOR', textColor: 'text-red-600', bgColor: 'bg-red-100', textBgColor: 'text-red-800' };
     } else if (score > 20 && score <= 40) {
@@ -100,7 +119,7 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
             <div className="flex items-center space-x-4 text-sm text-gray-600">
               <div className="flex items-center space-x-1">
                 <Calendar className="h-4 w-4" />
-                <span>Last updated: {new Date().toLocaleString()}</span>
+                <span>Last updated: {allDataExists ? new Date().toLocaleString() : '-'}</span>
               </div>
               {employeeData && (
                 <div className="flex items-center space-x-1">
@@ -126,7 +145,7 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
               <Shield className="h-6 w-6 text-gray-600" />
               <div className="text-right">
                 <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
-                  {overallSafetyScore}%
+                  {overallSafetyScore !== null ? `${overallSafetyScore}%` : 'N/A'}
                 </div>
                 <div className="text-xs text-gray-600">Overall Safety Score</div>
               </div>

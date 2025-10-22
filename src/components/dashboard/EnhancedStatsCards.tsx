@@ -53,6 +53,12 @@ interface EnhancedStatsCardsProps {
       closed: number;
       total: number;
     }>;
+    // Add existence checks
+    IncidentRecordsExist: boolean;
+    AssessmentRecordsExist: boolean;
+    VehicleRecordsExist: boolean;
+    EmployeeRecordsExist: boolean;
+    FormSubmissionRecordsExist: boolean;
   };
   loading: boolean;
 }
@@ -131,90 +137,92 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
   const statsCards = [
     {
       title: 'Total Number of Open Incidents',
-      value: stats.openIncidents || 0,
-      description: 'Incident Overview',
+      value: stats.IncidentRecordsExist ? (stats.openIncidents || 0) : 'N/A',
+      description: stats.IncidentRecordsExist ? 'Incident Overview' : 'No incident data available',
       icon: BarChart3,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      gradient: 'from-blue-50 to-blue-100',
-      showBreakdown: true,
-      openIncidents: stats.openIncidents || 0,
-      closedIncidents: stats.closedIncidents || 0,
-      reopenedIncidents: stats.reopenedIncidents || 0,
+      color: stats.IncidentRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: stats.IncidentRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      gradient: stats.IncidentRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
+      showBreakdown: stats.IncidentRecordsExist,
+      openIncidents: stats.IncidentRecordsExist ? (stats.openIncidents || 0) : 0,
+      closedIncidents: stats.IncidentRecordsExist ? (stats.closedIncidents || 0) : 0,
+      reopenedIncidents: stats.IncidentRecordsExist ? (stats.reopenedIncidents || 0) : 0,
       cardType: 'open_incidents'
     },
     {
       title: 'Total Safe Employees',
-      value: `${stats.employeesVerified || 0}/${stats.totalEmployees || 0}`,
-      description: 'Empolyee vetrification status',
+      value: stats.EmployeeRecordsExist ? `${stats.employeesVerified || 0}/${stats.totalEmployees || 0}` : 'N/A',
+      description: stats.EmployeeRecordsExist ? 'Employee verification status' : 'No employee data available',
       icon: ShieldCheck,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      gradient: 'from-blue-50 to-blue-100',
-      showEmployeeBreakdown: true,
-      totalEmployees: stats.totalEmployees || 0,
-      verifiedEmployees: stats.employeesVerified || 0,
-      failedEmployees: stats.employeesFailed || 0,
-      toBeVerified: stats.employeesVerified || 0,
+      color: stats.EmployeeRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: stats.EmployeeRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      gradient: stats.EmployeeRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
+      showEmployeeBreakdown: stats.EmployeeRecordsExist,
+      totalEmployees: stats.EmployeeRecordsExist ? (stats.totalEmployees || 0) : 0,
+      verifiedEmployees: stats.EmployeeRecordsExist ? (stats.employeesVerified || 0) : 0,
+      failedEmployees: stats.EmployeeRecordsExist ? (stats.employeesFailed || 0) : 0,
+      toBeVerified: stats.EmployeeRecordsExist ? (stats.employeesVerified || 0) : 0,
       cardType: 'safe_employees'
     },
     {
       title: 'Active Assessments',
-      value: stats.activeAssessments || 0,
-      description: `${stats.overdueAssessments || 0} Assessments overdue`,
+      value: stats.AssessmentRecordsExist ? (stats.activeAssessments || 0) : 'N/A',
+      description: stats.AssessmentRecordsExist 
+        ? `${stats.overdueAssessments || 0} Assessments overdue`
+        : 'No assessment data available',
       icon: FileCheck,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      gradient: 'from-purple-50 to-purple-100',
-      showAssessmentBreakdown: true,
-      activeAssessments: stats.activeAssessments || 0,
-      overdueAssessments: stats.overdueAssessments || 0,
-      newAssessments: stats.newAssessments || 0,
-      draftAssessments: stats.draftAssessments || 0,
-      submittedAssessments: stats.submittedAssessments || 0,
+      color: stats.AssessmentRecordsExist ? 'text-purple-600' : 'text-gray-500',
+      bgColor: stats.AssessmentRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
+      gradient: stats.AssessmentRecordsExist ? 'from-purple-50 to-purple-100' : 'from-gray-50 to-gray-100',
+      showAssessmentBreakdown: stats.AssessmentRecordsExist,
+      activeAssessments: stats.AssessmentRecordsExist ? (stats.activeAssessments || 0) : 0,
+      overdueAssessments: stats.AssessmentRecordsExist ? (stats.overdueAssessments || 0) : 0,
+      newAssessments: stats.AssessmentRecordsExist ? (stats.newAssessments || 0) : 0,
+      draftAssessments: stats.AssessmentRecordsExist ? (stats.draftAssessments || 0) : 0,
+      submittedAssessments: stats.AssessmentRecordsExist ? (stats.submittedAssessments || 0) : 0,
       completedAssessments: 0, // Don't show completed in active assessments breakdown
       cardType: 'active_assessments'
     },
     {
       title: 'Number Of Open Grievances',
-      value: stats.totalUnacknowledged || 0,
-      description: 'Grievances overview',
+      value: stats.FormSubmissionRecordsExist ? (stats.totalUnacknowledged || 0) : 'N/A',
+      description: stats.FormSubmissionRecordsExist ? 'Grievances overview' : 'No grievance data available',
       icon: FileCheck,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      gradient: 'from-purple-50 to-purple-100',
-      showCustomFormsBreakdown: true,
-      totalCustomForms: stats.formSubmissions30Days || 0,
-      formSubmissions30Days: stats.formSubmissions30Days || 0,
-      formSubmissions60Days: stats.formSubmissions60Days || 0,
-      formSubmissions90Days: stats.formSubmissions90Days || 0,
+      color: stats.FormSubmissionRecordsExist ? 'text-purple-600' : 'text-gray-500',
+      bgColor: stats.FormSubmissionRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
+      gradient: stats.FormSubmissionRecordsExist ? 'from-purple-50 to-purple-100' : 'from-gray-50 to-gray-100',
+      showCustomFormsBreakdown: stats.FormSubmissionRecordsExist,
+      totalCustomForms: stats.FormSubmissionRecordsExist ? (stats.formSubmissions30Days || 0) : 0,
+      formSubmissions30Days: stats.FormSubmissionRecordsExist ? (stats.formSubmissions30Days || 0) : 0,
+      formSubmissions60Days: stats.FormSubmissionRecordsExist ? (stats.formSubmissions60Days || 0) : 0,
+      formSubmissions90Days: stats.FormSubmissionRecordsExist ? (stats.formSubmissions90Days || 0) : 0,
       cardType: 'open_grievances'
     },
     {
       title: 'Total Safety Vehicles',
-      value: `${stats.vehiclesVerified || 0}/${stats.totalVehicles || 0}`,
-      description: 'Vehicle vetrification status',
+      value: stats.VehicleRecordsExist ? `${stats.vehiclesVerified || 0}/${stats.totalVehicles || 0}` : 'N/A',
+      description: stats.VehicleRecordsExist ? 'Vehicle verification status' : 'No vehicle data available',
       icon: Truck,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      gradient: 'from-blue-50 to-blue-100',
-      showVehicleVerificationBreakdown: true,
-      totalVehicles: stats.totalVehicles || 0,
-      vehiclesToBeVerified: stats.vehiclesToBeVerified || 0,
-      vehiclesFailedVerification: stats.vehiclesFailedVerification || 0,
-      vehiclesVerified: stats.vehiclesVerified || 0,
+      color: stats.VehicleRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: stats.VehicleRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      gradient: stats.VehicleRecordsExist ? 'from-blue-50 to-blue-100' : 'from-gray-50 to-gray-100',
+      showVehicleVerificationBreakdown: stats.VehicleRecordsExist,
+      totalVehicles: stats.VehicleRecordsExist ? (stats.totalVehicles || 0) : 0,
+      vehiclesToBeVerified: stats.VehicleRecordsExist ? (stats.vehiclesToBeVerified || 0) : 0,
+      vehiclesFailedVerification: stats.VehicleRecordsExist ? (stats.vehiclesFailedVerification || 0) : 0,
+      vehiclesVerified: stats.VehicleRecordsExist ? (stats.vehiclesVerified || 0) : 0,
       cardType: 'safety_vehicles'
     },
     {
       title: 'Number of Students Involved',
-      value: stats.studentsInvolved || 0,
-      description: 'Students involved in open incidents',
+      value: stats.IncidentRecordsExist ? (stats.studentsInvolved || 0) : 'N/A',
+      description: stats.IncidentRecordsExist ? 'Students involved in open incidents' : 'No incident data available',
       icon: Users,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      gradient: 'from-orange-50 to-orange-100',
-      showStudentsBreakdown: true,
-      studentsInvolvedByCategory: stats.studentsInvolvedByCategory || [],
+      color: stats.IncidentRecordsExist ? 'text-orange-600' : 'text-gray-500',
+      bgColor: stats.IncidentRecordsExist ? 'bg-orange-50' : 'bg-gray-50',
+      gradient: stats.IncidentRecordsExist ? 'from-orange-50 to-orange-100' : 'from-gray-50 to-gray-100',
+      showStudentsBreakdown: stats.IncidentRecordsExist,
+      studentsInvolvedByCategory: stats.IncidentRecordsExist ? (stats.studentsInvolvedByCategory || []) : [],
       cardType: 'students_involved'
     }
   ];
@@ -279,8 +287,22 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     <span className="font-semibold text-red-600">{(card as any).closedIncidents}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-orange-600 font-medium">Reopened Incidens:</span>
+                    <span className="text-orange-600 font-medium">Reopened Incidents:</span>
                     <span className="font-semibold text-orange-600">{(card as any).reopenedIncidents}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Show N/A breakdown when no incident data exists */}
+              {!(card as any).showBreakdown && card.value === 'N/A' && card.title === 'Total Number of Open Incidents' && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-medium">Closed Incidents:</span>
+                    <span className="font-semibold text-gray-500">—</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-medium">Reopened Incidents:</span>
+                    <span className="font-semibold text-gray-500">—</span>
                   </div>
                 </div>
               )}
@@ -296,7 +318,21 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     <span className="font-semibold text-red-600">{(card as any).failedEmployees}</span>
                   </div>
                 </div>
-                                  )}
+              )}
+
+              {/* Show N/A breakdown for employees when no data exists */}
+              {!(card as any).showEmployeeBreakdown && card.value === 'N/A' && card.title === 'Total Safe Employees' && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-medium">Employees verified:</span>
+                    <span className="font-semibold text-gray-500">—</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-medium">Employees failed verification:</span>
+                    <span className="font-semibold text-gray-500">—</span>
+                  </div>
+                </div>
+              )}
 
                     {(card as any).showVehicleVerificationBreakdown && (
                       <div className="space-y-2">
@@ -308,8 +344,22 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                           <span className="text-red-600 font-medium">Vehicles with issues:</span>
                           <span className="font-semibold text-red-600">{(card as any).vehiclesFailedVerification}</span>
                         </div>
-                </div>
-              )}
+                      </div>
+                    )}
+
+                    {/* Show N/A breakdown for vehicles when no data exists */}
+                    {!(card as any).showVehicleVerificationBreakdown && card.value === 'N/A' && card.title === 'Total Safety Vehicles' && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">Vehicles verified:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">Vehicles with issues:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                      </div>
+                    )}
 
                     {(card as any).showVehicleBreakdown && (
                       <div className="space-y-2">
@@ -341,6 +391,20 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                       </div>
                     )}
 
+                    {/* Show N/A breakdown for grievances when no data exists */}
+                    {!(card as any).showCustomFormsBreakdown && card.value === 'N/A' && card.title === 'Number Of Open Grievances' && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">Last 30 days:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">Last 60 days:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                      </div>
+                    )}
+
                     {(card as any).showAssessmentBreakdown && (
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-sm">
@@ -354,6 +418,20 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                       </div>
                     )}
 
+                    {/* Show N/A breakdown for assessments when no data exists */}
+                    {!(card as any).showAssessmentBreakdown && card.value === 'N/A' && card.title === 'Active Assessments' && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">New:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">Submitted:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                      </div>
+                    )}
+
                     {(card as any).showStudentsBreakdown && (
                       <div className="space-y-2">
                         {(card as any).studentsInvolvedByCategory.map((item: any, index: number) => (
@@ -362,6 +440,16 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                             <span className="font-semibold text-orange-600">{item.count}</span>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Show N/A breakdown for students when no data exists */}
+                    {!(card as any).showStudentsBreakdown && card.value === 'N/A' && card.title === 'Number of Students Involved' && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">No categories available:</span>
+                          <span className="font-semibold text-gray-500">—</span>
+                        </div>
                       </div>
                     )}
 

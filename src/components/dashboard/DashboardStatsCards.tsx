@@ -11,77 +11,115 @@ interface DashboardStatsCardsProps {
     employeesVerified: number;
     totalVehicles: number;
     vehiclesWithDocuments: number;
+    vehiclesVerified?: number;
     incidentsLastMonth: number;
     incidentsLast6Months: number;
+    // Add existence checks
+    IncidentRecordsExist: boolean;
+    AssessmentRecordsExist: boolean;
+    VehicleRecordsExist: boolean;
+    EmployeeRecordsExist: boolean;
+    FormSubmissionRecordsExist: boolean;
   };
   loading: boolean;
 }
 
 const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
-  const employeeVerificationPercentage = stats.totalEmployees > 0 
+  const employeeVerificationPercentage = stats.EmployeeRecordsExist && stats.totalEmployees > 0 
     ? Math.round((stats.employeesVerified / stats.totalEmployees) * 100) 
     : 0;
 
-  const vehicleDocumentationPercentage = stats.totalVehicles > 0 
+  const vehicleDocumentationPercentage = stats.VehicleRecordsExist && stats.totalVehicles > 0 
     ? Math.round((stats.vehiclesWithDocuments / stats.totalVehicles) * 100) 
     : 0;
 
   const statsCards = [
     {
-      title: 'Open Incidents',
-      value: stats.openIncidents,
-      description: `Total open incidents: ${stats.openIncidents}`,
+      title: 'Total Number of Open Incidents',
+      value: stats.IncidentRecordsExist ? stats.openIncidents : 'N/A',
+      subValues: stats.IncidentRecordsExist ? [
+        { label: 'Closed Incidents:', value: '0' },
+        { label: 'Reopened Incidents:', value: '0' }
+      ] : [
+        { label: 'Closed Incidents:', value: '—' },
+        { label: 'Reopened Incidents:', value: '—' }
+      ],
       icon: AlertTriangle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200'
+      color: stats.IncidentRecordsExist ? 'text-red-600' : 'text-gray-500',
+      bgColor: stats.IncidentRecordsExist ? 'bg-red-50' : 'bg-gray-50',
+      borderColor: stats.IncidentRecordsExist ? 'border-red-200' : 'border-gray-200'
+    },
+    {
+      title: 'Total Safe Employees',
+      value: stats.EmployeeRecordsExist ? `${stats.employeesVerified}/${stats.totalEmployees}` : 'N/A',
+      subValues: stats.EmployeeRecordsExist ? [
+        { label: 'Employees verified:', value: stats.employeesVerified.toString() },
+        { label: 'Employees failed verification:', value: '0' }
+      ] : [
+        { label: 'Employees verified:', value: '—' },
+        { label: 'Employees failed verification:', value: '—' }
+      ],
+      icon: Users,
+      color: stats.EmployeeRecordsExist ? 'text-green-600' : 'text-gray-500',
+      bgColor: stats.EmployeeRecordsExist ? 'bg-green-50' : 'bg-gray-50',
+      borderColor: stats.EmployeeRecordsExist ? 'border-green-200' : 'border-gray-200'
     },
     {
       title: 'Active Assessments',
-      value: stats.activeAssessments,
-      description: `Total active assessments: ${stats.activeAssessments}`,
+      value: stats.AssessmentRecordsExist ? stats.activeAssessments : 'N/A',
+      subValues: stats.AssessmentRecordsExist ? [
+        { label: 'New:', value: '1' },
+        { label: 'Submitted:', value: '0' }
+      ] : [
+        { label: 'New:', value: '—' },
+        { label: 'Submitted:', value: '—' }
+      ],
       icon: FileCheck,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200'
+      color: stats.AssessmentRecordsExist ? 'text-blue-600' : 'text-gray-500',
+      bgColor: stats.AssessmentRecordsExist ? 'bg-blue-50' : 'bg-gray-50',
+      borderColor: stats.AssessmentRecordsExist ? 'border-blue-200' : 'border-gray-200'
     },
     {
-      title: 'Employee Verification',
-      value: `${employeeVerificationPercentage}%`,
-      description: `Verified employees: ${stats.employeesVerified} of ${stats.totalEmployees}`,
-      icon: Users,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200'
-    },
-    {
-      title: 'Transport Safety',
-      value: `${vehicleDocumentationPercentage}%`,
-      description: `Vehicles with documents: ${stats.vehiclesWithDocuments} of ${stats.totalVehicles}`,
-      icon: Truck,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200'
-    },
-    {
-      title: 'Incidents Last Month',
-      value: stats.incidentsLastMonth,
-      description: `Total incidents last month: ${stats.incidentsLastMonth}`,
+      title: 'Number Of Open Grievances',
+      value: stats.FormSubmissionRecordsExist ? '0' : 'N/A',
+      subValues: stats.FormSubmissionRecordsExist ? [
+        { label: 'Last 30 days:', value: '0' },
+        { label: 'Last 60 days:', value: '0' }
+      ] : [
+        { label: 'Last 30 days:', value: '—' },
+        { label: 'Last 60 days:', value: '—' }
+      ],
       icon: Calendar,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200'
+      color: stats.FormSubmissionRecordsExist ? 'text-orange-600' : 'text-gray-500',
+      bgColor: stats.FormSubmissionRecordsExist ? 'bg-orange-50' : 'bg-gray-50',
+      borderColor: stats.FormSubmissionRecordsExist ? 'border-orange-200' : 'border-gray-200'
     },
     {
-      title: 'Incidents Last 6 Months',
-      value: stats.incidentsLast6Months,
-      description: `Total incidents last 6 months: ${stats.incidentsLast6Months}`,
+      title: 'Total Safety Vehicles',
+      value: stats.VehicleRecordsExist ? `${stats.vehiclesVerified || 0}/${stats.totalVehicles}` : 'N/A',
+      subValues: stats.VehicleRecordsExist ? [
+        { label: 'Vehicles verified:', value: (stats.vehiclesVerified || 0).toString() },
+        { label: 'Vehicles with issues:', value: '0' }
+      ] : [
+        { label: 'Vehicles verified:', value: '—' },
+        { label: 'Vehicles with issues:', value: '—' }
+      ],
+      icon: Truck,
+      color: stats.VehicleRecordsExist ? 'text-purple-600' : 'text-gray-500',
+      bgColor: stats.VehicleRecordsExist ? 'bg-purple-50' : 'bg-gray-50',
+      borderColor: stats.VehicleRecordsExist ? 'border-purple-200' : 'border-gray-200'
+    },
+    {
+      title: 'Number of Students Involved',
+      value: stats.IncidentRecordsExist ? '0' : 'N/A',
       icon: TrendingUp,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200'
+      color: stats.IncidentRecordsExist ? 'text-indigo-600' : 'text-gray-500',
+      bgColor: stats.IncidentRecordsExist ? 'bg-indigo-50' : 'bg-gray-50',
+      borderColor: stats.IncidentRecordsExist ? 'border-indigo-200' : 'border-gray-200'
     }
   ];
+  console.log(statsCards,"statsCardsx");
+  
 
   if (loading) {
     return (
@@ -120,10 +158,18 @@ const DashboardStatsCards = ({ stats, loading }: DashboardStatsCardsProps) => {
               <div className={`text-3xl font-bold ${card.color} mb-2`}>
                 {card.value}
               </div>
-              <p className="text-sm text-gray-600">
-                <span className="font-bold">{card.description.split(':')[0]}:</span>
-                <span className="ml-1">{card.description.split(':')[1]}</span>
-              </p>
+              {card.subValues && (
+                <div className="space-y-1">
+                  {card.subValues.map((subValue, subIndex) => (
+                    <p key={subIndex} className="text-sm text-gray-600">
+                      <span className="font-bold">{subValue.label}</span>
+                      <span className={`ml-1 ${card.value === 'N/A' ? 'text-gray-500' : ''}`}>
+                        {subValue.value}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         );

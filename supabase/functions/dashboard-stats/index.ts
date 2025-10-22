@@ -767,10 +767,98 @@ serve(async (req) => {
       monthlyIncidentsData
     }
 
-    console.log('Dashboard stats response:', response)
+    // Check if data exists for each table based on client_id
+    const { data: incidentRecords, error: incidentRecordsError } = await supabase
+      .from('incidents')
+      .select('id')
+      .eq('client_id', client_id)
+      .limit(1)
+
+    const { data: assessmentRecords, error: assessmentRecordsError } = await supabase
+      .from('assessments')
+      .select('id')
+      .eq('client_id', client_id)
+      .limit(1)
+
+    const { data: vehicleRecords, error: vehicleRecordsError } = await supabase
+      .from('vehicles')
+      .select('id')
+      .eq('client_id', client_id)
+      .limit(1)
+
+    const { data: employeeRecords, error: employeeRecordsError } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('client_id', client_id)
+      .limit(1)
+
+    const { data: formSubmissionRecords, error: formSubmissionRecordsError } = await supabase
+      .from('form_submissions')
+      .select('id')
+      .eq('client_id', client_id)
+      .limit(1)
+
+    // Boolean existence checks
+    const IncidentRecordsExist = !incidentRecordsError && incidentRecords && incidentRecords.length > 0
+    const AssessmentRecordsExist = !assessmentRecordsError && assessmentRecords && assessmentRecords.length > 0
+    const VehicleRecordsExist = !vehicleRecordsError && vehicleRecords && vehicleRecords.length > 0
+    const EmployeeRecordsExist = !employeeRecordsError && employeeRecords && employeeRecords.length > 0
+    const FormSubmissionRecordsExist = !formSubmissionRecordsError && formSubmissionRecords && formSubmissionRecords.length > 0
+
+    console.log('Data existence checks:', {
+      IncidentRecordsExist,
+      AssessmentRecordsExist,
+      VehicleRecordsExist,
+      EmployeeRecordsExist,
+      FormSubmissionRecordsExist
+    })
+
+    const dashboardResponse = {
+      openIncidents: openIncidents?.length || 0,
+      openIncidentOlder7days:openIncidentOlder7days?.length || 0,
+      studentsInvolved: studentsInvolvedCount,
+      studentsInvolvedByCategory: topCategories,
+      activeAssessments: activeAssessments?.length || 0,
+      newAssessments: newAssessmentsCount,
+      draftAssessments: draftAssessmentsCount,
+      submittedAssessments: submittedAssessmentsCount,
+      totalCustomForms: 0, // Removed custom forms count as we're now using direct client_id filtering
+      totalUnacknowledged: allUnacknowledgedSubmissions?.length || 0,
+      formSubmissions30Days: submissions30Days?.length || 0,
+      formSubmissions60Days: submissions60Days?.length || 0,
+      formSubmissions90Days: submissions90Days?.length || 0,
+      totalVehicles: allVehicles?.length || 0,
+      vehiclesToBeVerified,
+      vehiclesFailedVerification,
+      vehiclesVerified,
+      totalEmployees: employeeIds.length,
+      employeesVerified: employeesVerified, 
+      employeesFailed: employeesFailed,
+
+      vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
+      activeVehicles: activeVehicles?.length || 0,
+      maintenanceVehicles: maintenanceVehicles?.length || 0,
+      inactiveVehicles: inactiveVehicles?.length || 0,
+      incidentsLastMonth: incidentsLastMonth?.length || 0,
+      incidentsLast6Months: incidentsLast6Months?.length || 0,
+      totalAssessments: totalAssessments?.length || 0,
+      completedAssessments: completedAssessments?.length || 0,
+      closedIncidents: closedIncidents?.length || 0,
+      reopenedIncidents: reopenedIncidents?.length || 0,
+      overdueAssessments: overdueAssessments?.length || 0,
+      monthlyIncidentsData,
+      // Add existence checks
+      IncidentRecordsExist,
+      AssessmentRecordsExist,
+      VehicleRecordsExist,
+      EmployeeRecordsExist,
+      FormSubmissionRecordsExist
+    }
+
+    console.log('Dashboard stats response:', dashboardResponse)
 
     return new Response(
-      JSON.stringify(response),
+      JSON.stringify(dashboardResponse),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 

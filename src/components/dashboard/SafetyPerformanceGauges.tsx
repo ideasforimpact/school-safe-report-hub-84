@@ -13,6 +13,12 @@ interface SafetyPerformanceGaugesProps {
     activeAssessments?: number;
     overdueAssessments?: number;
     incidentsLastMonth: number;
+    // Add existence checks
+    IncidentRecordsExist: boolean;
+    AssessmentRecordsExist: boolean;
+    VehicleRecordsExist: boolean;
+    EmployeeRecordsExist: boolean;
+    FormSubmissionRecordsExist: boolean;
   };
   loading: boolean;
 }
@@ -27,30 +33,39 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - stats.activeAssessments:', stats.activeAssessments);
   console.log('  - stats.openIncidents:', stats.openIncidents);
 
+  // Check if all required data exists
+  const allDataExists = stats.IncidentRecordsExist && 
+                       stats.AssessmentRecordsExist && 
+                       stats.VehicleRecordsExist && 
+                       stats.EmployeeRecordsExist 
+
   // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
-  const employeeComplianceScore = stats.totalEmployees > 0 
+  const employeeComplianceScore = stats.EmployeeRecordsExist && stats.totalEmployees > 0 
     ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees)) 
-    : 0;
+    : null;
 
   console.log('🔍 Employee Compliance Score Calculation:');
+  console.log('  - EmployeeRecordsExist:', stats.EmployeeRecordsExist);
   console.log('  - Number of verified employees:', stats.employeesVerified);
   console.log('  - Number of active employees:', stats.totalEmployees);
-  console.log('  - Calculation: 100 * (', stats.employeesVerified, '/', stats.totalEmployees, ') =', employeeComplianceScore);
   console.log('  - Final Employee Compliance Score:', employeeComplianceScore);
+  console.log('  - Overall status',stats)
 
   // Calculate Vehicle Compliance score = 100 * (number of verified vehicles / number of vehicles)
-  const vehicleComplianceScore = stats.totalVehicles > 0 
+  const vehicleComplianceScore = stats.VehicleRecordsExist && stats.totalVehicles > 0 
     ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles)) 
-    : 0;
+    : null;
 
   console.log('🔍 Vehicle Compliance Score Calculation:');
+  console.log('  - VehicleRecordsExist:', stats.VehicleRecordsExist);
   console.log('  - Number of verified vehicles:', stats.vehiclesVerified || 0);
   console.log('  - Number of vehicles:', stats.totalVehicles);
-  console.log('  - Calculation: 100 * (', stats.vehiclesVerified || 0, '/', stats.totalVehicles, ') =', vehicleComplianceScore);
   console.log('  - Final Vehicle Compliance Score:', vehicleComplianceScore);
 
   // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
-  const incidentsScore = Math.max(100 - 20 * stats.openIncidentOlder7days, 0);
+  const incidentsScore = stats.IncidentRecordsExist 
+    ? Math.max(100 - 20 * (stats.openIncidentOlder7days || 0), 0)
+    : null;
 
   console.log('🔍 Incidents Score Calculation:');
   console.log('  - Number of open incidents:', stats.openIncidents);
@@ -63,18 +78,23 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   // CASE WHEN ActiveAssessments = 0 THEN 100
   //      WHEN OverdueAssessments = 0 THEN 100
   //      ELSE 100 * (OverdueAssessments / ActiveAssessments)
-  const activeA = stats.activeAssessments || 0;
-  const overdueA = stats.overdueAssessments || 0;
-  const assessmentActivityScore = activeA === 0 || overdueA === 0
-    ? 100
-    : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA)));
+  const activeA = stats.AssessmentRecordsExist ? (stats.activeAssessments || 0) : 0;
+  const overdueA = stats.AssessmentRecordsExist ? (stats.overdueAssessments || 0) : 0;
+  const assessmentActivityScore = stats.AssessmentRecordsExist 
+    ? (activeA === 0 || overdueA === 0
+        ? 100
+        : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA))))
+    : null;
   
-  const overallSafetyScore = Math.round(
-    (0.3 * employeeComplianceScore) + 
-    (0.2 * vehicleComplianceScore) + 
-    (0.25 * assessmentActivityScore) + 
-    (0.25 * incidentsScore)
-  );
+  // Overall Safety Score - only calculate if all data exists
+  const overallSafetyScore = allDataExists 
+    ? Math.round(
+        (0.3 * (employeeComplianceScore || 0)) + 
+        (0.2 * (vehicleComplianceScore || 0)) + 
+        (0.25 * (assessmentActivityScore || 0)) + 
+        (0.25 * (incidentsScore || 0))
+      )
+    : null;
 
   console.log('🔍 Assessment Activity Score Calculation:');
   console.log('  - Active Assessments:', stats.activeAssessments || 0);
@@ -101,14 +121,25 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
   console.log('  - Overall Safety Score:', overallSafetyScore, '%');
   console.log('  - Raw stats received:', stats);
 
-  const createGaugeData = (percentage: number, color: string) => [
-    { name: 'Completed', value: percentage, color: color },
-    { name: 'Remaining', value: 100 - percentage, color: '#e5e7eb' }
-  ];
+  const createGaugeData = (percentage: number | null, color: string) => {
+    if (percentage === null) {
+      return [
+        { name: 'N/A', value: 100, color: '#9ca3af' }
+      ];
+    }
+    return [
+      { name: 'Completed', value: percentage, color: color },
+      { name: 'Remaining', value: 100 - percentage, color: '#e5e7eb' }
+    ];
+  };
 
-  const getScoreInfo = (score: number) => {
+  const getScoreInfo = (score: number | null) => {
     console.log('🎨 Color/Status Determination for score:', score);
     
+    if (score === null) {
+      console.log('  - Score is null: N/A (Gray)');
+      return { color: '#9ca3af', status: 'N/A', textColor: 'text-gray-500', bgColor: 'bg-gray-100', textBgColor: 'text-gray-600' };
+    }
     if (score <= 20) {
       console.log('  - Score <= 20: Poor (Red)');
       return { color: '#ef4444', status: 'Poor', textColor: 'text-red-600', bgColor: 'bg-red-100', textBgColor: 'text-red-800' }; // red
@@ -132,28 +163,34 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
       title: 'Overall Safety Score',
       value: overallSafetyScore,
       data: createGaugeData(overallSafetyScore, getScoreInfo(overallSafetyScore).color),
-      description: 'Comprehensive safety performance',
+      description: allDataExists ? 'Comprehensive safety performance' : 'Setup Required',
       scoreInfo: getScoreInfo(overallSafetyScore)
     },
     {
       title: 'Employee Compliance',
       value: employeeComplianceScore,
       data: createGaugeData(employeeComplianceScore, getScoreInfo(employeeComplianceScore).color),
-      description: `${stats.employeesVerified}/${stats.totalEmployees} verified`,
+      description: stats.EmployeeRecordsExist 
+        ? `${stats.employeesVerified}/${stats.totalEmployees} verified`
+        : 'No employee data available',
       scoreInfo: getScoreInfo(employeeComplianceScore)
     },
     {
       title: 'Vehicle Compliance',
       value: vehicleComplianceScore,
       data: createGaugeData(vehicleComplianceScore, getScoreInfo(vehicleComplianceScore).color),
-      description: `${stats.vehiclesVerified || 0}/${stats.totalVehicles} compliant`,
+      description: stats.VehicleRecordsExist 
+        ? `${stats.vehiclesVerified || 0}/${stats.totalVehicles} compliant`
+        : 'No vehicle data available',
       scoreInfo: getScoreInfo(vehicleComplianceScore)
     },
     {
       title: 'Incident Management',
       value: incidentsScore,
       data: createGaugeData(incidentsScore, getScoreInfo(incidentsScore).color),
-      description: `${stats.openIncidents} open incidents`,
+      description: stats.IncidentRecordsExist 
+        ? `${stats.openIncidents} open incidents`
+        : 'No incident data available',
       scoreInfo: getScoreInfo(incidentsScore)
     }
   ];
@@ -226,7 +263,7 @@ const SafetyPerformanceGauges = ({ stats, loading }: SafetyPerformanceGaugesProp
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
                     <div className={`text-lg font-bold ${gauge.scoreInfo.textColor}`}>
-                      {gauge.value}%
+                      {gauge.value !== null ? `${gauge.value}%` : 'N/A'}
                     </div>
                   </div>
                 </div>
