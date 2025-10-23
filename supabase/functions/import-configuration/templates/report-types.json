@@ -1,0 +1,16 @@
+{
+  "report_types": [
+    { "id": "", "name": "Incident Report", "description": "Standard incident reporting form", "is_active": true, "client_id": "" },
+    { "id": "", "name": "Near Miss Report", "description": "Report for incidents that could have caused harm", "is_active": true, "client_id": "" },
+    { "id": "", "name": "Hazard Report", "description": "Report for potential safety hazards", "is_active": true, "client_id": "" },
+    { "id": "", "name": "Emergency Report", "description": "Urgent incident requiring immediate attention", "is_active": true, "client_id": "" }
+  ]
+}
+
+
+
+
+
+
+
+

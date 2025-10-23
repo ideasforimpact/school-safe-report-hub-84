@@ -1,0 +1,736 @@
+{
+  "categories": [
+    {
+      "id": "",
+      "name": "Student Behaviour & Discipline",
+      "description": "Manage behavioural issues, conflicts, and rule violations",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Bullying / Harassment (verbal, physical, cyber)",
+          "description": "Any form of bullying or harassment including verbal, physical, or cyber bullying",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Use of abusive language",
+          "description": "Inappropriate or offensive language used by students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Disobedience / Defiance",
+          "description": "Refusal to follow instructions or authority",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fighting / Physical altercation",
+          "description": "Physical confrontations between students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Damage to school property",
+          "description": "Intentional or accidental damage to school facilities or equipment",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Truancy / Skipping class",
+          "description": "Unauthorized absence from school or classes",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Cheating / Academic dishonesty",
+          "description": "Academic misconduct including cheating, plagiarism, or exam violations",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Theft / Possession of stolen items",
+          "description": "Stealing or being in possession of stolen property",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Inappropriate clothing or uniform violation",
+          "description": "Violation of dress code or uniform policies",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Mobile phone misuse / Social media misuse",
+          "description": "Inappropriate use of mobile devices or social media platforms",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Substance use or possession (tobacco, drugs)",
+          "description": "Use, possession, or distribution of prohibited substances",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Misconduct during school transport",
+          "description": "Inappropriate behavior while using school transportation",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Safety & Security",
+      "description": "Address safety incidents, both physical and environmental",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Slip, trip, or fall injury",
+          "description": "Accidents resulting from slips, trips, or falls",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Playground accident",
+          "description": "Injuries or incidents occurring in playground areas",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Laboratory accident (chemical/equipment injury)",
+          "description": "Accidents involving chemicals or laboratory equipment",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Electrical hazard / shock",
+          "description": "Electrical safety incidents or electric shock",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fire / Smoke incident",
+          "description": "Fire-related incidents or smoke detection",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unsafe infrastructure (broken furniture, staircase, etc.)",
+          "description": "Hazards related to damaged or unsafe school infrastructure",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Stranger in school premises",
+          "description": "Unauthorized or suspicious individuals on school grounds",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Transportation accident (school bus)",
+          "description": "Accidents involving school transportation vehicles",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Security breach (unauthorized access, missing student)",
+          "description": "Security incidents including unauthorized access or missing students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Lost & Found (important belongings)",
+          "description": "Reports of lost or found important personal belongings",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Health & Medical",
+      "description": "Track medical emergencies or health-related incidents",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Injury during sports / PE",
+          "description": "Injuries occurring during physical education or sports activities",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Allergic reaction",
+          "description": "Allergic reactions requiring medical attention",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fever / Sudden illness",
+          "description": "Sudden onset of fever or illness requiring medical attention",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Food poisoning / Canteen-related issue",
+          "description": "Food-related health issues or canteen safety concerns",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Communicable disease case (measles, flu, etc.)",
+          "description": "Cases of communicable diseases that may affect school community",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Mental health / Emotional distress",
+          "description": "Mental health concerns or emotional distress requiring support",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fainting / Unconscious student",
+          "description": "Students who faint or become unconscious",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Chronic condition episode (asthma, diabetes, etc.)",
+          "description": "Episodes related to chronic medical conditions",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Medication error or delay",
+          "description": "Issues with medication administration or timing",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Menstrual health concern (for girls)",
+          "description": "Health concerns related to menstrual health",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Staff Conduct & Performance",
+      "description": "Address issues involving teachers or staff behaviour",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Verbal or physical misconduct towards students",
+          "description": "Inappropriate verbal or physical behavior by staff towards students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Absenteeism / Late reporting",
+          "description": "Staff attendance issues or late reporting to work",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Academic negligence / Not completing syllabus",
+          "description": "Failure to meet academic responsibilities or complete curriculum",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Favoritism / Unfair grading",
+          "description": "Showing favoritism or unfair grading practices",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unprofessional behaviour (language, attire)",
+          "description": "Unprofessional conduct including inappropriate language or attire",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Misuse of authority",
+          "description": "Inappropriate use of position or authority",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Conflict with other staff",
+          "description": "Interpersonal conflicts between staff members",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Data breach (sharing student info)",
+          "description": "Unauthorized sharing or breach of student information",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Harassment / Discrimination",
+          "description": "Harassment or discriminatory behavior by staff",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Parent or Visitor Related",
+      "description": "Manage incidents involving outsiders within school premises",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Parent aggression / Verbal abuse",
+          "description": "Aggressive behavior or verbal abuse by parents",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized entry",
+          "description": "Unauthorized access to school premises by visitors",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Late pickup / No pickup",
+          "description": "Issues with student pickup timing or failure to pick up",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Disagreement during PTM",
+          "description": "Conflicts or disagreements during Parent-Teacher Meetings",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Complaint about staff or student",
+          "description": "Formal complaints lodged by parents about staff or students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Suspicious visitor activity",
+          "description": "Suspicious behavior or activities by visitors",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Infrastructure & Facilities",
+      "description": "Handle non-human incidents affecting school operation",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Broken classroom furniture",
+          "description": "Damaged or broken furniture in classrooms",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Water leakage / Plumbing issue",
+          "description": "Water leaks or plumbing problems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Power failure",
+          "description": "Electrical power outages or failures",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Internet / Network outage",
+          "description": "Internet connectivity or network service disruptions",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Air-conditioning / Ventilation issue",
+          "description": "Problems with air conditioning or ventilation systems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Transportation breakdown",
+          "description": "Mechanical failures or breakdowns in school transportation",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Waste management issue",
+          "description": "Problems with waste disposal or management systems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Canteen hygiene issue",
+          "description": "Hygiene or sanitation problems in the canteen",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Library / Lab equipment damage",
+          "description": "Damage to library or laboratory equipment",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fire extinguisher / CCTV not functional",
+          "description": "Non-functional safety equipment like fire extinguishers or CCTV",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Cyber & IT Related",
+      "description": "Deal with digital and online incidents",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Cyberbullying",
+          "description": "Online harassment, bullying, or intimidation through digital platforms",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Unauthorized access to school systems",
+          "description": "Unauthorized access to school computer systems or networks",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Data privacy violation",
+          "description": "Violations of data privacy or protection policies",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Inappropriate use of school devices",
+          "description": "Misuse of school computers, tablets, or other devices",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Exam paper leak",
+          "description": "Unauthorized disclosure or leak of examination papers",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Social media impersonation",
+          "description": "Creating fake social media accounts impersonating school or individuals",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Virus / Malware attack",
+          "description": "Computer virus or malware infections affecting school systems",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Online class misconduct (camera/mic misuse, chat abuse)",
+          "description": "Inappropriate behavior during online classes or virtual learning",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Emergency & Crisis Management",
+      "description": "Record major or rare high-impact incidents",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Natural disaster (flood, earthquake)",
+          "description": "Natural disasters affecting the school community",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fire / Explosion",
+          "description": "Fire incidents or explosions requiring emergency response",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Bomb threat / Suspicious object",
+          "description": "Bomb threats or discovery of suspicious objects",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Missing student",
+          "description": "Students who are unaccounted for or missing",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Death / Fatal injury",
+          "description": "Fatal incidents or deaths within the school community",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Riot / Protest near school",
+          "description": "Civil unrest or protests affecting school operations",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Pandemic / Contagious outbreak",
+          "description": "Disease outbreaks or pandemic-related incidents",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Evacuation drill / Lockdown report",
+          "description": "Emergency drills or lockdown procedures",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Academic & Administrative",
+      "description": "Non-behavioural incidents affecting academics or operations",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Exam paper error",
+          "description": "Errors in examination papers or materials",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Missing student record / wrong data",
+          "description": "Issues with student records or incorrect data entry",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Timetable error",
+          "description": "Errors in class schedules or timetables",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Late distribution of report cards",
+          "description": "Delays in distributing student report cards",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "School transport scheduling issue",
+          "description": "Problems with school bus or transport scheduling",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Canteen overcharge",
+          "description": "Overcharging or billing issues in the school canteen",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Fee dispute / Missing payment record",
+          "description": "Disputes over school fees or missing payment records",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Interpersonal Conflicts",
+      "description": "Document conflicts between individuals or groups",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Student vs Student conflict",
+          "description": "Conflicts between individual students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Student vs Teacher disagreement",
+          "description": "Disagreements or conflicts between students and teachers",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Teacher vs Teacher conflict",
+          "description": "Conflicts between teaching staff members",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Parent vs Teacher dispute",
+          "description": "Disputes between parents and teachers",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Parent vs Management issue",
+          "description": "Issues between parents and school management",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Peer group bullying or exclusion",
+          "description": "Group-based bullying or social exclusion",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    },
+    {
+      "id": "",
+      "name": "Positive Incident Reporting",
+      "description": "Capture good conduct and positive interventions",
+      "client_id": "",
+      "subcategories": [
+        {
+          "id": "",
+          "name": "Student bravery or honesty",
+          "description": "Acts of courage, honesty, or integrity by students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Teacher excellence",
+          "description": "Outstanding performance or dedication by teachers",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Peer support or mentoring",
+          "description": "Students helping or mentoring their peers",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Innovation / Initiative by students",
+          "description": "Creative solutions or initiatives by students",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Successful conflict resolution",
+          "description": "Effective resolution of conflicts or disputes",
+          "category_id": "",
+          "client_id": ""
+        },
+        {
+          "id": "",
+          "name": "Safety suggestion implemented",
+          "description": "Implementation of safety suggestions or improvements",
+          "category_id": "",
+          "client_id": ""
+        }
+      ]
+    }
+  ]
+}

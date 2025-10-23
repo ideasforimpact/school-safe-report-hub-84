@@ -1,0 +1,17 @@
+{
+  "contributing_factors": [
+    { "id": "", "name": "Facility or Equipment", "description": "Faulty, missing, or unsafe facility or equipment", "weight": null, "client_id": "" },
+    { "id": "", "name": "Human Error", "description": "Mistake, carelessness, or failure to follow procedures", "weight": null, "client_id": "" },
+    { "id": "", "name": "Lack of Supervision", "description": "No or inadequate monitoring during the incident", "weight": null, "client_id": "" },
+    { "id": "", "name": "Non Compliance with Rules", "description": "Not following established safety or conduct guidelines", "weight": 4, "client_id": "" },
+    { "id": "", "name": "Poor Communication", "description": "Delay or missed communication", "weight": null, "client_id": "" }
+  ]
+}
+
+
+
+
+
+
+
+

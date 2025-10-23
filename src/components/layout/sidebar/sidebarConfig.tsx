@@ -241,6 +241,12 @@ export const getSaasOwnerItems = () => [
     path: '/backoffice/settings',
     allowed: true,
   },
+  {
+    icon: Settings,
+    label: 'Import\nConfiguration',
+    path: '/backoffice/import-configuration',
+    allowed: true,
+  },
 ];
 
 // Client Admin and User Menu Items

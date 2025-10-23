@@ -79,6 +79,7 @@ import BackofficeEmployeeDocumentsPage from '@/pages/backoffice/BackofficeEmploy
 
 // Layout for Backoffice with Client Provider
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import BackofficeImportConfiguration from './pages/backoffice/BackofficeImportConfiguration';
 
 // Backoffice Wrapper Component with Client Provider
 const BackofficeWrapper = ({ component: Component }) => {
@@ -224,6 +225,13 @@ function App() {
                       <ModulesPage />
                     </RouteGuard>
                   } />
+
+                  <Route path="/backoffice/import-configuration" element={
+                          <RouteGuard requireAuth={true}  requireSaasOwner={true}  isBackoffice={true}>
+                            <BackofficeImportConfiguration />
+                          </RouteGuard>
+                  } />
+
                   <Route path="/backoffice/profile" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={ProfilePage} />

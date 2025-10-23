@@ -1,0 +1,16 @@
+{
+  "priorities": [
+    { "id": "", "name": "Critical", "description": "Immediate attention required - life-threatening or severe impact", "color": "#dc2626", "weight": 1, "is_active": true, "client_id": "" },
+    { "id": "", "name": "High", "description": "Urgent attention required - significant impact on operations", "color": "#ea580c", "weight": 2, "is_active": true, "client_id": "" },
+    { "id": "", "name": "Medium", "description": "Important but not urgent - moderate impact", "color": "#d97706", "weight": 3, "is_active": true, "client_id": "" },
+    { "id": "", "name": "Low", "description": "Can be addressed when time permits - minimal impact", "color": "#16a34a", "weight": 4, "is_active": true, "client_id": "" }
+  ]
+}
+
+
+
+
+
+
+
+

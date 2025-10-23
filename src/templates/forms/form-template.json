@@ -1,0 +1,79 @@
+{
+  "client_id": "",
+  "title": "Grievance Form",
+  "description": "Submit your grievance or complaint",
+  "is_active": true,
+  "client_logo": null,
+  "fields": [
+    {
+      "id": "subject",
+      "type": "text",
+      "label": "Subject / Title of Grievance",
+      "required": true,
+      "maxLength": 200,
+      "placeholder": "Enter a brief summary of your grievance"
+    },
+    {
+      "id": "name",
+      "type": "text",
+      "label": "Name",
+      "required": false,
+      "placeholder": "Your full name"
+    },
+    {
+      "id": "phone",
+      "type": "phone",
+      "label": "Phone Number",
+      "required": false,
+      "placeholder": "Your phone number"
+    },
+    {
+      "id": "email",
+      "type": "email",
+      "label": "Email",
+      "required": false,
+      "placeholder": "Your email address"
+    },
+    {
+      "id": "submitter_type",
+      "type": "select",
+      "label": "Who is raising this grievance?",
+      "options": [
+        "Parent",
+        "Student",
+        "Staff",
+        "Other"
+      ],
+      "required": true
+    },
+    {
+      "id": "description",
+      "type": "textarea",
+      "label": "Description of the grievance",
+      "required": true,
+      "maxLength": 2000,
+      "placeholder": "Please provide a detailed description of your grievance..."
+    },
+    {
+      "id": "attachments",
+      "type": "file",
+      "label": "Attachments",
+      "maxFiles": 5,
+      "required": false,
+      "allowedFileTypes": [
+        "image/*",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ]
+    },
+    {
+      "id": "captcha",
+      "type": "captcha",
+      "label": "Captcha Verification",
+      "required": true
+    }
+  ]
+}
+
+

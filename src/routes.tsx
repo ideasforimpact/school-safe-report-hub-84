@@ -49,6 +49,7 @@ import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import AssessmentTemplatesManagementPage from './pages/backoffice/AssessmentTemplatesManagementPage';
 import BackofficeEduSafeResourcesPage from './pages/backoffice/BackofficeEduSafeResourcesPage';
+import BackofficeImportConfiguration from './pages/backoffice/BackofficeImportConfiguration';
 
 // EduSafe pages
 import EduSafeResourcesPage from './pages/edusafe/EduSafeResourcesPage';
@@ -137,6 +138,11 @@ const AppRoutes = () => {
       <Route path="/backoffice/analytics" element={
         <RouteGuard requireAuth={true} isBackoffice={true}>
           <BackofficeAnalytics />
+        </RouteGuard>
+      } />
+      <Route path="/backoffice/import-configuration" element={
+        <RouteGuard requireAuth={true} isBackoffice={true}>
+          <BackofficeImportConfiguration />
         </RouteGuard>
       } />
       <Route path="/backoffice/assessment-templates" element={
