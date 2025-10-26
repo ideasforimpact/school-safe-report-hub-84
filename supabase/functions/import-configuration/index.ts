@@ -46,6 +46,15 @@ interface PriorityPayload {
   client_id?: string;
 }
 
+interface AssessmentTemplatePayload {
+  title: string;
+  description?: string | null;
+  category_id?: string | null;
+  questions?: unknown;
+  is_active?: boolean;
+  client_id?: string | null;
+}
+
 interface ImportRequest {
   client_id: string;
   categories?: CategoryPayload[];
@@ -59,6 +68,7 @@ interface ImportRequest {
     client_logo?: string | null;
     fields: unknown;
   }>;
+  assessment_templates?: AssessmentTemplatePayload[];
   // Optional: when true, load default templates from /templates
   use_defaults?: boolean;
 }
@@ -90,6 +100,7 @@ serve(async (req) => {
     report_types: { inserted_ids: [], already_existing_ids: [], errors: [] },
     priorities: { inserted_ids: [], already_existing_ids: [], errors: [] },
     custom_forms: { inserted_ids: [], already_existing_ids: [], errors: [] },
+    assessment_templates: { inserted_ids: [], already_existing_ids: [], errors: [] },
   };
 
   try {
@@ -108,6 +119,10 @@ serve(async (req) => {
     const priorities = body.priorities;
     const categories = body.categories;
     const forms = body.forms;
+    const assessmentTemplates = body.assessment_templates;
+
+    console.log('Received forms:', forms ? `${forms.length} forms` : 'undefined');
+    console.log('Received assessment templates:', assessmentTemplates ? `${assessmentTemplates.length} assessment templates` : 'undefined');
 
     // Validate required templates
     const missing: string[] = [];
@@ -316,55 +331,121 @@ serve(async (req) => {
     }
 
     // Insert/Reuse Custom Forms
-    // if (Array.isArray(forms) && forms.length > 0) {
-    //   // Try to fetch client logo once (whatever column exists)
-    //   let clientLogo: string | null = null;
-    //   try {
-    //     const { data: clientData } = await supabase
-    //       .from('clients')
-    //       .select('logo, client_logo, logo_url')
-    //       .eq('id', clientId)
-    //       .single();
-    //     clientLogo = (clientData as any)?.client_logo || (clientData as any)?.logo || (clientData as any)?.logo_url || null;
-    //   } catch (_) {}
+    if (Array.isArray(forms) && forms.length > 0) {
+      console.log(`Processing ${forms.length} forms for client ${clientId}`);
+      // Try to fetch client logo once (whatever column exists)
+      let clientLogo: string | null = null;
+      try {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('logo, client_logo, logo_url')
+          .eq('id', clientId)
+          .single();
+        clientLogo = (clientData as any)?.client_logo || (clientData as any)?.logo || (clientData as any)?.logo_url || null;
+      } catch (_) {}
 
-    //   for (const form of forms) {
-    //     const title = form.title?.trim();
-    //     if (!title) continue;
-    //     // Check existing by (client_id, title)
-    //     const { data: existForm, error: findFormErr } = await supabase
-    //       .from('custom_forms')
-    //       .select('id')
-    //       .eq('client_id', clientId)
-    //       .eq('title', title);
-    //     if (!findFormErr && existForm && existForm.length > 0) {
-    //       tableLogs.custom_forms.already_existing_ids.push(existForm[0].id);
-    //       continue;
-    //     }
+      for (const form of forms) {
+        const title = form.title?.trim();
+        if (!title) continue;
+        // Check existing by (client_id, title)
+        const { data: existForm, error: findFormErr } = await supabase
+          .from('custom_forms')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('title', title);
+        if (!findFormErr && existForm && existForm.length > 0) {
+          tableLogs.custom_forms.already_existing_ids.push(existForm[0].id);
+          continue;
+        }
 
-    //     const record: any = {
-    //       client_id: clientId,
-    //       title,
-    //       description: form.description ?? null,
-    //       is_active: form.is_active ?? true,
-    //       fields: form.fields,
-    //       client_logo: form.client_logo ?? clientLogo ?? null
-    //     };
+        const record: any = {
+          client_id: clientId,
+          title,
+          description: form.description ?? null,
+          is_active: form.is_active ?? true,
+          fields: form.fields,
+          client_logo: form.client_logo ?? clientLogo ?? null
+        };
 
-    //     const { data, error } = await supabase
-    //       .from('custom_forms')
-    //       .insert(record)
-    //       .select('id')
-    //       .single();
-    //     if (error) {
-    //       tableLogs.custom_forms.errors.push(error.message);
-    //       responseStatus = 'failed';
-    //       responseCode = 207;
-    //     } else if (data?.id) {
-    //       tableLogs.custom_forms.inserted_ids.push(data.id);
-    //     }
-    //   }
-    // }
+        const { data, error } = await supabase
+          .from('custom_forms')
+          .insert(record)
+          .select('id')
+          .single();
+        if (error) {
+          console.log(`Error inserting form "${title}":`, error.message);
+          tableLogs.custom_forms.errors.push(error.message);
+          responseStatus = 'failed';
+          responseCode = 207;
+        } else if (data?.id) {
+          console.log(`Successfully inserted form "${title}" with ID: ${data.id}`);
+          tableLogs.custom_forms.inserted_ids.push(data.id);
+        }
+      }
+    }
+
+    // Insert/Reuse Assessment Templates
+    if (Array.isArray(assessmentTemplates) && assessmentTemplates.length > 0) {
+      console.log(`Processing ${assessmentTemplates.length} assessment templates for client ${clientId}`);
+      
+      // Find super admin employee for created_by field
+      let superAdminId: string | null = null;
+      try {
+        const { data: superAdminData } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('is_super_admin', true)
+          .single();
+        superAdminId = superAdminData?.id || null;
+        console.log(`Found super admin ID: ${superAdminId}`);
+      } catch (error) {
+        console.log('No super admin found for client:', clientId);
+      }
+
+      for (const template of assessmentTemplates) {
+        const title = template.title?.trim();
+        if (!title) continue;
+        
+        // Check existing by (client_id, title)
+        const { data: existTemplate, error: findTemplateErr } = await supabase
+          .from('assessment_templates')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('title', title);
+        if (!findTemplateErr && existTemplate && existTemplate.length > 0) {
+          tableLogs.assessment_templates.already_existing_ids.push(existTemplate[0].id);
+          continue;
+        }
+
+        const record: any = {
+          client_id: clientId,
+          title,
+          description: template.description ?? null,
+          category_id: template.category_id ?? null,
+          questions: template.questions ?? null,
+          is_active: template.is_active ?? true,
+          created_by: superAdminId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+          .from('assessment_templates')
+          .insert(record)
+          .select('id')
+          .single();
+        if (error) {
+          console.log(`Error inserting assessment template "${title}":`, error.message);
+          tableLogs.assessment_templates.errors.push(error.message);
+          responseStatus = 'failed';
+          responseCode = 207;
+        } else if (data?.id) {
+          console.log(`Successfully inserted assessment template "${title}" with ID: ${data.id}`);
+          tableLogs.assessment_templates.inserted_ids.push(data.id);
+        }
+      }
+    }
 
     // Write log to intermediate table
     const logPayload = {
