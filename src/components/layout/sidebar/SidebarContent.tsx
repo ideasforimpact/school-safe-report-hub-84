@@ -158,8 +158,8 @@ const SidebarContent = () => {
   }
 
   return (
-    <div className="flex-1 py-6">
-      <nav className="px-2">
+    <div className="flex-1 min-h-0 overflow-y-auto scroll-smooth overscroll-contain touch-pan-y py-6 pr-1">
+      <nav className="px-2 pb-6">
         <ul className="space-y-5">
           {dynamicMenuItems
             .filter(item => item.allowed)

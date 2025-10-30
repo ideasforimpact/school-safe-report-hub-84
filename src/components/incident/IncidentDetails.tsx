@@ -28,6 +28,7 @@ interface IncidentDetailsProps {
   setIsClosureFormOpen?: (isOpen: boolean) => void;
   onClosureFormSubmit?: (data: {
     rootCause: string;
+    learningPoints: string;
     contributingFactors: ContributingFactor[];
     actions: Action[];
   }) => void;
@@ -59,6 +60,7 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   
   const handleClosureFormSubmit = (data: {
     rootCause: string;
+    learningPoints: string;
     contributingFactors: ContributingFactor[];
     actions: Action[];
   }) => {
@@ -68,6 +70,7 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
       updateIncident(incident.id, {
         status: 'Closed',
         rootCause: data.rootCause,
+        learningPoints: data.learningPoints,
         contributingFactors: data.contributingFactors,
         actions: data.actions
       });
@@ -75,6 +78,9 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
       setFormOpen(false);
     }
   };
+
+  console.log(incident,"incidentData");
+  
   
   return (
     <>
@@ -129,6 +135,16 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
                   <h3 className="text-lg font-semibold">Root Cause Analysis</h3>
                   <div className="bg-muted/50 p-4 rounded-md">
                     <p className="whitespace-pre-wrap text-sm">{incident.rootCause}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Learning Points section - only show if learning points exist */}
+              {incident.learningPoints && incident.learningPoints.trim() && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Learning Points</h3>
+                  <div className="bg-muted/50 p-4 rounded-md">
+                    <p className="whitespace-pre-wrap text-sm">{incident.learningPoints}</p>
                   </div>
                 </div>
               )}

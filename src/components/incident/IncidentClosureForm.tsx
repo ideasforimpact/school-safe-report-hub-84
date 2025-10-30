@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import RootCauseAnalysis from './closure/RootCauseAnalysis';
+import LearningPoints from './closure/LearningPoints';
 import ActionsTakenForm from './closure/ActionsTakenForm';
 import ContributingFactorsSection from './closure/ContributingFactorsSection';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +25,7 @@ interface IncidentClosureFormProps {
   onClose: () => void;
   onSubmit: (data: {
     rootCause: string;
+    learningPoints: string;
     contributingFactors: ContributingFactor[];
     actions: Action[];
   }) => void;
@@ -38,6 +40,10 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   // Initialize with existing data using correct field names with fallbacks
   const [rootCause, setRootCause] = useState(
     incident.rootCauseAnalysis || incident.rootCause || ''
+  );
+  
+  const [learningPoints, setLearningPoints] = useState(
+    incident.learningPoints || ''
   );
   
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(() => {
@@ -108,6 +114,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         client_id: state.employeeData.clientId,
         incident_id: incident.id,
         root_cause_analysis: rootCause.trim(),
+        learning_points: learningPoints.trim(),
         action_taken: currentAction.description.trim(),
         contributing_factor: contributingFactors
       });
@@ -117,6 +124,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           client_id: state.employeeData.clientId,
           incident_id: incident.id,
           root_cause_analysis: rootCause.trim(),
+          learning_points: learningPoints.trim(),
           action_taken: currentAction.description.trim(),
           contributing_factor: contributingFactors
         }
@@ -190,6 +198,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
       
       onSubmit({
         rootCause,
+        learningPoints,
         contributingFactors,
         actions
       });
@@ -227,6 +236,12 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           <RootCauseAnalysis 
             rootCause={rootCause}
             setRootCause={setRootCause}
+          />
+
+          {/* Learning Points Section */}
+          <LearningPoints 
+            learningPoints={learningPoints}
+            setLearningPoints={setLearningPoints}
           />
 
           {/* Actions Taken Section - Simplified */}

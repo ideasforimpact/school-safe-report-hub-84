@@ -162,8 +162,8 @@ export const useRealtimeModuleSync = () => {
       const currentTime = Date.now();
       if (currentTime - lastToastTimeRef.current > TOAST_DEBOUNCE_MS) {
         lastToastTimeRef.current = currentTime;
-        toast.info('Your module access has been updated', {
-          description: 'Your permissions have changed. Some features may now be available or restricted.',
+        toast.info('New module assigned', {
+          description: 'A new module has been assigned to your organization. Your module list has been updated.',
         });
       }
 
@@ -174,13 +174,14 @@ export const useRealtimeModuleSync = () => {
 
   useEffect(() => {
     const employeeId = getEmployeeId();
+    const clientId = getClientId();
     
-    if (!employeeId) {
+    if (!employeeId || !clientId) {
       return;
     }
 
     // Subscribe to changes in the employee_modules table for this specific employee
-    const channel = supabase
+    const employeeChannel = supabase
       .channel('employee-module-changes')
       .on(
         'postgres_changes',
@@ -198,10 +199,31 @@ export const useRealtimeModuleSync = () => {
       )
       .subscribe();
 
+    // Subscribe to changes in the client_modules table for this client
+    // This ensures that when a new module is assigned to the client, all employees get notified
+    const clientChannel = supabase
+      .channel('client-module-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'client_modules',
+          filter: `client_id=eq.${clientId}`
+        },
+        (payload) => {
+          console.log('Client module change detected:', payload);
+          // Refresh modules when changes are detected at client level
+          refreshModules();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(employeeChannel);
+      supabase.removeChannel(clientChannel);
     };
-  }, [getEmployeeId, refreshModules]);
+  }, [getEmployeeId, getClientId, refreshModules]);
 
   return {
     refreshModules

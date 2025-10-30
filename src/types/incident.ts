@@ -121,6 +121,7 @@ export interface Incident {
   reopen?: number; // Number of times incident has been reopened, default 0
   // New fields from database
   rootCauseAnalysis?: string; // Maps to root_cause_analysis column
+  learningPoints?: string; // Maps to learning_points column
   actionTaken?: string; // Maps to action_taken column
   contributingFactor?: ContributingFactor[]; // Maps to contributing_factor jsonb column
 }

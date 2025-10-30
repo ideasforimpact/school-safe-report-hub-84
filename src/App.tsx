@@ -33,6 +33,7 @@ import ReportIncident from '@/pages/ReportIncident';
 import EditIncidentPage from '@/pages/EditIncidentPage';
 import Insights from '@/pages/Insights';
 import NewInsights from '@/pages/NewInsights';
+import LearningPoints from '@/pages/LearningPoints';
 import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import AssessmentResponsePage from '@/pages/AssessmentResponsePage';
@@ -94,6 +95,7 @@ const BackofficeWrapper = ({ component: Component }) => {
   );
 };
 
+import ComplianceDocumentsPage from '@/pages/ComplianceDocumentsPage';
 
 
 function App() {
@@ -142,7 +144,9 @@ function App() {
                   
                   {/* Settings route */}
                   <Route path="/settings" element={<RouteGuard requireAuth={true}><SettingsPage /></RouteGuard>} />
-                  
+
+                  {/* Compliance Documents - both aliases supported */}
+                  <Route path="/compliance_documents" element={<RouteGuard requireAuth={true}><ComplianceDocumentsPage /></RouteGuard>} />                  
                   {/* Profile route */}
                   <Route path="/profile" element={<RouteGuard requireAuth={true}><ProfilePage /></RouteGuard>} />
 
@@ -159,6 +163,7 @@ function App() {
                   <Route path="/incident/:id/edit" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
                   <Route path="/edit-incident/:id" element={<RouteGuard requireAuth={true}><EditIncidentPage /></RouteGuard>} />
                   <Route path="/insights" element={<RouteGuard requireAuth={true}><Insights /></RouteGuard>} />
+                  <Route path="/learning-points" element={<RouteGuard requireAuth={true} requireSuperAdmin={true}><LearningPoints /></RouteGuard>} />
                   <Route path="/new-insights" element={<RouteGuard requireAuth={true}><NewInsights /></RouteGuard>} />
 
                   {/* Assessment routes */}

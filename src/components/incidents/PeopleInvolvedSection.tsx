@@ -4,9 +4,10 @@ import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
-import { Search } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
+import AddStudentDialog from '@/components/students/AddStudentDialog';
 
 interface UserBasicInfo {
   id: string;
@@ -30,6 +31,7 @@ interface PeopleInvolvedSectionProps {
   students: Student[];
   employees: UserBasicInfo[];
   errors?: FormErrors;
+  onStudentAdded?: () => void;
 }
 
 const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
@@ -39,7 +41,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onRemovePerson,
   students,
   employees,
-  errors = {}
+  errors = {},
+  onStudentAdded
 }) => {
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
@@ -58,6 +61,11 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
+  
+  // State for AddStudentDialog
+  const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
+  const [currentPersonIndex, setCurrentPersonIndex] = useState<number | null>(null);
+  const [currentPersonData, setCurrentPersonData] = useState<Person | null>(null);
 
   // Fetch client type information
   useEffect(() => {
@@ -182,6 +190,35 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setSearchQueries(prev => ({ ...prev, [index]: '' }));
   };
 
+  const handleAddStudentClick = (index: number) => {
+    setCurrentPersonIndex(index);
+    // Create a person object with the search query as the name for prepopulation
+    const searchQuery = searchQueries[index] || '';
+    const personWithSearchName = {
+      ...peopleInvolved[index],
+      name: searchQuery
+    };
+    setCurrentPersonData(personWithSearchName);
+    setIsAddStudentDialogOpen(true);
+    setIsSearching(prev => ({ ...prev, [index]: false }));
+    setSearchQueries(prev => ({ ...prev, [index]: '' }));
+  };
+
+  const handleStudentAdded = (newStudent: Student) => {
+    if (currentPersonIndex !== null) {
+      // Update the person with the new student data
+      onPersonChange(currentPersonIndex, 'name', `${newStudent.name} (${newStudent.studentId})`);
+    }
+    setIsAddStudentDialogOpen(false);
+    setCurrentPersonIndex(null);
+    setCurrentPersonData(null);
+    
+    // Refresh the student list
+    if (onStudentAdded) {
+      onStudentAdded();
+    }
+  };
+
   const getFilteredOptions = (index: number, role: string) => {
     const searchQuery = searchQueries[index] || '';
     
@@ -216,7 +253,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         return !selectedStudentNames.includes(student.name);
       });
       
-      return searchQuery
+      const filteredStudents = searchQuery
         ? availableStudents.filter(student => {
             const searchTerm = searchQuery.toLowerCase();
             return student.name.toLowerCase().includes(searchTerm) ||
@@ -225,6 +262,16 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                    student.section.toLowerCase().includes(searchTerm);
           })
         : availableStudents;
+      
+      // Add "No Student Found" and "Add Student" options only if no students are found
+      if (filteredStudents.length === 0) {
+        return [
+          { id: 'add-student', name: 'Add Student', isAddOption: true } as any,
+          { id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any
+        ];
+      }
+      
+      return filteredStudents;
     }
     return [];
   };
@@ -286,36 +333,69 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           {isCurrentlySearching && filteredOptions.length > 0 && (
             <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
               <ul className="py-1 text-sm">
-                {filteredOptions.map((option) => (
-                  <li
-                    key={person.role === 'Staff' ? (option as Employee).id : (option as Student).id}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => handleSelectPerson(index, option, person.role)}
-                    onMouseDown={(e) => e.preventDefault()}
-                  >
-                    <div>
-                      {person.role === 'Staff' ? (
-                        <>
-                          <span className="font-medium">
-                            {(option as Employee).firstName} {(option as Employee).lastName}
-                          </span>
-                          <span className="text-gray-500 ml-1">
-                            ({(option as Employee).email})
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-medium">
-                            {(option as Student).name}
-                          </span>
-                          <span className="text-gray-500 ml-1">
-                            ({(option as Student).studentId}) - {(option as Student).grade} {(option as Student).section}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                {filteredOptions.map((option) => {
+                  // Check if this is the "No Student Found" option
+                  if (person.role === 'Student' && (option as any).isNoStudentOption) {
+                    return (
+                      <li
+                        key="no-student-found"
+                        className="px-3 py-2 text-gray-500 cursor-not-allowed border-b border-gray-200"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-sm">No Student Found</span>
+                        </div>
+                      </li>
+                    );
+                  }
+                  
+                  // Check if this is the "Add Student" option
+                  if (person.role === 'Student' && (option as any).isAddOption) {
+                    return (
+                      <li
+                        key="add-student"
+                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
+                        onClick={() => handleAddStudentClick(index)}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        <div className="flex items-center text-blue-600">
+                          <Plus className="h-4 w-4 mr-2" />
+                          <span className="font-medium">Add Student</span>
+                        </div>
+                      </li>
+                    );
+                  }
+                  
+                  return (
+                    <li
+                      key={person.role === 'Staff' ? (option as Employee).id : (option as Student).id}
+                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleSelectPerson(index, option, person.role)}
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      <div>
+                        {person.role === 'Staff' ? (
+                          <>
+                            <span className="font-medium">
+                              {(option as Employee).firstName} {(option as Employee).lastName}
+                            </span>
+                            <span className="text-gray-500 ml-1">
+                              ({(option as Employee).email})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-medium">
+                              {(option as Student).name}
+                            </span>
+                            <span className="text-gray-500 ml-1">
+                              ({(option as Student).studentId}) - {(option as Student).grade} {(option as Student).section}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -446,6 +526,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           })}
         </div>
       )}
+      
+      <AddStudentDialog
+        open={isAddStudentDialogOpen}
+        onOpenChange={setIsAddStudentDialogOpen}
+        peopleInvolved={currentPersonData}
+        onStudentAdded={handleStudentAdded}
+      />
     </div>
   );
 };

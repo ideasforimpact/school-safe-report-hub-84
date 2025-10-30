@@ -12,21 +12,32 @@ import { Button } from '@/components/ui/button';
 import StudentForm from './StudentForm';
 import { useStudents } from '@/contexts/StudentContext';
 import { toast } from 'sonner';
+import { Person } from '@/types/incident';
+import { Student } from '@/types/student';
 
 interface AddStudentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  peopleInvolved?: Person | null;
+  onStudentAdded?: (student: Student) => void;
 }
 
-const AddStudentDialog = ({ open, onOpenChange }: AddStudentDialogProps) => {
+const AddStudentDialog = ({ open, onOpenChange, peopleInvolved, onStudentAdded }: AddStudentDialogProps) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const { addStudent } = useStudents();
+  const { addStudent, students } = useStudents();
 
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
       await addStudent(data);
-      toast.success('Student added successfully');
+      
+      // Call the callback with the most recently added student
+      if (onStudentAdded && students.length > 0) {
+        // Find the student that was just added (assuming it's the first one in the list)
+        const newStudent = students[0];
+        onStudentAdded(newStudent);
+      }
+      
       onOpenChange(false);
     } catch (error) {
       toast.error('Failed to add student');
@@ -46,13 +57,15 @@ const AddStudentDialog = ({ open, onOpenChange }: AddStudentDialogProps) => {
         <StudentForm 
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          peopleInvolved={peopleInvolved}
+          onCancel={() => onOpenChange(false)}
         />
         
-        <DialogFooter className="mt-4">
+        {/* <DialogFooter className="mt-4">
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
           </DialogClose>
-        </DialogFooter>
+        </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );

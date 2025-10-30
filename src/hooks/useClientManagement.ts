@@ -255,12 +255,18 @@ export const useClientManagement = () => {
     // Get the client modules and super admin employee for this client
     const fetchClientData = async (clientId: string) => {
       try {
-        // Fetch client modules
+        // Fetch client modules with module names
         console.log("Fetching client modules for edit", clientId);
         const { data: clientModulesData, error: modulesError } = await supabase
           .from('client_modules')
-          .select('*')
-          .eq('client_id', clientId);
+          .select(`
+            module_id,
+            enabled,
+            access_level,
+            modules(id, name)
+          `)
+          .eq('client_id', clientId)
+          .eq('enabled', true);
         
         if (modulesError) {
           console.error('Error fetching client modules:', modulesError);
@@ -268,8 +274,8 @@ export const useClientManagement = () => {
         }
         
         // Transform client modules data to moduleInfoArray
-        const moduleInfoArray = clientModulesData ? clientModulesData.map(module => {
-          const moduleName = '';
+        const moduleInfoArray = clientModulesData ? clientModulesData.map((module: any) => {
+          const moduleName = module.modules?.name || '';
           const accessLevel = module.access_level as Record<string, any> || {};
           const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
             !!accessLevel.isAdmin : false;
@@ -279,7 +285,7 @@ export const useClientManagement = () => {
             module_id: module.module_id || '',
             is_admin: isAdmin
           };
-        }) : [];
+        }).filter((m: any) => m.module_id) : [];
         
         // Fetch super admin email
         const { data: employeeData, error: employeeError } = await supabase

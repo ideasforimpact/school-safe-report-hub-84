@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PieChart } from 'lucide-react';
+import { AlertTriangle, PieChart, BookOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
@@ -44,6 +44,16 @@ const IncidentsHeader = ({ hasIncidentAdmin }: IncidentsHeaderProps) => {
       </div>
       
       <div className="flex gap-3">
+        {/* Show Learning Points for super admins only */}
+        {isSuperAdmin && (
+          <Button 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg transition-all" 
+            onClick={() => navigate('/learning-points')}
+          >
+            <BookOpen className="h-4 w-4 mr-2" />
+            Learning Points
+          </Button>
+        )}
         {/* Only show Insights button if user has admin access */}
         {(hasIncidentsAdminAccess || hasIncidentAdmin) && (
           <Button 

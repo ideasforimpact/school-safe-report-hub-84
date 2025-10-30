@@ -295,6 +295,12 @@ export const getClientItems = (permissions: any) => [
   },
   {
     icon: FileText,
+    label: 'Compliance\nDocuments',
+    path: '/compliance-documents',
+    allowed: true,
+  },
+  {
+    icon: FileText,
     label: 'Forms',
     path: '/forms',
     allowed: true,

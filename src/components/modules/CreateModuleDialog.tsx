@@ -66,18 +66,23 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
     setIsLoading(true);
 
     try {
-      const method = isEdit ? 'PUT' : 'POST';
-      const url = isEdit 
-        ? `manage-modules?id=${module?.id}` 
-        : 'manage-modules';
+      // Include module ID in body for edit operations (edge function determines create vs update based on id)
+      const requestBody = {
+        ...formData,
+        ...(isEdit && module?.id && { id: module.id })
+      };
 
-      const { data, error } = await supabase.functions.invoke(url, {
-        body: formData,
-        method
+      const { data, error } = await supabase.functions.invoke('manage-modules', {
+        body: requestBody
       });
 
       if (error) {
         throw error;
+      }
+
+      // Check if response indicates an error
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({
@@ -89,11 +94,11 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error ${isEdit ? 'updating' : 'creating'} module:`, error);
       toast({
         title: "Error",
-        description: `Failed to ${isEdit ? 'update' : 'create'} module`,
+        description: error?.message || `Failed to ${isEdit ? 'update' : 'create'} module`,
         variant: "destructive",
       });
     } finally {

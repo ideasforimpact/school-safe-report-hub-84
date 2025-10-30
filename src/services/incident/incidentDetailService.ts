@@ -55,6 +55,7 @@ export interface IncidentDetail {
   action_taken?: string;
   contributing_factor?: any[];
   reopen: number;
+  learning_points: string
 }
 
 // Helper functions for safe type conversion

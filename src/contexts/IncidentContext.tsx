@@ -124,6 +124,7 @@ export interface Incident {
   wasReopened?: boolean;
   isVoided?: boolean;
   voidReason?: string;
+  learningPoints?: string;
 }
 
 export interface User {

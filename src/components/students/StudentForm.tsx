@@ -26,6 +26,7 @@ import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkStudentIdExists } from '@/services/student/studentValidationService';
 import { useAuth } from '@/contexts/auth';
+import { Person } from '@/types/incident';
 
 interface Campus {
   id: string;
@@ -64,9 +65,11 @@ interface StudentFormProps {
   defaultValues?: Partial<FormValues>;
   onSubmit: (data: FormValues) => void;
   isSubmitting?: boolean;
+  peopleInvolved?: Person | null;
+  onCancel?: () => void;
 }
 
-const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentFormProps) => {
+const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvolved, onCancel }: StudentFormProps) => {
   // Data states
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
@@ -90,15 +93,29 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
   const debouncedStudentId = useDebounce(studentIdInput, 500);
   const { employeeData } = useAuth();
   
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: defaultValues || {
+  // Prepare default values with peopleInvolved data if available
+  const getDefaultValues = () => {
+    if (peopleInvolved?.name) {
+      return {
+        studentId: defaultValues?.studentId || '',
+        name: peopleInvolved.name,
+        campus: defaultValues?.campus || '',
+        grade: defaultValues?.grade || '',
+        section: defaultValues?.section || ''
+      };
+    }
+    return defaultValues || {
       studentId: '',
       name: '',
       campus: '',
       grade: '',
       section: ''
-    }
+    };
+  };
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: getDefaultValues()
   });
 
   // Student ID validation effect
@@ -284,6 +301,19 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
     onSubmit(data);
   };
 
+  // Handle cancel - clear form and close dialog
+  const handleCancel = () => {
+    form.reset();
+    setStudentIdInput('');
+    setSelectedCampus('');
+    setSelectedGrade('');
+    setFilteredGrades([]);
+    setFilteredSections([]);
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   if (dataLoading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -460,23 +490,63 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
           )}
         />
         
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={
-            isSubmitting || 
-            studentIdExists || 
-            isCheckingStudentId || 
-            !isValidStudentId(studentIdInput) ||
-            !form.getValues('name') ||
-            !isValidName(form.getValues('name')) ||
-            !form.getValues('campus') ||
-            !form.getValues('grade') ||
-            !form.getValues('section')
-          }
-        >
-          {isSubmitting ? 'Processing...' : 'Save Student'}
-        </Button>
+        {peopleInvolved ? (
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => form.handleSubmit(handleFormSubmit)()}
+              disabled={
+                isSubmitting || 
+                studentIdExists || 
+                isCheckingStudentId || 
+                !isValidStudentId(studentIdInput) ||
+                !form.getValues('name') ||
+                !isValidName(form.getValues('name')) ||
+                !form.getValues('campus') ||
+                !form.getValues('grade') ||
+                !form.getValues('section')
+              }
+            >
+              {isSubmitting ? 'Processing...' : 'Save Student'}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-end gap-2">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              onClick={() => form.handleSubmit(handleFormSubmit)()}
+              disabled={
+                isSubmitting || 
+                studentIdExists || 
+                isCheckingStudentId || 
+                !isValidStudentId(studentIdInput) ||
+                !form.getValues('name') ||
+                !isValidName(form.getValues('name')) ||
+                !form.getValues('campus') ||
+                !form.getValues('grade') ||
+                !form.getValues('section')
+              }
+            >
+              {isSubmitting ? 'Processing...' : 'Save Student'}
+            </Button>
+          </div>
+        )}
       </form>
     </Form>
   );

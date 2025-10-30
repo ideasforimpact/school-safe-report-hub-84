@@ -145,12 +145,16 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
         </Select>
       </div>
       
-      <div className="mb-3">
+      <div className="mb-3 space-y-2">
         <Input
           value={currentFactor.description}
           onChange={(e) => setCurrentFactor({...currentFactor, description: e.target.value})}
           placeholder="Describe this contributing factor"
+          maxLength={150}
         />
+        <div className="text-right text-sm text-gray-500">
+          {currentFactor.description.length}/150 characters
+        </div>
       </div>
       
       <Button 

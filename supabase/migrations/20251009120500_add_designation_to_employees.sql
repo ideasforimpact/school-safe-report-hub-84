@@ -2,3 +2,4 @@
 ALTER TABLE public.employees
 ADD COLUMN IF NOT EXISTS designation text NULL;
 
+

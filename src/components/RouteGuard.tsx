@@ -14,6 +14,7 @@ interface RouteGuardProps {
   children?: React.ReactNode;
   requireAuth?: boolean;
   requireAdmin?: boolean;
+  requireSuperAdmin?: boolean;
   requireSaasOwner?: boolean;
   isBackoffice?: boolean;
 }
@@ -22,6 +23,7 @@ const RouteGuard = ({
   children, 
   requireAuth = false,
   requireAdmin = false,
+  requireSuperAdmin = false,
   requireSaasOwner = false,
   isBackoffice = false
 }: RouteGuardProps) => {
@@ -82,6 +84,12 @@ const RouteGuard = ({
   // If owner access is required and user is not super admin or backoffice user, redirect to dashboard
   if (requireSaasOwner && currentUser && !isSuperAdmin && !isBackofficeUser) {
     toast.error("Owner privileges required to access this page");
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If super admin access is required strictly, redirect to dashboard
+  if (requireSuperAdmin && currentUser && !isSuperAdmin) {
+    toast.error("Super admin privileges required to access this page");
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -66,6 +66,7 @@ const IncidentDetail = () => {
         reopen: fetchedIncident.reopen || 0,
         // Map closure fields to expected UI field names
         rootCause: fetchedIncident.root_cause_analysis || '',
+        learningPoints: fetchedIncident.learning_points || '',
         actions: fetchedIncident.action_taken ? [{
           description: fetchedIncident.action_taken,
           responsiblePerson: '',

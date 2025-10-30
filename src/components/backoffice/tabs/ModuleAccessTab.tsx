@@ -144,7 +144,9 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       initialModuleAccess = availableModules.map(module => {
         const moduleInfo = moduleInfoMap.get(module.id);
         const isEnabled = !!moduleInfo;
-        const isAdmin = moduleInfo ? moduleInfo.is_admin : false;
+        // If module is enabled, it should have admin access by default
+        // This ensures newly created modules get admin access when enabled
+        const isAdmin = isEnabled ? true : false;
         
         return {
           name: module.name,
@@ -199,6 +201,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
   useEffect(() => {
     console.log("Mount effect - fetching modules");
     mountedRef.current = true;
+    initializedRef.current = false; // Reset initialization when component mounts
     fetchModules();
     return () => {
       mountedRef.current = false;
@@ -234,7 +237,9 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
           ? { 
               ...m, 
               is_enabled: checked,
-              level: { ...m.level, isEnabled: checked }
+              // When enabling a module, automatically grant admin access
+              is_admin: checked ? true : m.is_admin,
+              level: { isAdmin: checked ? true : m.is_admin, isEnabled: checked }
             } 
           : m
       )
@@ -303,14 +308,15 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
                         <Badge
                           variant={isAdminEnabled ? "default" : "outline"}
                           className={cn(
-                            "relative pr-7 transition-all duration-200 cursor-not-allowed opacity-60",
-                            isAdminEnabled 
-                              ? "bg-green-500 text-white" 
-                              : "text-muted-foreground"
+                            "relative pr-7 transition-all duration-200",
+                            !moduleEnabled && "opacity-60 cursor-not-allowed",
+                            moduleEnabled && isAdminEnabled && "bg-green-500 text-white",
+                            moduleEnabled && !isAdminEnabled && "text-muted-foreground",
+                            !moduleEnabled && "text-muted-foreground"
                           )}
                         >
                           Admin
-                          {isAdminEnabled && (
+                          {isAdminEnabled && moduleEnabled && (
                             <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
                               <Check className="h-3 w-3" />
                             </span>

@@ -11,6 +11,7 @@ import { Settings, Edit, Trash2, Search, Filter, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CreateModuleDialog from '@/components/modules/CreateModuleDialog';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 
 interface Module {
   id: string;
@@ -31,6 +32,10 @@ const ModulesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -111,41 +116,43 @@ const ModulesPage = () => {
     // The edit functionality will be handled by the CreateModuleDialog component
   };
 
-  const handleDelete = async (moduleId: string) => {
-    if (!confirm('Are you sure you want to delete this module?')) {
-      return;
-    }
+  const openDeleteDialog = (module: Module) => {
+    setSelectedModule(module);
+    setDeleteError(null);
+    setDeleteDialogOpen(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!selectedModule) return;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      const { error } = await supabase
-        .from('modules')
-        .delete()
-        .eq('id', moduleId);
+      // Call the edge function to delete module and all related entries
+      const { data, error } = await supabase.functions.invoke('delete-module', {
+        body: { moduleId: selectedModule.id }
+      });
 
       if (error) {
-        console.error('Error deleting module:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete module",
-          variant: "destructive",
-        });
-        return;
+        throw new Error(error.message || 'Failed to delete module');
+      }
+
+      if (data && !data.success) {
+        throw new Error(data.error || 'Failed to delete module');
       }
 
       toast({
-        title: "Success",
-        description: "Module deleted successfully",
+        title: 'Success',
+        description: data?.message || 'Module and all related assignments deleted successfully',
       });
       
-      // Refresh the modules list
+      setDeleteDialogOpen(false);
+      setSelectedModule(null);
       fetchModules();
-    } catch (error) {
-      console.error('Error deleting module:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete module",
-        variant: "destructive",
-      });
+    } catch (err: any) {
+      console.error('Error deleting module:', err);
+      setDeleteError(err?.message || 'Failed to delete module. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -328,7 +335,7 @@ const ModulesPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(module.id)}
+                            onClick={() => openDeleteDialog(module)}
                             title="Delete module"
                             className="text-red-600 hover:text-red-700"
                           >
@@ -344,6 +351,19 @@ const ModulesPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Module"
+        description="This will remove the module from the system and also delete all client and employee assignments for this module. This action cannot be undone."
+        itemName={selectedModule?.name || ''}
+        action="delete"
+        onConfirm={handleConfirmDelete}
+        isLoading={deleting}
+        error={deleteError}
+      />
     </Layout>
   );
 };

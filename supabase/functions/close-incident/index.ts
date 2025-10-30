@@ -11,6 +11,7 @@ interface CloseIncidentRequest {
   client_id: string
   incident_id: string
   root_cause_analysis: string
+  learning_points?: string
   action_taken: string
   contributing_factor: any[]
 }
@@ -250,6 +251,7 @@ Deno.serve(async (req) => {
       .update({
         status_id: closedStatus.id,
         root_cause_analysis: requestBody.root_cause_analysis,
+        learning_points: requestBody.learning_points || null,
         action_taken: requestBody.action_taken,
         contributing_factor: requestBody.contributing_factor,
         updated_at: new Date().toISOString()

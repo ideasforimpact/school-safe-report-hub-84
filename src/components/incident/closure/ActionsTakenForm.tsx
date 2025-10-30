@@ -18,16 +18,22 @@ const ActionsTakenForm: React.FC<ActionsTakenFormProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <h3 className="font-medium">Actions Taken</h3>
+      <h3 className="font-medium">Actions Taken <span className="text-red-500">*</span></h3>
       <p className="text-sm text-gray-600">
         List all actions taken to resolve this incident
       </p>
-      <Textarea
-        placeholder="Describe what was done to address the incident"
-        value={currentAction.description}
-        onChange={(e) => setCurrentAction(prev => ({ ...prev, description: e.target.value }))}
-        className="min-h-[100px]"
-      />
+      <div className="space-y-2">
+        <Textarea
+          placeholder="Describe what was done to address the incident"
+          value={currentAction.description}
+          onChange={(e) => setCurrentAction(prev => ({ ...prev, description: e.target.value }))}
+          className="min-h-[100px]"
+          maxLength={200}
+        />
+        <div className="text-right text-sm text-gray-500">
+          {currentAction.description.length}/200 characters
+        </div>
+      </div>
     </div>
   );
 };

@@ -42,7 +42,7 @@ const ContributingFactorsSection: React.FC<ContributingFactorsSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="font-medium">Contributing Factors</h3>
+      <h3 className="font-medium">Contributing Factors <span className="text-red-500">*</span></h3>
       <p className="text-sm text-gray-600">
         List all factors that contributed to this incident
       </p>

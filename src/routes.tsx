@@ -33,6 +33,7 @@ import Support from './pages/Support';
 import Pricing from './pages/Pricing';
 import Blog from './pages/Blog';
 import NewsPage from './pages/NewsPage';
+import ComplianceDocumentsPage from './pages/ComplianceDocumentsPage';
 
 // Assessment pages
 import AssessmentsPage from './pages/AssessmentsPage';
@@ -286,6 +287,13 @@ const AppRoutes = () => {
       <Route path="/settings" element={
         <RouteGuard requireAuth={true}>
           <SettingsPage />
+        </RouteGuard>
+      } />
+
+      {/* Compliance Documents */}
+      <Route path="/compliance-documents" element={
+        <RouteGuard requireAuth={true}>
+          <ComplianceDocumentsPage />
         </RouteGuard>
       } />
       <Route path="/forms" element={

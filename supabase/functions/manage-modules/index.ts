@@ -14,147 +14,138 @@ serve(async (req) => {
   }
 
   try {
+    // Use service role key to bypass RLS policies for module management
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: { headers: { Authorization: req.headers.get('Authorization')! } },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const { method } = req;
     const url = new URL(req.url);
-    const moduleId = url.searchParams.get('id');
+    const moduleIdFromUrl = url.searchParams.get('id');
+    const body = await req.json();
+    const moduleIdFromBody = body.id;
+    const moduleId = moduleIdFromUrl || moduleIdFromBody;
 
-    switch (method) {
-      case 'POST': {
-        const body = await req.json();
-        const { name, icon, level, url: moduleUrl, active = true } = body;
+    // Determine operation: if moduleId exists, it's an update; otherwise it's a create
+    // Note: Edge functions invoked via supabase.functions.invoke() always use POST
+    const isUpdate = !!moduleId || method === 'PUT';
 
-        console.log('Creating module:', { name, icon, level, url: moduleUrl, active });
-
-        const { data, error } = await supabase
-          .from('modules')
-          .insert({
-            name,
-            icon,
-            level,
-            url: moduleUrl,
-            active
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error creating module:', error);
-          return new Response(
-            JSON.stringify({ error: error.message }),
-            { 
-              status: 400, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-            }
-          );
-        }
-
-        console.log('Module created successfully:', data);
+    if (method === 'DELETE') {
+      // Handle DELETE
+      if (!moduleId) {
         return new Response(
-          JSON.stringify({ data }),
-          { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
-      }
-
-      case 'PUT': {
-        if (!moduleId) {
-          return new Response(
-            JSON.stringify({ error: 'Module ID is required for update' }),
-            { 
-              status: 400, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-            }
-          );
-        }
-
-        const body = await req.json();
-        const { name, icon, level, url: moduleUrl, active } = body;
-
-        console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl, active });
-
-        const { data, error } = await supabase
-          .from('modules')
-          .update({
-            name,
-            icon,
-            level,
-            url: moduleUrl,
-            active,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', moduleId)
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error updating module:', error);
-          return new Response(
-            JSON.stringify({ error: error.message }),
-            { 
-              status: 400, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-            }
-          );
-        }
-
-        console.log('Module updated successfully:', data);
-        return new Response(
-          JSON.stringify({ data }),
-          { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
-      }
-
-      case 'DELETE': {
-        if (!moduleId) {
-          return new Response(
-            JSON.stringify({ error: 'Module ID is required for deletion' }),
-            { 
-              status: 400, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-            }
-          );
-        }
-
-        console.log('Deleting module:', moduleId);
-
-        const { error } = await supabase
-          .from('modules')
-          .delete()
-          .eq('id', moduleId);
-
-        if (error) {
-          console.error('Error deleting module:', error);
-          return new Response(
-            JSON.stringify({ error: error.message }),
-            { 
-              status: 400, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-            }
-          );
-        }
-
-        console.log('Module deleted successfully');
-        return new Response(
-          JSON.stringify({ success: true }),
-          { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
-      }
-
-      default:
-        return new Response(
-          JSON.stringify({ error: 'Method not allowed' }),
+          JSON.stringify({ error: 'Module ID is required for deletion' }),
           { 
-            status: 405, 
+            status: 400, 
             headers: { 'Content-Type': 'application/json', ...corsHeaders } 
           }
         );
+      }
+
+      console.log('Deleting module:', moduleId);
+
+      const { error } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', moduleId);
+
+      if (error) {
+        console.error('Error deleting module:', error);
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+          }
+        );
+      }
+
+      console.log('Module deleted successfully');
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    } else if (isUpdate) {
+      // Handle UPDATE
+      if (!moduleId) {
+        return new Response(
+          JSON.stringify({ error: 'Module ID is required for update' }),
+          { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+          }
+        );
+      }
+
+      const { name, icon, level, url: moduleUrl, active } = body;
+
+      console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl, active });
+
+      const { data, error } = await supabase
+        .from('modules')
+        .update({
+          name,
+          icon,
+          level,
+          url: moduleUrl,
+          active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', moduleId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating module:', error);
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+          }
+        );
+      }
+
+      console.log('Module updated successfully:', data);
+      return new Response(
+        JSON.stringify({ data }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    } else {
+      // Handle CREATE
+      const { name, icon, level, url: moduleUrl, active = true } = body;
+
+      console.log('Creating module:', { name, icon, level, url: moduleUrl, active });
+
+      const { data, error } = await supabase
+        .from('modules')
+        .insert({
+          name,
+          icon,
+          level,
+          url: moduleUrl,
+          active
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating module:', error);
+        return new Response(
+          JSON.stringify({ error: error.message }),
+          { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+          }
+        );
+      }
+
+      console.log('Module created successfully:', data);
+      return new Response(
+        JSON.stringify({ data }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
     }
 
   } catch (error) {
