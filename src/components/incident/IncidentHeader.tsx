@@ -3,13 +3,15 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X, RotateCcw } from 'lucide-react';
+import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X, RotateCcw, Brain } from 'lucide-react';
 import { Incident, IncidentStatus } from '@/types/incident';
 import { useNavigate } from 'react-router-dom';
 import { useIncidentReopen } from '@/hooks/useIncidentReopen';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
 import ReopenIncidentDialog from '@/features/incident/ReopenIncidentDialog';
+import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -40,6 +42,44 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   // Reopen dialog state
   const [showReopenDialog, setShowReopenDialog] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPayload, setAiPayload] = useState<any | null>(null);
+  const [policyTitles, setPolicyTitles] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    const loadPolicyDocs = async () => {
+      try {
+        const clientId = (user as any)?.clientId || (user as any)?.client?.id;
+        if (!clientId) return;
+        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
+          body: { action: 'fetch_resources', data: { client_id: clientId } }
+        });
+        if (error) return;
+        const titles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
+        setPolicyTitles(titles);
+      } catch (_) {
+        // ignore
+      }
+    };
+    loadPolicyDocs();
+  }, [user]);
+
+  const handleAiClick = () => {
+    const payload: any = {
+      id: (incident as any).id,
+      category: (incident as any).category,
+      sub_category: (incident as any).subcategory,
+      facility: (incident as any).facility,
+      location: (incident as any).location,
+      description: (incident as any).description,
+      root_cause: (incident as any).root_cause ?? (incident as any).root_cause_analysis ?? null,
+      learning_points: (incident as any).learning_points ?? null,
+      action_taken: (incident as any).action_taken ?? null,
+      policy_docs: policyTitles,
+    };
+    setAiPayload(payload);
+    setAiOpen(true);
+  };
 
   // Get permissions for this specific incident
   const permissions = React.useMemo(() => {
@@ -193,6 +233,15 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
                 Edit
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAiClick}
+              className="flex items-center gap-2"
+              title="AI Recommendations"
+            >
+              <Brain className="h-4 w-4 text-purple-600" />
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -242,6 +291,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
 
         </div>
       </CardContent>
+      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={(incident as any).id} />
       
       <ReopenIncidentDialog
         open={showReopenDialog}

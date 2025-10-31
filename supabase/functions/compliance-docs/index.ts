@@ -206,7 +206,7 @@ serve(async (req) => {
         const parentSlug = parentRow.files?.[0]?.storage_folder ?? `${parentRow.files?.[0]?.folder_name || 'Folder'}_${parentRow.folder_id}`;
         baseFolder = `${clientId}/${parentSlug}`;
       } else {
-        const targetFolder = folderName && folderName.trim().length > 0 ? folderName : "general";
+      const targetFolder = folderName && folderName.trim().length > 0 ? folderName : "general";
         baseFolder = `${clientId}/${targetFolder}`; // legacy non-folder uploads
       }
 
@@ -239,8 +239,8 @@ serve(async (req) => {
             newFiles = [{ folder_name: folderName ?? folderRow.files[0].folder_name ?? "Folder", files: mergedInner }];
           } else {
             newFiles = (folderRow.files ?? []).concat(
-              storedPaths.map((p) => ({ path: p, parentFolderId }))
-            );
+            storedPaths.map((p) => ({ path: p, parentFolderId }))
+          );
           }
           const { error: updErr } = await supabaseAdmin
             .from("compliance_documents")

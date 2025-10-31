@@ -22,6 +22,9 @@ export interface IncidentRecord {
   createdAt: Date;
   updatedAt: Date;
   is_voided?: boolean;
+  root_cause?: string | null;
+  learning_points?: string | null;
+  action_taken?: string | null;
 }
 
 export const incidentService = {

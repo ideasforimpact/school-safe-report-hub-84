@@ -424,8 +424,8 @@ const ComplianceDocumentsPage: React.FC = () => {
                     <Folder className="h-10 w-10 text-blue-500 mx-auto mb-3" />
                     <div className="text-sm font-medium truncate">{f.name}</div>
                   </div>
-                </div>
-              ))}
+              </div>
+            ))}
               {currentFolderFiles.map((it, idx) => {
                 const parts = (it.path || '').split('/');
                 const name = parts[parts.length - 1] || 'file';
@@ -468,7 +468,7 @@ const ComplianceDocumentsPage: React.FC = () => {
             <div className="mt-6 flex items-center justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin mr-2" />
               <span className="text-sm text-gray-600">Loading...</span>
-            </div>
+          </div>
           )}
         </div>
       </div>

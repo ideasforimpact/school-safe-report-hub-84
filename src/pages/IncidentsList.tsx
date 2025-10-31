@@ -164,6 +164,7 @@ const IncidentsList = () => {
         serverFilters,
         true // returnAllData = true - get ALL incidents for client-side pagination
       );
+      
 
       console.log(`✅ Server returned ${response.totalCount} total incidents (ALL matching records)`);
 

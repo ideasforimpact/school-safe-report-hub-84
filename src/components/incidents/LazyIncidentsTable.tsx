@@ -4,7 +4,7 @@ import { IncidentRecord } from '@/services/incidentService';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2 } from 'lucide-react';
+import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2, Brain } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Pagination, 
@@ -16,6 +16,9 @@ import {
 } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 
 interface PaginationInfo {
   currentPage: number;
@@ -42,6 +45,28 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const { checkPermissions } = useIncidentPermissions();
+  const { user } = useAuth();
+  const [policyTitles, setPolicyTitles] = React.useState<string[]>([]);
+  const [aiOpen, setAiOpen] = React.useState(false);
+  const [aiPayload, setAiPayload] = React.useState<any | null>(null);
+
+  React.useEffect(() => {
+    const loadPolicyDocs = async () => {
+      try {
+        if (!user?.clientId) return;
+        // Use edge function for client resources (returns both organisational/global in our setup)
+        const { data, error } = await supabase.functions.invoke('edusafe-resource-client', {
+          body: { action: 'fetch_resources', data: { client_id: user.clientId } }
+        });
+        if (error) return;
+        const titles = (data?.resources || []).map((r: any) => r?.title).filter(Boolean);
+        setPolicyTitles(titles);
+      } catch (_) {
+        // no-op; keep empty
+      }
+    };
+    loadPolicyDocs();
+  }, [user?.clientId]);
 
   const handleRowClick = (incidentId: string) => {
     navigate(`/incident/${incidentId}`);
@@ -101,6 +126,30 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   const getSimpleId = (ticketId: string) => {
     return ticketId.split('-').pop() || ticketId;
+  };
+
+  const truncate = (text?: string) => {
+    if (!text) return '';
+    return text.length > 10 ? `${text.slice(0, 10)}...` : text;
+  };
+
+  const logIncidentForAi = (e: React.MouseEvent, incident: IncidentRecord) => {
+    e.stopPropagation();
+    const policyDocs = policyTitles;
+    const payload: any = {
+      id: incident.id,
+      category: incident.category,
+      sub_category: (incident as any).subcategory,
+      facility: (incident as any).facility,
+      location: (incident as any).location,
+      description: (incident as any).description,
+      root_cause: (incident as any).root_cause ?? null,
+      learning_points: (incident as any).learning_points ?? null,
+      action_taken: (incident as any).action_taken ?? null,
+      policy_docs: policyDocs,
+    };
+    setAiPayload(payload);
+    setAiOpen(true);
   };
 
   // Generate page numbers for pagination
@@ -207,6 +256,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
+      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={aiPayload?.id} />
       {/* Page size selector */}
       {pagination && onPageSizeChange && (
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -300,14 +350,14 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                 <TableCell>
                   <div className="flex items-center text-sm">
                     <User className="h-4 w-4 mr-2 text-gray-500" />
-                    {incident.reportedBy || 'Unknown'}
+                    <span title={incident.reportedBy || ''}>{truncate(incident.reportedBy || 'Unknown')}</span>
                   </div>
                 </TableCell>
                 
                 <TableCell>
                   <div className="flex items-center text-sm">
                     <User className="h-4 w-4 mr-2 text-gray-500" />
-                    {incident.owner || 'Unassigned'}
+                    <span title={incident.owner || ''}>{truncate(incident.owner || 'Unassigned')}</span>
                   </div>
                 </TableCell>
                 
@@ -333,6 +383,16 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                         <span className="sr-only">Edit</span>
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      title="Prepare AI payload"
+                      onClick={(e) => logIncidentForAi(e, incident)}
+                    >
+                      <Brain className="h-4 w-4 text-purple-600" />
+                      <span className="sr-only">AI</span>
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
