@@ -390,7 +390,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                       title="Recommended Actions"
                       onClick={(e) => logIncidentForAi(e, incident)}
                     >
-                      <Sparkles className="h-4 w-4 text-purple-600" />
+                      <Sparkles className="h-4 w-4 text-black" />
                       <span className="sr-only">Recommended Actions</span>
                     </Button>
                   </div>

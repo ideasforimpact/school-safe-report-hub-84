@@ -240,7 +240,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               className="flex items-center gap-2"
               title="Recommended Actions"
             >
-              <Sparkles className="h-4 w-4 text-purple-600" />
+              <Sparkles className="h-4 w-4 text-black" />
             </Button>
           </div>
         </div>
