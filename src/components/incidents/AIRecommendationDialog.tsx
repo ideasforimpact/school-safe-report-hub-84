@@ -98,7 +98,7 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
 
   // Read env at build-time via Vite (requires prefix VITE_ and a dev server restart after changes)
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY
-  console.log(import.meta.env.VITE_OPENAI_API_KEY,"VITE_OPENAI_API_KEY");
+  // console.log(import.meta.env.VITE_OPENAI_API_KEY,"VITE_OPENAI_API_KEY");
   
 
   const callOpenAI = React.useCallback(async () => {
