@@ -4,7 +4,7 @@ import { IncidentRecord } from '@/services/incidentService';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2, ListChecks } from 'lucide-react';
+import { Eye, Edit, Calendar, Building2, User, Ticket, AlertTriangle, Loader2, Sparkles } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Pagination, 
@@ -390,7 +390,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                       title="Recommended Actions"
                       onClick={(e) => logIncidentForAi(e, incident)}
                     >
-                      <ListChecks className="h-4 w-4 text-purple-600" />
+                      <Sparkles className="h-4 w-4 text-purple-600" />
                       <span className="sr-only">Recommended Actions</span>
                     </Button>
                   </div>
