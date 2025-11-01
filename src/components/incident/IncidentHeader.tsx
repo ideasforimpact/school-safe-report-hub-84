@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X, RotateCcw, Brain } from 'lucide-react';
+import { Edit, Calendar, User, Building2, MapPin, AlertTriangle, X, RotateCcw, ListChecks } from 'lucide-react';
 import { Incident, IncidentStatus } from '@/types/incident';
 import { useNavigate } from 'react-router-dom';
 import { useIncidentReopen } from '@/hooks/useIncidentReopen';
@@ -238,9 +238,9 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               size="sm"
               onClick={handleAiClick}
               className="flex items-center gap-2"
-              title="AI Recommendations"
+              title="Recommended Actions"
             >
-              <Brain className="h-4 w-4 text-purple-600" />
+              <ListChecks className="h-4 w-4 text-purple-600" />
             </Button>
           </div>
         </div>

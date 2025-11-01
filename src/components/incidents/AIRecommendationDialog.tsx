@@ -97,7 +97,7 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
   const { toast } = useToast();
 
   // Read env at build-time via Vite (requires prefix VITE_ and a dev server restart after changes)
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = "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"
 
   const callOpenAI = React.useCallback(async () => {
     if (!incidentJson) return;
