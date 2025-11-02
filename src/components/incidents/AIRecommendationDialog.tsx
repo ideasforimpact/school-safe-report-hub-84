@@ -6,6 +6,7 @@ import { RefreshCw, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 
 type AIRecommendationDialogProps = {
   open: boolean;
@@ -23,129 +24,49 @@ type AiResult = {
   policy_refs: string[];
 };
 
-const SYSTEM_PROMPT = `You are a School Safety and Compliance Assistant for an Indian K-12 school group.
-
-Your task is to review the incident data collected from the Safe School System and return practical, school-specific recommendations.
-
-Respond ONLY in valid JSON format, following the structure below.
-
-### Output Schema
-{
-  "summary": "string (1–2 sentences summarizing what likely happened)",
-  "severity": "low | medium | high | critical",
-  "immediate_actions": ["string"],
-  "corrective_actions": [
-    {
-      "action": "string",
-      "owner_role": "string",
-      "due_days": "integer",
-      "evidence_required": ["string"]
-    }
-  ],
-  "preventive_actions": ["string"],
-  "policy_refs": ["string"]
-}
-
-### Rules & Constraints
-- Each "action" must be a clear, meaningful sentence of up to 250 characters.
-- Provide *minimum 2* and *maximum 5* actions for each action type (immediate, corrective, preventive).
-- Focus on school safety, compliance, and accountability.
-- Use short, direct, actionable language starting with a verb.
-- Avoid personal identifiers (names, photos, IDs).
-- Follow CBSE / State Board norms for safety and compliance.
-- Ensure actions are practical and context-specific (for Indian school settings).
-- Return only valid JSON — no extra text, headers, or explanations.
-- If no relevant policy applies, return an empty array for "policy_refs".
-
-### Example Output
-{
-  "summary": "A student slipped in the library due to wet flooring after rain.",
-  "severity": "medium",
-  "immediate_actions": [
-    "Provide first aid to the injured student and monitor condition.",
-    "Clean and dry the affected area to prevent further accidents."
-  ],
-  "corrective_actions": [
-    {
-      "action": "Inspect the library floor and fix drainage or leakage issues.",
-      "owner_role": "Facility Manager",
-      "due_days": 3,
-      "evidence_required": ["Inspection report", "Repair documentation"]
-    },
-    {
-      "action": "Record the incident in the safety management system.",
-      "owner_role": "Safety Officer",
-      "due_days": 1,
-      "evidence_required": ["Incident report"]
-    }
-  ],
-  "preventive_actions": [
-    "Install anti-slip mats at library entrances.",
-    "Conduct periodic floor safety checks after rain."
-  ],
-  "policy_refs": [
-    "Accident and Incident Reporting Policy",
-    "First Aid and Emergency Medical Response Policy"
-  ]
-}`;
-
 export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ open, onOpenChange, incidentJson, incidentId }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<AiResult | null>(null);
   const [activeTab, setActiveTab] = React.useState<'immediate' | 'corrective' | 'preventive' | 'policy'>('immediate');
   const { toast } = useToast();
+  const { getClientId, getEmployeeId } = useEmployeeAccess();
 
-  // Read env at build-time via Vite (requires prefix VITE_ and a dev server restart after changes)
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY
-  // console.log(import.meta.env.VITE_OPENAI_API_KEY,"VITE_OPENAI_API_KEY");
-  
-
-  const callOpenAI = React.useCallback(async () => {
+  const callEdgeFunction = React.useCallback(async () => {
     if (!incidentJson) return;
+    
+    const clientId = getClientId();
+    const employeeId = getEmployeeId();
+    
+    if (!clientId || !employeeId) {
+      setError('Client ID or Employee ID not available. Please ensure you are logged in.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setResult(null);
+    
     try {
-      const messages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Input: ${JSON.stringify(incidentJson)}` }
-      ];
-
-      if (!apiKey) {
-        throw new Error('OpenAI API key is not configured. Set VITE_OPENAI_API_KEY in your .env and restart the dev server.');
-      }
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
+      // Call the edge function
+      const { data, error: edgeError } = await supabase.functions.invoke('prepare-recommended-action', {
+        body: {
+          incidentJson,
+          client_id: clientId,
+          employee_id: employeeId,
         },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages,
-          temperature: 0.2,
-        })
       });
 
-      if (!resp.ok) {
-        const t = await resp.text();
-        throw new Error(`OpenAI error: ${t}`);
+      if (edgeError) {
+        throw new Error(edgeError.message || 'Failed to call recommendation service');
       }
 
-      const data = await resp.json();
-      const content: string = data?.choices?.[0]?.message?.content || '';
-      // Expecting pure JSON. Attempt to parse; if wrapped, try to extract
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        const match = content.match(/\{[\s\S]*\}$/);
-        if (match) parsed = JSON.parse(match[0]);
+      if (!data?.success || !data?.data) {
+        throw new Error(data?.error || 'Failed to generate recommendations');
       }
-      if (!parsed) throw new Error('Failed to parse AI response as JSON');
 
-      setResult(parsed as AiResult);
+      const parsed = data.data as AiResult;
+      setResult(parsed);
 
       // Save to database if incidentId is provided
       if (incidentId) {
@@ -170,25 +91,26 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
         }
       }
     } catch (e: any) {
+      console.error('Error calling edge function:', e);
       setError(e?.message || 'Failed to generate AI recommendation');
     } finally {
       setIsLoading(false);
     }
-  }, [incidentJson, apiKey, incidentId, toast]);
+  }, [incidentJson, incidentId, toast, getClientId, getEmployeeId]);
 
   React.useEffect(() => {
     if (open && incidentJson) {
-      callOpenAI();
+      callEdgeFunction();
     } else if (!open) {
       setIsLoading(false);
       setError(null);
       setResult(null);
     }
-  }, [open, incidentJson, callOpenAI]);
+  }, [open, incidentJson, callEdgeFunction]);
 
   const handleRefresh = () => {
     if (incidentJson) {
-      callOpenAI();
+      callEdgeFunction();
     }
   };
 
