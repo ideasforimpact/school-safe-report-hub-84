@@ -175,8 +175,14 @@ const LearningPointsPage: React.FC = () => {
                           <span title={row.learningPoints}>{truncate(row.learningPoints, 160)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{row.createdBy}</TableCell>
-                      <TableCell className="whitespace-nowrap">{new Date(row.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span title={row.createdBy}>{truncate(row.createdBy, 10)}</span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span title={new Date(row.createdAt).toLocaleDateString()}>
+                          {truncate(new Date(row.createdAt).toLocaleDateString(), 10)}
+                        </span>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

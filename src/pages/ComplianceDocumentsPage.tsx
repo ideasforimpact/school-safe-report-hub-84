@@ -164,6 +164,24 @@ const ComplianceDocumentsPage: React.FC = () => {
     await refresh();
   };
 
+  const handleViewFile = async (path: string) => {
+    // Create a signed URL for viewing (without download parameter)
+    let viewUrl: string | null = null;
+    const signed = await supabase.storage.from(bucketName).createSignedUrl(path, 300);
+    if (!signed.error && signed.data?.signedUrl) {
+      viewUrl = signed.data.signedUrl;
+    } else if (storageBaseUrl) {
+      const base = String(storageBaseUrl).replace(/\/$/, '');
+      const suffix = base.includes('/object/public') ? `${bucketName}/${path}` : `object/public/${bucketName}/${path}`;
+      viewUrl = `${base}/${suffix}`;
+    } else {
+      toast({ title: 'Failed to open file', description: 'Could not generate file URL.' });
+      return;
+    }
+    // Open in new tab for viewing
+    window.open(viewUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const handleDownload = async (path: string) => {
     // Prefer signed URL to avoid public URL edge cases and bucket visibility
     let downloadUrl: string | null = null;
@@ -221,15 +239,15 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="p-6">
-        <div className="enterprise-card p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">Compliance Documents</h2>
-              <p className="text-sm text-gray-500">Upload and manage compliance files for your organization.</p>
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="enterprise-card p-3 sm:p-4 md:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold">Compliance Documents</h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">Upload and manage compliance files for your organization.</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center text-sm text-gray-600">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="hidden sm:flex items-center text-sm text-gray-600 flex-wrap">
                 <button className="inline-flex items-center hover:text-blue-600" onClick={() => { setCurrentFolderId(null); setCurrentFolderName(null); setBreadcrumb([]); }}>
                   <Home className="h-4 w-4" />
                 </button>
@@ -237,7 +255,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                   <div key={seg.rowId} className="inline-flex items-center">
                     <ChevronRight className="mx-1 h-4 w-4 text-gray-400" />
                     <button
-                      className={`truncate max-w-[180px] ${idx === breadcrumb.length - 1 ? 'font-semibold text-gray-800' : 'hover:text-blue-600'}`}
+                      className={`truncate max-w-[120px] md:max-w-[180px] ${idx === breadcrumb.length - 1 ? 'font-semibold text-gray-800' : 'hover:text-blue-600'}`}
                       title={seg.name}
                       onClick={() => {
                         setLoading(true);
@@ -251,18 +269,43 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <Button variant="secondary" onClick={() => setNewFolderOpen(true)}>
-                <FolderPlus className="h-4 w-4 mr-2"/> New Folder
+              {/* Mobile breadcrumb */}
+              {breadcrumb.length > 0 && (
+                <div className="flex sm:hidden items-center text-xs text-gray-600 overflow-x-auto pb-1">
+                  <button className="inline-flex items-center hover:text-blue-600 flex-shrink-0" onClick={() => { setCurrentFolderId(null); setCurrentFolderName(null); setBreadcrumb([]); }}>
+                    <Home className="h-3 w-3" />
+                  </button>
+                  {breadcrumb.map((seg, idx) => (
+                    <div key={seg.rowId} className="inline-flex items-center flex-shrink-0">
+                      <ChevronRight className="mx-1 h-3 w-3 text-gray-400" />
+                      <button
+                        className={`truncate max-w-[80px] ${idx === breadcrumb.length - 1 ? 'font-semibold text-gray-800' : 'hover:text-blue-600'}`}
+                        title={seg.name}
+                        onClick={() => {
+                          setLoading(true);
+                          setCurrentFolderId(seg.folderId);
+                          setCurrentFolderName(seg.name);
+                          setBreadcrumb(breadcrumb.slice(0, idx + 1));
+                        }}
+                      >
+                        {seg.name}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button variant="secondary" onClick={() => setNewFolderOpen(true)} className="w-full sm:w-auto">
+                <FolderPlus className="h-4 w-4 mr-2"/> <span className="hidden sm:inline">New</span> Folder
               </Button>
             </div>
           </div>
 
           {/* Drag & Drop area with Choose Files */}
-          <div className="mt-6 border-2 border-dashed rounded-md p-10 text-center text-gray-500">
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-sm">Drag and drop files here, or click to browse</div>
+          <div className="mt-4 sm:mt-6 border-2 border-dashed rounded-md p-6 sm:p-8 md:p-10 text-center text-gray-500">
+            <div className="flex flex-col items-center gap-3 sm:gap-4">
+              <div className="text-xs sm:text-sm">Drag and drop files here, or click to browse</div>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onChooseFiles} />
-              <Button variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+              <Button variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
                 {uploading ? (
                   <span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Uploading...</span>
                 ) : (
@@ -274,9 +317,9 @@ const ComplianceDocumentsPage: React.FC = () => {
 
           {/* Grid of folders/files */}
           {!currentFolderId && (
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
               {folders.map((f) => (
-                <div key={f.folder_id} className="relative p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center w-48">
+                <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -324,9 +367,9 @@ const ComplianceDocumentsPage: React.FC = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }}>
-                    <Folder className="h-10 w-10 text-blue-500 mx-auto mb-3" />
-                    <div className="text-sm font-medium truncate">{f.name}</div>
+                  <div onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }} className="cursor-pointer">
+                    <Folder className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
+                    <div className="text-xs sm:text-sm font-medium truncate px-1">{f.name}</div>
                   </div>
                 </div>
               ))}
@@ -334,11 +377,11 @@ const ComplianceDocumentsPage: React.FC = () => {
                 const parts = (it.path || '').split('/');
                 const name = parts[parts.length - 1] || 'file';
                 return (
-                  <div key={`${it.path}-${idx}`} className="relative p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center w-48">
+                  <div key={`${it.path}-${idx}`} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                     <div className="absolute top-2 right-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100">
+                          <button className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="h-4 w-4" />
                           </button>
                         </DropdownMenuTrigger>
@@ -360,8 +403,10 @@ const ComplianceDocumentsPage: React.FC = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <File className="h-10 w-10 text-blue-500 mx-auto mb-3" />
-                    <div className="text-sm font-medium truncate">{name}</div>
+                    <div onClick={() => handleViewFile(it.path)} className="cursor-pointer">
+                      <File className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
+                      <div className="text-xs sm:text-sm font-medium truncate px-1">{name}</div>
+                    </div>
                   </div>
                 );
               })}
@@ -369,10 +414,10 @@ const ComplianceDocumentsPage: React.FC = () => {
           )}
 
           {currentFolderId && (
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
               {/* child folders */}
               {childFolders.map((f) => (
-                <div key={f.folder_id} className="relative p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center w-48">
+                <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -420,9 +465,9 @@ const ComplianceDocumentsPage: React.FC = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }}>
-                    <Folder className="h-10 w-10 text-blue-500 mx-auto mb-3" />
-                    <div className="text-sm font-medium truncate">{f.name}</div>
+                  <div onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }} className="cursor-pointer">
+                    <Folder className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
+                    <div className="text-xs sm:text-sm font-medium truncate px-1">{f.name}</div>
                   </div>
               </div>
             ))}
@@ -430,11 +475,11 @@ const ComplianceDocumentsPage: React.FC = () => {
                 const parts = (it.path || '').split('/');
                 const name = parts[parts.length - 1] || 'file';
                 return (
-                  <div key={`${it.path}-${idx}`} className="relative p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center w-48">
+                  <div key={`${it.path}-${idx}`} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                     <div className="absolute top-2 right-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100">
+                          <button className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100" onClick={(e) => e.stopPropagation()}>
                             <MoreVertical className="h-4 w-4" />
                           </button>
                         </DropdownMenuTrigger>
@@ -456,8 +501,10 @@ const ComplianceDocumentsPage: React.FC = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <File className="h-10 w-10 text-blue-500 mx-auto mb-3" />
-                    <div className="text-sm font-medium truncate">{name}</div>
+                    <div onClick={() => handleViewFile(it.path)} className="cursor-pointer">
+                      <File className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
+                      <div className="text-xs sm:text-sm font-medium truncate px-1">{name}</div>
+                    </div>
                   </div>
                 );
               })}
@@ -465,9 +512,9 @@ const ComplianceDocumentsPage: React.FC = () => {
           )}
 
           {loading && (
-            <div className="mt-6 flex items-center justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin mr-2" />
-              <span className="text-sm text-gray-600">Loading...</span>
+            <div className="mt-4 sm:mt-6 flex items-center justify-center py-8 sm:py-10">
+              <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
+              <span className="text-xs sm:text-sm text-gray-600">Loading...</span>
           </div>
           )}
         </div>
