@@ -129,6 +129,8 @@ export const backofficeEmployeeService = {
           document_type_id,
           document_status_id,
           document_url,
+          documents_files,
+          comments,
           document_number,
           verification_status,
           params,
@@ -169,7 +171,7 @@ export const backofficeEmployeeService = {
         updatedAt: employeeData.updated_at || new Date().toISOString(),
         clientId: employeeData.client_id,
         isSuperAdmin: employeeData.is_super_admin,
-        documents: (documentsData || []).map(doc => {
+        documents: ((documentsData as any[]) || []).map(doc => {
           let documentUrl = doc.document_url;
           
           // If document_url is a storage path, convert to full URL
@@ -188,6 +190,9 @@ export const backofficeEmployeeService = {
             documentTypeName: doc.document_type?.name || 'Unknown',
             documentNumber: doc.document_number || '',
             documentImage: documentUrl,
+            // Pass-through files array for backoffice Files dialog
+            documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+            comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
             verificationStatus: doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected' || 'pending',
             documentStatusId: doc.document_status_id,
             documentStatusName: doc.document_status?.name,
@@ -197,7 +202,7 @@ export const backofficeEmployeeService = {
             employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
               timestamp: string;
               action: string;
-              response: any;
+              response: any;  
               notes?: string;
             }> : [],
             params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},

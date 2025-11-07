@@ -58,7 +58,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
     console.log('Fetching employee verification data for:', employeeId, 'client:', clientId);
     
     // Fetch employee details
-    const { data: employeeData, error: employeeError } = await supabase
+    const { data: employeeData, error: employeeError } = await (supabase as any)
       .from('employees')
       .select(`
         id,
@@ -112,7 +112,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
     };
 
     // Fetch employee documents with new cron fields including cron_log
-    const { data: documentsData, error: documentsError } = await supabase
+    const { data: documentsData, error: documentsError } = await (supabase as any)
       .from('employee_documents')
       .select(`
         id,
@@ -124,6 +124,8 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         verification_status,
         verified_by,
         params,
+        documents_files,
+        comments,
         employee_docs_log,
         last_otp_generated,
         cron_activate,
@@ -181,6 +183,8 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
           response: any;
           notes?: string;
         }> : [],
+        documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+        comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
         params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
         // Map new cron fields including cron_log
         cronActivate: doc.cron_activate || false,
@@ -228,6 +232,8 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         verification_status,
         verified_by,
         params,
+        documents_files,
+        comments,
         employee_docs_log,
         last_otp_generated,
         api_response_data,
@@ -280,7 +286,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
       query = query.gte('created_at', startDate.toISOString());
     }
 
-    const { data, error } = await query;
+    const { data, error } = await (query as any);
 
     if (error) {
       console.error('Error fetching employee documents:', error);
@@ -320,6 +326,8 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
           response: any;
           notes?: string;
         }> : [],
+        documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+        comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
         params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
         // Map new cron fields including cron_log
         cronActivate: doc.cron_activate || false,

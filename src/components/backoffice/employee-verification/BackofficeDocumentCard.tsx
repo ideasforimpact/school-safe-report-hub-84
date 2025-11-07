@@ -16,13 +16,15 @@ interface BackofficeDocumentCardProps {
   documentTypeName: string;
   employee: Employee;
   onRefresh: () => void;
+  onOpenFiles?: (document: VerificationDocument) => void;
 }
 
 const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   document,
   documentTypeName,
   employee,
-  onRefresh
+  onRefresh,
+  onOpenFiles
 }) => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
@@ -268,6 +270,19 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 ml-4">
+              {/* Files button - visible when document has documents_files */}
+              {Array.isArray((document as any).documents_files) && (document as any).documents_files.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenFiles?.(document)}
+                  className="flex items-center gap-2"
+                  title="View files"
+                >
+                  <FileText className="h-4 w-4" />
+                  Files
+                </Button>
+              )}
               {/* Comments button - for "Other" documents with verification history */}
               {showCommentsIcon && (
                 <Button
@@ -389,9 +404,11 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
       <DocumentCommentsDialog
         open={commentsDialogOpen}
         onOpenChange={setCommentsDialogOpen}
-        verificationHistory={(document.params as any)?.verification_history || []}
+        comments={document.comments}
         documentId={document.id}
-        onUpdateHistory={handleUpdateHistory}
+        employee={employee}
+        mode="backoffice"
+        onCommentsUpdated={onRefresh}
       />
     </>
   );

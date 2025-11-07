@@ -6,12 +6,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface CommentEntry {
+  text: string;
+  sentiment: 'positive' | 'negative';
+  attachments: Array<{
+    name: string;
+    type: string;
+    size: number;
+    base64: string; // may include data: prefix
+  }>;
+}
+
 interface VerifyBody {
   documentId: string;
   clientId: string;
   employeeId: string;
   action: 'completed' | 'rejected';
-  comments: string;
+  comments: CommentEntry[] | string; // Support both old format (string) and new format (array)
   attachment?: {
     name: string;
     type: string;
@@ -44,8 +55,24 @@ serve(async (req) => {
     
     const { documentId, clientId, employeeId, action, comments, attachment, verifiedBy } = body;
 
-    if (!documentId || !clientId || !employeeId || !action || !comments) {
+    if (!documentId || !clientId || !employeeId || !action) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Normalize comments to array format (support backward compatibility)
+    let commentsArray: CommentEntry[];
+    if (typeof comments === 'string') {
+      // Old format: single comment string
+      commentsArray = [{
+        text: comments,
+        sentiment: action === 'completed' ? 'positive' : 'negative', // Default sentiment based on action
+        attachments: attachment ? [attachment] : []
+      }];
+    } else if (Array.isArray(comments) && comments.length > 0) {
+      // New format: array of comments
+      commentsArray = comments;
+    } else {
+      return new Response(JSON.stringify({ error: 'Comments are required and must be non-empty' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // 1) Validate document belongs to employee
@@ -82,37 +109,54 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: `${statusName} status not found` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // 4) Optional single attachment upload
-    let attachmentPublicUrl: string | undefined;
-    let attachmentStoragePath: string | undefined;
-    if (attachment && attachment.base64) {
-      const base64Data = attachment.base64.split(',')[1] || attachment.base64;
-      const binary = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-      const ts = new Date().getTime();
-      const ext = attachment.name.split('.').pop() || 'bin';
-      const storagePath = `${clientId}/${employeeId}/${ts}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('employee_other_type_statement')
-        .upload(storagePath, binary, { contentType: attachment.type, upsert: true });
-      if (uploadErr) {
-        return new Response(JSON.stringify({ error: `Upload failed: ${uploadErr.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      attachmentStoragePath = storagePath;
-      attachmentPublicUrl = `${normalizedBase}/employee_other_type_statement/${storagePath}`;
-    }
-
-    // 5) Build verification history entry
+    // 4) Process all comments and upload their attachments
     const existingParams = (doc.params as Record<string, any>) || {};
     const history: any[] = existingParams.verification_history || [];
-    const entry = {
-      action,
-      comments,
-      attachments: attachmentPublicUrl ? [attachmentPublicUrl] : [],
-      attachment_paths: attachmentStoragePath ? [attachmentStoragePath] : [],
-      timestamp: new Date().toISOString(),
-      verified_by: verifiedBy || 'SafeSchool'
-    };
-    const updatedParams = { ...existingParams, verification_history: [...history, entry] };
+    const newEntries: any[] = [];
+
+    for (const comment of commentsArray) {
+      const attachmentUrls: string[] = [];
+      const attachmentPaths: string[] = [];
+
+      // Upload all attachments for this comment
+      for (const att of comment.attachments) {
+        if (att && att.base64) {
+          const base64Data = att.base64.split(',')[1] || att.base64;
+          const binary = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+          const ts = new Date().getTime();
+          const random = Math.random().toString(36).substring(7);
+          const ext = att.name.split('.').pop() || 'bin';
+          const storagePath = `${clientId}/${employeeId}/${ts}_${random}.${ext}`;
+          
+          const { error: uploadErr } = await supabase.storage
+            .from('employee_other_type_statement')
+            .upload(storagePath, binary, { contentType: att.type, upsert: true });
+          
+          if (uploadErr) {
+            console.error(`Upload failed for ${att.name}:`, uploadErr);
+            // Continue with other attachments even if one fails
+          } else {
+            attachmentPaths.push(storagePath);
+            attachmentUrls.push(`${normalizedBase}/employee_other_type_statement/${storagePath}`);
+          }
+        }
+      }
+
+      // Create verification history entry for this comment
+      const entry = {
+        action,
+        comments: comment.text,
+        sentiment: comment.sentiment,
+        attachments: attachmentUrls,
+        attachment_paths: attachmentPaths,
+        timestamp: new Date().toISOString(),
+        verified_by: verifiedBy || 'SafeSchool'
+      };
+      newEntries.push(entry);
+    }
+
+    // 5) Update verification history with all new entries
+    const updatedParams = { ...existingParams, verification_history: [...history, ...newEntries] };
 
     // 6) Update document
     const { data: updated, error: updErr } = await supabase

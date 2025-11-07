@@ -95,6 +95,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           verification_status,
           verified_by,
           params,
+          documents_files,
+          comments,
           employee_docs_log,
           last_otp_generated,
           cron_activate,
@@ -160,6 +162,15 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             details?: any;
             error?: string;
           }>) : [],
+          documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
+          comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
+          params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},
+          employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
+            timestamp: string;
+            action: string;
+            response: any;
+            notes?: string;
+          }> : [],
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
         };
@@ -333,6 +344,40 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   const deleteDocument = useCallback(async (documentId: string) => {
     try {
+      // 1) Load files for this document so we can delete from storage
+      const { data: docRow, error: fetchErr } = await (supabase as any)
+        .from('employee_documents')
+        .select('employee_id, documents_files')
+        .eq('id', documentId)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+
+      const employeeId = docRow?.employee_id as string | undefined;
+      const files: Array<{ objectPath: string; fileName?: string }> = Array.isArray((docRow as any)?.documents_files)
+        ? (docRow as any).documents_files
+        : [];
+
+      // 2) Delete each file via edge function (service role handles RLS and storage perms)
+      if (employeeId && clientId && files.length > 0) {
+        await Promise.all(
+          files.map(async (f) => {
+            const { data, error } = await supabase.functions.invoke('delete-employee-document-file', {
+              body: {
+                clientId,
+                employeeId,
+                documentId,
+                objectPath: f.objectPath,
+              },
+            });
+            if (error || !data?.success) {
+              throw new Error(error?.message || data?.error || `Failed to delete file: ${f.objectPath}`);
+            }
+          })
+        );
+      }
+
+      // 3) Remove the DB row
       const { error } = await supabase
         .from('employee_documents')
         .delete()
@@ -341,12 +386,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       if (error) throw error;
 
       setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      toast.success('Document deleted successfully');
+      toast.success('Document and files deleted successfully');
     } catch (error) {
       console.error('Error deleting document:', error);
       toast.error('Failed to delete document');
     }
-  }, []);
+  }, [clientId]);
 
   const getEmployeeDocuments = useCallback((employeeId: string) => {
     return documents.filter(doc => doc.employeeId === employeeId);

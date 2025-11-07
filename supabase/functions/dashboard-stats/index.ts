@@ -378,7 +378,7 @@ serve(async (req) => {
     employeeDocsMap.forEach((docs, employeeId) => {
       const verified = docs.filter(doc => doc.verification_status === 'verified' || doc.verification_status === 'completed')
       const failed = docs.filter(doc => doc.verification_status === 'failed')
-      const pending = docs.filter(doc => doc.verification_status === 'pending')
+      const pending = docs.filter(doc => doc.verification_status === 'pending' || doc.verification_status === 'in-progress')
       
       // Priority: Failed > Pending > Verified
       if (failed.length > 0) {

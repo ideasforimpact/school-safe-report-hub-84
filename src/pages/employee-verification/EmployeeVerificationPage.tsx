@@ -24,7 +24,7 @@ const EmployeeVerificationPage = () => {
     
     const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
     const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
     
     // Priority-based status logic: Failed > Pending > Verified
     // If ANY document failed → Overall status is "Failed"

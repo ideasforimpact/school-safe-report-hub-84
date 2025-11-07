@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   createPrimaryFolder,
   createSubfolder,
-  uploadComplianceFiles,
   listComplianceObjects,
+  enqueueUploadMetadata,
   type ComplianceUploadFile,
 } from '@/services/compliance/complianceService';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -17,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { deleteFolder } from '@/services/compliance/complianceService';
+import { deleteFolder, deleteFileViaEdge } from '@/services/compliance/complianceService';
 
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
@@ -34,8 +34,11 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [breadcrumb, setBreadcrumb] = useState<{ rowId: string; name: string; folderId: string }[]>([]);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState('General');
+  const [creatingFolder, setCreatingFolder] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadItems, setUploadItems] = useState<{ id: string; name: string; progress: number; status: 'uploading' | 'done' | 'error'; error?: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
@@ -43,6 +46,13 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   const bucketName = 'compliance_documents';
   const storageBaseUrl = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
+
+  // Aggregate progress for the overlay widget
+  const totalProgress = React.useMemo(() => {
+    if (!uploading || uploadItems.length === 0) return 0;
+    const sum = uploadItems.reduce((acc, it) => acc + (isFinite(it.progress) ? it.progress : 0), 0);
+    return Math.floor(sum / uploadItems.length);
+  }, [uploading, uploadItems]);
 
   const refresh = async () => {
     if (!clientId || !employeeId) return;
@@ -110,6 +120,32 @@ const ComplianceDocumentsPage: React.FC = () => {
     refresh();
   }, [clientId, employeeId, currentFolderId]);
 
+  // Realtime sync: refresh UI when metadata worker updates the table
+  useEffect(() => {
+    if (!clientId || !employeeId) return;
+    const channel = (supabase as any)
+      .channel(`compliance-docs-${clientId}-${employeeId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'compliance_documents', filter: `client_id=eq.${clientId}` },
+        (payload: any) => {
+          const createdBy = (payload?.new?.created_by ?? payload?.old?.created_by) as string | null | undefined;
+          if (!createdBy || createdBy === employeeId) {
+            // Avoid thrashing: debounce a bit
+            clearTimeout((window as any).__cdocs_rtimer);
+            (window as any).__cdocs_rtimer = setTimeout(() => {
+              refresh();
+            }, 150);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try { (supabase as any).removeChannel(channel); } catch (_) { /* noop */ }
+    };
+  }, [clientId, employeeId]);
+
   const onChooseFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0 || !clientId) return;
@@ -132,36 +168,81 @@ const ComplianceDocumentsPage: React.FC = () => {
       return;
     }
     setUploading(true);
+    // optimistic list for progress
+    setUploadItems(files.map((f) => ({ id: `${Date.now()}-${f.name}`, name: f.name, progress: 0, status: 'uploading' })));
+
+    const safeFolderName = (currentFolderName || 'Folder').split('/').join('-');
+    const baseFolderSlug = currentFolderId && currentFolderName
+      ? `${clientId}/${safeFolderName}_${currentFolderId}`
+      : `${clientId}/general`;
+
+    const uploadOne = async (file: File, idx: number) => {
+      const objectPath = `${baseFolderSlug}/${file.name}`;
+      // Create signed upload URL
+      const signed = await supabase.storage.from(bucketName).createSignedUploadUrl(objectPath);
+      if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message || 'Failed to create signed upload URL');
+
+      await xhrPut(signed.data.signedUrl, file, (pct) => {
+        setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, progress: pct } : it));
+      });
+
+      // Asynchronously enqueue metadata persistence
+      try {
+        await enqueueUploadMetadata({
+          clientId,
+          employeeId,
+          parentFolderId: currentFolderId,
+          folderName: currentFolderName ?? 'general',
+          objectPath,
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+        });
+      } catch (_) {
+        // Non-blocking: metadata worker failure should not fail the upload UX
+      }
+
+      setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, progress: 100, status: 'done' } : it));
+      return objectPath;
+    };
+
     try {
-      const payload: ComplianceUploadFile[] = await Promise.all(
-        files.map(async (f) => ({
-          fileName: f.name,
-          contentType: f.type || 'application/octet-stream',
-          base64Data: await fileToBase64(f),
-        }))
-      );
-      if (currentFolderId) {
-        await uploadComplianceFiles(clientId, payload, { parentFolderId: currentFolderId, employeeId });
-      } else {
-        await uploadComplianceFiles(clientId, payload, { folderName: 'general', employeeId });
+      const results = await Promise.allSettled(files.map((f, idx) => uploadOne(f, idx)));
+      const successCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failures = results
+        .map((r, i) => ({ r, i }))
+        .filter((x) => x.r.status === 'rejected');
+      if (failures.length > 0) {
+        failures.forEach(({ i, r }) => {
+          setUploadItems((prev) => prev.map((it, idx2) => idx2 === i ? { ...it, status: 'error', error: (r as PromiseRejectedResult).reason?.message || 'Upload failed' } : it));
+        });
+        toast({ title: 'Some uploads failed', description: `${failures.length} file(s) failed to upload` });
+      }
+      if (successCount > 0) {
+        toast({ title: 'Upload complete', description: `${successCount} file(s) uploaded successfully` });
       }
       await refresh();
-      toast({ title: 'Upload complete', description: `${files.length} file(s) uploaded successfully` });
     } catch (err: any) {
-      const description = err?.message || err?.error || 'Upload failed.';
-      toast({ title: 'Upload failed', description });
+      toast({ title: 'Upload failed', description: err?.message || 'Unknown error' });
     } finally {
       setUploading(false);
       (e.target as HTMLInputElement).value = '';
+      // Clear progress list after a short delay
+      setTimeout(() => setUploadItems([]), 1500);
     }
   };
 
   const createFolder = async () => {
     if (!folderName.trim() || !clientId) return;
-    await createPrimaryFolder(clientId, folderName.trim(), employeeId, currentFolderId);
+    setCreatingFolder(true);
+    try {
+      await createPrimaryFolder(clientId, folderName.trim(), employeeId, currentFolderId);
     setNewFolderOpen(false);
     setFolderName('');
     await refresh();
+    } finally {
+      setCreatingFolder(false);
+    }
   };
 
   const handleViewFile = async (path: string) => {
@@ -216,29 +297,50 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   const handleDelete = async (path: string, rowId: string) => {
     setDeletingPath(path);
-    const { error: remErr } = await supabase.storage.from(bucketName).remove([path]);
-    if (remErr) {
-      toast({ title: 'Delete failed', description: remErr.message });
+    setIsDeleting(true);
+    try {
+      await deleteFileViaEdge({ clientId, rowId, path });
+      toast({ title: 'File deleted' });
+      await refresh();
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e?.message || 'Unknown error' });
+    } finally {
       setDeletingPath(null);
-      return;
+      setIsDeleting(false);
     }
-    const { data: rowData } = await (supabase as any)
-      .from('compliance_documents')
-      .select('files')
-      .eq('id', rowId)
-      .maybeSingle();
-    const newFiles = (rowData?.files || []).filter((f: any) => f.path !== path);
-    await (supabase as any)
-      .from('compliance_documents')
-      .update({ files: newFiles })
-      .eq('id', rowId);
-    toast({ title: 'File deleted' });
-    await refresh();
-    setDeletingPath(null);
   };
 
   return (
     <Layout>
+      {/* Global uploading overlay */}
+      {uploading && (
+        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px]">
+          {/* top-right progress widget */}
+          <div className="absolute top-4 right-4 w-[min(92vw,320px)] rounded-xl border bg-white shadow-xl p-3 sm:p-4 text-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-medium text-gray-800">Uploading files…</span>
+              <span className="text-xs text-gray-500">{totalProgress}%</span>
+            </div>
+            <div className="w-full h-2 bg-gray-100 rounded">
+              <div className="h-2 rounded bg-blue-500 transition-all" style={{ width: `${totalProgress}%` }} />
+            </div>
+            {uploadItems.length > 1 && (
+              <div className="mt-2 text-xs text-gray-500">
+                {uploadItems.filter(i=>i.status!=='done').length} of {uploadItems.length} remaining
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Global deleting overlay */}
+      {isDeleting && (
+        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] flex items-center justify-center">
+          <div className="rounded-xl border bg-white shadow-xl p-5 sm:p-6 text-sm flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="font-medium text-gray-800">Deleting…</span>
+          </div>
+        </div>
+      )}
       <div className="p-3 sm:p-4 md:p-6">
         <div className="enterprise-card p-3 sm:p-4 md:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -306,11 +408,7 @@ const ComplianceDocumentsPage: React.FC = () => {
               <div className="text-xs sm:text-sm">Drag and drop files here, or click to browse</div>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onChooseFiles} />
               <Button variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
-                {uploading ? (
-                  <span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Uploading...</span>
-                ) : (
-                  <span>Choose Files</span>
-                )}
+                <span>Choose Files</span>
               </Button>
             </div>
           </div>
@@ -334,15 +432,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onSelect={(e) => e.preventDefault()}>
-                              {deletingFolderId === f.folder_id ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-                                </>
-                              ) : (
-                                <>
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </>
-                              )}
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -353,12 +443,14 @@ const ComplianceDocumentsPage: React.FC = () => {
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction onClick={async () => {
                                 try {
+                                  setIsDeleting(true);
                                   setDeletingFolderId(f.folder_id);
                                   await deleteFolder(clientId, f.folder_id, employeeId, f.id);
                                   toast({ title: 'Folder deleted' });
                                   await refresh();
                                 } finally {
                                   setDeletingFolderId(null);
+                                  setIsDeleting(false);
                                 }
                               }}>Delete</AlertDialogAction>
                             </AlertDialogFooter>
@@ -390,15 +482,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                             <Download className="mr-2 h-4 w-4" /> Download
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDelete(it.path, it.rowId)} className="text-red-600 focus:text-red-600">
-                            {deletingPath === it.path ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </>
-                            )}
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -528,7 +612,9 @@ const ComplianceDocumentsPage: React.FC = () => {
           <Input placeholder="Folder name" value={folderName} onChange={(e) => setFolderName(e.target.value)} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewFolderOpen(false)}>Cancel</Button>
-            <Button onClick={createFolder}>Create</Button>
+            <Button onClick={createFolder} disabled={creatingFolder || !folderName.trim()}>
+              {creatingFolder ? (<span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Creating…</span>) : 'Create'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -547,4 +633,21 @@ async function fileToBase64(file: File): Promise<string> {
 
 export default ComplianceDocumentsPage;
 
-
+async function xhrPut(url: string, file: File, onProgress?: (pct: number) => void): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    xhr.upload.onprogress = (evt) => {
+      if (!evt.lengthComputable) return;
+      const pct = (evt.loaded / evt.total) * 100;
+      onProgress?.(pct);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload failed with status ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    if (file.type) xhr.setRequestHeader('Content-Type', file.type);
+    xhr.send(file);
+  });
+}

@@ -47,3 +47,28 @@ export async function deleteFolder(clientId: string, folderId: string, employeeI
 	return data as { success: boolean };
 }
 
+export async function deleteFileViaEdge(params: { clientId: string; rowId: string; path: string; fileName?: string }) {
+	const { data, error } = await supabase.functions.invoke('delete-compliance-file', {
+		body: params,
+	});
+	if (error) throw error;
+	return data as { success: boolean };
+}
+
+export async function enqueueUploadMetadata(payload: {
+  clientId: string;
+  employeeId?: string | null;
+  parentFolderId?: string | null;
+  folderName?: string | null;
+  objectPath: string;
+  fileName: string;
+  contentType?: string;
+  size?: number;
+}) {
+  const { data, error } = await supabase.functions.invoke('enqueue-upload', {
+    body: payload,
+  });
+  if (error) throw error;
+  return data as { success: boolean };
+}
+

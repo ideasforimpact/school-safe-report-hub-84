@@ -315,6 +315,8 @@ serve(async (req) => {
       const prefix = `${clientId}/${slug}`;
       // List and remove all files under this prefix (recursively)
       const paths = await listAllPaths(prefix);
+      console.log(paths,"paths");
+      
       if (paths.length > 0) {
         await supabaseAdmin.storage.from(bucketName).remove(paths);
       }

@@ -94,6 +94,18 @@ export interface VerificationDocument {
   apiVerificationDate?: string;
   apiVerificationMethod?: string;
   verifiedByEmployeeId?: string; // Track which employee verified this document
+  documents_files?: Array<{
+    fileName: string;
+    size: number;
+    url?: string;
+    path?: string;
+  }>;
+  comments?: Array<{
+    id: string;
+    text: string;
+    sentiment: boolean; // true for positive, false for negative
+    filePaths: string[]; // Array of storage paths
+  }>;
   createdAt: string;
   updatedAt: string;
 }

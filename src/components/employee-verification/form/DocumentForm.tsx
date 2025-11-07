@@ -23,7 +23,9 @@ import BankStatementUploader from './BankStatementUploader';
 import DocumentNumberInput from './DocumentNumberInput';
 import DocumentDisplay from './DocumentDisplay';
 import CustomDocumentUploader from './CustomDocumentUploader';
+import PoliceVerificationUploader from './PoliceVerificationUploader';
 import { FileItem } from '@/types/fileTypes';
+import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocumentUploadService';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -53,6 +55,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [bankStatementFiles, setBankStatementFiles] = useState<FileItem[]>([]);
   const [genericFiles, setGenericFiles] = useState<FileItem[]>([]);
+  const [policeVerificationFiles, setPoliceVerificationFiles] = useState<FileItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadItems, setUploadItems] = useState<{ id: string; name: string; progress: number; status: 'uploading' | 'done' | 'error'; error?: string }[]>([]);
   
   // Custom document fields
   const [customDocumentName, setCustomDocumentName] = useState('');
@@ -63,6 +68,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const { documentTypes, fetchEmployeeDocuments, getEmployeeDocuments } = useEmployeeVerification();
+
+  // Aggregate progress for the overlay widget
+  const totalProgress = React.useMemo(() => {
+    if (!uploading || uploadItems.length === 0) return 0;
+    const sum = uploadItems.reduce((acc, it) => acc + (isFinite(it.progress) ? it.progress : 0), 0);
+    return Math.floor(sum / uploadItems.length);
+  }, [uploading, uploadItems]);
 
   // Get document type details
   const documentType = documentTypes.find(type => type.id === selectedTypeId);
@@ -98,8 +110,248 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
 
-  // Handle direct edge function calls for Court Case Check, Police Verification, Digital Credibility and Social Persona
-  const handleDirectSubmission = async (verificationType: 'court_case_check' | 'police_verification' | 'digital_credibility_check' | 'social_persona_check' | 'drug_check') => {
+  // Handle Police Verification file upload with queue
+  const handlePoliceVerificationUpload = async (files: FileItem[]) => {
+    const clientId = employeeData?.clientId || state.clientId;
+    if (!clientId) {
+      toast({
+        title: 'Error',
+        description: 'Client ID not found. Please ensure you are logged in properly.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (files.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select at least one file to upload.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setUploading(true);
+    // Initialize progress tracking
+    setUploadItems(files.map((f) => ({ id: f.id, name: f.name, progress: 0, status: 'uploading' as const })));
+
+    let createdDocumentId: string | null = null;
+    try {
+      // First, create the document record via the existing edge function
+      const { data: docData, error: docError } = await supabase.functions.invoke('other-document-verification', {
+        body: {
+          action: 'processPoliceVerification',
+          employeeId,
+          clientId,
+          documentTypeId: selectedTypeId,
+          params: { selected: 'police_verification' }
+        }
+      });
+
+      if (docError || !docData?.success || !docData?.document?.id) {
+        // Surface edge-function error (e.g., Duplicate / resource already exists)
+        const serverMsg = (docData && (docData.message || docData.error)) || docError?.message;
+        toast({
+          title: 'Request failed',
+          description: serverMsg || 'Failed to create document record',
+          variant: 'destructive',
+        });
+        throw new Error(serverMsg || 'Failed to create document record');
+      }
+
+      createdDocumentId = docData.document.id as string;
+      const bucketName = 'employee_other_documents';
+      const verificationType = 'police'; // Can be extracted from params if needed
+      const baseFolderPath = `${clientId}/${employeeId}/${createdDocumentId}/${verificationType}`;
+
+      // Upload files to storage and get their paths with progress tracking
+      const uploadPromises = files.map(async (fileItem, idx) => {
+        try {
+          // Convert base64 to File object for upload
+          // Base64 string format: data:image/jpeg;base64,/9j/4AAQSkZJRg...
+          const base64Data = fileItem.base64.includes(',') 
+            ? fileItem.base64.split(',')[1] 
+            : fileItem.base64;
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: fileItem.type || 'application/octet-stream' });
+          const file = new File([blob], fileItem.name, { type: fileItem.type || 'application/octet-stream' });
+
+          const objectPath = `${baseFolderPath}/${fileItem.name}`;
+          
+          // Create signed upload URL
+          const signed = await supabase.storage.from(bucketName).createSignedUploadUrl(objectPath);
+          
+          if (signed.error || !signed.data?.signedUrl) {
+            // Surface storage error via toast for immediate feedback
+            const errorMsg = signed.error?.message || 'Failed to create signed upload URL';
+            // Use setTimeout to ensure toast is shown even if promise is rejected immediately
+            setTimeout(() => {
+              toast({
+                title: 'Upload error',
+                description: `${fileItem.name}: ${errorMsg}`,
+                variant: 'destructive',
+              });
+            }, 0);
+            // Best-effort rollback: delete the created document immediately
+            try {
+              if (createdDocumentId) {
+                const { error: rollbackErr } = await supabase
+                  .from('employee_documents')
+                  .delete()
+                  .eq('id', createdDocumentId);
+                if (rollbackErr) {
+                  console.error('Immediate rollback failed (createSignedUploadUrl error)', rollbackErr);
+                }
+              }
+            } catch (rbErr) {
+              console.error('Immediate rollback exception', rbErr);
+            }
+            throw new Error(errorMsg);
+          }
+
+          // Upload file using XHR for progress tracking
+          await xhrPut(signed.data.signedUrl, file, (pct) => {
+            setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, progress: pct } : it));
+          });
+
+          setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, progress: 100, status: 'done' } : it));
+
+          return {
+            objectPath,
+            fileName: fileItem.name,
+            contentType: fileItem.type || 'application/octet-stream',
+            size: fileItem.size,
+          };
+        } catch (err: any) {
+          // Show per-file error toast with specific reason if available
+          const errorMsg = err?.message || 'Unknown storage error';
+          setTimeout(() => {
+            toast({
+              title: 'Upload failed',
+              description: `${fileItem.name}: ${errorMsg}`,
+              variant: 'destructive',
+            });
+          }, 0);
+          setUploadItems((prev) => prev.map((it, i) => i === idx ? { ...it, status: 'error' as const, error: errorMsg } : it));
+          throw err;
+        }
+      });
+
+      const uploadedFiles = await Promise.allSettled(uploadPromises);
+      const successfulFiles = uploadedFiles
+        .filter((r) => r.status === 'fulfilled')
+        .map((r) => (r as PromiseFulfilledResult<any>).value);
+
+      console.log(uploadedFiles,"uploadedFiles");
+      
+
+      const failures = uploadedFiles
+        .map((r, i) => ({ r, i }))
+        .filter((x) => x.r.status === 'rejected');
+
+      if (failures.length > 0) {
+        toast({ 
+          title: 'Some uploads failed', 
+          description: `${failures.length} file(s) failed to upload`,
+          variant: 'destructive',
+        });
+      }
+
+      if (successfulFiles.length === 0) {
+        throw new Error('All file uploads failed');
+      }
+
+      // Enqueue metadata update job
+      await enqueueEmployeeDocumentUpload({
+        clientId,
+        employeeId,
+        documentId: createdDocumentId as string,
+        files: successfulFiles,
+      });
+
+      toast({
+        title: 'Police Verification Initiated',
+        description: `${successfulFiles.length} file(s) uploaded successfully. Processing...`,
+      });
+
+      // Wait a moment for queue processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Refresh employee documents
+      if (employeeId) {
+        await fetchEmployeeDocuments(employeeId);
+      }
+
+      // Reset form and redirect
+      setPoliceVerificationFiles([]);
+      setOtherType('');
+      setUploading(false);
+      setTimeout(() => setUploadItems([]), 500);
+      
+      // Redirect to employee detail page
+      if (onCancel) {
+        onCancel();
+      }
+    } catch (error: any) {
+      console.error('Error uploading police verification files:', error);
+      // Best-effort rollback: delete the document record if it was created
+      try {
+        const toDeleteId = createdDocumentId || undefined;
+        if (toDeleteId) {
+          const { error: rollbackErr } = await supabase
+            .from('employee_documents')
+            .delete()
+            .eq('id', toDeleteId);
+          if (rollbackErr) {
+            console.error('Rollback failed: could not delete document record', rollbackErr);
+          }
+        }
+      } catch (rbErr) {
+        console.error('Rollback exception', rbErr);
+      }
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to upload files. Please try again.',
+        variant: 'destructive',
+      });
+      setUploading(false);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // XHR upload helper for progress tracking
+  const xhrPut = (url: string, file: File, onProgress?: (pct: number) => void): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url, true);
+      xhr.upload.onprogress = (evt) => {
+        if (!evt.lengthComputable) return;
+        const pct = (evt.loaded / evt.total) * 100;
+        onProgress?.(pct);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          const msg = xhr.responseText ? `${xhr.status}: ${xhr.responseText}` : `Upload failed with status ${xhr.status}`;
+          reject(new Error(msg));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      if (file.type) xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
+    });
+  };
+
+  // Handle direct edge function calls for Court Case Check, Digital Credibility and Social Persona
+  const handleDirectSubmission = async (verificationType: 'court_case_check' | 'digital_credibility_check' | 'social_persona_check' | 'drug_check') => {
     const clientId = employeeData?.clientId || state.clientId;
     if (!clientId) {
       toast({
@@ -117,8 +369,6 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     const action =
       verificationType === 'court_case_check'
         ? 'processCourtCaseCheck'
-        : verificationType === 'police_verification'
-        ? 'processPoliceVerification'
         : verificationType === 'digital_credibility_check'
         ? 'processDigitalCredibilityCheck'
         : verificationType === 'social_persona_check'
@@ -333,27 +583,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         )}
 
         {otherType === 'police_verification' && (
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-medium mb-2">Police Verification</h3>
-              <p className="text-gray-600 mb-4">Submit a request for police verification</p>
-              <Button
-                type="button"
-                onClick={() => handleDirectSubmission('police_verification')}
-                disabled={isProcessing}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Submit for Police Verification'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <PoliceVerificationUploader
+            files={policeVerificationFiles}
+            setFiles={setPoliceVerificationFiles}
+            onUpload={handlePoliceVerificationUpload}
+            isUploading={isProcessing}
+            onCancel={onCancel}
+          />
         )}
 
         {otherType === 'digital_credibility_check' && (
@@ -432,6 +668,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   };
 
   // Don't show the submit button for court case check, police verification, and custom documents
+  // Police verification now uses its own uploader component with built-in submit button
   const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check' && otherType !== 'digital_credibility_check' && otherType !== 'social_persona_check');
   const shouldShowForm = !isOtherDocuments; // Hide the default form for custom documents
 
@@ -477,7 +714,27 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+      {/* Progress overlay */}
+      {uploading && (
+        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px]">
+          <div className="absolute top-4 right-4 w-[min(92vw,320px)] rounded-xl border bg-white shadow-xl p-3 sm:p-4 text-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-medium text-gray-800">Uploading files…</span>
+              <span className="text-xs text-gray-500">{totalProgress}%</span>
+            </div>
+            <div className="w-full h-2 bg-gray-100 rounded">
+              <div className="h-2 rounded bg-blue-500 transition-all" style={{ width: `${totalProgress}%` }} />
+            </div>
+            {uploadItems.length > 1 && (
+              <div className="mt-2 text-xs text-gray-500">
+                {uploadItems.filter(i => i.status !== 'done').length} of {uploadItems.length} remaining
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
       {/* Document Number Input */}
       {!isBankAccount && !isManualType && !isOtherDocuments && (
         <DocumentNumberInput
@@ -585,8 +842,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         </div>
       )}
 
-      {/* Cancel button only for court case check and police verification */}
-      {!shouldShowSubmitButton && (
+      {/* Cancel button only for cases without their own uploader (exclude police verification to avoid duplicate) */}
+      {!shouldShowSubmitButton && otherType !== 'police_verification' && (
         <div className="flex justify-center pt-4">
           <Button
             type="button"
@@ -599,6 +856,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         </div>
       )}
     </form>
+    </>
   );
 };
 

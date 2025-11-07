@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File } from 'lucide-react';
 import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,8 @@ import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsD
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 import PassportDetailsDialog from '../document-card/PassportDetailsDialog';
 import DocumentCommentsDialog from '../DocumentCommentsDialog';
+import FilesDialog from '../form/FilesDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -52,13 +54,22 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onDocumentAction,
   onQuickVerify,
 }) => {
-  const { documentStatuses, deleteDocument, employees } = useEmployeeVerification();
+  const { documentStatuses, deleteDocument, employees, fetchEmployeeDocuments } = useEmployeeVerification();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
   
   // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // State for Files dialog
+  const [filesDialogOpen, setFilesDialogOpen] = useState(false);
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [selectedVerificationType, setSelectedVerificationType] = useState<string>('police');
   const [selectedDocumentDetails, setSelectedDocumentDetails] = React.useState<any>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [panDialogOpen, setPanDialogOpen] = React.useState(false);
@@ -73,7 +84,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
   const [selectedPassportDetails, setSelectedPassportDetails] = React.useState<any>(null);
   const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<any[]>([]);
-  const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
+  const [filesCountOverrides, setFilesCountOverrides] = useState<Record<string, number>>({});
   
   // Log documents for debugging
   console.log('DocumentsTable - All documents:', documents);
@@ -105,6 +116,27 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       
       return priorityA - priorityB;
     });
+  };
+
+  const handleFilesClick = (documentId: string, employeeId: string, files: any[]) => {
+    const doc = documents.find(d => d.id === documentId);
+    const verificationType = (doc?.params as any)?.selected || 'manual';
+    setSelectedDocumentId(documentId);
+    setSelectedEmployeeId(employeeId);
+    setSelectedFiles(files);
+    setSelectedVerificationType(verificationType);
+    setFilesDialogOpen(true);
+  };
+
+  const handleFilesDialogRefresh = async () => {
+    if (selectedEmployeeId) {
+      await fetchEmployeeDocuments(selectedEmployeeId);
+      if (onDocumentAction) onDocumentAction();
+    }
+  };
+
+  const handleFilesDialogClosed = (documentId: string, filesCount: number) => {
+    setFilesCountOverrides((prev) => ({ ...prev, [documentId]: filesCount }));
   };
 
   const handleViewDocument = (documentImage: string) => {
@@ -594,30 +626,27 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       // Special handling for manual documents
                       if (docType === 'manual') {
                         const docUrl = (doc.params as any)?.document_url || doc.documentImage;
+                        // Use documents_files column
+                        const filesFromDb = (doc as any).documents_files || [];
+                        const overrideCount = filesCountOverrides[doc.id];
+                        const hasFiles = overrideCount !== undefined ? overrideCount > 0 : (Array.isArray(filesFromDb) && filesFromDb.length > 0);
+                        console.log({ filesFromDb, overrideCount, hasFiles }, "FilesData");
+                        
+                        
                         return (
                           <div className="flex items-center justify-end space-x-2 w-full">
-                            {/* View and Download buttons - only if document has URL */}
-                            {docUrl && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleViewDocument(docUrl)}
-                                  title="View Document"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDownloadDocument(docUrl)}
-                                  title="Download Document"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                              </>
+                            {/* Files button - only if document has files */}
+                            {hasFiles && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleFilesClick(doc.id, doc.employeeId, filesFromDb)}
+                                title="View and Manage Files"
+                                className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                              >
+                                <File className="h-4 w-4 mr-1" />
+                                Files
+                              </Button>
                             )}
                             
                             {/* Delete button for manual documents */}
@@ -873,6 +902,21 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Files Dialog */}
+      {selectedDocumentId && selectedEmployeeId && (
+        <FilesDialog
+          open={filesDialogOpen}
+          onOpenChange={setFilesDialogOpen}
+          documentId={selectedDocumentId}
+          employeeId={selectedEmployeeId}
+          clientId={clientId}
+          files={selectedFiles}
+          verificationType={selectedVerificationType}
+          onRefresh={handleFilesDialogRefresh}
+          onCloseWithFilesCount={(count) => handleFilesDialogClosed(selectedDocumentId, count)}
+        />
+      )}
     </>
   );
 };

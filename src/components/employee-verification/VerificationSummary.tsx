@@ -12,8 +12,8 @@ const VerificationSummary = () => {
   const failedEmployees = employees.filter(emp => emp.status === false).length;
   
   const totalDocuments = documents.length;
-  const verifiedDocuments = documents.filter(doc => doc.verificationStatus === 'verified').length;
-  const pendingDocuments = documents.filter(doc => doc.verificationStatus === 'pending').length;
+  const verifiedDocuments = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed').length;
+  const pendingDocuments = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress').length;
   const failedDocuments = documents.filter(doc => doc.verificationStatus === 'failed').length;
   
   const verificationRate = totalEmployees > 0 

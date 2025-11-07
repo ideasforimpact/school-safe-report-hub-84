@@ -6,6 +6,11 @@ import { FileText, Calendar } from 'lucide-react';
 import { Employee } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import BackofficeDocumentCard from './BackofficeDocumentCard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { File, Download } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface BackofficeDocumentsListProps {
   employee: Employee;
@@ -19,6 +24,9 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   const [timeFilter, setTimeFilter] = useState('all');
   const [filteredDocuments, setFilteredDocuments] = useState(employee.documents || []);
   const { documentTypes, fetchDocumentTypes } = useEmployeeVerification();
+  const { toast } = useToast();
+  const [filesDialogOpen, setFilesDialogOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
 
   // Get the "Manual" document type ID
   const manualDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'manual');
@@ -161,6 +169,30 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   const counts = getDocumentCounts();
 
+  const handleOpenFiles = (document: any) => {
+    setSelectedDoc(document);
+    setFilesDialogOpen(true);
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return 'Unknown size';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleDownload = async (file: { objectPath: string; fileName: string }) => {
+    try {
+      const signed = await supabase.storage
+        .from('employee_other_documents')
+        .createSignedUrl(file.objectPath, 300, { download: file.fileName });
+      if (signed.error || !signed.data?.signedUrl) throw new Error('Failed to generate download URL');
+      window.open(signed.data.signedUrl, '_blank');
+    } catch (err: any) {
+      toast({ title: 'Error', description: err?.message || 'Failed to download file', variant: 'destructive' });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -212,11 +244,45 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
                 documentTypeName={getDisplayDocumentTypeName(document)}
                 employee={employee}
                 onRefresh={onRefresh}
+                onOpenFiles={handleOpenFiles}
               />
             ))}
           </div>
         )}
       </CardContent>
+      {/* View-Only Files Dialog */}
+      <Dialog open={filesDialogOpen} onOpenChange={setFilesDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Files</DialogTitle>
+          </DialogHeader>
+          {Array.isArray(selectedDoc?.documents_files) && selectedDoc.documents_files.length > 0 ? (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {selectedDoc.documents_files.map((f: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-3 border rounded">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{f.fileName}</p>
+                      <p className="text-xs text-gray-500">{formatFileSize(f.size)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="ghost" size="sm" title="Download file" onClick={() => handleDownload(f)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 py-4">No files available.</p>
+          )}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => setFilesDialogOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
