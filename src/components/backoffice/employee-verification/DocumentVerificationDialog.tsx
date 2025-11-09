@@ -160,8 +160,8 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
               path: storagePath,
               fileName: file.name // Original file name
             });
-          }
-          
+      }
+
           return {
             id: comment.id,
             text: comment.text.trim(),
@@ -273,13 +273,13 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
             
             {/* Comment Textarea with Thumbs in Bottom Right */}
             <div className="relative w-full">
-              <Textarea
+            <Textarea
                 placeholder="Enter your verification comment..."
                 value={currentComment.text}
                 onChange={(e) => setCurrentComment(prev => ({ ...prev, text: e.target.value }))}
-                rows={4}
+              rows={4}
                 className="resize-none pr-20 w-full"
-              />
+            />
               <div className="absolute bottom-2 right-2 flex items-center gap-2">
                 <Button
                   type="button"
@@ -310,61 +310,61 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
                   <ThumbsDown className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
+          </div>
 
             {/* Supporting Attachments */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Supporting Attachments</Label>
-              
-              {/* File Upload */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                <div className="text-center">
+            
+            {/* File Upload */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+              <div className="text-center">
                   <Upload className="h-6 w-6 mx-auto text-gray-400 mb-2" />
                   <label htmlFor="file-upload-current" className="cursor-pointer">
-                    <span className="text-sm font-medium text-blue-600 hover:text-blue-500">
-                      Click to upload files
-                    </span>
-                    <input
+                  <span className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                    Click to upload files
+                  </span>
+                  <input
                       id="file-upload-current"
-                      type="file"
-                      multiple
-                      accept="image/*,.pdf,.doc,.docx"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, PDF, DOC up to 10MB each
-                  </p>
-                </div>
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  PNG, JPG, PDF, DOC up to 10MB each
+                </p>
               </div>
+            </div>
 
-              {/* Selected Files */}
+            {/* Selected Files */}
               {currentComment.attachments.length > 0 && (
-                <div className="space-y-2">
+              <div className="space-y-2">
                   {currentComment.attachments.map((file, fileIndex) => (
                     <div key={fileIndex} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">{file.name}</span>
-                        <span className="text-xs text-gray-500">
-                          ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                        </span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeAttachment(fileIndex)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm">{file.name}</span>
+                      <span className="text-xs text-gray-500">
+                        ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <Button
+                        type="button"
+                      variant="ghost"
+                      size="sm"
+                        onClick={() => removeAttachment(fileIndex)}
+                      className="h-6 w-6 p-0"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
             {/* Add Comment Button */}
             <Button
@@ -427,38 +427,38 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
 
         {/* Action Buttons - Fixed at bottom */}
         <div className="flex justify-end gap-3 pt-4 border-t mt-4 flex-shrink-0 bg-white">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isProcessing}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => handleVerificationAction('rejected')}
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleVerificationAction('rejected')}
             disabled={isProcessing || addedComments.length === 0}
-            className="flex items-center gap-2"
-          >
-            {isProcessing ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-            ) : (
-              <XCircle className="h-4 w-4" />
-            )}
-            Reject
-          </Button>
-          <Button
-            onClick={() => handleVerificationAction('completed')}
+              className="flex items-center gap-2"
+            >
+              {isProcessing ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              Reject
+            </Button>
+            <Button
+              onClick={() => handleVerificationAction('completed')}
             disabled={isProcessing || addedComments.length === 0}
-            className="flex items-center gap-2"
-          >
-            {isProcessing ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-            ) : (
-              <CheckCircle className="h-4 w-4" />
-            )}
-            Complete
-          </Button>
+              className="flex items-center gap-2"
+            >
+              {isProcessing ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              Complete
+            </Button>
         </div>
       </DialogContent>
     </Dialog>

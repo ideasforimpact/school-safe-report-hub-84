@@ -142,7 +142,8 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         document_type:employee_document_type(name, description),
         document_status:document_status(name, description)
       `)
-      .eq('employee_id', employeeId);
+      .eq('employee_id', employeeId)
+      .eq('is_delete', 0);
 
     if (documentsError) {
       console.error('Error fetching documents:', documentsError);
@@ -250,7 +251,8 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         document_type:employee_document_type(name, description),
         document_status:document_status(name, description)
       `)
-      .eq('employee_id', employeeId);
+      .eq('employee_id', employeeId)
+      .eq('is_delete', 0);
 
     // Apply timeframe filter if provided
     if (timeframe && timeframe !== 'all') {

@@ -294,7 +294,8 @@ async function handleUpdateVerificationStatus(
     const { data: employeeDocs, error: fetchError } = await supabase
       .from('employee_documents')
       .select('*')
-      .eq('employee_id', employeeId);
+      .eq('employee_id', employeeId)
+      .eq('is_delete', 0);
     
     if (fetchError) {
       throw fetchError;
@@ -512,7 +513,8 @@ async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe 
     let query = supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
-      .eq('employee_id', employeeId);
+      .eq('employee_id', employeeId)
+      .eq('is_delete', 0);
     
     // Apply time filtering if provided
     if (timeframe) {

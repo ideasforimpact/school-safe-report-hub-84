@@ -143,15 +143,15 @@ serve(async (req) => {
       }
 
       // Create verification history entry for this comment
-      const entry = {
-        action,
+    const entry = {
+      action,
         comments: comment.text,
         sentiment: comment.sentiment,
         attachments: attachmentUrls,
         attachment_paths: attachmentPaths,
-        timestamp: new Date().toISOString(),
-        verified_by: verifiedBy || 'SafeSchool'
-      };
+      timestamp: new Date().toISOString(),
+      verified_by: verifiedBy || 'SafeSchool'
+    };
       newEntries.push(entry);
     }
 

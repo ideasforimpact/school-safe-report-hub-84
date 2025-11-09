@@ -19,7 +19,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
 import ImageUpload from '@/components/ImageUpload';
 import DocumentFileUploader from './DocumentFileUploader';
-import BankStatementUploader from './BankStatementUploader';
+// BankStatementUploader removed - now using PoliceVerificationUploader for all manual verification types
 import DocumentNumberInput from './DocumentNumberInput';
 import DocumentDisplay from './DocumentDisplay';
 import CustomDocumentUploader from './CustomDocumentUploader';
@@ -53,9 +53,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [ifscCode, setIfscCode] = useState('');
   const [otherType, setOtherType] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bankStatementFiles, setBankStatementFiles] = useState<FileItem[]>([]);
   const [genericFiles, setGenericFiles] = useState<FileItem[]>([]);
   const [policeVerificationFiles, setPoliceVerificationFiles] = useState<FileItem[]>([]);
+  // Use a single state for all manual verification files (including bank statement analysis)
+  const [manualVerificationFiles, setManualVerificationFiles] = useState<FileItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadItems, setUploadItems] = useState<{ id: string; name: string; progress: number; status: 'uploading' | 'done' | 'error'; error?: string }[]>([]);
   
@@ -107,11 +108,13 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setOtherType('');
       setCustomDocumentName('');
       setCustomDocumentFiles([]);
+      setManualVerificationFiles([]);
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
 
-  // Handle Police Verification file upload with queue
-  const handlePoliceVerificationUpload = async (files: FileItem[]) => {
+  // Generic handler for manual document verification file upload with queue
+  // Works for all verification types: bank_statement_analysis, police_verification, court_case_check, digital_credibility_check, social_persona_check, drug_check
+  const handleManualVerificationUpload = async (files: FileItem[], verificationType: string) => {
     const clientId = employeeData?.clientId || state.clientId;
     if (!clientId) {
       toast({
@@ -138,14 +141,29 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
     let createdDocumentId: string | null = null;
     try {
+      // Map verification type to action name
+      const actionMap: Record<string, string> = {
+        'bank_statement_analysis': 'processBankStatementAnalysis',
+        'police_verification': 'processPoliceVerification',
+        'court_case_check': 'processCourtCaseCheck',
+        'digital_credibility_check': 'processDigitalCredibilityCheck',
+        'social_persona_check': 'processSocialPersonaCheck',
+        'drug_check': 'processDrugCheck',
+      };
+
+      const action = actionMap[verificationType];
+      if (!action) {
+        throw new Error(`Unknown verification type: ${verificationType}`);
+      }
+
       // First, create the document record via the existing edge function
       const { data: docData, error: docError } = await supabase.functions.invoke('other-document-verification', {
         body: {
-          action: 'processPoliceVerification',
+          action,
           employeeId,
           clientId,
           documentTypeId: selectedTypeId,
-          params: { selected: 'police_verification' }
+          params: { selected: verificationType }
         }
       });
 
@@ -162,8 +180,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
       createdDocumentId = docData.document.id as string;
       const bucketName = 'employee_other_documents';
-      const verificationType = 'police'; // Can be extracted from params if needed
-      const baseFolderPath = `${clientId}/${employeeId}/${createdDocumentId}/${verificationType}`;
+      // Map verification type to folder name
+      const verificationTypeMap: Record<string, string> = {
+        'bank_statement_analysis': 'bank_statement',
+        'police_verification': 'police',
+        'court_case_check': 'court_case',
+        'digital_credibility_check': 'digital_credibility',
+        'social_persona_check': 'social_persona',
+        'drug_check': 'drug',
+      };
+      const folderName = verificationTypeMap[verificationType] || verificationType;
+      const baseFolderPath = `${clientId}/${employeeId}/${createdDocumentId}/${folderName}`;
 
       // Upload files to storage and get their paths with progress tracking
       const uploadPromises = files.map(async (fileItem, idx) => {
@@ -275,8 +302,18 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         files: successfulFiles,
       });
 
+      // Map verification type to success message
+      const successTitleMap: Record<string, string> = {
+        'bank_statement_analysis': 'Bank Statement Analysis Initiated',
+        'police_verification': 'Police Verification Initiated',
+        'court_case_check': 'Court Case Check Initiated',
+        'digital_credibility_check': 'Digital Credibility Check Initiated',
+        'social_persona_check': 'Social Persona Check Initiated',
+        'drug_check': 'Drug Check Initiated',
+      };
+
       toast({
-        title: 'Police Verification Initiated',
+        title: successTitleMap[verificationType] || 'Verification Initiated',
         description: `${successfulFiles.length} file(s) uploaded successfully. Processing...`,
       });
 
@@ -290,6 +327,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
       // Reset form and redirect
       setPoliceVerificationFiles([]);
+      setManualVerificationFiles([]);
       setOtherType('');
       setUploading(false);
       setTimeout(() => setUploadItems([]), 500);
@@ -299,7 +337,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         onCancel();
       }
     } catch (error: any) {
-      console.error('Error uploading police verification files:', error);
+      console.error(`Error uploading ${verificationType} files:`, error);
       // Best-effort rollback: delete the document record if it was created
       try {
         const toDeleteId = createdDocumentId || undefined;
@@ -324,6 +362,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Keep handlePoliceVerificationUpload for backward compatibility
+  const handlePoliceVerificationUpload = async (files: FileItem[]) => {
+    return handleManualVerificationUpload(files, 'police_verification');
   };
 
   // XHR upload helper for progress tracking
@@ -533,7 +576,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           <select
             id="otherType"
             value={otherType}
-            onChange={(e) => setOtherType(e.target.value)}
+            onChange={(e) => {
+              setOtherType(e.target.value);
+              // Clear files when switching verification types
+              setManualVerificationFiles([]);
+              setPoliceVerificationFiles([]);
+            }}
             className="w-full mt-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             required
           >
@@ -548,38 +596,23 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         </div>
 
         {otherType === 'bank_statement_analysis' && (
-          <BankStatementUploader
-            files={bankStatementFiles}
-            setFiles={setBankStatementFiles}
-            onFileUploaded={(base64) => {
-              setDocumentImage(base64);
-              onFileUploaded(base64);
-            }}
+          <PoliceVerificationUploader
+            files={manualVerificationFiles}
+            setFiles={setManualVerificationFiles}
+            onUpload={(files) => handleManualVerificationUpload(files, 'bank_statement_analysis')}
+            isUploading={isProcessing}
+            onCancel={onCancel}
           />
         )}
 
         {otherType === 'court_case_check' && (
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-medium mb-2">Court Case Verification</h3>
-              <p className="text-gray-600 mb-4">Click the button below to check for court cases through E Court</p>
-              <Button
-                type="button"
-                onClick={() => handleDirectSubmission('court_case_check')}
-                disabled={isProcessing}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Check for Court Cases through E Court'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <PoliceVerificationUploader
+            files={manualVerificationFiles}
+            setFiles={setManualVerificationFiles}
+            onUpload={(files) => handleManualVerificationUpload(files, 'court_case_check')}
+            isUploading={isProcessing}
+            onCancel={onCancel}
+          />
         )}
 
         {otherType === 'police_verification' && (
@@ -593,83 +626,40 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         )}
 
         {otherType === 'digital_credibility_check' && (
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-medium mb-2">Digital Credibility Check</h3>
-              <p className="text-gray-600 mb-4">Submit a request for digital credibility screening</p>
-              <Button
-                type="button"
-                onClick={() => handleDirectSubmission('digital_credibility_check')}
-                disabled={isProcessing}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Submit for Digital Credibility Check'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <PoliceVerificationUploader
+            files={manualVerificationFiles}
+            setFiles={setManualVerificationFiles}
+            onUpload={(files) => handleManualVerificationUpload(files, 'digital_credibility_check')}
+            isUploading={isProcessing}
+            onCancel={onCancel}
+          />
         )}
 
         {otherType === 'social_persona_check' && (
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-medium mb-2">Social Persona Check</h3>
-              <p className="text-gray-600 mb-4">Submit a request for social persona/background screening</p>
-              <Button
-                type="button"
-                onClick={() => handleDirectSubmission('social_persona_check')}
-                disabled={isProcessing}
-                className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Submit for Social Persona Check'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <PoliceVerificationUploader
+            files={manualVerificationFiles}
+            setFiles={setManualVerificationFiles}
+            onUpload={(files) => handleManualVerificationUpload(files, 'social_persona_check')}
+            isUploading={isProcessing}
+            onCancel={onCancel}
+          />
         )}
 
         {otherType === 'drug_check' && (
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="p-6 text-center">
-              <h3 className="text-lg font-medium mb-2">Drug Check</h3>
-              <p className="text-gray-600 mb-4">Submit a request for drug/background screening</p>
-              <Button
-                type="button"
-                onClick={() => handleDirectSubmission('drug_check')}
-                disabled={isProcessing}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  'Submit for Drug Check'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+          <PoliceVerificationUploader
+            files={manualVerificationFiles}
+            setFiles={setManualVerificationFiles}
+            onUpload={(files) => handleManualVerificationUpload(files, 'drug_check')}
+            isUploading={isProcessing}
+            onCancel={onCancel}
+          />
         )}
       </div>
     );
   };
 
-  // Don't show the submit button for court case check, police verification, and custom documents
-  // Police verification now uses its own uploader component with built-in submit button
-  const shouldShowSubmitButton = !isManualType || (otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check' && otherType !== 'digital_credibility_check' && otherType !== 'social_persona_check');
+  // Don't show the submit button for manual verification types - they all use uploader components with built-in submit buttons
+  const shouldShowSubmitButton = !isManualType || (otherType !== 'bank_statement_analysis' && otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check' && otherType !== 'digital_credibility_check' && otherType !== 'social_persona_check');
   const shouldShowForm = !isOtherDocuments; // Hide the default form for custom documents
 
   // If document already exists, show display mode instead of form

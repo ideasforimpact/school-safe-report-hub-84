@@ -17,6 +17,8 @@ export interface EmployeeWithDocumentsSummary {
   department: string;
   position: string;
   clientId: string;
+  clientName?: string; // Optional client name for display
+  createdAt?: string; // Employee creation date
   documentsSummary: {
     total: number;
     verified: number;
@@ -78,6 +80,32 @@ export const backofficeEmployeeService = {
       return data.data || [];
     } catch (error) {
       console.error('Error in fetchEmployeesByClient:', error);
+      throw error;
+    }
+  },
+
+  async fetchAllEmployees(): Promise<EmployeeWithDocumentsSummary[]> {
+    try {
+      console.log('🔍 Fetching all employees with manual documents via edge function');
+      
+      // Use edge function with service role to bypass RLS issues
+      const { data, error } = await supabase.functions.invoke('backoffice-client-management', {
+        body: { action: 'fetchAllEmployees' }
+      });
+
+      if (error) {
+        console.error('Error calling edge function:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch employees');
+      }
+
+      console.log('✅ Successfully received all employees with manual documents:', data.data?.length || 0);
+      return data.data || [];
+    } catch (error) {
+      console.error('Error in fetchAllEmployees:', error);
       throw error;
     }
   },
@@ -145,7 +173,8 @@ export const backofficeEmployeeService = {
           document_type:employee_document_type(name, description),
           document_status:document_status(name, description)
         `)
-        .eq('employee_id', employeeId);
+        .eq('employee_id', employeeId)
+        .eq('is_delete', 0);
 
       if (documentsError) {
         console.error('Error fetching documents:', documentsError);
@@ -202,7 +231,7 @@ export const backofficeEmployeeService = {
             employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log as Array<{
               timestamp: string;
               action: string;
-              response: any;  
+              response: any;
               notes?: string;
             }> : [],
             params: typeof doc.params === 'object' && doc.params !== null ? doc.params as { [key: string]: any; DOB?: string; } : {},

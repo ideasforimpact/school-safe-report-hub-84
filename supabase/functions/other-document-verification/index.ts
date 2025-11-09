@@ -91,6 +91,15 @@ serve(async (req) => {
         corsHeaders
       );
     }
+
+    // Handle Drug Check processing
+    if (action === 'processDrugCheck') {
+      return await handleDrugCheck(
+        requestBody,
+        supabase,
+        corsHeaders
+      );
+    }
     
     // First, fetch document status IDs for manual and rejected statuses
     const { data: manualStatus, error: manualError } = await supabase
@@ -141,6 +150,7 @@ serve(async (req) => {
       .from('employee_documents')
       .select('employee_id')
       .eq('id', documentId)
+      .eq('is_delete', 0)
       .single();
     
     if (documentError) {
@@ -266,7 +276,126 @@ serve(async (req) => {
 });
 
 // Function to handle Bank Statement Analysis
+// Updated to match the new pattern: create document record first, files uploaded via queue
 async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
+  const { 
+    employeeId,
+    clientId,
+    documentTypeId,
+    params 
+  } = requestBody;
+  
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    console.log("Processing Bank Statement Analysis for employee:", employeeId, "client:", clientId);
+    
+    // Get the in-progress status ID
+    const { data: inProgressStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    
+    if (statusError) {
+      console.error("Error getting in-progress status ID:", statusError);
+      throw statusError;
+    }
+    
+    console.log("Using in-progress status ID:", inProgressStatus?.id);
+    
+    // Add initial log entry for bank statement analysis
+    const timestamp = new Date().getTime();
+    const initialLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: "bank_statement_analysis_initiated",
+      response: {
+        documentTypeId: documentTypeId,
+        documentStatusId: inProgressStatus?.id
+      }
+    };
+    
+    // Generate a unique document number for bank statement analysis
+    const documentNumber = `BSA_${timestamp}`;
+    
+    // Insert new document record (files will be uploaded via queue)
+    const newDocumentRecord = {
+      employee_id: employeeId,
+      document_type_id: documentTypeId,
+      document_number: documentNumber,
+      document_url: '',
+      verification_status: 'in-progress',
+      document_status_id: inProgressStatus?.id,
+      employee_docs_log: [initialLogEntry],
+      params: params || { selected: 'bank_statement_analysis' },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log("Creating bank statement analysis document record:", {
+      employeeId: newDocumentRecord.employee_id,
+      documentTypeId: newDocumentRecord.document_type_id,
+      documentNumber: newDocumentRecord.document_number,
+      verificationStatus: newDocumentRecord.verification_status,
+      documentStatusId: newDocumentRecord.document_status_id,
+      params: JSON.stringify(newDocumentRecord.params)
+    });
+    
+    // Insert the document record
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert(newDocumentRecord)
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    
+    if (insertError) {
+      throw insertError;
+    }
+    
+    console.log("Bank statement analysis document created successfully");
+    
+    // Prepare response document object
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: '',
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        message: "Bank statement analysis initiated and processing started",
+        document: documentResponse
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error processing bank statement analysis:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Failed to process bank statement analysis" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+/* OLD IMPLEMENTATION - Commented out, replaced with new queue-based approach
+// Function to handle Bank Statement Analysis
+async function handleBankStatementAnalysis_OLD(requestBody, supabase, corsHeaders) {
   const { 
     employeeId,
     clientId,
@@ -424,6 +553,7 @@ async function handleBankStatementAnalysis(requestBody, supabase, corsHeaders) {
     );
   }
 }
+*/
 
 // Function to handle Court Case Check
 async function handleCourtCaseCheck(requestBody, supabase, corsHeaders) {
@@ -778,6 +908,68 @@ async function handleSocialPersonaCheck(requestBody, supabase, corsHeaders) {
   } catch (error) {
     return new Response(
       JSON.stringify({ error: error.message || 'Failed to process social persona check' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+// Function to handle Drug Check
+async function handleDrugCheck(requestBody, supabase, corsHeaders) {
+  const { employeeId, clientId, documentTypeId, params } = requestBody;
+  if (!employeeId || !clientId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields: employeeId, clientId" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  try {
+    const { data: inProgressStatus } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+    const timestamp = new Date().getTime();
+    const documentNumber = `DC_${timestamp}`;
+    const initialLogEntry = { timestamp: new Date().toISOString(), action: 'drug_check_initiated', response: { documentTypeId, documentStatusId: inProgressStatus?.id } };
+    const { data: insertData, error: insertError } = await supabase
+      .from('employee_documents')
+      .insert({
+        employee_id: employeeId,
+        document_type_id: documentTypeId,
+        document_number: documentNumber,
+        document_url: '',
+        verification_status: 'in-progress',
+        document_status_id: inProgressStatus?.id,
+        employee_docs_log: [initialLogEntry],
+        params: params || { selected: 'drug_check' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
+    if (insertError) throw insertError;
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: insertData.document_number,
+      documentImage: '',
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {},
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
+    return new Response(
+      JSON.stringify({ success: true, message: 'Drug check initiated and processing started', document: documentResponse }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message || 'Failed to process drug check' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

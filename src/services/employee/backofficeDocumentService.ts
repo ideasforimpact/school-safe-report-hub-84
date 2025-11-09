@@ -41,6 +41,7 @@ export const backofficeDocumentService = {
         .select('id, employee_id')
         .eq('id', documentId)
         .eq('employee_id', employeeId)
+        .eq('is_delete', 0)
         .single();
 
       if (documentError || !document) {
@@ -110,6 +111,7 @@ export const backofficeDocumentService = {
         .select('id, employee_id')
         .eq('id', documentId)
         .eq('employee_id', employeeId)
+        .eq('is_delete', 0)
         .single();
 
       if (documentError || !document) {
@@ -167,6 +169,7 @@ export const backofficeDocumentService = {
         .select('id, employee_id, params')
         .eq('id', documentId)
         .eq('employee_id', employeeId)
+        .eq('is_delete', 0)
         .single();
 
       if (documentError || !document) {
@@ -257,6 +260,7 @@ export const backofficeDocumentService = {
         .select('id, employee_id, params')
         .eq('id', documentId)
         .eq('employee_id', employeeId)
+        .eq('is_delete', 0)
         .single();
 
       if (documentError || !document) {

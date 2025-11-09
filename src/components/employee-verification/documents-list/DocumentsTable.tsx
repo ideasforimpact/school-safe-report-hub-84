@@ -875,7 +875,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Document</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this document? This action cannot be undone and will remove the document from storage.
+              Are you sure you want to delete this document? This action will mark the document as deleted, but it can be restored if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -40,7 +40,8 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
     const { data: documentsData, error: documentsError } = await supabase
       .from('employee_documents')
       .select('id, employee_id, verification_status, document_type_id, document_url, document_number, created_at, updated_at')
-      .in('employee_id', employeeIds);
+      .in('employee_id', employeeIds)
+      .eq('is_delete', 0);
 
     if (documentsError) {
       console.error("Error fetching employee documents:", documentsError);
@@ -142,7 +143,8 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
     const { data: documentsData, error: documentsError } = await supabase
       .from('employee_documents')
       .select('id, employee_id, verification_status, document_type_id, document_url, document_number, created_at, updated_at')
-      .in('employee_id', employeeIds);
+      .in('employee_id', employeeIds)
+      .eq('is_delete', 0);
 
     if (documentsError) {
       console.error("Error fetching employee documents:", documentsError);

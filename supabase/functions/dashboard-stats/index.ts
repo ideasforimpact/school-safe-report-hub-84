@@ -352,6 +352,7 @@ serve(async (req) => {
       .from('employee_documents')
       .select('employee_id, verification_status')
       .in('employee_id', employeeIds)
+      .eq('is_delete', 0)
 
     if (allDocsError) {
       console.error('Error fetching all employee documents:', allDocsError)
