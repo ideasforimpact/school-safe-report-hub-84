@@ -20,6 +20,8 @@ serve(async (req) => {
     const supabaseKey = getSupabaseServiceRoleKey()
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    console.log("Checking 1");
+    
     // Parse request body
     const { client_id, incident_id, comment, documents } = await req.json()
     
