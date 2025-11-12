@@ -24,7 +24,7 @@
     "supabase:link:uat": "echo 'Replace <UAT_PROJECT_ID> with your actual UAT project ID' && supabase link --project-ref <UAT_PROJECT_ID>",
     "supabase:link:prod": "supabase link --project-ref ybvxkiubnnixntghojyy",
     "supabase:db:push": "supabase db push",
-    "supabase:functions:deploy": "supabase functions deploy",
+    "supabase:functions:deploy": "supabase functions deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
