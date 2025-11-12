@@ -17,7 +17,7 @@ BEGIN
       FOR SELECT USING (
         auth.uid() IS NOT NULL AND
         (
-          client_id = public.get_current_user_client_id()
+          client_id = public.get_current_user_client_id() 
           OR client_id IS NULL
           OR public.is_current_user_backoffice_admin() = true
         )
@@ -31,7 +31,7 @@ BEGIN
       FOR INSERT WITH CHECK (
         auth.uid() IS NOT NULL AND
         (
-          client_id = public.get_current_user_client_id()
+          client_id = public.get_current_user_client_id() 
           OR public.is_current_user_backoffice_admin() = true
         )
       );
@@ -44,7 +44,7 @@ BEGIN
       FOR UPDATE USING (
         auth.uid() IS NOT NULL AND
         (
-          client_id = public.get_current_user_client_id()
+          client_id = public.get_current_user_client_id() 
           OR public.is_current_user_backoffice_admin() = true
         )
       );
@@ -162,7 +162,7 @@ BEGIN
       FOR SELECT USING (
         auth.uid() IS NOT NULL AND
         (
-          client_id = public.get_current_user_client_id()
+          client_id = public.get_current_user_client_id() 
           OR public.is_current_user_backoffice_admin() = true
         )
       );

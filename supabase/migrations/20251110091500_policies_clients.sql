@@ -33,7 +33,7 @@ BEGIN
 
     -- Policy 4: Backoffice admins can delete clients (from 20250619084552)
     DROP POLICY IF EXISTS "Backoffice admins can delete clients" ON public.clients;
-    BEGIN
+BEGIN
       CREATE POLICY "Backoffice admins can delete clients" ON public.clients
       FOR DELETE USING (public.is_backoffice_admin());
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
@@ -56,7 +56,7 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy 6: Users can view their client
-    DROP POLICY IF EXISTS "Users can view their client" ON public.clients;
+      DROP POLICY IF EXISTS "Users can view their client" ON public.clients;
     BEGIN
       CREATE POLICY "Users can view their client" ON public.clients
       FOR SELECT USING (

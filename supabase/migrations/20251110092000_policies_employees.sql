@@ -43,7 +43,7 @@ BEGIN
 
     -- Policy 4: Users can insert employees for their client only
     DROP POLICY IF EXISTS "Users can insert employees for their client only" ON public.employees;
-    BEGIN
+BEGIN
       CREATE POLICY "Users can insert employees for their client only" ON public.employees
       FOR INSERT WITH CHECK (
         auth.uid() IS NOT NULL 

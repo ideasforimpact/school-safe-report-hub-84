@@ -89,18 +89,17 @@ export const useBackofficeAuth = () => {
           password: password
         });
 
-         authUser = authData.user;
+        console.log('Supabase auth attempt:', { authError, authData, email: cleanedEmail });
 
-         console.log(authError,authData,"authData");
-         
-
-        if (!authError && authData.user) {
+        if (!authError && authData?.user) {
           console.log('Successfully authenticated with Supabase auth:', authData.user.id);
           authUser = authData.user;
           isValidCredentials = true;
+        } else if (authError) {
+          console.log('Supabase auth failed (expected for local dev), will try custom verification:', authError.message);
         }
-      } catch (authErr) {
-        console.log('Supabase auth failed, trying custom verification:', authErr);
+      } catch (authErr: any) {
+        console.log('Supabase auth exception, trying custom verification:', authErr?.message || authErr);
       }
 
       // If Supabase auth failed, try custom RPC verification
@@ -152,24 +151,37 @@ export const useBackofficeAuth = () => {
 
       console.log('Successfully retrieved backoffice user:', { id: backofficeUser.id, email: backofficeUser.email });
 
-      // Step 3: If custom auth was used and no Supabase auth user exists, create one
-      // if (!authUser && isValidCredentials) {
-      //   console.log('Creating fresh Supabase auth user for future logins...');
-      //   const authUserCreated = await createSupabaseAuthUser(cleanedEmail, password);
-      //   if (authUserCreated) {
-      //     console.log('Fresh Supabase auth user created successfully for future use');
-      //   } else {
-      //     console.log('Failed to create Supabase auth user, but continuing with custom auth');
-      //   }
-      // }
+      // Step 3: If custom auth was used and no Supabase auth user exists, try to create one
+      if (!authUser && isValidCredentials) {
+        console.log('Custom auth successful, attempting to create Supabase auth user for future logins...');
+        const authUserCreated = await createSupabaseAuthUser(cleanedEmail, password);
+        if (authUserCreated) {
+          // Try to get the newly created auth user
+          const { data: newAuthData } = await supabase.auth.signInWithPassword({
+            email: cleanedEmail,
+            password: password
+          });
+          if (newAuthData?.user) {
+            authUser = newAuthData.user;
+            console.log('Supabase auth user created and retrieved:', authUser.id);
+          } else {
+            console.log('Auth user created but could not retrieve it, continuing with custom auth');
+          }
+        } else {
+          console.log('Failed to create Supabase auth user, but continuing with custom auth');
+        }
+      }
       
-      console.log(authUser.id ,"authUser.id ");
+      console.log('Auth user status:', authUser ? `User ID: ${authUser.id}` : 'No auth user (using custom auth)');
       
-
       // Step 4: Update last_signed_in timestamp
+      const updateData: any = { last_signed_in: new Date().toISOString() };
+      if (authUser?.id) {
+        updateData.auth_user_id = authUser.id;
+      }
       await supabase
         .from('backoffice_users')
-        .update({ last_signed_in: new Date().toISOString(),auth_user_id : authUser.id })
+        .update(updateData)
         .eq('id', backofficeUser.id);
 
       // Step 5: Create User object for Redux

@@ -8,7 +8,7 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'client_type'
   ) THEN
     -- Enable RLS
-    ALTER TABLE public.client_type ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.client_type ENABLE ROW LEVEL SECURITY;
 
     -- Policy: Authenticated users can view client types
     DROP POLICY IF EXISTS "Authenticated users can view client types" ON public.client_type;

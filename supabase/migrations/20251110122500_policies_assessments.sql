@@ -51,7 +51,20 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 4: Users can delete assessments they created in their client
+    -- Policy 4: Users can delete assessments from their client
+    DROP POLICY IF EXISTS "Users can delete assessments from their client" ON public.assessments;
+    BEGIN
+      CREATE POLICY "Users can delete assessments from their client" ON public.assessments
+      FOR DELETE USING (
+        auth.uid() IS NOT NULL 
+        AND (
+          client_id = public.get_current_user_client_id() 
+          OR public.is_current_user_backoffice_admin() = true
+        )
+      );
+    EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
+
+    -- Policy 5: Users can delete assessments they created in their client
     DROP POLICY IF EXISTS "Users can delete assessments they created in their client" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can delete assessments they created in their client" ON public.assessments
@@ -64,7 +77,7 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 5: Users can view assessments from their client or involvement (from 20250804121242 - with employees join)
+    -- Policy 6: Users can view assessments from their client or involvement (from 20250804121242 - with employees join)
     DROP POLICY IF EXISTS "Users can view assessments from their client or involvement" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can view assessments from their client or involvement" ON public.assessments
@@ -78,7 +91,7 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 6: Users can update assessments from their client involvement (from 20250804121242 - with employees join)
+    -- Policy 7: Users can update assessments from their client involvement (from 20250804121242 - with employees join)
     DROP POLICY IF EXISTS "Users can update assessments from their client involvement" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can update assessments from their client involvement" ON public.assessments
@@ -93,7 +106,7 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 7: Users can view assessments from their client
+    -- Policy 8: Users can view assessments from their client
     DROP POLICY IF EXISTS "Users can view assessments from their client" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can view assessments from their client" ON public.assessments
@@ -106,7 +119,7 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 8: Users can create assessments for their client
+    -- Policy 9: Users can create assessments for their client
     DROP POLICY IF EXISTS "Users can create assessments for their client" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can create assessments for their client" ON public.assessments
@@ -119,7 +132,7 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 9: Users can update assessments from their client
+    -- Policy 10: Users can update assessments from their client
     DROP POLICY IF EXISTS "Users can update assessments from their client" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can update assessments from their client" ON public.assessments

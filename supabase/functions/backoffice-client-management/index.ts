@@ -1,8 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4'
 import { corsHeaders } from '../_shared/cors.ts'
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const supabaseUrl = getSupabaseUrl()
+const supabaseServiceKey = getSupabaseServiceRoleKey()
 
 // Create a Supabase client with service role for bypassing RLS
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {

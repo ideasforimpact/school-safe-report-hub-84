@@ -10,6 +10,13 @@ BEGIN
     -- Enable RLS
     ALTER TABLE public.template_categories ENABLE ROW LEVEL SECURITY;
 
+    -- Policy: Anyone can view template categories
+    DROP POLICY IF EXISTS "Anyone can view template categories" ON public.template_categories;
+    BEGIN
+      CREATE POLICY "Anyone can view template categories" ON public.template_categories
+      FOR SELECT USING (true);
+    EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
+
     -- Policy: Authenticated users can view template categories
     DROP POLICY IF EXISTS "Authenticated users can view template categories" ON public.template_categories;
     BEGIN
