@@ -252,11 +252,15 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         console.log("Using service role key for API call");
       }
       
-      console.log("Calling function with URL:", 'https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('VITE_SUPABASE_URL is not set');
+      }
+      console.log("Calling function with URL:", `${supabaseUrl}/functions/v1/employee-management`);
       console.log("Headers:", JSON.stringify(headers));
       
       // Using fetch with prepared headers
-      const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management', {
+      const response = await fetch(`${supabaseUrl}/functions/v1/employee-management`, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody)

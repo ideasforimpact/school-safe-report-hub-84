@@ -323,7 +323,11 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
     console.log("deactivateEmployeeInApi called with ID:", id);
     
     // Try to use the employee-management edge function first
-    const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      throw new Error('VITE_SUPABASE_URL is not set');
+    }
+    const response = await fetch(`${supabaseUrl}/functions/v1/employee-management`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -390,7 +394,11 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
 export const deleteEmployeeFromApi = async (id: string): Promise<{ success: boolean, error?: string }> => {
   try {
     // Try to use the employee-management edge function first
-    const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      throw new Error('VITE_SUPABASE_URL is not set');
+    }
+    const response = await fetch(`${supabaseUrl}/functions/v1/employee-management`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -29,8 +29,10 @@ export function buildPublicStorageUrl(filePath: string, bucket: string = 'employ
     return filePath;
   }
 
-  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL
-    || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+  if (!base) {
+    throw new Error('VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL is not set');
+  }
 
   const normalizedBase = base.replace(/\/$/, '');
   const normalizedPath = filePath.replace(/^\//, '');

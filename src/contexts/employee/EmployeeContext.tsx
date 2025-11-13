@@ -216,7 +216,11 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
         
         // Call the edge function with the correct operation and payload structure
-        const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+          throw new Error('VITE_SUPABASE_URL is not set');
+        }
+        const response = await fetch(`${supabaseUrl}/functions/v1/employee-management`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
