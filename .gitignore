@@ -12,7 +12,7 @@ lerna-debug.log*
 
 env.example
 
-docs/*
+docs/
 
 node_modules
 dist
@@ -32,3 +32,4 @@ dist-ssr
 
 # Supabase local secrets
 supabase/.env
+supabase/.temp/
