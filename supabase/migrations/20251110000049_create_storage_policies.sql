@@ -185,14 +185,14 @@ CREATE POLICY "Authenticated can read compliance docs"
 ON storage.objects
 FOR SELECT 
 TO authenticated
-USING (bucket_id = 'compliance_documents' AND auth.uid() IS NOT NULL);
+USING (bucket_id = 'compliance_documents');
 
 DROP POLICY IF EXISTS "Authenticated can upload compliance docs" ON storage.objects;
 CREATE POLICY "Authenticated can upload compliance docs" 
 ON storage.objects
 FOR INSERT 
 TO authenticated
-WITH CHECK (bucket_id = 'compliance_documents' AND auth.uid() IS NOT NULL);
+WITH CHECK (bucket_id = 'compliance_documents');
 
 -- ============================================
 -- Policies for incident-documents bucket (1 policy)
@@ -200,10 +200,7 @@ WITH CHECK (bucket_id = 'compliance_documents' AND auth.uid() IS NOT NULL);
 DROP POLICY IF EXISTS "Public Access for incident-documents" ON storage.objects;
 CREATE POLICY "Public Access for incident-documents" 
 ON storage.objects
-FOR ALL
-TO public
-USING (bucket_id = 'incident-documents')
-WITH CHECK (bucket_id = 'incident-documents');
+USING (bucket_id = 'incident-documents');
 
 -- ============================================
 -- Policies for incident-comment-docs bucket (1 policy)
@@ -211,10 +208,7 @@ WITH CHECK (bucket_id = 'incident-documents');
 DROP POLICY IF EXISTS "Public access to incident comment documents" ON storage.objects;
 CREATE POLICY "Public access to incident comment documents" 
 ON storage.objects
-FOR ALL
-TO public
-USING (bucket_id = 'incident-comment-docs')
-WITH CHECK (bucket_id = 'incident-comment-docs');
+USING (bucket_id = 'incident-comment-docs');
 
 -- ============================================
 -- Policies for edusafe-resources bucket (4 policies)
@@ -285,26 +279,22 @@ DROP POLICY IF EXISTS "Vehicle documents are accessible by authenticated users" 
 CREATE POLICY "Vehicle documents are accessible by authenticated users" 
 ON storage.objects
 FOR SELECT 
-TO public
-USING (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+USING ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 
 DROP POLICY IF EXISTS "Users can upload vehicle documents" ON storage.objects;
 CREATE POLICY "Users can upload vehicle documents" 
 ON storage.objects
 FOR INSERT 
-TO public
-WITH CHECK (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+WITH CHECK ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 
 DROP POLICY IF EXISTS "Users can update their own vehicle documents" ON storage.objects;
 CREATE POLICY "Users can update their own vehicle documents" 
 ON storage.objects
 FOR UPDATE 
-TO public
-USING (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+USING ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 
 DROP POLICY IF EXISTS "Users can delete their own vehicle documents" ON storage.objects;
 CREATE POLICY "Users can delete their own vehicle documents" 
 ON storage.objects
 FOR DELETE 
-TO public
-USING (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+USING ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));

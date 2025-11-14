@@ -34,7 +34,8 @@ BEGIN
       CONSTRAINT assessments_pkey PRIMARY KEY (id),
       CONSTRAINT assessments_status_check CHECK (
         status = ANY (ARRAY['New'::text, 'Draft'::text, 'In Progress'::text, 'Submitted'::text, 'Completed'::text])
-      )
+      ),
+      CONSTRAINT assessments_assessment_id_unique UNIQUE (assessment_id)
     );
 
     -- Add foreign key constraints

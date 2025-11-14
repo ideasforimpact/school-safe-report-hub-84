@@ -28,7 +28,45 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 -- Incident Audit Functions
 -- ============================================
--- Function to insert incident audit log entries
+-- Function to insert incident audit log entries (8-parameter version without client_id and changes)
+CREATE OR REPLACE FUNCTION public.insert_incident_audit_log(
+  p_incident_id UUID,
+  p_field_changed TEXT,
+  p_changed_by UUID,
+  p_old_value TEXT DEFAULT NULL,
+  p_new_value TEXT DEFAULT NULL,
+  p_change_type TEXT DEFAULT 'action',
+  p_description TEXT DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+  audit_id UUID;
+BEGIN
+  INSERT INTO public.incident_audit_log (
+    incident_id, 
+    field_changed, 
+    old_value, 
+    new_value, 
+    changed_by, 
+    change_type, 
+    description
+  )
+  VALUES (
+    p_incident_id, 
+    p_field_changed, 
+    p_old_value, 
+    p_new_value, 
+    p_changed_by, 
+    p_change_type, 
+    p_description
+  )
+  RETURNING id INTO audit_id;
+  
+  RETURN audit_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to insert incident audit log entries (10-parameter version with client_id and changes)
 CREATE OR REPLACE FUNCTION public.insert_incident_audit_log(
   p_incident_id UUID,
   p_client_id UUID,
@@ -553,15 +591,25 @@ $function$;
 -- ============================================
 -- Function to get employee by email for authentication
 CREATE OR REPLACE FUNCTION public.get_employee_by_email_for_auth(user_email text)
- RETURNS TABLE(id uuid, email text, client_id uuid, user_id uuid, status boolean, first_name text, last_name text, employee_id text, is_super_admin boolean)
+ RETURNS TABLE(id uuid, email text, client_id uuid, user_id uuid, status boolean, first_name text, last_name text, employee_id text, is_super_admin boolean, department text, employee_type text)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
-AS $function$
+AS $$
 BEGIN
   -- This function runs with elevated privileges and bypasses RLS
   -- It's specifically designed to work during authentication
   -- Enhanced email matching that handles whitespace and newlines
+  -- Check if employees table exists
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'employees'
+  ) THEN
+    RETURN;
+  END IF;
+
   RETURN QUERY
   SELECT 
     e.id,
@@ -572,13 +620,15 @@ BEGIN
     e.first_name,
     e.last_name,
     e.employee_id,
-    e.is_super_admin
+    e.is_super_admin,
+    e.department,
+    e.employee_type
   FROM public.employees e
   WHERE TRIM(BOTH E'\n\r\t ' FROM e.email) = TRIM(BOTH E'\n\r\t ' FROM user_email)
   AND e.status = true
   LIMIT 1;
 END;
-$function$;
+$$;
 
 -- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION public.get_employee_by_email_for_auth(text) TO authenticated;
@@ -607,75 +657,58 @@ AS $function$
 DECLARE
   employee_record RECORD;
   result jsonb;
-  sql_text text;
 BEGIN
-  -- Check if employees table exists
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
-    AND table_name = 'employees'
-  ) THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'error', 'Employees table does not exist',
-      'employee_data', null
-    );
-  END IF;
-
   -- Clean the email for comparison
   p_employee_email := TRIM(BOTH E'\n\r\t ' FROM p_employee_email);
   
   -- Find the employee record that matches the email and is not already linked
-  sql_text := 'SELECT id, client_id, email, first_name, last_name, employee_id, is_super_admin, department, employee_type
-    FROM public.employees 
-    WHERE TRIM(BOTH E''\n\r\t '' FROM email) = $1
-    AND status = true
-    AND user_id IS NULL
-    LIMIT 1';
+  SELECT id, client_id, email, first_name, last_name, employee_id, is_super_admin, department, employee_type
+  INTO employee_record
+  FROM public.employees 
+  WHERE TRIM(BOTH E'\n\r\t ' FROM email) = p_employee_email
+  AND status = true
+  AND user_id IS NULL  -- Only link unlinked employees
+  LIMIT 1;
   
-  BEGIN
-    EXECUTE sql_text INTO employee_record USING p_employee_email;
-    
-    -- If no employee found, return error
-    IF NOT FOUND THEN
-      RETURN jsonb_build_object(
-        'success', false,
-        'error', 'No unlinked employee found with email: ' || p_employee_email,
-        'employee_data', null
-      );
-    END IF;
-    
-    -- Update the employee record with the user_id (transactional)
-    sql_text := 'UPDATE public.employees 
-      SET user_id = $1, updated_at = now()
-      WHERE id = $2';
-    EXECUTE sql_text USING p_user_id, employee_record.id;
-    
-    -- Return success with employee data
+  -- If no employee found, return error
+  IF NOT FOUND THEN
     RETURN jsonb_build_object(
-      'success', true,
-      'error', null,
-      'employee_data', jsonb_build_object(
-        'id', employee_record.id,
-        'clientId', employee_record.client_id,
-        'email', employee_record.email,
-        'firstName', employee_record.first_name,
-        'lastName', employee_record.last_name,
-        'employeeId', employee_record.employee_id,
-        'isSuperAdmin', employee_record.is_super_admin,
-        'department', employee_record.department,
-        'employeeType', employee_record.employee_type
-      )
+      'success', false,
+      'error', 'No unlinked employee found with email: ' || p_employee_email,
+      'employee_data', null
     );
-  EXCEPTION
-    WHEN OTHERS THEN
-      RETURN jsonb_build_object(
-        'success', false,
-        'error', 'Database error during linking: ' || SQLERRM,
-        'employee_data', null
-      );
-  END;
+  END IF;
+  
+  -- Update the employee record with the user_id (transactional)
+  UPDATE public.employees 
+  SET user_id = p_user_id,
+      updated_at = now()
+  WHERE id = employee_record.id;
+  
+  -- Return success with employee data
+  RETURN jsonb_build_object(
+    'success', true,
+    'error', null,
+    'employee_data', jsonb_build_object(
+      'id', employee_record.id,
+      'clientId', employee_record.client_id,
+      'email', employee_record.email,
+      'firstName', employee_record.first_name,
+      'lastName', employee_record.last_name,
+      'employeeId', employee_record.employee_id,
+      'isSuperAdmin', employee_record.is_super_admin,
+      'department', employee_record.department,
+      'employeeType', employee_record.employee_type
+    )
+  );
+  
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Database error during linking: ' || SQLERRM,
+      'employee_data', null
+    );
 END;
 $function$;
 
@@ -685,58 +718,36 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $function$
+AS $$
 DECLARE
   updated_count integer := 0;
   employee_record RECORD;
   auth_user_record RECORD;
-  sql_text text;
 BEGIN
-  -- Check if employees table exists
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
-    AND table_name = 'employees'
-  ) THEN
-    RETURN jsonb_build_object(
-      'success', false,
-      'error', 'Employees table does not exist',
-      'updated_count', 0
-    );
-  END IF;
-
   -- Loop through employees without user_id that have matching auth users
-  sql_text := 'SELECT e.id, e.email, e.first_name, e.last_name
+  FOR employee_record IN
+    SELECT e.id, e.email, e.first_name, e.last_name
     FROM public.employees e
     WHERE e.user_id IS NULL 
     AND e.status = true
-    AND TRIM(BOTH E''\n\r\t '' FROM e.email) != ''''';
-  
-  FOR employee_record IN EXECUTE sql_text
+    AND TRIM(BOTH E'\n\r\t ' FROM e.email) != ''
   LOOP
     -- Try to find matching auth user by email
-    BEGIN
-      SELECT au.id
-      INTO auth_user_record
-      FROM auth.users au
-      WHERE TRIM(BOTH E'\n\r\t ' FROM au.email) = TRIM(BOTH E'\n\r\t ' FROM employee_record.email)
-      LIMIT 1;
+    SELECT au.id
+    INTO auth_user_record
+    FROM auth.users au
+    WHERE TRIM(BOTH E'\n\r\t ' FROM au.email) = TRIM(BOTH E'\n\r\t ' FROM employee_record.email)
+    LIMIT 1;
+    
+    -- If matching auth user found, link them
+    IF FOUND THEN
+      UPDATE public.employees 
+      SET user_id = auth_user_record.id,
+          updated_at = now()
+      WHERE id = employee_record.id;
       
-      -- If matching auth user found, link them
-      IF FOUND THEN
-        sql_text := 'UPDATE public.employees 
-          SET user_id = $1, updated_at = now()
-          WHERE id = $2';
-        EXECUTE sql_text USING auth_user_record.id, employee_record.id;
-        
-        updated_count := updated_count + 1;
-      END IF;
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- Continue with next employee if error
-        NULL;
-    END;
+      updated_count := updated_count + 1;
+    END IF;
   END LOOP;
   
   RETURN jsonb_build_object(
@@ -753,7 +764,7 @@ EXCEPTION
       'updated_count', updated_count
     );
 END;
-$function$;
+$$;
 
 -- ============================================
 -- Updated At Trigger Functions
@@ -779,7 +790,7 @@ $$ language 'plpgsql';
 -- ============================================
 -- Cron Monitoring Functions
 -- ============================================
--- These functions use dynamic SQL to avoid errors if pg_cron extension is not available
+-- These functions match production exactly but handle missing pg_cron extension gracefully
 -- Function to check cron job status
 CREATE OR REPLACE FUNCTION check_cron_status()
 RETURNS TABLE (
@@ -795,33 +806,20 @@ RETURNS TABLE (
 ) 
 LANGUAGE plpgsql
 AS $$
-DECLARE
-  rec RECORD;
 BEGIN
-  -- Check if cron schema and job table exist
+  -- Check if pg_cron extension and cron.job table exist
   IF EXISTS (
-    SELECT 1 
-    FROM information_schema.tables 
-    WHERE table_schema = 'cron' 
-    AND table_name = 'job'
+    SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'cron' AND table_name = 'job'
   ) THEN
-    -- Use dynamic SQL to query cron.job
-    FOR rec IN EXECUTE 'SELECT * FROM cron.job WHERE jobname = $1' USING 'bank-statement-processing-dev'
-    LOOP
-      jobid := rec.jobid;
-      schedule := rec.schedule;
-      command := rec.command;
-      nodename := rec.nodename;
-      nodeport := rec.nodeport;
-      database := rec.database;
-      username := rec.username;
-      active := rec.active;
-      jobname := rec.jobname;
-      RETURN NEXT;
-    END LOOP;
+    RETURN QUERY
+    SELECT * FROM cron.job WHERE jobname = 'bank-statement-processing-dev';
+  ELSE
+    -- Return empty result if extension doesn't exist (matches production behavior when no jobs)
+    RETURN;
   END IF;
-  -- Return empty result if cron is not available
-  RETURN;
 END;
 $$;
 
@@ -841,39 +839,26 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
-DECLARE
-  rec RECORD;
 BEGIN
-  -- Check if cron schema and job_run_details table exist
+  -- Check if pg_cron extension and required tables exist
   IF EXISTS (
-    SELECT 1 
-    FROM information_schema.tables 
-    WHERE table_schema = 'cron' 
-    AND table_name = 'job_run_details'
+    SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'cron' AND table_name = 'job'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'cron' AND table_name = 'job_run_details'
   ) THEN
-    -- Use dynamic SQL to query cron.job_run_details
-    FOR rec IN EXECUTE format(
-      'SELECT * FROM cron.job_run_details 
-       WHERE jobid IN (SELECT j.jobid FROM cron.job j WHERE j.jobname = $1)
-       ORDER BY start_time DESC 
-       LIMIT $2'
-    ) USING 'bank-statement-processing-dev', limit_count
-    LOOP
-      jobid := rec.jobid;
-      runid := rec.runid;
-      job_pid := rec.job_pid;
-      database := rec.database;
-      username := rec.username;
-      command := rec.command;
-      status := rec.status;
-      return_message := rec.return_message;
-      start_time := rec.start_time;
-      end_time := rec.end_time;
-      RETURN NEXT;
-    END LOOP;
+    RETURN QUERY
+    SELECT * FROM cron.job_run_details 
+    WHERE jobid IN (SELECT j.jobid FROM cron.job j WHERE j.jobname = 'bank-statement-processing-dev')
+    ORDER BY start_time DESC 
+    LIMIT limit_count;
+  ELSE
+    -- Return empty result if extension doesn't exist (matches production behavior when no runs)
+    RETURN;
   END IF;
-  -- Return empty result if cron is not available
-  RETURN;
 END;
 $$;
 
@@ -935,26 +920,18 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-DECLARE
-  encryption_key text;
 BEGIN
-  -- Get encryption key from environment or use default
-  encryption_key := current_setting('app.encryption_key', true);
-  
-  -- If no key is set, return error
-  IF encryption_key IS NULL OR encryption_key = '' THEN
-    RAISE EXCEPTION 'Encryption key not configured';
-  END IF;
-  
-  -- Use pgcrypto to encrypt (using pgp_sym_encrypt)
-  RETURN encode(
-    pgp_sym_encrypt(doc_number, encryption_key),
-    'base64'
-  );
-EXCEPTION
-  WHEN OTHERS THEN
-    -- If pgcrypto is not available, return as-is (not recommended for production)
-    RETURN doc_number;
+    -- Use pgcrypto's encrypt function with a secure algorithm
+    -- The key is derived from an environment variable or a secure source
+    -- Note: In production, use a proper key management solution
+    RETURN encode(
+        encrypt(
+            doc_number::bytea, 
+            current_setting('encrypt.key', true)::bytea, 
+            'aes'
+        ),
+        'hex'
+    );
 END;
 $$;
 
@@ -964,59 +941,44 @@ RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-DECLARE
-  encryption_key text;
 BEGIN
-  -- Get encryption key from environment
-  encryption_key := current_setting('app.encryption_key', true);
-  
-  -- If no key is set, return error
-  IF encryption_key IS NULL OR encryption_key = '' THEN
-    RAISE EXCEPTION 'Encryption key not configured';
-  END IF;
-  
-  -- Use pgcrypto to decrypt
-  RETURN pgp_sym_decrypt(
-    decode(encrypted_doc_number, 'base64'),
-    encryption_key
-  );
+    -- Decrypt the document number
+    RETURN convert_from(
+        decrypt(
+            decode(encrypted_doc_number, 'hex'),
+            current_setting('encrypt.key', true)::bytea,
+            'aes'
+        ),
+        'UTF8'
+    );
 EXCEPTION
-  WHEN OTHERS THEN
-    -- If decryption fails, return NULL
-    RETURN NULL;
+    WHEN OTHERS THEN
+        -- Return the original encrypted value if decryption fails
+        RETURN NULL;
 END;
 $$;
 
--- Function to get masked document number (shows only last 4 digits)
+-- Function to get masked document number (shows only last 2 digits)
 CREATE OR REPLACE FUNCTION get_masked_document_number(encrypted_doc_number text)
 RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  decrypted_number text;
-  number_length integer;
+    decrypted TEXT;
+    doc_length INTEGER;
 BEGIN
-  -- Try to decrypt the document number
-  BEGIN
-    decrypted_number := decrypt_document_number(encrypted_doc_number);
-  EXCEPTION
-    WHEN OTHERS THEN
-      -- If decryption fails, return masked version of encrypted string
-      RETURN '****' || RIGHT(encrypted_doc_number, 4);
-  END;
-  
-  -- If decryption successful, mask the number
-  IF decrypted_number IS NOT NULL THEN
-    number_length := length(decrypted_number);
-    IF number_length > 4 THEN
-      RETURN '****' || RIGHT(decrypted_number, 4);
-    ELSE
-      RETURN '****';
+    decrypted := decrypt_document_number(encrypted_doc_number);
+    IF decrypted IS NULL THEN
+        RETURN NULL;
     END IF;
-  END IF;
-  
-  RETURN '****';
+    
+    doc_length := length(decrypted);
+    IF doc_length <= 2 THEN
+        RETURN decrypted;
+    ELSE
+        RETURN repeat('X', doc_length - 2) || right(decrypted, 2);
+    END IF;
 END;
 $$;
 
@@ -1026,76 +988,54 @@ $$;
 -- Function to debug auth information
 CREATE OR REPLACE FUNCTION debug_auth_info()
 RETURNS jsonb
-LANGUAGE plpgsql
+LANGUAGE sql
 SECURITY DEFINER
 AS $$
-DECLARE
-  result jsonb;
-BEGIN
-  result := jsonb_build_object(
+  SELECT jsonb_build_object(
+    'current_setting_jwt_claims', current_setting('request.jwt.claims', true),
+    'parsed_jwt_claims', current_setting('request.jwt.claims', true)::json,
+    'email_from_jwt', current_setting('request.jwt.claims', true)::json->>'email',
     'auth_uid', auth.uid(),
-    'auth_role', current_setting('role', true),
-    'jwt_claims', current_setting('request.jwt.claims', true)::jsonb,
-    'current_user', current_user,
-    'session_user', session_user
+    'auth_role', auth.role(),
+    'backoffice_user_exists', EXISTS (
+      SELECT 1 FROM public.backoffice_users 
+      WHERE email = current_setting('request.jwt.claims', true)::json->>'email'
+    ),
+    'is_saas_admin_check', EXISTS (
+      SELECT 1 FROM public.backoffice_users 
+      WHERE email = current_setting('request.jwt.claims', true)::json->>'email'
+      AND is_saas_admin = true
+    )
   );
-  
-  RETURN result;
-END;
 $$;
 
 -- Function to debug backoffice auth
 CREATE OR REPLACE FUNCTION debug_backoffice_auth()
 RETURNS jsonb
-LANGUAGE plpgsql
+LANGUAGE sql
 SECURITY DEFINER
 AS $$
-DECLARE
-  result jsonb;
-  backoffice_user_record RECORD;
-BEGIN
-  result := jsonb_build_object(
+  SELECT jsonb_build_object(
     'auth_uid', auth.uid(),
-    'auth_role', current_setting('role', true),
-    'jwt_claims', current_setting('request.jwt.claims', true)::jsonb,
-    'is_backoffice_admin', is_current_user_backoffice_admin(),
-    'backoffice_user', NULL
+    'auth_role', auth.role(),
+    'jwt_claims_raw', current_setting('request.jwt.claims', true),
+    'jwt_claims_parsed', 
+      CASE 
+        WHEN current_setting('request.jwt.claims', true) = '' THEN NULL
+        ELSE current_setting('request.jwt.claims', true)::json
+      END,
+    'email_from_jwt', 
+      CASE 
+        WHEN current_setting('request.jwt.claims', true) = '' THEN NULL
+        ELSE current_setting('request.jwt.claims', true)::json->>'email'
+      END,
+    'backoffice_user_count', (SELECT count(*) FROM public.backoffice_users),
+    'matching_backoffice_user', EXISTS (
+      SELECT 1 FROM public.backoffice_users 
+      WHERE email = current_setting('request.jwt.claims', true)::json->>'email'
+    ),
+    'is_saas_admin_result', public.is_backoffice_admin()
   );
-  
-  -- Try to get backoffice user info
-  IF EXISTS (
-    SELECT 1 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
-    AND table_name = 'backoffice_users'
-  ) AND auth.uid() IS NOT NULL THEN
-    BEGIN
-      SELECT id, email, is_saas_admin, auth_user_id
-      INTO backoffice_user_record
-      FROM public.backoffice_users
-      WHERE id = auth.uid() OR auth_user_id = auth.uid()
-      LIMIT 1;
-      
-      IF FOUND THEN
-        result := jsonb_set(
-          result,
-          '{backoffice_user}',
-          jsonb_build_object(
-            'id', backoffice_user_record.id,
-            'email', backoffice_user_record.email,
-            'is_saas_admin', backoffice_user_record.is_saas_admin,
-            'auth_user_id', backoffice_user_record.auth_user_id
-          )
-        );
-      END IF;
-    EXCEPTION
-      WHEN OTHERS THEN
-        NULL;
-    END;
-  END IF;
-  
-  RETURN result;
-END;
 $$;
 
 -- ============================================
@@ -1114,28 +1054,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_modified_column()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Update updated_at if column exists
-  IF EXISTS (
-    SELECT 1 
-    FROM information_schema.columns 
-    WHERE table_schema = TG_TABLE_SCHEMA 
-    AND table_name = TG_TABLE_NAME 
-    AND column_name = 'updated_at'
-  ) THEN
-    NEW.updated_at = now();
-  END IF;
-  
-  -- Update modified_at if column exists
-  IF EXISTS (
-    SELECT 1 
-    FROM information_schema.columns 
-    WHERE table_schema = TG_TABLE_SCHEMA 
-    AND table_name = TG_TABLE_NAME 
-    AND column_name = 'modified_at'
-  ) THEN
-    NEW.modified_at = now();
-  END IF;
-  
+  NEW.updated_at = now();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -1149,21 +1068,10 @@ RETURNS void
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- Check if modules table exists and has key column
-  IF EXISTS (
-    SELECT 1 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
-    AND table_name = 'modules'
-  ) AND EXISTS (
-    SELECT 1 
-    FROM information_schema.columns 
-    WHERE table_schema = 'public' 
-    AND table_name = 'modules' 
-    AND column_name = 'key'
-  ) THEN
-    ALTER TABLE public.modules DROP COLUMN IF EXISTS key;
-  END IF;
+  -- Drop the module_key column from client_modules table
+  ALTER TABLE public.client_modules DROP COLUMN module_key;
+  
+  RAISE NOTICE 'Successfully dropped module_key column from client_modules table';
 END;
 $$;
 

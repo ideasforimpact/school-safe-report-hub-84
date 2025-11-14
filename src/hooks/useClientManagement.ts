@@ -255,6 +255,67 @@ export const useClientManagement = () => {
     // Get the client modules and super admin employee for this client
     const fetchClientData = async (clientId: string) => {
       try {
+        // Fetch latest client data from database to ensure we have the most up-to-date auth_providers
+        // Use maybeSingle() instead of single() to handle cases where the client doesn't exist or RLS blocks access
+        const { data: latestClientData, error: clientError } = await supabase
+          .from('clients')
+          .select('auth_providers, logo, client_logo')
+          .eq('id', clientId)
+          .maybeSingle();
+        
+        // Handle PGRST116 error (no rows returned) or other errors
+        if (clientError) {
+          if (clientError.code === 'PGRST116') {
+            console.warn(`Client with ID ${clientId} not found or access denied`);
+            return; // Exit early if client doesn't exist or access is denied
+          }
+          console.error('Error fetching client data:', clientError);
+          return;
+        }
+        
+        if (latestClientData) {
+          // Parse auth_providers from database (could be JSON string or comma-separated)
+          let parsedAuthProviders = {
+            google: false,
+            microsoft: false,
+            zoho: false
+          };
+          
+          if (latestClientData.auth_providers) {
+            try {
+              // Try parsing as JSON first (production format)
+              const parsed = JSON.parse(latestClientData.auth_providers);
+              if (typeof parsed === 'object' && parsed !== null) {
+                parsedAuthProviders = {
+                  google: parsed.google === true,
+                  microsoft: parsed.microsoft === true,
+                  zoho: parsed.zoho === true
+                };
+              }
+            } catch (e) {
+              // Not JSON, try comma-separated format
+              const providers = latestClientData.auth_providers.split(',');
+              parsedAuthProviders = {
+                google: providers.includes('google'),
+                microsoft: providers.includes('microsoft'),
+                zoho: providers.includes('zoho')
+              };
+            }
+          }
+          
+          // Build logo URL from path if needed
+          const { buildClientLogoUrl } = await import('@/lib/utils');
+          const logoPath = latestClientData.logo || latestClientData.client_logo;
+          const logoUrl = logoPath ? buildClientLogoUrl(logoPath) : undefined;
+          
+          // Update formData with latest auth_providers and logo
+          setFormData(prev => ({
+            ...prev,
+            authProviders: parsedAuthProviders,
+            logo: logoUrl || prev.logo || ''
+          }));
+        }
+        
         // Fetch client modules with module names
         console.log("Fetching client modules for edit", clientId);
         const { data: clientModulesData, error: modulesError } = await supabase
@@ -272,7 +333,7 @@ export const useClientManagement = () => {
           console.error('Error fetching client modules:', modulesError);
           toast.error('Failed to load client modules data');
         }
-        
+        console.log('Client modules data:', clientModulesData);
         // Transform client modules data to moduleInfoArray
         const moduleInfoArray = clientModulesData ? clientModulesData.map((module: any) => {
           const moduleName = module.modules?.name || '';
@@ -288,14 +349,15 @@ export const useClientManagement = () => {
         }).filter((m: any) => m.module_id) : [];
         
         // Fetch super admin email
+        // Use maybeSingle() to handle cases where no super admin exists
         const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
           .select('email')
           .eq('client_id', clientId)
           .eq('is_super_admin', true)
-          .single();
+          .maybeSingle();
           
-        if (employeeError && employeeError.code !== 'PGRST116') {
+        if (employeeError) {
           console.error('Error fetching super admin email:', employeeError);
           toast.error('Failed to load super admin data');
         }

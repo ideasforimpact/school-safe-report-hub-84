@@ -63,6 +63,8 @@ export class NotificationService {
 
       // Process template variables
       const processedTemplate = this.processTemplate(template, notificationData.variables);
+      console.log(processedTemplate,"processedTemplate");
+      
       
       // Queue email in database
       const emailResult = await this.queueEmail({

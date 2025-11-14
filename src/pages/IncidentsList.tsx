@@ -142,6 +142,7 @@ const IncidentsList = () => {
           hasMore: false,
           pageSize: 10
         });
+        setLoading(false);
         return;
       }
 

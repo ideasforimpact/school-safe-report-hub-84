@@ -111,6 +111,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { client: null, clientType: null };
       }
 
+      // Build logo URL from path if needed
+      const { buildClientLogoUrl } = await import('@/lib/utils');
+      const logoUrl = buildClientLogoUrl(clientData.logo || clientData.client_logo);
+      
       const client: Client = {
         id: clientData.id,
         name: clientData.name,
@@ -124,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         active: clientData.active,
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
-        logo: clientData.logo,
+        logo: logoUrl,
         client_type: clientData.client_type
       };
 

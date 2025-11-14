@@ -49,27 +49,23 @@ DROP POLICY IF EXISTS "Vehicle documents are accessible by authenticated users" 
 CREATE POLICY "Vehicle documents are accessible by authenticated users" 
 ON storage.objects
 FOR SELECT 
-TO public
-USING (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+USING ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 
 DROP POLICY IF EXISTS "Users can upload vehicle documents" ON storage.objects;
 CREATE POLICY "Users can upload vehicle documents" 
 ON storage.objects
 FOR INSERT 
-TO public
-WITH CHECK (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+WITH CHECK ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 
 DROP POLICY IF EXISTS "Users can update their own vehicle documents" ON storage.objects;
 CREATE POLICY "Users can update their own vehicle documents" 
 ON storage.objects
 FOR UPDATE 
-TO public
-USING (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+USING ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 
 DROP POLICY IF EXISTS "Users can delete their own vehicle documents" ON storage.objects;
 CREATE POLICY "Users can delete their own vehicle documents" 
 ON storage.objects
 FOR DELETE 
-TO public
-USING (bucket_id = 'vehicle-documents' AND auth.uid() IS NOT NULL);
+USING ((bucket_id = 'vehicle-documents') AND (auth.role() = 'authenticated'));
 

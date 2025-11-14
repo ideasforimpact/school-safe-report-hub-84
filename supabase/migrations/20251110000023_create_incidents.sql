@@ -51,8 +51,10 @@ CREATE INDEX IF NOT EXISTS idx_incidents_status_id ON public.incidents (status_i
 CREATE INDEX IF NOT EXISTS idx_incidents_type_id ON public.incidents (type_id);
 
 -- FKs guarded by existence of referenced tables
+-- Production has 10 FKs for incidents table
 DO $$
 BEGIN
+  -- 1. incidents_created_by_fkey
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='employees')
      AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_created_by_fkey') THEN
     ALTER TABLE public.incidents
@@ -60,6 +62,7 @@ BEGIN
       FOREIGN KEY (created_by) REFERENCES public.employees(id) ON DELETE CASCADE;
   END IF;
 
+  -- 2. incidents_assigned_to_fkey
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='employees')
      AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_assigned_to_fkey') THEN
     ALTER TABLE public.incidents
@@ -67,11 +70,68 @@ BEGIN
       FOREIGN KEY (assigned_to) REFERENCES public.employees(id) ON DELETE CASCADE;
   END IF;
 
+  -- 3. incidents_client_id_fkey
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='clients')
      AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_client_id_fkey') THEN
     ALTER TABLE public.incidents
       ADD CONSTRAINT incidents_client_id_fkey
       FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 4. incidents_category_id_fkey (MISSING)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='incident_categories')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_category_id_fkey') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT incidents_category_id_fkey
+      FOREIGN KEY (category_id) REFERENCES public.incident_categories(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 5. incidents_subcategory_id_fkey (MISSING)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='incident_subcategories')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_subcategory_id_fkey') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT incidents_subcategory_id_fkey
+      FOREIGN KEY (subcategory_id) REFERENCES public.incident_subcategories(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 6. incidents_type_id_fkey (MISSING)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='incident_report_types')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_type_id_fkey') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT incidents_type_id_fkey
+      FOREIGN KEY (type_id) REFERENCES public.incident_report_types(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 7. incidents_priority_id_fkey (MISSING)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='incident_priorities')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_priority_id_fkey') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT incidents_priority_id_fkey
+      FOREIGN KEY (priority_id) REFERENCES public.incident_priorities(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 8. incidents_location_id_fkey (MISSING)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='campuses')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_location_id_fkey') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT incidents_location_id_fkey
+      FOREIGN KEY (location_id) REFERENCES public.campuses(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 9. incidents_facility_id_fkey (MISSING)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='facilities')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='incidents_facility_id_fkey') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT incidents_facility_id_fkey
+      FOREIGN KEY (facility_id) REFERENCES public.facilities(id) ON DELETE CASCADE;
+  END IF;
+
+  -- 10. fk_incident_status (MISSING - status_id -> incident_status)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='incident_status')
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='fk_incident_status') THEN
+    ALTER TABLE public.incidents
+      ADD CONSTRAINT fk_incident_status
+      FOREIGN KEY (status_id) REFERENCES public.incident_status(id) ON DELETE CASCADE;
   END IF;
 END $$;
 

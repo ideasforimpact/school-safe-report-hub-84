@@ -22,19 +22,7 @@ BEGIN
     );
 
     -- Add foreign key constraints
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'backoffice_users') THEN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'backoffice_edusafe_resource_uploaded_by_fkey' 
-        AND table_schema = 'public' 
-        AND table_name = 'backoffice_edusafe_resource'
-      ) THEN
-        ALTER TABLE public.backoffice_edusafe_resource 
-        ADD CONSTRAINT backoffice_edusafe_resource_uploaded_by_fkey 
-        FOREIGN KEY (uploaded_by) REFERENCES public.backoffice_users(id) ON DELETE CASCADE;
-      END IF;
-    END IF;
-
+    -- Note: Production does NOT have uploaded_by FK constraint, only client_type_id FK
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'client_type') THEN
       IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints 

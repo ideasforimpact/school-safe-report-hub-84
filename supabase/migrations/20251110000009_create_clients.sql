@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS public.clients (
   auth_providers text,
   super_admin_allowed_domain text,
   client_type_id uuid,
-  client_logo text
+  client_logo text,
+  domains jsonb DEFAULT '[]'::jsonb
 );
 
 -- Primary key

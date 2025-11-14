@@ -104,6 +104,10 @@ export const useAuthHandlers = ({
         return { client: null, clientType: null };
       }
 
+      // Build logo URL from path if needed
+      const { buildClientLogoUrl } = await import('@/lib/utils');
+      const logoUrl = buildClientLogoUrl(clientData.logo || clientData.client_logo);
+      
       const client: Client = {
         id: clientData.id,
         name: clientData.name,
@@ -117,7 +121,7 @@ export const useAuthHandlers = ({
         active: clientData.active,
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
-        logo: clientData.logo,
+        logo: logoUrl,
         client_type: clientData.client_type
       };
 
@@ -459,6 +463,8 @@ export const useAuthHandlers = ({
 
       // STEP 3: If no employee record found, reject authentication immediately
       if (employeeError || !employeeRecord) {
+        console.log(employeeError,"employeeError");
+        
         setAuthError("Your email is not registered as an employee. Please contact your administrator to register your account first.");
         toast.error("Your email is not registered as an employee. Please contact your administrator.");
         
@@ -549,6 +555,9 @@ export const useAuthHandlers = ({
         
         // Use the new enhanced linking function with retry logic
         const linkResult = await linkUserToEmployee(supabaseUser.id, supabaseUser.email);
+
+        console.log(linkResult,"linkedREsult");
+        
         
         if (!linkResult.success) {
           console.error("Failed to link user_id to employee:", linkResult.error);

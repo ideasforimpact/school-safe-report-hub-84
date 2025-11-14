@@ -252,7 +252,7 @@ BEGIN
     CREATE TRIGGER update_campuses_updated_at
       BEFORE UPDATE ON public.campuses
       FOR EACH ROW
-      EXECUTE FUNCTION public.update_updated_at_column();
+      EXECUTE FUNCTION public.update_modified_column();
   END IF;
 END $$;
 

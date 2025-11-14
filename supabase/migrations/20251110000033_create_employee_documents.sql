@@ -41,17 +41,18 @@ BEGIN
     );
 
     -- Add foreign key constraints
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'employees') THEN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints 
-        WHERE constraint_name = 'employee_documents_employee_id_fkey' 
-        AND table_schema = 'public' 
-        AND table_name = 'employee_documents'
-      ) THEN
-        ALTER TABLE public.employee_documents 
-        ADD CONSTRAINT employee_documents_employee_id_fkey 
-        FOREIGN KEY (employee_id) REFERENCES public.employees(id) ON DELETE CASCADE;
-      END IF;
+    -- Note: Production does NOT have employee_id FK constraint, only these 3 FKs:
+    -- 1. document_type_id -> employee_document_type(id) ON DELETE CASCADE
+    -- 2. document_status_id -> document_status(id) ON DELETE CASCADE
+    -- 3. verified_by -> employees(id) ON DELETE CASCADE
+    
+    -- Remove employee_id FK if it exists (production doesn't have it)
+    IF EXISTS (
+      SELECT 1 FROM pg_constraint 
+      WHERE conname = 'employee_documents_employee_id_fkey'
+      AND conrelid = 'public.employee_documents'::regclass
+    ) THEN
+      ALTER TABLE public.employee_documents DROP CONSTRAINT IF EXISTS employee_documents_employee_id_fkey;
     END IF;
 
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'employee_document_type') THEN

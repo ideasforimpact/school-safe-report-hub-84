@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import Layout from '@/components/layout/Layout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getModuleAccessForUser } from '@/services/employee/employeeModuleService';
 
 interface ClientInfo {
   name: string;
@@ -70,7 +71,41 @@ const ProfilePage: React.FC = () => {
         }
 
         if (data) {
-          setProfileInfo(data);
+          // Always fetch module access using the service function
+          // This ensures normal employees get their module access correctly
+          let moduleAccess: ModuleInfo[] = [];
+          
+          try {
+            console.log("Fetching module access using service function for employee:", employeeData.id, {
+              isSuperAdmin: employeeData.isSuperAdmin,
+              clientId: employeeData.clientId
+            });
+            
+            const moduleAccessItems = await getModuleAccessForUser({
+              id: employeeData.id,
+              isSuperAdmin: employeeData.isSuperAdmin || false,
+              clientId: employeeData.clientId
+            });
+            
+            // Convert ModuleAccessItem format to ModuleInfo format
+            moduleAccess = moduleAccessItems.map(item => ({
+              id: item.module_id || '',
+              name: item.name,
+              key: item.key || item.name.toLowerCase().replace(/\s+/g, '_'),
+              access_level: item.level || {}
+            }));
+            
+            console.log("Fetched module access items:", moduleAccess.length, "modules");
+          } catch (moduleError) {
+            console.error("Error fetching module access via service:", moduleError);
+            // Fall back to edge function data if service call fails
+            moduleAccess = data.moduleAccess || [];
+          }
+          
+          setProfileInfo({
+            ...data,
+            moduleAccess
+          });
         }
       } catch (error) {
         console.error("Error in profile information request:", error);

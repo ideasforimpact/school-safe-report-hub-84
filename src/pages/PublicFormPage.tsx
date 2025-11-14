@@ -117,18 +117,25 @@ const PublicFormPage = () => {
       };
 
       setForm(mapped);
-      setClientLogoUrl(mapped.client_logo || null);
+      
+      // Build logo URL from path if needed
+      const { buildClientLogoUrl } = await import('@/lib/utils');
+      const logoUrl = buildClientLogoUrl(mapped.client_logo);
+      setClientLogoUrl(logoUrl || null);
 
       // Fallback: fetch client name/logo if not present on form
-      if (!mapped.client_logo || !clientName) {
+      if (!logoUrl || !clientName) {
         const { data: clientRow } = await supabase
           .from('clients')
-          .select('name, logo')
+          .select('name, logo, client_logo')
           .eq('id', mapped.client_id)
           .maybeSingle();
         if (clientRow) {
           setClientName((clientRow as any).name || null);
-          if (!mapped.client_logo) setClientLogoUrl((clientRow as any).logo || null);
+          if (!logoUrl) {
+            const fallbackLogoUrl = buildClientLogoUrl((clientRow as any).client_logo || (clientRow as any).logo);
+            setClientLogoUrl(fallbackLogoUrl || null);
+          }
         }
       }
 

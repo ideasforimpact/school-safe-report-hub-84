@@ -1,3 +1,4 @@
+
 -- RLS Policies for form_submissions table
 -- Enable RLS and create ALL policies from migrations_copy (matching production exactly)
 
@@ -73,26 +74,7 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 5: Users can view form submissions from their client (from 20250701025330 - old version)
-    DROP POLICY IF EXISTS "Users can view form submissions from their client" ON public.form_submissions;
-    BEGIN
-      CREATE POLICY "Users can view form submissions from their client" ON public.form_submissions
-      FOR SELECT USING (
-        (auth.uid() IS NOT NULL) AND (
-          (form_id IN (SELECT id FROM custom_forms WHERE client_id = get_current_user_client_id())) 
-          OR (is_current_user_backoffice_admin() = true)
-        )
-      );
-    EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
-
-    -- Policy 6: Users can insert form submissions (from 20250701025330 - old version, allows anyone)
-    DROP POLICY IF EXISTS "Users can insert form submissions" ON public.form_submissions;
-    BEGIN
-      CREATE POLICY "Users can insert form submissions" ON public.form_submissions
-      FOR INSERT WITH CHECK (true); -- Allow anyone to submit forms
-    EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
-
-    -- Policy 7: Form owners can view submissions (from sql/setup_form_storage.sql)
+    -- Policy 5: Form owners can view submissions (from sql/setup_form_storage.sql)
     DROP POLICY IF EXISTS "Form owners can view submissions" ON public.form_submissions;
     BEGIN
       CREATE POLICY "Form owners can view submissions" ON public.form_submissions
@@ -106,14 +88,14 @@ BEGIN
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 8: Public can insert form submissions (from sql/setup_form_storage.sql)
+    -- Policy 6: Public can insert form submissions (from sql/setup_form_storage.sql)
     DROP POLICY IF EXISTS "Public can insert form submissions" ON public.form_submissions;
     BEGIN
       CREATE POLICY "Public can insert form submissions" ON public.form_submissions
       FOR INSERT WITH CHECK (true);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
-    -- Policy 9: Users can insert form submissions for their client (INSERT - specific)
+    -- Policy 7: Users can insert form submissions for their client (INSERT - specific)
     DROP POLICY IF EXISTS "Users can insert form submissions for their client" ON public.form_submissions;
     BEGIN
       CREATE POLICY "Users can insert form submissions for their client" ON public.form_submissions

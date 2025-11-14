@@ -12,9 +12,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
+interface ExcludeFile {
+  name: string;
+  size: number;
+}
+
 interface DragDropFileUploadProps {
   onFilesChange: (files: FileItem[]) => void;
   initialFiles?: FileItem[];
+  excludeFiles?: ExcludeFile[]; // Existing files to exclude (e.g., from database)
   maxFiles?: number;
   className?: string;
   required?: boolean;
@@ -23,6 +29,7 @@ interface DragDropFileUploadProps {
 const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
   onFilesChange,
   initialFiles = [],
+  excludeFiles = [],
   maxFiles = 5,
   className = '',
   required = false
@@ -54,9 +61,25 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
 
     setIsUploading(true);
     const newFiles: FileItem[] = [];
+    const duplicateFiles: string[] = [];
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
+      
+      // Check for duplicate by name and size against current files
+      const isDuplicateInCurrent = files.some(
+        existingFile => existingFile.name === file.name && existingFile.size === file.size
+      );
+
+      // Check for duplicate by name and size against excluded files (existing documents)
+      const isDuplicateInExcluded = excludeFiles.some(
+        excludedFile => excludedFile.name === file.name && excludedFile.size === file.size
+      );
+
+      if (isDuplicateInCurrent || isDuplicateInExcluded) {
+        duplicateFiles.push(file.name);
+        continue;
+      }
       
       if (file.size > 25 * 1024 * 1024) {
         toast.error(`File "${file.name}" exceeds the 25MB size limit.`);
@@ -83,6 +106,11 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
       } catch (error) {
         toast.error(`Error reading file "${file.name}".`);
       }
+    }
+
+    // Show warning for duplicate files
+    if (duplicateFiles.length > 0) {
+      toast.warning(`${duplicateFiles.length} duplicate file(s) skipped: ${duplicateFiles.join(', ')}`);
     }
 
     if (newFiles.length > 0) {

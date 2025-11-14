@@ -21,7 +21,19 @@ BEGIN
     );
 
     -- Add foreign key constraint
+    -- Production: ON DELETE SET NULL (not CASCADE)
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'users') THEN
+      -- Drop existing constraint if it has wrong ON DELETE action
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'backoffice_users_auth_user_id_fkey'
+        AND conrelid = 'public.backoffice_users'::regclass
+        AND confdeltype != 'n'  -- 'n' = SET NULL
+      ) THEN
+        ALTER TABLE public.backoffice_users DROP CONSTRAINT IF EXISTS backoffice_users_auth_user_id_fkey;
+      END IF;
+      
+      -- Create constraint with correct ON DELETE action
       IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints 
         WHERE constraint_name = 'backoffice_users_auth_user_id_fkey' 
@@ -30,7 +42,7 @@ BEGIN
       ) THEN
         ALTER TABLE public.backoffice_users 
         ADD CONSTRAINT backoffice_users_auth_user_id_fkey 
-        FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+        FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
       END IF;
     END IF;
   END IF;

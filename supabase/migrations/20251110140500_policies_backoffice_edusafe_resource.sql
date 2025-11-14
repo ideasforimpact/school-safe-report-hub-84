@@ -11,12 +11,12 @@ BEGIN
     ALTER TABLE public.backoffice_edusafe_resource ENABLE ROW LEVEL SECURITY;
 
     -- Policy 1: Backoffice admins can manage backoffice edusafe resources (from 20250804124452)
+    -- Production line 3232: Uses USING and WITH CHECK (no FOR ALL)
     DROP POLICY IF EXISTS "Backoffice admins can manage backoffice edusafe resources" ON public.backoffice_edusafe_resource;
     BEGIN
       CREATE POLICY "Backoffice admins can manage backoffice edusafe resources" ON public.backoffice_edusafe_resource
-      FOR ALL 
-      USING (is_current_user_backoffice_admin() = true)
-      WITH CHECK (is_current_user_backoffice_admin() = true);
+      USING (public.is_current_user_backoffice_admin() = true)
+      WITH CHECK (public.is_current_user_backoffice_admin() = true);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy 2: Backoffice admins can view all backoffice edusafe resources

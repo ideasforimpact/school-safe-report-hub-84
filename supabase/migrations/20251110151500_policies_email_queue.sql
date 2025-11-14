@@ -11,10 +11,11 @@ BEGIN
     ALTER TABLE public.email_queue ENABLE ROW LEVEL SECURITY;
 
     -- Policy: Service role can manage email queue
+    -- Production line 3316: NO FOR ALL, just USING
     DROP POLICY IF EXISTS "Service role can manage email queue" ON public.email_queue;
     BEGIN
       CREATE POLICY "Service role can manage email queue" ON public.email_queue
-      FOR ALL USING (auth.role() = 'service_role');
+      USING (auth.role() = 'service_role'::text);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy: Users can view their own queued emails

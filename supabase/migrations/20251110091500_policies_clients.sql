@@ -1,3 +1,4 @@
+
 -- RLS Policies for clients table
 -- Enable RLS and create ALL policies from migrations_copy (matching production exactly, including duplicates)
 
@@ -42,7 +43,6 @@ BEGIN
     DROP POLICY IF EXISTS "Allow service role and backoffice full access to clients" ON public.clients;
     BEGIN
       CREATE POLICY "Allow service role and backoffice full access to clients" ON public.clients
-      FOR ALL
       USING (
         auth.role() = 'service_role'::text OR 
         (auth.uid() IS NOT NULL AND is_current_user_backoffice_admin() = true) OR
@@ -59,13 +59,7 @@ BEGIN
       DROP POLICY IF EXISTS "Users can view their client" ON public.clients;
     BEGIN
       CREATE POLICY "Users can view their client" ON public.clients
-      FOR SELECT USING (
-        auth.uid() IS NOT NULL 
-        AND (
-          id = public.get_current_user_client_id() 
-          OR public.is_current_user_backoffice_admin() = true
-        )
-      );
+      FOR SELECT USING (auth.uid() IS NOT NULL);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy 7: Users can insert their client

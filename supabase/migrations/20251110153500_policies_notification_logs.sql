@@ -18,17 +18,19 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy: Allow service role to insert notification logs
+    -- Production line 3124: WITH CHECK
     DROP POLICY IF EXISTS "Allow service role to insert notification logs" ON public.notification_logs;
     BEGIN
       CREATE POLICY "Allow service role to insert notification logs" ON public.notification_logs
-      FOR INSERT WITH CHECK (auth.role() = 'service_role');
+      FOR INSERT WITH CHECK (auth.role() = 'service_role'::text);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy: Allow service role to manage all notification logs
+    -- Production line 3128: NO FOR ALL, just USING
     DROP POLICY IF EXISTS "Allow service role to manage all notification logs" ON public.notification_logs;
     BEGIN
       CREATE POLICY "Allow service role to manage all notification logs" ON public.notification_logs
-      FOR ALL USING (auth.role() = 'service_role');
+      USING (auth.role() = 'service_role'::text);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
   END IF;
 END $$;

@@ -11,6 +11,7 @@ BEGIN
     ALTER TABLE public.assessments ENABLE ROW LEVEL SECURITY;
 
     -- Policy 1: Users can view assessments from their client or involvement (from 20250630123411)
+    -- Production line 3745: Uses subquery for assigned_to
     DROP POLICY IF EXISTS "Users can view assessments from their client or involvement" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can view assessments from their client or involvement" ON public.assessments
@@ -19,7 +20,7 @@ BEGIN
         (
           client_id = public.get_current_user_client_id()
           OR created_by = auth.uid()
-          OR assigned_to = auth.uid()
+          OR assigned_to IN (SELECT employees.id FROM public.employees WHERE employees.user_id = auth.uid())
           OR public.is_current_user_backoffice_admin() = true
         )
       );
@@ -39,13 +40,14 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy 3: Users can update assessments from their client involvement (from 20250630123411)
+    -- Production line 3608: Uses subquery for assigned_to
     DROP POLICY IF EXISTS "Users can update assessments from their client involvement" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can update assessments from their client involvement" ON public.assessments
       FOR UPDATE USING (
         auth.uid() IS NOT NULL AND
         (
-          (client_id = public.get_current_user_client_id() AND (created_by = auth.uid() OR assigned_to = auth.uid()))
+          (client_id = public.get_current_user_client_id() AND (created_by = auth.uid() OR assigned_to IN (SELECT employees.id FROM public.employees WHERE employees.user_id = auth.uid())))
           OR public.is_current_user_backoffice_admin() = true
         )
       );
@@ -123,13 +125,7 @@ BEGIN
     DROP POLICY IF EXISTS "Users can create assessments for their client" ON public.assessments;
     BEGIN
       CREATE POLICY "Users can create assessments for their client" ON public.assessments
-      FOR INSERT WITH CHECK (
-        auth.uid() IS NOT NULL 
-        AND (
-          client_id = public.get_current_user_client_id() 
-          OR public.is_current_user_backoffice_admin() = true
-        )
-      );
+      FOR INSERT WITH CHECK (true);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy 10: Users can update assessments from their client

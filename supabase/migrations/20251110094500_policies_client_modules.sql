@@ -1,3 +1,4 @@
+
 -- RLS Policies for client_modules table
 -- Enable RLS and create all policies matching production
 
@@ -14,13 +15,7 @@ BEGIN
     DROP POLICY IF EXISTS "Users can view client modules from their client" ON public.client_modules;
     BEGIN
       CREATE POLICY "Users can view client modules from their client" ON public.client_modules
-      FOR SELECT USING (
-        auth.uid() IS NOT NULL 
-        AND (
-          client_id = public.get_current_user_client_id() 
-          OR public.is_current_user_backoffice_admin() = true
-        )
-      );
+      FOR SELECT USING (auth.uid() IS NOT NULL);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy: Users can insert client modules for their client

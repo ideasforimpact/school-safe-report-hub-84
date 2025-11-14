@@ -62,10 +62,9 @@ BEGIN
     BEGIN
       CREATE POLICY "Users can update incidents from their client involvement" ON public.incidents
       FOR UPDATE USING (
-        auth.uid() IS NOT NULL 
-        AND (
-          (client_id = public.get_current_user_client_id() AND (created_by = auth.uid() OR assigned_to = auth.uid())) 
-          OR public.is_current_user_backoffice_admin() = true
+        (auth.uid() IS NOT NULL) AND (
+          ((client_id = public.get_current_user_client_id()) AND ((created_by = auth.uid()) OR (assigned_to = auth.uid()))) 
+          OR (public.is_current_user_backoffice_admin() = true)
         )
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
@@ -75,12 +74,11 @@ BEGIN
     BEGIN
       CREATE POLICY "Users can view incidents from their client or involvement" ON public.incidents
       FOR SELECT USING (
-        auth.uid() IS NOT NULL 
-        AND (
-          client_id = public.get_current_user_client_id() 
-          OR created_by = auth.uid() 
-          OR assigned_to = auth.uid() 
-          OR public.is_current_user_backoffice_admin() = true
+        (auth.uid() IS NOT NULL) AND (
+          (client_id = public.get_current_user_client_id()) 
+          OR (created_by = auth.uid()) 
+          OR (assigned_to = auth.uid()) 
+          OR (public.is_current_user_backoffice_admin() = true)
         )
       );
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;

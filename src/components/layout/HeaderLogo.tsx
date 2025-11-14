@@ -2,6 +2,7 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { Client } from '@/contexts/ClientContext';
+import { buildClientLogoUrl } from '@/lib/utils';
 
 interface HeaderLogoProps {
   userClient: Client | null;
@@ -10,24 +11,28 @@ interface HeaderLogoProps {
 }
 
 const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps) => {
+  // Build logo URL from path if needed
+  const logoUrl = userClient?.logo ? buildClientLogoUrl(userClient.logo) : undefined;
+  
   // Debug logging for client logo
   console.log('HeaderLogo Debug:', {
     userClient,
-    hasLogo: !!userClient?.logo,
-    logoUrl: userClient?.logo,
+    hasLogo: !!logoUrl,
+    logoUrl: logoUrl,
+    originalLogo: userClient?.logo,
     clientName: userClient?.name
   });
 
   return (
     <div className="flex items-center space-x-3 flex-shrink-0">
       <Link to={dashboardPath} className="flex items-center space-x-3">
-        {userClient?.logo ? (
+        {logoUrl ? (
           <img 
-            src={userClient.logo} 
-            alt={`${userClient.name} logo`}
+            src={logoUrl} 
+            alt={`${userClient?.name || 'Client'} logo`}
             className="h-12 w-auto object-contain"
             onError={(e) => {
-              console.error('Logo failed to load:', userClient.logo);
+              console.error('Logo failed to load:', logoUrl);
               e.currentTarget.style.display = 'none';
             }}
           />

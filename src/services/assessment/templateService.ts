@@ -115,7 +115,7 @@ export const templateService = {
           questions,
           created_at,
           created_by,
-          template_categories!inner(
+          template_categories(
             id,
             name,
             description
@@ -129,6 +129,11 @@ export const templateService = {
         throw new Error(`Failed to fetch templates: ${error.message}`);
       }
 
+      console.log({
+        data,
+        clientId
+      },"assessment validation");
+      
       // Transform data to include type from category relationship
       const templates = data?.map(template => ({
         id: template.id,

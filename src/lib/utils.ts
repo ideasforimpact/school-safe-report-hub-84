@@ -35,7 +35,48 @@ export function buildPublicStorageUrl(filePath: string, bucket: string = 'employ
   }
 
   const normalizedBase = base.replace(/\/$/, '');
-  const normalizedPath = filePath.replace(/^\//, '');
+  // Handle paths that already include bucket name (e.g., "client-logos/{clientId}/logo.png")
+  let normalizedPath = filePath.replace(/^\//, '');
+  
+  // If path already includes bucket name, extract just the file path
+  if (normalizedPath.startsWith(`${bucket}/`)) {
+    normalizedPath = normalizedPath.substring(bucket.length + 1);
+  } else if (normalizedPath.includes('/') && !normalizedPath.startsWith(bucket)) {
+    // Path might be like "client-logos/{id}/logo.png" - extract after bucket name
+    const bucketIndex = normalizedPath.indexOf(`${bucket}/`);
+    if (bucketIndex !== -1) {
+      normalizedPath = normalizedPath.substring(bucketIndex + bucket.length + 1);
+    }
+  }
 
   return `${normalizedBase}/${bucket}/${normalizedPath}`;
+}
+
+// Helper function to build client logo URL from storage path
+export function buildClientLogoUrl(logoPath: string | null | undefined): string | undefined {
+  if (!logoPath) return undefined;
+  
+  // If already a full URL or data URL, return as-is
+  if (logoPath.startsWith('http://') || logoPath.startsWith('https://') || logoPath.startsWith('data:')) {
+    return logoPath;
+  }
+  
+  // Extract the file path from storage path
+  // Handle formats:
+  // - "client-logos/{clientId}/logo.png" -> extract "{clientId}/logo.png"
+  // - "{clientId}/logo.png" -> use as-is
+  let filePath = logoPath;
+  if (logoPath.startsWith('client-logos/')) {
+    filePath = logoPath.substring('client-logos/'.length);
+  }
+  
+  // Build URL from file path
+  const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+  if (!base) {
+    console.warn('VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL is not set, cannot build logo URL');
+    return undefined;
+  }
+  
+  const normalizedBase = base.replace(/\/$/, '');
+  return `${normalizedBase}/client-logos/${filePath}`;
 }

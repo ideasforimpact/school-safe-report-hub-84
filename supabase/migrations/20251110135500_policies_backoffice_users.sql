@@ -11,11 +11,12 @@ BEGIN
     ALTER TABLE public.backoffice_users ENABLE ROW LEVEL SECURITY;
 
     -- Policy 1: Allow anonymous read for login verification (from 20250807043734)
+    -- Production line 3104: TO "authenticated", "anon" (order matters)
     DROP POLICY IF EXISTS "Allow anonymous read for login verification" ON public.backoffice_users;
     BEGIN
       CREATE POLICY "Allow anonymous read for login verification" ON public.backoffice_users
       FOR SELECT 
-      TO anon, authenticated
+      TO authenticated, anon
       USING (true);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
@@ -39,10 +40,10 @@ BEGIN
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;
 
     -- Policy 4: Service role can access backoffice users (from 20250807050804)
+    -- Production line 3312: NO FOR ALL, just USING and WITH CHECK
     DROP POLICY IF EXISTS "Service role can access backoffice users" ON public.backoffice_users;
     BEGIN
       CREATE POLICY "Service role can access backoffice users" ON public.backoffice_users
-      FOR ALL
       USING (auth.role() = 'service_role'::text)
       WITH CHECK (auth.role() = 'service_role'::text);
     EXCEPTION WHEN duplicate_object THEN NULL; WHEN OTHERS THEN NULL; END;

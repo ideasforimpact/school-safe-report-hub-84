@@ -7,7 +7,7 @@ const supabaseServiceRoleKey = getSupabaseServiceRoleKey();
 
 // Create admin client with service role key
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
+  auth: { 
     autoRefreshToken: false,
     persistSession: false
   }
