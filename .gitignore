@@ -34,6 +34,5 @@ dist-ssr
 supabase/.env
 supabase/.temp/
 supabase/migrations_copy/
-supabase/config.toml
 backup
 sql
