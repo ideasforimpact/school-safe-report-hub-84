@@ -134,7 +134,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       } else {
         console.log('Creating new vehicle');
         await addVehicle(vehicleData);
-        toast.success('Vehicle added successfully');
+        // toast.success('Vehicle added successfully');
       }
       
       reset();

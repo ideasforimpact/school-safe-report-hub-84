@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 const sb: any = supabase as any;
 import { CustomForm, FormField } from '@/types/formTypes';
-import { FileText, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import AltchaWidget from '@/components/captcha/AltchaWidget';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import { FileItem } from '@/types/fileTypes';
 
 const PublicFormPage = () => {
   const { previewUrl } = useParams() as { previewUrl?: string };
@@ -28,7 +29,7 @@ const PublicFormPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [files, setFiles] = useState<Record<string, File[]>>({});
+  const [files, setFiles] = useState<Record<string, FileItem[]>>({});
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const altchaRef = useRef<{ value: string | null } | null>(null);
 
@@ -163,39 +164,17 @@ const PublicFormPage = () => {
     }));
   };
 
-  const handleFileChange = (fieldId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const newlySelected = Array.from(event.target.files || []);
-    setFiles(prev => {
-      const existing = prev[fieldId] || [];
-      const merged = [...existing, ...newlySelected].slice(0, 5);
-      if (existing.length + newlySelected.length > 5) {
-        toast.error('You can upload a maximum of 5 files. Extra files were ignored.');
-      }
-      return {
-        ...prev,
-        [fieldId]: merged
-      };
-    });
-    // Reset input value so the same file can be re-selected if needed
-    if (event.target) {
-      event.target.value = '';
-    }
+  const handleFileChange = (fieldId: string, fileItems: FileItem[]) => {
+    setFiles(prev => ({
+      ...prev,
+      [fieldId]: fileItems
+    }));
   };
 
   const uploadFiles = async (submissionId: string) => {
     // Deprecated in favor of server-side upload via Edge Function
     const attachments: Record<string, any[]> = {};
     return attachments;
-  };
-
-  // Helper: read a File as base64 data URL
-  const readFileAsBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (e) => reject(e);
-      reader.readAsDataURL(file);
-    });
   };
 
   const queueGrievanceNotification = async (submission: any, form: CustomForm) => {
@@ -292,15 +271,20 @@ const PublicFormPage = () => {
       const filesPayload: Record<string, Array<{ filename: string; size: number; contentType: string; base64Data: string }>> = {};
       for (const [fieldId, fieldFiles] of Object.entries(files)) {
         if (!fieldFiles || fieldFiles.length === 0) continue;
-        const capped = fieldFiles.slice(0, 5);
-        const encoded = await Promise.all(
-          capped.map(async (f) => ({
-            filename: f.name,
-            size: f.size,
-            contentType: f.type || 'application/octet-stream',
-            base64Data: await readFileAsBase64(f),
-          }))
-        );
+        // FileItem already has base64, so we can use it directly
+        const encoded = fieldFiles.map((fileItem) => {
+          // Extract base64 data (remove data URL prefix if present)
+          const base64Data = fileItem.base64.includes(',') 
+            ? fileItem.base64.split(',')[1] 
+            : fileItem.base64;
+          
+          return {
+            filename: fileItem.name,
+            size: fileItem.size,
+            contentType: fileItem.type || 'application/octet-stream',
+            base64Data: base64Data,
+          };
+        });
         filesPayload[fieldId] = encoded;
       }
 
@@ -525,39 +509,55 @@ const PublicFormPage = () => {
         );
 
       case 'file':
+        // Map allowedFileTypes to MIME types for ReusableFileUploader
+        const getAllowedTypes = (): string[] => {
+          if (!field.allowedFileTypes || field.allowedFileTypes.length === 0) {
+            return ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+          }
+          
+          const typeMap: Record<string, string[]> = {
+            'image/*': ['image/jpeg', 'image/jpg', 'image/png'],
+            'application/pdf': ['application/pdf'],
+            'application/msword': ['application/msword'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+          };
+          
+          const allowedTypes: string[] = [];
+          field.allowedFileTypes.forEach(type => {
+            if (typeMap[type]) {
+              allowedTypes.push(...typeMap[type]);
+            } else {
+              allowedTypes.push(type);
+            }
+          });
+          
+          return allowedTypes.length > 0 ? allowedTypes : ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        };
+        
+        const getAcceptString = (): string => {
+          if (!field.allowedFileTypes || field.allowedFileTypes.length === 0) {
+            return '.pdf,image/*';
+          }
+          return field.allowedFileTypes.join(',');
+        };
+        
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-              <input
-                id={field.id}
-                type="file"
-                multiple
-                accept={field.allowedFileTypes?.join(',')}
-                onChange={(e) => handleFileChange(field.id, e)}
-                className="hidden"
-              />
-              <label htmlFor={field.id} className="cursor-pointer">
-                <div className="text-center">
-                  <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Click to upload files (max 5)
-                  </p>
-                  {files[field.id] && files[field.id].length > 0 && (
-                    <div className="mt-2">
-                      {files[field.id].map((file, index) => (
-                        <Badge key={index} variant="secondary" className="mr-1">
-                          {file.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </label>
-            </div>
+            <ReusableFileUploader
+              onFilesChange={(fileItems) => handleFileChange(field.id, fileItems)}
+              initialFiles={files[field.id] || []}
+              maxFiles={field.maxFiles || 5}
+              maxSize={10} // 10MB default
+              maxTotalSize={50} // 50MB total
+              allowedTypes={getAllowedTypes()}
+              accept={getAcceptString()}
+              showFileList={true}
+              disabled={submitting}
+            />
           </div>
         );
 
