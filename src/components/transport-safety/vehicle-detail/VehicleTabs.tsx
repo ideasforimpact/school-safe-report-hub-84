@@ -394,6 +394,65 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     return '';
   };
 
+  // Function to download a file
+  const handleDownloadFile = async (fileUrl: string, fileName: string, filePath?: string) => {
+    try {
+      let downloadUrl: string;
+      
+      // If we have a file path, use Supabase storage API to create a signed URL
+      if (filePath) {
+        const { data, error } = await supabase.storage
+          .from('vehicle-documents')
+          .createSignedUrl(filePath, 300, { download: fileName });
+        
+        if (error || !data?.signedUrl) {
+          // Fallback to direct URL if signed URL fails
+          downloadUrl = formatSupabaseUrl(fileUrl);
+        } else {
+          downloadUrl = data.signedUrl;
+        }
+      } else {
+        // Use the formatted URL directly
+        downloadUrl = formatSupabaseUrl(fileUrl);
+      }
+      
+      // Fetch the file
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+      
+      // Get the blob
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      // Create a temporary anchor element and trigger download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      
+      toast({
+        title: 'Download started',
+        description: `Downloading ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast({
+        title: 'Download failed',
+        description: 'Failed to download the file. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Check if current file is a PDF
   const isPdfFileForPreview = () => {
     const fileUrl = getCurrentFileUrl();
@@ -465,20 +524,27 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                         className="h-8 px-2"
                         onClick={() => {
                           const url = file.url;
-                          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                          if (url) {
+                            const formattedUrl = formatSupabaseUrl(url);
+                            window.open(formattedUrl, '_blank', 'noopener,noreferrer');
+                          }
                         }}
                       >
                         <Eye className="h-4 w-4 text-gray-500 mr-1" /> View
                       </Button>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center h-8 px-2 text-sm rounded-md border hover:bg-gray-50"
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => {
+                          if (file.url && file.name) {
+                            handleDownloadFile(file.url, file.name, file.path);
+                          }
+                        }}
                       >
                         <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
                         Download
-                      </a>
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -631,10 +697,10 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       
       {/* Upload Document Dialog */}
       <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>Upload Documents</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="break-words">Upload Documents</DialogTitle>
+            <DialogDescription className="break-words">
               Upload new documents for this vehicle
             </DialogDescription>
           </DialogHeader>

@@ -44,13 +44,9 @@ serve(async (req) => {
     const environment = Deno.env.get("ENVIRONMENT") || "development";
     
     // Default base URL and API key
-    let baseUrl = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io"
-      : "https://sandbox.surepass.io";
+    let baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL");
     
-    let apiKey = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
-      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
+    let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
     
     // First, fetch document status IDs for governance, manual and rejected statuses
     const { data: governanceStatus, error: governanceError } = await supabase

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   createPrimaryFolder,
@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteFolder, deleteFileViaEdge } from '@/services/compliance/complianceService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
@@ -43,6 +44,8 @@ const ComplianceDocumentsPage: React.FC = () => {
   const { toast } = useToast();
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [folderError, setFolderError] = useState<string | null>(null);
 
   const bucketName = 'compliance_documents';
   const storageBaseUrl = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
@@ -150,6 +153,9 @@ const ComplianceDocumentsPage: React.FC = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0 || !clientId) return;
 
+    // Clear any previous error messages
+    setUploadError(null);
+
     // Validation: limit total files per upload
     if (files.length > 25) {
       toast({ title: 'Too many files', description: 'You can upload a maximum of 25 files at a time.' });
@@ -213,33 +219,89 @@ const ComplianceDocumentsPage: React.FC = () => {
         .map((r, i) => ({ r, i }))
         .filter((x) => x.r.status === 'rejected');
       if (failures.length > 0) {
+        const errorMessages: string[] = [];
         failures.forEach(({ i, r }) => {
-          setUploadItems((prev) => prev.map((it, idx2) => idx2 === i ? { ...it, status: 'error', error: (r as PromiseRejectedResult).reason?.message || 'Upload failed' } : it));
+          const errorMsg = (r as PromiseRejectedResult).reason?.message || 'Upload failed';
+          setUploadItems((prev) => prev.map((it, idx2) => idx2 === i ? { ...it, status: 'error', error: errorMsg } : it));
+          // Collect unique error messages
+          if (errorMsg && !errorMessages.includes(errorMsg)) {
+            errorMessages.push(errorMsg);
+          }
         });
-        toast({ title: 'Some uploads failed', description: `${failures.length} file(s) failed to upload` });
+        // Show specific error message if available, otherwise generic message
+        const errorDisplay = errorMessages.length > 0 
+          ? errorMessages[0] // Show first error message
+          : `${failures.length} file(s) failed to upload`;
+        setUploadError(errorDisplay);
+        toast({ 
+          title: 'Some uploads failed', 
+          description: errorDisplay,
+          variant: 'destructive'
+        });
+      } else {
+        setUploadError(null);
       }
       if (successCount > 0) {
         toast({ title: 'Upload complete', description: `${successCount} file(s) uploaded successfully` });
       }
       await refresh();
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err?.message || 'Unknown error' });
+      const errorMsg = err?.message || 'Unknown error';
+      setUploadError(errorMsg);
+      toast({ 
+        title: 'Upload failed', 
+        description: errorMsg,
+        variant: 'destructive'
+      });
     } finally {
       setUploading(false);
       (e.target as HTMLInputElement).value = '';
       // Clear progress list after a short delay
       setTimeout(() => setUploadItems([]), 1500);
+      // Clear error message after a delay
+      setTimeout(() => setUploadError(null), 5000);
     }
   };
 
   const createFolder = async () => {
     if (!folderName.trim() || !clientId) return;
+    
+    // Clear previous error
+    setFolderError(null);
+    
+    // Check for duplicate folder name
+    const trimmedName = folderName.trim();
+    const existingFolders = currentFolderId ? childFolders : folders;
+    const duplicateFolder = existingFolders.find(
+      (f) => f.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    
+    if (duplicateFolder) {
+      const errorMsg = `A folder named "${trimmedName}" already exists. Please choose a different name.`;
+      setFolderError(errorMsg);
+      toast({
+        title: 'Duplicate folder name',
+        description: errorMsg,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setCreatingFolder(true);
     try {
-      await createPrimaryFolder(clientId, folderName.trim(), employeeId, currentFolderId);
-    setNewFolderOpen(false);
-    setFolderName('');
-    await refresh();
+      await createPrimaryFolder(clientId, trimmedName, employeeId, currentFolderId);
+      setNewFolderOpen(false);
+      setFolderName('');
+      setFolderError(null);
+      await refresh();
+    } catch (error: any) {
+      const errorMsg = error?.message || 'An error occurred while creating the folder.';
+      setFolderError(errorMsg);
+      toast({
+        title: 'Failed to create folder',
+        description: errorMsg,
+        variant: 'destructive',
+      });
     } finally {
       setCreatingFolder(false);
     }
@@ -401,6 +463,16 @@ const ComplianceDocumentsPage: React.FC = () => {
               </Button>
             </div>
           </div>
+
+          {/* Error Message Alert */}
+          {uploadError && (
+            <Alert variant="destructive" className="mt-4 sm:mt-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="break-words break-all">
+                {uploadError}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Drag & Drop area with Choose Files */}
           <div className="mt-4 sm:mt-6 border-2 border-dashed rounded-md p-6 sm:p-8 md:p-10 text-center text-gray-500">
@@ -604,14 +676,45 @@ const ComplianceDocumentsPage: React.FC = () => {
         </div>
       </div>
 
-      <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
+      <Dialog open={newFolderOpen} onOpenChange={(open) => {
+        setNewFolderOpen(open);
+        if (!open) {
+          setFolderError(null);
+          setFolderName('General');
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New Folder</DialogTitle>
           </DialogHeader>
-          <Input placeholder="Folder name" value={folderName} onChange={(e) => setFolderName(e.target.value)} />
+          {folderError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="break-words break-all">
+                {folderError}
+              </AlertDescription>
+            </Alert>
+          )}
+          <Input 
+            placeholder="Folder name" 
+            value={folderName} 
+            onChange={(e) => {
+              setFolderName(e.target.value);
+              // Clear error when user starts typing
+              if (folderError) setFolderError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && folderName.trim() && !creatingFolder) {
+                createFolder();
+              }
+            }}
+          />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNewFolderOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => {
+              setNewFolderOpen(false);
+              setFolderError(null);
+              setFolderName('General');
+            }}>Cancel</Button>
             <Button onClick={createFolder} disabled={creatingFolder || !folderName.trim()}>
               {creatingFolder ? (<span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Creating…</span>) : 'Create'}
             </Button>
@@ -643,8 +746,35 @@ async function xhrPut(url: string, file: File, onProgress?: (pct: number) => voi
       onProgress?.(pct);
     };
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload failed with status ${xhr.status}`));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        // Try to parse error response from server
+        let errorMessage = `Upload failed with status ${xhr.status}`;
+        try {
+          if (xhr.responseText) {
+            const parsed = JSON.parse(xhr.responseText);
+            // Handle Supabase Storage error format
+            if (parsed.message) {
+              errorMessage = parsed.message;
+            } else if (parsed.error) {
+              errorMessage = parsed.error;
+            } else if (parsed.statusCode === '409') {
+              errorMessage = 'The resource already exists. Duplicate file names are not allowed.';
+            }
+            // Handle 409 Duplicate error specifically
+            if (xhr.status === 409) {
+              errorMessage = parsed.message || parsed.error || 'File already exists. Duplicate file names are not allowed.';
+            }
+          }
+        } catch (e) {
+          // If parsing fails, use status-based message
+          if (xhr.status === 409) {
+            errorMessage = 'File already exists. Duplicate file names are not allowed.';
+          }
+        }
+        reject(new Error(errorMessage));
+      }
     };
     xhr.onerror = () => reject(new Error('Network error during upload'));
     if (file.type) xhr.setRequestHeader('Content-Type', file.type);
