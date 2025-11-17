@@ -2,6 +2,18 @@
 -- This migration must run before any functions that depend on these extensions
 -- Extensions are created to match production schema
 
+-- Create pgcrypto extension (required for password hashing and encryption functions)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto'
+  ) THEN
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pgcrypto extension not available: %', SQLERRM;
+END $$;
+
 -- Create pg_cron extension (required for cron monitoring functions)
 -- In production, this is created with schema 'pg_catalog'
 DO $$
