@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,8 +17,8 @@ serve(async (req) => {
   try {
     // Initialize Supabase client with service role
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      getSupabaseUrl(),
+      getSupabaseServiceRoleKey()
     );
 
     console.log('Starting assessment reminders cron job...');
@@ -157,7 +158,7 @@ Safe School Team
         `.trim();
         const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
           body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: email.priority > 0 ? 'high' : 'normal' },
-          headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` }
+          headers: { Authorization: `Bearer ${getSupabaseServiceRoleKey()}` }
         });
         if (!sendErr && sendRes?.success) {
           const nowIso = new Date().toISOString();
@@ -262,7 +263,7 @@ Safe School Team
         `.trim();
         const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
           body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: 'high' },
-          headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` }
+          headers: { Authorization: `Bearer ${getSupabaseServiceRoleKey()}` }
         });
         if (!sendErr && sendRes?.success) {
           const nowIso = new Date().toISOString();

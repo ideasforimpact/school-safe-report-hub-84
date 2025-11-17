@@ -5,10 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:uat": "vite --mode uat",
+    "dev:prod": "vite --mode production",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:uat": "vite build --mode uat",
+    "build:prod": "vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:uat": "vite preview --mode uat",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset",
+    "supabase:studio": "supabase studio",
+    "supabase:functions:serve": "supabase functions serve",
+    "supabase:logs": "supabase logs",
+    "supabase:link:uat": "echo 'Replace <UAT_PROJECT_ID> with your actual UAT project ID' && supabase link --project-ref <UAT_PROJECT_ID>",
+    "supabase:link:prod": "supabase link --project-ref ybvxkiubnnixntghojyy",
+    "supabase:db:push": "supabase db push",
+    "supabase:functions:deploy": "supabase functions deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

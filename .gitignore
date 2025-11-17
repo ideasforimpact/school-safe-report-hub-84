@@ -10,6 +10,10 @@ lerna-debug.log*
 
 .env
 
+env.example
+
+docs/
+
 node_modules
 dist
 dist-ssr
@@ -25,3 +29,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase local secrets
+supabase/.env
+supabase/.temp/
+supabase/migrations_copy/
+backup
+sql

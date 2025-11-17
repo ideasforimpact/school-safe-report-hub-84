@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +9,8 @@ const corsHeaders = {
 };
 
 // Initialize Supabase client with environment variables
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabaseUrl = getSupabaseUrl();
+const supabaseServiceKey = getSupabaseServiceRoleKey();
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface ClientData {
@@ -50,7 +51,7 @@ function isSuperAdminEmailDomainAllowed(email: string, allowedDomains: string | 
   return domainsArray.some(domain => domain.toLowerCase() === emailDomain);
 }
 
-// Helper function to upload logo to storage and return public URL
+// Helper function to upload logo to storage and return storage path (not full URL)
 async function uploadLogoToStorage(logoBase64: string, clientId: string): Promise<string | null> {
   try {
     if (!logoBase64 || !logoBase64.includes(',')) {
@@ -67,6 +68,7 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
     const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
     // Create folder structure with client ID and generate unique filename
+    // Store as path: client-logos/{clientId}/logo.{ext}
     const fileName = `${clientId}/logo.${fileExtension}`;
     
     console.log(`Uploading logo to storage: ${fileName}, size: ${binaryData.length} bytes`);
@@ -84,13 +86,11 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
       return null;
     }
     
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('client-logos')
-      .getPublicUrl(fileName);
-    
-    console.log('Logo uploaded successfully, public URL:', urlData.publicUrl);
-    return urlData.publicUrl;
+    // Return storage path instead of full URL
+    // Path format: client-logos/{clientId}/logo.{ext}
+    const storagePath = `client-logos/${fileName}`;
+    console.log('Logo uploaded successfully, storage path:', storagePath);
+    return storagePath;
   } catch (err) {
     console.error('Error in uploadLogoToStorage:', err);
     return null;
@@ -794,8 +794,8 @@ async function handleCreateClient(clientData: any) {
       super_admin_allowed_domain: Array.isArray(clientInfo.superAdminAllowedDomains) ? clientInfo.superAdminAllowedDomains.join(',') : null,
       auth_providers: clientInfo.authProviders ? JSON.stringify(clientInfo.authProviders) : null,
       client_type_id: clientTypeId || null,
-      client_logo: clientLogoUrl || null,
-      logo: clientLogoUrl || null, // Update both logo columns with the same URL
+      client_logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
+      logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
       creation_date: new Date().toISOString()
     };
     
@@ -921,8 +921,8 @@ async function handleUpdateClient(clientData: any) {
     }
     
     if (clientLogoUrl) {
-      updateData.client_logo = clientLogoUrl;
-      updateData.logo = clientLogoUrl; // Update both logo columns with the same URL
+      updateData.client_logo = clientLogoUrl; // Store path: client-logos/{clientId}/logo.{ext}
+      updateData.logo = clientLogoUrl; // Store path: client-logos/{clientId}/logo.{ext}
     }
     
     // Update client record with all the new data

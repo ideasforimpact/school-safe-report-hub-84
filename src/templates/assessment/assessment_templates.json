@@ -3,7 +3,7 @@
         "client_id": null,
         "title": "Cyber Safety Assessment",
         "description": "The Cyber Safety Assessment evaluates how securely a school manages its digital systems, data, and online activities to protect students and staff",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Are all school computers, tablets, and routers patched and updated with the latest security versions?",
@@ -82,7 +82,7 @@
         "client_id": null,
         "title": "Transportation Assessment",
         "description": "Transportation Safety Assessment",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Are all school buses and vans holding valid vehicle fitness certificates, insurance, and pollution control documents?",
@@ -161,7 +161,7 @@
         "client_id": null,
         "title": "Child Protection Assesmen",
         "description": "Child Protection & Abuse Prevention Audit",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Has the school appointed a Designated Child Protection Officer (CPO) and is their contact information visibly displayed for students and staff?",
@@ -240,7 +240,7 @@
         "client_id": null,
         "title": "Health And  Hygiene",
         "description": "Health, Hygiene & Sanitation Audit",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Are all restrooms cleaned, disinfected, and maintained regularly with proper cleaning schedules displayed?",
@@ -319,7 +319,7 @@
         "client_id": null,
         "title": "Environmental Safety",
         "description": "Environmental Safety",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Are there any damaged or leaning trees within or near the school premises that could pose a risk of falling during storms or heavy winds?",
@@ -398,7 +398,7 @@
         "client_id": null,
         "title": "Vehicle Check Assessment",
         "description": "This assessment ensures all key safety and operational features of school vehicles are checked weekly.",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Are all exterior lights (headlights, brake lights, indicators) functioning properly?",
@@ -519,7 +519,7 @@
         "client_id": null,
         "title": "Student Physical Safety ",
         "description": "",
-        "category_id": "c4ea57b6-9897-49c2-bb86-94dc06114d19",
+        "category_name": "Safety",
         "questions": [
             {
                 "text": "Are all CCTV cameras functional in classrooms, corridors, and entry/exit areas, and has the footage retention been verified?",
@@ -598,7 +598,7 @@
         "client_id": null,
         "title": "Emergency Preparedness",
         "description": "Emergency Preparedness",
-        "category_id": "9a048bff-0490-4e73-92b4-77ee46537cd4",
+        "category_name": "Risk",
         "questions": [
             {
                 "text": "Are emergency contact numbers (fire, police, ambulance, hospital) displayed prominently across key areas in the school?",

@@ -107,18 +107,14 @@ serve(async (req) => {
     const environment = Deno.env.get("ENVIRONMENT") || "development";
     
     // Default base URL for Surepass API and API key
-    let baseUrl = environment === "production" 
-      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
-      : "https://sandbox.surepass.io";
+    let baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL")
     
-    let apiKey = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
-      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
+    let apiKey =  Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
     
     // Override baseUrl and apiKey for specific actions
     if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
       // For these specific actions, always use production URL and key
-      baseUrl = "https://kyc-api.surepass.io";
+      baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL");
       apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
       
       console.log(`Using production API for ${action}: ${baseUrl}`);

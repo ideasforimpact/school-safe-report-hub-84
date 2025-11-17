@@ -328,7 +328,7 @@ async function handleUpdateVerificationStatus(
       documentImage: updateData.document_url ? 
         (updateData.document_url.startsWith('https://') ? 
           updateData.document_url : 
-          `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${updateData.document_url}`
+          `${Deno.env.get('SUPABASE_URL') || Deno.env.get('URL') || ''}/storage/v1/object/public/employee-documents/${updateData.document_url}`
         ) : '',
       verificationStatus: updateData.verification_status,
       documentStatusId: updateData.document_status_id,
@@ -480,7 +480,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentTypeId: insertData.document_type_id,
       documentTypeName: insertData.document_type?.name || '',
       documentNumber: documentNumber || '',
-      documentImage: `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`,
+      documentImage: `${Deno.env.get('SUPABASE_URL') || Deno.env.get('URL') || ''}/storage/v1/object/public/employee-documents/${filePath}`,
       verificationStatus: insertData.verification_status,
       documentStatusId: insertData.document_status_id,
       documentStatusName: insertData.document_status?.name || '',
@@ -575,7 +575,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe 
           documentUrl = documentUrl;
         } else if (!documentUrl.startsWith('data:')) {
           // Storage path, convert to full URL
-          documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+          documentUrl = `${Deno.env.get('SUPABASE_URL') || Deno.env.get('URL') || ''}/storage/v1/object/public/employee-documents/${documentUrl}`;
         }
       }
       

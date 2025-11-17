@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UploadCloud, FileCheck, Download, FileText } from 'lucide-react';
+import { Loader2, UploadCloud, FileCheck, Download, FileText, X, File } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { downloadExcelTemplate, downloadCSVTemplate, getTemplateFormatInfo } from '@/services/employee/utils/templateGenerator';
@@ -32,6 +32,22 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       // Reset verification status when file changes
       setIsVerified(false);
     }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setIsVerified(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const handleClientIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +124,31 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     }
   };
   
+  // Function to reset all state
+  const resetState = () => {
+    setSelectedFile(null);
+    setIsVerified(false);
+    setIsVerifying(false);
+    setIsLoading(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle dialog close - reset state when closing
+  const handleDialogClose = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      resetState();
+    }
+  };
+
+  // Handle cancel button click
+  const handleCancel = () => {
+    resetState();
+    setIsOpen(false);
+  };
+
   // Function to programmatically click the file input
   const triggerFileSelect = () => {
     console.log("Triggering file selection dialog");
@@ -115,7 +156,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Import Employees</DialogTitle>
@@ -155,37 +196,75 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="file-upload">Upload file</Label>
-            <div 
-              className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer"
-              onClick={triggerFileSelect}
-            >
-              <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
-              <p className="text-sm text-gray-600 mb-2">
-                {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
-              </p>
-              <Input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                ref={fileInputRef}
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileChange}
-              />
-              <Button 
-                variant="outline" 
-                type="button" 
-                disabled={isLoading || isVerifying}
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent the outer div's onClick from triggering
-                  triggerFileSelect();
-                }}
+            {selectedFile ? (
+              // Show selected file with highlight
+              <div className="border-2 border-blue-500 bg-blue-50 rounded-md p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <File className="h-8 w-8 text-blue-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {selectedFile.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(selectedFile.size)} • {selectedFile.type || 'Unknown type'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveFile();
+                    }}
+                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                    disabled={isLoading || isVerifying}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {isVerified && (
+                  <div className="mt-2 flex items-center gap-2 text-green-600">
+                    <FileCheck className="h-4 w-4" />
+                    <p className="text-xs font-medium">File verified successfully</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Show upload area when no file is selected
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-gray-50 transition-colors"
+                onClick={triggerFileSelect}
               >
-                Select File
-              </Button>
-              <p className="text-xs text-gray-500 mt-2">
-                Supported formats: XLSX, XLS, CSV
-              </p>
-            </div>
+                <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600 mb-2">
+                  Click to upload or drag and drop
+                </p>
+                <Input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  ref={fileInputRef}
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileChange}
+                />
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  disabled={isLoading || isVerifying}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent the outer div's onClick from triggering
+                    triggerFileSelect();
+                  }}
+                >
+                  Select File
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  Supported formats: XLSX, XLS, CSV
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Uncomment if client ID input is needed
@@ -222,7 +301,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
           <div className="flex flex-col sm:flex-row sm:gap-2 w-full sm:w-auto">
             <Button 
               variant="outline" 
-              onClick={() => setIsOpen(false)} 
+              onClick={handleCancel} 
               disabled={isLoading || isVerifying}
               className="w-full sm:w-auto mb-2 sm:mb-0"
             >

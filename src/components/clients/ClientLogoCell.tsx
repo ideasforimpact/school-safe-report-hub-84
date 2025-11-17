@@ -1,5 +1,5 @@
-
 import React from 'react';
+import { buildClientLogoUrl } from '@/lib/utils';
 
 interface ClientLogoCellProps {
   name: string;
@@ -7,14 +7,20 @@ interface ClientLogoCellProps {
 }
 
 const ClientLogoCell = ({ name, logo }: ClientLogoCellProps) => {
+  const logoUrl = logo ? buildClientLogoUrl(logo) : undefined;
+  
   return (
     <>
-      {logo ? (
+      {logoUrl ? (
         <div className="h-10 w-10 overflow-hidden rounded">
           <img 
-            src={logo} 
+            src={logoUrl} 
             alt={`${name} logo`} 
             className="h-full w-full object-contain"
+            onError={(e) => {
+              console.error('Client logo failed to load:', logoUrl);
+              e.currentTarget.style.display = 'none';
+            }}
           />
         </div>
       ) : (

@@ -63,6 +63,8 @@ export class NotificationService {
 
       // Process template variables
       const processedTemplate = this.processTemplate(template, notificationData.variables);
+      console.log(processedTemplate,"processedTemplate");
+      
       
       // Queue email in database
       const emailResult = await this.queueEmail({
@@ -275,14 +277,14 @@ export class NotificationService {
     }
 
     // Check if the user is the one who reported the incident
-    if (incidentData.metadata?.reportedBy === notificationData.recipientId) {
-      return true;
-    }
+    // if (incidentData.metadata?.reportedBy === notificationData.recipientId) {
+    //   return true;
+    // }
     
     // Check if the user is the one who updated/closed/reopened the incident
-    if (incidentData.metadata?.actionBy === notificationData.recipientId) {
-      return true;
-    }
+    // if (incidentData.metadata?.actionBy === notificationData.recipientId) {
+    //   return true;
+    // }
     
     return false;
   }

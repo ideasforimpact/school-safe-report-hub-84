@@ -72,6 +72,18 @@ redirect_uri = ""
 # or any other third-party OIDC providers.
 url = ""
 
+## google
+[auth.external.google]
+enabled = true
+client_id = "env(VITE_GOOGLE_CLIENT_KEY)"
+secret = "env(VITE_GOOGLE_SECRET_KEY)"
+# Overrides the default auth redirectUrl.
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
+# or any other third-party OIDC providers.
+url = ""
+
+
 [analytics]
 enabled = false
 port = 54327

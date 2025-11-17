@@ -454,13 +454,13 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Manage Files</DialogTitle>
         </DialogHeader>
 
         {uiError && (
-          <div role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
+          <div role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm break-words break-all">
             {uiError}
           </div>
         )}
@@ -498,11 +498,13 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
             {newFiles.length > 0 && (
               <div className="mt-4 space-y-2">
                 {newFiles.map((file) => (
-                  <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <div className="flex items-center gap-2">
-                      <File className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm">{file.name}</span>
-                      <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
+                  <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded gap-2">
+                    <div className="flex items-start gap-2 flex-1 min-w-0 overflow-hidden">
+                      <File className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <span className="text-sm break-words break-all block">{file.name}</span>
+                        <span className="text-xs text-gray-500 block mt-1">({formatFileSize(file.size)})</span>
+                      </div>
                     </div>
                     <Button
                       type="button"
@@ -510,6 +512,7 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
                       size="sm"
                       onClick={() => handleRemoveNewFile(file.id)}
                       disabled={uploading}
+                      className="flex-shrink-0"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -534,20 +537,20 @@ const FilesDialog: React.FC<FilesDialogProps> = ({
             {localFiles.length === 0 ? (
               <p className="text-sm text-gray-500 py-4">No files uploaded yet.</p>
             ) : (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden">
                 {localFiles.map((file, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => handleView(file)} title="Open in new tab">
-                      <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{file.fileName}</p>
-                        <p className="text-xs text-gray-500">
+                  <div key={idx} className="flex items-start justify-between p-3 border rounded gap-2">
+                    <div className="flex items-start gap-3 flex-1 min-w-0 overflow-hidden cursor-pointer" onClick={() => handleView(file)} title="Open in new tab">
+                      <File className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-sm font-medium break-words break-all">{file.fileName}</p>
+                        <p className="text-xs text-gray-500 mt-1">
                           {formatFileSize(file.size)}
                           {file.uploadedAt && ` • ${new Date(file.uploadedAt).toLocaleDateString()}`}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Button
                         type="button"
                         variant="ghost"

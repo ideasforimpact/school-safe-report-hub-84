@@ -357,7 +357,10 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 <CardTitle>All Resources</CardTitle>
                 <CardDescription>Manage EduSafe resources for all client types</CardDescription>
               </div>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Button onClick={() => {
+                resetForm();
+                setIsAddDialogOpen(true);
+              }}>
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Resource
               </Button>
@@ -376,11 +379,11 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </div>
 
             {/* Resources Table */}
-            <div className="border rounded-md">
+            <div className="border rounded-md overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Title</TableHead>
+                    <TableHead className="min-w-[300px] max-w-[400px]">Title</TableHead>
                     <TableHead>Client Type</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Tags</TableHead>
@@ -404,12 +407,14 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   ) : (
                     filteredResources.map((resource) => (
                       <TableRow key={resource.id}>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2 text-gray-400" />
-                            <div>
-                              <div className="font-medium">{resource.title}</div>
-                              <div className="text-sm text-gray-500">{resource.description}</div>
+                        <TableCell className="min-w-[300px] max-w-[400px]">
+                          <div className="flex items-start">
+                            <FileText className="h-4 w-4 mr-2 text-gray-400 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium break-words">{resource.title}</div>
+                              {resource.description && (
+                                <div className="text-sm text-gray-500 break-words mt-1">{resource.description}</div>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -476,7 +481,12 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </Card>
 
         {/* Upload Resource Dialog */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            resetForm();
+          }
+        }}>
           <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -626,7 +636,10 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={uploadLoading}>
+              <Button variant="outline" onClick={() => {
+                setIsAddDialogOpen(false);
+                resetForm();
+              }} disabled={uploadLoading}>
                 Cancel
               </Button>
               <Button 
@@ -647,12 +660,17 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </Dialog>
 
         {/* Edit Resource Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            resetForm();
+          }
+        }}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Edit className="h-5 w-5" />
-                Edit Resource
+              <DialogTitle className="flex items-center gap-2 break-words">
+                <Edit className="h-5 w-5 flex-shrink-0" />
+                <span className="break-words">{currentResource?.title || 'Edit Resource'}</span>
               </DialogTitle>
               <DialogDescription>
                 Update the EduSafe resource details
@@ -789,19 +807,19 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 {/* Show current file information */}
                 {currentResource?.document_url && (
                   <div className="border rounded-md p-3 bg-gray-50 mb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-blue-50 p-2 rounded-md">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start space-x-3 min-w-0 flex-1" style={{ maxWidth: 'calc(100% - 100px)' }}>
+                        <div className="bg-blue-50 p-2 rounded-md flex-shrink-0">
                           <FileText className="h-5 w-5 text-blue-600" />
                         </div>
-                        <div>
-                          <p className="font-medium text-sm">Current File</p>
-                          <p className="text-xs text-gray-500">
+                        <div className="min-w-0 flex-1" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                          <p className="font-medium text-sm mb-1">Current File</p>
+                          <p className="text-xs text-gray-500" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
                             {currentResource.document_url.split('/').pop() || 'Document'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2 flex-shrink-0">
                         <Button
                           type="button"
                           variant="ghost"
@@ -839,7 +857,10 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={updateLoading}>
+              <Button variant="outline" onClick={() => {
+                setIsEditDialogOpen(false);
+                resetForm();
+              }} disabled={updateLoading}>
                 Cancel
               </Button>
               <Button 

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,20 +33,14 @@ interface VerifyBody {
   verifiedBy?: string;
 }
 
-function getEnv(name: string): string {
-  const value = Deno.env.get(name);
-  if (!value) throw new Error(`${name} is not set`);
-  return value;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = getEnv('SUPABASE_URL');
-    const supabaseServiceKey = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseUrl = getSupabaseUrl();
+    const supabaseServiceKey = getSupabaseServiceRoleKey();
     const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
     const normalizedBase = storageBase.replace(/\/$/, '');
 

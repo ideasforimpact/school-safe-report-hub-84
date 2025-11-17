@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { InstitutionType } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
+import { buildClientLogoUrl } from '@/lib/utils';
 
 interface ClientType {
   id: string;
@@ -113,9 +114,13 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           <div className="h-20 w-20 border rounded flex items-center justify-center overflow-hidden">
             {formData.logo ? (
               <img 
-                src={formData.logo} 
+                src={buildClientLogoUrl(formData.logo) || formData.logo} 
                 alt="Client logo" 
                 className="h-full w-full object-contain" 
+                onError={(e) => {
+                  console.error('Logo preview failed to load:', formData.logo);
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : (
               <ImageIcon className="h-10 w-10 text-gray-300" />

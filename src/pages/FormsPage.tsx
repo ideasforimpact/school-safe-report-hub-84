@@ -807,24 +807,51 @@ const FormsPage = () => {
 															if (!list || list.length === 0) {
 																return <div className="text-sm text-gray-500">No attachments</div>;
 															}
+															
+															const handleDownloadFile = async (fileUrl: string, fileName: string) => {
+																try {
+																	const response = await fetch(fileUrl);
+																	if (!response.ok) {
+																		throw new Error('Failed to download file');
+																	}
+																	const blob = await response.blob();
+																	const blobUrl = window.URL.createObjectURL(blob);
+																	const link = document.createElement('a');
+																	link.href = blobUrl;
+																	link.download = fileName;
+																	document.body.appendChild(link);
+																	link.click();
+																	document.body.removeChild(link);
+																	window.URL.revokeObjectURL(blobUrl);
+																	toast.success(`Downloading ${fileName}`);
+																} catch (error) {
+																	console.error('Error downloading file:', error);
+																	toast.error('Failed to download the file. Please try again.');
+																}
+															};
+															
 															return (
 																<div className="space-y-2">
                                       <ul className="space-y-2">
-																		{list.map((f: any, idx: number) => (
-                                          <li key={idx} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
-                                            <span className="text-sm truncate mr-3">
-																					{f.filename || f.name || `Attachment ${idx + 1}`}
-                                            </span>
-                                            <a
-                                              href={(f.url || f.publicUrl)}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              className="text-sm text-blue-600 hover:underline"
-                                            >
-                                              Download
-																				</a>
-																			</li>
-																	))}
+																		{list.map((f: any, idx: number) => {
+																			const fileName = f.filename || f.name || `Attachment ${idx + 1}`;
+																			const fileUrl = f.url || f.publicUrl;
+																			return (
+																				<li key={idx} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2">
+																					<span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
+																						{fileName}
+																					</span>
+																					<Button
+																						variant="ghost"
+																						size="sm"
+																						onClick={() => fileUrl && handleDownloadFile(fileUrl, fileName)}
+																						className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
+																					>
+																						Download
+																					</Button>
+																				</li>
+																			);
+																		})}
 																</ul>
 																															</div>
 																);

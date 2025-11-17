@@ -832,8 +832,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         </div>
       )}
 
-      {/* Cancel button only for cases without their own uploader (exclude police verification to avoid duplicate) */}
-      {!shouldShowSubmitButton && otherType !== 'police_verification' && (
+      {/* Cancel button only for cases without their own uploader (exclude all manual verification types to avoid duplicate) */}
+      {!shouldShowSubmitButton && !isManualType && (
         <div className="flex justify-center pt-4">
           <Button
             type="button"

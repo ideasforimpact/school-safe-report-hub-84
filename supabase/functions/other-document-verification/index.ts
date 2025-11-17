@@ -419,7 +419,7 @@ async function handleBankStatementAnalysis_OLD(requestBody, supabase, corsHeader
     const matches = documentImage.match(base64Regex);
     
     if (!matches || matches.length !== 3) {
-      throw new Error("Invalid base64 image format");
+      throw new Error("Invalid base64 image format"); 
     }
     
     const contentType = matches[1];

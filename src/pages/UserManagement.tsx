@@ -129,7 +129,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<EmployeeUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Initialize loading to true - will be set to false after data is loaded
+  const [isLoading, setIsLoading] = useState(true);
   const [employeeUsers, setEmployeeUsers] = useState<EmployeeUser[]>([]);
   
   // Search and filter states
@@ -219,6 +220,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     if (!clientId) {
       console.warn("Cannot fetch employees: No clientId available");
       toast.error("Unable to load employees: No client context available");
+      setIsLoading(false);
       return;
     }
 
@@ -269,6 +271,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     } catch (error) {
       console.error("Error fetching employees:", error);
       toast.error("Failed to fetch employee data");
+      setEmployeeUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -391,6 +394,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     }
 
     try {
+      setIsLoading(true);
       // Pass clientId to filter employees by client
       const employeeData = await getAllEmployeesFromApi(clientId);
       
@@ -428,6 +432,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       }
     } catch (error) {
       console.error("Error refreshing employees:", error);
+      toast.error("Failed to refresh employee data");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -738,8 +745,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           </div>
           
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            <div className="flex flex-col justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mb-4"></div>
+              <p className="text-sm text-gray-600">Loading employees...</p>
             </div>
           ) : (
             <div>

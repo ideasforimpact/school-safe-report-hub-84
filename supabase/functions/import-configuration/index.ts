@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,6 +51,7 @@ interface AssessmentTemplatePayload {
   title: string;
   description?: string | null;
   category_id?: string | null;
+  category_name?: string | null; // Look up category_id from template_categories table
   questions?: unknown;
   is_active?: boolean;
   client_id?: string | null;
@@ -85,10 +87,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
+    const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
 
   let responseStatus = 'success';
   let responseCode = 200;
@@ -418,11 +417,31 @@ serve(async (req) => {
           continue;
         }
 
+        // Look up category_id from template_categories table if category_name is provided
+        let categoryId: string | null = null;
+        if (template.category_name) {
+          const categoryName = template.category_name.trim();
+          const { data: categoryData, error: categoryErr } = await supabase
+            .from('template_categories')
+            .select('id')
+            .eq('name', categoryName)
+            .single();
+          if (!categoryErr && categoryData?.id) {
+            categoryId = categoryData.id;
+            console.log(`Mapped category_name "${categoryName}" to category_id: ${categoryId}`);
+          } else {
+            console.log(`Warning: Could not find category with name "${categoryName}" in template_categories table`);
+          }
+        } else if (template.category_id) {
+          // Fallback to direct category_id if provided (for backward compatibility)
+          categoryId = template.category_id;
+        }
+
         const record: any = {
           client_id: clientId,
           title,
           description: template.description ?? null,
-          category_id: template.category_id ?? null,
+          category_id: categoryId,
           questions: template.questions ?? null,
           is_active: template.is_active ?? true,
           created_by: superAdminId,

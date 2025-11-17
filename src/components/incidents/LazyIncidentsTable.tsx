@@ -192,7 +192,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
     return pageNumbers;
   };
 
-  // Show loading skeleton during initial load
+  // Show loading skeleton during initial load (when loading and no data yet)
   if (loading && incidents.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow overflow-hidden">

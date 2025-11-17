@@ -29,7 +29,20 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
 
   const handleAnswerChange = (value: string) => {
     console.log(`Setting answer for question ${question.id} to:`, value === 'yes');
-    onAnswerChange(question.id, 'answer', value === 'yes');
+    // Ensure we're updating only this specific question
+    if (value === 'yes' || value === 'no') {
+      onAnswerChange(question.id, 'answer', value === 'yes');
+    }
+  };
+
+  // Get the current value for this specific question only
+  const getRadioValue = () => {
+    if (!answer || answer.questionId !== question.id) {
+      return '';
+    }
+    if (answer.answer === true) return 'yes';
+    if (answer.answer === false) return 'no';
+    return '';
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -110,7 +123,8 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
               <div className="space-y-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Select your answer:</h4>
                 <RadioGroup
-                  value={answer?.answer === true ? 'yes' : answer?.answer === false ? 'no' : ''}
+                  key={`radio-group-${question.id}`}
+                  value={getRadioValue()}
                   onValueChange={handleAnswerChange}
                   className="flex gap-6"
                 >

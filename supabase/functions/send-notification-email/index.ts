@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import nodemailer from "npm:nodemailer@6";
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,13 +38,13 @@ serve(async (req) => {
 
     // Initialize supabase client
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      getSupabaseUrl(),
+      getSupabaseServiceRoleKey()
     );
 
     // Check if it's a service role key (for cron jobs)
     const token = authHeader.replace('Bearer ', '');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const serviceRoleKey = getSupabaseServiceRoleKey();
     
     if (token === serviceRoleKey) {
       // Service role authentication - proceed without user validation

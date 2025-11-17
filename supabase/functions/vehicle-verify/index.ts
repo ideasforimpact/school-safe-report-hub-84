@@ -1,34 +1,39 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabaseUrl = getSupabaseUrl();
+const supabaseServiceKey = getSupabaseServiceRoleKey();
 
-// Get environment configuration
-const isDevelopment = Deno.env.get('ENVIRONMENT') === 'development';
+// Integration selector
+const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
+const isQuickEKYC = integrationName === 'quickekyc';
 
-// Choose the appropriate API key based on environment
-const surepassApiKey = isDevelopment 
-  ? Deno.env.get('SUREPASS_SANDBOX_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || ''
-  : Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '';
+// Provider configuration (single prod values as requested)
+const providerApiKey = isQuickEKYC
+  ? (Deno.env.get('QUICKEKYC_API_KEY_PROD') || '')
+  : (Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '');
 
-// Choose the appropriate API base URLs based on environment
-const surepassBaseUrl = isDevelopment 
-  ? "https://sandbox.surepass.io/api/v1/rc/rc-full"
-  : "https://kyc-api.surepass.io/api/v1/rc/rc-full";
+// Base URL without endpoints; endpoints are appended below
+const providerBaseUrl = isQuickEKYC
+  ? (Deno.env.get('QUICKEKYC_BASE_ENDPOINT') || '')
+  : 'https://kyc-api.surepass.io';
 
-const surepassChallanUrl = isDevelopment
-  ? "https://sandbox.surepass.io/api/v1/rc/rc-related/challan-details"
-  : "https://kyc-api.surepass.io/api/v1/rc/rc-related/challan-details";
+// Endpoints (shared rc endpoint, provider-specific challan endpoint)
+const rcEndpoint = "/api/v1/rc/rc-full";
+const challanEndpoint = isQuickEKYC
+  ? "/api/v1/challan/challan"
+  : "/api/v1/rc/rc-related/challan-details";
 
-console.log(`Using Surepass API URL: ${surepassBaseUrl} (Development mode: ${isDevelopment})`);
-console.log(`Using Surepass Challan URL: ${surepassChallanUrl}`);
-console.log(`Using environment-specific API key: ${surepassApiKey ? 'Yes (key present)' : 'No (key missing)'}`);
+console.log(`Integration selected: ${integrationName || 'default'}`);
+console.log(`Base URL: ${providerBaseUrl}`);
+console.log(`RC endpoint: ${rcEndpoint}, Challan endpoint: ${challanEndpoint}`);
+console.log(`API key present: ${providerApiKey ? 'Yes' : 'No'}`);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -54,30 +59,36 @@ serve(async (req) => {
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
-    // Call the Surepass API to get RC details
-    console.log(`Making API request to: ${surepassBaseUrl}`);
-    const surepassResponse = await fetch(surepassBaseUrl, {
+    // Build RC request
+    const rcUrl = `${providerBaseUrl}${rcEndpoint}`;
+    console.log(`Making RC API request to: ${rcUrl}`);
+    const rcHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (!isQuickEKYC) {
+      rcHeaders["Authorization"] = `Bearer ${providerApiKey}`;
+    }
+    const rcBody = isQuickEKYC
+      ? { id_number: registrationNumber, key: providerApiKey }
+      : { id_number: registrationNumber };
+
+    const rcResponse = await fetch(rcUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${surepassApiKey}`
-      },
-      body: JSON.stringify({
-        id_number: registrationNumber
-      })
+      headers: rcHeaders,
+      body: JSON.stringify(rcBody)
     });
 
-    const surepassData = await surepassResponse.json();
+    const providerData = await rcResponse.json();
     
-    if (!surepassResponse.ok) {
-      console.error("Surepass API error:", surepassData);
+    if (!rcResponse.ok) {
+      console.error("RC API error:", providerData);
       return new Response(
         JSON.stringify({ 
           error: "Failed to verify vehicle", 
-          details: surepassData 
+          details: providerData 
         }),
         { 
-          status: surepassResponse.status, 
+          status: rcResponse.status, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
@@ -85,8 +96,8 @@ serve(async (req) => {
     
     // Extract required data for challan API call
     let challanData = null;
-    if (surepassData.data) {
-      const data = surepassData.data;
+    if (providerData.data) {
+      const data = providerData.data;
       const rcNumber = registrationNumber;
       const chassisNumber = data.vehicle_chasi_number;
       const engineNumber = data.vehicle_engine_number;
@@ -96,26 +107,34 @@ serve(async (req) => {
       // Check if we have all required parameters for challan call
       if (rcNumber && chassisNumber && engineNumber) {
         try {
-          // Make the second API call to get challan details with required parameters
-          const challanResponse = await fetch(surepassChallanUrl, {
+          // Build Challan request
+          const challanUrl = `${providerBaseUrl}${challanEndpoint}`;
+          const challanHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          if (!isQuickEKYC) {
+            challanHeaders["Authorization"] = `Bearer ${providerApiKey}`;
+          }
+          const challanBody = isQuickEKYC
+            // QuickEKYC challan endpoint expects rc_number and key (no chassis/engine)
+            ? { rc_number: rcNumber, key: providerApiKey }
+            : { rc_number: rcNumber, chassis_number: chassisNumber, engine_number: engineNumber };
+
+          const challanResponse = await fetch(challanUrl, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${surepassApiKey}`
-            },
-            body: JSON.stringify({
-              rc_number: rcNumber,
-              chassis_number: chassisNumber,
-              engine_number: engineNumber
-            })
+            headers: challanHeaders,
+            body: JSON.stringify(challanBody)
           });
           
           challanData = await challanResponse.json();
-          console.log("Challan API response received:", challanData.success ? "Success" : "Failed");
+          const challanOk = isQuickEKYC
+            ? challanData?.status_code === 200
+            : challanData?.success !== false;
+          console.log("Challan API response received:", challanOk ? "Success" : "Failed", challanData);
           
           // Add challan data to the registration data
-          if (surepassData.data) {
-            surepassData.data.challan_details = challanData.data || null;
+          if (providerData.data) {
+            providerData.data.challan_details = challanData.data || null;
           }
         } catch (challanError) {
           console.error("Error fetching challan details:", challanError);
@@ -134,13 +153,13 @@ serve(async (req) => {
     
     // Generate verification status based on response
     let verificationStatus = 'verified';
-    if (!surepassData.data) {
+    if (!providerData.data) {
       verificationStatus = 'failed';
-    } else if (surepassData.success === false) {
+    } else if (providerData.success === false) {
       verificationStatus = 'incomplete';
-    } else if (surepassData.data.rc_status) {
+    } else if (providerData.data.rc_status) {
       // Use RC status from response if available
-      verificationStatus = surepassData.data.rc_status.toLowerCase();
+      verificationStatus = providerData.data.rc_status.toLowerCase();
     }
 
     // Get existing vehicle data first if we have a vehicleId
@@ -182,8 +201,9 @@ serve(async (req) => {
     });
     
     // Create verification data from the response fields
-    if (surepassData.data) {
-      const data = surepassData.data;
+    if (providerData.data) {
+      const data = providerData.data;
+      console.log(data,"Debugging the RC response data");
       
       // After successful verification, update the vehicles table fields based on registration_number
       try {
@@ -256,17 +276,27 @@ serve(async (req) => {
     // Add challan data as a specific field if available, with simplified structure
     if (challanData && challanData.data) {
       // Process challan data to keep only essential information
-      const processedChallanData = {
-        challan_details: {
-          challans: challanData.data.challan_details?.challans?.map(challan => ({
-            challan_number: challan.challan_number,
-            challan_status: challan.challan_status,
-            amount: challan.amount,
-            challan_date: challan.challan_date
-          })) || [],
-          successful_backends: challanData.data.challan_details?.successful_backends || []
+      const processedChallanData = isQuickEKYC
+        ? {
+          challan_details: {
+            // QuickEKYC returns an array at data.challan_data (may be empty)
+            challans: Array.isArray(challanData.data.challan_data)
+              ? challanData.data.challan_data
+              : [],
+            successful_backends: []
+          }
         }
-      };
+        : {
+          challan_details: {
+            challans: challanData.data.challan_details?.challans?.map((challan: any) => ({
+              challan_number: challan.challan_number,
+              challan_status: challan.challan_status,
+              amount: challan.amount,
+              challan_date: challan.challan_date
+            })) || [],
+            successful_backends: challanData.data.challan_details?.successful_backends || []
+          }
+        };
       
       // Add to verification data only once
       currentVerificationData.push({
@@ -316,7 +346,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          original: surepassData,
+          original: providerData,
           challan: challanData,
           transformed: completeTransformedData,
           status: verificationStatus,
