@@ -3,16 +3,8 @@
 -- Extensions are created to match production schema
 
 -- Create pgcrypto extension (required for password hashing and encryption functions)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto'
-  ) THEN
-    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-  END IF;
-EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'pgcrypto extension not available: %', SQLERRM;
-END $$;
+-- This MUST succeed - functions depend on it
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Create pg_cron extension (required for cron monitoring functions)
 -- In production, this is created with schema 'pg_catalog'
