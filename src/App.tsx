@@ -96,6 +96,8 @@ const BackofficeWrapper = ({ component: Component }) => {
 };
 
 import ComplianceDocumentsPage from '@/pages/ComplianceDocumentsPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 
 function App() {
@@ -126,6 +128,10 @@ function App() {
                   {/* Public grievance routes */}
                   <Route path="/public-grievance-form" element={<PublicGrievanceForm />} />
                   <Route path="/grievance-thank-you" element={<ThankYouPage />} />
+
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-service" element={<TermsOfService />} />
+      
                   
                   {/* Make Home page the default route */}
                   <Route path="/" element={<Home />} />

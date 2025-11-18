@@ -873,7 +873,8 @@ SECURITY DEFINER
 AS $$
 BEGIN
   -- Use pgcrypto to hash password
-  RETURN crypt(password, gen_salt('bf'));
+  -- Use fully qualified function names (pgcrypto is in 'extensions' schema in Supabase)
+  RETURN extensions.crypt(password, extensions.gen_salt('bf'));
 END;
 $$;
 
@@ -904,7 +905,8 @@ BEGIN
     END IF;
     
     -- Verify password using pgcrypto
-    RETURN stored_hash = crypt(password_attempt, stored_hash);
+    -- Use fully qualified function name (pgcrypto is in 'extensions' schema in Supabase)
+    RETURN stored_hash = extensions.crypt(password_attempt, stored_hash);
   END IF;
   
   RETURN false;
@@ -925,7 +927,7 @@ BEGIN
     -- The key is derived from an environment variable or a secure source
     -- Note: In production, use a proper key management solution
     RETURN encode(
-        encrypt(
+        extensions.encrypt(
             doc_number::bytea, 
             current_setting('encrypt.key', true)::bytea, 
             'aes'
@@ -944,7 +946,7 @@ AS $$
 BEGIN
     -- Decrypt the document number
     RETURN convert_from(
-        decrypt(
+        extensions.decrypt(
             decode(encrypted_doc_number, 'hex'),
             current_setting('encrypt.key', true)::bytea,
             'aes'

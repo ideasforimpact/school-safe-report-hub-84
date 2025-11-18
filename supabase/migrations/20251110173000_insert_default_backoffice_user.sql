@@ -37,7 +37,9 @@ BEGIN
         IF EXISTS (
           SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto'
         ) THEN
-          SELECT crypt(default_password, gen_salt('bf')) INTO hashed_password;
+          -- Use fully qualified function name with schema prefix
+          -- pgcrypto functions are in 'extensions' schema in Supabase
+          SELECT extensions.crypt(default_password, extensions.gen_salt('bf')) INTO hashed_password;
         ELSE
           RAISE EXCEPTION 'pgcrypto extension not found and hash_password function not available';
         END IF;

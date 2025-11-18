@@ -34,6 +34,8 @@ import Pricing from './pages/Pricing';
 import Blog from './pages/Blog';
 import NewsPage from './pages/NewsPage';
 import ComplianceDocumentsPage from './pages/ComplianceDocumentsPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 // Assessment pages
 import AssessmentsPage from './pages/AssessmentsPage';
@@ -93,6 +95,8 @@ const AppRoutes = () => {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/blog" element={<Blog />} />
       <Route path="/news" element={<NewsPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
       
       {/* Public form routes */}
       <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
