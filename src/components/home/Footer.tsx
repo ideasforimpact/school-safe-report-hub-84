@@ -1,7 +1,9 @@
 
 import { ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Footer = () => {
+  const navigate = useNavigate();
   return (
     <footer className="bg-gray-900 text-gray-300 py-12">
       <div className="container mx-auto px-6">
@@ -37,7 +39,26 @@ const Footer = () => {
               <ul className="space-y-2">
                 <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
+                <li>
+                  <button
+                    onClick={() => navigate('/terms-of-service', { 
+                      state: { fromHome: true, originalRoute: '/' } 
+                    })}
+                    className="hover:text-white transition-colors text-left"
+                  >
+                    Terms of Service
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => navigate('/privacy-policy', { 
+                      state: { fromHome: true, originalRoute: '/' } 
+                    })}
+                    className="hover:text-white transition-colors text-left"
+                  >
+                    Privacy Policy
+                  </button>
+                </li>
               </ul>
             </div>
           </div>

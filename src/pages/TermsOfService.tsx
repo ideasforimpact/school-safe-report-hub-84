@@ -7,22 +7,21 @@ const TermsOfService = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Check if we came from login page
+  // Check if we came from login page or home page
   const fromLogin = location.state?.fromLogin || false;
+  const fromHome = location.state?.fromHome || false;
   const originalRoute = location.state?.originalRoute;
 
   const handleBack = () => {
     if (fromLogin) {
       navigate('/login');
+    } else if (fromHome || originalRoute === '/') {
+      navigate('/');
     } else if (originalRoute) {
       navigate(originalRoute);
     } else {
-      // If no state, try to go back in history, otherwise go to home
-      if (window.history.length > 1) {
-        navigate(-1);
-      } else {
-        navigate('/');
-      }
+      // If no state (manually entered URL), default to home
+      navigate('/');
     }
   };
 
