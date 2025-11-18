@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { RefreshCw, Loader2 } from 'lucide-react';
@@ -13,6 +13,7 @@ type AIRecommendationDialogProps = {
   onOpenChange: (v: boolean) => void;
   incidentJson: any | null; // raw payload object
   incidentId?: string; // incident ID to save the recommendation
+  incident?: any | null; // full incident object with recommended_action
 };
 
 type AiResult = {
@@ -24,11 +25,12 @@ type AiResult = {
   policy_refs: string[];
 };
 
-export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ open, onOpenChange, incidentJson, incidentId }) => {
+export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ open, onOpenChange, incidentJson, incidentId, incident }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<AiResult | null>(null);
   const [activeTab, setActiveTab] = React.useState<'immediate' | 'corrective' | 'preventive' | 'policy'>('immediate');
+  const [showConsentDialog, setShowConsentDialog] = React.useState(false);
   const { toast } = useToast();
   const { getClientId, getEmployeeId } = useEmployeeAccess();
 
@@ -99,19 +101,64 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
   }, [incidentJson, incidentId, toast, getClientId, getEmployeeId]);
 
   React.useEffect(() => {
-    if (open && incidentJson) {
-      callEdgeFunction();
-    } else if (!open) {
+    if (open) {
+      // Check if incident has existing recommended_action
+      // Check multiple possible field names for compatibility
+      const existingRecommendation = incident?.recommended_action 
+        || incident?.recommendedAction 
+        || (incident as any)?.recommended_action;
+      
+      console.log('Checking for existing recommendation:', {
+        hasIncident: !!incident,
+        recommended_action: incident?.recommended_action,
+        recommendedAction: incident?.recommendedAction,
+        incidentKeys: incident ? Object.keys(incident) : [],
+        incident
+      });
+      
+      if (existingRecommendation) {
+        // Use existing recommendation instead of calling API
+        console.log('Using existing recommended_action from database:', existingRecommendation);
+        try {
+          // Handle both JSON string and object formats
+          const parsed = typeof existingRecommendation === 'string' 
+            ? JSON.parse(existingRecommendation) 
+            : existingRecommendation;
+          setResult(parsed as AiResult);
+          setIsLoading(false);
+          setError(null);
+        } catch (e) {
+          console.error('Error parsing existing recommendation:', e);
+          // Fall back to calling API if parsing fails
+          if (incidentJson) {
+            callEdgeFunction();
+          }
+        }
+      } else if (incidentJson) {
+        // No existing recommendation, call API
+        console.log('No existing recommendation found, calling API');
+        callEdgeFunction();
+      }
+    } else {
       setIsLoading(false);
       setError(null);
       setResult(null);
     }
-  }, [open, incidentJson, callEdgeFunction]);
+  }, [open, incident, incidentJson, callEdgeFunction]);
 
-  const handleRefresh = () => {
+  const handleRefreshClick = () => {
+    setShowConsentDialog(true);
+  };
+
+  const handleConsentConfirm = () => {
+    setShowConsentDialog(false);
     if (incidentJson) {
       callEdgeFunction();
     }
+  };
+
+  const handleConsentCancel = () => {
+    setShowConsentDialog(false);
   };
 
   const renderImmediateActions = () => {
@@ -206,25 +253,23 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 border border-gray-200">
         <DialogHeader className="border-b border-gray-200 pb-3 px-6 pt-6 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold">AI Recommended Actions</DialogTitle>
-            {/* <div className="flex items-center gap-2">
-              {!isLoading && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-full"
-                  onClick={handleRefresh}
-                  title="Refresh recommendations"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              )}
-            </div> */}
-          </div>
+          <DialogTitle className="text-xl font-semibold">AI Recommended Actions</DialogTitle>
         </DialogHeader>
 
-        <div className="px-6 py-4">
+        <div className="px-6 py-2">
+          <div className="flex justify-end mb-2">
+            {!isLoading && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-full"
+                onClick={handleRefreshClick}
+                title="Refresh recommendations"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -235,7 +280,7 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
                 <p className="text-sm text-red-600 mb-2">{error}</p>
-                <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <Button variant="outline" size="sm" onClick={handleRefreshClick}>
                   Try Again
                 </Button>
               </div>
@@ -298,6 +343,37 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
           </Button>
         </div>
       </DialogContent>
+
+      {/* Consent Dialog for Refresh */}
+      <Dialog open={showConsentDialog} onOpenChange={setShowConsentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Refresh AI Recommendations</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to regenerate the AI recommendations? This will call the AI service again and may take a few moments.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600">
+              This action will generate new AI recommendations based on the current incident data. The previous recommendations will be replaced with the new ones.
+            </p>
+          </div>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={handleConsentCancel}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConsentConfirm}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

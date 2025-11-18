@@ -76,6 +76,8 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
       learning_points: (incident as any).learning_points ?? null,
       action_taken: (incident as any).action_taken ?? null,
       policy_docs: policyTitles,
+      // Include recommended_action from incident
+      recommended_action: (incident as any).recommended_action ?? (incident as any).recommendedAction ?? null,
     };
     setAiPayload(payload);
     setAiOpen(true);
@@ -291,7 +293,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
 
         </div>
       </CardContent>
-      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={(incident as any).id} />
+      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={(incident as any).id} incident={incident} />
       
       <ReopenIncidentDialog
         open={showReopenDialog}

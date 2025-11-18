@@ -55,6 +55,7 @@ export interface IncidentDetail {
   action_taken?: string;
   contributing_factor?: any[];
   reopen: number;
+  recommended_action?: any;
   learning_points: string
 }
 
@@ -94,6 +95,7 @@ export const fetchIncidentDetail = async (incidentId: string): Promise<IncidentD
         documents,
         comments,
         reopen,
+        recommended_action,
         type:incident_report_types(id, name),
         category:incident_categories(id, name),
         subcategory:incident_subcategories(id, name),
@@ -133,6 +135,7 @@ export const fetchIncidentDetail = async (incidentId: string): Promise<IncidentD
       documents: safeArrayCast<Document>(incident.documents, []),
       comments: safeArrayCast<Comment>(incident.comments, []),
       reopen: incident.reopen || 0,
+      recommended_action: incident.recommended_action,
       type: safeObjectCast(incident.type, { id: '', name: 'Unknown' }),
       category: safeObjectCast(incident.category, { id: '', name: 'Unknown' }),
       subcategory: safeObjectCast(incident.subcategory, { id: '', name: 'Unknown' }),
@@ -141,7 +144,8 @@ export const fetchIncidentDetail = async (incidentId: string): Promise<IncidentD
       priority: safeObjectCast(incident.priority, { id: '', name: 'Medium' }),
       facility: safeObjectCast(incident.facility, { id: '', name: 'Unknown' }),
       created_by: safeObjectCast(incident.created_by, { id: '', first_name: 'Unknown', last_name: 'User' }),
-      assigned_to: incident.assigned_to ? safeObjectCast(incident.assigned_to, undefined) : undefined
+      assigned_to: incident.assigned_to ? safeObjectCast(incident.assigned_to, undefined) : undefined,
+      learning_points: incident.learning_points || ''
     };
 
     console.log('Successfully fetched incident detail:', transformedIncident);

@@ -29,13 +29,23 @@ const AddStudentDialog = ({ open, onOpenChange, peopleInvolved, onStudentAdded }
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      await addStudent(data);
+      // addStudent returns the newly added student
+      const newStudent = await addStudent(data);
       
-      // Call the callback with the most recently added student
-      if (onStudentAdded && students.length > 0) {
-        // Find the student that was just added (assuming it's the first one in the list)
-        const newStudent = students[0];
-        onStudentAdded(newStudent);
+      // Call the callback with the newly added student
+      if (onStudentAdded && newStudent) {
+        // Transform the returned data to match Student type if needed
+        const student: Student = {
+          id: newStudent.id,
+          studentId: newStudent.studentId || newStudent.student_id,
+          name: newStudent.name,
+          grade: newStudent.grade,
+          section: newStudent.section,
+          campus: newStudent.campus,
+          createdAt: newStudent.createdAt || newStudent.created_at,
+          updatedAt: newStudent.updatedAt || newStudent.updated_at
+        };
+        onStudentAdded(student);
       }
       
       onOpenChange(false);

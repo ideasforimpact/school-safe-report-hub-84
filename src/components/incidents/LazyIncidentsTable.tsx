@@ -148,7 +148,13 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
       action_taken: (incident as any).action_taken ?? null,
       policy_docs: policyDocs,
     };
-    setAiPayload(payload);
+    // Include the full incident object with recommended_action
+    const fullIncident = incidents.find(inc => inc.id === incident.id);
+    setAiPayload({
+      ...payload,
+      ...fullIncident, // Include all incident fields including recommended_action
+      recommended_action: fullIncident?.recommended_action || null
+    });
     setAiOpen(true);
   };
 
@@ -256,7 +262,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={aiPayload?.id} />
+      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={aiPayload?.id} incident={aiPayload} />
       {/* Page size selector */}
       {pagination && onPageSizeChange && (
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">

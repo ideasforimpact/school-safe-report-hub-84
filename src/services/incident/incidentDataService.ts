@@ -303,6 +303,7 @@ class IncidentDataService {
           created_at,
           updated_at,
           reopen,
+          recommended_action,
           created_by,
           assigned_to,
           incident_report_types!type_id(id, name),
@@ -438,7 +439,8 @@ class IncidentDataService {
           undefined,
         ownerId: inc.assigned_employee?.id || undefined,
         createdAt: new Date(inc.created_at),
-        updatedAt: new Date(inc.updated_at)
+        updatedAt: new Date(inc.updated_at),
+        recommended_action: inc.recommended_action || null
       }));
 
       // Cache ALL the results

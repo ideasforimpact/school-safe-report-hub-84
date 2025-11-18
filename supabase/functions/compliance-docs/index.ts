@@ -287,7 +287,7 @@ serve(async (req) => {
     }
 
     if (action === "delete_folder") {
-      // Delete a folder by its folder_id or docId (row id)
+      // Soft delete a folder by its folder_id or docId (row id) - set is_delete = 1
       if (!folderId && !docId) throw new Error("folderId or docId is required");
 
       let row: any = null;
@@ -311,22 +311,28 @@ serve(async (req) => {
       if (rowErr) throw rowErr;
       if (!row) throw new Error("Folder not found");
 
-      const slug = row.files?.[0]?.storage_folder ?? `${row.files?.[0]?.folder_name || 'Folder'}_${row.folder_id}`;
-      const prefix = `${clientId}/${slug}`;
-      // List and remove all files under this prefix (recursively)
-      const paths = await listAllPaths(prefix);
-      console.log(paths,"paths");
-      
-      if (paths.length > 0) {
-        await supabaseAdmin.storage.from(bucketName).remove(paths);
-      }
-      // Also remove the .keep marker if present
-      await supabaseAdmin.storage.from(bucketName).remove([`${prefix}/.keep`]);
+      // Soft delete: set is_delete = 1 for the folder and all child folders
+      // First, find all child folders
+      const { data: childFolders, error: childErr } = await supabaseAdmin
+        .from("compliance_documents")
+        .select("id")
+        .eq("parent_folder_id", row.id);
+      if (childErr) throw childErr;
 
-      // Delete DB row; children will cascade by FK
+      // Set is_delete = 1 for all child folders
+      if (childFolders && childFolders.length > 0) {
+        const childIds = childFolders.map((c: any) => c.id);
+        const { error: childDelErr } = await supabaseAdmin
+          .from("compliance_documents")
+          .update({ is_delete: 1 })
+          .in("id", childIds);
+        if (childDelErr) throw childDelErr;
+      }
+
+      // Set is_delete = 1 for the folder itself
       const { error: delErr } = await supabaseAdmin
         .from("compliance_documents")
-        .delete()
+        .update({ is_delete: 1 })
         .eq("id", row.id);
       if (delErr) throw delErr;
 

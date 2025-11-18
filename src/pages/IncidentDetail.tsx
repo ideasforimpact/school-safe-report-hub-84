@@ -76,7 +76,10 @@ const IncidentDetail = () => {
         // Keep original fields for closure form pre-population
         rootCauseAnalysis: fetchedIncident.root_cause_analysis || '',
         actionTaken: fetchedIncident.action_taken || '',
-        contributingFactor: Array.isArray(fetchedIncident.contributing_factor) ? fetchedIncident.contributing_factor : []
+        contributingFactor: Array.isArray(fetchedIncident.contributing_factor) ? fetchedIncident.contributing_factor : [],
+        // Include recommended_action in both formats for compatibility
+        recommended_action: fetchedIncident.recommended_action,
+        recommendedAction: fetchedIncident.recommended_action
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);

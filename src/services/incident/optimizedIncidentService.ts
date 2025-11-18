@@ -15,6 +15,7 @@ export const optimizedIncidentService = {
           date,
           created_at,
           updated_at,
+          recommended_action,
           incident_report_types!type_id(id, name),
           incident_categories!category_id(id, name),
           incident_subcategories!subcategory_id(id, name),
