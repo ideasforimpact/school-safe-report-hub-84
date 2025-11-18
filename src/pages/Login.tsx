@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ShieldCheck, LogIn } from "lucide-react";
+import { AlertCircle, LogIn } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -236,9 +236,11 @@ const Login = () => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="flex justify-center">
-            <div className="p-3 bg-white/30 backdrop-blur-md rounded-full border border-white/40 shadow-lg shadow-blue-200/20">
-              <ShieldCheck className="h-12 w-12 text-blue-600" />
-            </div>
+            <img 
+              src="/safeschool_weblogo.png" 
+              alt="Safe School Logo" 
+              className="h-20 w-auto object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold text-slate-700 mt-4">Safe School</h1>
           <p className="text-slate-600 mt-1">Incident Management System</p>
@@ -343,6 +345,32 @@ const Login = () => {
             </p>
           </CardFooter>
         </Card>
+        
+        {/* Terms and Privacy Policy Links */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-slate-400 mb-2">
+            By signing in, you agree to our
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+            <button
+              onClick={() => navigate('/terms-of-service', { 
+                state: { fromLogin: true, originalRoute: '/login' } 
+              })}
+              className="hover:text-slate-700 transition-colors underline"
+            >
+              Terms of Service
+            </button>
+            <span>|</span>
+            <button
+              onClick={() => navigate('/privacy-policy', { 
+                state: { fromLogin: true, originalRoute: '/login' } 
+              })}
+              className="hover:text-slate-700 transition-colors underline"
+            >
+              Privacy Policy
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
