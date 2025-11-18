@@ -35,44 +35,56 @@ serve(async (req) => {
 
     const bucketName = "compliance_documents";
 
-    // 1) Delete file from Storage
-    const { error: remErr } = await supabaseAdmin.storage.from(bucketName).remove([path]);
-    if (remErr) throw remErr;
-
-    // 2) Remove from DB row.files
+    // Get the row to check if it's a folder or root file
     const { data: row, error: selErr } = await supabaseAdmin
       .from("compliance_documents")
-      .select("id, files")
+      .select("id, files, folder_exists")
       .eq("id", rowId)
       .maybeSingle();
     if (selErr) throw selErr;
     if (!row) throw new Error("Row not found");
 
-    const isNested = Array.isArray(row.files?.[0]?.files);
-    const current = isNested ? (row.files[0].files ?? []) : (row.files ?? []);
-    const nextFiles = current.filter((f: any) => {
-      const p = f?.path || "";
-      if (p === path) return false;
-      if (fileName && f?.fileName === fileName) return false;
-      return true;
-    });
+    // Case 1: File inside a folder (folder_exists = true)
+    // Remove the file from the files array, don't set is_delete = 1
+    if (row.folder_exists === true) {
+      const isNested = Array.isArray(row.files?.[0]?.files);
+      const current = isNested ? (row.files[0].files ?? []) : (row.files ?? []);
+      
+      // Remove the file from the array (filter it out)
+      const nextFiles = current.filter((f: any) => {
+        const p = f?.path || "";
+        if (p === path || (fileName && f?.fileName === fileName)) {
+          return false; // Remove this file
+        }
+        return true; // Keep this file
+      });
 
-    if (isNested) {
-      const next = [
-        {
-          folder_name: row.files?.[0]?.folder_name ?? "Folder",
-          files: nextFiles,
-        },
-      ];
+      if (isNested) {
+        const next = [
+          {
+            folder_name: row.files?.[0]?.folder_name ?? "Folder",
+            files: nextFiles,
+          },
+        ];
+        const { error: updErr } = await supabaseAdmin
+          .from("compliance_documents")
+          .update({ files: next })
+          .eq("id", rowId);
+        if (updErr) throw updErr;
+      } else {
+        const { error: updErr } = await supabaseAdmin
+          .from("compliance_documents")
+          .update({ files: nextFiles })
+          .eq("id", rowId);
+        if (updErr) throw updErr;
+      }
+    } 
+    // Case 2: Root file (folder_exists = false)
+    // Set is_delete = 1 on the row
+    else {
       const { error: updErr } = await supabaseAdmin
         .from("compliance_documents")
-        .update({ files: next })
-        .eq("id", rowId);
-      if (updErr) throw updErr;
-    } else {
-      const { error: updErr } = await supabaseAdmin
-        .from("compliance_documents")
-        .update({ files: nextFiles })
+        .update({ is_delete: 1 })
         .eq("id", rowId);
       if (updErr) throw updErr;
     }

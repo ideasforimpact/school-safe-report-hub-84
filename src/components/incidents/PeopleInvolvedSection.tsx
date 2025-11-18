@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
@@ -132,45 +132,62 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   }, [employeeData?.clientId]);
 
   // Fetch students filtered by client_id
-  useEffect(() => {
-    const fetchStudents = async () => {
-      if (!employeeData?.clientId) return;
+  const fetchStudents = useCallback(async () => {
+    if (!employeeData?.clientId) return;
 
-      try {
-        setIsLoadingStudents(true);
-        const { data: studentData, error } = await supabase
-          .from('students')
-          .select('id, student_id, name, grade, section, campus')
-          .eq('client_id', employeeData.clientId);
+    try {
+      setIsLoadingStudents(true);
+      const { data: studentData, error } = await supabase
+        .from('students')
+        .select('id, student_id, name, grade, section, campus')
+        .eq('client_id', employeeData.clientId);
 
-        if (error) {
-          console.error('Error fetching students:', error);
-          toast.error('Failed to load students');
-          return;
-        }
-
-        const mappedStudents = studentData.map(student => ({
-          id: student.id,
-          studentId: student.student_id,
-          name: student.name,
-          grade: student.grade,
-          section: student.section,
-          campus: student.campus,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }));
-
-        setFetchedStudents(mappedStudents);
-      } catch (error) {
+      if (error) {
         console.error('Error fetching students:', error);
         toast.error('Failed to load students');
-      } finally {
-        setIsLoadingStudents(false);
+        return;
       }
-    };
 
-    fetchStudents();
+      const mappedStudents = studentData.map(student => ({
+        id: student.id,
+        studentId: student.student_id,
+        name: student.name,
+        grade: student.grade,
+        section: student.section,
+        campus: student.campus,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
+
+      console.log('[PeopleInvolvedSection] Updated student list:', {
+        totalStudents: mappedStudents.length,
+        students: mappedStudents.map(s => ({ id: s.id, name: s.name, studentId: s.studentId }))
+      });
+      setFetchedStudents(mappedStudents);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast.error('Failed to load students');
+    } finally {
+      setIsLoadingStudents(false);
+    }
   }, [employeeData?.clientId]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
+
+  // Log when people are added
+  useEffect(() => {
+    console.log('[PeopleInvolvedSection] People involved updated:', {
+      count: peopleInvolved.length,
+      people: peopleInvolved.map((p, idx) => ({
+        index: idx,
+        role: p.role,
+        name: p.name
+      })),
+      fetchedStudentsCount: fetchedStudents.length
+    });
+  }, [peopleInvolved.length, fetchedStudents.length]);
 
   const handleSearch = (index: number, value: string, role: string) => {
     setSearchQueries(prev => ({ ...prev, [index]: value }));
@@ -204,7 +221,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setSearchQueries(prev => ({ ...prev, [index]: '' }));
   };
 
-  const handleStudentAdded = (newStudent: Student) => {
+  const handleStudentAdded = async (newStudent: Student) => {
     if (currentPersonIndex !== null) {
       // Update the person with the new student data
       onPersonChange(currentPersonIndex, 'name', `${newStudent.name} (${newStudent.studentId})`);
@@ -213,7 +230,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setCurrentPersonIndex(null);
     setCurrentPersonData(null);
     
-    // Refresh the student list
+    // Refresh the student list to show the newly added student
+    await fetchStudents();
+    
+    // Also call the parent callback if provided
     if (onStudentAdded) {
       onStudentAdded();
     }
@@ -249,8 +269,23 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           })
         : availableStaff;
     } else if (role === 'Student') {
+      console.log('[PeopleInvolvedSection] getFilteredOptions for Student:', {
+        index,
+        searchQuery,
+        totalFetchedStudents: fetchedStudents.length,
+        selectedStudentNames,
+        fetchedStudents: fetchedStudents.map(s => ({ id: s.id, name: s.name }))
+      });
+      
       const availableStudents = fetchedStudents.filter(student => {
-        return !selectedStudentNames.includes(student.name);
+        const isSelected = selectedStudentNames.includes(student.name);
+        console.log(`[PeopleInvolvedSection] Student ${student.name} isSelected:`, isSelected);
+        return !isSelected;
+      });
+      
+      console.log('[PeopleInvolvedSection] Available students (after filtering selected):', {
+        count: availableStudents.length,
+        students: availableStudents.map(s => ({ id: s.id, name: s.name }))
       });
       
       const filteredStudents = searchQuery
@@ -258,19 +293,26 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             const searchTerm = searchQuery.toLowerCase();
             return student.name.toLowerCase().includes(searchTerm) ||
                    student.studentId.toLowerCase().includes(searchQuery) ||
-                   student.grade.toLowerCase().includes(searchTerm) ||
-                   student.section.toLowerCase().includes(searchTerm);
+                   (student.grade && student.grade.toLowerCase().includes(searchTerm)) ||
+                   (student.section && student.section.toLowerCase().includes(searchTerm));
           })
         : availableStudents;
       
+      console.log('[PeopleInvolvedSection] Filtered students (after search):', {
+        count: filteredStudents.length,
+        students: filteredStudents.map(s => ({ id: s.id, name: s.name }))
+      });
+      
       // Add "No Student Found" and "Add Student" options only if no students are found
       if (filteredStudents.length === 0) {
+        console.log('[PeopleInvolvedSection] No students found, returning placeholder options');
         return [
           { id: 'add-student', name: 'Add Student', isAddOption: true } as any,
           { id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any
         ];
       }
       
+      console.log('[PeopleInvolvedSection] Returning filtered students:', filteredStudents.length);
       return filteredStudents;
     }
     return [];
@@ -300,14 +342,46 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const filteredOptions = getFilteredOptions(index, person.role);
       const selectedDisplay = getSelectedDisplay(person, person.role);
       const isLoading = person.role === 'Staff' ? isLoadingStaff : isLoadingStudents;
+      
+      // Log render state for debugging
+      if (person.role === 'Student' && isCurrentlySearching) {
+        console.log('[PeopleInvolvedSection] Rendering Student name field:', {
+          index,
+          isCurrentlySearching,
+          filteredOptionsCount: filteredOptions.length,
+          hasRealStudents: filteredOptions.some(opt => !(opt as any).isAddOption && !(opt as any).isNoStudentOption),
+          isLoading,
+          fetchedStudentsCount: fetchedStudents.length
+        });
+      }
 
       return (
         <div className="relative">
           <div className="relative">
             <Input
               value={searchQueries[index] || (isCurrentlySearching ? '' : selectedDisplay)}
-              onChange={(e) => handleSearch(index, e.target.value, person.role)}
-              onFocus={() => setIsSearching(prev => ({ ...prev, [index]: true }))}
+              onChange={(e) => {
+                handleSearch(index, e.target.value, person.role);
+                // Ensure searching state is true when typing
+                if (!isSearching[index]) {
+                  setIsSearching(prev => ({ ...prev, [index]: true }));
+                }
+              }}
+              onFocus={() => {
+                console.log('[PeopleInvolvedSection] Input focused:', {
+                  index,
+                  personRole: person.role,
+                  personName: person.name,
+                  fetchedStudentsCount: fetchedStudents.length,
+                  isSearching: isSearching[index],
+                  searchQuery: searchQueries[index]
+                });
+                setIsSearching(prev => ({ ...prev, [index]: true }));
+                // Clear any existing search query to show all available options
+                if (!searchQueries[index] && !person.name) {
+                  setSearchQueries(prev => ({ ...prev, [index]: '' }));
+                }
+              }}
               onBlur={() => {
                 setTimeout(() => {
                   if (!searchQueries[index]) {
@@ -400,10 +474,101 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             </div>
           )}
 
-          {isCurrentlySearching && searchQueries[index] && filteredOptions.length === 0 && (
+          {isCurrentlySearching && searchQueries[index] && filteredOptions.length === 0 && !isLoading && (
             <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
               <p className="p-3 text-sm text-gray-500">No {person.role.toLowerCase()}s found</p>
             </div>
+          )}
+          
+          {/* Show dropdown when focused and there are options, even without search query */}
+          {isCurrentlySearching && !searchQueries[index] && !isLoading && (
+            <>
+              {/* Show actual students/staff when available */}
+              {filteredOptions.some(opt => 
+                !(opt as any).isAddOption && !(opt as any).isNoStudentOption
+              ) && (
+                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  <ul className="py-1 text-sm">
+                    {filteredOptions
+                      .filter(opt => !(opt as any).isAddOption && !(opt as any).isNoStudentOption)
+                      .map((option) => (
+                        <li
+                          key={person.role === 'Staff' ? (option as Employee).id : (option as Student).id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleSelectPerson(index, option, person.role)}
+                          onMouseDown={(e) => e.preventDefault()}
+                        >
+                          <div>
+                            {person.role === 'Staff' ? (
+                              <>
+                                <span className="font-medium">
+                                  {(option as Employee).firstName} {(option as Employee).lastName}
+                                </span>
+                                <span className="text-gray-500 ml-1">
+                                  ({(option as Employee).email})
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-medium">
+                                  {(option as Student).name}
+                                </span>
+                                <span className="text-gray-500 ml-1">
+                                  ({(option as Student).studentId}) - {(option as Student).grade} {(option as Student).section}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Show "Add Student" and "No Student Found" only when no real students are available */}
+              {!filteredOptions.some(opt => 
+                !(opt as any).isAddOption && !(opt as any).isNoStudentOption
+              ) && filteredOptions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                  <ul className="py-1 text-sm">
+                    {filteredOptions.map((option) => {
+                      // Check if this is the "Add Student" option
+                      if (person.role === 'Student' && (option as any).isAddOption) {
+                        return (
+                          <li
+                            key="add-student"
+                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
+                            onClick={() => handleAddStudentClick(index)}
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div className="flex items-center text-blue-600">
+                              <Plus className="h-4 w-4 mr-2" />
+                              <span className="font-medium">Add Student</span>
+                            </div>
+                          </li>
+                        );
+                      }
+                      
+                      // Check if this is the "No Student Found" option
+                      if (person.role === 'Student' && (option as any).isNoStudentOption) {
+                        return (
+                          <li
+                            key="no-student-found"
+                            className="px-3 py-2 text-gray-500 cursor-not-allowed border-b border-gray-200"
+                          >
+                            <div className="flex items-center">
+                              <span className="text-sm">No Student Found</span>
+                            </div>
+                          </li>
+                        );
+                      }
+                      
+                      return null;
+                    })}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
       );

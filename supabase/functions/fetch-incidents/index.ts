@@ -45,6 +45,7 @@ serve(async (req) => {
         updated_at,
         created_by,
         assigned_to,
+        recommended_action,
         incident_report_types:type_id(id, name),
         incident_categories:category_id(id, name),
         incident_subcategories:subcategory_id(id, name),

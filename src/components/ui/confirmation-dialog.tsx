@@ -118,21 +118,6 @@ export function ConfirmationDialog({
             </Alert>
           )}
           
-          {/* Warning Box */}
-          <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-red-800">
-                  Warning: This action cannot be undone!
-                </p>
-                <p className="text-sm text-red-700">
-                  You are about to {action} <span className="font-semibold">"{itemName}"</span>.
-                </p>
-              </div>
-            </div>
-          </div>
-          
           {/* Description */}
           <DialogDescription className="text-sm text-gray-600">
             {description}
