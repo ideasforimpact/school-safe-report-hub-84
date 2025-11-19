@@ -83,7 +83,7 @@ export class AssessmentNotificationService {
             month: 'short',
             day: 'numeric'
           }) : 'Not specified',
-          Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
         metadata: {
           assessmentId: assessment.id,
@@ -143,7 +143,7 @@ export class AssessmentNotificationService {
             hour: '2-digit',
             minute: '2-digit'
           }),
-          Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
         metadata: {
           assessmentId: assessment.id,
@@ -197,7 +197,7 @@ export class AssessmentNotificationService {
             hour: '2-digit',
             minute: '2-digit'
           }),
-          Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
         metadata: {
           assessmentId: assessment.id,
@@ -246,7 +246,7 @@ export class AssessmentNotificationService {
           assigned_to: assessment.assigned_to,
           Requested_By: `${requestedBy.first_name} ${requestedBy.last_name}`,
           Rework_Reason: reworkReason,
-          Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
         metadata: {
           assessmentId: assessment.id,
@@ -291,7 +291,7 @@ export class AssessmentNotificationService {
             month: 'short',
             day: 'numeric'
           }) : 'Not specified',
-          Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
         metadata: {
           assessmentId: assessment.id,
@@ -338,7 +338,7 @@ export class AssessmentNotificationService {
             day: 'numeric'
           }) : 'Not specified',
           Overdue_Days: overdueDays.toString(),
-          Assessment_URL: `${this.getBaseUrl()}/assessments/${assessment.id}`
+          Assessment_URL: `${this.getBaseUrl()}/assessments`
         },
         metadata: {
           assessmentId: assessment.id,
