@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { getSupabaseUrl, getSupabaseServiceRoleKey, getFrontendUrl } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -204,11 +204,8 @@ async function queueAssessmentDueReminderNotification(
   assessment: any, 
   assignedEmployee: any
 ): Promise<void> {
-  const getBaseUrl = () => {
-    return Deno.env.get('NODE_ENV') === 'production' 
-      ? 'https://school-safe-report-hub.vercel.app'
-      : 'http://localhost:3000';
-  };
+  // Use shared function to get frontend URL
+  const getBaseUrl = () => getFrontendUrl();
 
   const variables = {
     User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
@@ -219,7 +216,7 @@ async function queueAssessmentDueReminderNotification(
       month: 'short',
       day: 'numeric'
     }) : 'Not specified',
-    Assessment_URL: `${getBaseUrl()}/assessments/${assessment.id}`
+    Assessment_URL: `${getBaseUrl()}/assessments`
   };
 
   // Queue email directly in email_queue table
@@ -284,11 +281,8 @@ async function queueAssessmentOverdueNotification(
   assignedEmployee: any, 
   overdueDays: number
 ): Promise<void> {
-  const getBaseUrl = () => {
-    return Deno.env.get('NODE_ENV') === 'production' 
-      ? 'https://school-safe-report-hub.vercel.app'
-      : 'http://localhost:3000';
-  };
+  // Use shared function to get frontend URL
+  const getBaseUrl = () => getFrontendUrl();
 
   const variables = {
     User_Name: `${assignedEmployee.first_name} ${assignedEmployee.last_name}`,
@@ -300,7 +294,7 @@ async function queueAssessmentOverdueNotification(
       day: 'numeric'
     }) : 'Not specified',
     Overdue_Days: overdueDays.toString(),
-    Assessment_URL: `${getBaseUrl()}/assessments/${assessment.id}`
+    Assessment_URL: `${getBaseUrl()}/assessments`
   };
 
   // Queue email directly in email_queue table
