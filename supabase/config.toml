@@ -41,12 +41,8 @@ file_size_limit = "50MiB"
 [auth]
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-# NOTE: This is for LOCAL DEVELOPMENT ONLY. Remote environments (UAT/prod) use their own site_url 
-# configured in the Supabase dashboard.
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# NOTE: This is for LOCAL DEVELOPMENT ONLY. Remote environments use their own redirect URLs 
-# configured in the Supabase dashboard.
 additional_redirect_urls = ["https://localhost:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (1
 # week).
@@ -78,22 +74,15 @@ url = ""
 
 ## google
 [auth.external.google]
-enabled = false
-# NOTE: client_id and secret should NOT be committed to version control.
-# The env() syntax only works for LOCAL development, not for remote environments (UAT/prod).
-# For LOCAL development, uncomment and use the lines below:
-# client_id = "env(VITE_GOOGLE_CLIENT_KEY)"
-# secret = "env(VITE_GOOGLE_SECRET_KEY)"
-# For remote environments (UAT/prod), configure client_id and secret in the Supabase dashboard
-# under Authentication > Providers > Google. Do not set them here in config.toml.
+enabled = true
+##client_id = "env(VITE_GOOGLE_CLIENT_KEY)"
+##secret = "env(VITE_GOOGLE_SECRET_KEY)"
+
 client_id = ""
 secret = ""
+
 # Overrides the default auth redirectUrl.
-# NOTE: redirect_uri is LOCAL-ONLY and should NOT be committed to version control.
-# For local development, uncomment and set the line below:
-# redirect_uri = "http://localhost:54321/auth/v1/callback"
-# For remote environments (UAT/prod), Supabase automatically uses the callback URL 
-# configured in the Supabase dashboard. Do not set redirect_uri for remote environments.
+redirect_uri = "http://localhost:54321/auth/v1/callback"
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
 url = ""
