@@ -499,7 +499,7 @@ serve(async (req) => {
             const { data: backofficeUser, error: backofficeError } = await supabase
               .from('backoffice_users')
               .select('id')
-              .eq('auth_user_id', user.id)
+              .eq('email','backofficesafeschool@gmail.com')
               .single();
             if (!backofficeError && backofficeUser?.id) {
               uploadedById = backofficeUser.id;
