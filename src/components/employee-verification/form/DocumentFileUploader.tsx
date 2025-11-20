@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
 }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleRemoveFile = (id: string) => {
     setFiles(files.filter(file => file.id !== id));
@@ -38,12 +39,7 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
     console.log('Preview file:', file);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files;
-    if (!fileList || fileList.length === 0) return;
-
-    const file = fileList[0];
-    
+  const processFile = (file: File) => {
     // Special validation for bank account documents
     if (documentType === 'bank_account' && !file.type.includes('pdf')) {
       toast({
@@ -97,6 +93,41 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const file = fileList[0];
+    processFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles && droppedFiles.length > 0) {
+      processFile(droppedFiles[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDropZoneClick = () => {
+    fileInputRef.current?.click();
+  };
+
   // Get helper text based on document type
   const getHelperText = () => {
     if (documentType === 'bank_account') {
@@ -108,12 +139,22 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50">
+      <div 
+        className={`border-2 border-dashed rounded-md p-6 flex flex-col items-center justify-center transition-colors cursor-pointer ${
+          isDragOver 
+            ? 'border-primary bg-primary/5' 
+            : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+        }`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onClick={handleDropZoneClick}
+      >
         <Upload className="h-8 w-8 text-gray-400 mb-2" />
         <p className="text-sm text-gray-500 mb-2">Drag and drop file here, or click to select file</p>
         <p className="text-xs text-gray-400">{getHelperText()}</p>
         <Input 
-          id="file-upload" 
+          id={`file-upload-${documentType || 'default'}`}
           type="file" 
           className="hidden"
           ref={fileInputRef}
@@ -124,7 +165,10 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
           type="button" 
           variant="outline" 
           className="mt-4"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={(e) => {
+            e.stopPropagation();
+            fileInputRef.current?.click();
+          }}
         >
           Browse Files
         </Button>

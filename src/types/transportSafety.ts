@@ -40,7 +40,7 @@ export interface Vehicle {
   type: VehicleType;
   make: string;
   model: string;
-  year: number;
+  year: number | null;
   driver: string;
   route: string;
   capacity?: number;
