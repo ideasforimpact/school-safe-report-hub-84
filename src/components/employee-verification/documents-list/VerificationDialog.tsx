@@ -231,7 +231,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data?.success && data?.data) {
+      // Check if API response indicates success and has actual data
+      const apiResponse = data?.data;
+      const isApiSuccess = apiResponse?.success === true && apiResponse?.status_code === 200;
+      const hasData = apiResponse && Object.keys(apiResponse).length > 0;
+      
+      if (data?.success && isApiSuccess && hasData) {
         console.log('VerificationDialog - Bank Statement verification successful, response data:', data);
         // No toaster for API verification completion
         
@@ -250,17 +255,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedBankStatementDetails = {
-            data: data.data, // The actual Bank Statement details from the API response
-            success: data.success,
-            status_code: data.status_code,
-            message: data.message
+            data: apiResponse, // The actual Bank Statement details from the API response
+            success: true,
+            status_code: apiResponse.status_code,
+            message: apiResponse.message
           };
           setSelectedBankStatementDetails(formattedBankStatementDetails);
           setBankStatementDialogOpen(true);
         }, 100);
       } else {
-        // Use the user-friendly error message from the API
-        const errorMessage = data?.message || data?.error || "Bank Statement verification failed. Please contact administrator.";
+        // Show meaningful error message in the current popup
+        const errorMessage = apiResponse?.message || data?.message || data?.error || "Bank Statement verification failed. Please check your details and try again.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -360,19 +365,33 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         setErrorMessage(error.message || 'Something went wrong during Passport verification.');
         return;
       }
-      // Treat missing/empty data as an error and keep the popup open
-      if (data?.success && data?.data) {
+      // Check if API response indicates success (status_code 200) and has actual data
+      // Passport edge function returns { success: true, data: apiResponse }
+      // where apiResponse has { success, status_code, data: {...} }
+      const apiResponse = data?.data;
+      const isApiSuccess = apiResponse?.success === true && apiResponse?.status_code === 200;
+      const apiData = apiResponse?.data; // The actual passport data object
+      const hasData = apiData && Object.keys(apiData).length > 0;
+      
+      // Only open details dialog if API call was successful and has valid data
+      if (data?.success && isApiSuccess && hasData) {
         onOpenChange(false);
         if (onDocumentAction) await onDocumentAction();
         setTimeout(() => {
           setCurrentDocumentId(documentId);
-          const formatted = { data: data.data, success: data.success, status_code: data.status_code, message: data.message };
+          const formatted = { 
+            data: apiData, // The actual passport data
+            success: true, 
+            status_code: apiResponse.status_code, 
+            message: apiResponse.message 
+          };
           setSelectedPassportDetails(formatted);
           setPassportDialogOpen(true);
         }, 100);
       } else {
-        const msg = data?.message || data?.error || 'No data found. Please contact administrator.';
-        setErrorMessage(msg);
+        // Show meaningful error message in the current popup
+        const errorMsg = apiResponse?.message || data?.message || data?.error || 'Passport verification failed. Please check your details and try again.';
+        setErrorMessage(errorMsg);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Passport verification error.');
@@ -446,7 +465,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data.success && data.data) {
+      // Check if API response indicates success and has actual data
+      // The edge function spreads apiResponse into the top level, so status_code is at data.status_code
+      const isApiSuccess = data?.success === true && data?.status_code === 200;
+      const apiData = data?.data; // The actual PAN data object
+      const hasData = apiData && Object.keys(apiData).length > 0;
+      
+      if (isApiSuccess && hasData) {
         console.log('PAN verification SUCCESS - entering success block');
         // No toaster for API verification completion
         
@@ -470,8 +495,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedPanDetails = {
-            data: data.data, // The actual PAN details from the API response
-            success: data.success,
+            data: apiData, // The actual PAN details from the API response
+            success: true,
             status_code: data.status_code,
             message: data.message
           };
@@ -481,8 +506,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           console.log('VerificationDialog - PAN dialog state set to open');
         }, 100); // Small delay to ensure verification dialog closes completely
       } else {
-        // Use the user-friendly error message from the API
-        const errorMessage = data.message || data.error || "PAN verification failed. Please contact administrator.";
+        // Show meaningful error message in the current popup
+        const errorMessage = data?.message || data?.error || "PAN verification failed. Please check your details and try again.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -516,7 +541,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data?.success && data?.data) {
+      // Check if API response indicates success and has actual data
+      // The edge function spreads apiResponse into the top level, so status_code is at data.status_code
+      const isApiSuccess = data?.success === true && data?.status_code === 200;
+      const apiData = data?.data; // The actual license data object
+      const hasData = apiData && Object.keys(apiData).length > 0;
+      
+      if (isApiSuccess && hasData) {
         console.log('VerificationDialog - Driving License verification successful, response data:', data);
         // No toaster for API verification completion
         
@@ -535,8 +566,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedDrivingLicenseDetails = {
-            data: data.data, // The actual Driving License details from the API response
-            success: data.success,
+            data: apiData, // The actual Driving License details from the API response
+            success: true,
             status_code: data.status_code,
             message: data.message
           };
@@ -544,8 +575,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setDrivingLicenseDialogOpen(true);
         }, 100);
       } else {
-        // Use the user-friendly error message from the API
-        const errorMessage = data?.message || data?.error || "Driving License verification failed. Please contact administrator.";
+        // Show meaningful error message in the current popup
+        const errorMessage = data?.message || data?.error || "Driving License verification failed. Please check your details and try again.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {
@@ -736,7 +767,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       
-      if (data.success && data.data) {
+      // Check if API response indicates success and has actual data
+      // The edge function spreads apiResponse into the top level, so status_code is at data.status_code
+      const isApiSuccess = data?.success === true && data?.status_code === 200;
+      const apiData = data?.data; // The actual Voter ID data object
+      const hasData = apiData && Object.keys(apiData).length > 0;
+      
+      if (isApiSuccess && hasData) {
         // No toaster for API verification completion
         
         // Close verification popup FIRST
@@ -754,8 +791,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedVoterIdDetails = {
-            data: data.data, // The actual Voter ID details from the API response
-            success: data.success,
+            data: apiData, // The actual Voter ID details from the API response
+            success: true,
             status_code: data.status_code,
             message: data.message
           };
@@ -763,8 +800,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setVoterIdDialogOpen(true);
         }, 100);
       } else {
-        // Use the user-friendly error message from the API
-        const errorMessage = data.message || data.error || "Voter ID verification failed. Please contact administrator.";
+        // Show meaningful error message in the current popup
+        const errorMessage = data?.message || data?.error || "Voter ID verification failed. Please check your details and try again.";
         setErrorMessage(errorMessage);
       }
     } catch (err: any) {

@@ -22,13 +22,31 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const environment = Deno.env.get("ENVIRONMENT") || "development";
-    const baseUrl = environment === 'production'
-      ? Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io"
-      : "https://sandbox.surepass.io";
-    const apiKey = environment === 'production'
-      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY")
-      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
-
+    const baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io";
+    const apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
+    
+    // Validate required environment variables
+    if (!baseUrl) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "Verification service configuration error. Please contact administrator.",
+          errorCode: "CONFIG_ERROR"
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "Authentication configuration error. Please contact administrator.",
+          errorCode: "AUTH_CONFIG_ERROR"
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     // Status ids
     const fetchStatusId = async (name: string) => {
       const { data, error } = await supabase.from('document_status').select('id').eq('name', name).single();
@@ -63,6 +81,12 @@ serve(async (req) => {
       }
 
       try {
+        console.log("Making request to Surepass API to verify passport with:", {
+          fileNumber,
+          dob,
+          baseUrl
+        });
+
         const response = await fetch(`${baseUrl}/api/v1/passport/passport/passport-details`, {
           method: 'POST',
           headers: {
@@ -72,7 +96,86 @@ serve(async (req) => {
           body: JSON.stringify({ id_number: fileNumber, dob })
         });
 
-        const apiResponse = await response.json();
+        console.log(response,"response");
+        
+
+        // Check if response is OK before parsing JSON
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { message: errorText || `HTTP ${response.status}: ${response.statusText}` };
+          }
+
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: 'verify_passport_api_error',
+            response: { error: errorData.message || `HTTP ${response.status}`, status: response.status }
+          };
+
+          await supabase.from('employee_documents').update({
+            employee_docs_log: [...existingLogs, logEntry],
+            api_verification_status: 'failed',
+            api_verification_method: 'api',
+            api_verification_date: null
+          }).eq('id', documentId);
+
+          let userFriendlyError = "Passport verification failed. Please try again.";
+          let errorCode = "PASSPORT_VERIFICATION_FAILED";
+
+          if (response.status === 401) {
+            userFriendlyError = "Authentication failed. Please contact administrator.";
+            errorCode = "AUTH_ERROR";
+          } else if (response.status === 429) {
+            userFriendlyError = "Too many verification attempts. Please try again after some time.";
+            errorCode = "API_LIMIT_EXCEEDED";
+          }
+
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: userFriendlyError,
+              errorCode: errorCode,
+              originalError: errorData.message,
+              status_code: response.status
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Parse JSON response
+        let apiResponse;
+        try {
+          apiResponse = await response.json();
+        } catch (parseError: any) {
+          // If JSON parsing fails, it's likely a connection/network issue
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: 'verify_passport_api_error',
+            response: { error: 'Failed to parse API response', parseError: parseError.message }
+          };
+
+          await supabase.from('employee_documents').update({
+            employee_docs_log: [...existingLogs, logEntry],
+            api_verification_status: 'failed',
+            api_verification_method: 'api',
+            api_verification_date: null
+          }).eq('id', documentId);
+
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: "Verification service returned invalid response. Please try again.",
+              errorCode: "INVALID_RESPONSE",
+              originalError: parseError.message
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log("Surepass API passport verification response:", apiResponse);
 
         // Always append a log entry
         const logEntry = { timestamp: new Date().toISOString(), action: 'verify_passport_api', response: apiResponse };
@@ -87,6 +190,15 @@ serve(async (req) => {
             api_verification_method: 'api',
             api_verification_date: new Date().toISOString()
           }).eq('id', documentId);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: apiResponse,
+              message: "Passport API verification completed. Please review the response."
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         } else {
           // Failure path: mark API attempt and store response
           await supabase.from('employee_documents').update({
@@ -96,18 +208,85 @@ serve(async (req) => {
             api_verification_method: 'api',
             api_verification_date: null
           }).eq('id', documentId);
-        }
 
-        return new Response(JSON.stringify({ success: true, data: apiResponse }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          // Parse specific error types for user-friendly messages
+          let userFriendlyError = "Passport verification failed";
+          let errorCode = "PASSPORT_VERIFICATION_FAILED";
+
+          if (apiResponse?.message) {
+            const message = apiResponse.message.toLowerCase();
+            if (message.includes('invalid passport') || message.includes('not found')) {
+              userFriendlyError = "This Passport number is not found in government records";
+              errorCode = "PASSPORT_INVALID";
+            } else if (message.includes('format') || message.includes('pattern')) {
+              userFriendlyError = "Please enter a valid Passport file number";
+              errorCode = "PASSPORT_INVALID_FORMAT";
+            } else if (message.includes('dob') || message.includes('date of birth')) {
+              userFriendlyError = "Date of birth doesn't match with Passport records";
+              errorCode = "PASSPORT_DOB_MISMATCH";
+            } else {
+              userFriendlyError = "Passport verification failed. Please check the details and try again.";
+            }
+          }
+
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: userFriendlyError,
+              errorCode: errorCode,
+              originalError: apiResponse?.message,
+              data: apiResponse,
+              status_code: apiResponse?.status_code
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       } catch (error: any) {
+        console.error("Error verifying Passport with Surepass API:", error);
+
+        // API call failed completely - set to failed status
         await supabase.from('employee_documents').update({
-          employee_docs_log: [...(document.employee_docs_log || []), { timestamp: new Date().toISOString(), action: 'verify_passport_api_error', response: { error: error.message } }],
+          employee_docs_log: [...existingLogs, {
+            timestamp: new Date().toISOString(),
+            action: 'verify_passport_api_error',
+            response: { error: error.message, stack: error.stack }
+          }],
           api_verification_status: 'failed',
           api_verification_method: 'api',
           api_verification_date: null
         }).eq('id', documentId);
 
-        return new Response(JSON.stringify({ error: error.message || 'Passport API verification failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        // Detect connection/timeout errors and provide user-friendly messages
+        let userFriendlyError = "Something went wrong during Passport verification. Please try again.";
+        let errorCode = "INTERNAL_ERROR";
+
+        const errorMessage = error.message?.toLowerCase() || '';
+        
+        if (errorMessage.includes('connection reset') || 
+            errorMessage.includes('connection') || 
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('connect') ||
+            errorMessage.includes('reset by peer')) {
+          userFriendlyError = "Verification service is temporarily unavailable. Please try again.";
+          errorCode = "CONNECTION_TIMEOUT";
+        } else if (errorMessage.includes('429') || errorMessage.includes('limit')) {
+          userFriendlyError = "Too many verification attempts. Please try again after some time.";
+          errorCode = "API_LIMIT_EXCEEDED";
+        } else if (errorMessage.includes('dns') || errorMessage.includes('resolve')) {
+          userFriendlyError = "Unable to reach verification service. Please check your connection and try again.";
+          errorCode = "NETWORK_ERROR";
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: userFriendlyError,
+            errorCode: errorCode,
+            originalError: error.message,
+            message: userFriendlyError
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 

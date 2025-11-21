@@ -32,11 +32,11 @@ export const useIncidentDetail = () => {
       case 'New':
         return 'bg-blue-500 text-white border-blue-500';
       case 'Open':
-        return 'bg-red-500 text-white border-red-500';
+        return 'bg-red-500 text-white border-red-500'; // Open status is red
       case 'In Progress':
         return 'bg-yellow-500 text-white border-yellow-500';
       case 'Closed':
-        return 'bg-green-500 text-white border-green-500';
+        return 'bg-green-500 text-white border-green-500'; // Closed status is green
       case 'On Hold':
         return 'bg-gray-500 text-white border-gray-500';
       default:

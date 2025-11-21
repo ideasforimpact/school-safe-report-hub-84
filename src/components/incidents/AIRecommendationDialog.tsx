@@ -14,18 +14,19 @@ type AIRecommendationDialogProps = {
   incidentJson: any | null; // raw payload object
   incidentId?: string; // incident ID to save the recommendation
   incident?: any | null; // full incident object with recommended_action
+  onRefresh?: () => void | Promise<void>; // Callback to refresh incident list after saving
 };
 
 type AiResult = {
   summary: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   immediate_actions: string[];
-  corrective_actions: { action: string; owner_role: string; due_days: number; evidence_required: string[] }[];
+  corrective_actions: { action: string; due_days: number }[];
   preventive_actions: string[];
   policy_refs: string[];
 };
 
-export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ open, onOpenChange, incidentJson, incidentId, incident }) => {
+export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ open, onOpenChange, incidentJson, incidentId, incident, onRefresh }) => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<AiResult | null>(null);
@@ -86,6 +87,11 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
               description: 'Recommendation generated but failed to save. Please try refreshing.',
               variant: 'destructive',
             });
+          } else {
+            // Successfully saved - trigger refresh if callback provided
+            if (onRefresh) {
+              await onRefresh();
+            }
           }
         } catch (dbError: any) {
           console.error('Database save error:', dbError);
@@ -194,14 +200,9 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
             </div>
             <div className="flex-1 space-y-1">
               <p className="text-sm text-gray-700">{item.action}</p>
-              {item.owner_role && (
+              {item.due_days && (
                 <p className="text-xs text-gray-500">
-                  Owner: {item.owner_role} {item.due_days ? `• Due in ${item.due_days} days` : ''}
-                </p>
-              )}
-              {item.evidence_required && item.evidence_required.length > 0 && (
-                <p className="text-xs text-gray-500">
-                  Evidence: {item.evidence_required.join(', ')}
+                  Due in {item.due_days} days
                 </p>
               )}
             </div>
@@ -338,7 +339,18 @@ export const AIRecommendationDialog: React.FC<AIRecommendationDialogProps> = ({ 
         </div>
 
         <div className="border-t border-gray-200 px-6 py-4 flex justify-end flex-shrink-0">
-          <Button onClick={() => onOpenChange(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button 
+            onClick={async () => {
+              // Always refresh the incident list when OK is clicked
+              // This ensures the list is updated whether we just saved a new recommendation
+              // or are viewing an existing one
+              if (onRefresh) {
+                await onRefresh();
+              }
+              onOpenChange(false);
+            }} 
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
             OK
           </Button>
         </div>

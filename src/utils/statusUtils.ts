@@ -13,13 +13,13 @@ export const getStatusBadgeClass = (status: IncidentStatus, isVoided?: boolean) 
     case 'New': 
       return 'bg-blue-100 text-blue-800';
     case 'Open':
-      return 'bg-green-100 text-green-800'; // Changed to green
+      return 'bg-red-100 text-red-800'; // Open status is red
     case 'In Progress':
       return 'bg-yellow-100 text-yellow-800';
     case 'On Hold':
       return 'bg-orange-100 text-orange-800';
     case 'Closed':
-      return 'bg-red-100 text-red-800'; // Changed to red
+      return 'bg-green-100 text-green-800'; // Closed status is green
     default:
       return 'bg-gray-100 text-gray-800';
   }

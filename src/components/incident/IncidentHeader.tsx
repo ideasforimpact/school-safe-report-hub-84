@@ -155,19 +155,19 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
     switch(status) {
       case 'Open':
         if (reopenCount > 0) {
-          return 'bg-orange-500 text-white border-orange-500';
+          return '!bg-orange-500 !text-white !border-orange-500';
         }
-        return 'bg-red-500 text-white border-red-500';
+        return '!bg-red-500 !text-white !border-red-500'; // Open status is red
       case 'In Progress':
-        return 'bg-yellow-500 text-white border-yellow-500';
+        return '!bg-yellow-500 !text-white !border-yellow-500';
       case 'Closed':
-        return 'bg-green-500 text-white border-green-500';
+        return '!bg-green-500 !text-white !border-green-500'; // Closed status is green
       case 'New':
-        return 'bg-blue-500 text-white border-blue-500';
+        return '!bg-blue-500 !text-white !border-blue-500';
       case 'On Hold':
-        return 'bg-gray-500 text-white border-gray-500';
+        return '!bg-gray-500 !text-white !border-gray-500';
       default:
-        return 'bg-gray-500 text-white border-gray-500';
+        return '!bg-gray-500 !text-white !border-gray-500';
     }
   };
 
@@ -181,8 +181,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
                 {incident.ticketId}
               </CardTitle>
               <Badge 
-                variant="secondary" 
-                className={`${getEnhancedStatusColor(incident.status)} font-medium px-3 py-1`}
+                className={`${getEnhancedStatusColor(incident.status)} !font-medium !px-3 !py-1 rounded-full border-2`}
               >
                 {getStatusText()}
               </Badge>

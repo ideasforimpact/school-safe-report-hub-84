@@ -193,7 +193,8 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // API Failure: Set status to failed immediately
+          // API Failure: Store response but keep status as pending for manual review
+          // Don't automatically set to failed - let admin review first
           const apiLogEntry = {
             timestamp: new Date().toISOString(),
             action: "verify_pan_api_failed",
@@ -203,12 +204,13 @@ serve(async (req) => {
           await supabase
             .from('employee_documents')
             .update({
-              employee_docs_log: [...existingLogs, apiLogEntry],
-              document_status_id: rejectedStatusId,
-              verification_status: 'failed',
+              api_response_data: data,
               api_verification_status: 'failed',
               api_verification_method: 'api',
               api_verification_date: null,
+              employee_docs_log: [...existingLogs, apiLogEntry],
+              // verification_status stays 'pending' - admin needs to manually review
+              // document_status_id stays unchanged
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
@@ -233,14 +235,16 @@ serve(async (req) => {
             }
           }
           
+          // Return response indicating API failed but status remains pending for review
           return new Response(
             JSON.stringify({ 
               success: false, 
               error: userFriendlyError,
               errorCode: errorCode,
               originalError: data.message,
-              status: "failed",
-              statusId: rejectedStatusId
+              message: userFriendlyError,
+              requiresReview: true,
+              apiResponse: data // Include API response for review
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -248,12 +252,10 @@ serve(async (req) => {
       } catch (error) {
         console.error("Error verifying PAN with Surepass API:", error);
         
-        // API call failed completely - set to failed status
+        // API call failed completely - store error but keep status pending for review
         await supabase
           .from('employee_documents')
           .update({
-            verification_status: 'failed',
-            document_status_id: rejectedStatusId,
             api_verification_status: 'failed',
             api_verification_method: 'api',
             employee_docs_log: [...existingLogs, {
@@ -261,6 +263,8 @@ serve(async (req) => {
               action: "verify_pan_api_error",
               response: { error: error.message }
             }],
+            // verification_status stays 'pending' - admin needs to manually review
+            // document_status_id stays unchanged
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
