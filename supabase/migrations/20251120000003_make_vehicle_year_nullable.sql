@@ -1,6 +1,7 @@
 -- Make vehicle year column nullable
 -- This allows vehicles to be created without a registration year
 
+--Cheking Vehicle 
 DO $$
 BEGIN
   -- Check if the column exists and is currently NOT NULL
