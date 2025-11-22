@@ -66,6 +66,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
   const [currentPersonIndex, setCurrentPersonIndex] = useState<number | null>(null);
   const [currentPersonData, setCurrentPersonData] = useState<Person | null>(null);
+  const [hadSearchQuery, setHadSearchQuery] = useState(false);
 
   // Fetch client type information
   useEffect(() => {
@@ -211,6 +212,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     setCurrentPersonIndex(index);
     // Create a person object with the search query as the name for prepopulation
     const searchQuery = searchQueries[index] || '';
+    // Track if there was a search query - only auto-fill if there was one
+    setHadSearchQuery(!!searchQuery);
     const personWithSearchName = {
       ...peopleInvolved[index],
       name: searchQuery
@@ -222,13 +225,16 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const handleStudentAdded = async (newStudent: Student) => {
-    if (currentPersonIndex !== null) {
+    // Only auto-fill if there was a search query (Scenario 2)
+    // Don't auto-fill if there was no search query (Scenario 1)
+    if (currentPersonIndex !== null && hadSearchQuery) {
       // Update the person with the new student data
       onPersonChange(currentPersonIndex, 'name', `${newStudent.name} (${newStudent.studentId})`);
     }
     setIsAddStudentDialogOpen(false);
     setCurrentPersonIndex(null);
     setCurrentPersonData(null);
+    setHadSearchQuery(false);
     
     // Refresh the student list to show the newly added student
     await fetchStudents();
@@ -303,17 +309,19 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         students: filteredStudents.map(s => ({ id: s.id, name: s.name }))
       });
       
-      // Add "No Student Found" and "Add Student" options only if no students are found
+      // Always add "Add Student" option at the end, and "No Student Found" only if no students are found
+      const result = [...filteredStudents];
+      
       if (filteredStudents.length === 0) {
-        console.log('[PeopleInvolvedSection] No students found, returning placeholder options');
-        return [
-          { id: 'add-student', name: 'Add Student', isAddOption: true } as any,
-          { id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any
-        ];
+        console.log('[PeopleInvolvedSection] No students found, adding placeholder options');
+        result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any);
       }
       
-      console.log('[PeopleInvolvedSection] Returning filtered students:', filteredStudents.length);
-      return filteredStudents;
+      // Always add "Add Student" option at the bottom
+      result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as any);
+      
+      console.log('[PeopleInvolvedSection] Returning filtered students with Add Student option:', result.length);
+      return result;
     }
     return [];
   };
@@ -422,12 +430,12 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     );
                   }
                   
-                  // Check if this is the "Add Student" option
+                  // Check if this is the "Add Student" option - render it at the bottom
                   if (person.role === 'Student' && (option as any).isAddOption) {
                     return (
                       <li
                         key="add-student"
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
+                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-t border-gray-200"
                         onClick={() => handleAddStudentClick(index)}
                         onMouseDown={(e) => e.preventDefault()}
                       >
@@ -521,6 +529,20 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                           </div>
                         </li>
                       ))}
+                    {/* Always show "Add Student" link at the bottom for Student role */}
+                    {person.role === 'Student' && (
+                      <li
+                        key="add-student"
+                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-t border-gray-200"
+                        onClick={() => handleAddStudentClick(index)}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        <div className="flex items-center text-blue-600">
+                          <Plus className="h-4 w-4 mr-2" />
+                          <span className="font-medium">Add Student</span>
+                        </div>
+                      </li>
+                    )}
                   </ul>
                 </div>
               )}
@@ -694,7 +716,15 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       
       <AddStudentDialog
         open={isAddStudentDialogOpen}
-        onOpenChange={setIsAddStudentDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddStudentDialogOpen(open);
+          if (!open) {
+            // Reset state when dialog is closed
+            setCurrentPersonIndex(null);
+            setCurrentPersonData(null);
+            setHadSearchQuery(false);
+          }
+        }}
         peopleInvolved={currentPersonData}
         onStudentAdded={handleStudentAdded}
       />
