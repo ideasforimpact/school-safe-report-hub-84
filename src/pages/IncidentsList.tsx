@@ -388,6 +388,10 @@ const IncidentsList = () => {
             pagination={pagination}
             onPageChange={goToPage}
             onPageSizeChange={changePageSize}
+            onRefreshIncidents={async () => {
+              // Refresh incidents with current filters
+              await fetchIncidents(filters, true);
+            }}
           />
         </div>
       </div>

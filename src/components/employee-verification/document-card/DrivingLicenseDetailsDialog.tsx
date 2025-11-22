@@ -77,7 +77,14 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   }, [open]);
 
   const handleVerify = async () => {
-    if (!documentId) return;
+    if (!documentId) {
+      toast({
+        title: "Error",
+        description: "Document ID is missing. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       setIsApproving(true);
@@ -94,20 +101,52 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
 
       if (error) {
         console.error('DrivingLicenseDetailsDialog - Edge function error:', error);
-        throw error;
+        // Show user-friendly error message
+        const errorMessage = error.message || 'Network error occurred. Please check your connection and try again.';
+        toast({
+          title: "Approval Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
       }
 
       if (data?.success) {
-        // No toaster for approve action in detail dialog
+        toast({
+          title: "Approval Successful",
+          description: data.message || "Driving License has been approved successfully.",
+          variant: "default",
+        });
         onOpenChange(false);
         onVerificationUpdate?.();
       } else {
-        throw new Error(data?.error || 'Failed to approve document');
+        // Show user-friendly error message from the response
+        const errorMessage = data?.error || 'Failed to approve document. Please try again.';
+        const errorCode = data?.errorCode;
+        
+        // Provide more specific error messages based on error code
+        let userFriendlyMessage = errorMessage;
+        if (errorCode === 'MISSING_DOCUMENT_ID') {
+          userFriendlyMessage = 'Document ID is missing. Please refresh the page and try again.';
+        } else if (errorCode === 'MISSING_EMPLOYEE_ID') {
+          userFriendlyMessage = 'Your user information is missing. Please log out and log back in, then try again.';
+        } else if (errorCode === 'DOCUMENT_NOT_FOUND') {
+          userFriendlyMessage = 'Document not found. It may have been deleted. Please refresh the page.';
+        } else if (errorCode === 'UPDATE_FAILED') {
+          userFriendlyMessage = 'Failed to update document status. Please try again in a moment.';
+        }
+        
+        toast({
+          title: "Approval Failed",
+          description: userFriendlyMessage,
+          variant: "destructive",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('DrivingLicenseDetailsDialog - Exception:', error);
       toast({
         title: "Approval Failed",
-        description: "Failed to approve document. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -150,20 +189,50 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
 
       if (error) {
         console.error('DrivingLicenseDetailsDialog - Edge function error:', error);
-        throw error;
+        const errorMessage = error.message || 'Network error occurred. Please check your connection and try again.';
+        toast({
+          title: "Rejection Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
       }
 
       if (data?.success) {
-        // No toaster for reject action in detail dialog
+        toast({
+          title: "Rejection Successful",
+          description: data.message || "Driving License has been rejected successfully.",
+          variant: "default",
+        });
         onOpenChange(false);
         onVerificationUpdate?.();
       } else {
-        throw new Error(data?.error || 'Failed to reject document');
+        // Show user-friendly error message from the response
+        const errorMessage = data?.error || 'Failed to reject document. Please try again.';
+        const errorCode = data?.errorCode;
+        
+        // Provide more specific error messages based on error code
+        let userFriendlyMessage = errorMessage;
+        if (errorCode === 'MISSING_DOCUMENT_ID') {
+          userFriendlyMessage = 'Document ID is missing. Please refresh the page and try again.';
+        } else if (errorCode === 'DOCUMENT_NOT_FOUND') {
+          userFriendlyMessage = 'Document not found. It may have been deleted. Please refresh the page.';
+        } else if (errorCode === 'UPDATE_FAILED') {
+          userFriendlyMessage = 'Failed to update document status. Please try again in a moment.';
+        }
+        
+        toast({
+          title: "Rejection Failed",
+          description: userFriendlyMessage,
+          variant: "destructive",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('DrivingLicenseDetailsDialog - Rejection error:', error);
+      const errorMessage = error.message || 'Failed to reject document. Please try again.';
       toast({
         title: "Rejection Failed",
-        description: "Failed to reject document. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

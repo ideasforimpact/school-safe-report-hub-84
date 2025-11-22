@@ -57,6 +57,19 @@ interface AssessmentTemplatePayload {
   client_id?: string | null;
 }
 
+interface EduResourcePayload {
+  id?: string; // empty in templates
+  title: string;
+  description?: string;
+  category?: string;
+  tags?: string[] | null;
+  document_url?: string;
+  created_at?: string;
+  updated_at?: string;
+  uploaded_by?: string; // empty in templates
+  client_type_id?: string; // empty in templates
+}
+
 interface ImportRequest {
   client_id: string;
   categories?: CategoryPayload[];
@@ -71,6 +84,7 @@ interface ImportRequest {
     fields: unknown;
   }>;
   assessment_templates?: AssessmentTemplatePayload[];
+  edu_resources?: EduResourcePayload[];
   // Optional: when true, load default templates from /templates
   use_defaults?: boolean;
 }
@@ -100,6 +114,7 @@ serve(async (req) => {
     priorities: { inserted_ids: [], already_existing_ids: [], errors: [] },
     custom_forms: { inserted_ids: [], already_existing_ids: [], errors: [] },
     assessment_templates: { inserted_ids: [], already_existing_ids: [], errors: [] },
+    backoffice_edusafe_resource: { inserted_ids: [], already_existing_ids: [], errors: [] },
   };
 
   try {
@@ -119,9 +134,11 @@ serve(async (req) => {
     const categories = body.categories;
     const forms = body.forms;
     const assessmentTemplates = body.assessment_templates;
+    const eduResources = body.edu_resources;
 
     console.log('Received forms:', forms ? `${forms.length} forms` : 'undefined');
     console.log('Received assessment templates:', assessmentTemplates ? `${assessmentTemplates.length} assessment templates` : 'undefined');
+    console.log('Received edu resources:', eduResources ? `${eduResources.length} edu resources` : 'undefined');
 
     // Validate required templates
     const missing: string[] = [];
@@ -462,6 +479,108 @@ serve(async (req) => {
         } else if (data?.id) {
           console.log(`Successfully inserted assessment template "${title}" with ID: ${data.id}`);
           tableLogs.assessment_templates.inserted_ids.push(data.id);
+        }
+      }
+    }
+
+    // Insert/Reuse Edu Resources
+    if (Array.isArray(eduResources) && eduResources.length > 0) {
+      console.log(`Processing ${eduResources.length} edu resources for client ${clientId}`);
+      
+      // Get current user from auth header
+      let uploadedById: string | null = null;
+      try {
+        const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+        if (authHeader) {
+          const token = authHeader.replace('Bearer ', '');
+          const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+          if (!userError && user) {
+            // Get backoffice_users id from auth_user_id
+            const { data: backofficeUser, error: backofficeError } = await supabase
+              .from('backoffice_users')
+              .select('id')
+              .eq('email','backofficesafeschool@gmail.com')
+              .single();
+            if (!backofficeError && backofficeUser?.id) {
+              uploadedById = backofficeUser.id;
+              console.log(`Found backoffice user ID: ${uploadedById}`);
+            } else {
+              console.log('No backoffice user found for auth_user_id:', user.id);
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Error getting current user:', error);
+      }
+
+      // Get client_type_id where key = 'school'
+      let clientTypeId: string | null = null;
+      try {
+        const { data: clientTypeData, error: clientTypeError } = await supabase
+          .from('client_type')
+          .select('id')
+          .eq('key', 'school')
+          .single();
+        if (!clientTypeError && clientTypeData?.id) {
+          clientTypeId = clientTypeData.id;
+          console.log(`Found client_type_id for 'school': ${clientTypeId}`);
+        } else {
+          console.log('Warning: Could not find client_type with key "school"');
+        }
+      } catch (error) {
+        console.log('Error getting client_type:', error);
+      }
+
+      for (const resource of eduResources) {
+        const title = resource.title?.trim();
+        if (!title) continue;
+        
+        // Check existing by (client_type_id, title)
+        const { data: existResource, error: findResourceErr } = await supabase
+          .from('backoffice_edusafe_resource')
+          .select('id')
+          .eq('client_type_id', clientTypeId)
+          .eq('title', title);
+        if (!findResourceErr && existResource && existResource.length > 0) {
+          tableLogs.backoffice_edusafe_resource.already_existing_ids.push(existResource[0].id);
+          continue;
+        }
+
+        // Generate UUID for id
+        const resourceId = crypto.randomUUID();
+
+        // Replace 'client_type_id' placeholder in document_url with actual client_type_id UUID
+        let documentUrl = resource.document_url ?? null;
+        if (documentUrl && clientTypeId) {
+          documentUrl = documentUrl.replace(/client_type_id/g, clientTypeId);
+        }
+
+        const record: any = {
+          id: resourceId,
+          title,
+          description: resource.description ?? null,
+          category: resource.category ?? null,
+          tags: resource.tags ?? null,
+          document_url: documentUrl,
+          created_at: resource.created_at || new Date().toISOString(),
+          updated_at: resource.updated_at || new Date().toISOString(),
+          uploaded_by: uploadedById,
+          client_type_id: clientTypeId,
+        };
+
+        const { data, error } = await supabase
+          .from('backoffice_edusafe_resource')
+          .insert(record)
+          .select('id')
+          .single();
+        if (error) {
+          console.log(`Error inserting edu resource "${title}":`, error.message);
+          tableLogs.backoffice_edusafe_resource.errors.push(error.message);
+          responseStatus = 'failed';
+          responseCode = 207;
+        } else if (data?.id) {
+          console.log(`Successfully inserted edu resource "${title}" with ID: ${data.id}`);
+          tableLogs.backoffice_edusafe_resource.inserted_ids.push(data.id);
         }
       }
     }

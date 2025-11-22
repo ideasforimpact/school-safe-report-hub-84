@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { getSupabaseUrl, getSupabaseServiceRoleKey, getFrontendUrl } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,7 +134,7 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
           Assessment_ID: assessmentId,
           Assessment_Title: assessment.title,
           Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-          Assessment_URL: (Deno.env.get('FRONTEND_URL') || 'https://school-safe-report-hub.vercel.app') + `/assessments`
+          Assessment_URL: `${getBaseUrl()}/assessments`
         };
 
         const subject = `Reminder – 5 Days Left for Assessment Due Date [Assessment ID: ${variables.Assessment_ID}]`;
@@ -239,7 +239,7 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
           Assessment_Title: assessment.title,
           Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
           Overdue_Days: overdueDays.toString(),
-          Assessment_URL: (Deno.env.get('FRONTEND_URL') || 'https://school-safe-report-hub.vercel.app') + `/assessments`
+          Assessment_URL: `${getBaseUrl()}/assessments`
         };
 
         const subject = `Assessment Overdue by ${variables.Overdue_Days} Days – [Assessment ID: ${variables.Assessment_ID}]`;
@@ -357,8 +357,8 @@ async function validateAssessmentNotification(supabase: any, email: any): Promis
 }
 
 /**
- * Get base URL
+ * Get base URL - uses shared function for consistency
  */
 function getBaseUrl(): string {
-  return Deno.env.get('FRONTEND_URL') || 'https://school-safe-report-hub.vercel.app';
+  return getFrontendUrl();
 } 

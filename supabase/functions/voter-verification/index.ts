@@ -8,6 +8,37 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
+// Integration selector
+const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
+const isQuickEKYC = integrationName === 'quickekyc';
+
+// Helper function to normalize QuickEKYC response to Surepass format
+function normalizeQuickEKYCResponse(response: any): any {
+  // QuickEKYC response structure is almost identical to Surepass
+  // Main difference: request_id vs client_id, and status field
+  if (response.status_code === 200 && response.status === 'success') {
+    // Success response - normalize to Surepass format
+    return {
+      success: true,
+      status_code: 200,
+      message: response.message || null,
+      message_code: "success",
+      data: {
+        ...response.data,
+        client_id: response.request_id?.toString() || null // Map request_id to client_id
+      }
+    };
+  } else {
+    // Error response - normalize to Surepass format
+    return {
+      success: false,
+      status_code: response.status_code,
+      message: response.message || "Verification Failed",
+      data: response.data || {}
+    };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -39,13 +70,25 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Set up production vs. sandbox environment for the Surepass API
-    const environment = Deno.env.get("ENVIRONMENT") || "development";
+    // Set up provider configuration for Voter ID verification
+    let baseUrl: string | null = null;
+    let apiKey: string | null = null;
+    let voterIdEndpoint = "/api/v1/voter-id/voter-id";
     
-    // Default base URL and API key
-    let baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL")
-    
-    let apiKey =  Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
+    // Configure based on integration type
+    if (isQuickEKYC) {
+      // QuickEKYC configuration
+      baseUrl = Deno.env.get("QUICKEKYC_BASE_ENDPOINT") || '';
+      apiKey = Deno.env.get("QUICKEKYC_API_KEY_PROD") || '';
+      voterIdEndpoint = "/api/v1/voter-id/voter-id";
+      console.log(`Using QuickEKYC API for voter ID verification: ${baseUrl}`);
+    } else {
+      // Surepass configuration
+      baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || '';
+      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || '';
+      voterIdEndpoint = "/api/v1/voter-id/voter-id";
+      console.log(`Using Surepass API for voter ID verification: ${baseUrl}`);
+    } 
       
     
     // First, fetch document status IDs for governance, manual and rejected statuses
@@ -135,21 +178,42 @@ serve(async (req) => {
         );
       }
       
+      if (!baseUrl || !apiKey) {
+        return new Response(
+          JSON.stringify({ error: "API configuration not found" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       try {
-        console.log("Making request to Surepass API to verify Voter ID with base URL:", baseUrl);
+        const apiUrl = `${baseUrl}${voterIdEndpoint}`;
+        console.log(`Making request to ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API to verify Voter ID with:`, apiUrl);
         
-        // Make the API call to Surepass for Voter ID verification
-        const response = await fetch(`${baseUrl}/api/v1/voter-id/voter-id`, {
+        // Prepare request headers and body based on provider
+        const requestHeaders: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        
+        // Only add Bearer token for Surepass, not for QuickEKYC
+        if (!isQuickEKYC) {
+          requestHeaders['Authorization'] = `Bearer ${apiKey}`;
+        }
+        
+        const requestBody: any = isQuickEKYC
+          ? { id_number: documentNumber, key: apiKey }
+          : { id_number: documentNumber };
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({ id_number: documentNumber })
+          headers: requestHeaders,
+          body: JSON.stringify(requestBody)
         });
         
-        const data = await response.json();
-        console.log("Surepass API response:", JSON.stringify(data));
+        const rawApiResponse = await response.json();
+        console.log(`${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API response:`, JSON.stringify(rawApiResponse));
+        
+        // Normalize QuickEKYC response to Surepass format
+        const data = isQuickEKYC ? normalizeQuickEKYCResponse(rawApiResponse) : rawApiResponse;
         
         // Create an API log entry with timestamp
         const apiLogEntry = {
@@ -160,7 +224,12 @@ serve(async (req) => {
         
         // NEW BEHAVIOR: Always store API response and keep status as pending
         // Only set to failed if API call completely failed
-        if (data.success && data.status_code === 200) {
+        // Check success based on provider - use raw response for QuickEKYC, normalized for Surepass
+        const isSuccess = isQuickEKYC
+          ? (rawApiResponse.status_code === 200 && rawApiResponse.status === 'success')
+          : (data.success && data.status_code === 200);
+        
+        if (isSuccess) {
           // API Success: Store response in api_response_data, keep status pending
           const { error: updateError } = await supabase
             .from('employee_documents')
@@ -193,7 +262,8 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // API Failure: Set status to failed immediately
+          // API Failure: Store response but keep status as pending for manual review
+          // Don't automatically set to failed - let admin review first
           const apiLogEntry = {
             timestamp: new Date().toISOString(),
             action: "verify_voter_id_api_failed",
@@ -203,12 +273,13 @@ serve(async (req) => {
           await supabase
             .from('employee_documents')
             .update({
-              employee_docs_log: [...existingLogs, apiLogEntry],
-              document_status_id: rejectedStatusId,
-              verification_status: 'failed',
+              api_response_data: data,
               api_verification_status: 'failed',
               api_verification_method: 'api',
               api_verification_date: null,
+              employee_docs_log: [...existingLogs, apiLogEntry],
+              // verification_status stays 'pending' - admin needs to manually review
+              // document_status_id stays unchanged
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
@@ -217,43 +288,57 @@ serve(async (req) => {
           let userFriendlyError = "Voter ID verification failed";
           let errorCode = "VOTER_ID_VERIFICATION_FAILED";
           
-          if (data.message) {
-            const message = data.message.toLowerCase();
-            if (message.includes('invalid voter') || message.includes('voter id not found')) {
+          // Handle QuickEKYC error messages
+          if (isQuickEKYC) {
+            const message = rawApiResponse?.message || '';
+            if (message.includes('Verification Failed') || message.includes('verification')) {
               userFriendlyError = "This Voter ID is not found in electoral records";
               errorCode = "VOTER_ID_INVALID";
-            } else if (message.includes('format') || message.includes('pattern')) {
-              userFriendlyError = "Please enter a valid Voter ID number";
-              errorCode = "VOTER_ID_INVALID_FORMAT";
-            } else if (message.includes('expired') || message.includes('inactive')) {
-              userFriendlyError = "This Voter ID appears to be expired or inactive";
-              errorCode = "VOTER_ID_EXPIRED";
+            } else if (rawApiResponse?.status_code === 422) {
+              userFriendlyError = message || "Voter ID verification failed. Please check the number and try again.";
             } else {
-              userFriendlyError = "Voter ID verification failed. Please check the number and try again.";
+              userFriendlyError = message || "Voter ID verification failed. Please check the number and try again.";
+            }
+          } else {
+            // Handle Surepass error messages
+            if (data.message) {
+              const message = data.message.toLowerCase();
+              if (message.includes('invalid voter') || message.includes('voter id not found')) {
+                userFriendlyError = "This Voter ID is not found in electoral records";
+                errorCode = "VOTER_ID_INVALID";
+              } else if (message.includes('format') || message.includes('pattern')) {
+                userFriendlyError = "Please enter a valid Voter ID number";
+                errorCode = "VOTER_ID_INVALID_FORMAT";
+              } else if (message.includes('expired') || message.includes('inactive')) {
+                userFriendlyError = "This Voter ID appears to be expired or inactive";
+                errorCode = "VOTER_ID_EXPIRED";
+              } else {
+                userFriendlyError = "Voter ID verification failed. Please check the number and try again.";
+              }
             }
           }
           
+          // Return response indicating API failed but status remains pending for review
           return new Response(
             JSON.stringify({ 
               success: false, 
               error: userFriendlyError,
               errorCode: errorCode,
-              originalError: data.message,
-              status: "failed",
-              statusId: rejectedStatusId
+              originalError: isQuickEKYC ? rawApiResponse.message : data.message,
+              message: userFriendlyError,
+              requiresReview: true,
+              apiResponse: data // Include API response for review
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
       } catch (error) {
-        console.error("Error verifying Voter ID with Surepass API:", error);
+        console.error(`Error verifying Voter ID with ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API:`, error);
         
-        // API call failed completely - set to failed status
+        // API call failed completely - store error but keep status pending for review
         await supabase
           .from('employee_documents')
           .update({
-            verification_status: 'failed',
-            document_status_id: rejectedStatusId,
             api_verification_status: 'failed',
             api_verification_method: 'api',
             employee_docs_log: [...existingLogs, {
@@ -261,6 +346,8 @@ serve(async (req) => {
               action: "verify_voter_id_api_error",
               response: { error: error.message }
             }],
+            // verification_status stays 'pending' - admin needs to manually review
+            // document_status_id stays unchanged
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);

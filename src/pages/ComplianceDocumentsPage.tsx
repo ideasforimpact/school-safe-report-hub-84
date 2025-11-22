@@ -64,7 +64,8 @@ const ComplianceDocumentsPage: React.FC = () => {
       .from('compliance_documents')
       .select('id, folder_exists, folder_id, parent_folder_id, files')
       .eq('client_id', clientId)
-      .eq('created_by', employeeId);
+      .eq('created_by', employeeId)
+      .eq('is_delete', 0); // Only fetch non-deleted records
     if (error) throw error;
 
     if (!currentFolderId) {
@@ -84,7 +85,12 @@ const ComplianceDocumentsPage: React.FC = () => {
         return { id: r.id as string, name, folder_id: r.folder_id as string };
       });
 
-      const files = nonFolderRows.flatMap((r: any) => (r.files || []).map((f: any) => ({ ...f, rowId: r.id })));
+      // Filter out deleted files (is_delete = 1 or is_delete = true)
+      const files = nonFolderRows.flatMap((r: any) => 
+        (r.files || [])
+          .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+          .map((f: any) => ({ ...f, rowId: r.id }))
+      );
       setFolders(folderList);
       setRootFiles(files);
       setCurrentFolderFiles([]);
@@ -95,7 +101,10 @@ const ComplianceDocumentsPage: React.FC = () => {
       const filesArray = Array.isArray(folderRow?.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)
         ? folderRow.files[0].files
         : folderRow?.files || [];
-      const files = filesArray.map((f: any) => ({ ...f, rowId: folderRow.id }));
+      // Filter out deleted files (is_delete = 1 or is_delete = true)
+      const files = filesArray
+        .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+        .map((f: any) => ({ ...f, rowId: folderRow.id }));
       setCurrentFolderFiles(files);
       const children = (data || []).filter((r: any) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
         .map((r: any) => ({ id: r.id as string, name: r.files?.[0]?.folder_name || 'Folder', folder_id: r.folder_id as string }));
@@ -421,11 +430,12 @@ const ComplianceDocumentsPage: React.FC = () => {
                     <button
                       className={`truncate max-w-[120px] md:max-w-[180px] ${idx === breadcrumb.length - 1 ? 'font-semibold text-gray-800' : 'hover:text-blue-600'}`}
                       title={seg.name}
-                      onClick={() => {
+                      onClick={async () => {
                         setLoading(true);
                         setCurrentFolderId(seg.folderId);
                         setCurrentFolderName(seg.name);
                         setBreadcrumb(breadcrumb.slice(0, idx + 1));
+                        await refresh();
                       }}
                     >
                       {seg.name}
@@ -445,11 +455,12 @@ const ComplianceDocumentsPage: React.FC = () => {
                       <button
                         className={`truncate max-w-[80px] ${idx === breadcrumb.length - 1 ? 'font-semibold text-gray-800' : 'hover:text-blue-600'}`}
                         title={seg.name}
-                        onClick={() => {
+                        onClick={async () => {
                           setLoading(true);
                           setCurrentFolderId(seg.folderId);
                           setCurrentFolderName(seg.name);
                           setBreadcrumb(breadcrumb.slice(0, idx + 1));
+                          await refresh();
                         }}
                       >
                         {seg.name}
@@ -498,9 +509,6 @@ const ComplianceDocumentsPage: React.FC = () => {
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }}>
-                          Open
-                        </DropdownMenuItem>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onSelect={(e) => e.preventDefault()}>
@@ -531,7 +539,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }} className="cursor-pointer">
+                  <div onClick={async () => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); await refresh(); }} className="cursor-pointer">
                     <Folder className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
                     <div className="text-xs sm:text-sm font-medium truncate px-1">{f.name}</div>
                   </div>
@@ -582,9 +590,6 @@ const ComplianceDocumentsPage: React.FC = () => {
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }}>
-                          Open
-                        </DropdownMenuItem>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onSelect={(e) => e.preventDefault()}>
@@ -621,7 +626,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <div onClick={() => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); }} className="cursor-pointer">
+                  <div onClick={async () => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); await refresh(); }} className="cursor-pointer">
                     <Folder className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
                     <div className="text-xs sm:text-sm font-medium truncate px-1">{f.name}</div>
                   </div>

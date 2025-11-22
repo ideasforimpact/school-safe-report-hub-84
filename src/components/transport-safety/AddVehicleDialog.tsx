@@ -36,7 +36,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       type: 'other',
       make: '',
       model: '',
-      year: new Date().getFullYear(),
+      year: null,
       status: 'active',
       driver: '',
       route: '',
@@ -66,11 +66,23 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
-      reset();
+      reset({
+        registrationNumber: '',
+        type: 'other',
+        make: '',
+        model: '',
+        year: null, // Explicitly reset to null
+        status: 'active',
+        driver: '',
+        route: '',
+        capacity: undefined,
+        clientId: employeeData?.clientId,
+        employeeId: employeeData?.id
+      });
       setError(null);
       setRegistrationNumberError(null);
     }
-  }, [open, reset]);
+  }, [open, reset, employeeData]);
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     setError(null); // Clear any previous errors
@@ -99,7 +111,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       }
       // Ensure numeric values are properly converted from strings or set to null if empty
       // For add mode, we only require registration number. Use defaults for the rest.
-      const yearValue = data.year ? Number(data.year) : new Date().getFullYear();
+      // Handle null, undefined, or falsy values as null
+      const yearValue = null
       const capacityValue = data.capacity ? Number(data.capacity) : null;
 
       // Prepare the payload with proper data transformation
@@ -108,7 +121,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         type: data.type || 'other',
         make: (data.make || '').trim(),
         model: (data.model || '').trim(),
-        year: yearValue,
+        year: null,
         driver: (data.driver || '').trim(),
         route: (data.route || '').trim(),
         capacity: capacityValue,
@@ -121,6 +134,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         mode: isEditMode ? 'UPDATE' : 'CREATE',
         vehicleId: isEditMode ? vehicle?.id : 'NEW',
         payload: vehicleData,
+        rawFormData: data,
+        yearValue: yearValue,
         employeeData: {
           clientId: employeeData.clientId,
           employeeId: employeeData?.id

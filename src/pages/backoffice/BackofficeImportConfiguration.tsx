@@ -12,6 +12,7 @@ import reportTypesTemplateJson from '@/templates/categories/report-types-templat
 import prioritiesTemplateJson from '@/templates/categories/priorities-template.json';
 import formTemplateJson from '@/templates/forms/form-template.json';
 import assessmentTemplatesJson from '@/templates/assessment/assessment_templates.json';
+import eduResourcesJson from '@/templates/edu_resources/edu_resource.json';
 import Layout from '@/components/layout/Layout';
 
 
@@ -49,6 +50,7 @@ const BackofficeImportConfiguration = () => {
       const priorities = (prioritiesTemplateJson as any)?.priorities;
       const forms = [formTemplateJson]; // Wrap single form template in array
       const assessment_templates = assessmentTemplatesJson; // Assessment templates array
+      const edu_resources = eduResourcesJson; // Edu resources array
 
       // Frontend validation before invoking
       const missing: string[] = [];
@@ -58,20 +60,22 @@ const BackofficeImportConfiguration = () => {
       if (!Array.isArray(priorities) || priorities.length === 0) missing.push('priorities');
       if (!Array.isArray(forms) || forms.length === 0) missing.push('forms');
       if (!Array.isArray(assessment_templates) || assessment_templates.length === 0) missing.push('assessment_templates');
+      if (!Array.isArray(edu_resources) || edu_resources.length === 0) missing.push('edu_resources');
       if (missing.length > 0) {
         toast.error(`Missing template(s): ${missing.join(', ')}`);
         setLoading(false);
         return;
       }
 
-      const payload = { client_id: selectedClient, categories, contributing_factors, report_types, priorities, forms, assessment_templates };
+      const payload = { client_id: selectedClient, categories, contributing_factors, report_types, priorities, forms, assessment_templates, edu_resources };
 
-      console.log('Sending payload with forms and assessments:', { 
+      console.log('Sending payload with forms, assessments, and edu resources:', { 
         client_id: selectedClient, 
         formsCount: forms.length,
         forms: forms.map(f => ({ title: f.title, fieldsCount: f.fields?.length || 0 })),
         assessmentTemplatesCount: assessment_templates.length,
-        assessmentTemplates: assessment_templates.map(a => ({ title: a.title, questionsCount: a.questions?.length || 0 }))
+        assessmentTemplates: assessment_templates.map(a => ({ title: a.title, questionsCount: a.questions?.length || 0 })),
+        eduResourcesCount: edu_resources.length
       });
 
       const { data, error } = await supabase.functions.invoke('import-configuration', {

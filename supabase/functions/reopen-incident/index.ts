@@ -22,7 +22,7 @@ async function checkReopenPermissions(
   // Get the incident details with creator and assigned user
   const { data: incident, error: incidentError } = await supabase
     .from('incidents')
-    .select('id, created_by, assigned_to, client_id, ticket_id, status_id')
+    .select('id, created_by, assigned_to, client_id, ticket_id, status_id, reopen')
     .eq('id', incidentId)
     .single()
 

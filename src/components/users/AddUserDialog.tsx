@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
 import { useDebounce } from '@/hooks/useDebounce';
+import { toast } from 'sonner';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ interface AddUserDialogProps {
     clientId?: string;
   };
   setFormData: (data: any) => void;
-  onSubmit: () => void;
+  onSubmit: (formData?: any) => void;
   resetForm: () => void;
   isLoading: boolean;
   clientId?: string;
@@ -42,9 +43,29 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const { state } = useEmployeeStore();
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
+  const formDataRef = useRef(formData);
+  
+  // Keep formDataRef in sync with formData
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
   
   // Debounce the employee ID to avoid excessive API calls
   const debouncedEmployeeId = useDebounce(formData.employeeId || '', 500);
+
+  // Reset selectedModules when dialog opens to ensure clean state
+  useEffect(() => {
+    if (isOpen) {
+      // Clear selectedModules when dialog opens
+      setSelectedModules([]);
+      // Also ensure formData.moduleAccessPayload is cleared
+      setFormData(prev => ({
+        ...prev,
+        moduleAccessPayload: []
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Log clientId for debugging
   console.log("AddUserDialog - ClientId from props:", clientId);
@@ -94,20 +115,35 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setEmployeeIdValidation('idle');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Prevent submission if employee ID already exists
     if (employeeIdValidation === 'exists') {
+      console.warn("Cannot submit: Employee ID already exists");
+      toast.error("Employee ID already exists. Please use a different ID.");
       return;
     }
     
-    // Ensure clientId is set before submission
-    if (!formData.clientId && clientId) {
-      setFormData({
-        ...formData,
-        clientId: clientId
+    // Prevent submission if form is not valid
+    if (!isFormValid()) {
+      console.warn("Form validation failed, cannot submit");
+      console.log("Form validation details:", {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        employeeId: formData.employeeId,
+        employeeIdValidation,
+        isValidEmployeeId: formData.employeeId ? isValidEmployeeId(formData.employeeId) : false,
+        isLoading
       });
+      toast.error("Please fill in all required fields correctly");
+      return;
+    }
+    
+    // Prevent submission if already loading
+    if (isLoading) {
+      console.warn("Already submitting, please wait");
+      return;
     }
     
     // Use the selectedModules directly for backend processing
@@ -117,17 +153,24 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     }));
     
     console.log("Module access payload for backend:", moduleAccessPayload);
+    console.log("Form data before update:", formData);
     
-    // Update the formData with the moduleAccessPayload before submission
-    setFormData(prevData => ({
-      ...prevData,
+    // Prepare the complete form data with moduleAccessPayload
+    const completeFormData = {
+      ...formData,
+      clientId: formData.clientId || clientId,
       moduleAccessPayload
-    }));
+    };
     
-    // Submit the form after a short delay to ensure state is updated
-    setTimeout(() => {
-      onSubmit();
-    }, 0);
+    console.log("Complete form data for submission:", completeFormData);
+    
+    // Update the formData with the complete data
+    setFormData(completeFormData);
+    formDataRef.current = completeFormData;
+    
+    // Call onSubmit with the complete formData directly to avoid timing issues
+    console.log("Calling onSubmit with formData:", completeFormData);
+    onSubmit(completeFormData);
   };
 
   // Helper function to get validation icon
@@ -212,8 +255,21 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     );
   };
 
+  const handleDialogOpenChange = (open: boolean) => {
+    // Prevent closing if form is being submitted
+    if (!open && isLoading) {
+      console.log("Preventing dialog close during submission");
+      return;
+    }
+    if (!open) {
+      handleClose();
+    } else {
+      setIsOpen(true);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>

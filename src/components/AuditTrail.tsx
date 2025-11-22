@@ -175,10 +175,10 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
             {parsed.beforeReason && (
               <p className="text-sm text-gray-700">{parsed.beforeReason}</p>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-gray-900">Reason:</span>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {parsed.reason}
+              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 break-words max-w-full">
+                <span className="break-words whitespace-normal">{parsed.reason}</span>
               </Badge>
             </div>
           </div>
@@ -186,37 +186,37 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
 
       case 'change':
         return (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium text-gray-900">{parsed.field}</span>
             <span className="text-gray-600">changed from</span>
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              {parsed.oldValue}
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.oldValue}</span>
             </Badge>
             <span className="text-gray-600">to</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {parsed.newValue}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.newValue}</span>
             </Badge>
           </div>
         );
 
       case 'set':
         return (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium text-gray-900">{parsed.field}</span>
             <span className="text-gray-600">set to</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {parsed.value}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.value}</span>
             </Badge>
           </div>
         );
 
       case 'clear':
         return (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium text-gray-900">{parsed.field}</span>
             <span className="text-gray-600">cleared (was</span>
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              {parsed.oldValue}
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.oldValue}</span>
             </Badge>
             <span className="text-gray-600">)</span>
           </div>
@@ -224,37 +224,37 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
 
       case 'added':
         return (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium text-gray-900">{parsed.field}:</span>
             <span className="text-gray-600">Added</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {parsed.value}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.value}</span>
             </Badge>
           </div>
         );
 
       case 'removed':
         return (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium text-gray-900">{parsed.field}:</span>
             <span className="text-gray-600">Removed</span>
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              {parsed.value}
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.value}</span>
             </Badge>
           </div>
         );
 
       case 'combined':
         return (
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium text-gray-900">{parsed.field}:</span>
             <span className="text-gray-600">Removed</span>
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              {parsed.removedValue}
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.removedValue}</span>
             </Badge>
             <span className="text-gray-600">, Added</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {parsed.addedValue}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 break-words max-w-full">
+              <span className="break-words whitespace-normal">{parsed.addedValue}</span>
             </Badge>
           </div>
         );
@@ -409,9 +409,9 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
                                   <h5 className="text-sm font-medium text-gray-900 mb-2">Changes Made:</h5>
                                   <div className="space-y-1">
                                     {changes.map((change, changeIndex) => (
-                                      <div key={changeIndex} className="flex items-center text-sm text-gray-700">
-                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2 flex-shrink-0" />
-                                        <span>{change}</span>
+                                      <div key={changeIndex} className="flex items-start text-sm text-gray-700">
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-2 flex-shrink-0 mt-1.5" />
+                                        <span className="break-words whitespace-normal">{change}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -422,7 +422,7 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
                             // Default plain text display
                             return (
                               <div className="bg-gray-50 rounded-lg p-3 border">
-                                <span className="text-sm text-gray-700">{activityText}</span>
+                                <span className="text-sm text-gray-700 break-words whitespace-normal">{activityText}</span>
                               </div>
                             );
                           })()}
