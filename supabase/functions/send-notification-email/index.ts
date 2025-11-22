@@ -129,7 +129,6 @@ serve(async (req) => {
         subject: requestBody.subject,
         bodyLength: requestBody.body?.length || 0,
         priority: requestBody.priority,
-        body  : requestBody.body
       });
     } catch (parseError: any) {
       console.error('[send-notification-email] ERROR: Failed to parse request body:', parseError);
