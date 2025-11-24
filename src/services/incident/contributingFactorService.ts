@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { incidentReferenceService } from "./incidentReferenceService";
 
 export interface ContributingFactorItem {
   id: string;
@@ -148,18 +149,47 @@ export const contributingFactorService = {
     }
   },
 
-  // Delete contributing factor - always requiring clientId
-  deleteContributingFactor: async (id: string, clientId: string) => {
+  // Delete contributing factor - clientId can be provided or will be fetched from user
+  deleteContributingFactor: async (id: string, clientId?: string) => {
     try {
-      if (!clientId) {
+      let finalClientId = clientId;
+
+      // If clientId not provided, get it from current user's employee record
+      if (!finalClientId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
+        }
+
+        finalClientId = employee.client_id;
+      }
+
+      if (!finalClientId) {
         throw new Error('Client ID is required');
+      }
+
+      // Check if contributing factor is referenced by incidents
+      const referenceCheck = await incidentReferenceService.checkContributingFactorReferences(id, finalClientId);
+      
+      if (referenceCheck.hasReferences) {
+        throw new Error(referenceCheck.message);
       }
 
       const { error } = await supabase
         .from('contributing_factors')
         .delete()
         .eq('id', id)
-        .eq('client_id', clientId);
+        .eq('client_id', finalClientId);
 
       if (error) {
         throw error;

@@ -161,18 +161,86 @@ serve(async (req) => {
         // NEW BEHAVIOR: Always store API response and keep status as pending
         // Only set to failed if API call completely failed
         if (data.success && data.status_code === 200) {
+          // Extract personal_info from API response data
+          const apiData = data?.data || {};
+          let personalInfo: { dob?: string; address?: string } | null = null;
+          
+          // Extract dob and address if available
+          if (apiData.dob || apiData.address) {
+            personalInfo = {};
+            
+            // Format and store dob in YYYY-MM-DD format
+            if (apiData.dob) {
+              const dobStr = String(apiData.dob).trim();
+              
+              // Check if already in YYYY-MM-DD format (most common case)
+              if (/^\d{4}-\d{2}-\d{2}$/.test(dobStr)) {
+                personalInfo.dob = dobStr;
+              } else {
+                // Try to parse and format the date if in different format
+                const dobDate = new Date(dobStr);
+                if (!isNaN(dobDate.getTime())) {
+                  const year = dobDate.getFullYear();
+                  const month = String(dobDate.getMonth() + 1).padStart(2, '0');
+                  const day = String(dobDate.getDate()).padStart(2, '0');
+                  personalInfo.dob = `${year}-${month}-${day}`;
+                } else {
+                  // If parsing fails, log warning but don't store invalid date
+                  console.warn('Invalid date format for dob:', dobStr);
+                }
+              }
+            }
+            
+            // Always set address field - concatenate if available, otherwise empty string
+            if (apiData.address && typeof apiData.address === 'object') {
+              const addr = apiData.address;
+              const addressParts: string[] = [];
+              
+              // Build address in logical order: line_1, line_2, street_name, city, state, zip, country
+              // Use full address if available, otherwise build from parts
+              if (addr.full && addr.full.trim()) {
+                // If full address is provided, use it
+                addressParts.push(addr.full);
+              } else {
+                // Otherwise, build from individual fields
+                if (addr.line_1 && addr.line_1.trim()) addressParts.push(addr.line_1);
+                if (addr.line_2 && addr.line_2.trim()) addressParts.push(addr.line_2);
+                if (addr.street_name && addr.street_name.trim()) addressParts.push(addr.street_name);
+                if (addr.city && addr.city.trim()) addressParts.push(addr.city);
+                if (addr.state && addr.state.trim()) addressParts.push(addr.state);
+                if (addr.zip && addr.zip.trim()) addressParts.push(addr.zip);
+                if (addr.country && addr.country.trim()) addressParts.push(addr.country);
+              }
+              
+              // Join with comma and space, or store empty string if all fields are empty
+              personalInfo.address = addressParts.length > 0 
+                ? addressParts.filter(part => part && part.trim()).join(', ')
+                : '';
+            } else {
+              // If address is not an object or doesn't exist, store empty string
+              personalInfo.address = '';
+            }
+          }
+          
           // API Success: Store response in api_response_data, keep status pending
+          const updateData: any = {
+            api_response_data: data,
+            api_verification_status: 'completed',
+            api_verification_method: 'api',
+            api_verification_date: new Date().toISOString(),
+            employee_docs_log: [...existingLogs, apiLogEntry],
+            updated_at: new Date().toISOString()
+            // verification_status stays 'pending' - user needs to manually review
+          };
+          
+          // Add personal_info if we extracted it
+          if (personalInfo) {
+            updateData.personal_info = personalInfo;
+          }
+          
           const { error: updateError } = await supabase
             .from('employee_documents')
-            .update({
-              api_response_data: data,
-              api_verification_status: 'completed',
-              api_verification_method: 'api',
-              api_verification_date: new Date().toISOString(),
-              employee_docs_log: [...existingLogs, apiLogEntry],
-              updated_at: new Date().toISOString()
-              // verification_status stays 'pending' - user needs to manually review
-            })
+            .update(updateData)
             .eq('id', documentId);
             
           if (updateError) {

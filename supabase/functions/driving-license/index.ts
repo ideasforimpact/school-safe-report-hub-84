@@ -241,18 +241,61 @@ serve(async (req) => {
           : (apiResponse.success && apiResponse.status_code === 200);
         
         if (isSuccess) {
+          // Extract personal_info from API response data
+          const apiData = apiResponse?.data || {};
+          let personalInfo: { dob?: string; address?: string } | null = null;
+          
+          // Extract dob and permanent_address if available
+          if (apiData.dob || apiData.permanent_address) {
+            personalInfo = {};
+            
+            // Format and store dob in YYYY-MM-DD format
+            if (apiData.dob) {
+              const dobStr = String(apiData.dob).trim();
+              
+              // Check if already in YYYY-MM-DD format (most common case)
+              if (/^\d{4}-\d{2}-\d{2}$/.test(dobStr)) {
+                personalInfo.dob = dobStr;
+              } else {
+                // Try to parse and format the date if in different format
+                const dobDate = new Date(dobStr);
+                if (!isNaN(dobDate.getTime())) {
+                  const year = dobDate.getFullYear();
+                  const month = String(dobDate.getMonth() + 1).padStart(2, '0');
+                  const day = String(dobDate.getDate()).padStart(2, '0');
+                  personalInfo.dob = `${year}-${month}-${day}`;
+                } else {
+                  // If parsing fails, log warning but don't store invalid date
+                  console.warn('Invalid date format for dob:', dobStr);
+                }
+              }
+            }
+            
+            // Store permanent_address as address
+            if (apiData.permanent_address) {
+              personalInfo.address = String(apiData.permanent_address);
+            }
+          }
+          
           // API Success: Store response in api_response_data, keep status pending
+          const updateData: any = {
+            api_response_data: apiResponse,
+            api_verification_status: 'completed',
+            api_verification_method: 'api',
+            api_verification_date: new Date().toISOString(),
+            employee_docs_log: [...existingLogs, logEntry],
+            updated_at: new Date().toISOString()
+            // verification_status stays 'pending' - user needs to manually review
+          };
+          
+          // Add personal_info if we extracted it
+          if (personalInfo) {
+            updateData.personal_info = personalInfo;
+          }
+          
           const { error: updateError } = await supabase
             .from('employee_documents')
-            .update({
-              api_response_data: apiResponse,
-              api_verification_status: 'completed',
-              api_verification_method: 'api',
-              api_verification_date: new Date().toISOString(),
-              employee_docs_log: [...existingLogs, logEntry],
-              updated_at: new Date().toISOString()
-              // verification_status stays 'pending' - user needs to manually review
-            })
+            .update(updateData)
             .eq('id', documentId);
           
           if (updateError) {

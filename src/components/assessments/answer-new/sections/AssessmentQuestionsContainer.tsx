@@ -26,6 +26,13 @@ const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: Ass
     ? (template.questions as unknown as Question[])
     : [];
 
+  // Debug logging to verify questions structure
+  console.log('[Container] Template questions:', questions);
+  console.log('[Container] Questions count:', questions.length);
+  if (questions.length > 0) {
+    console.log('[Container] First question:', { id: questions[0]?.id, text: questions[0]?.text?.substring(0, 50) });
+  }
+
   const answeredQuestions = answers.filter(a => a.answer !== undefined).length;
   const progressPercentage = questions.length > 0 ? (answeredQuestions / questions.length) * 100 : 0;
 
@@ -101,7 +108,17 @@ const AssessmentQuestionsContainer = ({ template, answers, onAnswerChange }: Ass
       {/* Questions List */}
       <div className="space-y-4">
         {questions.map((question, index) => {
-          const answer = answers.find(a => a.questionId === question.id);
+          // Validate question has an id
+          if (!question || !question.id) {
+            console.error(`[Container] ERROR: Question at index ${index} is missing id!`, question);
+            return null;
+          }
+          
+          // Find the answer for this specific question
+          const answer = answers.find(a => a && a.questionId === question.id);
+          
+          // Debug logging to verify answer lookup
+          console.log(`[Container] Question ${question.id} (index ${index}) got answer:`, answer ? `answer=${answer.answer}, questionId=${answer.questionId}` : 'undefined');
           
           return (
             <motion.div

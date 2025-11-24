@@ -87,7 +87,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             throw new Error(`Failed to fetch assessment template: ${templateError.message}`);
           }
 
-          if (!templateData) {
+          // Determine which template data to use
+          let finalTemplateData = templateData || null;
+          
+          if (!finalTemplateData) {
             console.log(`Template with ID ${assessmentData.template_id} not found`);
             // Try to fetch without client_id filter as a fallback
             const { data: fallbackTemplateData, error: fallbackError } = await supabase
@@ -101,20 +104,43 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             }
             
             console.log('Found template using fallback method:', fallbackTemplateData);
-            setTemplate(fallbackTemplateData);
+            finalTemplateData = fallbackTemplateData;
           } else {
-            console.log('Fetched template data:', templateData);
-            setTemplate(templateData);
+            console.log('Fetched template data:', finalTemplateData);
           }
           
-          // Parse questions from JSONB and initialize answers array
-          const currentTemplate = templateData || null;
+          // Parse questions from JSONB and process them
+          const currentTemplate = finalTemplateData || null;
           if (currentTemplate) {
-            const questions = Array.isArray(currentTemplate.questions) 
+            const rawQuestions = Array.isArray(currentTemplate.questions) 
               ? (currentTemplate.questions as unknown as Question[])
               : [];
               
-            console.log('Parsed questions:', questions);
+            console.log('Raw questions from database:', rawQuestions);
+            
+            // Ensure all questions have an id - generate one if missing
+            const questions = rawQuestions.map((question: Question, index: number) => {
+              // If question doesn't have an id, generate one based on index
+              // This ensures each question has a unique identifier
+              if (!question.id) {
+                console.warn(`Question at index ${index} is missing an id. Generating one...`, question);
+                return {
+                  ...question,
+                  id: `question_${index}_${Date.now()}`
+                };
+              }
+              return question;
+            });
+              
+            console.log('Processed questions with IDs:', questions.map(q => ({ id: q.id, text: q.text?.substring(0, 50) })));
+            
+            // CRITICAL: Update template state with processed questions that have IDs
+            const templateWithProcessedQuestions = {
+              ...currentTemplate,
+              questions: questions
+            };
+            setTemplate(templateWithProcessedQuestions);
+            console.log('Set template with processed questions:', templateWithProcessedQuestions);
             
             // Load existing answers if they exist
             let existingAnswers: any[] = [];
@@ -129,22 +155,41 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             
             console.log('Existing answers from database:', existingAnswers);
             
-            const initialAnswers = questions.map((question: Question) => {
-              const existingAnswer = existingAnswers.find((ans: any) => 
+            // Initialize answers array - ensure each question has a corresponding answer entry
+            const initialAnswers = questions.map((question: Question, index: number) => {
+              // First try to find by questionId
+              let existingAnswer = existingAnswers.find((ans: any) => 
                 ans && typeof ans === 'object' && ans.questionId === question.id
               );
               
-              console.log(`Question ${question.id} existing answer:`, existingAnswer);
+              // If not found and questionId was undefined in existing answer, try to match by index
+              // This handles legacy data where questionId might be undefined
+              if (!existingAnswer && existingAnswers[index]) {
+                const answerByIndex = existingAnswers[index];
+                if (answerByIndex && typeof answerByIndex === 'object') {
+                  console.log(`Found answer by index ${index} for question ${question.id}`);
+                  existingAnswer = answerByIndex;
+                }
+              }
               
+              console.log(`Question ${question.id} (index ${index}) existing answer:`, existingAnswer);
+              
+              // CRITICAL: Always use question.id (which we've ensured exists) as questionId
               return {
-                questionId: question.id,
+                questionId: question.id, // This should never be undefined now
                 answer: existingAnswer?.answer !== undefined ? existingAnswer.answer : undefined,
                 comment: existingAnswer?.comment || '',
                 attachments: existingAnswer?.attachments || []
               };
             });
+              
+            // Validate that all answers have a questionId
+            const invalidAnswers = initialAnswers.filter(a => !a.questionId);
+            if (invalidAnswers.length > 0) {
+              console.error('ERROR: Some answers have undefined questionId!', invalidAnswers);
+            }
             
-            console.log('Initialized answers with existing data:', initialAnswers);
+            console.log('Initialized answers with existing data:', initialAnswers.map(a => ({ questionId: a.questionId, answer: a.answer })));
             setAnswers(initialAnswers);
           }
         } else {
@@ -163,14 +208,26 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   }, [assessmentId, clientId]);
 
   const handleAnswerChange = (questionId: string, field: string, value: any) => {
-    console.log(`Updating answer for question ${questionId}, field ${field}:`, value);
-    setAnswers(prev => 
-      prev.map(answer => 
-        answer.questionId === questionId 
-          ? { ...answer, [field]: value }
-          : answer
-      )
-    );
+    // CRITICAL: Validate questionId is not undefined or empty
+    if (!questionId || questionId === 'undefined') {
+      console.error(`[useAssessmentAnswerData] ERROR: Attempted to update answer with invalid questionId:`, questionId);
+      return;
+    }
+    
+    console.log(`[useAssessmentAnswerData] Updating answer for question ${questionId}, field ${field}:`, value);
+    setAnswers(prev => {
+      const updated = prev.map(answer => {
+        // CRITICAL: Only match if both questionIds are defined and equal
+        // This prevents matching answers with undefined questionIds
+        if (answer.questionId && questionId && answer.questionId === questionId) {
+          console.log(`[useAssessmentAnswerData] Found matching answer for questionId ${questionId}, updating ${field} to:`, value);
+          return { ...answer, [field]: value };
+        }
+        return answer;
+      });
+      console.log(`[useAssessmentAnswerData] Updated answers array:`, updated.map(a => ({ questionId: a.questionId, answer: a.answer })));
+      return updated;
+    });
   };
 
   const calculateProgress = () => {

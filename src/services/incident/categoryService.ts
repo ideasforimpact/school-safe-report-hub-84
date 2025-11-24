@@ -217,7 +217,7 @@ export const categoryService = {
       return true;
     } catch (error: any) {
       console.error('Error deleting category:', error);
-      toast.error(`Failed to delete category: ${error.message}`);
+      // Don't show toast here - let the UI component handle the error display
       throw error;
     }
   },
@@ -383,7 +383,7 @@ export const categoryService = {
       return true;
     } catch (error: any) {
       console.error('Error deleting subcategory:', error);
-      toast.error(`Failed to delete subcategory: ${error.message}`);
+      // Don't show toast here - let the UI component handle the error display
       throw error;
     }
   }
