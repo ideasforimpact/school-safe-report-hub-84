@@ -4,7 +4,9 @@ import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
+import { ContributingFactorItem, contributingFactorService } from '@/services/incident/contributingFactorService';
+import { reportTypeService } from '@/services/incident/reportTypeService';
+import { priorityService } from '@/services/incident/priorityService';
 
 interface ReportType {
   id: string;
@@ -174,22 +176,14 @@ const IncidentConfigurationContent = () => {
 
   const handleDeleteContributingFactor = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('contributing_factors')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting contributing factor:', error);
-        toast.error('Failed to delete contributing factor');
-        return;
-      }
-
+      await contributingFactorService.deleteContributingFactor(id);
       setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
       toast.success('Contributing factor deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception deleting contributing factor:', error);
-      toast.error('An unexpected error occurred');
+      const errorMessage = error?.message || 'Failed to delete contributing factor';
+      // Error will be handled by the component that calls this
+      throw error; // Re-throw to let the calling component handle it
     }
   };
 
@@ -248,22 +242,14 @@ const IncidentConfigurationContent = () => {
 
   const handleDeleteReportType = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('incident_report_types')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting report type:', error);
-        toast.error('Failed to delete report type');
-        return;
-      }
-
+      await reportTypeService.deleteReportType(id);
       setReportTypes(reportTypes.filter(type => type.id !== id));
       toast.success('Report type deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception deleting report type:', error);
-      toast.error('An unexpected error occurred');
+      const errorMessage = error?.message || 'Failed to delete report type';
+      // Error will be handled by the component that calls this
+      throw error; // Re-throw to let the calling component handle it
     }
   };
 
@@ -350,22 +336,14 @@ const IncidentConfigurationContent = () => {
 
   const handleDeletePriority = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('incident_priorities')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting priority:', error);
-        toast.error('Failed to delete priority');
-        return;
-      }
-
+      await priorityService.deletePriority(id);
       setPriorities(priorities.filter(priority => priority.id !== id));
       toast.success('Priority deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception deleting priority:', error);
-      toast.error('An unexpected error occurred');
+      const errorMessage = error?.message || 'Failed to delete priority';
+      // Error will be handled by the component that calls this
+      throw error; // Re-throw to let the calling component handle it
     }
   };
 

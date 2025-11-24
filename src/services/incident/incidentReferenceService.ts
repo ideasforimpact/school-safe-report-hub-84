@@ -191,5 +191,77 @@ export const incidentReferenceService = {
         message: ''
       };
     }
+  },
+
+  // Check if a contributing factor is referenced by incidents
+  // Contributing factors are stored in a JSONB array in the contributing_factor column
+  checkContributingFactorReferences: async (factorId: string, clientId: string): Promise<IncidentReferenceCheck> => {
+    try {
+      // Query incidents where contributing_factor JSONB array contains the factor ID
+      // The contributing_factor is a JSONB array of objects with 'id' field
+      const { data, error } = await supabase
+        .from('incidents')
+        .select('id', { count: 'exact' })
+        .eq('client_id', clientId)
+        .not('contributing_factor', 'is', null);
+
+      if (error) {
+        throw error;
+      }
+
+      // Filter in JavaScript to check if any contributing_factor array contains the factorId
+      // This is necessary because Supabase doesn't have a direct JSONB contains query for nested objects
+      let count = 0;
+      if (data) {
+        count = data.filter(incident => {
+          // We need to fetch the full contributing_factor to check
+          // For now, we'll do a more specific query
+          return false; // Will be handled by the query below
+        }).length;
+      }
+
+      // Use a Postgres function approach - query all incidents and check JSONB
+      // Since Supabase client doesn't support complex JSONB queries easily,
+      // we'll fetch all incidents with contributing_factor and filter in memory
+      const { data: allIncidents, error: fetchError } = await supabase
+        .from('incidents')
+        .select('id, contributing_factor')
+        .eq('client_id', clientId)
+        .not('contributing_factor', 'is', null);
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      // Count incidents where contributing_factor array contains an object with matching id
+      const matchingIncidents = (allIncidents || []).filter(incident => {
+        if (!incident.contributing_factor) return false;
+        
+        // contributing_factor is a JSONB array of objects
+        const factors = Array.isArray(incident.contributing_factor) 
+          ? incident.contributing_factor 
+          : [];
+        
+        // Check if any factor in the array has the matching id
+        return factors.some((factor: any) => factor?.id === factorId);
+      });
+
+      const finalCount = matchingIncidents.length;
+      
+      return {
+        hasReferences: finalCount > 0,
+        count: finalCount,
+        message: finalCount > 0 
+          ? `Cannot delete this contributing factor because it is currently linked to ${finalCount} incident${finalCount > 1 ? 's' : ''}`
+          : ''
+      };
+    } catch (error: any) {
+      console.error('Error checking contributing factor references:', error);
+      return {
+        hasReferences: false,
+        count: 0,
+        message: ''
+      };
+    }
   }
 };

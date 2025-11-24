@@ -225,7 +225,6 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           console.error('Error deleting priority:', error);
           const errorMessage = error?.message || 'Failed to delete priority';
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-          toast.error(errorMessage);
         }
       },
     });
