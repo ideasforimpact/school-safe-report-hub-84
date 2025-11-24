@@ -98,8 +98,10 @@ const IncidentConfiguration = () => {
       await reportTypeService.deleteReportType(id);
       setReportTypes(reportTypes.filter(type => type.id !== id));
       toast.success('Report type deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception deleting report type:', error);
+      const errorMessage = error?.message || 'Failed to delete report type';
+      toast.error(errorMessage);
     }
   };
 
@@ -147,8 +149,10 @@ const IncidentConfiguration = () => {
       await priorityService.deletePriority(id);
       setPriorities(priorities.filter(priority => priority.id !== id));
       toast.success('Priority deleted successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception deleting priority:', error);
+      const errorMessage = error?.message || 'Failed to delete priority';
+      toast.error(errorMessage);
     }
   };
 
