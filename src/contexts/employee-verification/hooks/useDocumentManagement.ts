@@ -103,6 +103,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           cron_activated_date,
           cron_updated_date,
           cron_log,
+          personal_info,
           created_at,
           updated_at,
           document_type:employee_document_type(name, description),
@@ -172,6 +173,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             response: any;
             notes?: string;
           }> : [],
+          personalInfo: (doc as any).personal_info || undefined,
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
         };

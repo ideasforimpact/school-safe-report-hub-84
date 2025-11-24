@@ -13,6 +13,258 @@ const corsHeaders = {
 const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
 const isQuickEKYC = integrationName === 'quickekyc';
 
+// ============================================================================
+// QuickEKYC Functions
+// ============================================================================
+
+/**
+ * Get QuickEKYC configuration
+ */
+function getQuickEKYCConfig() {
+  return {
+    apiKey: Deno.env.get("QUICKEKYC_API_KEY_PROD") || '',
+    baseUrl: Deno.env.get("QUICKEKYC_BASE_ENDPOINT") || '',
+    generateOtpEndpoint: "/api/v1/aadhaar-v2/generate-otp",
+    submitOtpEndpoint: "/api/v1/aadhaar-v2/submit-otp"
+  };
+}
+
+/**
+ * Prepare QuickEKYC Request OTP payload
+ */
+function prepareQuickEKYCRequestOtpPayload(documentNumber: string, apiKey: string) {
+  return {
+    id_number: documentNumber,
+    key: apiKey
+  };
+}
+
+/**
+ * Prepare QuickEKYC Request OTP headers
+ */
+function prepareQuickEKYCRequestOtpHeaders() {
+  return {
+    'Content-Type': 'application/json'
+  };
+}
+
+/**
+ * Call QuickEKYC Request OTP API
+ */
+async function callQuickEKYCRequestOtpAPI(documentNumber: string) {
+  const config = getQuickEKYCConfig();
+  const url = `${config.baseUrl}${config.generateOtpEndpoint}`;
+  const headers = prepareQuickEKYCRequestOtpHeaders();
+  const body = prepareQuickEKYCRequestOtpPayload(documentNumber, config.apiKey);
+  
+  console.log(`[QuickEKYC] Making Request OTP API call to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+/**
+ * Prepare QuickEKYC Verify OTP payload
+ */
+function prepareQuickEKYCVerifyOtpPayload(otp: string, apiKey: string, client_id?: string) {
+  const payload: any = {
+    otp,
+    key: apiKey
+  };
+  
+  if (client_id) {
+    payload.request_id = client_id;
+  }
+  
+  return payload;
+}
+
+/**
+ * Prepare QuickEKYC Verify OTP headers
+ */
+function prepareQuickEKYCVerifyOtpHeaders() {
+  return {
+    'Content-Type': 'application/json'
+  };
+}
+
+/**
+ * Call QuickEKYC Verify OTP API
+ */
+async function callQuickEKYCVerifyOtpAPI(otp: string, client_id?: string) {
+  const config = getQuickEKYCConfig();
+  const url = `${config.baseUrl}${config.submitOtpEndpoint}`;
+  const headers = prepareQuickEKYCVerifyOtpHeaders();
+  const body = prepareQuickEKYCVerifyOtpPayload(otp, config.apiKey, client_id);
+  
+  console.log(`[QuickEKYC] Making Verify OTP API call to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+// ============================================================================
+// SurePare Functions
+// ============================================================================
+
+/**
+ * Get SurePare configuration
+ */
+function getSurePareConfig() {
+  return {
+    apiKey: Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || '',
+    baseUrl: Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || '',
+    generateOtpEndpoint: "/api/v1/aadhaar-v2/generate-otp",
+    submitOtpEndpoint: "/api/v1/aadhaar-v2/submit-otp"
+  };
+}
+
+/**
+ * Prepare SurePare Request OTP payload
+ */
+function prepareSurePareRequestOtpPayload(documentNumber: string) {
+  return {
+    id_number: documentNumber
+  };
+}
+
+/**
+ * Prepare SurePare Request OTP headers
+ */
+function prepareSurePareRequestOtpHeaders(apiKey: string) {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  };
+}
+
+/**
+ * Call SurePare Request OTP API
+ */
+async function callSurePareRequestOtpAPI(documentNumber: string) {
+  const config = getSurePareConfig();
+  const url = `${config.baseUrl}${config.generateOtpEndpoint}`;
+  const headers = prepareSurePareRequestOtpHeaders(config.apiKey);
+  const body = prepareSurePareRequestOtpPayload(documentNumber);
+  
+  console.log(`[SurePare] Making Request OTP API call to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+/**
+ * Prepare SurePare Verify OTP payload
+ */
+function prepareSurePareVerifyOtpPayload(otp: string, txnId?: string, client_id?: string) {
+  const payload: any = {
+    otp
+  };
+  
+  if (txnId) {
+    payload.txn_id = txnId;
+  }
+  
+  if (client_id) {
+    payload.client_id = client_id;
+  }
+  
+  return payload;
+}
+
+/**
+ * Prepare SurePare Verify OTP headers
+ */
+function prepareSurePareVerifyOtpHeaders(apiKey: string) {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`
+  };
+}
+
+/**
+ * Call SurePare Verify OTP API
+ */
+async function callSurePareVerifyOtpAPI(otp: string, txnId?: string, client_id?: string) {
+  const config = getSurePareConfig();
+  const url = `${config.baseUrl}${config.submitOtpEndpoint}`;
+  const headers = prepareSurePareVerifyOtpHeaders(config.apiKey);
+  const body = prepareSurePareVerifyOtpPayload(otp, txnId, client_id);
+  
+  console.log(`[SurePare] Making Verify OTP API call to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+// ============================================================================
+// Main Handler Functions with Fallback Logic
+// ============================================================================
+
+/**
+ * Request Aadhar OTP with fallback: Try QuickEKYC first, fallback to SurePare if status_code = 500
+ * Returns response with 'api' key indicating which integration was used
+ */
+async function requestAadharOtpWithFallback(documentNumber: string): Promise<{ response: Response; data: any; api: string }> {
+  // Primary: Always try QuickEKYC first
+  console.log('[Request OTP] Attempting primary: QuickEKYC');
+  const quickEKYResponse = await callQuickEKYCRequestOtpAPI(documentNumber);
+  
+  // Clone the response to read JSON without consuming the original
+  const quickEKYResponseClone = quickEKYResponse.clone();
+  const quickEKYData = await quickEKYResponseClone.json();
+  
+  // Check if QuickEKYC returned status_code 500
+  if (quickEKYData?.status_code === 500) {
+    console.log('[Request OTP] QuickEKYC returned status_code 500, falling back to SurePare');
+    // Secondary: Fallback to SurePare
+    const surePareResponse = await callSurePareRequestOtpAPI(documentNumber);
+    const surePareData = await surePareResponse.json();
+    return { response: surePareResponse, data: surePareData, api: 'surepare' };
+  }
+  
+  // QuickEKYC succeeded, return its response with api indicator
+  console.log('[Request OTP] QuickEKYC succeeded, using QuickEKYC response');
+  return { response: quickEKYResponse, data: quickEKYData, api: 'quickekyc' };
+}
+
+/**
+ * Verify Aadhar OTP using the specified integration
+ */
+async function verifyAadharOtpWithIntegration(otp: string, api: string, txnId?: string, client_id?: string): Promise<{ response: Response; data: any }> {
+  if (api === 'quickekyc') {
+    console.log('[Verify OTP] Using QuickEKYC integration');
+    const response = await callQuickEKYCVerifyOtpAPI(otp, client_id);
+    const data = await response.json();
+    return { response, data };
+  } else {
+    console.log('[Verify OTP] Using SurePare integration');
+    const response = await callSurePareVerifyOtpAPI(otp, txnId, client_id);
+    const data = await response.json();
+    return { response, data };
+  }
+}
+
 // Helper function to generate UUID
 function generateUUID(): string {
   // Generate UUID v4
@@ -81,70 +333,15 @@ function normalizeQuickEKYCResponse(response: any, isOtpRequest: boolean): any {
   }
 }
 
-// Helper function to convert technical API errors to user-friendly messages
-const getUserFriendlyErrorMessage = (apiResponse: any, statusCode?: number, isQuickEKYCProvider: boolean = false): string => {
-  // Handle QuickEKYC specific errors
-  if (isQuickEKYCProvider) {
-    const message = apiResponse?.message || '';
-    const responseStatusCode = apiResponse?.status_code;
-    
-    if (message.includes('Aadhaar number is invalid') || message.includes('invalid')) {
-      return 'Please enter a valid 12-digit Aadhaar number';
-    }
-    
-    if (message.includes('OTP timed out') || message.includes('timeout')) {
-      return 'The OTP has expired. Please request a new one';
-    }
-    
-    if (message.includes('Verification Failed') || message.includes('verification')) {
-      return 'Verification failed. Please check your details and try again';
-    }
-    
-    if (responseStatusCode === 422) {
-      return message || 'Verification failed. Please check your details and try again';
-    }
-    
-    if (responseStatusCode === 500) {
-      return 'Service temporarily unavailable. Please try again later';
-    }
-    
-    if (responseStatusCode === 200 && apiResponse?.status === 'error') {
-      return message || 'Invalid request. Please try again';
-    }
-    
-    return message || 'Verification failed. Please check your details and try again';
+// Helper function to return server-side error messages
+// Returns the actual API error message for both first API (request OTP) and second API (verify OTP)
+const getUserFriendlyErrorMessage = (apiResponse: any, statusCode: number | undefined, isQuickEKYCProvider: boolean = false): string => {
+  // Return the actual server-side error message if available
+  if (apiResponse?.message) {
+    return apiResponse.message;
   }
   
-  // Handle Surepass API specific errors
-  if (apiResponse?.data?.valid_aadhaar === false || apiResponse?.message?.includes('invalid_aadhaar')) {
-    return 'Please enter a valid 12-digit Aadhaar number';
-  }
-  
-  if (apiResponse?.message?.includes('aadhaar_not_found')) {
-    return 'This Aadhaar number is not found in government records';
-  }
-  
-  if (apiResponse?.message?.includes('otp_expired') || apiResponse?.message?.includes('otp_timeout')) {
-    return 'The OTP has expired. Please request a new one';
-  }
-  
-  if (apiResponse?.message?.includes('invalid_otp') || apiResponse?.message?.includes('wrong_otp')) {
-    return 'Please enter the correct 6-digit OTP';
-  }
-  
-  if (apiResponse?.message?.includes('verification_failed')) {
-    return 'Verification failed. Please check your details and try again';
-  }
-  
-  if (apiResponse?.message?.includes('already_verified')) {
-    return 'This document has already been verified';
-  }
-  
-  if (apiResponse?.message?.includes('rate_limit')) {
-    return 'Too many requests. Please wait a moment and try again';
-  }
-  
-  // Handle HTTP status codes
+  // Fallback to generic messages only if no message is available
   if (statusCode === 429) {
     return 'Too many requests. Please wait a moment and try again';
   }
@@ -161,7 +358,7 @@ const getUserFriendlyErrorMessage = (apiResponse: any, statusCode?: number, isQu
     return 'Service not found. Please contact support';
   }
   
-  if (statusCode >= 500) {
+  if (statusCode && statusCode >= 500) {
     return 'Service temporarily unavailable. Please try again later';
   }
   
@@ -206,32 +403,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Set up provider configuration for Aadhar actions
-    let baseUrl: string | null = null;
-    let apiKey: string | null = null;
-    let generateOtpEndpoint = "/api/v1/aadhaar-v2/generate-otp";
-    let submitOtpEndpoint = "/api/v1/aadhaar-v2/submit-otp";
-    
-    // Override baseUrl and apiKey for specific actions
-    if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
-      if (isQuickEKYC) {
-        // QuickEKYC configuration
-        baseUrl = Deno.env.get("QUICKEKYC_BASE_ENDPOINT") || '';
-        apiKey = Deno.env.get("QUICKEKYC_API_KEY_PROD") || '';
-        // Endpoints remain the same for QuickEKYC
-        generateOtpEndpoint = "/api/v1/aadhaar-v2/generate-otp";
-        submitOtpEndpoint = "/api/v1/aadhaar-v2/submit-otp";
-        console.log(`Using QuickEKYC API for ${action}: ${baseUrl}`);
-      } else {
-        // Surepass configuration
-        baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || '';
-        apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || '';
-        generateOtpEndpoint = "/api/v1/aadhaar-v2/generate-otp";
-        submitOtpEndpoint = "/api/v1/aadhaar-v2/submit-otp";
-        console.log(`Using Surepass API for ${action}: ${baseUrl}`);
-      }
-    }
     
     // First, fetch document status IDs for governance, manual and rejected statuses
     console.log("Fetching document status IDs");
@@ -508,13 +679,6 @@ serve(async (req) => {
         }
       }
       
-      if (!baseUrl || !apiKey) {
-        return new Response(
-          JSON.stringify({ error: "API configuration not found" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
       try {
         if (!documentNumber) {
           return new Response(
@@ -523,34 +687,14 @@ serve(async (req) => {
           );
         }
         
-        const apiUrl = `${baseUrl}${generateOtpEndpoint}`;
-        console.log(`Making request to ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API to generate OTP with base URL:`, apiUrl);
+        // Call with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
+        const { response: apiResponse, data: rawData, api: usedApi } = await requestAadharOtpWithFallback(documentNumber);
         
-        // Prepare request headers and body based on provider
-        const requestHeaders: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        // Only add Bearer token for Surepass, not for QuickEKYC
-        if (!isQuickEKYC) {
-          requestHeaders['Authorization'] = `Bearer ${apiKey}`;
-        }
-        
-        const requestBody: any = isQuickEKYC
-          ? { id_number: documentNumber, key: apiKey }
-          : { id_number: documentNumber };
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: requestHeaders,
-          body: JSON.stringify(requestBody)
-        });
-        
-        const rawData = await response.json();
-        console.log(`${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API response:`, JSON.stringify(rawData));
+        console.log(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API response:`, JSON.stringify(rawData));
         
         // Normalize QuickEKYC response to Surepass format
-        const data = isQuickEKYC ? normalizeQuickEKYCResponse(rawData, true) : rawData;
+        const isQuickEKYCUsed = usedApi === 'quickekyc';
+        const data = isQuickEKYCUsed ? normalizeQuickEKYCResponse(rawData, true) : rawData;
         
         // Handle API success case
         if (data.success) {
@@ -567,20 +711,21 @@ serve(async (req) => {
               success: true, 
               message: data.message || "OTP sent successfully", 
               txnId: data.data?.txn_id || data.txn_id,
-              client_id: data.data?.client_id || data.client_id
+              client_id: data.data?.client_id || data.client_id,
+              api: usedApi // Add api key to indicate which integration was used
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
           // Log the technical error for debugging
-          console.error(`${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API error:`, rawData);
+          console.error(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API error:`, rawData);
           
           // Check if error status_code exists (QuickEKYC error format)
           // If status_code exists and is not 200, don't show details popup
           const hasErrorStatusCode = rawData.status_code && rawData.status_code !== 200;
           
           // Return user-friendly error message with 200 status to ensure frontend can access it
-          const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, response.status, isQuickEKYC);
+          const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse.status, isQuickEKYCUsed);
           return new Response(
             JSON.stringify({ 
               success: false, 
@@ -591,7 +736,7 @@ serve(async (req) => {
           );
         }
       } catch (error) {
-        console.error(`Error calling ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API:`, error);
+        console.error(`Error calling API:`, error);
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -610,57 +755,20 @@ serve(async (req) => {
         );
       }
       
-      if (!baseUrl || !apiKey) {
-        return new Response(
-          JSON.stringify({ error: "API configuration not found" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      // Get the 'api' key from request body to determine which integration to use
+      // This should match the 'api' key returned from requestAadharOtp
+      const requestApi = requestBody.api || integrationName || 'quickekyc';
+      const useApi = requestApi === 'surepare' ? 'surepare' : 'quickekyc';
       
       try {
-        const apiUrl = `${baseUrl}${submitOtpEndpoint}`;
-        console.log(`Making request to ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API to verify OTP with base URL:`, apiUrl);
+        // Call verify OTP using the integration specified by the 'api' key from first call
+        const { response: apiResponse, data: rawData } = await verifyAadharOtpWithIntegration(otp, useApi, txnId, client_id);
         
-        // Prepare request headers and body based on provider
-        const requestHeaders: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        // Only add Bearer token for Surepass, not for QuickEKYC
-        if (!isQuickEKYC) {
-          requestHeaders['Authorization'] = `Bearer ${apiKey}`;
-        }
-        
-        const requestBody: any = isQuickEKYC
-          ? { otp, key: apiKey }
-          : { otp };
-        
-        // Add txn_id if provided (for Surepass)
-        if (!isQuickEKYC && txnId) {
-          requestBody.txn_id = txnId;
-        }
-        
-        // Add client_id/request_id if provided
-        if (isQuickEKYC && client_id) {
-          // For QuickEKYC, we use request_id instead of client_id
-          requestBody.request_id = client_id;
-        } else if (!isQuickEKYC && client_id) {
-          requestBody.client_id = client_id;
-        }
-        
-        console.log("Submit OTP request body:", requestBody);
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: requestHeaders,
-          body: JSON.stringify(requestBody)
-        });
-        
-        const rawData = await response.json();
-        console.log(`${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API verification response:`, JSON.stringify(rawData));
+        console.log(`${useApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API verification response:`, JSON.stringify(rawData));
         
         // Normalize QuickEKYC response to Surepass format
-        const data = isQuickEKYC ? normalizeQuickEKYCResponse(rawData, false) : rawData;
+        const isQuickEKYCUsed = useApi === 'quickekyc';
+        const data = isQuickEKYCUsed ? normalizeQuickEKYCResponse(rawData, false) : rawData;
         
         // Check status_code in API response
         if (data.success && data.status_code === 200) {
@@ -677,16 +785,78 @@ serve(async (req) => {
               action: "verify_aadhar_otp",
               response: data
             };
+            
+            // Extract personal_info from API response data
+            const apiData = data?.data || {};
+            let personalInfo: { dob?: string; address?: string } | null = null;
+            
+            // Extract dob and address if available
+            if (apiData.dob || apiData.address) {
+              personalInfo = {};
+              
+              // Format and store dob in YYYY-MM-DD format
+              if (apiData.dob) {
+                const dobStr = String(apiData.dob).trim();
+                
+                // Check if already in YYYY-MM-DD format (most common case)
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dobStr)) {
+                  personalInfo.dob = dobStr;
+                } else {
+                  // Try to parse and format the date if in different format
+                  const dobDate = new Date(dobStr);
+                  if (!isNaN(dobDate.getTime())) {
+                    const year = dobDate.getFullYear();
+                    const month = String(dobDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(dobDate.getDate()).padStart(2, '0');
+                    personalInfo.dob = `${year}-${month}-${day}`;
+                  } else {
+                    // If parsing fails, log warning but don't store invalid date
+                    console.warn('Invalid date format for dob:', dobStr);
+                  }
+                }
+              }
+              
+              // Concatenate address object into readable format
+              if (apiData.address && typeof apiData.address === 'object') {
+                const addr = apiData.address;
+                const addressParts: string[] = [];
+                
+                // Build address in logical order: house, street, landmark, po, vtc, subdist, dist, state, zip, country
+                if (addr.house) addressParts.push(addr.house);
+                if (addr.street) addressParts.push(addr.street);
+                if (addr.landmark) addressParts.push(addr.landmark);
+                if (addr.loc) addressParts.push(addr.loc);
+                if (addr.po) addressParts.push(addr.po);
+                if (addr.vtc) addressParts.push(addr.vtc);
+                if (addr.subdist && addr.subdist !== addr.vtc) addressParts.push(addr.subdist);
+                if (addr.dist) addressParts.push(addr.dist);
+                if (addr.state) addressParts.push(addr.state);
+                // Zip is at top level of apiData, not in address object
+                if (apiData.zip) addressParts.push(apiData.zip);
+                if (addr.country) addressParts.push(addr.country);
+                
+                // Join with comma and space, filter out empty strings
+                personalInfo.address = addressParts.filter(part => part && part.trim()).join(', ');
+              }
+            }
+            
+            const updateData: any = {
+              employee_docs_log: [...existingLogs, logEntry],
+              api_response_data: data,
+              api_verification_status: 'completed',
+              api_verification_method: 'api',
+              api_verification_date: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            
+            // Add personal_info if we extracted it
+            if (personalInfo) {
+              updateData.personal_info = personalInfo;
+            }
+            
             await supabase
               .from('employee_documents')
-              .update({
-                employee_docs_log: [...existingLogs, logEntry],
-                api_response_data: data,
-                api_verification_status: 'completed',
-                api_verification_method: 'api',
-                api_verification_date: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('id', documentId);
           }
           return new Response(
@@ -698,7 +868,8 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // Failed verification - update document with rejected status
+          // Failed verification - log the failure but don't set rejected status
+          // API failures should not automatically set the document to rejected status
           if (documentId) {
             // Fetch current logs
             const { data: document } = await supabase
@@ -717,12 +888,12 @@ serve(async (req) => {
                 response: data
               };
               
+              // Update only with log entry and API response data, but NOT document_status_id
+              // Don't set verification_status to 'failed' or rejectedStatusId
               await supabase
                 .from('employee_documents')
                 .update({
                   employee_docs_log: [...existingLogs, logEntry],
-                  document_status_id: rejectedStatusId,
-                  verification_status: 'failed',
                   api_response_data: data,
                   api_verification_status: String(data?.status_code ?? rawData?.status_code ?? 'failed'),
                   api_verification_method: 'api',
@@ -741,7 +912,7 @@ serve(async (req) => {
           const hasErrorStatusCode = rawData.status_code && rawData.status_code !== 200;
           
           // Return user-friendly error message with 200 status to ensure frontend can access it
-          const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, response.status, isQuickEKYC);
+          const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse.status, isQuickEKYCUsed);
           return new Response(
             JSON.stringify({ 
               success: false, 
@@ -752,7 +923,7 @@ serve(async (req) => {
           );
         }
       } catch (error) {
-        console.error(`Error verifying OTP with ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API:`, error);
+        console.error(`Error verifying OTP with ${useApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API:`, error);
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

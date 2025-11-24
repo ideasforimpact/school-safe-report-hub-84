@@ -137,6 +137,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         api_verification_status,
         api_verification_date,
         api_verification_method,
+        personal_info,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -204,6 +205,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         apiVerificationDate: doc.api_verification_date || undefined,
         apiVerificationMethod: doc.api_verification_method || undefined,
         rejectReason: (doc as any).reject_reason || undefined,
+        personalInfo: (doc as any).personal_info || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -246,6 +248,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         cron_updated_date,
         cron_log,
         reject_reason,
+        personal_info,
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
@@ -348,6 +351,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         apiVerificationDate: doc.api_verification_date || undefined,
         apiVerificationMethod: doc.api_verification_method || undefined,
         rejectReason: (doc as any).reject_reason || undefined,
+        personalInfo: (doc as any).personal_info || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

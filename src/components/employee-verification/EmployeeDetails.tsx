@@ -7,6 +7,7 @@ import EditEmployeeDialog from './EditEmployeeDialog';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
 import { formatDepartment } from '@/lib/formatUtils';
+import { aggregatePersonalInfo, renderDobDisplay, renderAddressDisplay } from './utils/personalInfoUtils';
 
 interface EmployeeDetailsProps {
   employee: Employee;
@@ -24,8 +25,8 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     }
   };
 
-  // Pull Aadhaar-derived values (dob, profile image) from API response if present
-  const getAadhaarDerived = (): { dob?: string; profileImage?: string; address?: string } => {
+  // Pull Aadhaar-derived values (profile image) from API response if present
+  const getAadhaarDerived = (): { profileImage?: string } => {
     const docs = documents || getEmployeeDocuments(employee.id);
     if (!docs || docs.length === 0) return {};
 
@@ -41,7 +42,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     // Most responses are { data: {...} }. Fallback to root if needed.
     const root: any = aadhar.apiResponseData?.data ?? aadhar.apiResponseData;
 
-    const dob: string | undefined = root?.dob;
     const rawImage: string | undefined = root?.profile_image || root?.photo || root?.image || root?.image_link;
 
     const profileImage = (() => {
@@ -50,32 +50,14 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
       return `data:image/jpeg;base64,${rawImage}`;
     })();
 
-    // Build address string from various possible shapes
-    const rawAddress = root?.address as any;
-
-    let address: string | undefined;
-    if (typeof rawAddress === 'string') {
-      address = rawAddress;
-    } else if (rawAddress && typeof rawAddress === 'object') {
-      const parts = [
-        rawAddress.house,
-        rawAddress.street,
-        rawAddress.landmark,
-        rawAddress.loc,
-        rawAddress.vtc || rawAddress.city || rawAddress.town,
-        rawAddress.subdist,
-        rawAddress.dist || rawAddress.district,
-        rawAddress.state,
-        rawAddress.zip || rawAddress.pincode,
-        rawAddress.country,
-      ].filter(Boolean);
-      address = parts.join(', ');
-    }
-
-    return { dob, profileImage, address };
+    return { profileImage };
   };
 
-  const { dob: aadharDob, profileImage: aadharProfileImage, address: aadharAddress } = getAadhaarDerived();
+  const { profileImage: aadharProfileImage } = getAadhaarDerived();
+  
+  // Aggregate personal_info from all documents
+  const docs = documents || getEmployeeDocuments(employee.id);
+  const aggregatedPersonalInfo = aggregatePersonalInfo(docs);
 
   const getEmployeeTypeDisplay = (type?: string) => {
     if (!type) return 'Not Specified';
@@ -145,7 +127,11 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Date of Birth</p>
-            <p className="font-medium text-left">{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : (aadharDob ? formatDate(aadharDob) : '')}</p>
+            <div className="font-medium text-left pb-1">
+              {employee.dateOfBirth 
+                ? formatDate(employee.dateOfBirth) 
+                : renderDobDisplay(aggregatedPersonalInfo, formatDate)}
+            </div>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Joining Date</p>
@@ -170,7 +156,9 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>
-            <p className="font-medium text-left">{employee.address || aadharAddress}</p>
+            <div className="font-medium text-left pb-1">
+              {employee.address || renderAddressDisplay(aggregatedPersonalInfo)}
+            </div>
           </div>
         </div>
       </CardContent>

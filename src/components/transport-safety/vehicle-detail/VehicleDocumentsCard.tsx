@@ -216,6 +216,12 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                       <span>{challan.challan_date}</span>
                     </div>
                   )}
+                  {(challan.Info || challan.challan_info) && (
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="font-medium">Info:</span>
+                      <span className="text-gray-700">{challan.Info || challan.challan_info}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
