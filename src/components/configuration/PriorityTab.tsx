@@ -194,7 +194,6 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           console.error('Error toggling priority status:', error);
           const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} priority`;
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-          toast.error(errorMessage);
         }
       },
     });
