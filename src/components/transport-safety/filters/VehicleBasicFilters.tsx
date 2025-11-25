@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Filter, FileCheck, FileX, FileWarning } from 'lucide-react';
+import { Filter, FileCheck, FileX, FileWarning, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +52,6 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
@@ -78,14 +77,12 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
         
         {activeFiltersCount > 0 && (
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm" 
             onClick={clearAllFilters}
             className="h-10 text-xs flex items-center gap-1"
           >
-            <Badge variant="secondary" className="text-xs mr-1">
-              {activeFiltersCount}
-            </Badge>
+            <X className="h-4 w-4 mr-1" />
             Clear filters
           </Button>
         )}

@@ -185,21 +185,21 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                   required: "Registration number is required",
                   maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" },
                   pattern: {
-                    value: /^[A-Za-z0-9-]+$/,
-                    message: "Registration number can only contain letters, numbers, and hyphens."
+                    value: /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/,
+                    message: "Please enter a valid vehicle registration number (e.g., TN01AB1234)"
                   }
                 })}
-                placeholder="e.g., KA-01-AB-1234"
+                placeholder="e.g., TN01AB1234"
                 maxLength={10}
                 disabled={isSubmitting || isEditMode}
                 className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Remove special characters except letters, numbers, and hyphens
-                  const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');
+                  const cleanedValue = value.replace(/[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/g, '');
                   
                   if (value !== cleanedValue) {
-                    setRegistrationNumberError("Special characters are not allowed. Only letters, numbers, and hyphens are permitted.");
+                    setRegistrationNumberError("Special characters are not allowed. Only letters and numbers are permitted.");
                   } else {
                     setRegistrationNumberError(null);
                   }
