@@ -254,7 +254,9 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     }
   };
 
-  if (!showVerifyButton || document.verificationStatus === 'verified' || document.verificationStatus === 'failed') {
+  // Always show verify buttons even after verification to allow re-verification
+  // Only hide if showVerifyButton is explicitly false
+  if (!showVerifyButton) {
     return null;
   }
 

@@ -629,14 +629,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell className="text-right">
                     {(() => {
                       // Check if document is verified via API method (governance status)
-                      // Only hide buttons when verified by Government/API, not when verified manually
+                      // Keep buttons visible even after API verification to allow re-verification
                       // Priority: Check statusName first (most reliable indicator)
                       const isApiVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
                       
-                      // Hide buttons only if verified via API/governance
-                      // Manual verification should still show buttons
-                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual' && !isApiVerified;
-                      const hasVerifyManual = onQuickVerify && docType !== 'manual' && !isApiVerified;
+                      // Always show buttons regardless of verification status
+                      // This allows re-verification even after API verification
+                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual';
+                      const hasVerifyManual = onQuickVerify && docType !== 'manual';
                       
                       // Special handling for manual documents
                       if (docType === 'manual') {
