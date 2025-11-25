@@ -102,9 +102,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
-              Subcategory
+              Subcategory <span className="text-red-500">*</span>
             </Label>
-            <Select value={formData.subcategoryId} onValueChange={(value) => onSelectChange('subcategoryId', value)}>
+            <Select value={formData.subcategoryId} onValueChange={(value) => onSelectChange('subcategoryId', value)} required>
               <SelectTrigger className="h-11 bg-white border-gray-300">
                 <SelectValue placeholder="Select subcategory" />
               </SelectTrigger>
@@ -141,9 +141,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
 
           <div className="space-y-2">
             <Label htmlFor="facility" className="text-sm font-medium text-gray-700">
-              Facility
+              Facility <span className="text-red-500">*</span>
             </Label>
-            <Select value={formData.facilityId} onValueChange={(value) => onSelectChange('facilityId', value)}>
+            <Select value={formData.facilityId} onValueChange={(value) => onSelectChange('facilityId', value)} required>
               <SelectTrigger className="h-11 bg-white border-gray-300">
                 <SelectValue placeholder="Select facility" />
               </SelectTrigger>

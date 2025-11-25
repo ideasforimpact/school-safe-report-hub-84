@@ -42,8 +42,8 @@ export function useIncidentFormValidation() {
       newErrors.categoryId = 'Category is required';
     }
     
-    // Validate subcategory ID (if category is selected)
-    if (formData.categoryId && !formData.subcategoryId) {
+    // Validate subcategory ID
+    if (!formData.subcategoryId) {
       newErrors.subcategoryId = 'Subcategory is required';
     }
     
