@@ -50,11 +50,12 @@ const CategorySubcategorySection: React.FC<CategorySubcategorySectionProps> = ({
 
       <div className="space-y-2">
         <label htmlFor="subcategory" className="text-sm font-medium">
-          Subcategory
+          Subcategory <span className="text-red-500">*</span>
         </label>
         <Select 
           value={subcategory}
           onValueChange={(value) => onSelectChange('subcategory', value)}
+          required
         >
           <SelectTrigger>
             <SelectValue placeholder="Select subcategory" />

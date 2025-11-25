@@ -131,11 +131,12 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
           <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
             <div className="space-y-2">
               <label htmlFor="subcategory" className="text-sm font-medium">
-                Subcategory
+                Subcategory <span className="text-red-500">*</span>
               </label>
               <Select 
                 value={formData.subcategory}
                 onValueChange={(value) => onSelectChange('subcategory', value)}
+                required
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select subcategory" />
@@ -154,11 +155,12 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
           <div className="space-y-6 p-4 bg-gray-50 rounded-md border border-gray-100">
             <div className="space-y-2">
               <label htmlFor="facilityId" className="text-sm font-medium">
-                Facility
+                Facility <span className="text-red-500">*</span>
               </label>
               <Select 
                 value={formData.facilityId}
                 onValueChange={(value) => onSelectChange('facilityId', value)}
+                required
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select facility" />
