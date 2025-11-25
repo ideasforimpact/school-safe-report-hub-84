@@ -26,6 +26,8 @@ import CustomDocumentUploader from './CustomDocumentUploader';
 import PoliceVerificationUploader from './PoliceVerificationUploader';
 import { FileItem } from '@/types/fileTypes';
 import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocumentUploadService';
+import GeneralVerificationUploader from './GeneralVerificationUploader';
+import DrugVerifactionUploader from './DrugVerifactionUploader';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -595,8 +597,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </select>
         </div>
 
-        {otherType === 'bank_statement_analysis' && (
-          <PoliceVerificationUploader
+        {otherType === 'bank_statement_analysis'  && (
+          <GeneralVerificationUploader
             files={manualVerificationFiles}
             setFiles={setManualVerificationFiles}
             onUpload={(files) => handleManualVerificationUpload(files, 'bank_statement_analysis')}
@@ -606,7 +608,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         )}
 
         {otherType === 'court_case_check' && (
-          <PoliceVerificationUploader
+          <GeneralVerificationUploader
             files={manualVerificationFiles}
             setFiles={setManualVerificationFiles}
             onUpload={(files) => handleManualVerificationUpload(files, 'court_case_check')}
@@ -615,7 +617,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
 
-        {otherType === 'police_verification' && (
+        {otherType === 'police_verification'  && (
           <PoliceVerificationUploader
             files={policeVerificationFiles}
             setFiles={setPoliceVerificationFiles}
@@ -625,8 +627,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
 
-        {otherType === 'digital_credibility_check' && (
-          <PoliceVerificationUploader
+        {otherType === 'digital_credibility_check'  && (
+          <GeneralVerificationUploader
             files={manualVerificationFiles}
             setFiles={setManualVerificationFiles}
             onUpload={(files) => handleManualVerificationUpload(files, 'digital_credibility_check')}
@@ -636,7 +638,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         )}
 
         {otherType === 'social_persona_check' && (
-          <PoliceVerificationUploader
+          <GeneralVerificationUploader
             files={manualVerificationFiles}
             setFiles={setManualVerificationFiles}
             onUpload={(files) => handleManualVerificationUpload(files, 'social_persona_check')}
@@ -646,7 +648,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         )}
 
         {otherType === 'drug_check' && (
-          <PoliceVerificationUploader
+          <DrugVerifactionUploader
             files={manualVerificationFiles}
             setFiles={setManualVerificationFiles}
             onUpload={(files) => handleManualVerificationUpload(files, 'drug_check')}
