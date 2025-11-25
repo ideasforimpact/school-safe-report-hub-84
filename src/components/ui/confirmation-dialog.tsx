@@ -76,7 +76,7 @@ export function ConfirmationDialog({
   const getUserFriendlyErrorMessage = (error: string) => {
     // First, check if the error message is already user-friendly (from our services)
     // These are the specific error messages we want to show as-is
-    if (error.includes('Cannot delete') && error.includes('because it is currently linked to')) {
+    if ((error.includes('Cannot delete') || error.includes('Cannot deactivate')) && error.includes('because it is currently linked to')) {
       return error; // Return the specific error message as-is
     }
     

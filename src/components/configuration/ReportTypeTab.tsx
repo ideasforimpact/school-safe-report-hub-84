@@ -174,7 +174,6 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           console.error('Error toggling report type status:', error);
           const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} report type`;
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-          toast.error(errorMessage);
         }
       },
       error: null,

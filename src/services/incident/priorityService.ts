@@ -234,6 +234,34 @@ export const priorityService = {
   // Toggle priority status - RLS handles client validation automatically
   togglePriorityStatus: async (id: string, isActive: boolean) => {
     try {
+      // If deactivating, check if priority is referenced by incidents
+      if (!isActive) {
+        // Get client_id for reference check
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
+        }
+
+        // Check if priority is referenced by incidents
+        const referenceCheck = await incidentReferenceService.checkPriorityReferences(id, employee.client_id);
+        
+        if (referenceCheck.hasReferences) {
+          // Replace "delete" with "deactivate" in the error message
+          const deactivateMessage = referenceCheck.message.replace('Cannot delete', 'Cannot deactivate');
+          throw new Error(deactivateMessage);
+        }
+      }
+
       const { data, error } = await supabase
         .from('incident_priorities')
         .update({ 
