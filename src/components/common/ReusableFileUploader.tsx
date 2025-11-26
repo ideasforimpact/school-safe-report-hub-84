@@ -34,15 +34,11 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Update parent when files change
+  // Update parent when files change (only when files actually change, not when callback changes)
   React.useEffect(() => {
     onFilesChange(files);
-  }, [files, onFilesChange]);
-
-  // Sync with initialFiles prop changes
-  React.useEffect(() => {
-    setFiles(initialFiles);
-  }, [initialFiles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -246,7 +242,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
       {showFileList && files.length > 0 && (
         <div className="space-y-2 mb-3">
           <div className="text-xs text-gray-500 mb-2 px-1">
-            {files.length} of {maxFiles} files selected • Total size: {totalSizeMB} MB
+            {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
           </div>
           <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
             {files.map((file) => (
@@ -283,14 +279,16 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
           type="file" 
           className="hidden"
           accept={accept}
-          multiple
+          multiple={maxFiles > 1}
           onChange={handleFileUpload}
           disabled={disabled || isProcessing}
         />
         <div className="flex flex-col items-center justify-center w-full">
           <Upload className="h-8 w-8 text-gray-400 mb-2 flex-shrink-0" />
           <p className="text-sm text-gray-500 mb-1 break-words px-2">
-            Drag and drop files here, or click to select files
+            {maxFiles === 1 
+              ? 'Drag and drop file here, or click to select file'
+              : 'Drag and drop files here, or click to select files'}
           </p>
           <p className="text-xs text-gray-400 break-words px-2">
             {allowedTypes.map(type => {
@@ -298,7 +296,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
               if (type.includes('jpeg') || type.includes('jpg')) return 'JPG';
               if (type.includes('png')) return 'PNG';
               return type;
-            }).join(', ')} • Max size: {maxSize}MB per file • Max {maxFiles} files • Total: {maxTotalSize}MB
+            }).join(', ')} • Max size: {maxSize}MB per file • Max {maxFiles} {maxFiles === 1 ? 'file' : 'files'} • Total: {maxTotalSize}MB
           </p>
           <Button 
             type="button" 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ import DocumentNumberInput from './DocumentNumberInput';
 import DocumentDisplay from './DocumentDisplay';
 import CustomDocumentUploader from './CustomDocumentUploader';
 import PoliceVerificationUploader from './PoliceVerificationUploader';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { enqueueEmployeeDocumentUpload } from '@/services/employee/employeeDocumentUploadService';
 
@@ -109,8 +110,24 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       setCustomDocumentName('');
       setCustomDocumentFiles([]);
       setManualVerificationFiles([]);
+      setGenericFiles([]);
+      setDocumentImage('');
     }
   }, [selectedTypeId, employeeId, hasExistingDocument]);
+
+  // Memoize the file change handler to prevent infinite loops
+  const handleFilesChange = useCallback((files: FileItem[]) => {
+    setGenericFiles(files);
+    // Update documentImage when files change
+    if (files.length > 0 && files[0].base64) {
+      setDocumentImage(files[0].base64);
+      onFileUploaded(files[0].base64);
+    } else {
+      // Clear documentImage when file is removed
+      setDocumentImage('');
+      onFileUploaded('');
+    }
+  }, [onFileUploaded]);
 
   // Generic handler for manual document verification file upload with queue
   // Works for all verification types: bank_statement_analysis, police_verification, court_case_check, digital_credibility_check, social_persona_check, drug_check
@@ -776,25 +793,25 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       {/* Manual Type Options */}
       {renderManualTypeOptions()}
 
-      {/* Document File Upload (allow images and PDF) */}
+      {/* Document File Upload (allow images and PDF) - Using ReusableFileUploader for first 5 document types */}
       {!isBankAccount && !isManualType && !isOtherDocuments && (
         <div>
           <Label className="text-sm font-medium">
             Document Image / PDF <span className="text-red-500">*</span>
           </Label>
           <div className="mt-1">
-            <DocumentFileUploader
-              files={genericFiles}
-              setFiles={setGenericFiles}
-              onFileUploaded={(base64) => {
-                if (base64) {
-                  setDocumentImage(base64);
-                  onFileUploaded(base64);
-                }
-              }}
-              acceptedFileTypes="image/*,.pdf"
-              documentType={documentType?.name || ''}
-              maxFileSize={5}
+            <ReusableFileUploader
+              key={`file-uploader-${selectedTypeId}`}
+              onFilesChange={handleFilesChange}
+              initialFiles={[]}
+              maxFiles={1}
+              maxSize={10}
+              maxTotalSize={10}
+              allowedTypes={['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']}
+              accept=".pdf,image/*"
+              showFileList={true}
+              className="w-full"
+              disabled={isSubmitting || isProcessing}
             />
           </div>
         </div>
@@ -814,7 +831,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || isProcessing}
+            disabled={isSubmitting || isProcessing || (!isBankAccount && genericFiles.length === 0)}
             className="flex-1"
           >
             {isSubmitting ? (
