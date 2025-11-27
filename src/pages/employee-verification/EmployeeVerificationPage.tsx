@@ -11,7 +11,7 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
   const [searchParams] = useSearchParams();
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
@@ -101,9 +101,16 @@ const EmployeeVerificationPage = () => {
     fetchEmployees();
   }, [fetchEmployees]);
   
-  const handleRefresh = () => {
-    fetchEmployees();
-  };
+  const handleRefresh = async () => {
+  setIsRefreshing(true);
+
+  await Promise.all([
+    fetchEmployees(),
+    new Promise((resolve) => setTimeout(resolve, 500))
+  ]);
+
+  setIsRefreshing(false);
+};
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -128,7 +135,7 @@ const EmployeeVerificationPage = () => {
               onClick={handleRefresh} 
               title="Refresh employees"
             >
-              <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
