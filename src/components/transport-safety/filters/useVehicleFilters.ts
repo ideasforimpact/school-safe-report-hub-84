@@ -8,6 +8,8 @@ import {
   hasValidVehicle
 } from '@/utils/transport-safety/documentStatusUtils';
 import { useSearchParams } from 'react-router-dom';
+import { getDocumentStatus } from '@/utils/transport-safety/documentStatusUtils';
+
 
 interface DocumentStatusFilters {
   valid: boolean;
@@ -120,9 +122,16 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
       let matchesDocumentStatus = true;
       
       if (hasActiveDocumentStatusFilters) {
+        const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
+        const fcStatus = getDocumentStatus(vehicle, 'fitness').status;
+        const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
+        const isStrictValid =
+          insuranceStatus === 'valid' &&
+          fcStatus === 'valid' &&
+          pollutionStatus === 'valid';
         if (documentStatusFilters.valid && !documentStatusFilters.expired && !documentStatusFilters.expiring_soon) {
           // Only valid selected - show vehicles that are considered valid (at least 2/3 certificates valid or expiring soon)
-          matchesDocumentStatus = hasValidVehicle(vehicle);
+          matchesDocumentStatus = isStrictValid;
         } else if (documentStatusFilters.expired && !documentStatusFilters.valid && !documentStatusFilters.expiring_soon) {
           // Only expired selected - show vehicles with ANY expired documents
           matchesDocumentStatus = hasExpiredDocuments(vehicle);
