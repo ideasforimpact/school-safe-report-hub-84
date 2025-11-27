@@ -28,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { UploadedDocument, formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -46,9 +47,17 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const [selectedUploadedDocument, setSelectedUploadedDocument] = useState<UploadedDocument | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<{ document: UploadedDocument; fileIndex: number } | null>(null);
-  
+  const [documentName, setDocumentName] = useState("");
+  const [duplicateError, setDuplicateError] = useState("");
+  const isUploadDisabled = !documentName || documentName.trim().length === 0;
+  const existingDocumentNames = uploadedDocuments.map(d => d.name.toLowerCase());
+
   const vehicle = getVehicle(vehicleId);
-  
+  const handleCloseDialog = () => {
+    setShowAddDocumentDialog(false);
+    setDocumentName("");
+    setDuplicateError("");
+  };
   // Fetch uploaded documents from the database
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -499,66 +508,79 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </div>
         ) : uploadedDocuments.length > 0 ? (
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Documents</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {/* Flatten and render each file as a separate tile with actions */}
-              {uploadedDocuments.flatMap((doc, docIdx) => (
-                (doc.files || []).map((file, fileIdx) => (
-                  <div
-                    key={`${doc.name}-${docIdx}-${file.path || file.url || fileIdx}`}
-                    className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 min-h-[60px]"
-                  >
-                    <div className="flex items-center flex-1 min-w-0">
-                      <FileText className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{file.name || doc.name}</p>
-                        <p className="text-xs text-gray-500">
-                          Uploaded: {formatDate(new Date(file.uploadedAt || doc.uploadedAt))}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 px-2"
-                        onClick={() => {
-                          const url = file.url;
-                          if (url) {
-                            const formattedUrl = formatSupabaseUrl(url);
-                            window.open(formattedUrl, '_blank', 'noopener,noreferrer');
-                          }
-                        }}
-                      >
-                        <Eye className="h-4 w-4 text-gray-500 mr-1" /> View
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        onClick={() => {
-                          if (file.url && file.name) {
-                            handleDownloadFile(file.url, file.name, file.path);
-                          }
-                        }}
-                      >
-                        <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
-                        Download
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                        title="Delete file"
-                        onClick={() => handleDeleteFile(doc, fileIdx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+            
+            {uploadedDocuments.map((doc, docIdx) => {
+              // Debug: Log each document group
+              return (
+                <div key={`${doc.name}-${docIdx}`} className="space-y-3">
+                  {/* Document Group Header */}
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h3 className="text-sm font-medium text-gray-700">{doc.name}</h3>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {doc.files?.length || 0} file{(doc.files?.length || 0) !== 1 ? 's' : ''}
+                    </span>
                   </div>
-                ))
-              ))}
-            </div>
+                  
+                  {/* Files under this document group */}
+                  <div className="grid grid-cols-1 gap-3">
+                    {doc.files?.map((file, fileIdx) => (
+                      <div
+                        key={`${doc.name}-${docIdx}-${file.path || file.url || fileIdx}`}
+                        className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 min-h-[60px]"
+                      >
+                        <div className="flex items-center flex-1 min-w-0">
+                          <FileText className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              Uploaded: {formatDate(new Date(file.uploadedAt || doc.uploadedAt))}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 px-2"
+                            onClick={() => {
+                              const url = file.url;
+                              if (url) {
+                                const formattedUrl = formatSupabaseUrl(url);
+                                window.open(formattedUrl, '_blank', 'noopener,noreferrer');
+                              }
+                            }}
+                          >
+                            <Eye className="h-4 w-4 text-gray-500 mr-1" /> View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2"
+                            onClick={() => {
+                              if (file.url && file.name) {
+                                handleDownloadFile(file.url, file.name, file.path);
+                              }
+                            }}
+                          >
+                            <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
+                            Download
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            title="Delete file"
+                            onClick={() => handleDeleteFile(doc, fileIdx)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8 border border-dashed rounded-md bg-gray-50">
@@ -704,12 +726,43 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
               Upload new documents for this vehicle
             </DialogDescription>
           </DialogHeader>
+          <div className="grid grid-cols-1 gap-6">
+
+          {/* Document Name Input */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Document Name <span className="text-red-500">*</span></label>
+            <Input
+              placeholder="Enter document name"
+              maxLength={50}
+              value={documentName}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDocumentName(value);
+
+                if (existingDocumentNames.includes(value.trim().toLowerCase())) {
+                  setDuplicateError("A document with this name already exists.");
+                } else {
+                  setDuplicateError("");
+                }
+              }}
+              className="mt-1"
+            />
+            {duplicateError && (
+              <p className="text-xs text-red-500 mt-1">{duplicateError}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1 text-right">{documentName.length}/50 characters</p>
+          </div>
+
           <DocumentUploader 
             vehicleId={vehicleId} 
             clientId={vehicle?.clientId}
-            onClose={() => setShowAddDocumentDialog(false)} 
+            onClose={handleCloseDialog} 
             onSuccess={handleUploadSuccess}
+            documentName={documentName}
+            disabled={isUploadDisabled || duplicateError !== ""}
+            existingDocumentNames={uploadedDocuments.map(d => d.name.toLowerCase())}
           />
+          </div>
         </DialogContent>
       </Dialog>
 
