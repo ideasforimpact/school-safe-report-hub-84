@@ -483,6 +483,20 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           if (docType === 'manual' || docType === 'other' || docType === 'other_documents') {
                             const customName = doc.params?.document_name;
                             if (customName) {
+                              // For "other" document types, truncate display to 100 chars with tooltip
+                              if (docType === 'other' || docType === 'other_documents') {
+                                const truncated = customName.length > 100 
+                                  ? `${customName.slice(0, 100)}...` 
+                                  : customName;
+                                return (
+                                  <span 
+                                    className="inline-block max-w-[380px] truncate align-middle"
+                                    title={customName}
+                                  >
+                                    {truncated}
+                                  </span>
+                                );
+                              }
                               return customName;
                             }
                             // For manual documents, show the verification type if available
