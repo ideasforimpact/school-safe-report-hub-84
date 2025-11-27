@@ -34,7 +34,7 @@ const FileListItem: React.FC<FileListItemProps> = ({ file, onPreview, onRemove }
     <div className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200">
       <div className="flex items-center overflow-hidden flex-grow">
         {isImage ? (
-          <div className="flex items-center cursor-pointer" onClick={() => onPreview(file)}>
+          <div className="flex items-center cursor-pointer">
             <FilePreview file={file} />
             <div className="overflow-hidden">
               <span className="text-sm truncate block">{file.name}</span>

@@ -4,6 +4,8 @@ import { Upload, X, File, AlertCircle, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { FileItem } from '@/types/fileTypes';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import FileListItem from '../file/FileListItem';
+import { formatFileSize } from '@/utils/fileUtils';
 
 interface ReusableFileUploaderProps {
   onFilesChange: (files: FileItem[]) => void;
@@ -33,7 +35,11 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
+  const handlePreview = (file: FileItem) => {
+    setPreviewFile(file);
+  };
   // Update parent when files change (only when files actually change, not when callback changes)
   React.useEffect(() => {
     onFilesChange(files);
@@ -209,7 +215,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     setErrorMessage(null);
   };
 
-  const formatFileSize = (bytes: number): string => {
+  const formatFileSizetomb = (bytes: number): string => {
     return (bytes / 1024 / 1024).toFixed(2);
   };
 
@@ -224,7 +230,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   };
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  const totalSizeMB = formatFileSize(totalSize);
+  const totalSizeMB = formatFileSizetomb(totalSize);
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -241,37 +247,101 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
       {/* File List */}
       {showFileList && files.length > 0 && (
         <div className="space-y-2 mb-3">
-          <div className="text-xs text-gray-500 mb-2 px-1">
-            {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
-          </div>
           <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
-            {files.map((file) => (
-              <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">
-                <div className="flex items-start flex-1 min-w-0 overflow-hidden">
-                  {getFileIcon(file.type)}
-                  <div className="min-w-0 flex-1 overflow-hidden">
-                    <span className="text-sm break-words break-all block w-full text-gray-900">{file.name}</span>
-                    <span className="text-xs text-gray-500 block mt-1">
-                      {formatFileSize(file.size)} MB
-                    </span>
-                  </div>
+           {files.map((file) => {
+              const isImage = file.type?.startsWith("image/");
+
+              return (
+                <div key={file.id}>
+                  {/* LEFT SIDE CONTENT */}
+                  {isImage ? (
+                      <FileListItem
+                        key={file.id}
+                        file={file}
+                        onPreview={handlePreview}        
+                        onRemove={removeFile}       
+                      />
+                  ) : (
+                   <div className="space-y-2 mb-3">
+                      <div className="text-xs text-gray-500 mb-2 px-1">
+                        {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
+                      </div>
+                      <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
+                        {files.map((file) => (
+                          <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">
+                            <div className="flex items-start flex-1 min-w-0 overflow-hidden">
+                              {getFileIcon(file.type)}
+                              <div className="min-w-0 flex-1 overflow-hidden">
+                                <span className="text-sm break-words break-all block w-full text-gray-900">{file.name}</span>
+                                <span className="text-xs text-gray-500 block mt-1">
+                                  {formatFileSize(file.size)}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile(file.id)}
+                              className="h-8 w-8 p-0 flex-shrink-0 ml-2"
+                              disabled={disabled}
+                            >
+                              <X className="h-4 w-4 text-gray-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFile(file.id)}
-                  className="h-8 w-8 p-0 flex-shrink-0 ml-2"
-                  disabled={disabled}
-                >
-                  <X className="h-4 w-4 text-gray-500" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
-      
+       {/* Simple preview dialog (example using shadcn Dialog) */}
+        {previewFile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-white rounded-lg max-w-3xl max-h-[90vh] p-4 shadow-lg relative"> {/* Added relative here */}
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex flex-col flex-grow pr-4">
+                  <h1 className="font-semibold tracking-tight text-lg">
+                    {previewFile.name}
+                  </h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {formatFileSize(previewFile.size)}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type='button'
+                onClick={() => setPreviewFile(null)}
+                className="
+                    absolute right-4 top-4  rounded-sm opacity-70 
+                    focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-whilte hover:bg-white"      
+                    style={{borderRadius:12,padding:1,height:18,color:'black' }}>
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+
+              {previewFile.type?.startsWith('image/') ? (
+                <img
+                  src={previewFile.base64}
+                  alt={previewFile.name}
+                  className="max-h-[70vh] max-w-full object-contain"
+                />
+              ) : (
+                <iframe
+                  src={previewFile.base64}
+                  className="w-[80vw] h-[70vh]"
+                  title={previewFile.name}
+                />
+              )}
+            </div>
+          </div>
+        )}
       {/* File Upload Area */}
       <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center w-full overflow-hidden">
         <input 
