@@ -52,8 +52,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const isUploadDisabled = !documentName || documentName.trim().length === 0;
   const existingDocumentNames = uploadedDocuments.map(d => d.name.toLowerCase());
 
-        console.log(uploadedDocuments,'lotehibrjfgbuer');
-
   const vehicle = getVehicle(vehicleId);
   const handleCloseDialog = () => {
     setShowAddDocumentDialog(false);
@@ -513,8 +511,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             
             {uploadedDocuments.map((doc, docIdx) => {
               // Debug: Log each document group
-              console.log(`Document Group ${docIdx}:`, doc.name, 'Files:', doc.files?.length);
-              
               return (
                 <div key={`${doc.name}-${docIdx}`} className="space-y-3">
                   {/* Document Group Header */}
