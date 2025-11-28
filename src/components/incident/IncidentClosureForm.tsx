@@ -335,10 +335,10 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
               <div className="text-sm text-gray-500">Loading contributing factors...</div>
             </div>
           ) : (
-            <ContributingFactorsSection 
-              contributingFactors={contributingFactors}
-              setContributingFactors={setContributingFactors}
-            />
+          <ContributingFactorsSection 
+            contributingFactors={contributingFactors}
+            setContributingFactors={setContributingFactors}
+          />
           )}
         </div>
 

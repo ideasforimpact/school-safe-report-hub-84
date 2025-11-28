@@ -311,7 +311,7 @@ const PublicFormPage = () => {
         throw new Error(fnError?.message || 'Failed to submit form');
       }
 
-      toast.success('Form submitted successfully!');
+      toast.success('Grievance submitted successfully!');
 
       const inserted = fnData.data;
       
@@ -362,6 +362,20 @@ const PublicFormPage = () => {
     // If anonymous and field should be hidden, it's not required
     if (shouldHideField(field)) return false;
     
+    // Check if this is Name, Phone, or Email field
+    const labelLower = (field.label || '').toLowerCase();
+    const fieldType = field.type?.toLowerCase();
+    const fieldId = (field.id || '').toLowerCase();
+    
+    const isNameField = labelLower.includes('name') && !labelLower.includes('anonymous') || fieldId === 'name';
+    const isPhoneField = labelLower.includes('phone') || fieldType === 'phone' || fieldId === 'phone';
+    const isEmailField = labelLower.includes('email') || fieldType === 'email' || fieldId === 'email';
+    
+    // If not anonymous, Name, Phone, and Email are required
+    if (!isAnonymous && (isNameField || isPhoneField || isEmailField)) {
+      return true;
+    }
+    
     // Otherwise, use the field's required property
     return field.required || false;
   };
@@ -383,15 +397,63 @@ const PublicFormPage = () => {
         } else if (field.type === 'captcha') {
           // No longer required for ALTCHA
         } else {
-          if (!formData[field.id] || formData[field.id].toString().trim() === '') {
+          const value = formData[field.id];
+          if (!value || value.toString().trim() === '') {
             toast.error(`${field.label} is required`);
             return false;
+          }
+          
+          // Additional validation for email format
+          if (field.type === 'email' || (field.id?.toLowerCase() === 'email' || (field.label || '').toLowerCase().includes('email'))) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value.toString().trim())) {
+              toast.error('Please enter a valid email address');
+              return false;
+            }
+          }
+          
+          // Additional validation for phone format
+          if (field.type === 'phone' || (field.id?.toLowerCase() === 'phone' || (field.label || '').toLowerCase().includes('phone'))) {
+            const phoneValue = value.toString().replace(/\D/g, '');
+            if (phoneValue.length !== 10) {
+              toast.error('Please enter a valid 10-digit phone number');
+              return false;
+            }
           }
         }
       }
     }
 
     return true;
+  };
+
+  // Lightweight check used to disable the submit button when any required field is empty.
+  // This mirrors the required-field logic in validateForm but does NOT show toasts.
+  const hasMissingRequiredFields = (): boolean => {
+    if (!form) return true;
+
+    for (const field of (form.fields as FormField[])) {
+      // Skip hidden fields when anonymous
+      if (shouldHideField(field)) continue;
+
+      if (!isFieldRequired(field)) continue;
+
+      if (field.type === 'file') {
+        if (!files[field.id] || files[field.id].length === 0) {
+          return true;
+        }
+      } else if (field.type === 'captcha') {
+        // Captcha is handled separately via captchaToken for button disabling
+        continue;
+      } else {
+        const value = formData[field.id];
+        if (!value || value.toString().trim() === '') {
+          return true;
+        }
+      }
+    }
+
+    return false;
   };
 
   const renderField = (field: FormField) => {
@@ -712,7 +774,11 @@ const PublicFormPage = () => {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={submitting || (((form!.fields as FormField[]) || []).some((f: FormField) => f.type === 'captcha') && !captchaToken)}
+                  disabled={
+                    submitting ||
+                    (((form!.fields as FormField[]) || []).some((f: FormField) => f.type === 'captcha') && !captchaToken) ||
+                    hasMissingRequiredFields()
+                  }
                 >
                   {submitting ? (
                     <>

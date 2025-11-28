@@ -416,12 +416,12 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                       }
 
                       return (
-                        <StatusSwitch 
-                          variant="status"
-                          checked={priority.is_active} 
-                          onCheckedChange={() => handleToggleStatus(priority)}
-                          aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
-                        />
+                    <StatusSwitch 
+                      variant="status"
+                      checked={priority.is_active} 
+                      onCheckedChange={() => handleToggleStatus(priority)}
+                      aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
+                    />
                       );
                     })()}
                     <Badge variant={priority.is_active ? "success" : "destructive"}>
