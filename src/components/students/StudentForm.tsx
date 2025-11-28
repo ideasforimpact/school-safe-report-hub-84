@@ -239,26 +239,36 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
 
         // Handle pre-selected values for edit mode
         if (defaultValues?.campus && campusData) {
-          const selectedCampusId = campusData.find(c => c.name === defaultValues.campus)?.id;
-          if (selectedCampusId && gradeData) {
-            setSelectedCampusId(selectedCampusId);
+          const foundCampusId = campusData.find(c => c.name === defaultValues.campus)?.id;
+          if (foundCampusId && gradeData) {
+            // Set campus ID state and form value
+            setSelectedCampusId(foundCampusId);
+            form.setValue('campusId', foundCampusId);
+
             const campusGrades = gradeData
-              .filter(g => g.campus_id === selectedCampusId)
+              .filter(g => g.campus_id === foundCampusId)
               .map(g => ({ id: g.id, name: g.name, campusId: g.campus_id }));
             setFilteredGrades(campusGrades);
             
             if (defaultValues.grade) {
-              const selectedGradeId = campusGrades.find(g => g.name === defaultValues.grade)?.id;
-              if (selectedGradeId && sectionData) {
-                setSelectedGradeId(selectedGradeId);
-                setFilteredSections(sectionData
-                  .filter(s => s.grade_id === selectedGradeId)
-                  .map(s => ({ id: s.id, name: s.name, classId: s.grade_id }))
-                );
+              const foundGradeId = campusGrades.find(g => g.name === defaultValues.grade)?.id;
+              if (foundGradeId && sectionData) {
+                // Set grade ID state and form value
+                setSelectedGradeId(foundGradeId);
+                form.setValue('gradeId', foundGradeId);
+
+                const gradeSections = sectionData
+                  .filter(s => s.grade_id === foundGradeId)
+                  .map(s => ({ id: s.id, name: s.name, classId: s.grade_id }));
+                setFilteredSections(gradeSections);
+
                 if (defaultValues.section) {
-                  const selectedSectionId = sectionData.find(s => s.name === defaultValues.section && s.grade_id === selectedGradeId)?.id;
-                  if (selectedSectionId) {
-                    setSelectedSectionId(selectedSectionId);
+                  const foundSectionId = gradeSections.find(
+                    s => s.name === defaultValues.section
+                  )?.id;
+                  if (foundSectionId) {
+                    setSelectedSectionId(foundSectionId);
+                    form.setValue('sectionId', foundSectionId);
                   }
                 }
               }

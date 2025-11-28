@@ -115,7 +115,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
           student.id === id ? data : student
         )
       );
-      toast.success('Student updated successfully');
+      // toast.success('Student updated successfully');
       
       // Refresh to ensure consistency
       await refreshStudents();
