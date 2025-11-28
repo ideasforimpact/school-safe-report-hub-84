@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -18,6 +18,8 @@ import { priorityService } from '@/services/incident/priorityService';
 import { usePriorities } from '@/hooks/usePriorities';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Validation function for priority names (no special characters, max 25 chars)
 const isValidPriorityName = (name: string) => {
@@ -86,6 +88,45 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   
   // Use the hook to get priorities with RLS - no manual client validation needed
   const { priorities, loading, refetch } = usePriorities();
+  const [priorityReferences, setPriorityReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+
+  // Pre-load reference info so we can disable delete button for linked priorities
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || priorities.length === 0) {
+      setPriorityReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          priorities.map(async (priority) => {
+            const refInfo = await incidentReferenceService.checkPriorityReferences(priority.id, clientId);
+            return { id: priority.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setPriorityReferences(map);
+      } catch (error) {
+        console.error('Error preloading priority reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [priorities, employeeData]);
 
   const handleAddPriority = async () => {
     if (!newPriorityName.trim()) {
@@ -171,6 +212,15 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   };
 
   const handleToggleStatus = async (priority: PriorityItem) => {
+    // Check if priority is linked to incidents - prevent deactivation if linked
+    const refInfo = priorityReferences[priority.id];
+    if (refInfo?.hasReferences && priority.is_active) {
+      const message = refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+        `This priority is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+      toast.error(message);
+      return;
+    }
+
     const newStatus = !priority.is_active;
     const action = newStatus ? 'activate' as const : 'deactivate' as const;
     
@@ -328,12 +378,52 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                 <TableCell>{priority.weight || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <StatusSwitch 
-                      variant="status"
-                      checked={priority.is_active} 
-                      onCheckedChange={() => handleToggleStatus(priority)}
-                      aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
-                    />
+                    {(() => {
+                      const refInfo = priorityReferences[priority.id];
+                      const isLinked = refInfo?.hasReferences;
+
+                      if (isLinked) {
+                        const message =
+                          refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+                          `This priority is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <StatusSwitch 
+                                    variant="status"
+                                    checked={priority.is_active} 
+                                    disabled={true}
+                                    aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
+                                  />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="left" 
+                                align="center" 
+                                sideOffset={8} 
+                                className="max-w-xs whitespace-normal text-left"
+                              >
+                                <p className="text-xs leading-snug text-left">
+                                  {message}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
+
+                      return (
+                        <StatusSwitch 
+                          variant="status"
+                          checked={priority.is_active} 
+                          onCheckedChange={() => handleToggleStatus(priority)}
+                          aria-label={`${priority.is_active ? 'Deactivate' : 'Activate'} ${priority.name}`}
+                        />
+                      );
+                    })()}
                     <Badge variant={priority.is_active ? "success" : "destructive"}>
                       {priority.is_active ? "Active" : "Inactive"}
                     </Badge>
@@ -344,10 +434,58 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                     <Edit className="h-4 w-4" />
                     <span className="sr-only">Edit</span>
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeletePriority(priority.id)}>
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete</span>
-                  </Button>
+                  {(() => {
+                    const refInfo = priorityReferences[priority.id];
+                    const isLinked = refInfo?.hasReferences;
+
+                    if (isLinked) {
+                      const message =
+                        refInfo?.message ||
+                        `This priority is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  aria-disabled="true"
+                                  className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent 
+                              side="left" 
+                              align="center" 
+                              sideOffset={8} 
+                              className="max-w-xs whitespace-normal text-left"
+                            >
+                              <p className="text-xs leading-snug text-left">
+                                {message}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+
+                    return (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeletePriority(priority.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             ))}

@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
+import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,7 +53,24 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     setIsEditDialogOpen(true);
   };
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    // Check if student is linked to incidents - prevent deletion if linked
+    try {
+      const refInfo = await incidentReferenceService.checkStudentReferences(id, employeeData.clientId);
+      if (refInfo.hasReferences) {
+        toast.error(refInfo.message || `This student is linked to ${refInfo.count} incident(s) and cannot be deleted.`);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking student references:', error);
+      // Continue with deletion if check fails (fail open)
+    }
+
     setStudentToDelete(id);
     setIsDeleteAlertOpen(true);
   };
