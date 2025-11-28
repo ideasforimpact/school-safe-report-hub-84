@@ -6,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import StudentForm from './StudentForm';
 import { useStudents } from '@/contexts/StudentContext';
 import { Student } from '@/types/student';
@@ -56,6 +55,7 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
           }}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          onCancel={() => onOpenChange(false)}
         />
       </DialogContent>
     </Dialog>
