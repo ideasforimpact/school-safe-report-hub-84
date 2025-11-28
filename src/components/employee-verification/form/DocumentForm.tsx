@@ -609,7 +609,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             <option value="court_case_check">Court Case Check</option>
             <option value="police_verification">Police Verification</option>
             <option value="digital_credibility_check">Digital Credibility Check</option>
-            <option value="social_persona_check">Social Persona Check</option>
+            <option value="social_persona_check">Social Personal Check</option>
             <option value="drug_check">Drug Check</option>
           </select>
         </div>

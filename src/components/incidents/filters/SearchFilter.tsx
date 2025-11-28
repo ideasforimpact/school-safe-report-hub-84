@@ -23,6 +23,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="pl-10"
+        maxLength={200}
       />
     </div>
   );

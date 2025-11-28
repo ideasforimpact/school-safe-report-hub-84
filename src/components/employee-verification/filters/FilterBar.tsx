@@ -33,7 +33,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
           <SearchFilter
             value={searchTerm}
             onChange={onSearchChange}
-            placeholder="Search by name, email, employee ID, or address..."
+            placeholder="Search by name, email, employee ID"
           />
         </div>
         
