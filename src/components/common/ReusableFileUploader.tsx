@@ -120,12 +120,15 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
 
       // File type validation
       if (!allowedTypes.includes(file.type)) {
-        const typeNames = allowedTypes.map(type => {
-          if (type === 'application/pdf') return 'PDF';
-          if (type.includes('jpeg') || type.includes('jpg')) return 'JPG';
-          if (type.includes('png')) return 'PNG';
-          return type;
-        }).join(', ');
+        const typeSet = new Set<string>();
+        allowedTypes.forEach(type => {
+          if (type === 'application/pdf') typeSet.add('PDF');
+          else if (type.includes('jpeg') || type.includes('jpg')) typeSet.add('JPG');
+          else if (type.includes('png')) typeSet.add('PNG');
+          else if (type.includes('msword') || type.includes('wordprocessingml')) typeSet.add('Word');
+          else typeSet.add(type);
+        });
+        const typeNames = Array.from(typeSet).join(', ');
         
         const errorMsg = `"${file.name}" is not a supported file type. Please upload ${typeNames} files.`;
         setErrorMessage(errorMsg);
@@ -361,16 +364,17 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
               : 'Drag and drop files here, or click to select files'}
           </p>
           <p className="text-xs text-gray-400 break-words px-2">
-            {allowedTypes.map(type => {
-              if (type === 'application/pdf') return 'PDF';
-              if (type.includes('jpeg') || type.includes('jpg')) return 'JPG';
-              if (type.includes('png')) return 'PNG';
-              if (type.includes('gif')) return 'GIF';
-              if (type === 'application/msword') return 'Word (DOC)';
-              if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'Word (DOCX)';
-              if (type === 'text/plain') return 'Text (TXT)';
-              return type;
-            }).join(', ')} • Max size: {maxSize}MB per file • Max {maxFiles} {maxFiles === 1 ? 'file' : 'files'} • Total: {maxTotalSize}MB
+            {(() => {
+              const typeSet = new Set<string>();
+              allowedTypes.forEach(type => {
+                if (type === 'application/pdf') typeSet.add('PDF');
+                else if (type.includes('jpeg') || type.includes('jpg')) typeSet.add('JPG');
+                else if (type.includes('png')) typeSet.add('PNG');
+                else if (type.includes('msword') || type.includes('wordprocessingml')) typeSet.add('Word');
+                else typeSet.add(type);
+              });
+              return Array.from(typeSet).join(', ');
+            })()} • Max size: {maxSize}MB per file • Max {maxFiles} {maxFiles === 1 ? 'file' : 'files'} • Total: {maxTotalSize}MB
           </p>
           <Button 
             type="button" 
