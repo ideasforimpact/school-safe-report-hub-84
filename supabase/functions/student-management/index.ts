@@ -310,13 +310,13 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     body.section = sectionData.name;
   } else {
     // Fallback: Validate campus, grade, and section using text values (backward compatibility)
-    if (body.campus && body.grade && body.section) {
-      const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
-      if (!isValid.valid) {
-        return new Response(
-          JSON.stringify({ error: isValid.error }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+  if (body.campus && body.grade && body.section) {
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+    if (!isValid.valid) {
+      return new Response(
+        JSON.stringify({ error: isValid.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
       }
     }
   }

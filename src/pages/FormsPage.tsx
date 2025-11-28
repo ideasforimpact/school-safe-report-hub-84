@@ -22,6 +22,9 @@ import { Calendar as CalendarIcon } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import { FileItem } from '@/types/fileTypes';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const FormsPage = () => {
@@ -45,6 +48,7 @@ const FormsPage = () => {
   const [acknowledgeSubmission, setAcknowledgeSubmission] = useState<any | null>(null);
   const [acknowledgeComment, setAcknowledgeComment] = useState('');
   const [isSubmittingAcknowledgment, setIsSubmittingAcknowledgment] = useState(false);
+  const [acknowledgementFiles, setAcknowledgementFiles] = useState<FileItem[]>([]);
 
   // Filter states
   const initialStatusFromQuery = (() => {
@@ -352,28 +356,97 @@ const FormsPage = () => {
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || formTypeFilter !== 'all' || dateFrom || dateTo;
 
   const handleAcknowledgeSubmission = async () => {
-    if (!acknowledgeSubmission || !acknowledgeComment.trim()) {
-      toast.error('Please enter a comment before acknowledging');
+    if (!acknowledgeSubmission) {
+      toast.error('No submission selected');
       return;
     }
 
+    // Comment remains optional; only trim if provided
+    const trimmedComment = acknowledgeComment.trim();
     setIsSubmittingAcknowledgment(true);
     try {
-      const { error } = await supabase
+      // 1) Upload evidence files to storage under bucket/clientId/employeeId/submissionId
+      const bucketId = 'form_submission_comment_attachements';
+      const clientId = effectiveClientId || 'unknown-client';
+      const employeeId = (employeeData as any)?.id || (user as any)?.id || 'unknown-employee';
+
+      const filePayload: { path: string; filename: string; size?: number }[] = [];
+
+      if (acknowledgementFiles.length > 0) {
+        await Promise.all(
+          acknowledgementFiles.map(async (file, index) => {
+            try {
+              if (!file.base64) return;
+              const safeName = (file.name || `file_${Date.now()}`).replace(/[^a-zA-Z0-9.-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+              const fileName = `${Date.now()}_${index}_${safeName}`;
+              const path = `${clientId}/${employeeId}/${acknowledgeSubmission.id}/${fileName}`;
+
+              const response = await fetch(file.base64);
+              const blob = await response.blob();
+
+              const { error: uploadError } = await supabase.storage
+                .from(bucketId)
+                .upload(path, blob, {
+                  contentType: file.type || 'application/octet-stream',
+                  upsert: false,
+                });
+
+              if (uploadError) {
+                console.error('Error uploading acknowledgement evidence:', uploadError);
+                throw uploadError;
+              }
+
+              filePayload.push({
+                path,
+                filename: file.name,
+                size: file.size,
+              });
+            } catch (err) {
+              console.error('Error processing acknowledgement file:', err);
+              throw err;
+            }
+          })
+        );
+      }
+
+      // 2) Update submission status and acknowledgement details synchronously
+      const { error: updateError } = await supabase
         .from('form_submissions')
         .update({
           status: 'acknowledged',
-          comments: acknowledgeComment.trim(),
-          acknowledged_by_name: (employeeData?.firstName && employeeData?.lastName) ? `${employeeData.firstName} ${employeeData.lastName}` : (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : null),
+          comments: trimmedComment || null,
+          acknowledged_by_name:
+            (employeeData as any)?.firstName && (employeeData as any)?.lastName
+              ? `${(employeeData as any).firstName} ${(employeeData as any).lastName}`
+              : (user as any)?.firstName
+              ? `${(user as any).firstName} ${((user as any).lastName || '')}`.trim()
+              : null,
           acknowledged_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', acknowledgeSubmission.id);
 
-      if (error) {
-        console.error('Error acknowledging submission:', error);
+      if (updateError) {
+        console.error('Error acknowledging submission:', updateError);
         toast.error('Failed to acknowledge submission');
         return;
+      }
+
+      // 3) Enqueue file paths so the consumer can attach them to comments_attachment
+      if (filePayload.length > 0) {
+        const { error: fnError } = await supabase.functions.invoke('enqueue-form-submission-comment-attachments', {
+          body: {
+            submission_id: acknowledgeSubmission.id,
+            comments: trimmedComment || null,
+            files: filePayload,
+          },
+        } as any);
+
+        if (fnError) {
+          console.error('Error queueing acknowledgement attachments:', fnError);
+          toast.error('Failed to queue acknowledgement evidence. Please try again.');
+          return;
+        }
       }
 
       toast.success('Submission acknowledged successfully');
@@ -383,6 +456,7 @@ const FormsPage = () => {
       
       setAcknowledgeSubmission(null);
       setAcknowledgeComment('');
+      setAcknowledgementFiles([]);
     } catch (error) {
       console.error('Error acknowledging submission:', error);
       toast.error('Failed to acknowledge submission');
@@ -732,138 +806,304 @@ const FormsPage = () => {
 									{viewSubmission && (
 										<Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
 											<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-																								<DialogHeader>
-																	<DialogTitle>Grievance Details</DialogTitle>
+												<DialogHeader>
+													<DialogTitle>Grievance Details</DialogTitle>
 												</DialogHeader>
-												<div className="space-y-6">
-												
+												<Tabs defaultValue="details" className="mt-4">
+													<TabsList className="w-full justify-start rounded-lg bg-gray-100">
+														<TabsTrigger value="details" className="flex-1">
+															Grievance Details
+														</TabsTrigger>
+														<TabsTrigger value="acknowledgement" className="flex-1">
+															Acknowledgement Details
+														</TabsTrigger>
+														<TabsTrigger value="attachments" className="flex-1">
+															Attachments
+														</TabsTrigger>
+													</TabsList>
 
-													{/* Key information */}
-													<div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-														<div>
-															<div className="text-sm text-gray-600">Name</div>
-															<div className="mt-1">{viewSubmission.submitter_name || (viewSubmission.responses && (viewSubmission.responses.name || viewSubmission.responses.full_name || viewSubmission.responses.submitter_name)) || 'Anonymous'}</div>
-														</div>
-														<div>
-															<div className="text-sm text-gray-600">Phone</div>
-															<div className="mt-1">{viewSubmission.submitter_phone || (viewSubmission.responses && (viewSubmission.responses.phone || viewSubmission.responses.contact || viewSubmission.responses.mobile)) || 'Not provided'}</div>
-														</div>
-														<div>
-															<div className="text-sm text-gray-600">Subject</div>
-															<div className="mt-1">{viewSubmission.responses && (viewSubmission.responses.subject || viewSubmission.responses.heading || viewSubmission.responses.title) || 'Not provided'}</div>
-														</div>
-														<div>
-															<div className="text-sm text-gray-600">Type</div>
-															<div className="mt-1">{viewSubmission.submitter_type || (viewSubmission.responses && (viewSubmission.responses.submitter_type || viewSubmission.responses.type)) || 'Not provided'}</div>
-														</div>
-														<div>
-															<div className="text-sm text-gray-600">Submitted</div>
-															<div className="mt-1">{formatDate(viewSubmission.created_at)}</div>
-														</div>
-													</div>
-																													{/* Status and Acknowledgement */}
-													<div>
-                            	{/* Description - Full Width Above Status */}
-													<div className="space-y-2 mb-2">
-														<div className="text-sm text-gray-600">Description</div>
-														<div className="w-full">
-															<div className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded-md border">
-																{viewSubmission.responses && (viewSubmission.responses.description || viewSubmission.responses.message || viewSubmission.responses.details) || 'Not provided'}
+													<TabsContent value="details" className="mt-4 space-y-6">
+														<div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+															<div>
+																<div className="text-sm text-gray-600">Name</div>
+																<div className="mt-1">
+																	{viewSubmission.submitter_name ||
+																		(viewSubmission.responses &&
+																			(viewSubmission.responses.name ||
+																				viewSubmission.responses.full_name ||
+																				viewSubmission.responses.submitter_name)) ||
+																		'Anonymous'}
+																</div>
+															</div>
+															<div>
+																<div className="text-sm text-gray-600">Phone</div>
+																<div className="mt-1">
+																	{viewSubmission.submitter_phone ||
+																		(viewSubmission.responses &&
+																			(viewSubmission.responses.phone ||
+																				viewSubmission.responses.contact ||
+																				viewSubmission.responses.mobile)) ||
+																		'Not provided'}
+																</div>
+															</div>
+															<div>
+																<div className="text-sm text-gray-600">Subject</div>
+																<div className="mt-1">
+																	{(viewSubmission.responses &&
+																		(viewSubmission.responses.subject ||
+																			viewSubmission.responses.heading ||
+																			viewSubmission.responses.title)) ||
+																		'Not provided'}
+																</div>
+															</div>
+															<div>
+																<div className="text-sm text-gray-600">Type</div>
+																<div className="mt-1">
+																	{viewSubmission.submitter_type ||
+																		(viewSubmission.responses &&
+																			(viewSubmission.responses.submitter_type ||
+																				viewSubmission.responses.type)) ||
+																		'Not provided'}
+																</div>
+															</div>
+															<div>
+																<div className="text-sm text-gray-600">Submitted</div>
+																<div className="mt-1">{formatDate(viewSubmission.created_at)}</div>
 															</div>
 														</div>
-													</div>
-														<div className="text-sm text-gray-600 mb-2">Status</div>
-																	{getStatusBadge(viewSubmission.status)}
-																	{viewSubmission.status === 'acknowledged' && (
-																		<div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-																			<div className="text-sm font-semibold text-blue-800 mb-2">Acknowledgement</div>
-																			<div className="space-y-1 text-sm">
-																				<div>
-																					<span className="text-gray-700">Acknowledged by: </span>
-																					<span className="font-semibold text-blue-900 capitalize">{viewSubmission.acknowledged_by_name || '—'}</span>
-																				</div>
-																				{viewSubmission.acknowledged_at && (
-																					<div>
-																						<span className="text-gray-700">Acknowledged on: </span>
-																						<span className="font-semibold text-blue-900">{formatDate(viewSubmission.acknowledged_at)}</span>
-																					</div>
-																				)}
-																				{viewSubmission.comments && (
-																					<div className="mt-1">
-																						<span className="text-gray-700">Comment: </span>
-																						<span className="font-semibold text-blue-900 whitespace-pre-wrap">{viewSubmission.comments}</span>
-																					</div>
-																				)}
-																		</div>
+
+														<div>
+															<div className="space-y-2 mb-2">
+																<div className="text-sm text-gray-600">Description</div>
+																<div className="w-full">
+																	<div className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded-md border">
+																		{(viewSubmission.responses &&
+																			(viewSubmission.responses.description ||
+																				viewSubmission.responses.message ||
+																				viewSubmission.responses.details)) ||
+																			'Not provided'}
+																	</div>
+																</div>
+															</div>
+															<div className="text-sm text-gray-600 mb-2">Status</div>
+															{getStatusBadge(viewSubmission.status)}
+														</div>
+													</TabsContent>
+
+													<TabsContent value="acknowledgement" className="mt-4 space-y-4">
+														{viewSubmission.status === 'acknowledged' ? (
+															<div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+																<div className="text-sm font-semibold text-blue-800 mb-2">
+																	Acknowledgement
+																</div>
+																<div className="space-y-1 text-sm">
+																	<div>
+																	<span className="text-gray-700">Acknowledged by: </span>
+																	<span className="font-semibold text-blue-900 capitalize">
+																		{viewSubmission.acknowledged_by_name || '—'}
+																	</span>
+																	</div>
+																	{viewSubmission.acknowledged_at && (
+																	<div>
+																		<span className="text-gray-700">Acknowledged on: </span>
+																		<span className="font-semibold text-blue-900">
+																			{formatDate(viewSubmission.acknowledged_at)}
+																		</span>
 																	</div>
 																	)}
-													</div>
-													{/* Attachments */}
-													<div className="space-y-3">
+																	{viewSubmission.comments && (
+																	<div className="mt-1">
+																		<span className="text-gray-700">Comment: </span>
+																		<span className="font-semibold text-blue-900 whitespace-pre-wrap">
+																			{viewSubmission.comments}
+																		</span>
+																	</div>
+																	)}
+
+																	{Array.isArray((viewSubmission as any).comments_attachment) &&
+																	(viewSubmission as any).comments_attachment.length > 0 && (
+																	<div className="mt-3">
+																		<div className="text-gray-700 font-semibold mb-1">
+																			Acknowledgement Evidence
+																		</div>
+																		<ul className="space-y-2">
+																			{(viewSubmission as any).comments_attachment.map(
+																			(f: any, idx: number) => (
+																				<li
+																				key={idx}
+																				className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
+																				>
+																				<span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
+																					{f.filename || `Evidence ${idx + 1}`}
+																				</span>
+																				<Button
+																					variant="ghost"
+																					size="sm"
+																					onClick={async () => {
+																					try {
+																						let downloadUrl =
+																						f.url || f.publicUrl;
+
+																						if (
+																						downloadUrl &&
+																						!downloadUrl.startsWith('http')
+																						) {
+																						const storagePath: string =
+																							downloadUrl;
+																						const [bucket, ...rest] =
+																							storagePath.split('/');
+																						const objectPath =
+																							rest.join('/');
+																						const { data } = supabase.storage
+																							.from(bucket)
+																							.getPublicUrl(objectPath);
+																						downloadUrl = data.publicUrl;
+																						}
+
+																						if (!downloadUrl) return;
+
+																						const response =
+																						await fetch(downloadUrl);
+																						if (!response.ok)
+																						throw new Error(
+																							'Failed to download file'
+																						);
+																						const blob = await response.blob();
+																						const blobUrl =
+																						window.URL.createObjectURL(
+																							blob
+																						);
+																						const link =
+																						document.createElement('a');
+																						link.href = blobUrl;
+																						link.download =
+																						f.filename ||
+																						`evidence-${idx + 1}`;
+																						document.body.appendChild(link);
+																						link.click();
+																						document.body.removeChild(link);
+																						window.URL.revokeObjectURL(
+																							blobUrl
+																						);
+																					} catch (err) {
+																						console.error(
+																						'Error downloading evidence:',
+																						err
+																						);
+																						toast.error(
+																						'Failed to download evidence. Please try again.'
+																						);
+																					}
+																					}}
+																					className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
+																				>
+																					Download
+																				</Button>
+																				</li>
+																			)
+																			)}
+																		</ul>
+																	</div>
+																	)}
+																</div>
+															</div>
+														) : (
+															<div className="text-sm text-gray-600">
+																This grievance has not been acknowledged yet.
+															</div>
+														)}
+													</TabsContent>
+
+													<TabsContent value="attachments" className="mt-4 space-y-3">
 														<div className="text-lg font-semibold">Attachments</div>
 														{(() => {
-															const raw = (viewSubmission as any).attachments || ((viewSubmission as any).responses && (viewSubmission as any).responses.attachments);
-															const list = raw ? (Array.isArray(raw) ? raw : Object.values(raw).flat()) : [];
+															const raw =
+															(viewSubmission as any).attachments ||
+															((viewSubmission as any).responses &&
+																(viewSubmission as any).responses.attachments);
+															const list = raw
+															? Array.isArray(raw)
+																? raw
+																: (Object.values(raw) as any[]).flat()
+															: [];
 															if (!list || list.length === 0) {
-																return <div className="text-sm text-gray-500">No attachments</div>;
-															}
-															
-															const handleDownloadFile = async (fileUrl: string, fileName: string) => {
-																try {
-																	const response = await fetch(fileUrl);
-																	if (!response.ok) {
-																		throw new Error('Failed to download file');
-																	}
-																	const blob = await response.blob();
-																	const blobUrl = window.URL.createObjectURL(blob);
-																	const link = document.createElement('a');
-																	link.href = blobUrl;
-																	link.download = fileName;
-																	document.body.appendChild(link);
-																	link.click();
-																	document.body.removeChild(link);
-																	window.URL.revokeObjectURL(blobUrl);
-																	toast.success(`Downloading ${fileName}`);
-																} catch (error) {
-																	console.error('Error downloading file:', error);
-																	toast.error('Failed to download the file. Please try again.');
-																}
-															};
-															
 															return (
-																<div className="space-y-2">
-                                      <ul className="space-y-2">
-																		{list.map((f: any, idx: number) => {
-																			const fileName = f.filename || f.name || `Attachment ${idx + 1}`;
-																			const fileUrl = f.url || f.publicUrl;
-																			return (
-																				<li key={idx} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2">
-																					<span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
-																						{fileName}
-																					</span>
-																					<Button
-																						variant="ghost"
-																						size="sm"
-																						onClick={() => fileUrl && handleDownloadFile(fileUrl, fileName)}
-																						className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
-																					>
-																						Download
-																					</Button>
-																				</li>
-																			);
-																		})}
-																</ul>
-																															</div>
+																<div className="text-sm text-gray-500">
+																No attachments
+																</div>
+															);
+															}
+
+															const handleDownloadFile = async (
+															fileUrl: string,
+															fileName: string
+															) => {
+															try {
+																const response = await fetch(fileUrl);
+																if (!response.ok) {
+																throw new Error('Failed to download file');
+																}
+																const blob = await response.blob();
+																const blobUrl = window.URL.createObjectURL(blob);
+																const link = document.createElement('a');
+																link.href = blobUrl;
+																link.download = fileName;
+																document.body.appendChild(link);
+																link.click();
+																document.body.removeChild(link);
+																window.URL.revokeObjectURL(blobUrl);
+																toast.success(`Downloading ${fileName}`);
+															} catch (error) {
+																console.error('Error downloading file:', error);
+																toast.error(
+																'Failed to download the file. Please try again.'
 																);
+															}
+															};
+
+															return (
+															<div className="space-y-2">
+																<ul className="space-y-2">
+																{list.map((f: any, idx: number) => {
+																	const fileName =
+																	f.filename ||
+																	f.name ||
+																	`Attachment ${idx + 1}`;
+																	const fileUrl = f.url || f.publicUrl;
+																	return (
+																	<li
+																		key={idx}
+																		className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
+																	>
+																		<span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
+																		{fileName}
+																		</span>
+																		<Button
+																		variant="ghost"
+																		size="sm"
+																		onClick={() =>
+																			fileUrl &&
+																			handleDownloadFile(fileUrl, fileName)
+																		}
+																		className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
+																		>
+																		Download
+																		</Button>
+																	</li>
+																	);
+																})}
+																</ul>
+															</div>
+															);
 														})()}
-													</div>
-											</div>
-										</DialogContent>
-									</Dialog>
+													</TabsContent>
+												</Tabs>
+											</DialogContent>
+										</Dialog>
                       )}
                       {acknowledgeSubmission && (
                         <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null); }}>
-                          <DialogContent className="max-w-md">
+                          <DialogContent className="max-w-lg">
                             <DialogHeader>
                               <DialogTitle>Acknowledge Grievance</DialogTitle>
                             </DialogHeader>
@@ -871,16 +1111,41 @@ const FormsPage = () => {
                               <p className="text-sm text-gray-600">
                                 Are you sure you want to acknowledge this grievance? This action cannot be undone.
                               </p>
-                              <div className="space-y-2">
-                              <Textarea
-                                placeholder="Enter comment (optional)"
-                                value={acknowledgeComment}
-                                onChange={(e) => setAcknowledgeComment(e.target.value)}
-                                className="min-h-[100px]"
-                                  maxLength={200}
-                              />
-                                <div className="text-xs text-gray-500 text-right">
-                                  {acknowledgeComment.length}/200 characters
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <label className="text-sm font-medium">
+                                    Comment <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+                                  </label>
+                                  <Textarea
+                                    placeholder="Enter comment (optional)"
+                                    value={acknowledgeComment}
+                                    onChange={(e) => setAcknowledgeComment(e.target.value)}
+                                    className="min-h-[100px]"
+                                    maxLength={200}
+                                  />
+                                  <div className="text-xs text-gray-500 text-right">
+                                    {acknowledgeComment.length}/200 characters
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-medium">
+                                    Evidence Upload <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+                                  </label>
+                                  <ReusableFileUploader
+                                    onFilesChange={(files) => setAcknowledgementFiles(files)}
+                                    maxFiles={5}
+                                    maxSize={10}
+                                    maxTotalSize={50}
+                                    allowedTypes={[
+                                      'application/pdf',
+                                      'image/jpeg',
+                                      'image/jpg',
+                                      'image/png',
+                                      'application/msword',
+                                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                    ]}
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                  />
                                 </div>
                               </div>
                               <div className="flex justify-end gap-2">

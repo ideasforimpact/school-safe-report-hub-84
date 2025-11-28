@@ -163,10 +163,20 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === false;
                 
+                // Prepare truncated name for display with full value on hover
+                const fullName = employee.name || '';
+                const displayName =
+                  fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
+
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
                     <TableCell>{employee.employeeId}</TableCell>
-                    <TableCell>{employee.name}</TableCell>
+                    <TableCell
+                      title={fullName}
+                      className="max-w-xs truncate"
+                    >
+                      {displayName}
+                    </TableCell>
                     <TableCell>{formatDepartment(employee.department)}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}

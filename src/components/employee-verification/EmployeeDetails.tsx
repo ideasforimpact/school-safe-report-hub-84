@@ -89,13 +89,23 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     };
   };
 
+  // Prepare truncated name for card display (limit 200 chars with tooltip)
+  const fullName = employee.name || '';
+  const displayName =
+    fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
+
   return (
     <Card>
       <CardContent className="pt-6 text-left">
         <div className="flex justify-between items-start mb-4 gap-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-center flex-wrap gap-2">
-              <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
+              <h2
+                className="text-2xl font-bold text-left max-w-3xl truncate"
+                title={fullName}
+              >
+                {displayName}
+              </h2>
               {/* Overall verification status moved near name */}
               <VerificationStatusSummary summary={getVerificationSummary()} />
             </div>

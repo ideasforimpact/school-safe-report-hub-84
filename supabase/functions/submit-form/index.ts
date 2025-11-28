@@ -64,7 +64,7 @@ serve(async (req) => {
     }
 
     // If files provided, upload to storage and build attachments object
-    let attachments: Record<string, Array<{ fieldId?: string; filename: string; url: string; size?: number }>> | null = null
+    let attachments: Record<string, Array<{ fieldId?: string; filename: string; url: string; path: string; size?: number }>> | null = null
     // Support both { files: { fieldId: [...] } } and legacy { attachments: [...] } at top-level
     const filesInput: Record<string, Array<{ filename: string; contentType?: string; size?: number; base64Data: string }>> | null =
       files && Object.keys(files).length > 0
@@ -79,19 +79,19 @@ serve(async (req) => {
       for (const [fieldId, fileItems] of Object.entries(filesInput)) {
         if (!fileItems || fileItems.length === 0) continue
 
-        const listForField: Array<{ fieldId?: string; filename: string; url: string; size?: number }> = []
+        const listForField: Array<{ fieldId?: string; filename: string; url: string; path: string; size?: number }> = []
         for (const f of fileItems) {
           // Clean file name and create unique path
           const safeName = (f.filename || `file_${Date.now()}`).replace(/[^a-zA-Z0-9.-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
           const fileName = `${Date.now()}_${safeName}`
-          const path = `${targetPrefix}/${fileName}`
+          const relativePath = `${targetPrefix}/${fileName}`
 
           const base64 = (f.base64Data || '').includes(',') ? (f.base64Data || '').split(',').pop()! : (f.base64Data || '')
           const bytes = decodeBase64(base64)
 
           const { error: uploadError } = await supabaseClient.storage
             .from('form-attachments')
-            .upload(path, bytes, {
+            .upload(relativePath, bytes, {
               contentType: f.contentType || 'application/octet-stream',
               upsert: false,
             })
@@ -106,9 +106,17 @@ serve(async (req) => {
 
           const { data: urlData } = supabaseClient.storage
             .from('form-attachments')
-            .getPublicUrl(path)
+            .getPublicUrl(relativePath)
 
-          listForField.push({ fieldId, filename: f.filename, url: urlData.publicUrl, size: f.size })
+          const fullPath = `form-attachments/${relativePath}`
+
+          listForField.push({
+            fieldId,
+            filename: f.filename,
+            url: urlData.publicUrl,
+            path: fullPath,
+            size: f.size,
+          })
         }
 
         if (listForField.length > 0) {
