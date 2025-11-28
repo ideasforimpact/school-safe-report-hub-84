@@ -137,7 +137,7 @@ export const ClassTab = ({
     
     addClass(selectedCampusId, gradeName);
     setNewClass('');
-    toast.success("Grade added successfully");
+    // toast.success("Grade added successfully");
   };
 
   const handleClassDelete = async (id: string) => {
@@ -164,7 +164,7 @@ export const ClassTab = ({
     }
     
     deleteClass(id);
-    toast.success("Grade deleted successfully");
+    // toast.success("Grade deleted successfully");
   };
 
   const handleEditOpen = (cls: ClassItem) => {
@@ -204,12 +204,11 @@ export const ClassTab = ({
       console.log("Updating class:", editingClass.id, editingClass.campusId, gradeName);
       updateClass(editingClass.id, editingClass.campusId, gradeName);
       handleEditClose();
-      toast.success("Grade updated successfully");
+      // toast.success("Grade updated successfully");
     }
   };
 
   const handleEditClose = () => {
-    console.log("Closing edit dialog");
     setIsEditDialogOpen(false);
     setEditingClass(null);
   };
