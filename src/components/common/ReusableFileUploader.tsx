@@ -365,6 +365,10 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
               if (type === 'application/pdf') return 'PDF';
               if (type.includes('jpeg') || type.includes('jpg')) return 'JPG';
               if (type.includes('png')) return 'PNG';
+              if (type.includes('gif')) return 'GIF';
+              if (type === 'application/msword') return 'Word (DOC)';
+              if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'Word (DOCX)';
+              if (type === 'text/plain') return 'Text (TXT)';
               return type;
             }).join(', ')} • Max size: {maxSize}MB per file • Max {maxFiles} {maxFiles === 1 ? 'file' : 'files'} • Total: {maxTotalSize}MB
           </p>

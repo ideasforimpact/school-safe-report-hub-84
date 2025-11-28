@@ -92,10 +92,16 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
   return (
     <Card>
       <CardContent className="pt-6 text-left">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
-            <p className="text-gray-500 text-left">{getEmployeeTypeDisplay(employee.employeeType)} · {formatDepartment(employee.department)}</p>
+        <div className="flex justify-between items-start mb-4 gap-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center flex-wrap gap-2">
+              <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
+              {/* Overall verification status moved near name */}
+              <VerificationStatusSummary summary={getVerificationSummary()} />
+            </div>
+            <p className="text-gray-500 text-left">
+              {getEmployeeTypeDisplay(employee.employeeType)} · {formatDepartment(employee.department)}
+            </p>
           </div>
           {aadharProfileImage && (
             <div className="shrink-0 ml-4">
@@ -148,11 +154,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           <div>
             <p className="text-sm text-gray-500 text-left">Employee Type</p>
             <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
-          </div>
-          <div>
-            <div className="font-medium text-left">
-              <VerificationStatusSummary summary={getVerificationSummary()} />
-            </div>
           </div>
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>
