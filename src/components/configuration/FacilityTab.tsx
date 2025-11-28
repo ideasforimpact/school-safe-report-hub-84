@@ -109,7 +109,7 @@ export const FacilityTab = ({
     addFacility(facilityName, selectedCampusId);
     setNewFacility('');
     setSelectedCampusId('');
-    toast.success("Facility added successfully");
+    // toast.success("Facility added successfully");
   };
 
   const handleDeleteClick = (facility: FacilityItem) => {
@@ -171,7 +171,7 @@ export const FacilityTab = ({
       console.log("Updating facility:", editingFacility.id, facilityName, editingFacility.campusId);
       updateFacility(editingFacility.id, facilityName, editingFacility.campusId);
       handleEditClose();
-      toast.success("Facility updated successfully");
+      // toast.success("Facility updated successfully");
     }
   };
 

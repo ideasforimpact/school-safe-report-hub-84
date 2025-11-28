@@ -173,7 +173,7 @@ export const SectionTab = ({
         sectionName
       );
       handleEditClose();
-      toast.success("Section updated successfully");
+      // toast.success("Section updated successfully");
     }
   };
 
