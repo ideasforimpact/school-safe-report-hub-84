@@ -41,7 +41,14 @@ serve(async (req) => {
       )
     }
 
+    // Ensure is_anonymous has a default value if not provided (defaults to false)
+    if (formData.is_anonymous === undefined) {
+      formData.is_anonymous = false
+    }
+
     // Insert form submission first (without attachments)
+    // formData includes: form_id, client_id, submitter_name, submitter_email, submitter_phone,
+    // submitter_type, responses, status, is_anonymous, and any other fields
     const { data: inserted, error: insertError } = await supabaseClient
       .from('form_submissions')
       .insert([formData])
