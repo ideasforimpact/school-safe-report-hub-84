@@ -202,6 +202,15 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
               name="time"
               value={formData.time}
               onChange={onChange}
+              max={
+                formData.date === new Date().toISOString().substring(0, 10)
+                  ? (() => {
+                      const now = new Date();
+                      const pad = (n) => n.toString().padStart(2, "0");
+                      return `${pad(now.getHours())}:${pad(now.getMinutes())}`; // local time HH:MM
+                    })()
+                  : undefined
+              }
               className="h-11 bg-white border-gray-300"
               required
             />

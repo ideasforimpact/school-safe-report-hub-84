@@ -484,6 +484,15 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                   name="time"
                   value={formData.time}
                   onChange={handleChange}
+                  max={
+                      formData.date === new Date().toISOString().substring(0, 10)
+                        ? (() => {
+                            const now = new Date();
+                            const pad = (n) => n.toString().padStart(2, "0");
+                            return `${pad(now.getHours())}:${pad(now.getMinutes())}`; 
+                          })()
+                        : undefined
+                  }
                   className="h-11 bg-white border-gray-300"
                   required
                 />
