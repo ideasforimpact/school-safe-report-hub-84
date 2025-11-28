@@ -322,6 +322,11 @@ const EmployeeDetailPage = () => {
     );
   }
 
+  // Prepare truncated name for header display (limit 200 chars with tooltip)
+  const fullName = employee.name || '';
+  const headerDisplayName =
+    fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
+
   return (
     <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
@@ -331,7 +336,12 @@ const EmployeeDetailPage = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
             <div>
-              <h1 className="text-2xl font-bold text-left">{employee.name}</h1>
+              <h1
+                className="text-2xl font-bold text-left max-w-3xl truncate"
+                title={fullName}
+              >
+                {headerDisplayName}
+              </h1>
               <p className="text-gray-500">{getEmployeeTypeDisplay(employee.employeeType)} • {employee.employeeId}</p>
             </div>
           </div>
