@@ -377,35 +377,35 @@ const UserList = ({
                     }
 
                     return (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          disabled={isTableLoading}
+                        >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to permanently delete this user? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                          <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          className="bg-destructive hover:bg-destructive/90"
+                          onClick={() => onDeleteUser(user.id)}
                             disabled={isTableLoading}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete User</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to permanently delete this user? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              className="bg-destructive hover:bg-destructive/90"
-                              onClick={() => onDeleteUser(user.id)}
-                              disabled={isTableLoading}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                     );
                   })()}
                 </div>

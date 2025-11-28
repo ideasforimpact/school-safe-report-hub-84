@@ -382,12 +382,12 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                       }
 
                       return (
-                        <StatusSwitch 
-                          variant="status"
-                          checked={type.is_active} 
-                          onCheckedChange={() => handleToggleStatus(type)}
-                          aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
-                        />
+                    <StatusSwitch 
+                      variant="status"
+                      checked={type.is_active} 
+                      onCheckedChange={() => handleToggleStatus(type)}
+                      aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
+                    />
                       );
                     })()}
                     <Badge variant={type.is_active ? "success" : "destructive"}>

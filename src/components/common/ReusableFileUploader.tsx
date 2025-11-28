@@ -46,6 +46,72 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
 
+  // Helper function to extract file extension from filename
+  const getFileExtension = (filename: string): string => {
+    const lastDot = filename.lastIndexOf('.');
+    if (lastDot === -1) return '';
+    return filename.substring(lastDot).toLowerCase();
+  };
+
+  // Helper function to parse accept string and extract allowed extensions
+  const getAllowedExtensions = React.useMemo((): Set<string> => {
+    const extensions = new Set<string>();
+    
+    // MIME type to extension mapping
+    const mimeToExtension: Record<string, string[]> = {
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/jpg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/jfif': ['.jfif'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    };
+
+    // First, add extensions based on allowedTypes
+    allowedTypes.forEach(type => {
+      const extList = mimeToExtension[type] || [];
+      extList.forEach(ext => extensions.add(ext));
+    });
+
+    // Then, parse accept string (e.g., ".pdf,image/*" or ".pdf,.jpg,.png")
+    if (accept) {
+      const acceptParts = accept.split(',').map(part => part.trim());
+      acceptParts.forEach(part => {
+        if (part.startsWith('.')) {
+          // Direct extension (e.g., ".pdf")
+          extensions.add(part.toLowerCase());
+        } else if (part.includes('/*')) {
+          // MIME type wildcard (e.g., "image/*")
+          const baseType = part.split('/')[0];
+          if (baseType === 'image') {
+            // For image/*, add only the image extensions that are in allowedTypes
+            allowedTypes.forEach(type => {
+              if (type.startsWith('image/')) {
+                const extList = mimeToExtension[type] || [];
+                extList.forEach(ext => extensions.add(ext));
+              }
+            });
+          } else if (baseType === 'application') {
+            // For application/*, add only the application extensions that are in allowedTypes
+            allowedTypes.forEach(type => {
+              if (type.startsWith('application/')) {
+                const extList = mimeToExtension[type] || [];
+                extList.forEach(ext => extensions.add(ext));
+              }
+            });
+          }
+        } else if (part.includes('/')) {
+          // MIME type (e.g., "image/jpeg")
+          const extList = mimeToExtension[part] || [];
+          extList.forEach(ext => extensions.add(ext));
+        }
+      });
+    }
+
+    return extensions;
+  }, [accept, allowedTypes]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
@@ -118,8 +184,18 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
         return;
       }
 
-      // File type validation
-      if (!allowedTypes.includes(file.type)) {
+      // Get allowed extensions (memoized)
+      const fileExtension = getFileExtension(file.name);
+
+      // Validate MIME type
+      const isValidMimeType = allowedTypes.includes(file.type);
+      
+      // Validate file extension
+      const isValidExtension = getAllowedExtensions.has(fileExtension);
+
+      // Both MIME type and extension must be valid
+      if (!isValidMimeType || !isValidExtension) {
+        // Build user-friendly list of allowed extensions
         const typeSet = new Set<string>();
         allowedTypes.forEach(type => {
           if (type === 'application/pdf') typeSet.add('PDF');
@@ -130,7 +206,12 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
         });
         const typeNames = Array.from(typeSet).join(', ');
         
-        const errorMsg = `"${file.name}" is not a supported file type. Please upload ${typeNames} files.`;
+        // Build extension list for error message
+        const extensionList = Array.from(getAllowedExtensions)
+          .map(ext => ext.toUpperCase().replace('.', ''))
+          .join(', ');
+        
+        const errorMsg = `"${file.name}" is not a supported file type. Please upload ${typeNames} files (${extensionList} extensions only).`;
         setErrorMessage(errorMsg);
         toast({
           title: 'Invalid file type',
@@ -250,53 +331,48 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
       {/* File List */}
       {showFileList && files.length > 0 && (
         <div className="space-y-2 mb-3">
+          <div className="text-xs text-gray-500 mb-2 px-1">
+            {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
+          </div>
           <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
-           {files.map((file) => {
+            {files.map((file) => {
               const isImage = file.type?.startsWith("image/");
 
               return (
                 <div key={file.id}>
                   {/* LEFT SIDE CONTENT */}
                   {isImage ? (
-                      <FileListItem
-                        key={file.id}
-                        file={file}
-                        onPreview={handlePreview}        
-                        onRemove={removeFile}       
-                      />
+                    <FileListItem
+                      key={file.id}
+                      file={file}
+                      onPreview={handlePreview}        
+                      onRemove={removeFile}       
+                    />
                   ) : (
-                   <div className="space-y-2 mb-3">
-                      <div className="text-xs text-gray-500 mb-2 px-1">
-                        {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
+                    <div className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">
+                      <div className="flex items-start flex-1 min-w-0 overflow-hidden">
+                        {getFileIcon(file.type)}
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <span className="text-sm break-words break-all block w-full text-gray-900 text-left">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500 block mt-1">
+                            {formatFileSize(file.size)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
-                        {files.map((file) => (
-                          <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">
-                            <div className="flex items-start flex-1 min-w-0 overflow-hidden">
-                              {getFileIcon(file.type)}
-                              <div className="min-w-0 flex-1 overflow-hidden">
-                                <span className="text-sm break-words break-all block w-full text-gray-900">{file.name}</span>
-                                <span className="text-xs text-gray-500 block mt-1">
-                                  {formatFileSize(file.size)}
-                                </span>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeFile(file.id)}
-                              className="h-8 w-8 p-0 flex-shrink-0 ml-2"
-                              disabled={disabled}
-                            >
-                              <X className="h-4 w-4 text-gray-500" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(file.id)}
+                        className="h-8 w-8 p-0 flex-shrink-0 ml-2"
+                        disabled={disabled}
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                      </Button>
                     </div>
                   )}
-
                 </div>
               );
             })}
