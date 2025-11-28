@@ -16,21 +16,26 @@ const ContributingFactorsSection: React.FC<ContributingFactorsSectionProps> = ({
 }) => {
   const [currentFactor, setCurrentFactor] = useState({
     category: '',
+    categoryId: '',
     description: '',
     weight: 'Medium' as 'Low' | 'Medium' | 'High'
   });
 
   const addFactor = () => {
-    if (!currentFactor.category || !currentFactor.description) return;
+    if (!currentFactor.category || !currentFactor.description || !currentFactor.categoryId) return;
     
+    // Use the actual UUID from the contributing_factors table
     const newFactor: ContributingFactor = {
-      id: Date.now().toString(),
-      ...currentFactor
+      id: currentFactor.categoryId, // Use the UUID from the database
+      category: currentFactor.category,
+      description: currentFactor.description,
+      weight: currentFactor.weight
     };
     
     setContributingFactors([...contributingFactors, newFactor]);
     setCurrentFactor({
       category: '',
+      categoryId: '',
       description: '',
       weight: 'Medium'
     });

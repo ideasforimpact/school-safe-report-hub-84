@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
   Table,
@@ -19,6 +19,9 @@ import { EmployeeUser } from '@/pages/UserManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/contexts/auth/useAuth';
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -39,13 +42,53 @@ const UserList = ({
   hasAdminAccess = false,
   onRefresh
 }: UserListProps) => {
+  const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
+  const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Pre-load reference info so we can disable delete button for linked employees
+  useEffect(() => {
+    const clientId = employeeData?.clientId || employeeData?.client_id;
+    if (!clientId || users.length === 0) {
+      setEmployeeReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          users.map(async (user) => {
+            const refInfo = await incidentReferenceService.checkEmployeeReferences(user.id, clientId);
+            return { id: user.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setEmployeeReferences(map);
+      } catch (error) {
+        console.error('Error preloading employee reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [users, employeeData]);
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
@@ -292,35 +335,79 @@ const UserList = ({
                       </AlertDialog>
                   )}
                   
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          disabled={isTableLoading}
-                        >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete User</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to permanently delete this user? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          className="bg-destructive hover:bg-destructive/90"
-                          onClick={() => onDeleteUser(user.id)}
+                  {(() => {
+                    const refInfo = employeeReferences[user.id];
+                    const isLinked = refInfo?.hasReferences || false;
+                    const message = refInfo?.message || '';
+
+                    if (isLinked) {
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  disabled={true}
+                                  aria-disabled="true"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                  className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent 
+                              side="left" 
+                              align="center" 
+                              sideOffset={8} 
+                              className="max-w-xs whitespace-normal text-left"
+                            >
+                              <p className="text-xs leading-snug text-left">
+                                {message}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    }
+
+                    return (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
                             disabled={isTableLoading}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete User</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to permanently delete this user? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isTableLoading}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              className="bg-destructive hover:bg-destructive/90"
+                              onClick={() => onDeleteUser(user.id)}
+                              disabled={isTableLoading}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="flex space-x-1">

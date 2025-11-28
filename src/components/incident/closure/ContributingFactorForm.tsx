@@ -17,11 +17,13 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 interface ContributingFactorFormProps {
   currentFactor: {
     category: string;
+    categoryId?: string; // Add UUID of the contributing factor
     description: string;
     weight: 'Low' | 'Medium' | 'High';
   };
   setCurrentFactor: React.Dispatch<React.SetStateAction<{
     category: string;
+    categoryId?: string;
     description: string;
     weight: 'Low' | 'Medium' | 'High';
   }>>;
@@ -83,9 +85,9 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
     fetchContributingFactors();
   }, [state.employeeData?.clientId]);
 
-  // Filter out already selected factor categories
+  // Filter out already selected factor categories (by UUID)
   const availableFactorOptions = factorOptions.filter(
-    factor => !contributingFactors.some(cf => cf.category === factor.name)
+    factor => !contributingFactors.some(cf => cf.id === factor.id)
   );
 
   if (isLoading) {
@@ -102,15 +104,22 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
       <h4 className="text-sm font-medium mb-3">Add New Factor</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <Select
-          value={currentFactor.category}
-          onValueChange={(value) => setCurrentFactor({...currentFactor, category: value})}
+          value={currentFactor.categoryId || ''}
+          onValueChange={(selectedId) => {
+            const selectedFactor = factorOptions.find(f => f.id === selectedId);
+            setCurrentFactor({
+              ...currentFactor, 
+              category: selectedFactor?.name || '',
+              categoryId: selectedId
+            });
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
             {availableFactorOptions.map((factor) => (
-              <SelectItem key={factor.id} value={factor.name}>
+              <SelectItem key={factor.id} value={factor.id}>
                 {factor.name}
               </SelectItem>
             ))}
@@ -160,7 +169,7 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
       <Button 
         size="sm" 
         onClick={addFactor}
-        disabled={!currentFactor.category || !currentFactor.description}
+        disabled={!currentFactor.category || !currentFactor.categoryId || !currentFactor.description}
       >
         <Plus className="h-4 w-4 mr-1" /> Add Factor
       </Button>

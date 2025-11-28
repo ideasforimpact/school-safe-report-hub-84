@@ -124,13 +124,20 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     return configData.facilities.filter(facility => facility.campus_id === formData.locationId);
   };
 
-  const handlePersonChange = (index: number, field: string, value: string) => {
+  const handlePersonChange = (index: number, field: string, value: string, additionalFields?: Record<string, string>) => {
     const updatedPeople = [...peopleInvolved];
     if (field === 'role' && value !== updatedPeople[index].role) {
       // Clear name when role changes
       updatedPeople[index] = { ...updatedPeople[index], [field]: value as 'Student' | 'Staff' | 'Other', name: '' };
     } else {
+      // Update the main field
       updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+      // If additional fields are provided, update them atomically
+      if (additionalFields) {
+        Object.entries(additionalFields).forEach(([key, val]) => {
+          updatedPeople[index] = { ...updatedPeople[index], [key]: val };
+        });
+      }
     }
     setPeopleInvolved(updatedPeople);
   };

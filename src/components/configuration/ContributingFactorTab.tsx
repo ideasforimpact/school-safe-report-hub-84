@@ -22,6 +22,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { contributingFactorService, ContributingFactorItem } from '@/services/incident/contributingFactorService';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Validation function for contributing factor names (no special characters, max 25 chars)
 const isValidContributingFactorName = (name: string) => {
@@ -56,6 +58,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { employeeData } = useAuth();
   const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
+  const [factorReferences, setFactorReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   
   // Confirmation dialog states
   const [confirmationDialog, setConfirmationDialog] = useState<{
@@ -96,6 +99,44 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     
     fetchContributingFactors();
   }, [employeeData?.clientId]);
+
+  // Pre-load reference info so we can disable delete button for linked factors
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || factors.length === 0) {
+      setFactorReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          factors.map(async (factor) => {
+            const refInfo = await incidentReferenceService.checkContributingFactorReferences(factor.id, clientId);
+            return { id: factor.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setFactorReferences(map);
+      } catch (error) {
+        console.error('Error preloading contributing factor reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [factors, employeeData]);
 
   const handleAdd = async () => {
     if (!employeeData?.clientId) {
@@ -204,6 +245,15 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
+    // Check if factor is linked to incidents - prevent deletion if linked
+    const refInfo = factorReferences[id];
+    if (refInfo?.hasReferences) {
+      const message = refInfo?.message || 
+        `This contributing factor is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+      toast.error(message);
+      return;
+    }
+
     // Find the contributing factor to get its name for the confirmation message
     const factor = factors.find(f => f.id === id);
     const factorName = factor?.name || 'this contributing factor';
@@ -281,7 +331,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
           <p className="text-gray-500">Loading contributing factors...</p>
         </div>
       ) : (
-        <div className="border rounded-md">
+        <div className="border rounded-md overflow-visible">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -344,14 +394,61 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(factor.id)}
-                          disabled={loading}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        {(() => {
+                          const refInfo = factorReferences[factor.id];
+                          const isLinked = refInfo?.hasReferences;
+
+                          if (isLinked) {
+                            const message =
+                              refInfo?.message ||
+                              `This contributing factor is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={true}
+                                        aria-disabled="true"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                        }}
+                                        className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent 
+                                    side="left" 
+                                    align="center" 
+                                    sideOffset={8} 
+                                    className="max-w-xs whitespace-normal text-left"
+                                  >
+                                    <p className="text-xs leading-snug text-left">
+                                      {message}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          }
+
+                          return (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(factor.id)}
+                              disabled={loading}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          );
+                        })()}
                       </div>
                     </td>
                   </tr>

@@ -40,6 +40,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
 
 // Import the necessary types from auth context
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
@@ -499,6 +500,23 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
   // Handler for deleting a user
   const handleDeleteUser = async (userId: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    // Check if employee is linked to incidents - prevent deletion if linked
+    try {
+      const refInfo = await incidentReferenceService.checkEmployeeReferences(userId, employeeData.clientId);
+      if (refInfo.hasReferences) {
+        toast.error(refInfo.message || `This employee is linked to ${refInfo.count} incident(s) and cannot be deleted.`);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking employee references:', error);
+      // Continue with deletion if check fails (fail open)
+    }
+
     try {
       setIsLoading(true);
       

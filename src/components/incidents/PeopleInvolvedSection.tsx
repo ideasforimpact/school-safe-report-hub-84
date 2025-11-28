@@ -25,7 +25,7 @@ interface Employee {
 
 interface PeopleInvolvedSectionProps {
   peopleInvolved: Person[];
-  onPersonChange: (index: number, field: string, value: string) => void;
+  onPersonChange: (index: number, field: string, value: string, additionalFields?: Record<string, string>) => void;
   onAddPerson: () => void;
   onRemovePerson: (index: number) => void;
   students: Student[];
@@ -198,11 +198,14 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const handleSelectPerson = (index: number, person: Employee | Student, role: string) => {
     if (role === 'Staff') {
       const staff = person as Employee;
-      onPersonChange(index, 'name', `${staff.firstName} ${staff.lastName}`);
+      // Update both name and id in a single atomic update
+      const additionalFields = staff.id ? { id: staff.id } : undefined;
+      onPersonChange(index, 'name', `${staff.firstName} ${staff.lastName}`, additionalFields);
     } else {
       const student = person as Student;
-      // For students, store the name with student ID for better identification
-      onPersonChange(index, 'name', `${student.name} (${student.studentId})`);
+      // Update both name and id in a single atomic update
+      const additionalFields = student.id ? { id: student.id } : undefined;
+      onPersonChange(index, 'name', `${student.name} (${student.studentId})`, additionalFields);
     }
     setIsSearching(prev => ({ ...prev, [index]: false }));
     setSearchQueries(prev => ({ ...prev, [index]: '' }));
@@ -230,6 +233,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     if (currentPersonIndex !== null && hadSearchQuery) {
       // Update the person with the new student data
       onPersonChange(currentPersonIndex, 'name', `${newStudent.name} (${newStudent.studentId})`);
+      // Store the student ID for reference checking
+      if (newStudent.id) {
+        onPersonChange(currentPersonIndex, 'id', newStudent.id);
+      }
     }
     setIsAddStudentDialogOpen(false);
     setCurrentPersonIndex(null);
