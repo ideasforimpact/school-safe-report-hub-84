@@ -17,6 +17,7 @@ const DocumentStatusFilter: React.FC<DocumentStatusFilterProps> = ({
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="all">All Status</SelectItem>
+        <SelectItem value="no-documents">No Documents</SelectItem>
         <SelectItem value="verified">Verified</SelectItem>
         <SelectItem value="pending">Pending</SelectItem>
         <SelectItem value="failed">Failed</SelectItem>
