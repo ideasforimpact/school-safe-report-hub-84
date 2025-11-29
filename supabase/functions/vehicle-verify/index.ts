@@ -501,8 +501,10 @@ serve(async (req) => {
           const registrationYear = registrationDateStr ? new Date(registrationDateStr).getFullYear() : null;
 
           // Directly update by registration_number to avoid extra queries
+          // NOTE: type column modification is commented out per requirements
+          // The type should not be modified during Run Safety Check for both add and edit
           const updates: Record<string, any> = {
-            type: 'bus',
+            // type: 'bus', // COMMENTED OUT: Do not modify type column during safety check
             model: makerModel,
             driver: ownerName,
             route: null,

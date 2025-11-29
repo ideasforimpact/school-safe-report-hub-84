@@ -215,11 +215,12 @@ serve(async (req) => {
       submissions90Days: submissions90Days.length
     })
 
-    // Get vehicle verification stats
+    // Get vehicle verification stats (only active vehicles)
     const { data: allVehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select('id, verification_data')
       .eq('client_id', client_id)
+      .eq('active', true)
 
     if (vehiclesError) {
       console.error('Error fetching vehicles for verification stats:', vehiclesError)
@@ -414,11 +415,12 @@ serve(async (req) => {
       employeesToBeVerified: employeesToBeVerified
     })
 
-    // Get total vehicles with role-based filtering
+    // Get total vehicles with role-based filtering (only active vehicles)
     let totalVehiclesQuery = supabase
       .from('vehicles')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
+      .eq('active', true)
 
     if (shouldFilterByEmployee) {
       totalVehiclesQuery = totalVehiclesQuery.eq('employee_id', employee_id)
@@ -430,11 +432,12 @@ serve(async (req) => {
       console.error('Error fetching total vehicles:', totalVehiclesError)
     }
 
-    // Get vehicles with documents with role-based filtering
+    // Get vehicles with documents with role-based filtering (only active vehicles)
     let vehicleIdsQuery = supabase
       .from('vehicles')
       .select('id')
       .eq('client_id', client_id)
+      .eq('active', true)
 
     if (shouldFilterByEmployee) {
       vehicleIdsQuery = vehicleIdsQuery.eq('employee_id', employee_id)
@@ -454,12 +457,13 @@ serve(async (req) => {
     // Get unique vehicle IDs with documents
     const uniqueVehiclesWithDocs = new Set(vehiclesWithDocs?.map(doc => doc.vehicle_id) || [])
 
-    // Get active vehicles count with role-based filtering
+    // Get active vehicles count with role-based filtering (only active vehicles)
     let activeVehiclesQuery = supabase
       .from('vehicles')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .eq('status', 'active')
+      .eq('active', true)
 
     if (shouldFilterByEmployee) {
       activeVehiclesQuery = activeVehiclesQuery.eq('employee_id', employee_id)
@@ -471,12 +475,13 @@ serve(async (req) => {
       console.error('Error fetching active vehicles:', activeVehiclesError)
     }
 
-    // Get maintenance vehicles count with role-based filtering
+    // Get maintenance vehicles count with role-based filtering (only active vehicles)
     let maintenanceVehiclesQuery = supabase
       .from('vehicles')
       .select('id', { count: 'exact' })
       .eq('client_id', client_id)
       .eq('status', 'maintenance')
+      .eq('active', true)
 
     if (shouldFilterByEmployee) {
       maintenanceVehiclesQuery = maintenanceVehiclesQuery.eq('employee_id', employee_id)
@@ -783,6 +788,7 @@ serve(async (req) => {
       .from('vehicles')
       .select('id')
       .eq('client_id', client_id)
+      .eq('active', true)
       .limit(1)
 
     const { data: employeeRecords, error: employeeRecordsError } = await supabase
