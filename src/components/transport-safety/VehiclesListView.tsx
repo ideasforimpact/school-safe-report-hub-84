@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit } from 'lucide-react';
+import { Settings, FileCheck, FileX, ShieldAlert, Flag, Edit, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -18,6 +18,18 @@ import {
   getLatestVerificationFieldValue
 } from '@/utils/transport-safety/documentStatusUtils';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
@@ -30,6 +42,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   onRefresh,
   onEditVehicle
 }) => {
+  const { updateVehicle } = useTransportSafety();
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [updatingVehicleId, setUpdatingVehicleId] = useState<string | null>(null);
+  
   const {
     paginatedItems,
     currentPage,
@@ -99,6 +116,46 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  const handleToggleActive = async (vehicle: Vehicle, newActiveState: boolean) => {
+    // If turning off (deactivating), show consent dialog
+    if (!newActiveState) {
+      setSelectedVehicle(vehicle);
+      setDeactivateDialogOpen(true);
+      return;
+    }
+
+    // If turning on (activating), update directly
+    await updateVehicleStatus(vehicle, true);
+  };
+
+  const updateVehicleStatus = async (vehicle: Vehicle, active: boolean) => {
+    setUpdatingVehicleId(vehicle.id);
+    try {
+      // Update both active and status fields together
+      await updateVehicle(vehicle.id, { 
+        active,
+        status: active ? 'active' : 'inactive'
+      });
+      toast.success(`Vehicle ${active ? 'activated' : 'deactivated'} successfully`);
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error updating vehicle status:', error);
+      toast.error(`Failed to ${active ? 'activate' : 'deactivate'} vehicle`);
+    } finally {
+      setUpdatingVehicleId(null);
+      setDeactivateDialogOpen(false);
+      setSelectedVehicle(null);
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (selectedVehicle) {
+      await updateVehicleStatus(selectedVehicle, false);
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="rounded-md border">
@@ -126,7 +183,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
-                      <VehicleTypeIcon type="bus" />
+                      <VehicleTypeIcon type={vehicle.type} icon={vehicle.vehicleTypeIcon} />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -208,7 +265,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     )}
                   </TableCell>
                   <TableCell className="text-left">
-                    <div className="flex justify-start gap-1">
+                    <div className="flex justify-start gap-1 items-center">
                       <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
                             <Settings className="h-4 w-4" />
@@ -223,6 +280,16 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                      )}
+                      {updatingVehicleId === vehicle.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                      ) : (
+                        <Switch
+                          checked={vehicle.active !== false}
+                          onCheckedChange={(checked) => handleToggleActive(vehicle, checked)}
+                          disabled={updatingVehicleId !== null}
+                          title={vehicle.active !== false ? 'Deactivate vehicle' : 'Activate vehicle'}
+                        />
                       )}
                     </div>
                   </TableCell>
@@ -246,6 +313,37 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           </Button>
         </div>
       )}
+
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Vehicle</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate {selectedVehicle?.internalVehicleName || selectedVehicle?.model || 'this vehicle'} ({selectedVehicle?.registrationNumber})?
+              <br /><br />
+              This will mark the vehicle as inactive. You can reactivate it later using the toggle.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingVehicleId !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeactivate}
+              disabled={updatingVehicleId !== null}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {updatingVehicleId === selectedVehicle?.id ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deactivating...
+                </>
+              ) : (
+                'Deactivate'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -186,7 +186,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center">
           <div className="bg-gray-100 p-3 rounded-lg mr-4">
-            <VehicleTypeIcon type={type} size={32} />
+            <VehicleTypeIcon type={type} icon={vehicle.vehicleTypeIcon} size={32} />
           </div>
           <div>
             <CardTitle>{make} {model}</CardTitle>

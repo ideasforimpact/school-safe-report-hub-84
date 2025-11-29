@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
+import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documen
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehicle }) => {
   const { addVehicle, updateVehicle, vehicles } = useTransportSafety();
   const { employeeData } = useAuth();
+  const { vehicleTypes, loading: vehicleTypesLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
   const [registrationNumberError, setRegistrationNumberError] = useState<string | null>(null);
   
@@ -34,6 +36,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     defaultValues: {
       registrationNumber: '',
       type: 'other',
+      typeId: undefined,
+      internalVehicleName: '',
       make: '',
       model: '',
       year: null,
@@ -43,7 +47,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       capacity: undefined,
       clientId: employeeData?.clientId,
       employeeId: employeeData?.id
-    }
+    },
+    mode: 'onSubmit' // Only validate on submit to prevent showing errors initially
   });
 
   // Populate form when vehicle is provided (edit mode)
@@ -51,6 +56,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     if (vehicle && open) {
       setValue('registrationNumber', vehicle.registrationNumber);
       setValue('type', vehicle.type);
+      setValue('typeId', vehicle.typeId);
+      setValue('internalVehicleName', vehicle.internalVehicleName || '');
       setValue('make', vehicle.make);
       setValue('model', vehicle.model);
       setValue('year', vehicle.year);
@@ -69,6 +76,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       reset({
         registrationNumber: '',
         type: 'other',
+        typeId: undefined,
+        internalVehicleName: '',
         make: '',
         model: '',
         year: null, // Explicitly reset to null
@@ -109,6 +118,14 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         setError('Registration number is required');
         return;
       }
+      if (!data.internalVehicleName?.trim()) {
+        setError('Internal vehicle name is required');
+        return;
+      }
+      if (!data.typeId) {
+        setError('Vehicle type is required');
+        return;
+      }
       // Ensure numeric values are properly converted from strings or set to null if empty
       // For add mode, we only require registration number. Use defaults for the rest.
       // Handle null, undefined, or falsy values as null
@@ -119,6 +136,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       const vehicleData = {
         registrationNumber: data.registrationNumber.trim(),
         type: data.type || 'other',
+        typeId: data.typeId,
+        internalVehicleName: (data.internalVehicleName || '').trim(),
         make: (data.make || '').trim(),
         model: (data.model || '').trim(),
         year: null,
@@ -217,6 +236,68 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 </p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="internalVehicleName">Internal Vehicle Name<span className="text-red-500">*</span></Label>
+              <Input 
+                id="internalVehicleName" 
+                {...register('internalVehicleName', { 
+                  required: "Internal vehicle name is required",
+                  validate: (value) => {
+                    if (!value || value.trim() === '') {
+                      return "Internal vehicle name is required";
+                    }
+                    return true;
+                  }
+                })}
+                placeholder="e.g., School Bus 1"
+                disabled={isSubmitting}
+              />
+              {errors.internalVehicleName && (
+                <p className="text-red-500 text-sm">{errors.internalVehicleName.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="typeId">Vehicle Type<span className="text-red-500">*</span></Label>
+              <Select 
+                value={watch('typeId') || ''} 
+                onValueChange={(value) => {
+                  setValue('typeId', value, { shouldValidate: true });
+                }}
+                disabled={isSubmitting || vehicleTypesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={vehicleTypesLoading ? "Loading..." : "Select vehicle type"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleTypesLoading ? (
+                    <SelectItem value="" disabled>Loading...</SelectItem>
+                  ) : (
+                    vehicleTypes.map((vehicleType) => (
+                      <SelectItem key={vehicleType.id} value={vehicleType.id}>
+                        {vehicleType.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <input
+                type="hidden"
+                {...register('typeId', {
+                  required: "Vehicle type is required",
+                  validate: (value) => {
+                    if (!value) {
+                      return "Vehicle type is required";
+                    }
+                    return true;
+                  }
+                })}
+              />
+              {errors.typeId && (
+                <p className="text-red-500 text-sm">{errors.typeId.message}</p>
+              )}
+            </div>
             {/* Legacy input fields removed per new UX requirement */}
 
             {/* Verified details shown as input boxes (disabled) from latest verification log */}
@@ -244,7 +325,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                     <Input disabled value={`${model}${makerDesc && model !== '-' ? ` (${makerDesc})` : ''}`} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Vehicle Type</Label>
+                    <Label>Body Type</Label>
                     <Input disabled value={getVal('body_type')} />
                   </div>
                   <div className="space-y-2">
@@ -265,14 +346,13 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
             >
               Cancel
             </Button>
-            {!isEditMode ? 
             <Button 
               type="submit"
               disabled={isSubmitting}
             >
               {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Vehicle' : 'Add Vehicle')}
               {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            </Button> : <></>}
+            </Button>
           </div>
         </form>
       </DialogContent>

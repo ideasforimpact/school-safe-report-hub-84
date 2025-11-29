@@ -1,5 +1,13 @@
 
-export type VehicleType = 'bus' | 'van' | 'car' | 'truck' | 'other';
+export type VehicleType = 'bus' | 'van' | 'car' | 'truck' | 'other'; // Legacy type, kept for backward compatibility
+
+export interface VehicleTypeOption {
+  id: string;
+  name: string;
+  icon: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface VehicleDocument {
   id: string;
@@ -37,7 +45,10 @@ export interface VehicleVerificationData {
 export interface Vehicle {
   id: string;
   registrationNumber: string;
-  type: VehicleType;
+  type: VehicleType; // Legacy field, kept for backward compatibility
+  typeId?: string; // UUID reference to vehicle_type table
+  vehicleTypeIcon?: string | null; // Icon name from vehicle_type table
+  internalVehicleName?: string; // New field for internal vehicle name
   make: string;
   model: string;
   year: number | null;
@@ -46,6 +57,7 @@ export interface Vehicle {
   capacity?: number;
   documents: VehicleDocument[];
   status: 'active' | 'maintenance' | 'inactive';
+  active?: boolean; // Active/inactive toggle status
   clientId?: string;
   employeeId?: string; // Add employeeId field
   createdAt: string;

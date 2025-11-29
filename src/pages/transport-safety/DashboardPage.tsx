@@ -264,7 +264,7 @@ const DashboardContent = () => {
                           className="flex items-center justify-between p-3 border rounded hover:bg-gray-50"
                         >
                           <div className="flex items-center">
-                            <VehicleTypeIcon type={vehicle.type} className="mr-2" />
+                            <VehicleTypeIcon type={vehicle.type} icon={vehicle.vehicleTypeIcon} className="mr-2" />
                             <div>
                               <div className="font-medium">{vehicle.make} {vehicle.model}</div>
                               <div className="text-sm text-gray-500">{vehicle.registrationNumber}</div>
@@ -296,7 +296,7 @@ const DashboardContent = () => {
                           className="flex items-center justify-between p-3 border rounded hover:bg-gray-50"
                         >
                           <div className="flex items-center">
-                            <VehicleTypeIcon type={vehicle.type} className="mr-2" />
+                            <VehicleTypeIcon type={vehicle.type} icon={vehicle.vehicleTypeIcon} className="mr-2" />
                             <div>
                               <div className="font-medium">{vehicle.make} {vehicle.model}</div>
                               <div className="text-sm text-gray-500">{vehicle.registrationNumber}</div>
