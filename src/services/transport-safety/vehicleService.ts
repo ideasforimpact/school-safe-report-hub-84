@@ -19,7 +19,7 @@ export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
       throw error;
     }
     
-    // Fetch vehicle types to get icons
+    // Fetch vehicle types to get icons and names
     const { data: vehicleTypes } = await supabase
       .from('vehicle_type' as any)
       .select('id, name, icon');
@@ -36,6 +36,7 @@ export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
         registrationNumber: vehicle.registration_number,
         type: vehicle.type as VehicleType, // Legacy field - type is now UUID in DB
         typeId: vehicle.type, // UUID reference to vehicle_type table
+        typeName: vehicleType?.name || undefined, // Human-readable name from vehicle_type table
         vehicleTypeIcon: vehicleType?.icon || null, // Icon from vehicle_type table
         internalVehicleName: (vehicle as any).internal_vehicle_name,
         make: vehicle.make,
@@ -91,7 +92,7 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
     
     if (!data) return null;
     
-    // Fetch vehicle type to get icon
+    // Fetch vehicle type to get icon and name
     const { data: vehicleType } = await supabase
       .from('vehicle_type' as any)
       .select('id, name, icon')
@@ -104,6 +105,7 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
       registrationNumber: data.registration_number,
       type: data.type as VehicleType, // Legacy field - type is now UUID in DB
       typeId: data.type, // UUID reference to vehicle_type table
+      typeName: (vehicleType as any)?.name || undefined, // Human-readable name
       vehicleTypeIcon: (vehicleType as any)?.icon || null, // Icon from vehicle_type table
       internalVehicleName: (data as any).internal_vehicle_name,
       make: data.make,

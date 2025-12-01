@@ -128,9 +128,8 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
         
         return {
           'Registration Number': vehicle.registrationNumber,
-          'Make': vehicle.make,
           'Model': vehicle.model,
-          'Type': vehicle.type,
+          'Type': vehicle.typeName || vehicle.type || 'Unknown',
           'Year': vehicle.year,
           'Vehicle Status': vehicle.status,
           'Driver': vehicle.driver || 'N/A',

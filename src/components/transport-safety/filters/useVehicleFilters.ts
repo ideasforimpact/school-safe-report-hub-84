@@ -17,6 +17,11 @@ interface DocumentStatusFilters {
   expiring_soon: boolean;
 }
 
+interface VehicleTypeFilterOption {
+  id: string;
+  name: string;
+}
+
 export const useVehicleFilters = (vehicles: Vehicle[]) => {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,9 +73,22 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     }
   }, [searchParams]);
 
-  // Use the exact type values from the Vehicle type
-  const vehicleTypes = useMemo(() => {
-    return [...new Set(vehicles.map(vehicle => vehicle.type))];
+  // Build vehicle type options from vehicles using foreign key + name
+  const vehicleTypes: VehicleTypeFilterOption[] = useMemo(() => {
+    const map = new Map<string, VehicleTypeFilterOption>();
+
+    vehicles.forEach((vehicle) => {
+      if (vehicle.typeId && vehicle.typeName) {
+        if (!map.has(vehicle.typeId)) {
+          map.set(vehicle.typeId, {
+            id: vehicle.typeId,
+            name: vehicle.typeName,
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values());
   }, [vehicles]);
 
   const hasActiveDocumentStatusFilters = useMemo(() => {
@@ -116,7 +134,10 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
         : true;
       
       const matchesStatus = statusFilter === 'all' ? true : vehicle.status === statusFilter;
-      const matchesType = typeFilter === 'all' ? true : vehicle.type === typeFilter;
+      const matchesType =
+        typeFilter === 'all'
+          ? true
+          : vehicle.typeId === typeFilter;
       
       // Document status filters with enhanced logic
       let matchesDocumentStatus = true;
