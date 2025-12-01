@@ -242,6 +242,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 id="internalVehicleName" 
                 {...register('internalVehicleName', { 
                   required: "Internal vehicle name is required",
+                  maxLength: { value: 50, message: "Internal vehicle name cannot exceed 100 characters" },
                   validate: (value) => {
                     if (!value || value.trim() === '') {
                       return "Internal vehicle name is required";

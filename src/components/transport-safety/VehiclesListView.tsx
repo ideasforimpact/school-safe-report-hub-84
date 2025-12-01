@@ -319,10 +319,15 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Deactivate Vehicle</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to deactivate {selectedVehicle?.internalVehicleName || selectedVehicle?.model || 'this vehicle'} ({selectedVehicle?.registrationNumber})?
-              <br /><br />
-              This will mark the vehicle as inactive. You can reactivate it later using the toggle.
+            <AlertDialogDescription className="space-y-2 text-sm text-muted-foreground">
+              <p className="break-all whitespace-normal">
+                Are you sure you want to deactivate{' '}
+                {selectedVehicle?.internalVehicleName || selectedVehicle?.model || 'this vehicle'}{' '}
+                ({selectedVehicle?.registrationNumber})?
+              </p>
+              <p>
+                This will mark the vehicle as inactive. You can reactivate it later using the toggle.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
