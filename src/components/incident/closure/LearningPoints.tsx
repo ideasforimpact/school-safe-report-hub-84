@@ -12,9 +12,9 @@ const LearningPoints: React.FC<LearningPointsProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <h3 className="font-medium">Learning Points</h3>
+      <h3 className="font-medium">Learning Points (Optional)</h3>
       <p className="text-sm text-gray-600">
-        Document key learnings and insights from this incident (Optional)
+        Document key learnings and insights from this incident
       </p>
       <div className="space-y-2">
         <Textarea

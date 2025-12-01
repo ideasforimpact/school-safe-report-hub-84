@@ -244,7 +244,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   };
 
   const handleSaveAsDraft = async () => {
-    if (!assessment || !template || !assessmentId) {
+    if (!assessment || !template || !assessmentId || !employeeData?.id || !clientId) {
       console.error('Missing required data for saving draft:', { assessment, template, assessmentId });
       toast.error('Missing required data. Please try again.');
       return;
@@ -253,14 +253,47 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     setSaving(true);
     
     try {
-      const answersData = answers.map(answer => ({
+      // Upload attachments for all answers before saving draft (same as submit)
+      const { questionFileService } = await import('@/services/assessment/questionFileService');
+      // Use template title (name) instead of assessment name to match existing question file structure
+      const templateName = template?.title || template?.name || 'assessment';
+      
+      const answersWithUploadedAttachments = await Promise.all(
+        answers.map(async (answer) => {
+          if (!answer.attachments || answer.attachments.length === 0) {
+            return {
         questionId: answer.questionId,
         answer: answer.answer,
         comment: answer.comment || '',
-        attachments: answer.attachments || []
-      }));
+              attachments: []
+            };
+          }
 
-      console.log('Saving draft with answers:', answersData);
+          try {
+            console.log(`[Draft] Uploading attachments for question ${answer.questionId}:`, answer.attachments);
+            const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
+              answer.attachments,
+              clientId,
+              employeeData.id,
+              templateName,
+              answer.questionId
+            );
+            
+            return {
+              questionId: answer.questionId,
+              answer: answer.answer,
+              comment: answer.comment || '',
+              attachments: uploadedAttachments
+            };
+          } catch (uploadError) {
+            console.error(`[Draft] Error uploading attachments for question ${answer.questionId}:`, uploadError);
+            toast.error(`Failed to upload attachments for question. Please try again.`);
+            throw uploadError;
+          }
+        })
+      );
+
+      console.log('[Draft] Saving draft with answers:', answersWithUploadedAttachments);
 
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
       
@@ -268,7 +301,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         .from('assessments')
         .update({ 
           status: currentStatus,
-          answers: answersData
+          answers: answersWithUploadedAttachments as any
         })
         .eq('assessment_id', parseInt(assessmentId))
         .eq('client_id', clientId)
@@ -279,8 +312,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         throw new Error(`Failed to save draft: ${updateError.message}`);
       }
 
-      console.log('Draft saved successfully:', data);
-      setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersData } : null);
+      console.log('[Draft] Draft saved successfully:', data);
+      setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersWithUploadedAttachments } : null);
       toast.success('Assessment saved as draft successfully!');
       navigate('/assessments');
       
@@ -294,7 +327,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   };
 
   const handleSubmit = async () => {
-    if (!assessment || !template) return;
+    if (!assessment || !template || !employeeData?.id || !clientId) return;
     
     const questions = Array.isArray(template.questions) 
       ? (template.questions as unknown as Question[])
@@ -317,26 +350,59 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     setSubmitting(true);
     
     try {
+      // Upload attachments for all answers before submitting
+      const { questionFileService } = await import('@/services/assessment/questionFileService');
+      // Use template title (name) instead of assessment name to match existing question file structure
+      const templateName = template?.title || template?.name || 'assessment';
+      
+      const answersWithUploadedAttachments = await Promise.all(
+        answers.map(async (answer) => {
+          if (!answer.attachments || answer.attachments.length === 0) {
+            return {
+              questionId: answer.questionId,
+              answer: answer.answer,
+              comment: answer.comment || '',
+              attachments: []
+            };
+          }
+
+          try {
+            console.log(`Uploading attachments for question ${answer.questionId}:`, answer.attachments);
+            const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
+              answer.attachments,
+              clientId,
+              employeeData.id,
+              templateName,
+              answer.questionId
+            );
+            
+            return {
+              questionId: answer.questionId,
+              answer: answer.answer,
+              comment: answer.comment || '',
+              attachments: uploadedAttachments
+            };
+          } catch (uploadError) {
+            console.error(`Error uploading attachments for question ${answer.questionId}:`, uploadError);
+            toast.error(`Failed to upload attachments for question. Please try again.`);
+            throw uploadError;
+          }
+        })
+      );
+
       // Calculate score
       const totalQuestions = questions.length;
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-      const answersData = answers.map(answer => ({
-        questionId: answer.questionId,
-        answer: answer.answer,
-        comment: answer.comment || '',
-        attachments: answer.attachments || []
-      }));
-
-      console.log('Submitting assessment with answers:', answersData);
+      console.log('Submitting assessment with answers:', answersWithUploadedAttachments);
 
       const { error: updateError } = await supabase
         .from('assessments')
         .update({ 
           status: 'Submitted',
           score: score,
-          answers: answersData as any
+          answers: answersWithUploadedAttachments as any
         })
         .eq('assessment_id', parseInt(assessmentId!))
         .eq('client_id', clientId);

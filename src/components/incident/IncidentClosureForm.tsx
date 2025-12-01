@@ -306,7 +306,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 my-4">
+        <div className="space-y-3 my-4">
           {/* Root Cause Analysis */}
           <RootCauseAnalysis 
             rootCause={rootCause}
