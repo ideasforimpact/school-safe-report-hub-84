@@ -293,8 +293,27 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       return;
     }
     
-    // Open the document in a new tab
-    window.open(resource.document_url, '_blank', 'noopener,noreferrer');
+    try {
+      const documentUrl = resource.document_url;
+      let urlToOpen: string;
+
+      // Check if it's a relative storage path (starts with edusafe-resources/ or /edusafe-resources/)
+      if (documentUrl.startsWith('edusafe-resources/') || documentUrl.startsWith('/edusafe-resources/')) {
+        // Prepend the Supabase storage base URL
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        const normalizedPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
+        urlToOpen = `${normalizedBase}${normalizedPath}`;
+      } else {
+        // It's already a full URL, use it directly
+        urlToOpen = documentUrl;
+      }
+
+      window.open(urlToOpen, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('[BackofficeEduSafeResourcesPage] Error opening document:', error);
+      toast.error('Failed to open document');
+    }
   };
 
   const handleDownloadResource = async (resource: BackofficeEduSafeResource) => {

@@ -46,6 +46,21 @@ export const questionFileService = {
     return `${clientId}/${employeeId}/${sanitizedAssessmentName}/question_${questionNumber}/${fileName}`;
   },
 
+  // Generate file path for answer attachments
+  // Uses template name to match the existing question file structure
+  generateAttachmentFilePath: (
+    clientId: string,
+    employeeId: string,
+    templateName: string,
+    questionId: string,
+    fileName: string
+  ): string => {
+    const sanitizedTemplateName = templateName.replace(/[^a-zA-Z0-9-_]/g, '_');
+    // Extract question number from questionId if it follows pattern question_X or use questionId directly
+    const questionNumber = questionId.match(/question[_-]?(\d+)/)?.[1] || questionId.replace(/[^a-zA-Z0-9-_]/g, '_');
+    return `${clientId}/${employeeId}/${sanitizedTemplateName}/question_${questionNumber}/attachments/${fileName}`;
+  },
+
   // Upload files for a specific question using File objects directly
   uploadQuestionFiles: async (
     uploadInputs: UploadFileInput[],
@@ -69,13 +84,34 @@ export const questionFileService = {
           type: file.type 
         });
 
+        // Allowed file types: PDF, DOC, DOCX, PNG, JPEG, JPG
+        const ALLOWED_FILE_TYPES = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'image/png',
+          'image/jpeg',
+          'image/jpg'
+        ];
+        const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpeg', '.jpg'];
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
         // Validate file before upload
         if (file.size === 0) {
           throw new Error(`File ${file.name} is empty`);
         }
 
-        if (file.size > 30 * 1024 * 1024) {
-          throw new Error(`File ${file.name} exceeds 30MB limit`);
+        // Validate file size (10MB limit)
+        if (file.size > MAX_FILE_SIZE) {
+          throw new Error(`File ${file.name} exceeds the 10MB size limit. Maximum file size is 10MB.`);
+        }
+
+        // Validate file type
+        const isValidType = ALLOWED_FILE_TYPES.includes(file.type) || 
+          ALLOWED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
+        
+        if (!isValidType) {
+          throw new Error(`File ${file.name} has an invalid format. Allowed formats: PDF, DOC, DOCX, PNG, JPEG, JPG.`);
         }
 
         // Generate unique file name to avoid conflicts
@@ -238,5 +274,155 @@ export const questionFileService = {
       valid: errors.length === 0,
       errors
     };
+  },
+
+  // Upload answer attachments for a specific question
+  // Uses template name to match the existing question file structure
+  uploadAnswerAttachments: async (
+    attachments: Array<{ id: string; name: string; type: string; file?: File; url?: string }>,
+    clientId: string,
+    employeeId: string,
+    templateName: string,
+    questionId: string
+  ): Promise<Array<{ id: string; name: string; type: string; url: string; path: string; size?: number }>> => {
+    console.log('Starting answer attachment upload...', { 
+      attachmentCount: attachments.length, 
+      clientId, 
+      employeeId, 
+      templateName, 
+      questionId 
+    });
+
+    const uploadedAttachments: Array<{ id: string; name: string; type: string; url: string; path: string; size?: number }> = [];
+
+    for (const attachment of attachments) {
+      try {
+        // If attachment already has a path/url (already uploaded), skip
+        if (attachment.url && attachment.url.startsWith('http')) {
+          console.log('Attachment already uploaded, skipping:', attachment.name);
+          // Extract path from URL if possible, or use a placeholder
+          const existingPath = attachment.url.includes('assessment-question-files') 
+            ? attachment.url.split('assessment-question-files/')[1] 
+            : `assessment-question-files/${clientId}/${employeeId}/${templateName.replace(/[^a-zA-Z0-9-_]/g, '_')}/question_${questionId}/attachments/${attachment.name}`;
+          
+          uploadedAttachments.push({
+            id: attachment.id,
+            name: attachment.name,
+            type: attachment.type,
+            url: attachment.url,
+            path: `assessment-question-files/${existingPath}`
+          });
+          continue;
+        }
+
+        // If we have a File object, upload it
+        if (attachment.file) {
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 8);
+          const sanitizedFileName = questionFileService.sanitizeFileName(attachment.name);
+          const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
+              const filePath = questionFileService.generateAttachmentFilePath(
+                clientId,
+                employeeId,
+                templateName,
+                questionId,
+                uniqueFileName
+              );
+
+          console.log(`Uploading attachment to path: ${filePath}`);
+
+          const { data, error } = await supabase.storage
+            .from('assessment-question-files')
+            .upload(filePath, attachment.file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (error) {
+            console.error('Supabase upload error:', error);
+            throw new Error(`Failed to upload ${attachment.name}: ${error.message}`);
+          }
+
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('assessment-question-files')
+            .getPublicUrl(filePath);
+
+          uploadedAttachments.push({
+            id: attachment.id,
+            name: attachment.name,
+            type: attachment.type,
+            url: urlData.publicUrl,
+            path: filePath,
+            size: attachment.file.size
+          });
+
+          console.log('Attachment upload completed:', uploadedAttachments[uploadedAttachments.length - 1]);
+        } else {
+          // If no file object and no URL, this is likely a blob URL - try to fetch it
+          if (attachment.url && attachment.url.startsWith('blob:')) {
+            try {
+              const response = await fetch(attachment.url);
+              const blob = await response.blob();
+              const file = new File([blob], attachment.name, { type: attachment.type });
+
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substring(2, 8);
+              const sanitizedFileName = questionFileService.sanitizeFileName(attachment.name);
+              const uniqueFileName = `${timestamp}_${randomSuffix}_${sanitizedFileName}`;
+              const filePath = questionFileService.generateAttachmentFilePath(
+                clientId,
+                employeeId,
+                templateName,
+                questionId,
+                uniqueFileName
+              );
+
+              console.log(`Uploading attachment from blob URL to path: ${filePath}`);
+
+              const { data, error } = await supabase.storage
+                .from('assessment-question-files')
+                .upload(filePath, file, {
+                  cacheControl: '3600',
+                  upsert: false
+                });
+
+              if (error) {
+                console.error('Supabase upload error:', error);
+                throw new Error(`Failed to upload ${attachment.name}: ${error.message}`);
+              }
+
+              // Get public URL
+              const { data: urlData } = supabase.storage
+                .from('assessment-question-files')
+                .getPublicUrl(filePath);
+
+              uploadedAttachments.push({
+                id: attachment.id,
+                name: attachment.name,
+                type: attachment.type,
+                url: urlData.publicUrl,
+                path: filePath,
+                size: file.size
+              });
+
+              console.log('Attachment upload from blob completed:', uploadedAttachments[uploadedAttachments.length - 1]);
+            } catch (fetchError) {
+              console.error('Error fetching blob or uploading:', fetchError);
+              throw new Error(`Failed to process ${attachment.name}: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+            }
+          } else {
+            // If no file and no valid URL, skip with warning
+            console.warn('Skipping attachment with no file object or valid URL:', attachment);
+          }
+        }
+      } catch (error) {
+        console.error('Error processing attachment:', attachment.name, error);
+        throw new Error(`Failed to upload ${attachment.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    console.log('All attachments uploaded successfully:', uploadedAttachments);
+    return uploadedAttachments;
   }
 };

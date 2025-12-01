@@ -11,7 +11,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { MessageSquare, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight, Paperclip } from 'lucide-react';
+import { MessageSquare, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronRight, Paperclip, Eye, Download } from 'lucide-react';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { FileItem } from '@/types/fileTypes';
 
@@ -163,12 +163,84 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
                 </div>
               )}
 
-              {/* File Attachments Section */}
+              {/* Template Question Files Section - Files uploaded when creating the template */}
+              {question.files && question.files.length > 0 && (
+                <div className="space-y-3 p-4 bg-blue-50/50 rounded-lg border border-blue-200">
+                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Paperclip className="h-4 w-4 text-blue-600" />
+                    Question Reference Files
+                  </Label>
+                  <div className="text-xs text-gray-500 mb-2">
+                    Reference files provided with this question:
+                  </div>
+                  <div className="space-y-2">
+                    {question.files.map((file: any, fileIndex: number) => (
+                      <div
+                        key={file.id || fileIndex}
+                        className="flex items-center justify-between bg-white border border-blue-200 rounded-md p-3"
+                      >
+                        <div className="flex items-center min-w-0 flex-1">
+                          <Paperclip className="h-4 w-4 text-blue-600 mr-2 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate" title={file.name}>
+                              {file.name || `File ${fileIndex + 1}`}
+                            </p>
+                            {file.size && (
+                              <p className="text-xs text-gray-500">
+                                {file.size > 1024 * 1024 
+                                  ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                                  : file.size > 1024
+                                  ? `${(file.size / 1024).toFixed(2)} KB`
+                                  : `${file.size} bytes`}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          {file.url && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(file.url, '_blank')}
+                                className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                title="View file"
+                              >
+                                View
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const link = document.createElement('a');
+                                  link.href = file.url;
+                                  link.download = file.name || 'download';
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                                className="h-8 px-3 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                title="Download file"
+                              >
+                                Download
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* File Attachments Section - User can upload files when answering */}
               {question.allowAttachments && (
                 <div className="space-y-4 p-4 bg-purple-50/50 rounded-lg border border-purple-200">
                   <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     <Paperclip className="h-4 w-4 text-purple-600" />
-                    File Attachments {!question.required && '(Optional)'}
+                    Your File Attachments {!question.required && '(Optional)'}
                   </Label>
                   <div className="text-xs text-gray-500 mb-2">
                     You can upload documents, images, or other files to support your answer.

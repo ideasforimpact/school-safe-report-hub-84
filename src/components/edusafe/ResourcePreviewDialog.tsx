@@ -28,12 +28,46 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
   onOpenChange,
 }) => {
   const { downloadResource } = useEduSafe();
+  const [resolvedUrl, setResolvedUrl] = React.useState<string>('');
 
   if (!resource) return null;
 
   const handleDownload = () => {
     downloadResource(resource);
   };
+
+  // Resolve storage URL when resource or dialog opens
+  React.useEffect(() => {
+    if (!resource) {
+      setResolvedUrl('');
+      return;
+    }
+
+    // Check for base64 first
+    if (resource.file?.base64) {
+      setResolvedUrl(resource.file.base64);
+      return;
+    }
+
+    // Check for document_url
+    if (resource.document_url) {
+      const documentUrl = resource.document_url;
+
+      // Check if it's a relative storage path (starts with edusafe-resources/ or /edusafe-resources/)
+      if (documentUrl.startsWith('edusafe-resources/') || documentUrl.startsWith('/edusafe-resources/')) {
+        // Prepend the Supabase storage base URL
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const normalizedBase = base.replace(/\/$/, '');
+        const normalizedPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
+        setResolvedUrl(`${normalizedBase}${normalizedPath}`);
+      } else {
+        // It's already a full URL, use it directly
+        setResolvedUrl(documentUrl);
+      }
+    } else {
+      setResolvedUrl('');
+    }
+  }, [resource, open]);
 
   // Determine file type from document_url or file data
   const getFileType = () => {
@@ -69,7 +103,7 @@ const ResourcePreviewDialog: React.FC<ResourcePreviewDialogProps> = ({
 
   // Get the source URL for display
   const getSourceUrl = () => {
-    return resource.document_url || resource.file?.base64 || '';
+    return resolvedUrl || resource.file?.base64 || resource.document_url || '';
   };
 
   return (

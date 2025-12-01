@@ -155,6 +155,9 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
       </div>
       
       <div className="mb-3 space-y-2">
+        <label className="text-sm font-medium">
+          Description <span className="text-red-500">*</span>
+        </label>
         <Input
           value={currentFactor.description}
           onChange={(e) => setCurrentFactor({...currentFactor, description: e.target.value})}

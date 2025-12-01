@@ -114,7 +114,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
             Question File (Optional)
           </Label>
           <QuestionFileUpload
-            questionId={question.id}
+            questionId={question.id || `temp_question_${index}`}
             questionNumber={index + 1}
             files={question.files || []}
             pendingFiles={pendingFiles}

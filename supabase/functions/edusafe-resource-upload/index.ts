@@ -127,6 +127,23 @@ async function handleUpload(req: Request) {
 
   console.log('Client validated:', clientData.name)
 
+  // Validate uploaded_by if provided - check if employee exists
+  let validatedUploadedBy: string | null = null
+  if (uploadedBy) {
+    const { data: employeeData, error: employeeError } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('id', uploadedBy)
+      .single()
+
+    if (employeeError || !employeeData) {
+      console.warn('Invalid uploaded_by employee ID, setting to null:', uploadedBy, employeeError)
+      validatedUploadedBy = null
+    } else {
+      validatedUploadedBy = uploadedBy
+    }
+  }
+
   let documentUrl = ''
   
   // Only upload file if it exists (not required for YouTube category)
@@ -185,7 +202,7 @@ async function handleUpload(req: Request) {
       tags: parsedTags,
       document_url: documentUrl,
       youtube_link: youtubeLink || null,
-      uploaded_by: uploadedBy || null,
+      uploaded_by: validatedUploadedBy,
       client_id: clientId
     })
     .select()

@@ -58,7 +58,12 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
         setDescription(template.description);
         setType(template.type);
         setIsActive(template.isActive);
-        setQuestions(template.questions);
+        // Ensure all questions have IDs
+        const questionsWithIds = template.questions.map((q, index) => ({
+          ...q,
+          id: q.id || `temp_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`
+        }));
+        setQuestions(questionsWithIds);
       } else {
         setFormError('Template not found');
         toast.error('Template not found');
@@ -67,10 +72,36 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     }
   }, [isEditMode, templateId, getTemplateById]);
 
+  // Ensure all questions always have IDs (only run once on mount or when questions change significantly)
+  useEffect(() => {
+    const questionsNeedingIds = questions.filter(q => !q.id);
+    if (questionsNeedingIds.length > 0) {
+      console.log(`[CreateTemplateForm] Found ${questionsNeedingIds.length} questions without IDs, assigning them now`);
+      const updatedQuestions = questions.map((q, index) => {
+        if (!q.id) {
+          const newId = `temp_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`;
+          console.log(`[CreateTemplateForm] Assigning ID ${newId} to question at index ${index}`);
+          return {
+            ...q,
+            id: newId
+          };
+        }
+        return q;
+      });
+      // Only update if we actually changed something
+      if (updatedQuestions.some((q, i) => q.id !== questions[i]?.id)) {
+        setQuestions(updatedQuestions);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questions.length]); // Only depend on length to avoid infinite loops
+
   // Question management
   const handleAddQuestion = () => {
+    // Generate a unique ID using timestamp and random string to avoid collisions
+    const uniqueId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newQuestion: AssessmentQuestion = {
-      id: `temp_${Date.now()}`,
+      id: uniqueId,
       text: '',
       allowComments: false,
       allowAttachments: false,
