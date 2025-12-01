@@ -215,7 +215,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 onChange={(e) => {
                   const value = e.target.value;
                   // Remove special characters except letters, numbers, and hyphens
-                  const cleanedValue = value.replace(/[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/g, '');                  
+                  const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');     
                   if (value !== cleanedValue) {
                     setRegistrationNumberError("Special characters are not allowed. Only letters, numbers are permitted.");
                   } else {
@@ -250,6 +250,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                   }
                 })}
                 placeholder="e.g., School Bus 1"
+                maxLength={100}
                 disabled={isSubmitting}
               />
               {errors.internalVehicleName && (
