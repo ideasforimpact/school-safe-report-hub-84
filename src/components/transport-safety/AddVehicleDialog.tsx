@@ -48,8 +48,28 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       clientId: employeeData?.clientId,
       employeeId: employeeData?.id
     },
-    mode: 'onSubmit' // Only validate on submit to prevent showing errors initially
+    mode: 'onChange' // Validate on change so we can enable/disable submit button based on validity
   });
+
+  const resetForm = () => {
+    reset({
+      registrationNumber: '',
+      type: 'other',
+      typeId: undefined,
+      internalVehicleName: '',
+      make: '',
+      model: '',
+      year: null,
+      status: 'active',
+      driver: '',
+      route: '',
+      capacity: undefined,
+      clientId: employeeData?.clientId,
+      employeeId: employeeData?.id
+    });
+    setError(null);
+    setRegistrationNumberError(null);
+  };
 
   // Populate form when vehicle is provided (edit mode)
   useEffect(() => {
@@ -73,25 +93,9 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
-      reset({
-        registrationNumber: '',
-        type: 'other',
-        typeId: undefined,
-        internalVehicleName: '',
-        make: '',
-        model: '',
-        year: null, // Explicitly reset to null
-        status: 'active',
-        driver: '',
-        route: '',
-        capacity: undefined,
-        clientId: employeeData?.clientId,
-        employeeId: employeeData?.id
-      });
-      setError(null);
-      setRegistrationNumberError(null);
+      resetForm();
     }
-  }, [open, reset, employeeData]);
+  }, [open, resetForm, employeeData]);
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     setError(null); // Clear any previous errors
@@ -206,25 +210,24 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                   pattern: {
                     value: /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/,
                     message: "Please enter a valid vehicle registration number (e.g., TN01AB1234)"
+                  },
+                  onChange: (e) => {
+                    const value = e.target.value as string;
+                    // Remove special characters except letters, numbers, and hyphens
+                    const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');
+                    if (value !== cleanedValue) {
+                      setRegistrationNumberError("Special characters are not allowed. Only letters, numbers are permitted.");
+                    } else {
+                      setRegistrationNumberError(null);
+                    }
+                    // Update the form value and trigger validation
+                    setValue('registrationNumber', cleanedValue, { shouldValidate: true, shouldDirty: true });
                   }
                 })}
                 placeholder="e.g., TN01AB1234"
                 maxLength={10}
                 disabled={isSubmitting || isEditMode}
                 className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Remove special characters except letters, numbers, and hyphens
-                  const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');     
-                  if (value !== cleanedValue) {
-                    setRegistrationNumberError("Special characters are not allowed. Only letters, numbers are permitted.");
-                  } else {
-                    setRegistrationNumberError(null);
-                  }
-                  
-                  // Update the form value
-                  setValue('registrationNumber', cleanedValue);
-                }}
               />
               {(errors.registrationNumber || registrationNumberError) && 
                 <p className="text-red-500 text-sm">{errors.registrationNumber?.message || registrationNumberError}</p>
@@ -242,6 +245,12 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 id="internalVehicleName" 
                 {...register('internalVehicleName', { 
                   required: "Internal vehicle name is required",
+                  minLength: { value: 10, message: "Internal vehicle name must be at least 10 characters" },
+                  maxLength: { value: 100, message: "Internal vehicle name cannot exceed 100 characters" },
+                  pattern: {
+                    value: /^[A-Za-z0-9\s]+$/,
+                    message: "Internal vehicle name can only contain letters, numbers, and spaces"
+                  },
                   validate: (value) => {
                     if (!value || value.trim() === '') {
                       return "Internal vehicle name is required";
@@ -268,17 +277,31 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 disabled={isSubmitting || vehicleTypesLoading}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={vehicleTypesLoading ? "Loading..." : "Select vehicle type"} />
+                  <SelectValue placeholder={vehicleTypesLoading ? "Loading..." : "Please select the vehicle type"} />
                 </SelectTrigger>
                 <SelectContent>
                   {vehicleTypesLoading ? (
                     <SelectItem value="" disabled>Loading...</SelectItem>
                   ) : (
-                    vehicleTypes.map((vehicleType) => (
-                      <SelectItem key={vehicleType.id} value={vehicleType.id}>
-                        {vehicleType.name}
+                    <>
+                      {/* Placeholder option shown initially when no type is selected */}
+                      <SelectItem value="" disabled>
+                        Please select the vehicle type
                       </SelectItem>
-                    ))
+                      {[...vehicleTypes]
+                        .sort((a, b) => {
+                          const aIsOthers = a.name.toLowerCase() === 'others' || a.name.toLowerCase() === 'other';
+                          const bIsOthers = b.name.toLowerCase() === 'others' || b.name.toLowerCase() === 'other';
+                          if (aIsOthers && !bIsOthers) return 1; // a goes after b
+                          if (!aIsOthers && bIsOthers) return -1; // a goes before b
+                          return a.name.localeCompare(b.name);
+                        })
+                        .map((vehicleType) => (
+                          <SelectItem key={vehicleType.id} value={vehicleType.id}>
+                            {vehicleType.name}
+                          </SelectItem>
+                        ))}
+                    </>
                   )}
                 </SelectContent>
               </Select>
@@ -341,14 +364,14 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => { reset(); onClose(); }}
+              onClick={() => { resetForm(); onClose(); }}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isValid}
             >
               {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Vehicle' : 'Add Vehicle')}
               {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
