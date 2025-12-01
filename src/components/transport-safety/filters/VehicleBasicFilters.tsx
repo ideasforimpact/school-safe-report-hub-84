@@ -18,7 +18,7 @@ interface VehicleBasicFiltersProps {
   setStatusFilter: (value: string) => void;
   typeFilter: string;
   setTypeFilter: (value: string) => void;
-  vehicleTypes: string[];
+  vehicleTypes: { id: string; name: string }[];
   documentTypeFilter: string;
   setDocumentTypeFilter: (value: string) => void;
   documentStatusFilters: DocumentStatusFilters;
@@ -65,8 +65,8 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
               {vehicleTypes.map(type => (
-                <SelectItem key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
                 </SelectItem>
               ))}
             </SelectContent>

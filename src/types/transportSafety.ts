@@ -45,8 +45,9 @@ export interface VehicleVerificationData {
 export interface Vehicle {
   id: string;
   registrationNumber: string;
-  type: VehicleType; // Legacy field, kept for backward compatibility
+  type: VehicleType; // Legacy field, kept for backward compatibility (may contain UUID in new implementation)
   typeId?: string; // UUID reference to vehicle_type table
+  typeName?: string; // Human-readable vehicle type name from vehicle_type table
   vehicleTypeIcon?: string | null; // Icon name from vehicle_type table
   internalVehicleName?: string; // New field for internal vehicle name
   make: string;
