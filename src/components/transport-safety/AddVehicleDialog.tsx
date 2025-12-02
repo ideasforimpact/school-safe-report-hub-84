@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +51,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     mode: 'onChange' // Validate on change so we can enable/disable submit button based on validity
   });
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     reset({
       registrationNumber: '',
       type: 'other',
@@ -69,7 +69,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     });
     setError(null);
     setRegistrationNumberError(null);
-  };
+  }, [reset, employeeData?.clientId, employeeData?.id]);
 
   // Populate form when vehicle is provided (edit mode)
   useEffect(() => {
@@ -95,7 +95,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     if (!open) {
       resetForm();
     }
-  }, [open, resetForm, employeeData]);
+  }, [open, resetForm]);
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     setError(null); // Clear any previous errors

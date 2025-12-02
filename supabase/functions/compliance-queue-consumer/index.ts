@@ -59,6 +59,7 @@ serve(async (req) => {
       }
 
       if (parentFolderId) {
+        // 1) Locate the parent folder row (represents the folder entry itself)
         const { data: folderRow, error: findErr } = await supabaseAdmin
           .from("compliance_documents")
           .select("id, files")
@@ -67,7 +68,13 @@ serve(async (req) => {
           .maybeSingle();
         if (findErr) throw findErr;
 
+        let parentRowId: string | null = null;
+
         if (folderRow) {
+          parentRowId = folderRow.id;
+
+          // Keep existing behaviour of logging into the folder's files column
+          // so we preserve audit history, but do NOT rely on this for UI.
           let nextFiles: any;
           if (Array.isArray(folderRow.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)) {
             const inner = folderRow.files[0].files ?? [];
@@ -90,7 +97,8 @@ serve(async (req) => {
             .eq("id", folderRow.id);
           if (updErr) throw updErr;
         } else {
-          const { error: insErr } = await supabaseAdmin
+          // If folder row does not exist yet, create it first so we have a parent id.
+          const { data: newFolderRow, error: insErr } = await supabaseAdmin
             .from("compliance_documents")
             .insert({
               client_id: clientId,
@@ -105,8 +113,35 @@ serve(async (req) => {
                 },
               ],
               created_by: employeeId,
-            });
+            })
+            .select("id")
+            .single();
           if (insErr) throw insErr;
+          parentRowId = newFolderRow?.id ?? null;
+        }
+
+        // 2) For UI and relational modelling, create ONE row per file
+        //    with parent_folder_id pointing to the folder row.
+        if (parentRowId) {
+          const fileRecord = {
+            path: objectPath,
+            parentFolderId,
+            fileName,
+            contentType,
+            size,
+            uploaded_at: new Date().toISOString(),
+          };
+          const { error: fileInsErr } = await supabaseAdmin
+            .from("compliance_documents")
+            .insert({
+              client_id: clientId,
+              folder_exists: false,
+              folder_id: null,
+              parent_folder_id: parentRowId,
+              files: [fileRecord],
+              created_by: employeeId,
+            });
+          if (fileInsErr) throw fileInsErr;
         }
       } else {
         const { error: insErr } = await supabaseAdmin

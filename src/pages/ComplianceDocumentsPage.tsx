@@ -69,9 +69,20 @@ const ComplianceDocumentsPage: React.FC = () => {
     if (error) throw error;
 
     if (!currentFolderId) {
-      // Root view: only top-level folders (parent_folder_id is null) and general files (folder_exists=false)
-      const folderRows = (data || []).filter((r: any) => r.folder_exists === true && (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined'));
-      const nonFolderRows = (data || []).filter((r: any) => r.folder_exists === false);
+      // Root view:
+      // - Folders: rows with folder_exists = true and no parent_folder_id
+      // - Files: rows with folder_exists = false and no parent_folder_id
+      const folderRows = (data || []).filter(
+        (r: any) =>
+          r.folder_exists === true &&
+          (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined')
+      );
+
+      const fileRows = (data || []).filter(
+        (r: any) =>
+          r.folder_exists === false &&
+          (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined')
+      );
 
       const folderList = folderRows.map((r: any) => {
         // Prefer structured folder_name if present
@@ -85,45 +96,70 @@ const ComplianceDocumentsPage: React.FC = () => {
         return { id: r.id as string, name, folder_id: r.folder_id as string };
       });
 
-      // Filter out deleted files (is_delete = 1 or is_delete = true)
-      const files = nonFolderRows.flatMap((r: any) => 
+      // Each non-folder row represents one or more files at root.
+      // For new data there should be exactly one file per row, but we
+      // still flatten for backward compatibility.
+      const files = fileRows.flatMap((r: any) =>
         (r.files || [])
           .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
           .map((f: any) => ({ ...f, rowId: r.id }))
       );
+
       setFolders(folderList);
       setRootFiles(files);
       setCurrentFolderFiles([]);
       setChildFolders([]);
       setBreadcrumb([]);
     } else {
+      // Inside a folder:
+      // - current folder row is identified by folder_id
+      // - child folders: folder_exists = true and parent_folder_id = current folder row id
+      // - files: folder_exists = false and parent_folder_id = current folder row id
       const folderRow = (data || []).find((r: any) => r.folder_id === currentFolderId);
-      const filesArray = Array.isArray(folderRow?.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)
-        ? folderRow.files[0].files
-        : folderRow?.files || [];
-      // Filter out deleted files (is_delete = 1 or is_delete = true)
-      const files = filesArray
-        .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
-        .map((f: any) => ({ ...f, rowId: folderRow.id }));
-      setCurrentFolderFiles(files);
-      const children = (data || []).filter((r: any) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
-        .map((r: any) => ({ id: r.id as string, name: r.files?.[0]?.folder_name || 'Folder', folder_id: r.folder_id as string }));
-      setChildFolders(children);
 
-      // Build breadcrumb path from this row up to root using in-memory data
-      const path: { rowId: string; name: string; folderId: string }[] = [];
-      let walker: any = folderRow;
-      while (walker) {
-        path.unshift({
-          rowId: walker.id,
-          name: walker.files?.[0]?.folder_name || 'Folder',
-          folderId: walker.folder_id as string,
-        });
-        if (!walker.parent_folder_id) break;
-        walker = (data || []).find((r: any) => r.id === walker.parent_folder_id);
-        if (!walker) break;
+      if (folderRow) {
+        const fileRows = (data || []).filter(
+          (r: any) => r.folder_exists === false && r.parent_folder_id === folderRow.id
+        );
+
+        const files = fileRows.flatMap((r: any) =>
+          (r.files || [])
+            .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+            .map((f: any) => ({ ...f, rowId: r.id }))
+        );
+        setCurrentFolderFiles(files);
+
+        const children = (data || [])
+          .filter((r: any) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
+          .map((r: any) => ({
+            id: r.id as string,
+            name: r.files?.[0]?.folder_name || 'Folder',
+            folder_id: r.folder_id as string,
+          }));
+        setChildFolders(children);
+
+        // Build breadcrumb path from this row up to root using in-memory data
+        const path: { rowId: string; name: string; folderId: string }[] = [];
+        let walker: any = folderRow;
+        while (walker) {
+          path.unshift({
+            rowId: walker.id,
+            name: walker.files?.[0]?.folder_name || 'Folder',
+            folderId: walker.folder_id as string,
+          });
+          if (!walker.parent_folder_id) break;
+          walker = (data || []).find((r: any) => r.id === walker.parent_folder_id);
+          if (!walker) break;
+        }
+        setBreadcrumb(path);
+      } else {
+        // If folder row missing (should not happen), reset to root.
+        setCurrentFolderId(null);
+        setCurrentFolderName(null);
+        setChildFolders([]);
+        setCurrentFolderFiles([]);
+        setBreadcrumb([]);
       }
-      setBreadcrumb(path);
     }
     setLoading(false);
   };
