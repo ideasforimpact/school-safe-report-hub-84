@@ -168,7 +168,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       if (isEditMode && vehicle) {
         console.log('Updating vehicle with ID:', vehicle.id);
         await updateVehicle(vehicle.id, vehicleData);
-        toast.success('Vehicle updated successfully');
+        // toast.success('Vehicle updated successfully');
       } else {
         console.log('Creating new vehicle');
         await addVehicle(vehicleData);
