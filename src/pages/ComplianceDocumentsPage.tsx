@@ -1436,6 +1436,56 @@ const ComplianceDocumentsPage: React.FC = () => {
               No documents match the current search and validity filter.
             </div>
           )}
+          <AlertDialog
+            open={!!folderToDelete}
+            onOpenChange={(open) => {
+              if (!open) setFolderToDelete(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {folderToDelete
+                    ? `Delete folder "${
+                        folderToDelete.name.length > 100
+                          ? folderToDelete.name.substring(0, 100) + "..."
+                          : folderToDelete.name
+                      }"?`
+                    : "Delete folder?"}
+                </AlertDialogTitle>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setFolderToDelete(null)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    if (!folderToDelete) return;
+                    try {
+                      setIsDeleting(true);
+                      setDeletingFolderId(folderToDelete.folder_id);
+
+                      await deleteFolder(
+                        clientId,
+                        folderToDelete.folder_id,
+                        employeeId,
+                        folderToDelete.id
+                      );
+
+                      toast({ title: "Folder deleted" });
+                      await refresh();
+                    } finally {
+                      setDeletingFolderId(null);
+                      setIsDeleting(false);
+                      setFolderToDelete(null);
+                    }
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {loading && (
             <div className="mt-4 sm:mt-6 flex items-center justify-center py-8 sm:py-10">
               <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
