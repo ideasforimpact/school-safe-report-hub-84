@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   createPrimaryFolder,
@@ -9,7 +9,9 @@ import {
   listComplianceObjects,
   enqueueUploadMetadata,
   type ComplianceUploadFile,
+  updateComplianceValidity,
 } from '@/services/compliance/complianceService';
+import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
@@ -19,7 +21,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteFolder, deleteFileViaEdge } from '@/services/compliance/complianceService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
@@ -27,10 +30,10 @@ const ComplianceDocumentsPage: React.FC = () => {
   const employeeId = getEmployeeId();
 
   const [folders, setFolders] = useState<{ id: string; name: string; folder_id: string }[]>([]);
-  const [rootFiles, setRootFiles] = useState<{ path: string; rowId: string }[]>([]);
+  const [rootFiles, setRootFiles] = useState<{ path: string; rowId: string;is_valid?: boolean;valid_date?: Date | null;}[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
-  const [currentFolderFiles, setCurrentFolderFiles] = useState<{ path: string; rowId: string }[]>([]);
+  const [currentFolderFiles, setCurrentFolderFiles] = useState<{ path: string; rowId: string;is_valid?: boolean;valid_date?: Date }[]>([]);
   const [childFolders, setChildFolders] = useState<{ id: string; name: string; folder_id: string }[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<{ rowId: string; name: string; folderId: string }[]>([]);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
@@ -47,6 +50,98 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [folderError, setFolderError] = useState<string | null>(null);
 
+  const [validityDialogOpen, setValidityDialogOpen] = useState(false);
+  const [validityMode, setValidityMode] = useState<"none" | "date">("none");
+  const [validityDate, setValidityDate] = useState<Date | undefined>(undefined);
+  const [selectedFile, setSelectedFile] = useState<any | null>(null);
+
+  const handleSetValidityClick = (item: any) => {
+  setSelectedFile(item);
+
+  if (item.is_valid && item.valid_date) {
+    setValidityMode("date");
+
+    const existingDate =
+      item.valid_date instanceof Date
+        ? item.valid_date
+        : new Date(item.valid_date);
+
+    setValidityDate(existingDate);
+  } else {
+    setValidityMode("none");
+    setValidityDate(undefined);
+  }
+
+  setValidityDialogOpen(true);
+};
+
+  
+  const handleSaveValidity = async () => {
+    if (!selectedFile) return;
+    if (!clientId || !employeeId) return;
+
+    const isValid = validityMode === "date";
+   const validDateStr =
+    isValid && validityDate
+      ? [
+          validityDate.getFullYear(),
+          String(validityDate.getMonth() + 1).padStart(2, "0"),
+          String(validityDate.getDate()).padStart(2, "0"),
+        ].join("-") 
+      : null;
+
+    try {
+      await updateComplianceValidity({
+        rowId: selectedFile.rowId,  
+        clientId,
+        employeeId,
+        isValid,
+        validDate: validDateStr,
+      });
+
+      toast({
+        title: "Validity saved",
+        description: isValid
+          ? `This document is valid until ${validDateStr}.`
+          : "This document is set to have no expiry.",
+      });
+
+      setValidityDialogOpen(false);
+      await refresh();
+    } catch (err: any) {
+      toast({
+        title: "Failed to save validity",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getValidityStatus = (isValid?: boolean, validDate?: Date | null) => {
+    if (!isValid || !validDate) return "no-validity"; 
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+    const fileDate = new Date(validDate);
+    const fileDateStart = new Date(fileDate.getFullYear(), fileDate.getMonth(), fileDate.getDate()).getTime();
+
+    const diffDays = Math.ceil((fileDateStart - todayStart) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) return "expired";           
+    if (diffDays <= 30) return "warning";          
+    return "valid";                                
+  };
+
+
+  const formatDisplayDate = (date?: Date) => {
+    if (!date) return "";
+    const month = date.toLocaleString("en-US", { month: "long" }); 
+    const day = String(date.getDate()).padStart(2, "0");          
+    const year = date.getFullYear();                               
+    return `${month}-${day}-${year}`;
+  };
+
   const bucketName = 'compliance_documents';
   const storageBaseUrl = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL as string | undefined;
 
@@ -62,16 +157,27 @@ const ComplianceDocumentsPage: React.FC = () => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('compliance_documents')
-      .select('id, folder_exists, folder_id, parent_folder_id, files')
+      .select('id, folder_exists, folder_id, parent_folder_id, files,is_valid,valid_date')
       .eq('client_id', clientId)
       .eq('created_by', employeeId)
       .eq('is_delete', 0); // Only fetch non-deleted records
     if (error) throw error;
 
     if (!currentFolderId) {
-      // Root view: only top-level folders (parent_folder_id is null) and general files (folder_exists=false)
-      const folderRows = (data || []).filter((r: any) => r.folder_exists === true && (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined'));
-      const nonFolderRows = (data || []).filter((r: any) => r.folder_exists === false);
+      // Root view:
+      // - Folders: rows with folder_exists = true and no parent_folder_id
+      // - Files: rows with folder_exists = false and no parent_folder_id
+      const folderRows = (data || []).filter(
+        (r: any) =>
+          r.folder_exists === true &&
+          (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined')
+      );
+
+      const fileRows = (data || []).filter(
+        (r: any) =>
+          r.folder_exists === false &&
+          (r.parent_folder_id === null || typeof r.parent_folder_id === 'undefined')
+      );
 
       const folderList = folderRows.map((r: any) => {
         // Prefer structured folder_name if present
@@ -85,45 +191,70 @@ const ComplianceDocumentsPage: React.FC = () => {
         return { id: r.id as string, name, folder_id: r.folder_id as string };
       });
 
-      // Filter out deleted files (is_delete = 1 or is_delete = true)
-      const files = nonFolderRows.flatMap((r: any) => 
+      // Each non-folder row represents one or more files at root.
+      // For new data there should be exactly one file per row, but we
+      // still flatten for backward compatibility.
+      const files = fileRows.flatMap((r: any) =>
         (r.files || [])
           .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
-          .map((f: any) => ({ ...f, rowId: r.id }))
+          .map((f: any) => ({ ...f, rowId: r.id,is_valid:r.is_valid ,valid_date:r.valid_date}))
       );
+
       setFolders(folderList);
       setRootFiles(files);
       setCurrentFolderFiles([]);
       setChildFolders([]);
       setBreadcrumb([]);
     } else {
+      // Inside a folder:
+      // - current folder row is identified by folder_id
+      // - child folders: folder_exists = true and parent_folder_id = current folder row id
+      // - files: folder_exists = false and parent_folder_id = current folder row id
       const folderRow = (data || []).find((r: any) => r.folder_id === currentFolderId);
-      const filesArray = Array.isArray(folderRow?.files) && folderRow.files[0]?.files && Array.isArray(folderRow.files[0].files)
-        ? folderRow.files[0].files
-        : folderRow?.files || [];
-      // Filter out deleted files (is_delete = 1 or is_delete = true)
-      const files = filesArray
-        .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
-        .map((f: any) => ({ ...f, rowId: folderRow.id }));
-      setCurrentFolderFiles(files);
-      const children = (data || []).filter((r: any) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
-        .map((r: any) => ({ id: r.id as string, name: r.files?.[0]?.folder_name || 'Folder', folder_id: r.folder_id as string }));
-      setChildFolders(children);
 
-      // Build breadcrumb path from this row up to root using in-memory data
-      const path: { rowId: string; name: string; folderId: string }[] = [];
-      let walker: any = folderRow;
-      while (walker) {
-        path.unshift({
-          rowId: walker.id,
-          name: walker.files?.[0]?.folder_name || 'Folder',
-          folderId: walker.folder_id as string,
-        });
-        if (!walker.parent_folder_id) break;
-        walker = (data || []).find((r: any) => r.id === walker.parent_folder_id);
-        if (!walker) break;
+      if (folderRow) {
+        const fileRows = (data || []).filter(
+          (r: any) => r.folder_exists === false && r.parent_folder_id === folderRow.id
+        );
+
+        const files = fileRows.flatMap((r: any) =>
+          (r.files || [])
+            .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+            .map((f: any) => ({ ...f, rowId: r.id,is_valid:r.is_valid ,valid_date:r.valid_date}))
+        );
+        setCurrentFolderFiles(files);
+
+        const children = (data || [])
+          .filter((r: any) => r.parent_folder_id === folderRow.id && r.folder_exists === true)
+          .map((r: any) => ({
+            id: r.id as string,
+            name: r.files?.[0]?.folder_name || 'Folder',
+            folder_id: r.folder_id as string,
+          }));
+        setChildFolders(children);
+
+        // Build breadcrumb path from this row up to root using in-memory data
+        const path: { rowId: string; name: string; folderId: string }[] = [];
+        let walker: any = folderRow;
+        while (walker) {
+          path.unshift({
+            rowId: walker.id,
+            name: walker.files?.[0]?.folder_name || 'Folder',
+            folderId: walker.folder_id as string,
+          });
+          if (!walker.parent_folder_id) break;
+          walker = (data || []).find((r: any) => r.id === walker.parent_folder_id);
+          if (!walker) break;
+        }
+        setBreadcrumb(path);
+      } else {
+        // If folder row missing (should not happen), reset to root.
+        setCurrentFolderId(null);
+        setCurrentFolderName(null);
+        setChildFolders([]);
+        setCurrentFolderFiles([]);
+        setBreadcrumb([]);
       }
-      setBreadcrumb(path);
     }
     setLoading(false);
   };
@@ -545,31 +676,58 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
                 </div>
               ))}
-              {rootFiles.map((it, idx) => {
-                const parts = (it.path || '').split('/');
-                const name = parts[parts.length - 1] || 'file';
-                return (
-                  <div key={`${it.path}-${idx}`} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
-                    <div className="absolute top-2 right-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100" onClick={(e) => e.stopPropagation()}>
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => handleDownload(it.path)}>
-                            <Download className="mr-2 h-4 w-4" /> Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(it.path, it.rowId)} className="text-red-600 focus:text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    <div onClick={() => handleViewFile(it.path)} className="cursor-pointer">
-                      <File className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
-                      <div className="text-xs sm:text-sm font-medium truncate px-1">{name}</div>
+            {rootFiles.map((it, idx) => {
+                  const parts = (it.path || "").split("/");
+                  const name = parts[parts.length - 1] || "file";
+                  const status = getValidityStatus(it.is_valid, it.valid_date);
+                  return (
+                    <div key={`${it.path}-${idx}`} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
+                      <div className="absolute top-2 right-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => handleDownload(it.path)}>
+                              <Download className="mr-2 h-4 w-4" /> Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSetValidityClick(it)}>
+                              <CalendarIcon className="mr-2 h-4 w-4" /> Set Validity
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(it.path, it.rowId)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              {deletingPath === it.path ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    <div onClick={() => handleViewFile(it.path)} className="cursor-pointer relative">
+                        {(status === "valid" || status === "no-validity") && (
+                          <CheckCircle className="absolute -top-1 h-5 w-5 text-green-500 bg-white rounded-full" style={{right:"4rem"}} />
+                        )}
+                        {status === "expired" && (
+                          <XCircle className="absolute -top-1 h-5 w-5 text-red-600 bg-white rounded-full"  style={{right:"4rem"}} />
+                        )}
+                        {status === "warning" && (
+                          <AlertCircle className="absolute -top-1  h-5 w-5 text-yellow-500 bg-white rounded-full"  style={{right:"4rem"}} />
+                        )}
+                        <File className="sm:h-12 sm:w-12 text-blue-500 mx-auto mb-2" />
+                        <div className="text-xs sm:text-sm font-medium truncate px-1">{name}</div>
                     </div>
                   </div>
                 );
@@ -635,6 +793,7 @@ const ComplianceDocumentsPage: React.FC = () => {
               {currentFolderFiles.map((it, idx) => {
                 const parts = (it.path || '').split('/');
                 const name = parts[parts.length - 1] || 'file';
+                const status = getValidityStatus(it.is_valid, it.valid_date);
                 return (
                   <div key={`${it.path}-${idx}`} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                     <div className="absolute top-2 right-2">
@@ -648,6 +807,9 @@ const ComplianceDocumentsPage: React.FC = () => {
                           <DropdownMenuItem onClick={() => handleDownload(it.path)}>
                             <Download className="mr-2 h-4 w-4" /> Download
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSetValidityClick(it)}>
+                          <CalendarIcon className="mr-2 h-4 w-4" /> Set Validity
+                        </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDelete(it.path, it.rowId)} className="text-red-600 focus:text-red-600">
                             {deletingPath === it.path ? (
                               <>
@@ -662,9 +824,18 @@ const ComplianceDocumentsPage: React.FC = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <div onClick={() => handleViewFile(it.path)} className="cursor-pointer">
-                      <File className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
-                      <div className="text-xs sm:text-sm font-medium truncate px-1">{name}</div>
+                   <div onClick={() => handleViewFile(it.path)} className="cursor-pointer relative">
+                        {(status === "valid" || status === "no-validity") && (
+                          <CheckCircle className="absolute -top-1 h-5 w-5 text-green-500 bg-white rounded-full" style={{right:"4rem"}} />
+                        )}
+                        {status === "expired" && (
+                          <XCircle className="absolute -top-1 h-5 w-5 text-red-600 bg-white rounded-full"  style={{right:"4rem"}} />
+                        )}
+                        {status === "warning" && (
+                          <AlertCircle className="absolute -top-1  h-5 w-5 text-yellow-500 bg-white rounded-full"  style={{right:"4rem"}} />
+                        )}
+                        <File className="sm:h-12 sm:w-12 text-blue-500 mx-auto mb-2" />
+                        <div className="text-xs sm:text-sm font-medium truncate px-1">{name}</div>
                     </div>
                   </div>
                 );
@@ -726,6 +897,101 @@ const ComplianceDocumentsPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+
+        <Dialog open={validityDialogOpen} onOpenChange={setValidityDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-2xl font-semibold leading-none">
+                Set Validity
+              </DialogTitle>
+              <span className="text-md text-muted-foreground">
+                Choose the validity period for this document.
+              </span>
+            </DialogHeader>
+
+            <div className="mt-2 space-y-4">
+              <RadioGroup
+          value={validityMode}
+          onValueChange={(value) => setValidityMode(value as "none" | "date")}
+          className="space-y-4"
+        >
+          {/* No Validity */}
+          <div className="flex items-start gap-3">
+            <RadioGroupItem className='mt-0.5 text-secondary border-secondary' value="none" id="validity-none" />
+            <Label htmlFor="validity-none" className="text-sm font-medium leading-tight">
+              No Validity
+            </Label>
+          </div>
+
+          {/* Calendar Option */}
+          <div className="flex items-start gap-3">
+            <RadioGroupItem className='text-secondary border-secondary' value="date" id="validity-date" />
+
+            <div className="flex-1">
+              <Label
+                htmlFor="validity-date"
+                className="text-sm font-medium flex items-center gap-2"
+              >
+                <CalendarIcon className="h-4 w-4" />
+                Calendar option
+              </Label>
+
+            {validityMode === "date" && (
+              <div>
+
+                <div className="flex flex-col mt-4 items-center justify-center ">
+                  <Calendar
+                  className='border-2 rounded-sm '
+                    mode="single"
+                    selected={validityDate}
+                    onSelect={(date) => setValidityDate(date)}
+                    disabled={(date) => {
+                      const today = new Date();
+                      const startOfToday = new Date(
+                        today.getFullYear(),
+                        today.getMonth(),
+                        today.getDate()
+                      );
+                      return date < startOfToday; 
+                    }}
+                     classNames={{
+                        day_selected: "bg-secondary text-white",
+                      }}
+                    initialFocus
+                  />
+                </div>
+                
+                <p className="text-md mt-3 text-center text-muted-foreground">
+                  {validityDate
+                    ? `Selected date: ${formatDisplayDate(validityDate)}`
+                    : "Selected date: —"}
+                </p>
+              </div>
+            )}
+
+            </div>
+          </div>
+        </RadioGroup>
+
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setValidityDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="secondary"
+                className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                onClick={handleSaveValidity}
+                disabled={validityMode === "date" && !validityDate}
+                >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </Layout>
   );
 };
