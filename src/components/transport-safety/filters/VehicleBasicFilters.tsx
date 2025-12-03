@@ -64,11 +64,19 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              {vehicleTypes.map(type => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
+              {[...vehicleTypes]
+                .sort((a, b) => {
+                  const aIsOthers = a.name.toLowerCase() === 'others' || a.name.toLowerCase() === 'other';
+                  const bIsOthers = b.name.toLowerCase() === 'others' || b.name.toLowerCase() === 'other';
+                  if (aIsOthers && !bIsOthers) return 1; // a goes after b
+                  if (!aIsOthers && bIsOthers) return -1; // a goes before b
+                  return a.name.localeCompare(b.name);
+                })
+                .map((vehicleType) => (
+                  <SelectItem key={vehicleType.id} value={vehicleType.id}>
+                    {vehicleType.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

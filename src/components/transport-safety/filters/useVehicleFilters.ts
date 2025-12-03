@@ -9,7 +9,7 @@ import {
 } from '@/utils/transport-safety/documentStatusUtils';
 import { useSearchParams } from 'react-router-dom';
 import { getDocumentStatus } from '@/utils/transport-safety/documentStatusUtils';
-
+import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface DocumentStatusFilters {
   valid: boolean;
@@ -28,6 +28,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
+  const { vehicleTypes } = useVehicleTypes();
   const [documentStatusFilters, setDocumentStatusFilters] = useState<DocumentStatusFilters>({
     valid: false,
     expired: false,
@@ -74,22 +75,22 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
   }, [searchParams]);
 
   // Build vehicle type options from vehicles using foreign key + name
-  const vehicleTypes: VehicleTypeFilterOption[] = useMemo(() => {
-    const map = new Map<string, VehicleTypeFilterOption>();
+  // const vehicleTypes: VehicleTypeFilterOption[] = useMemo(() => {
+  //   const map = new Map<string, VehicleTypeFilterOption>();
 
-    vehicles.forEach((vehicle) => {
-      if (vehicle.typeId && vehicle.typeName) {
-        if (!map.has(vehicle.typeId)) {
-          map.set(vehicle.typeId, {
-            id: vehicle.typeId,
-            name: vehicle.typeName,
-          });
-        }
-      }
-    });
+  //   vehicles.forEach((vehicle) => {
+  //     if (vehicle.typeId && vehicle.typeName) {
+  //       if (!map.has(vehicle.typeId)) {
+  //         map.set(vehicle.typeId, {
+  //           id: vehicle.typeId,
+  //           name: vehicle.typeName,
+  //         });
+  //       }
+  //     }
+  //   });
 
-    return Array.from(map.values());
-  }, [vehicles]);
+  //   return Array.from(map.values());
+  // }, [vehicles]);
 
   const hasActiveDocumentStatusFilters = useMemo(() => {
     return Object.values(documentStatusFilters).some(value => value);
