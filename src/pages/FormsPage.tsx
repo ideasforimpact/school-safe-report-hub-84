@@ -1102,7 +1102,8 @@ const FormsPage = () => {
 										</Dialog>
                       )}
                       {acknowledgeSubmission && (
-                        <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null); }}>
+                        <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null);setAcknowledgeComment(''); 
+                        setAcknowledgementFiles([]); }}>
                           <DialogContent className="max-w-lg">
                             <DialogHeader>
                               <DialogTitle>Acknowledge Grievance</DialogTitle>
@@ -1149,7 +1150,11 @@ const FormsPage = () => {
                                 </div>
                               </div>
                               <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => setAcknowledgeSubmission(null)}>
+                                <Button variant="outline" onClick={() => {
+                                    setAcknowledgeSubmission(null);
+                                    setAcknowledgeComment('');
+                                    setAcknowledgementFiles([]);
+                                  }}>
                                   Cancel
                                 </Button>
                                 <Button
