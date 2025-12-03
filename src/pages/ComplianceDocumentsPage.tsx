@@ -62,7 +62,7 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [childFolders, setChildFolders] = useState<{ id: string; name: string; folder_id: string }[]>([]);
   const [breadcrumb, setBreadcrumb] = useState<{ rowId: string; name: string; folderId: string }[]>([]);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
-  const [folderName, setFolderName] = useState('General');
+  const [folderName, setFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadItems, setUploadItems] = useState<{ id: string; name: string; progress: number; status: 'uploading' | 'done' | 'error'; error?: string }[]>([]);
@@ -80,7 +80,11 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [validityMode, setValidityMode] = useState<"none" | "date">("none");
   const [validityDate, setValidityDate] = useState<Date | undefined>(undefined);
   const [selectedFile, setSelectedFile] = useState<any | null>(null);
-
+  const [folderToDelete, setFolderToDelete] = useState<{
+    id: string;
+    folder_id: string;
+    name: string;
+  } | null>(null);
   const handleSetValidityClick = (item: any) => {
   setSelectedFile(item);
 
@@ -756,7 +760,7 @@ const ComplianceDocumentsPage: React.FC = () => {
           clientId,
           employeeId,
           parentFolderId: currentFolderId,
-          folderName: currentFolderName ?? 'general',
+          folderName: currentFolderName?? '',
           objectPath,
           fileName: file.name,
           contentType: file.type || 'application/octet-stream',
@@ -1171,46 +1175,43 @@ const ComplianceDocumentsPage: React.FC = () => {
               {visibleRootFolders.map((f) => (
                 <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                   <div className="absolute top-2 right-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onSelect={(e) => e.preventDefault()}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete folder "{f.name}"?</AlertDialogTitle>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={async () => {
-                                try {
-                                  setIsDeleting(true);
-                                  setDeletingFolderId(f.folder_id);
-                                  await deleteFolder(clientId, f.folder_id, employeeId, f.id);
-                                  toast({ title: 'Folder deleted' });
-                                  await refresh();
-                                } finally {
-                                  setDeletingFolderId(null);
-                                  setIsDeleting(false);
-                                }
-                              }}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                   <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem
+                        className="text-red-600 focus:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFolderToDelete({
+                            id: f.id,
+                            folder_id: f.folder_id,
+                            name: f.name,
+                          });
+                        }}
+                      >
+                        {deletingFolderId === f.folder_id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   </div>
                   <div onClick={async () => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); await refresh(); }} className="cursor-pointer">
                     <Folder className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
-                    <div className="text-xs sm:text-sm font-medium truncate px-1">{f.name}</div>
+                    <div className="text-xs sm:text-sm font-medium truncate px-1">{f.name.length > 100 ? f.name.substring(0, 100) + "..." : f.name}</div>
                   </div>
                 </div>
               ))}
@@ -1380,6 +1381,56 @@ const ComplianceDocumentsPage: React.FC = () => {
               })}
             </div>
           )}
+          <AlertDialog
+            open={!!folderToDelete}
+            onOpenChange={(open) => {
+              if (!open) setFolderToDelete(null);
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {folderToDelete
+                    ? `Delete folder "${
+                        folderToDelete.name.length > 100
+                          ? folderToDelete.name.substring(0, 100) + "..."
+                          : folderToDelete.name
+                      }"?`
+                    : "Delete folder?"}
+                </AlertDialogTitle>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setFolderToDelete(null)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    if (!folderToDelete) return;
+                    try {
+                      setIsDeleting(true);
+                      setDeletingFolderId(folderToDelete.folder_id);
+
+                      await deleteFolder(
+                        clientId,
+                        folderToDelete.folder_id,
+                        employeeId,
+                        folderToDelete.id
+                      );
+
+                      toast({ title: "Folder deleted" });
+                      await refresh();
+                    } finally {
+                      setDeletingFolderId(null);
+                      setIsDeleting(false);
+                      setFolderToDelete(null);
+                    }
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {noResults && (
             <div className="col-span-full py-10 text-center text-gray-500 text-sm">
               No documents match the current search and validity filter.
@@ -1398,7 +1449,7 @@ const ComplianceDocumentsPage: React.FC = () => {
         setNewFolderOpen(open);
         if (!open) {
           setFolderError(null);
-          setFolderName('General');
+          setFolderName('');
         }
       }}>
         <DialogContent>
@@ -1421,6 +1472,7 @@ const ComplianceDocumentsPage: React.FC = () => {
               // Clear error when user starts typing
               if (folderError) setFolderError(null);
             }}
+            maxLength={100}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && folderName.trim() && !creatingFolder) {
                 createFolder();
@@ -1431,7 +1483,7 @@ const ComplianceDocumentsPage: React.FC = () => {
             <Button variant="outline" onClick={() => {
               setNewFolderOpen(false);
               setFolderError(null);
-              setFolderName('General');
+              setFolderName('');
             }}>Cancel</Button>
             <Button onClick={createFolder} disabled={creatingFolder || !folderName.trim()}>
               {creatingFolder ? (<span className="inline-flex items-center"><Loader2 className="h-4 w-4 mr-2 animate-spin"/>Creating…</span>) : 'Create'}
