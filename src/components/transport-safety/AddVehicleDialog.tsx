@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
+import { Switch } from '@/components/ui/switch';
 import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface AddVehicleDialogProps {
@@ -133,7 +134,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       // Ensure numeric values are properly converted from strings or set to null if empty
       // For add mode, we only require registration number. Use defaults for the rest.
       // Handle null, undefined, or falsy values as null
-      const yearValue = null
+      const yearValue = null;
       const capacityValue = data.capacity ? Number(data.capacity) : null;
 
       // Prepare the payload with proper data transformation
@@ -360,7 +361,21 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
             })()}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="active-status-toggle">Active</Label>
+              <Switch
+                id="active-status-toggle"
+                checked={(watch('status') || 'active') !== 'inactive'}
+                onCheckedChange={(checked) => {
+                  setValue('status', checked ? 'active' : 'inactive', { shouldValidate: true });
+                }}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
             <Button 
               type="button" 
               variant="outline" 
