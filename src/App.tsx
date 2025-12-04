@@ -9,6 +9,7 @@ import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 import { EmployeeProvider as EmployeeContextProvider } from './contexts/employee/EmployeeContext';
 import { BackofficeClientProvider } from '@/components/providers/BackofficeClientProvider';
+import { TransportSafetyProvider } from '@/contexts/transport-safety/TransportSafetyContext';
 import RouteGuard from '@/components/RouteGuard';
 import ModuleSyncProvider from '@/components/employee/ModuleSyncProvider';
 
@@ -109,6 +110,7 @@ function App() {
             <EmployeeVerificationProvider>
               <ModuleSyncProvider>
                 <AssessmentProvider>
+                <TransportSafetyProvider>
 
                 <Routes>
                   {/* Public routes - no authentication required */}
@@ -359,6 +361,7 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster position="top-right" closeButton={true} />
+                </TransportSafetyProvider>
                 </AssessmentProvider>
               </ModuleSyncProvider>
             </EmployeeVerificationProvider>

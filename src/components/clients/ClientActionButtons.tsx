@@ -24,13 +24,14 @@ const ClientActionButtons = ({
       >
         <Edit className="h-4 w-4" />
       </Button>
-      <Button 
+      {/* Delete button commented out for backoffice clients */}
+      {/* <Button 
         variant="ghost" 
         size="icon"
         onClick={() => onDeleteClient(client.id)}
       >
         <Trash2 className="h-4 w-4 text-destructive" />
-      </Button>
+      </Button> */}
     </div>
   );
 };
