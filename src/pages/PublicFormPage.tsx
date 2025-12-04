@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import AltchaWidget from '@/components/captcha/AltchaWidget';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
+import { notificationService } from '@/services/notification/notificationService';
 
 const PublicFormPage = () => {
   const { previewUrl } = useParams() as { previewUrl?: string };
@@ -188,9 +189,6 @@ const PublicFormPage = () => {
       const grievanceTitle = responses.title || responses.heading || responses.grievance_title || 'Grievance Submission';
       const grievanceDescription = responses.description || responses.details || responses.grievance_description || 'No description provided';
       const submitterName = submission.submitter_name || responses.name || 'Anonymous';
-
-      // Import notification service dynamically
-      const { notificationService } = await import('@/services/notification/notificationService');
 
       // Create notification data following same pattern as assessments/incidents
       const notificationData = {

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { reopenIncident } from '@/services/incident/incidentReopenService';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useIncidentReopen = () => {
   const [isReopening, setIsReopening] = useState(false);
@@ -26,8 +28,6 @@ export const useIncidentReopen = () => {
           console.log('Reopen reason:', reopenReason);
           console.log('Result incident:', result.incident);
           
-          const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
-          const { supabase } = await import('@/integrations/supabase/client');
           const queryStart = Date.now();
           // Get reopener details
           console.log('Fetching reopener details for employee ID:', reopenedBy);

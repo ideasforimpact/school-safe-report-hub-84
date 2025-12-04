@@ -20,6 +20,7 @@ import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { Student } from '@/types/student';
 import { formatFileSize } from '@/utils/fileUtils';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -230,8 +231,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
         console.log('User ID:', user.id);
         console.log('Form data owner (assigned_to):', formData.owner);
         console.log('Original owner (ownerId):', incidentData.ownerId);
-        
-        const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
         
         // Get updater details
         console.log('Fetching updater details for user ID:', user.id);

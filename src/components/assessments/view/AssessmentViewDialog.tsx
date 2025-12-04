@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentAuditTimeline from '../audit/AssessmentAuditTimeline';
+import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 
 interface AssessmentViewDialogProps {
   open: boolean;
@@ -265,8 +266,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
             email: employeeData?.email || ''
           };
 
-          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
-
           const notificationResult = await assessmentNotificationService.queueAssessmentCompletedNotification(
             {
               id: assessment.id,
@@ -344,8 +343,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
             last_name: employeeData?.lastName || '',
             email: employeeData?.email || ''
           };
-
-          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
 
           const notificationResult = await assessmentNotificationService.queueAssessmentReworkRequiredNotification(
             {

@@ -12,6 +12,7 @@ import { ArrowLeft, Save, Loader, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 
 interface Employee {
   id: string;
@@ -241,8 +242,6 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         console.log('Sending assessment assigned notification...');
         
         try {
-          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
-          
           // Get assignee details
           const { data: assignee, error: assigneeError } = await supabase
             .from('employees')

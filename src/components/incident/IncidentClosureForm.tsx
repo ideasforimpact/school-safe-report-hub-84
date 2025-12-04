@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -218,8 +219,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         console.log('=== STARTING CLOSURE NOTIFICATION ===');
         console.log('Employee ID:', state.employeeData?.id);
         console.log('Incident:', incident);
-        
-        const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
         
         // Get closer details
         console.log('Fetching closer details for employee ID:', state.employeeData?.id);
