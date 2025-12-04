@@ -20,6 +20,7 @@ const VehicleSearchBar: React.FC<VehicleSearchBarProps> = ({
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="pl-8"
+        maxLength={50}
       />
     </div>
   );

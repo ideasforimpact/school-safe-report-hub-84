@@ -278,7 +278,8 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         )}
       </div>
 
-      <div className="flex items-center space-x-2 pt-2">
+      {/* Active Client checkbox hidden for backoffice */}
+      {/* <div className="flex items-center space-x-2 pt-2">
         <Checkbox 
           id="active-status"
           checked={formData.active}
@@ -292,7 +293,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         >
           Active Client
         </label>
-      </div>
+      </div> */}
     </div>
   );
 };

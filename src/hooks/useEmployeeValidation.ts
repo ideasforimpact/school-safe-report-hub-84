@@ -24,14 +24,44 @@ export const useEmployeeValidation = () => {
     return location.pathname.startsWith('/backoffice');
   };
 
-  // Function to validate the employee
+  // Common helper to log RLS context from the current browser session
+  const logRlsContext = async () => {
+    if (state.isLoggingOut) return;
+
+    try {
+      console.log('RLS DEBUG: Starting RLS context check');
+      // Use typed RPC call only if function is present in generated types; otherwise fall back to untyped call
+      const { data: rlsDebug, error: rlsError } = await (supabase.rpc as any)('debug_current_rls_context');
+
+      if (rlsError) {
+        console.error('RLS DEBUG: debug_current_rls_context RPC failed:', {
+          message: rlsError.message,
+          code: (rlsError as any).code,
+          details: (rlsError as any).details,
+          hint: (rlsError as any).hint,
+        });
+      } else if (rlsDebug && Array.isArray(rlsDebug) && rlsDebug[0]) {
+        // Log as an object so DevTools shows an expandable structure instead of a string
+        console.log('RLS DEBUG: RLS context:', rlsDebug[0]);
+      } else {
+        console.warn('RLS DEBUG: RLS context: no data returned or empty array', {
+          rawResponse: rlsDebug,
+          isArray: Array.isArray(rlsDebug),
+        });
+      }
+    } catch (rlsErr) {
+      console.error('RLS DEBUG: Exception while fetching RLS context:', rlsErr);
+    }
+  };
+
+  // Function to validate the employee (non-backoffice paths only)
   const validateEmployee = async () => {
     // Skip validation if logging out
     if (state.isLoggingOut) {
       return;
     }
 
-    // Skip validation for backoffice paths
+    // Skip validation for backoffice paths (backoffice uses its own auth)
     if (isBackofficePath()) {
       return;
     }
@@ -62,7 +92,13 @@ export const useEmployeeValidation = () => {
         console.error('Employee validation failed:', error?.message || data?.message,error,"error",employeeData.id,employeeData.clientId,employeeData, new Date());
         toast.error('Your session has expired. Please log in again.');
         logout();
+        // Stop here if validation failed – no RLS debug in invalid state
+        return;
       }
+
+      // If validation succeeded, log RLS context for the current authenticated user.
+      // This runs in the browser with the user's JWT, so RLS policies see the real context.
+      await logRlsContext();
       
       // Update last validation timestamp
       lastValidationRef.current = Date.now();
@@ -83,7 +119,7 @@ export const useEmployeeValidation = () => {
     isValidatingRef.current = false;
   };
 
-  // Effect to set up validation on page loads and visibility changes
+  // Effect to set up validation on page loads and visibility changes (non-backoffice)
   useEffect(() => {
     // Skip for backoffice paths or if logging out
     if (isBackofficePath() || state.isLoggingOut) {
@@ -129,6 +165,16 @@ export const useEmployeeValidation = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [employeeData?.id, employeeData?.clientId, location.pathname, state.isLoggingOut]);
+
+  // Effect to log RLS context on backoffice routes whenever the path changes
+  useEffect(() => {
+    if (!isBackofficePath() || state.isLoggingOut) {
+      return;
+    }
+
+    // For backoffice: log RLS context when entering any page
+    logRlsContext();
+  }, [location.pathname, state.isLoggingOut]);
 
   // Clean up when logging out
   useEffect(() => {
