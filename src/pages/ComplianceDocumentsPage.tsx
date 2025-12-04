@@ -23,6 +23,7 @@ import { deleteFolder, deleteFileViaEdge } from '@/services/compliance/complianc
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import * as XLSX from 'xlsx';
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
@@ -49,6 +50,7 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [folderError, setFolderError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const [validityDialogOpen, setValidityDialogOpen] = useState(false);
   const [validityMode, setValidityMode] = useState<"none" | "date">("none");
@@ -262,6 +264,205 @@ const ComplianceDocumentsPage: React.FC = () => {
   useEffect(() => {
     refresh();
   }, [clientId, employeeId, currentFolderId]);
+
+  // Build a flat list of all files for export (independent of current folder view)
+  const fetchAllFilesForExport = async () => {
+    if (!clientId || !employeeId) return [];
+
+    const { data, error } = await (supabase as any)
+      .from('compliance_documents')
+      .select('id, folder_exists, files, is_valid, valid_date, is_delete, parent_folder_id')
+      .eq('client_id', clientId)
+      .eq('created_by', employeeId)
+      .eq('is_delete', 0);
+
+    if (error) throw error;
+
+    const rows: any[] = data || [];
+
+    // Map of folder row id -> folder row for building full folder chain
+    const folderMap = new Map<string, any>();
+    rows
+      .filter((r: any) => r.folder_exists === true)
+      .forEach((r: any) => {
+        folderMap.set(r.id as string, r);
+      });
+
+    // Helper to compute full folder path (Folder1/Folder2/...)
+    const buildFolderPath = (row: any): string => {
+      const segments: string[] = [];
+      let parentId: string | null | undefined = row.parent_folder_id;
+
+      while (parentId) {
+        const parent = folderMap.get(parentId);
+        if (!parent) break;
+
+        // Derive folder name similar to UI logic
+        let folderName: string | undefined = parent.files?.[0]?.folder_name;
+        if (!folderName) {
+          const firstPath: string | undefined = parent.files?.[0]?.path;
+          if (firstPath) {
+            const parts = firstPath.split('/');
+            // second segment is usually folder name after clientId
+            folderName = parts.length >= 2 ? parts[1] : 'Folder';
+          }
+        }
+        folderName = folderName || 'Folder';
+
+        // Remove any trailing "_<id>" from folderName
+        const underscoreIdx = folderName.lastIndexOf('_');
+        if (underscoreIdx > 0) {
+          folderName = folderName.slice(0, underscoreIdx);
+        }
+
+        segments.unshift(folderName);
+        parentId = parent.parent_folder_id;
+      }
+
+      return segments.join('/');
+    };
+
+    const fileRecords =
+      rows
+        .filter((r: any) => r.folder_exists === false)
+        .flatMap((r: any) => {
+          const baseFolderPath = buildFolderPath(r);
+
+          return (r.files || [])
+            .filter((f: any) => !f.is_delete || f.is_delete === 0 || f.is_delete === false)
+            .map((f: any) => {
+              const fullStoragePath: string = f.path as string;
+              const parts = (fullStoragePath || '').split('/');
+              const fileName = parts[parts.length - 1] || '';
+
+              const displayPath = baseFolderPath
+                ? `${baseFolderPath}/${fileName}`
+                : fileName;
+
+              return {
+                path: fullStoragePath,
+                displayPath,
+                is_valid: r.is_valid as boolean | null | undefined,
+                valid_date: r.valid_date as string | null,
+              };
+            });
+        });
+
+    return fileRecords;
+  };
+
+  const handleExportFiles = async () => {
+    try {
+      setExporting(true);
+
+      const allFiles = await fetchAllFilesForExport();
+
+      if (allFiles.length === 0) {
+        toast({
+          title: 'No files to export',
+          description: 'There are no compliance documents available for export.',
+        });
+        return;
+      }
+
+      // Separate files by validity flag
+      const withValidity = allFiles.filter(
+        (f: any) => f.is_valid && f.valid_date
+      );
+      const withoutValidity = allFiles.filter(
+        (f: any) => !f.is_valid || !f.valid_date
+      );
+
+      // Sort files with validity by ascending validity date
+      withValidity.sort((a: any, b: any) => {
+        const da = a.valid_date ? new Date(a.valid_date).getTime() : 0;
+        const db = b.valid_date ? new Date(b.valid_date).getTime() : 0;
+        return da - db;
+      });
+
+      const orderedFiles = [...withValidity, ...withoutValidity];
+
+      const exportRows = orderedFiles.map((file: any) => {
+        // displayPath already contains Folder1/Folder2/FileName with cleaned folder names
+        const fullDisplayPath: string = file.displayPath || '';
+
+        const rawIsValid: boolean | null | undefined = file.is_valid;
+        const rawDate: Date | null = file.valid_date ? new Date(file.valid_date) : null;
+
+        // Validity Flag: Yes if explicit validity with date; No otherwise
+        const validityFlag = rawIsValid && rawDate ? 'Yes' : 'No';
+
+        // Validity Date: only when explicit validity is set
+        const validityDateStr =
+          rawIsValid && rawDate
+            ? rawDate.toISOString().split('T')[0]
+            : '';
+
+        // Validity Status rules:
+        // - is_valid is false or null => "Valid" (no explicit expiry, considered valid)
+        // - is_valid true with date:
+        //     * > 30 days remaining -> "Valid"
+        //     * 1..30 days remaining -> "Nearing Invalid"
+        //     * <= 0 days remaining -> "Invalid"
+        let validityStatus = '';
+        if (!rawIsValid || !rawDate) {
+          validityStatus = 'Valid';
+        } else {
+          const today = new Date();
+          const todayStart = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+          ).getTime();
+
+          const fileDateStart = new Date(
+            rawDate.getFullYear(),
+            rawDate.getMonth(),
+            rawDate.getDate()
+          ).getTime();
+
+          const diffDays = Math.ceil((fileDateStart - todayStart) / (1000 * 60 * 60 * 24));
+
+          if (diffDays <= 0) {
+            validityStatus = 'Invalid';
+          } else if (diffDays <= 30) {
+            validityStatus = 'Nearing Invalid';
+          } else {
+            validityStatus = 'Valid';
+          }
+        }
+
+        return {
+          'File name (full directory path)': fullDisplayPath,
+          'Validity Flag': validityFlag,
+          'Validity Date': validityDateStr,
+          'Validity Status': validityStatus,
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'ComplianceDocuments');
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const fileName = `Compliance_Documents_Export_${todayStr}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      toast({
+        title: 'Export started',
+        description: 'Your compliance documents have been exported successfully.',
+      });
+    } catch (error: any) {
+      console.error('Error exporting compliance documents:', error);
+      toast({
+        title: 'Export failed',
+        description: error?.message || 'Unable to export compliance documents. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Realtime sync: refresh UI when metadata worker updates the table
   useEffect(() => {
@@ -600,9 +801,45 @@ const ComplianceDocumentsPage: React.FC = () => {
                   ))}
                 </div>
               )}
-              <Button variant="secondary" onClick={() => setNewFolderOpen(true)} className="w-full sm:w-auto">
-                <FolderPlus className="h-4 w-4 mr-2"/> <span className="hidden sm:inline">New</span> Folder
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setNewFolderOpen(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <FolderPlus className="h-4 w-4 mr-2" />{' '}
+                  <span className="hidden sm:inline">New</span> Folder
+                </Button>
+                {/* Export Files button with confirmation */}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      disabled={exporting}
+                    >
+                      Export Files
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Do you want to download all files with their validity status?
+                      </AlertDialogTitle>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          await handleExportFiles();
+                        }}
+                      >
+                        Download
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </div>
 
