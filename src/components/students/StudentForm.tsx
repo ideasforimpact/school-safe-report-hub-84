@@ -186,6 +186,9 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   };
 
   // Fetch campuses, grades, and sections from Supabase - filtered by client_id
+  // Note: we only depend on clientId here so we don't re-run this effect
+  // after submit/save when defaultValues may change, which was causing a
+  // brief "Loading educational structure data..." flash.
   useEffect(() => {
     const fetchEducationalStructure = async () => {
       if (!employeeData?.clientId) {
@@ -285,7 +288,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
     };
     
     fetchEducationalStructure();
-  }, [employeeData?.clientId, defaultValues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeData?.clientId]);
 
   // Filter grades based on selected campus
   useEffect(() => {
