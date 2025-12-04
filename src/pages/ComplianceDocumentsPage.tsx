@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   createPrimaryFolder,
@@ -12,6 +13,7 @@ import {
   updateComplianceValidity,
 } from '@/services/compliance/complianceService';
 import { Calendar } from "@/components/ui/calendar";
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
@@ -29,7 +31,29 @@ const ComplianceDocumentsPage: React.FC = () => {
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
   const { getEmployeeId } = useEmployeeAccess();
   const employeeId = getEmployeeId();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchParams] = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [allFiles, setAllFiles] = useState<{
+    path: string;
+    rowId: string;
+    is_valid?: boolean;
+    valid_date?: Date | null;
+    fileName: string;
+    folderPath: string;        
+    fullPath: string;           
+    parentFolderId?: string | null;       
+    parentFolderFolderId?: string | null;
+    parentFolderName?: string | null;      
+  }[]>([]);
 
+  const [allFolders, setAllFolders] = useState<{
+    id: string;
+    name: string;
+    folder_id: string;
+    parent_folder_id: string | null;
+    fullPath: string;
+  }[]>([]);
   const [folders, setFolders] = useState<{ id: string; name: string; folder_id: string }[]>([]);
   const [rootFiles, setRootFiles] = useState<{ path: string; rowId: string;is_valid?: boolean;valid_date?: Date | null;}[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -135,6 +159,103 @@ const ComplianceDocumentsPage: React.FC = () => {
     return "valid";                                
   };
 
+  const getFileNameFromPath = (path: string) => {
+    const parts = (path || "").split("/");
+    return parts[parts.length - 1] || "file";
+  };
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const isSearchActive = !!normalizedSearch && !currentFolderId;
+
+  const matchesStatusFilter = (isValid?: boolean, validDate?: Date | null) => {
+    const status = getValidityStatus(isValid, validDate); 
+
+    if (statusFilter === "all") return true;
+
+    if (statusFilter === "valid") {
+      return status === "valid" || status === "no-validity";
+    }
+    if (statusFilter === "warning") {
+      return status === "warning";
+    }
+    if (statusFilter === "expired") {
+      return status === "expired";
+    }
+    return true;
+  };
+
+  const filterFileList = <T extends { path: string; is_valid?: boolean; valid_date?: any }>(
+    files: T[]
+  ): T[] => {
+    return files.filter((it) => {
+      const name = getFileNameFromPath(it.path).toLowerCase();
+      const matchesSearch =
+        !normalizedSearch || name.includes(normalizedSearch);
+
+      const matchesStatus = matchesStatusFilter(
+        it.is_valid,
+        it.valid_date as Date | null
+      );
+
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  const filterFolderList = <T extends { name: string }>(list: T[]): T[] => {
+    if (!normalizedSearch) return list;
+    return list.filter((f) =>
+      f.name.toLowerCase().includes(normalizedSearch)
+    );
+  };
+
+  const visibleRootFolders = !currentFolderId ? filterFolderList(isSearchActive ? allFolders : folders) : folders;
+  const visibleRootFiles = !currentFolderId ? filterFileList(isSearchActive ? allFiles : rootFiles) : rootFiles;
+  const visibleChildFolders = currentFolderId ? filterFolderList(childFolders) : childFolders;
+  const visibleCurrentFolderFiles = currentFolderId ? filterFileList(currentFolderFiles as any) : currentFolderFiles;
+  const isGlobalSearchActive = !currentFolderId && !!normalizedSearch;
+  const visibleGlobalFiles = isGlobalSearchActive ? filterFileList(allFiles) : [];
+    const noResults =
+    (visibleRootFolders.length === 0 &&
+     visibleRootFiles.length === 0 &&
+     !currentFolderId &&
+     normalizedSearch) ||
+
+    (currentFolderId &&
+     visibleChildFolders.length === 0 &&
+     visibleCurrentFolderFiles.length === 0 &&
+     normalizedSearch);
+    const searchResults = React.useMemo(() => {
+      if (!normalizedSearch || currentFolderId) return [];
+
+      const folderMatches = filterFolderList(allFolders);
+
+      const folderResults = folderMatches.slice(0, 5).map((f) => ({
+        type: 'folder' as const,
+        id: f.id,
+        name: f.name,
+        folderId: f.folder_id,
+        folderName: f.name,
+        fullPath: f.fullPath || f.name,
+      }));
+
+      const fileMatches = filterFileList(allFiles);
+      const remainingSlots = Math.max(10 - folderResults.length, 0);
+
+      const fileResults = fileMatches.slice(0, remainingSlots).map((f, idx) => ({
+        type: 'file' as const,
+        id: `${f.rowId}-${idx}`,
+        name: f.fileName || getFileNameFromPath(f.path),
+        path: f.path,
+        fullPath: f.fullPath || f.path,
+        folderId: f.parentFolderFolderId || null,
+        folderName: f.parentFolderName || null,
+      }));
+
+      return [...folderResults, ...fileResults];
+    }, [normalizedSearch, currentFolderId, allFolders, allFiles, statusFilter]);
+
+  
+  const showSearchDropdown =!!normalizedSearch && !currentFolderId && searchResults.length > 0;
 
   const formatDisplayDate = (date?: Date) => {
     if (!date) return "";
@@ -164,6 +285,102 @@ const ComplianceDocumentsPage: React.FC = () => {
       .eq('created_by', employeeId)
       .eq('is_delete', 0); // Only fetch non-deleted records
     if (error) throw error;
+      
+    const folderRowsAll = (data || []).filter(
+      (r: any) => r.folder_exists === true
+    );
+
+    const folderRowById: Record<string, any> = {};
+    folderRowsAll.forEach((r: any) => {
+      folderRowById[r.id] = r;
+    });
+
+    const buildFolderPath = (row: any): string => {
+      const segments: string[] = [];
+      let current: any = row;
+      while (current) {
+        const nm: string =
+          current.files?.[0]?.folder_name ||
+          (() => {
+            const fp: string | undefined = current.files?.[0]?.path;
+            const parts = (fp || '').split('/');
+            return parts.length >= 2 ? parts[1] : 'Folder';
+          })();
+
+        segments.unshift(nm);
+        if (!current.parent_folder_id) break;
+        current = folderRowById[current.parent_folder_id];
+        if (!current) break;
+      }
+      return segments.join(' / ');
+    };
+
+    const allFolderList = folderRowsAll.map((r: any) => {
+      const structuredName: string | undefined = r.files?.[0]?.folder_name;
+      const firstPath: string | undefined = r.files?.[0]?.path;
+      const parts = (firstPath || '').split('/');
+      const fallbackName = parts.length >= 2 ? parts[1] : 'Folder';
+
+      const name = structuredName || fallbackName;
+      const folderPath = buildFolderPath(r); 
+      const fullPath = folderPath ? `Root / ${folderPath}` : 'Home';
+
+      return {
+        id: r.id as string,
+        name,
+        folder_id: r.folder_id as string,
+        parent_folder_id: (r.parent_folder_id ?? null) as string | null,
+        fullPath,
+      };
+    });
+
+    setAllFolders(allFolderList);
+
+    const allFileRows = (data || []).filter(
+      (r: any) => r.folder_exists === false
+    );
+
+    const allFilesFlattened = allFileRows.flatMap((r: any) => {
+      const parentFolder = r.parent_folder_id
+        ? folderRowById[r.parent_folder_id]
+        : null;
+      const folderPath = parentFolder ? buildFolderPath(parentFolder) : '';
+      return (r.files || [])
+        .filter(
+          (f: any) =>
+            !f.is_delete || f.is_delete === 0 || f.is_delete === false
+        ).map((f: any) => {
+          const fileName =
+            (f.path || '').split('/').pop() || f.fileName || 'file';
+          const fullPath = folderPath
+            ? `Root / ${folderPath} / ${fileName}`
+            : `Root / ${fileName}`;
+
+          const parentFolderName = parentFolder
+            ? parentFolder.files?.[0]?.folder_name ||
+              (() => {
+                const fp: string | undefined = parentFolder.files?.[0]?.path;
+                const parts = (fp || '').split('/');
+                return parts.length >= 2 ? parts[1] : 'Folder';
+              })()
+            : null;
+
+          return {
+            ...f,
+            rowId: r.id,
+            is_valid: r.is_valid,
+            valid_date: r.valid_date,
+            fileName,
+            folderPath,
+            fullPath,
+            parentFolderId: parentFolder ? String(parentFolder.id) : null,
+            parentFolderFolderId: parentFolder ? (parentFolder.folder_id as string) : null,
+            parentFolderName,
+          };
+        });
+    });
+
+    setAllFiles(allFilesFlattened);
 
     if (!currentFolderId) {
       // Root view:
@@ -713,6 +930,27 @@ const ComplianceDocumentsPage: React.FC = () => {
     }
   };
 
+   useEffect(() => {
+    const filterParam = searchParams.get("filter");
+
+    if (!filterParam) {
+      setStatusFilter("all");
+      return;
+    }
+
+    // Map URL query -> dropdown values
+    if (filterParam === "valid") {
+      setStatusFilter("valid");
+    } else if (filterParam === "nearing_invalid") {
+      setStatusFilter("warning");
+    } else if (filterParam === "invalid") {
+      setStatusFilter("expired");
+    } else {
+      setStatusFilter("all");
+    }
+  }, [searchParams]);
+
+
   return (
     <Layout>
       {/* Global uploading overlay */}
@@ -842,7 +1080,70 @@ const ComplianceDocumentsPage: React.FC = () => {
               </div>
             </div>
           </div>
-
+          <div className="flex gap-4 mt-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search documents..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              {showSearchDropdown && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-lg max-h-64 overflow-auto">
+                    {searchResults.map((result) => (
+                      <button
+                        key={`${result.type}-${result.id}`}
+                        type="button"
+                        className="w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-gray-50"
+                        onClick={() => {
+                          if (result.type === 'folder') {
+                            setCurrentFolderId(result.folderId);
+                            setCurrentFolderName(result.folderName || result.name);
+                          } else {
+                            if (result.folderId) {
+                              setCurrentFolderId(result.folderId);
+                              setCurrentFolderName(result.folderName || '');
+                            } else {
+                              setCurrentFolderId(null);
+                              setCurrentFolderName(null);
+                            }
+                          }
+                          setSearchTerm('');
+                        }}
+                      >
+                        <span className="mt-0.5">
+                          {result.type === 'folder' ? (
+                            <Folder className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <File className="h-4 w-4 text-blue-500" />
+                          )}
+                        </span>
+                        <span className="flex flex-col min-w-0">
+                          <span className="text-xs sm:text-sm font-medium truncate">
+                            {result.name}
+                          </span>
+                          <span className="text-[10px] sm:text-xs text-gray-500 truncate">
+                            {result.fullPath}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Documents</SelectItem>
+                  <SelectItem value="valid">Valid</SelectItem>
+                  <SelectItem value="warning">Nearing Invalid</SelectItem>
+                  <SelectItem value="expired">Invalid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           {/* Error Message Alert */}
           {uploadError && (
             <Alert variant="destructive" className="mt-4 sm:mt-6">
@@ -867,7 +1168,7 @@ const ComplianceDocumentsPage: React.FC = () => {
           {/* Grid of folders/files */}
           {!currentFolderId && (
             <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
-              {folders.map((f) => (
+              {visibleRootFolders.map((f) => (
                 <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
@@ -913,7 +1214,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
                 </div>
               ))}
-            {rootFiles.map((it, idx) => {
+            {(isGlobalSearchActive ? visibleGlobalFiles : visibleRootFiles).map((it, idx) => {
                   const parts = (it.path || "").split("/");
                   const name = parts[parts.length - 1] || "file";
                   const status = getValidityStatus(it.is_valid, it.valid_date);
@@ -975,7 +1276,7 @@ const ComplianceDocumentsPage: React.FC = () => {
           {currentFolderId && (
             <div className="mt-4 sm:mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
               {/* child folders */}
-              {childFolders.map((f) => (
+              {visibleChildFolders.map((f) => (
                 <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
@@ -1027,7 +1328,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
               </div>
             ))}
-              {currentFolderFiles.map((it, idx) => {
+              {visibleCurrentFolderFiles.map((it, idx) => {
                 const parts = (it.path || '').split('/');
                 const name = parts[parts.length - 1] || 'file';
                 const status = getValidityStatus(it.is_valid, it.valid_date);
@@ -1079,7 +1380,11 @@ const ComplianceDocumentsPage: React.FC = () => {
               })}
             </div>
           )}
-
+          {noResults && (
+            <div className="col-span-full py-10 text-center text-gray-500 text-sm">
+              No documents match the current search and validity filter.
+            </div>
+          )}
           {loading && (
             <div className="mt-4 sm:mt-6 flex items-center justify-center py-8 sm:py-10">
               <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
