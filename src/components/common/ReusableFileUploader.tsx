@@ -6,7 +6,13 @@ import { FileItem } from '@/types/fileTypes';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FileListItem from '../file/FileListItem';
 import { formatFileSize } from '@/utils/fileUtils';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 interface ReusableFileUploaderProps {
   onFilesChange: (files: FileItem[]) => void;
   initialFiles?: FileItem[];
@@ -380,47 +386,28 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
         </div>
       )}
        {/* Simple preview dialog (example using shadcn Dialog) */}
-        {previewFile && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg max-w-3xl max-h-[90vh] p-4 shadow-lg relative"> {/* Added relative here */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex flex-col flex-grow pr-4">
-                  <h1 className="font-semibold tracking-tight text-lg">
-                    {previewFile.name}
-                  </h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {formatFileSize(previewFile.size)}
-                  </p>
-                </div>
-              </div>
+       {previewFile && (
+        <div className=''>
 
-              <Button
-                type='button'
-                onClick={() => setPreviewFile(null)}
-                className="
-                    absolute right-4 top-4  rounded-sm opacity-70 
-                    focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-whilte hover:bg-white"      
-                    style={{borderRadius:12,padding:1,height:18,color:'black' }}>
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </Button>
-
-              {previewFile.type?.startsWith('image/') ? (
-                <img
-                  src={previewFile.base64}
-                  alt={previewFile.name}
-                  className="max-h-[70vh] max-w-full object-contain"
-                />
-              ) : (
-                <iframe
-                  src={previewFile.base64}
-                  className="w-[80vw] h-[70vh]"
-                  title={previewFile.name}
-                />
-              )}
-            </div>
-          </div>
-        )}
+        <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
+           <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg">{previewFile.name}</DialogTitle>
+                      <DialogDescription>
+                        {formatFileSize(previewFile.size)}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-center items-center py-4">
+                      <img 
+                        src={previewFile.base64} 
+                        alt={previewFile.name} 
+                        className="max-h-[70vh] max-w-full object-contain rounded-md"
+                      />
+                    </div>
+                  </DialogContent>
+        </Dialog>
+        </div>
+      )}
       {/* File Upload Area */}
       <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center w-full overflow-hidden">
         <input 
