@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 
 interface Answer {
   questionId: string;
@@ -432,8 +433,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             email: employeeData?.email || ''
           };
 
-          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
-          
           const notificationResult = await assessmentNotificationService.queueAssessmentSubmittedNotification(
             {
               id: fullAssessment.id,

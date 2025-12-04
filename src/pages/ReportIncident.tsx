@@ -21,6 +21,7 @@ import { incidentDataService } from '@/services/incident/incidentDataService';
 import { TicketIdService } from '@/services/incident/ticketIdService';
 import { FileItem } from '@/types/fileTypes';
 import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -286,8 +287,7 @@ const ReportIncident = () => {
         });
         
         try {
-          const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
-          console.log('Notification service imported successfully');
+          console.log('Notification service available, preparing to send notification');
           
           // Get assignee details
           const { data: assignee, error: assigneeError } = await supabase
