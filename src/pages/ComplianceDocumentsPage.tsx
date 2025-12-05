@@ -173,7 +173,6 @@ const ComplianceDocumentsPage: React.FC = () => {
   };
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  const isSearchActive = !!normalizedSearch && !currentFolderId;
 
   const matchesStatusFilter = (isValid?: boolean, validDate?: Date | null) => {
     const status = getValidityStatus(isValid, validDate); 
