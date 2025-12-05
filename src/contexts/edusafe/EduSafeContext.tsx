@@ -6,10 +6,38 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
+// Helper function to extract filename from document_url
+const extractFileNameFromUrl = (url: string | undefined | null, fallbackTitle: string): string => {
+  if (!url) return fallbackTitle;
+  
+  try {
+    // Extract filename from URL
+    const urlParts = url.split('/');
+    const fileNameWithParams = urlParts[urlParts.length - 1];
+    // Remove query parameters if any
+    let fileName = fileNameWithParams.split('?')[0];
+    
+    // If we got a meaningful filename (has an extension), use it
+    if (fileName && fileName.includes('.')) {
+      // Decode URL encoding
+      fileName = decodeURIComponent(fileName);
+      // Convert underscores back to spaces for better readability (since we sanitize spaces to underscores)
+      // But only if it looks like it was sanitized (has underscores and no original spaces)
+      // We'll keep underscores as-is to preserve original filenames that had underscores
+      return fileName;
+    }
+  } catch (error) {
+    console.error('Error extracting filename from URL:', error);
+  }
+  
+  // Fallback to title if we can't extract a good filename
+  return fallbackTitle;
+};
+
 interface EduSafeContextType {
   resources: EduSafeResource[];
   addResource: (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => Promise<void>;
-  updateResource: (id: string, updatedResource: Partial<EduSafeResource>) => Promise<void>;
+  updateResource: (id: string, updatedResource: Partial<Omit<EduSafeResource, 'file'>> & { file?: File }) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   getResourceById: (id: string) => EduSafeResource | undefined;
   downloadResource: (resource: EduSafeResource) => void;
@@ -84,7 +112,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           youtube_link: (resource as any)?.youtube_link as string | undefined,
           file: {
             id: `file-${resource.id}`,
-            name: resource.title,
+            name: extractFileNameFromUrl(resource.document_url, resource.title),
             type: 'application/pdf',
             size: 0,
             base64: resource.document_url
@@ -145,7 +173,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             youtube_link: youtubeLink,
             file: {
               id: `file-${record.id}`,
-              name: record.title,
+              name: extractFileNameFromUrl(record.document_url, record.title),
               type: 'application/pdf',
               size: 0,
               base64: record.document_url
@@ -172,7 +200,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
             youtube_link: youtubeLink,
             file: {
               id: `file-backoffice-${record.id}`,
-              name: record.title,
+              name: extractFileNameFromUrl(record.document_url, record.title),
               type: 'application/pdf',
               size: 0,
               base64: record.document_url
@@ -234,21 +262,55 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const updateResource = async (id: string, updatedResource: Partial<EduSafeResource>) => {
+  const updateResource = async (id: string, updatedResource: Partial<Omit<EduSafeResource, 'file'>> & { file?: File }) => {
     try {
-      const updateData: any = {};
-      
-      if (updatedResource.title !== undefined) updateData.title = updatedResource.title;
-      if (updatedResource.description !== undefined) updateData.description = updatedResource.description;
-      if (updatedResource.category !== undefined) updateData.category = updatedResource.category;
-      if (updatedResource.tags !== undefined) updateData.tags = updatedResource.tags;
+      if (!user?.clientId) {
+        throw new Error('No client ID found');
+      }
 
-      const { error } = await supabase
-        .from('edusafe_resources')
-        .update(updateData)
-        .eq('id', id);
+      // If a file is provided, use FormData and call the edge function
+      if (updatedResource.file) {
+        const formData = new FormData();
+        formData.append('file', updatedResource.file);
+        formData.append('title', updatedResource.title || '');
+        formData.append('description', updatedResource.description || '');
+        formData.append('category', updatedResource.category || 'posters');
+        formData.append('tags', JSON.stringify(updatedResource.tags || []));
+        formData.append('client_id', user.clientId);
+        formData.append('resource_id', id);
+
+        const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
+          method: 'PUT',
+          body: formData
+        });
+
+        if (error) throw error;
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to update resource');
+        }
+
+        // toast.success('Resource updated successfully');
+        await fetchResources(); // Refresh the list
+        return;
+      }
+
+      // If no file, update metadata only using the edge function with query params
+      const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
+        method: 'PUT',
+        body: {
+          id: id,
+          client_id: user.clientId,
+          title: updatedResource.title,
+          description: updatedResource.description,
+          category: updatedResource.category,
+          tags: updatedResource.tags
+        }
+      });
 
       if (error) throw error;
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update resource');
+      }
 
       toast.success('Resource updated successfully');
       await fetchResources(); // Refresh the list

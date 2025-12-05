@@ -8,6 +8,63 @@ const supabase = createClient(
   getSupabaseServiceRoleKey()
 )
 
+// Helper function to sanitize filename for storage
+function sanitizeFileName(fileName: string): string {
+  // Get the base name and extension
+  const lastDot = fileName.lastIndexOf('.')
+  const baseName = lastDot > 0 ? fileName.substring(0, lastDot) : fileName
+  const extension = lastDot > 0 ? fileName.substring(lastDot + 1) : ''
+  
+  // Sanitize the base name: remove/replace special characters, keep spaces as underscores or hyphens
+  // Allow: letters, numbers, spaces, hyphens, underscores, dots
+  let sanitized = baseName
+    .replace(/[^a-zA-Z0-9\s\-_.]/g, '') // Remove special characters except spaces, hyphens, underscores, dots
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .replace(/_{2,}/g, '_') // Replace multiple underscores with single
+    .trim()
+  
+  // Ensure we have a valid filename
+  if (!sanitized || sanitized.length === 0) {
+    sanitized = 'file'
+  }
+  
+  // Limit length to avoid issues
+  if (sanitized.length > 200) {
+    sanitized = sanitized.substring(0, 200)
+  }
+  
+  // Add extension if it exists
+  return extension ? `${sanitized}.${extension}` : sanitized
+}
+
+// Helper function to generate unique filename preserving original name
+async function getUniqueFileName(clientId: string, originalFileName: string): Promise<string> {
+  const sanitized = sanitizeFileName(originalFileName)
+  const lastDot = sanitized.lastIndexOf('.')
+  const baseName = lastDot > 0 ? sanitized.substring(0, lastDot) : sanitized
+  const extension = lastDot > 0 ? sanitized.substring(lastDot + 1) : ''
+  
+  // Try to use the original sanitized name first
+  const filePath = `${clientId}/${sanitized}`
+  const { data: existingFile } = await supabase.storage
+    .from('edusafe-resources')
+    .list(clientId, {
+      limit: 1000
+    })
+  
+  // Check if a file with the same name exists
+  const fileExists = existingFile?.some((file: any) => file.name === sanitized) || false
+  
+  // If file doesn't exist, use original sanitized name
+  if (!fileExists) {
+    return sanitized
+  }
+  
+  // If file exists, add a short random suffix to make it unique while preserving readability
+  const randomSuffix = Math.random().toString(36).substring(2, 6) // 4 character random string
+  return extension ? `${baseName}_${randomSuffix}.${extension}` : `${baseName}_${randomSuffix}`
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -148,9 +205,8 @@ async function handleUpload(req: Request) {
   
   // Only upload file if it exists (not required for YouTube category)
   if (file) {
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+    // Use original filename (sanitized) with uniqueness check
+    const fileName = await getUniqueFileName(clientId, file.name)
     const filePath = `${clientId}/${fileName}`
 
     // Upload file to storage
@@ -246,8 +302,59 @@ async function handleUpload(req: Request) {
 }
 
 async function handleUpdate(req: Request, url: URL) {
-  const resourceId = url.searchParams.get('id')
-  const clientId = url.searchParams.get('client_id')
+  // Try to get from query params first (for backward compatibility)
+  let resourceId = url.searchParams.get('id')
+  let clientId = url.searchParams.get('client_id')
+  
+  // Check if request is FormData (file upload) or JSON
+  const contentType = req.headers.get('content-type') || ''
+  const isFormData = contentType.includes('multipart/form-data')
+  
+  let title: string | undefined
+  let description: string | undefined
+  let category: string | undefined
+  let tags: string[] | undefined
+  let file: File | null = null
+
+  if (isFormData) {
+    // Handle FormData (with file upload)
+    const formData = await req.formData()
+    file = formData.get('file') as File | null
+    title = formData.get('title') as string | null || undefined
+    description = formData.get('description') as string | null || undefined
+    category = formData.get('category') as string | null || undefined
+    const tagsStr = formData.get('tags') as string | null
+    if (tagsStr) {
+      try {
+        tags = JSON.parse(tagsStr)
+      } catch {
+        tags = tagsStr.split(',').map(tag => tag.trim()).filter(Boolean)
+      }
+    }
+    
+    // Get resourceId and clientId from FormData if not in query params
+    if (!resourceId) {
+      resourceId = formData.get('resource_id') as string | null
+    }
+    if (!clientId) {
+      clientId = formData.get('client_id') as string | null
+    }
+  } else {
+    // Handle JSON (metadata only)
+    const body = await req.json()
+    title = body.title
+    description = body.description
+    category = body.category
+    tags = body.tags
+    
+    // Get resourceId and clientId from body if not in query params
+    if (!resourceId) {
+      resourceId = body.id || body.resource_id
+    }
+    if (!clientId) {
+      clientId = body.client_id
+    }
+  }
 
   if (!resourceId || !clientId) {
     return new Response(
@@ -259,15 +366,12 @@ async function handleUpdate(req: Request, url: URL) {
     )
   }
 
-  const body = await req.json()
-  const { title, description, category, tags } = body
-
-  console.log('Received update request for resource:', resourceId, 'client:', clientId)
+  console.log('Received update request for resource:', resourceId, 'client:', clientId, 'hasFile:', !!file)
 
   // Validate that the resource belongs to the client
   const { data: existingResource, error: fetchError } = await supabase
     .from('edusafe_resources')
-    .select('id, client_id')
+    .select('id, client_id, document_url')
     .eq('id', resourceId)
     .eq('client_id', clientId)
     .single()
@@ -283,16 +387,72 @@ async function handleUpdate(req: Request, url: URL) {
     )
   }
 
+  // Handle file upload if provided
+  let documentUrl = existingResource.document_url
+  if (file) {
+    try {
+      // Use original filename (sanitized) with uniqueness check
+      const fileName = await getUniqueFileName(clientId, file.name)
+      const filePath = `${clientId}/${fileName}`
+
+      // Upload file to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('edusafe-resources')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to upload file to storage' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      console.log('New file uploaded to storage:', uploadData.path)
+
+      // Get public URL for the new uploaded file
+      const { data: urlData } = supabase.storage
+        .from('edusafe-resources')
+        .getPublicUrl(filePath)
+      
+      documentUrl = urlData.publicUrl
+      console.log('New document URL:', documentUrl)
+      // Note: Old file is kept in storage - we don't delete it
+    } catch (storageError) {
+      console.error('Error uploading file:', storageError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to upload file' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+  }
+
+  // Prepare update data
+  const updateData: any = {
+    updated_at: new Date().toISOString()
+  }
+
+  if (title !== undefined) updateData.title = title
+  if (description !== undefined) updateData.description = description
+  if (category !== undefined) updateData.category = category
+  if (tags !== undefined) updateData.tags = tags
+  if (documentUrl && documentUrl !== existingResource.document_url) {
+    updateData.document_url = documentUrl
+  }
+
   // Update the resource
   const { data: updatedResource, error: updateError } = await supabase
     .from('edusafe_resources')
-    .update({
-      title: title || undefined,
-      description: description || undefined,
-      category: category || undefined,
-      tags: tags || undefined,
-      updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', resourceId)
     .eq('client_id', clientId)
     .select()
