@@ -261,8 +261,7 @@ const ComplianceDocumentsPage: React.FC = () => {
       const folderResults = allFolders
         .filter((f) => {
           const name = (f.name || '').toLowerCase();
-          const fullPath = (f.fullPath || '').toLowerCase();
-          return name.includes(term) || fullPath.includes(term);
+          return name.includes(term);
         })
         .slice(0, 5)
         .map((f) => ({
@@ -277,8 +276,7 @@ const ComplianceDocumentsPage: React.FC = () => {
       const fileResults = allFiles
         .filter((f: any) => {
           const name = (f.fileName || getFileNameFromPath(f.path)).toLowerCase();
-          const fullPath = (f.fullPath || f.path || '').toLowerCase();
-          const matchesText = name.includes(term) || fullPath.includes(term);
+          const matchesText = name.includes(term); 
           const matchesStatus = matchesStatusFilter(
             f.is_valid,
             f.valid_date as Date | null
@@ -296,8 +294,20 @@ const ComplianceDocumentsPage: React.FC = () => {
           folderName: f.parentFolderName || null,
         }));
 
-      return [...folderResults, ...fileResults];
-    }, [normalizedSearch, allFolders, allFiles, statusFilter]);
+      const results = [...folderResults, ...fileResults];
+
+    if (results.length === 0) {
+      return [
+        {
+          type: 'empty' as const,
+          id: 'no-results',
+          message: 'No documents match the current search and validity filter.',
+        },
+      ];
+    }
+
+    return results;
+  }, [normalizedSearch, allFolders, allFiles, statusFilter]);
 
     const showSearchDropdown = !!normalizedSearch && searchResults.length > 0;
 
@@ -1128,14 +1138,22 @@ const ComplianceDocumentsPage: React.FC = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search documents..."
+                  placeholder="Search documents and folders…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               {showSearchDropdown && (
                 <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-lg max-h-64 overflow-auto">
-                    {searchResults.map((result) => (
+                {searchResults.map((result) =>
+                    result.type === 'empty' ? (
+                      <div
+                        key="no-results"
+                        className="px-3 py-2 text-gray-500 text-sm text-center"
+                      >
+                        {result.message}
+                      </div>
+                    ) : (
                       <button
                         key={`${result.type}-${result.id}`}
                         type="button"
@@ -1429,56 +1447,7 @@ const ComplianceDocumentsPage: React.FC = () => {
               })}
             </div>
           )}
-          <AlertDialog
-            open={!!folderToDelete}
-            onOpenChange={(open) => {
-              if (!open) setFolderToDelete(null);
-            }}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {folderToDelete
-                    ? `Delete folder "${
-                        folderToDelete.name.length > 100
-                          ? folderToDelete.name.substring(0, 100) + "..."
-                          : folderToDelete.name
-                      }"?`
-                    : "Delete folder?"}
-                </AlertDialogTitle>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setFolderToDelete(null)}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async () => {
-                    if (!folderToDelete) return;
-                    try {
-                      setIsDeleting(true);
-                      setDeletingFolderId(folderToDelete.folder_id);
 
-                      await deleteFolder(
-                        clientId,
-                        folderToDelete.folder_id,
-                        employeeId,
-                        folderToDelete.id
-                      );
-
-                      toast({ title: "Folder deleted" });
-                      await refresh();
-                    } finally {
-                      setDeletingFolderId(null);
-                      setIsDeleting(false);
-                      setFolderToDelete(null);
-                    }
-                  }}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
           {noResults && (
             <div className="col-span-full py-10 text-center text-gray-500 text-sm">
               No documents match the current search and validity filter.
@@ -1492,7 +1461,8 @@ const ComplianceDocumentsPage: React.FC = () => {
           >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>
+                <AlertDialogTitle   className="break-all whitespace-normal"
+        style={{ wordBreak: "break-word", overflowWrap: "anywhere" }}>
                   {folderToDelete
                     ? `Delete folder "${
                         folderToDelete.name.length > 100
