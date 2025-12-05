@@ -22,7 +22,7 @@ interface Employee {
   department: string;
 }
 
-interface CreateAssessmentFormProps {
+interface CreateAssessmentFormProps { 
   onCancel?: () => void;
 }
 
