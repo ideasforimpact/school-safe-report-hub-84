@@ -1180,14 +1180,6 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
                 )}
               </div>
-               <Button
-                variant="outline"
-                onClick={clearAllFilters}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Clear Filters
-              </Button>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by status" />
@@ -1199,6 +1191,14 @@ const ComplianceDocumentsPage: React.FC = () => {
                   <SelectItem value="expired">Invalid</SelectItem>
                 </SelectContent>
               </Select>
+               <Button
+                variant="outline"
+                onClick={clearAllFilters}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Clear Filters
+              </Button>
             </div>
           {/* Error Message Alert */}
           {uploadError && (
