@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -85,6 +85,10 @@ const ComplianceDocumentsPage: React.FC = () => {
     folder_id: string;
     name: string;
   } | null>(null);
+   const clearAllFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+  };
   const handleSetValidityClick = (item: any) => {
   setSelectedFile(item);
 
@@ -188,78 +192,118 @@ const ComplianceDocumentsPage: React.FC = () => {
     return true;
   };
 
-  const filterFileList = <T extends { path: string; is_valid?: boolean; valid_date?: any }>(
+ const filterFileList = <T extends { path: string; is_valid?: boolean; valid_date?: any }>(
     files: T[]
   ): T[] => {
-    return files.filter((it) => {
-      const name = getFileNameFromPath(it.path).toLowerCase();
-      const matchesSearch =
-        !normalizedSearch || name.includes(normalizedSearch);
-
-      const matchesStatus = matchesStatusFilter(
-        it.is_valid,
-        it.valid_date as Date | null
-      );
-
-      return matchesSearch && matchesStatus;
-    });
-  };
-
-  const filterFolderList = <T extends { name: string }>(list: T[]): T[] => {
-    if (!normalizedSearch) return list;
-    return list.filter((f) =>
-      f.name.toLowerCase().includes(normalizedSearch)
+    return files.filter((it) =>
+      matchesStatusFilter(it.is_valid, it.valid_date as Date | null)
     );
   };
 
-  const visibleRootFolders = !currentFolderId ? filterFolderList(isSearchActive ? allFolders : folders) : folders;
-  const visibleRootFiles = !currentFolderId ? filterFileList(isSearchActive ? allFiles : rootFiles) : rootFiles;
-  const visibleChildFolders = currentFolderId ? filterFolderList(childFolders) : childFolders;
+  const filterFolderList = <T extends { name: string }>(list: T[]): T[] => list;
+
+  const folderHasMatchingFiles = React.useMemo(() => {
+    if (statusFilter === 'all') return null;
+
+    const matchingFiles = filterFileList(allFiles);
+      if (matchingFiles.length === 0) return {};
+
+      const map: Record<string, boolean> = {};
+
+      const findFolderById = (id: string) =>
+        allFolders.find((f) => f.id === id);
+
+      matchingFiles.forEach((file: any) => {
+        let folderRowId: string | null | undefined = file.parentFolderId;
+
+        while (folderRowId) {
+          if (map[folderRowId]) break;
+          map[folderRowId] = true;
+
+          const parentFolder = findFolderById(folderRowId);
+          folderRowId = parentFolder?.parent_folder_id ?? null;
+        }
+      });
+
+      return map;
+    }, [allFiles, allFolders, statusFilter]);
+
+
+    const baseRootFolders = !currentFolderId? (isSearchActive ? allFolders : folders): folders;
+    let visibleRootFolders = !currentFolderId ? filterFolderList(folders) : folders;
+    
+    if (!currentFolderId && folderHasMatchingFiles && statusFilter !== 'all') {
+      visibleRootFolders = visibleRootFolders.filter((f: any) =>
+        folderHasMatchingFiles[f.id]
+      );
+    }
+    const visibleRootFiles = !currentFolderId ? filterFileList(rootFiles): rootFiles;
+    let visibleChildFolders = currentFolderId ? filterFolderList(childFolders) : childFolders;
+    if (currentFolderId && folderHasMatchingFiles && statusFilter !== 'all') {
+      visibleChildFolders = visibleChildFolders.filter((f: any) =>
+        folderHasMatchingFiles[f.id]
+      );
+    }
   const visibleCurrentFolderFiles = currentFolderId ? filterFileList(currentFolderFiles as any) : currentFolderFiles;
   const isGlobalSearchActive = !currentFolderId && !!normalizedSearch;
   const visibleGlobalFiles = isGlobalSearchActive ? filterFileList(allFiles) : [];
-    const noResults =
-    (visibleRootFolders.length === 0 &&
-     visibleRootFiles.length === 0 &&
-     !currentFolderId &&
-     normalizedSearch) ||
+  const noResults =
+      (!currentFolderId &&
+        visibleRootFolders.length === 0 &&
+        visibleRootFiles.length === 0 &&
+        statusFilter !== 'all') ||
+      (currentFolderId &&
+        visibleChildFolders.length === 0 &&
+        visibleCurrentFolderFiles.length === 0 &&
+        statusFilter !== 'all');
 
-    (currentFolderId &&
-     visibleChildFolders.length === 0 &&
-     visibleCurrentFolderFiles.length === 0 &&
-     normalizedSearch);
     const searchResults = React.useMemo(() => {
-      if (!normalizedSearch || currentFolderId) return [];
+      if (!normalizedSearch) return [];
 
-      const folderMatches = filterFolderList(allFolders);
+      const term = normalizedSearch;
 
-      const folderResults = folderMatches.slice(0, 5).map((f) => ({
-        type: 'folder' as const,
-        id: f.id,
-        name: f.name,
-        folderId: f.folder_id,
-        folderName: f.name,
-        fullPath: f.fullPath || f.name,
-      }));
+      const folderResults = allFolders
+        .filter((f) => {
+          const name = (f.name || '').toLowerCase();
+          const fullPath = (f.fullPath || '').toLowerCase();
+          return name.includes(term) || fullPath.includes(term);
+        })
+        .slice(0, 5)
+        .map((f) => ({
+          type: 'folder' as const,
+          id: f.id,
+          name: f.name,
+          folderId: f.folder_id,
+          folderName: f.name,
+          fullPath: f.fullPath || f.name,
+        }));
 
-      const fileMatches = filterFileList(allFiles);
-      const remainingSlots = Math.max(10 - folderResults.length, 0);
-
-      const fileResults = fileMatches.slice(0, remainingSlots).map((f, idx) => ({
-        type: 'file' as const,
-        id: `${f.rowId}-${idx}`,
-        name: f.fileName || getFileNameFromPath(f.path),
-        path: f.path,
-        fullPath: f.fullPath || f.path,
-        folderId: f.parentFolderFolderId || null,
-        folderName: f.parentFolderName || null,
-      }));
+      const fileResults = allFiles
+        .filter((f: any) => {
+          const name = (f.fileName || getFileNameFromPath(f.path)).toLowerCase();
+          const fullPath = (f.fullPath || f.path || '').toLowerCase();
+          const matchesText = name.includes(term) || fullPath.includes(term);
+          const matchesStatus = matchesStatusFilter(
+            f.is_valid,
+            f.valid_date as Date | null
+          );
+          return matchesText && matchesStatus;
+        })
+        .slice(0, Math.max(10 - folderResults.length, 0))
+        .map((f: any, idx: number) => ({
+          type: 'file' as const,
+          id: `${f.rowId}-${idx}`,
+          name: f.fileName || getFileNameFromPath(f.path),
+          path: f.path,
+          fullPath: f.fullPath || f.path,
+          folderId: f.parentFolderFolderId || null,
+          folderName: f.parentFolderName || null,
+        }));
 
       return [...folderResults, ...fileResults];
-    }, [normalizedSearch, currentFolderId, allFolders, allFiles, statusFilter]);
+    }, [normalizedSearch, allFolders, allFiles, statusFilter]);
 
-  
-  const showSearchDropdown =!!normalizedSearch && !currentFolderId && searchResults.length > 0;
+    const showSearchDropdown = !!normalizedSearch && searchResults.length > 0;
 
   const formatDisplayDate = (date?: Date) => {
     if (!date) return "";
@@ -1136,6 +1180,14 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
                 )}
               </div>
+               <Button
+                variant="outline"
+                onClick={clearAllFilters}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Clear Filters
+              </Button>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by status" />
@@ -1215,7 +1267,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                   </div>
                 </div>
               ))}
-            {(isGlobalSearchActive ? visibleGlobalFiles : visibleRootFiles).map((it, idx) => {
+              {visibleRootFiles.map((it, idx) => {
                   const parts = (it.path || "").split("/");
                   const name = parts[parts.length - 1] || "file";
                   const status = getValidityStatus(it.is_valid, it.valid_date);
