@@ -229,7 +229,6 @@ const ComplianceDocumentsPage: React.FC = () => {
     }, [allFiles, allFolders, statusFilter]);
 
 
-    const baseRootFolders = !currentFolderId? (isSearchActive ? allFolders : folders): folders;
     let visibleRootFolders = !currentFolderId ? filterFolderList(folders) : folders;
     
     if (!currentFolderId && folderHasMatchingFiles && statusFilter !== 'all') {
@@ -245,8 +244,6 @@ const ComplianceDocumentsPage: React.FC = () => {
       );
     }
   const visibleCurrentFolderFiles = currentFolderId ? filterFileList(currentFolderFiles as any) : currentFolderFiles;
-  const isGlobalSearchActive = !currentFolderId && !!normalizedSearch;
-  const visibleGlobalFiles = isGlobalSearchActive ? filterFileList(allFiles) : [];
   const noResults =
       (!currentFolderId &&
         visibleRootFolders.length === 0 &&
