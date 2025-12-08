@@ -8,6 +8,7 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
 import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo, renderDobDisplay, renderAddressDisplay } from './utils/personalInfoUtils';
+import { AlertTriangle } from 'lucide-react';
 
 interface EmployeeDetailsProps {
   employee: Employee;
@@ -108,6 +109,10 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
               </h2>
               {/* Overall verification status moved near name */}
               <VerificationStatusSummary summary={getVerificationSummary()} />
+              {/* Show danger icon if there are different dates of birth */}
+              {aggregatedPersonalInfo.dob.differentValues.length > 0 && (
+                <AlertTriangle className="h-5 w-5 text-red-600" title="Different dates of birth found across documents" />
+              )}
             </div>
             <p className="text-gray-500 text-left">
               {getEmployeeTypeDisplay(employee.employeeType)} · {formatDepartment(employee.department)}

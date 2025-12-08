@@ -37,9 +37,9 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
 
     // Then, fetch documents for all employees
     const employeeIds = employeesData.map(emp => emp.id);
-    const { data: documentsData, error: documentsError } = await supabase
+    const { data: documentsData, error: documentsError } = await (supabase as any)
       .from('employee_documents')
-      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, created_at, updated_at')
+      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, personal_info, created_at, updated_at, document_type:employee_document_type(name, description)')
       .in('employee_id', employeeIds)
       .eq('is_delete', 0);
 
@@ -60,11 +60,12 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         id: doc.id,
         employeeId: record.id,
         documentTypeId: doc.document_type_id || '',
-        documentTypeName: 'Unknown', // Will be populated by the component if needed
+        documentTypeName: (doc.document_type as any)?.name || 'Unknown',
         documentNumber: doc.document_number || '',
         documentImage: doc.document_url || '',
         verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
         verificationMethod: 'manual' as const,
+        personalInfo: doc.personal_info || undefined,
         employee_docs_log: [],
         params: {},
         cronActivate: false,
@@ -140,9 +141,9 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
 
     // Then, fetch documents for all active employees
     const employeeIds = employeesData.map(emp => emp.id);
-    const { data: documentsData, error: documentsError } = await supabase
+    const { data: documentsData, error: documentsError } = await (supabase as any)
       .from('employee_documents')
-      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, created_at, updated_at')
+      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, personal_info, created_at, updated_at, document_type:employee_document_type(name, description)')
       .in('employee_id', employeeIds)
       .eq('is_delete', 0);
 
@@ -163,11 +164,12 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         id: doc.id,
         employeeId: record.id,
         documentTypeId: doc.document_type_id || '',
-        documentTypeName: 'Unknown', // Will be populated by the component if needed
+        documentTypeName: (doc.document_type as any)?.name || 'Unknown',
         documentNumber: doc.document_number || '',
         documentImage: doc.document_url || '',
         verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
         verificationMethod: 'manual' as const,
+        personalInfo: doc.personal_info || undefined,
         employee_docs_log: [],
         params: {},
         cronActivate: false,
