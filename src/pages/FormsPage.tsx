@@ -598,12 +598,24 @@ const FormsPage = () => {
                                     <TableCell>{formatDate(form.created_at)}</TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex justify-end gap-2">
+                                        {/* Edit button */}
+                                        <Button 
+                                          variant="outline" 
+                                          size="icon" 
+                                          onClick={() => {
+                                            setEditingForm(form);
+                                            setShowFormConfig(true);
+                                          }}
+                                          title="Edit form"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
                                         {/* Preview (icon-only) */}
-                                        <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')}>
+                                        <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')} title="Preview form">
                                           <ExternalLink className="h-4 w-4" />
                                         </Button>
                                           {/* Backoffice extra actions (QR and Edit hidden) */}
-                                            <Button variant="outline" size="icon" onClick={() => handleDeleteForm(form.id)}>
+                                            <Button variant="outline" size="icon" onClick={() => handleDeleteForm(form.id)} title="Delete form">
                                               <Trash2 className="h-4 w-4" />
                                             </Button>
                                       </div>
