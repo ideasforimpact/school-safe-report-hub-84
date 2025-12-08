@@ -77,13 +77,9 @@ serve(async (req) => {
         processedData.capacity = null;
       }
       
-      if (!processedData.year) {
-        return new Response(JSON.stringify({ 
-          error: "Year is required and must be a valid number" 
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      // Year is optional - can be null
+      if (processedData.year === undefined || processedData.year === '') {
+        processedData.year = null;
       }
 
       // Validate employee_id if provided

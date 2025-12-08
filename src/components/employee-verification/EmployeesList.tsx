@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX } from 'lucide-react';
+import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { Employee } from '@/types/employeeVerification';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { formatDepartment } from '@/lib/formatUtils';
+import { aggregatePersonalInfo } from './utils/personalInfoUtils';
 
 interface EmployeesListProps {
   employees: Employee[];
@@ -163,10 +164,33 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === false;
                 
+                // Prepare truncated name for display with full value on hover
+                const fullName = employee.name || '';
+                const displayName =
+                  fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
+
+                // Check if employee has different dates of birth
+                const documents = employee.documents || [];
+                const aggregatedPersonalInfo = aggregatePersonalInfo(documents);
+                const hasDifferentDobs = aggregatedPersonalInfo.dob.differentValues.length > 0;
+
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
                     <TableCell>{employee.employeeId}</TableCell>
-                    <TableCell>{employee.name}</TableCell>
+                    <TableCell
+                      title={fullName}
+                      className="max-w-xs truncate"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{displayName}</span>
+                        {hasDifferentDobs && (
+                          <AlertTriangle 
+                            className="h-4 w-4 text-red-600 flex-shrink-0" 
+                            title="Different dates of birth found across documents" 
+                          />
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{formatDepartment(employee.department)}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}

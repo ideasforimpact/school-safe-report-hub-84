@@ -14,26 +14,338 @@ const supabaseServiceKey = getSupabaseServiceRoleKey();
 const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
 const isQuickEKYC = integrationName === 'quickekyc';
 
-// Provider configuration (single prod values as requested)
-const providerApiKey = isQuickEKYC
-  ? (Deno.env.get('QUICKEKYC_API_KEY_PROD') || '')
-  : (Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '');
+// ============================================================================
+// QuickEKYC Functions
+// ============================================================================
 
-// Base URL without endpoints; endpoints are appended below
-const providerBaseUrl = isQuickEKYC
-  ? (Deno.env.get('QUICKEKYC_BASE_ENDPOINT') || '')
-  : 'https://kyc-api.surepass.io';
+/**
+ * Get QuickEKYC configuration
+ */
+function getQuickEKYCConfig() {
+  return {
+    apiKey: Deno.env.get('QUICKEKYC_API_KEY_PROD') || '',
+    baseUrl: Deno.env.get('QUICKEKYC_BASE_ENDPOINT') || '',
+    rcEndpoint: "/api/v1/rc/rc-full",
+    challanEndpoint: "/api/v1/challan/challan"
+  };
+}
 
-// Endpoints (shared rc endpoint, provider-specific challan endpoint)
-const rcEndpoint = "/api/v1/rc/rc-full";
-const challanEndpoint = isQuickEKYC
-  ? "/api/v1/challan/challan"
-  : "/api/v1/rc/rc-related/challan-details";
+/**
+ * Prepare QuickEKYC RC API payload
+ */
+function prepareQuickEKYCRCPayload(registrationNumber: string, apiKey: string) {
+  return {
+    id_number: registrationNumber,
+    key: apiKey
+  };
+}
+
+/**
+ * Prepare QuickEKYC RC API headers
+ */
+function prepareQuickEKYCRCHeaders() {
+  return {
+    "Content-Type": "application/json"
+  };
+}
+
+/**
+ * Call QuickEKYC RC API
+ */
+async function callQuickEKYCRCAPI(registrationNumber: string) {
+  const config = getQuickEKYCConfig();
+  const url = `${config.baseUrl}${config.rcEndpoint}`;
+  const headers = prepareQuickEKYCRCHeaders();
+  const body = prepareQuickEKYCRCPayload(registrationNumber, config.apiKey);
+  
+  console.log(`[QuickEKYC] Making RC API request to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+/**
+ * Prepare QuickEKYC Challan API payload
+ */
+function prepareQuickEKYCChallanPayload(rcNumber: string, apiKey: string) {
+  return {
+    id_number: rcNumber,
+    key: apiKey
+  };
+}
+
+/**
+ * Prepare QuickEKYC Challan API headers
+ */
+function prepareQuickEKYCChallanHeaders() {
+  return {
+    "Content-Type": "application/json"
+  };
+}
+
+/**
+ * Call QuickEKYC Challan API
+ */
+async function callQuickEKYCChallanAPI(rcNumber: string) {
+  const config = getQuickEKYCConfig();
+  const url = `${config.baseUrl}${config.challanEndpoint}`;
+  const headers = prepareQuickEKYCChallanHeaders();
+  const body = prepareQuickEKYCChallanPayload(rcNumber, config.apiKey);
+  
+  console.log(`[QuickEKYC] Making Challan API request to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+/**
+ * Validate QuickEKYC Challan response
+ */
+function validateQuickEKYCChallanResponse(challanData: any): boolean {
+  return challanData?.status_code === 200;
+}
+
+/**
+ * Process QuickEKYC Challan data
+ */
+function processQuickEKYCChallanData(challanData: any) {
+  return {
+    challan_details: {
+      challans: Array.isArray(challanData.data?.challan_data)
+        ? challanData.data.challan_data.map((challan: any) => ({
+            ...challan,
+            // Add Info key from challan_info if it exists
+            Info: challan.challan_info || challan.Info || null
+          }))
+        : [],
+      successful_backends: []
+    }
+  };
+}
+
+// ============================================================================
+// SurePare Functions
+// ============================================================================
+
+/**
+ * Get SurePare configuration
+ */
+function getSurePareConfig() {
+  return {
+    apiKey: Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '',
+    baseUrl: 'https://kyc-api.surepass.io',
+    rcEndpoint: "/api/v1/rc/rc-full",
+    challanEndpoint: "/api/v1/rc/rc-related/challan-details"
+  };
+}
+
+/**
+ * Prepare SurePare RC API payload
+ */
+function prepareSurePareRCPayload(registrationNumber: string) {
+  return {
+    id_number: registrationNumber
+  };
+}
+
+/**
+ * Prepare SurePare RC API headers
+ */
+function prepareSurePareRCHeaders(apiKey: string) {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`
+  };
+}
+
+/**
+ * Call SurePare RC API
+ */
+async function callSurePareRCAPI(registrationNumber: string) {
+  const config = getSurePareConfig();
+  const url = `${config.baseUrl}${config.rcEndpoint}`;
+  const headers = prepareSurePareRCHeaders(config.apiKey);
+  const body = prepareSurePareRCPayload(registrationNumber);
+  
+  console.log(`[SurePare] Making RC API request to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+/**
+ * Prepare SurePare Challan API payload
+ */
+function prepareSurePareChallanPayload(rcNumber: string, chassisNumber: string, engineNumber: string) {
+  return {
+    rc_number: rcNumber,
+    chassis_number: chassisNumber,
+    engine_number: engineNumber
+  };
+}
+
+/**
+ * Prepare SurePare Challan API headers
+ */
+function prepareSurePareChallanHeaders(apiKey: string) {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${apiKey}`
+  };
+}
+
+/**
+ * Call SurePare Challan API
+ */
+async function callSurePareChallanAPI(rcNumber: string, chassisNumber: string, engineNumber: string) {
+  const config = getSurePareConfig();
+  const url = `${config.baseUrl}${config.challanEndpoint}`;
+  const headers = prepareSurePareChallanHeaders(config.apiKey);
+  const body = prepareSurePareChallanPayload(rcNumber, chassisNumber, engineNumber);
+  
+  console.log(`[SurePare] Making Challan API request to: ${url}`);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  
+  return response;
+}
+
+/**
+ * Validate SurePare Challan response
+ */
+function validateSurePareChallanResponse(challanData: any): boolean {
+  return challanData?.success !== false;
+}
+
+/**
+ * Process SurePare Challan data
+ */
+function processSurePareChallanData(challanData: any) {
+  return {
+    challan_details: {
+      challans: challanData.data?.challan_details?.challans?.map((challan: any) => ({
+        challan_number: challan.challan_number,
+        challan_status: challan.challan_status,
+        amount: challan.amount,
+        challan_date: challan.challan_date,
+        // Add Info key from challan_info if it exists
+        Info: challan.challan_info || challan.Info || null
+      })) || [],
+      successful_backends: challanData.data?.challan_details?.successful_backends || []
+    }
+  };
+}
+
+// ============================================================================
+// Main Handler Functions with Fallback Logic
+// ============================================================================
+
+/**
+ * Call RC API with fallback: Try QuickEKYC first, fallback to SurePare if status_code = 500
+ * Returns both the response and parsed data
+ */
+async function callRCAPI(registrationNumber: string): Promise<{ response: Response; data: any }> {
+  // Primary: Always try QuickEKYC first
+  console.log('[RC API] Attempting primary: QuickEKYC');
+  const quickEKYResponse = await callQuickEKYCRCAPI(registrationNumber);
+  
+  // Clone the response to read JSON without consuming the original
+  const quickEKYResponseClone = quickEKYResponse.clone();
+  const quickEKYData = await quickEKYResponseClone.json();
+  
+  // Check if QuickEKYC returned status_code 500
+  if (quickEKYData?.status_code === 500) {
+    console.log('[RC API] QuickEKYC returned status_code 500, falling back to SurePare');
+    // Secondary: Fallback to SurePare
+    const surePareResponse = await callSurePareRCAPI(registrationNumber);
+    const surePareData = await surePareResponse.json();
+    return { response: surePareResponse, data: surePareData };
+  }
+  
+  // QuickEKYC succeeded, return its response
+  console.log('[RC API] QuickEKYC succeeded, using QuickEKYC response');
+  return { response: quickEKYResponse, data: quickEKYData };
+}
+
+/**
+ * Call Challan API with fallback: Try QuickEKYC first, fallback to SurePare if status_code = 500
+ * Returns both the response and parsed data
+ */
+async function callChallanAPI(rcNumber: string, chassisNumber?: string, engineNumber?: string): Promise<{ response: Response; data: any }> {
+  // Primary: Always try QuickEKYC first
+  console.log('[Challan API] Attempting primary: QuickEKYC');
+  const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
+  
+  // Clone the response to read JSON without consuming the original
+  const quickEKYResponseClone = quickEKYResponse.clone();
+  const quickEKYData = await quickEKYResponseClone.json();
+  
+  // Check if QuickEKYC returned status_code 500
+  if (quickEKYData?.status_code === 500) {
+    console.log('[Challan API] QuickEKYC returned status_code 500, falling back to SurePare');
+    
+    // Secondary: Fallback to SurePare (requires chassis and engine numbers)
+    if (!chassisNumber || !engineNumber) {
+      console.warn('[Challan API] Cannot fallback to SurePare: missing chassis or engine number');
+      // Return the QuickEKYC response even though it failed, as we can't fallback
+      return { response: quickEKYResponse, data: quickEKYData };
+    }
+    
+    const surePareResponse = await callSurePareChallanAPI(rcNumber, chassisNumber, engineNumber);
+    const surePareData = await surePareResponse.json();
+    return { response: surePareResponse, data: surePareData };
+  }
+  
+  // QuickEKYC succeeded, return its response
+  console.log('[Challan API] QuickEKYC succeeded, using QuickEKYC response');
+  return { response: quickEKYResponse, data: quickEKYData };
+}
+
+/**
+ * Validate Challan response - detects which integration was used based on response structure
+ */
+function validateChallanResponse(challanData: any): boolean {
+  // Check if it's a QuickEKYC response (has status_code)
+  if (challanData?.status_code !== undefined) {
+    return validateQuickEKYCChallanResponse(challanData);
+  }
+  // Otherwise, it's a SurePare response (has success field)
+  return validateSurePareChallanResponse(challanData);
+}
+
+/**
+ * Process Challan data - detects which integration was used based on response structure
+ */
+function processChallanData(challanData: any) {
+  // Check if it's a QuickEKYC response (has status_code)
+  if (challanData?.status_code !== undefined) {
+    return processQuickEKYCChallanData(challanData);
+  }
+  // Otherwise, it's a SurePare response
+  return processSurePareChallanData(challanData);
+}
 
 console.log(`Integration selected: ${integrationName || 'default'}`);
-console.log(`Base URL: ${providerBaseUrl}`);
-console.log(`RC endpoint: ${rcEndpoint}, Challan endpoint: ${challanEndpoint}`);
-console.log(`API key present: ${providerApiKey ? 'Yes' : 'No'}`);
+console.log(`Using integration: ${isQuickEKYC ? 'QuickEKYC' : 'SurePare'}`);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -59,27 +371,10 @@ serve(async (req) => {
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
-    // Build RC request
-    const rcUrl = `${providerBaseUrl}${rcEndpoint}`;
-    console.log(`Making RC API request to: ${rcUrl}`);
-    const rcHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (!isQuickEKYC) {
-      rcHeaders["Authorization"] = `Bearer ${providerApiKey}`;
-    }
-    const rcBody = isQuickEKYC
-      ? { id_number: registrationNumber, key: providerApiKey }
-      : { id_number: registrationNumber };
-
-    const rcResponse = await fetch(rcUrl, {
-      method: "POST",
-      headers: rcHeaders,
-      body: JSON.stringify(rcBody)
-    });
-
-    const providerData = await rcResponse.json();
+    // Call RC API with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
+    const { response: rcResponse, data: providerData } = await callRCAPI(registrationNumber);
     
+    // Check for errors
     if (!rcResponse.ok) {
       console.error("RC API error:", providerData);
       return new Response(
@@ -95,7 +390,7 @@ serve(async (req) => {
     }
     
     // Extract required data for challan API call
-    let challanData = null;
+    let challanData: any = null;
     if (providerData.data) {
       const data = providerData.data;
       const rcNumber = registrationNumber;
@@ -105,35 +400,22 @@ serve(async (req) => {
       console.log(`Got vehicle data - RC: ${rcNumber}, Chassis: ${chassisNumber}, Engine: ${engineNumber}`);
       
       // Check if we have all required parameters for challan call
-      if (rcNumber && chassisNumber && engineNumber) {
+      // For QuickEKYC, only rcNumber is needed; for SurePare, all three are required
+      const canCallChallan = isQuickEKYC 
+        ? rcNumber 
+        : (rcNumber && chassisNumber && engineNumber);
+      
+      if (canCallChallan) {
         try {
-          // Build Challan request
-          const challanUrl = `${providerBaseUrl}${challanEndpoint}`;
-          const challanHeaders: Record<string, string> = {
-            "Content-Type": "application/json",
-          };
-          if (!isQuickEKYC) {
-            challanHeaders["Authorization"] = `Bearer ${providerApiKey}`;
-          }
-          const challanBody = isQuickEKYC
-            // QuickEKYC challan endpoint expects rc_number and key (no chassis/engine)
-            ? { rc_number: rcNumber, key: providerApiKey }
-            : { rc_number: rcNumber, chassis_number: chassisNumber, engine_number: engineNumber };
-
-          const challanResponse = await fetch(challanUrl, {
-            method: "POST",
-            headers: challanHeaders,
-            body: JSON.stringify(challanBody)
-          });
+          // Call Challan API with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
+          const { response: challanResponse, data: challanResponseData } = await callChallanAPI(rcNumber, chassisNumber, engineNumber);
+          challanData = challanResponseData;
           
-          challanData = await challanResponse.json();
-          const challanOk = isQuickEKYC
-            ? challanData?.status_code === 200
-            : challanData?.success !== false;
+          const challanOk = validateChallanResponse(challanData);
           console.log("Challan API response received:", challanOk ? "Success" : "Failed", challanData);
           
           // Add challan data to the registration data
-          if (providerData.data) {
+          if (providerData.data && challanData && typeof challanData === 'object' && 'data' in challanData) {
             providerData.data.challan_details = challanData.data || null;
           }
         } catch (challanError) {
@@ -184,7 +466,7 @@ serve(async (req) => {
     }
     
     // Create verification data from the response fields
-    const currentVerificationData = [];
+    const currentVerificationData: Array<{ field: string; value: any; verified: boolean }> = [];
     
     // Add last_response field to track when we got this response
     currentVerificationData.push({
@@ -219,8 +501,10 @@ serve(async (req) => {
           const registrationYear = registrationDateStr ? new Date(registrationDateStr).getFullYear() : null;
 
           // Directly update by registration_number to avoid extra queries
+          // NOTE: type column modification is commented out per requirements
+          // The type should not be modified during Run Safety Check for both add and edit
           const updates: Record<string, any> = {
-            type: 'bus',
+            // type: 'bus', // COMMENTED OUT: Do not modify type column during safety check
             model: makerModel,
             driver: ownerName,
             route: null,
@@ -274,29 +558,9 @@ serve(async (req) => {
     }
     
     // Add challan data as a specific field if available, with simplified structure
-    if (challanData && challanData.data) {
-      // Process challan data to keep only essential information
-      const processedChallanData = isQuickEKYC
-        ? {
-          challan_details: {
-            // QuickEKYC returns an array at data.challan_data (may be empty)
-            challans: Array.isArray(challanData.data.challan_data)
-              ? challanData.data.challan_data
-              : [],
-            successful_backends: []
-          }
-        }
-        : {
-          challan_details: {
-            challans: challanData.data.challan_details?.challans?.map((challan: any) => ({
-              challan_number: challan.challan_number,
-              challan_status: challan.challan_status,
-              amount: challan.amount,
-              challan_date: challan.challan_date
-            })) || [],
-            successful_backends: challanData.data.challan_details?.successful_backends || []
-          }
-        };
+    if (challanData && typeof challanData === 'object' && 'data' in challanData && challanData.data) {
+      // Process challan data using the appropriate integration handler
+      const processedChallanData = processChallanData(challanData);
       
       // Add to verification data only once
       currentVerificationData.push({

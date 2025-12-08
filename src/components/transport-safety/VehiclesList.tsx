@@ -128,9 +128,8 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
         
         return {
           'Registration Number': vehicle.registrationNumber,
-          'Make': vehicle.make,
           'Model': vehicle.model,
-          'Type': vehicle.type,
+          'Type': vehicle.typeName || vehicle.type || 'Unknown',
           'Year': vehicle.year,
           'Vehicle Status': vehicle.status,
           'Driver': vehicle.driver || 'N/A',
@@ -192,79 +191,77 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     fetchVehicles();
   };
   
-  return (
-    <div>
-      {/* Vehicles display with export button */}
-      {filteredVehicles.length === 0 ? (
-        <EmptyVehiclesState setShowAddVehicle={setShowAddVehicle} statusFilter={statusFilter} />
-      ) : (
-        <>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Vehicle List</h3>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={exportToExcel} 
-                className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all flex items-center gap-1 shadow-sm"
-              >
-                <FileText className="h-4 w-4" />
-                <span>Export to Excel</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRefresh} 
-                className="flex items-center justify-center w-9 h-9 p-0"
-                title="Refresh"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* Filters section - moved after Vehicle List heading */}
-          <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full">
-              <VehicleSearchBar
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-              />
-              
-              <div className="flex flex-wrap gap-2">
-                <VehicleBasicFilters
-                  statusFilter={statusFilter}
-                  setStatusFilter={setStatusFilter}
-                  typeFilter={typeFilter}
-                  setTypeFilter={setTypeFilter}
-                  vehicleTypes={vehicleTypes}
-                  documentTypeFilter={documentTypeFilter}
-                  setDocumentTypeFilter={setDocumentTypeFilter}
-                  documentStatusFilters={documentStatusFilters}
-                  toggleDocumentStatusFilter={toggleDocumentStatusFilter}
-                  activeFiltersCount={activeFiltersCount}
-                  clearAllFilters={clearAllFilters}
-                />
-              </div>
-            </div>
-          </div>
-          
-          <VehiclesListView 
-            vehicles={filteredVehicles} 
-            onRefresh={handleRefresh}
-            onEditVehicle={handleEditVehicle}
-          />
-        </>
-      )}
-      
-      {/* Edit Vehicle Dialog */}
-      <AddVehicleDialog
-        open={showEditDialog}
-        onClose={handleCloseEditDialog}
-        vehicle={selectedVehicle}
-      />
+return (
+  <div>
+    {/* Vehicles display with export button */}
+    <div className="flex justify-between items-center mb-4">
+      <h3 className="text-lg font-medium">Vehicle List</h3>
+      <div className="flex gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={exportToExcel} 
+          className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all flex items-center gap-1 shadow-sm"
+        >
+          <FileText className="h-4 w-4" />
+          <span>Export to Excel</span>
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh} 
+          className="flex items-center justify-center w-9 h-9 p-0"
+          title="Refresh"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
-  );
+          {/* Filters section - moved after Vehicle List heading */}
+    <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full">
+        <VehicleSearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
+        <div className="flex flex-wrap gap-2">
+          <VehicleBasicFilters
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            vehicleTypes={vehicleTypes}
+            documentTypeFilter={documentTypeFilter}
+            setDocumentTypeFilter={setDocumentTypeFilter}
+            documentStatusFilters={documentStatusFilters}
+            toggleDocumentStatusFilter={toggleDocumentStatusFilter}
+            activeFiltersCount={activeFiltersCount}
+            clearAllFilters={clearAllFilters}
+          />
+        </div>
+      </div>
+    </div>
+    {/* --- Only this part changes based on filter results --- */}
+    {filteredVehicles.length === 0 ? (
+      <EmptyVehiclesState
+        setShowAddVehicle={setShowAddVehicle}
+        statusFilter={statusFilter}
+      />
+    ) : (
+      <VehiclesListView
+        vehicles={filteredVehicles}
+        onRefresh={handleRefresh}
+        onEditVehicle={handleEditVehicle}
+      />
+    )}
+    {/* Edit Vehicle Dialog */}
+    <AddVehicleDialog
+      open={showEditDialog}
+      onClose={handleCloseEditDialog}
+      vehicle={selectedVehicle}
+    />
+  </div>
+);
 };
 
 export default VehiclesList;

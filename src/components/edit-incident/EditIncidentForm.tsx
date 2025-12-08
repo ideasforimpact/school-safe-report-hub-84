@@ -20,6 +20,7 @@ import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { Student } from '@/types/student';
 import { formatFileSize } from '@/utils/fileUtils';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -124,13 +125,20 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     return configData.facilities.filter(facility => facility.campus_id === formData.locationId);
   };
 
-  const handlePersonChange = (index: number, field: string, value: string) => {
+  const handlePersonChange = (index: number, field: string, value: string, additionalFields?: Record<string, string>) => {
     const updatedPeople = [...peopleInvolved];
     if (field === 'role' && value !== updatedPeople[index].role) {
       // Clear name when role changes
       updatedPeople[index] = { ...updatedPeople[index], [field]: value as 'Student' | 'Staff' | 'Other', name: '' };
     } else {
+      // Update the main field
       updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+      // If additional fields are provided, update them atomically
+      if (additionalFields) {
+        Object.entries(additionalFields).forEach(([key, val]) => {
+          updatedPeople[index] = { ...updatedPeople[index], [key]: val };
+        });
+      }
     }
     setPeopleInvolved(updatedPeople);
   };
@@ -223,8 +231,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
         console.log('User ID:', user.id);
         console.log('Form data owner (assigned_to):', formData.owner);
         console.log('Original owner (ownerId):', incidentData.ownerId);
-        
-        const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
         
         // Get updater details
         console.log('Fetching updater details for user ID:', user.id);
@@ -384,9 +390,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
 
               <div className="space-y-2">
                 <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
-                  Subcategory
+                  Subcategory <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)}>
+                <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)} required>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select subcategory" />
                   </SelectTrigger>
@@ -423,9 +429,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
 
               <div className="space-y-2">
                 <Label htmlFor="facility" className="text-sm font-medium text-gray-700">
-                  Facility
+                  Facility <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.facilityId} onValueChange={(value) => handleSelectChange('facilityId', value)}>
+                <Select value={formData.facilityId} onValueChange={(value) => handleSelectChange('facilityId', value)} required>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select facility" />
                   </SelectTrigger>
@@ -484,6 +490,15 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                   name="time"
                   value={formData.time}
                   onChange={handleChange}
+                  max={
+                      formData.date === new Date().toISOString().substring(0, 10)
+                        ? (() => {
+                            const now = new Date();
+                            const pad = (n) => n.toString().padStart(2, "0");
+                            return `${pad(now.getHours())}:${pad(now.getMinutes())}`; 
+                          })()
+                        : undefined
+                  }
                   className="h-11 bg-white border-gray-300"
                   required
                 />

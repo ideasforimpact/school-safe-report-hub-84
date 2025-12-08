@@ -7,6 +7,8 @@ import EditEmployeeDialog from './EditEmployeeDialog';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
 import { formatDepartment } from '@/lib/formatUtils';
+import { aggregatePersonalInfo, renderDobDisplay, renderAddressDisplay } from './utils/personalInfoUtils';
+import { AlertTriangle } from 'lucide-react';
 
 interface EmployeeDetailsProps {
   employee: Employee;
@@ -24,8 +26,8 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     }
   };
 
-  // Pull Aadhaar-derived values (dob, profile image) from API response if present
-  const getAadhaarDerived = (): { dob?: string; profileImage?: string; address?: string } => {
+  // Pull Aadhaar-derived values (profile image) from API response if present
+  const getAadhaarDerived = (): { profileImage?: string } => {
     const docs = documents || getEmployeeDocuments(employee.id);
     if (!docs || docs.length === 0) return {};
 
@@ -41,7 +43,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     // Most responses are { data: {...} }. Fallback to root if needed.
     const root: any = aadhar.apiResponseData?.data ?? aadhar.apiResponseData;
 
-    const dob: string | undefined = root?.dob;
     const rawImage: string | undefined = root?.profile_image || root?.photo || root?.image || root?.image_link;
 
     const profileImage = (() => {
@@ -50,32 +51,14 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
       return `data:image/jpeg;base64,${rawImage}`;
     })();
 
-    // Build address string from various possible shapes
-    const rawAddress = root?.address as any;
-
-    let address: string | undefined;
-    if (typeof rawAddress === 'string') {
-      address = rawAddress;
-    } else if (rawAddress && typeof rawAddress === 'object') {
-      const parts = [
-        rawAddress.house,
-        rawAddress.street,
-        rawAddress.landmark,
-        rawAddress.loc,
-        rawAddress.vtc || rawAddress.city || rawAddress.town,
-        rawAddress.subdist,
-        rawAddress.dist || rawAddress.district,
-        rawAddress.state,
-        rawAddress.zip || rawAddress.pincode,
-        rawAddress.country,
-      ].filter(Boolean);
-      address = parts.join(', ');
-    }
-
-    return { dob, profileImage, address };
+    return { profileImage };
   };
 
-  const { dob: aadharDob, profileImage: aadharProfileImage, address: aadharAddress } = getAadhaarDerived();
+  const { profileImage: aadharProfileImage } = getAadhaarDerived();
+  
+  // Aggregate personal_info from all documents
+  const docs = documents || getEmployeeDocuments(employee.id);
+  const aggregatedPersonalInfo = aggregatePersonalInfo(docs);
 
   const getEmployeeTypeDisplay = (type?: string) => {
     if (!type) return 'Not Specified';
@@ -107,13 +90,33 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
     };
   };
 
+  // Prepare truncated name for card display (limit 200 chars with tooltip)
+  const fullName = employee.name || '';
+  const displayName =
+    fullName.length > 200 ? `${fullName.slice(0, 200)}…` : fullName;
+
   return (
     <Card>
       <CardContent className="pt-6 text-left">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
-            <p className="text-gray-500 text-left">{getEmployeeTypeDisplay(employee.employeeType)} · {formatDepartment(employee.department)}</p>
+        <div className="flex justify-between items-start mb-4 gap-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center flex-wrap gap-2">
+              <h2
+                className="text-2xl font-bold text-left max-w-3xl truncate"
+                title={fullName}
+              >
+                {displayName}
+              </h2>
+              {/* Overall verification status moved near name */}
+              <VerificationStatusSummary summary={getVerificationSummary()} />
+              {/* Show danger icon if there are different dates of birth */}
+              {aggregatedPersonalInfo.dob.differentValues.length > 0 && (
+                <AlertTriangle className="h-5 w-5 text-red-600" title="Different dates of birth found across documents" />
+              )}
+            </div>
+            <p className="text-gray-500 text-left">
+              {getEmployeeTypeDisplay(employee.employeeType)} · {formatDepartment(employee.department)}
+            </p>
           </div>
           {aadharProfileImage && (
             <div className="shrink-0 ml-4">
@@ -145,7 +148,11 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Date of Birth</p>
-            <p className="font-medium text-left">{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : (aadharDob ? formatDate(aadharDob) : '')}</p>
+            <div className="font-medium text-left pb-1">
+              {employee.dateOfBirth 
+                ? formatDate(employee.dateOfBirth) 
+                : renderDobDisplay(aggregatedPersonalInfo, formatDate)}
+            </div>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Joining Date</p>
@@ -163,14 +170,11 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
             <p className="text-sm text-gray-500 text-left">Employee Type</p>
             <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
           </div>
-          <div>
-            <div className="font-medium text-left">
-              <VerificationStatusSummary summary={getVerificationSummary()} />
-            </div>
-          </div>
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>
-            <p className="font-medium text-left">{employee.address || aadharAddress}</p>
+            <div className="font-medium text-left pb-1">
+              {employee.address || renderAddressDisplay(aggregatedPersonalInfo)}
+            </div>
           </div>
         </div>
       </CardContent>

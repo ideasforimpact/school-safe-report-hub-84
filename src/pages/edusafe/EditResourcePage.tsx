@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, FileText, Upload, X } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,13 +17,13 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EduSafeProvider, useEduSafe } from '@/contexts/edusafe/EduSafeContext';
-import { ResourceCategory } from '@/types/eduSafeTypes';
+import { ResourceCategory, EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const EditResourceContent = () => {
   const { resourceId } = useParams<{ resourceId: string }>();
-  const { getResourceById, updateResource, loading } = useEduSafe();
+  const { getResourceById, updateResource, loading, refreshResources } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -34,6 +34,8 @@ const EditResourceContent = () => {
   const [category, setCategory] = useState<ResourceCategory>('posters');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Load resource data when component mounts
   useEffect(() => {
@@ -46,7 +48,12 @@ const EditResourceContent = () => {
   }, [resource]);
   
   // Check if user has permission to edit
+  // Allow editing if:
+  // 1. User is saas_owner, OR
+  // 2. Resource is organisational (school-owned) and user belongs to the same client, OR
+  // 3. User is the original uploader
   const canEdit = user?.role === 'saas_owner' || 
+                 (resource?.ownerType === 'school' && resource?.resourceType === 'Organisational Resource' && resource?.clientId === user?.clientId) ||
                  (resource?.ownerType === 'school' && resource?.uploaderId === user?.id);
   
   // Show loading skeleton while data is being fetched
@@ -155,22 +162,75 @@ const EditResourceContent = () => {
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png'
+    ];
     
-    if (!title.trim()) {
-      alert('Please enter a title');
+    if (!allowedTypes.includes(selectedFile.type)) {
+      toast.error('Please upload a PDF, DOCX, or image file');
       return;
     }
     
-    updateResource(resourceId!, {
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      tags
-    });
+    // Validate file size (max 10MB)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    navigate('/edusafe');
+    if (!title.trim()) {
+      toast.error('Please enter a title');
+      return;
+    }
+    
+    setIsUploading(true);
+    
+    try {
+      if (file) {
+        await updateResource(resourceId!, {
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          tags,
+          file: file
+        });
+      } else {
+        await updateResource(resourceId!, {
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          tags
+        });
+      }
+      
+      // Refresh resources to get the updated file name
+      await refreshResources();
+      
+      // Clear the selected file since it's been uploaded
+      setFile(null);
+      
+      toast.success('Resource updated successfully');
+      navigate('/edusafe');
+    } catch (error) {
+      console.error('Error updating resource:', error);
+      toast.error('Failed to update resource');
+    } finally {
+      setIsUploading(false);
+    }
   };
   
   return (
@@ -275,10 +335,82 @@ const EditResourceContent = () => {
               
               <div className="space-y-2">
                 <Label>File</Label>
-                <div className="text-sm text-gray-600 border p-4 rounded-md bg-gray-50">
-                  <p className="text-left">{resource.file.name}</p>
-                  <p className="text-left text-xs text-gray-500 mt-1">File cannot be changed. Please upload a new resource if you need to change the file.</p>
-                </div>
+                {file ? (
+                  <div className="border-2 border-dashed border-green-300 rounded-md p-4 bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium text-green-900">{file.name}</p>
+                          <p className="text-xs text-green-700">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFile(null)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {resource.document_url && (
+                      <div className="border-2 border-dashed border-green-300 rounded-md p-4 bg-green-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-5 w-5 text-green-600" />
+                            <div>
+                              <p className="text-sm font-medium text-green-900">{resource.file.name}</p>
+                              {resource.file.size > 0 ? (
+                                <p className="text-xs text-green-700">
+                                  {(resource.file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              ) : (
+                                <p className="text-xs text-green-700">
+                                  File uploaded
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="border-2 border-dashed border-gray-300 rounded-md p-6">
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm font-medium">
+                          Click to upload new file
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PDF, DOCX, or Images up to 10MB
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1 mb-3">
+                          Upload a new file to replace the current one. The old file will be kept in storage.
+                        </p>
+                        <input
+                          id="file"
+                          type="file"
+                          className="sr-only"
+                          onChange={handleFileChange}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          disabled={isUploading}
+                        />
+                        <label
+                          htmlFor="file"
+                          className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Select New File
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -290,8 +422,8 @@ const EditResourceContent = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                Save Changes
+              <Button type="submit" disabled={isUploading}>
+                {isUploading ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>

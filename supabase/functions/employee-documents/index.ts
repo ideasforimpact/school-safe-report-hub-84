@@ -904,11 +904,11 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
         .update({ status: 'verified' })
         .eq('id', docData.employee_id);
     }
-    
+    let storageBaseUrl =  Deno.env.get('PUBLIC_STORAGE_BASE_URL');
     // Process the document to match frontend expected structure
     let documentUrl = updatedDoc.document_url;
     if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-      documentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${documentUrl}`;
+      documentUrl = `${storageBaseUrl}/employee-documents/${documentUrl}`;
     }
     
     const processedDocument = {

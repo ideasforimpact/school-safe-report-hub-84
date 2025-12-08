@@ -195,7 +195,7 @@ async function handleGetStudent(id: string, corsHeaders: Record<string, string>,
 }
 
 async function handleCreateStudent(body: any, corsHeaders: Record<string, string>) {
-  const requiredFields = ["studentId", "name", "grade", "section", "campus"];
+  const requiredFields = ["studentId", "name"];
   for (const field of requiredFields) {
     if (!body[field]) {
       return new Response(
@@ -203,6 +203,17 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+  }
+
+  // Check for either IDs (preferred) or text values (backward compatibility)
+  const hasIds = body.campusId && body.gradeId && body.sectionId;
+  const hasTextValues = body.campus && body.grade && body.section;
+  
+  if (!hasIds && !hasTextValues) {
+    return new Response(
+      JSON.stringify({ error: "Either campusId/gradeId/sectionId or campus/grade/section are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   // Enhanced duplicate checking with client-specific validation
@@ -230,7 +241,75 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     }
   }
   
-  // Validate campus, grade, and section if they are being updated
+  // If IDs are provided, validate they exist and belong to the client
+  if (hasIds) {
+    // Validate campus_id
+    const { data: campusData, error: campusError } = await supabaseClient
+      .from("campuses")
+      .select("id, name")
+      .eq("id", body.campusId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+    
+    if (campusError || !campusData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid campus ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate grade_id
+    const { data: gradeData, error: gradeError } = await supabaseClient
+      .from("grades")
+      .select("id, name, campus_id")
+      .eq("id", body.gradeId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+    
+    if (gradeError || !gradeData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid grade ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate that grade belongs to the selected campus
+    if (gradeData.campus_id !== body.campusId) {
+      return new Response(
+        JSON.stringify({ error: "Grade does not belong to the selected campus" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate section_id
+    const { data: sectionData, error: sectionError } = await supabaseClient
+      .from("sections")
+      .select("id, name, grade_id, campus_id")
+      .eq("id", body.sectionId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+    
+    if (sectionError || !sectionData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid section ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate that section belongs to the selected grade
+    if (sectionData.grade_id !== body.gradeId) {
+      return new Response(
+        JSON.stringify({ error: "Section does not belong to the selected grade" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use the names from the validated records
+    body.campus = campusData.name;
+    body.grade = gradeData.name;
+    body.section = sectionData.name;
+  } else {
+    // Fallback: Validate campus, grade, and section using text values (backward compatibility)
   if (body.campus && body.grade && body.section) {
     const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
     if (!isValid.valid) {
@@ -238,11 +317,12 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
         JSON.stringify({ error: isValid.error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+      }
     }
   }
   
   // Transform data to match database schema
-  const studentData = {
+  const studentData: any = {
     student_id: body.studentId,
     name: body.name,
     grade: body.grade,
@@ -250,6 +330,13 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     campus: body.campus,
     client_id: body.client_id
   };
+
+  // Add IDs if provided
+  if (hasIds) {
+    studentData.campus_id = body.campusId;
+    studentData.grade_id = body.gradeId;
+    studentData.section_id = body.sectionId;
+  }
   
   const { data, error } = await supabaseClient
     .from("students")
@@ -643,8 +730,84 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     }
   }
 
-  // Validate campus, grade, and section if they are being updated
-  if (body.campus && body.grade && body.section) {
+  // Detect if ID-based educational structure is being provided
+  const hasIds = body.campusId && body.gradeId && body.sectionId;
+
+  // If any of the IDs are provided, require all three
+  if ((body.campusId || body.gradeId || body.sectionId) && !hasIds) {
+    return new Response(
+      JSON.stringify({ error: "campusId, gradeId and sectionId must all be provided together when updating educational structure" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // When IDs are provided, validate them and derive the text names
+  if (hasIds && body.client_id) {
+    // Validate campus_id
+    const { data: campusData, error: campusError } = await supabaseClient
+      .from("campuses")
+      .select("id, name")
+      .eq("id", body.campusId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+
+    if (campusError || !campusData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid campus ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate grade_id
+    const { data: gradeData, error: gradeError } = await supabaseClient
+      .from("grades")
+      .select("id, name, campus_id")
+      .eq("id", body.gradeId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+
+    if (gradeError || !gradeData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid grade ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (gradeData.campus_id !== body.campusId) {
+      return new Response(
+        JSON.stringify({ error: "Grade does not belong to the selected campus" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate section_id
+    const { data: sectionData, error: sectionError } = await supabaseClient
+      .from("sections")
+      .select("id, name, grade_id")
+      .eq("id", body.sectionId)
+      .eq("client_id", body.client_id)
+      .maybeSingle();
+
+    if (sectionError || !sectionData) {
+      return new Response(
+        JSON.stringify({ error: "Invalid section ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (sectionData.grade_id !== body.gradeId) {
+      return new Response(
+        JSON.stringify({ error: "Section does not belong to the selected grade" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Derive and attach the text values so downstream logic stays consistent
+    body.campus = campusData.name;
+    body.grade = gradeData.name;
+    body.section = sectionData.name;
+  } else if (body.campus && body.grade && body.section) {
+    // Fallback: validate using text values only (backward compatible path)
     const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
     if (!isValid.valid) {
       return new Response(
@@ -662,6 +825,13 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   if (body.section) updates.section = body.section;
   if (body.campus) updates.campus = body.campus;
   if (body.client_id) updates.client_id = body.client_id;
+
+  // Persist ID columns when provided
+  if (hasIds) {
+    updates.campus_id = body.campusId;
+    updates.grade_id = body.gradeId;
+    updates.section_id = body.sectionId;
+  }
   
   let query = supabaseClient
     .from("students")

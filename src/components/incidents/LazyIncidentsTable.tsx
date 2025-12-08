@@ -34,6 +34,7 @@ interface LazyIncidentsTableProps {
   pagination?: PaginationInfo;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  onRefreshIncidents?: () => void | Promise<void>; // Callback to refresh incident list
 }
 
 const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ 
@@ -41,7 +42,8 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   loading, 
   pagination,
   onPageChange,
-  onPageSizeChange 
+  onPageSizeChange,
+  onRefreshIncidents
 }) => {
   const navigate = useNavigate();
   const { checkPermissions } = useIncidentPermissions();
@@ -101,11 +103,11 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'open':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-red-100 text-red-800 border-red-200'; // Open status is red
       case 'in progress':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'closed':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-green-100 text-green-800 border-green-200'; // Closed status is green
       default:
         return 'bg-blue-100 text-blue-800 border-blue-200';
     }
@@ -148,7 +150,13 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
       action_taken: (incident as any).action_taken ?? null,
       policy_docs: policyDocs,
     };
-    setAiPayload(payload);
+    // Include the full incident object with recommended_action
+    const fullIncident = incidents.find(inc => inc.id === incident.id);
+    setAiPayload({
+      ...payload,
+      ...fullIncident, // Include all incident fields including recommended_action
+      recommended_action: fullIncident?.recommended_action || null
+    });
     setAiOpen(true);
   };
 
@@ -256,7 +264,14 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <AIRecommendationDialog open={aiOpen} onOpenChange={setAiOpen} incidentJson={aiPayload} incidentId={aiPayload?.id} />
+      <AIRecommendationDialog 
+        open={aiOpen} 
+        onOpenChange={setAiOpen} 
+        incidentJson={aiPayload} 
+        incidentId={aiPayload?.id} 
+        incident={aiPayload}
+        onRefresh={onRefreshIncidents}
+      />
       {/* Page size selector */}
       {pagination && onPageSizeChange && (
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">

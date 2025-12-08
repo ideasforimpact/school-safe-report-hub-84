@@ -74,13 +74,34 @@ async function uploadFileToStorage(
   file: QuestionFile,
   filePath: string
 ): Promise<{ url: string; path: string }> {
+  // Allowed file types: PDF, DOC, DOCX, PNG, JPEG, JPG
+  const ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/png',
+    'image/jpeg',
+    'image/jpg'
+  ];
+  const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpeg', '.jpg'];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
   // Validate file
   if (file.size === 0) {
     throw new Error(`File ${file.name} is empty`);
   }
 
-  if (file.size > 30 * 1024 * 1024) {
-    throw new Error(`File ${file.name} exceeds 30MB limit`);
+  // Validate file size (10MB limit)
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(`File ${file.name} exceeds the 10MB size limit. Maximum file size is 10MB.`);
+  }
+
+  // Validate file type
+  const isValidType = ALLOWED_FILE_TYPES.includes(file.type) || 
+    ALLOWED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext));
+  
+  if (!isValidType) {
+    throw new Error(`File ${file.name} has an invalid format. Allowed formats: PDF, DOC, DOCX, PNG, JPEG, JPG.`);
   }
 
   // Convert base64 to Uint8Array

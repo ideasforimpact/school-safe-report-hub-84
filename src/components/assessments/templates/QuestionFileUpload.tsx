@@ -34,6 +34,30 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
 }) => {
   const [selecting, setSelecting] = useState(false);
 
+  // Allowed file types: PDF, DOC, DOCX, PNG, JPEG, JPG
+  const ALLOWED_FILE_TYPES = [
+    'application/pdf', // PDF
+    'application/msword', // DOC
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+    'image/png', // PNG
+    'image/jpeg', // JPEG
+    'image/jpg' // JPG
+  ];
+
+  const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.png', '.jpeg', '.jpg'];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const isValidFileType = (file: File): boolean => {
+    // Check by MIME type
+    if (ALLOWED_FILE_TYPES.includes(file.type)) {
+      return true;
+    }
+    
+    // Fallback: Check by file extension
+    const fileName = file.name.toLowerCase();
+    return ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -44,9 +68,19 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
       // Only take the first file since we only allow single file upload
       const file = selectedFiles[0];
       
-      // Check file size (30MB limit)
-      if (file.size > 30 * 1024 * 1024) {
-        toast.error(`${file.name} exceeds 30MB limit`);
+      // Validate file type
+      if (!isValidFileType(file)) {
+        toast.error(`File "${file.name}" has an invalid format. Allowed formats: PDF, DOC, DOCX, PNG, JPEG, JPG.`);
+        setSelecting(false);
+        e.target.value = '';
+        return;
+      }
+      
+      // Check file size (10MB limit)
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`File "${file.name}" exceeds the 10MB size limit. Maximum file size is 10MB.`);
+        setSelecting(false);
+        e.target.value = '';
         return;
       }
 
@@ -56,7 +90,9 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
       );
 
       if (isDuplicate) {
-        toast.error(`${file.name} is already added`);
+        toast.error(`File "${file.name}" is already added.`);
+        setSelecting(false);
+        e.target.value = '';
         return;
       }
 
@@ -71,6 +107,7 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
       };
 
       // Replace any existing pending files with the new single file
+      console.log(`[QuestionFileUpload] Setting pending file for questionId: ${questionId}`, newPendingFile);
       onPendingFilesChange([newPendingFile]);
       
       // Also clear any existing uploaded files since we only allow one file per question
@@ -111,6 +148,17 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log(`[QuestionFileUpload] Render for questionId: ${questionId}`, {
+      questionId,
+      filesCount: files.length,
+      pendingFilesCount: pendingFiles.length,
+      files: files.map(f => ({ id: f.id, name: f.name })),
+      pendingFiles: pendingFiles.map(f => ({ id: f.id, name: f.name }))
+    });
+  }, [questionId, files, pendingFiles]);
+
   return (
     <div className="space-y-3">
       {/* File upload button */}
@@ -121,6 +169,7 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
           className="sr-only"
           onChange={handleFileSelect}
           disabled={selecting}
+          accept=".pdf,.doc,.docx,.png,.jpeg,.jpg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/jpg"
         />
         <Label
           htmlFor={`file-upload-${questionId}`}
@@ -133,7 +182,7 @@ const QuestionFileUpload: React.FC<QuestionFileUploadProps> = ({
           ) : (
             <Upload className="h-4 w-4 mr-2" />
           )}
-          {selecting ? 'Selecting...' : 'Select File (Max 30MB)'}
+          {selecting ? 'Selecting...' : 'Select File (Max 10MB)'}
         </Label>
       </div>
 

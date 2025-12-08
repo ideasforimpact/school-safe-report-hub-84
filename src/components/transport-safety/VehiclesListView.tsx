@@ -17,7 +17,6 @@ import {
   getLatestVerificationLog,
   getLatestVerificationFieldValue
 } from '@/utils/transport-safety/documentStatusUtils';
-import { toast } from 'sonner';
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
@@ -126,7 +125,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
-                      <VehicleTypeIcon type="bus" />
+                      <VehicleTypeIcon type={vehicle.type} icon={vehicle.vehicleTypeIcon} />
                     </div>
                   </TableCell>
                   <TableCell>
@@ -208,7 +207,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     )}
                   </TableCell>
                   <TableCell className="text-left">
-                    <div className="flex justify-start gap-1">
+                    <div className="flex justify-start gap-1 items-center">
                       <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
                             <Settings className="h-4 w-4" />
@@ -246,6 +245,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           </Button>
         </div>
       )}
+
     </div>
   );
 };

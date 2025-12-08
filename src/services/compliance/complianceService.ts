@@ -55,6 +55,30 @@ export async function deleteFileViaEdge(params: { clientId: string; rowId: strin
 	return data as { success: boolean };
 }
 
+export async function updateComplianceValidity(params: {
+  rowId: string;
+  clientId: string;
+  employeeId?: string | null;
+  isValid: boolean;
+  validDate: string | null;
+}) {
+  const { rowId, clientId, employeeId, isValid, validDate } = params;
+
+  const { data, error } = await supabase
+    .from("compliance_documents")
+    .update({
+      is_valid: isValid,
+      valid_date: validDate,
+    })
+    .eq("id", rowId)
+    .eq("client_id", clientId)
+    .eq("created_by", employeeId ?? null)
+    .select("id, is_valid, valid_date");
+
+  if (error) throw error;
+  return data;
+}
+
 export async function enqueueUploadMetadata(payload: {
   clientId: string;
   employeeId?: string | null;

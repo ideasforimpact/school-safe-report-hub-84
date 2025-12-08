@@ -56,6 +56,17 @@ export function getDatabaseUrl(): string {
 }
 
 /**
+ * Get Frontend URL - tries FRONTEND_URL first, then SUPABASE_FRONTEND_URL
+ * For local development, can be set to http://localhost:3000
+ * For production/UAT, should be set to the actual frontend URL
+ */
+export function getFrontendUrl(): string {
+  return Deno.env.get('FRONTEND_URL') ?? 
+         Deno.env.get('SUPABASE_FRONTEND_URL') ?? 
+         'https://school-safe-report-hub.vercel.app';
+}
+
+/**
  * Get any environment variable with fallback support
  * Tries the provided key first, then tries with SUPABASE_ prefix
  */

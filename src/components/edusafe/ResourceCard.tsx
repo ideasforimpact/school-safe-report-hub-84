@@ -64,15 +64,35 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
       return;
     }
     
-    // Check if we have a document URL
-    if (resource.document_url) {
-      // Open the document URL directly in a new tab
-      window.open(resource.document_url, '_blank', 'noopener,noreferrer');
-    } else if (resource.file?.base64) {
-      // Fallback to base64 if document_url is not available
-      window.open(resource.file.base64, '_blank', 'noopener,noreferrer');
-    } else {
-      toast.error('No file available to view');
+    try {
+      let urlToOpen: string | null = null;
+
+     
+      // Check for document_url
+       if (resource.document_url) {
+        const documentUrl = resource.document_url;
+        
+        // Check if it's a relative storage path (starts with edusafe-resources/ or /edusafe-resources/)
+        if (documentUrl.startsWith('edusafe-resources/') || documentUrl.startsWith('/edusafe-resources/')) {
+          // Prepend the Supabase storage base URL
+          const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL 
+          const normalizedBase = base.replace(/\/$/, '');
+          const normalizedPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
+          urlToOpen = `${normalizedBase}${normalizedPath}`;
+        } else {
+          // It's already a full URL, use it directly
+          urlToOpen = documentUrl;
+        }
+      }
+
+      if (urlToOpen) {
+        window.open(urlToOpen, '_blank', 'noopener,noreferrer');
+      } else {
+        toast.error('No file available to view');
+      }
+    } catch (error) {
+      console.error('[ResourceCard] Error opening document:', error);
+      toast.error('Failed to open document');
     }
   };
   

@@ -8,11 +8,18 @@ import {
   hasValidVehicle
 } from '@/utils/transport-safety/documentStatusUtils';
 import { useSearchParams } from 'react-router-dom';
+import { getDocumentStatus } from '@/utils/transport-safety/documentStatusUtils';
+import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface DocumentStatusFilters {
   valid: boolean;
   expired: boolean;
   expiring_soon: boolean;
+}
+
+interface VehicleTypeFilterOption {
+  id: string;
+  name: string;
 }
 
 export const useVehicleFilters = (vehicles: Vehicle[]) => {
@@ -21,6 +28,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
+  const { vehicleTypes } = useVehicleTypes();
   const [documentStatusFilters, setDocumentStatusFilters] = useState<DocumentStatusFilters>({
     valid: false,
     expired: false,
@@ -66,10 +74,23 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     }
   }, [searchParams]);
 
-  // Use the exact type values from the Vehicle type
-  const vehicleTypes = useMemo(() => {
-    return [...new Set(vehicles.map(vehicle => vehicle.type))];
-  }, [vehicles]);
+  // Build vehicle type options from vehicles using foreign key + name
+  // const vehicleTypes: VehicleTypeFilterOption[] = useMemo(() => {
+  //   const map = new Map<string, VehicleTypeFilterOption>();
+
+  //   vehicles.forEach((vehicle) => {
+  //     if (vehicle.typeId && vehicle.typeName) {
+  //       if (!map.has(vehicle.typeId)) {
+  //         map.set(vehicle.typeId, {
+  //           id: vehicle.typeId,
+  //           name: vehicle.typeName,
+  //         });
+  //       }
+  //     }
+  //   });
+
+  //   return Array.from(map.values());
+  // }, [vehicles]);
 
   const hasActiveDocumentStatusFilters = useMemo(() => {
     return Object.values(documentStatusFilters).some(value => value);
@@ -114,15 +135,25 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
         : true;
       
       const matchesStatus = statusFilter === 'all' ? true : vehicle.status === statusFilter;
-      const matchesType = typeFilter === 'all' ? true : vehicle.type === typeFilter;
+      const matchesType =
+        typeFilter === 'all'
+          ? true
+          : vehicle.typeId === typeFilter;
       
       // Document status filters with enhanced logic
       let matchesDocumentStatus = true;
       
       if (hasActiveDocumentStatusFilters) {
+        const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
+        const fcStatus = getDocumentStatus(vehicle, 'fitness').status;
+        const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
+        const isStrictValid =
+          insuranceStatus === 'valid' &&
+          fcStatus === 'valid' &&
+          pollutionStatus === 'valid';
         if (documentStatusFilters.valid && !documentStatusFilters.expired && !documentStatusFilters.expiring_soon) {
           // Only valid selected - show vehicles that are considered valid (at least 2/3 certificates valid or expiring soon)
-          matchesDocumentStatus = hasValidVehicle(vehicle);
+          matchesDocumentStatus = isStrictValid;
         } else if (documentStatusFilters.expired && !documentStatusFilters.valid && !documentStatusFilters.expiring_soon) {
           // Only expired selected - show vehicles with ANY expired documents
           matchesDocumentStatus = hasExpiredDocuments(vehicle);

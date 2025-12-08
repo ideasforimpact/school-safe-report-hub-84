@@ -106,6 +106,10 @@ export interface VerificationDocument {
     sentiment: boolean; // true for positive, false for negative
     filePaths: string[]; // Array of storage paths
   }>;
+  personalInfo?: {
+    dob?: string;
+    address?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

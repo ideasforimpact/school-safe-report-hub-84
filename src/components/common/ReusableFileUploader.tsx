@@ -4,7 +4,15 @@ import { Upload, X, File, AlertCircle, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { FileItem } from '@/types/fileTypes';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
+import FileListItem from '../file/FileListItem';
+import { formatFileSize } from '@/utils/fileUtils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 interface ReusableFileUploaderProps {
   onFilesChange: (files: FileItem[]) => void;
   initialFiles?: FileItem[];
@@ -33,16 +41,82 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
-  // Update parent when files change
+  const handlePreview = (file: FileItem) => {
+    setPreviewFile(file);
+  };
+  // Update parent when files change (only when files actually change, not when callback changes)
   React.useEffect(() => {
     onFilesChange(files);
-  }, [files, onFilesChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
 
-  // Sync with initialFiles prop changes
-  React.useEffect(() => {
-    setFiles(initialFiles);
-  }, [initialFiles]);
+  // Helper function to extract file extension from filename
+  const getFileExtension = (filename: string): string => {
+    const lastDot = filename.lastIndexOf('.');
+    if (lastDot === -1) return '';
+    return filename.substring(lastDot).toLowerCase();
+  };
+
+  // Helper function to parse accept string and extract allowed extensions
+  const getAllowedExtensions = React.useMemo((): Set<string> => {
+    const extensions = new Set<string>();
+    
+    // MIME type to extension mapping
+    const mimeToExtension: Record<string, string[]> = {
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/jpg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/jfif': ['.jfif'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    };
+
+    // First, add extensions based on allowedTypes
+    allowedTypes.forEach(type => {
+      const extList = mimeToExtension[type] || [];
+      extList.forEach(ext => extensions.add(ext));
+    });
+
+    // Then, parse accept string (e.g., ".pdf,image/*" or ".pdf,.jpg,.png")
+    if (accept) {
+      const acceptParts = accept.split(',').map(part => part.trim());
+      acceptParts.forEach(part => {
+        if (part.startsWith('.')) {
+          // Direct extension (e.g., ".pdf")
+          extensions.add(part.toLowerCase());
+        } else if (part.includes('/*')) {
+          // MIME type wildcard (e.g., "image/*")
+          const baseType = part.split('/')[0];
+          if (baseType === 'image') {
+            // For image/*, add only the image extensions that are in allowedTypes
+            allowedTypes.forEach(type => {
+              if (type.startsWith('image/')) {
+                const extList = mimeToExtension[type] || [];
+                extList.forEach(ext => extensions.add(ext));
+              }
+            });
+          } else if (baseType === 'application') {
+            // For application/*, add only the application extensions that are in allowedTypes
+            allowedTypes.forEach(type => {
+              if (type.startsWith('application/')) {
+                const extList = mimeToExtension[type] || [];
+                extList.forEach(ext => extensions.add(ext));
+              }
+            });
+          }
+        } else if (part.includes('/')) {
+          // MIME type (e.g., "image/jpeg")
+          const extList = mimeToExtension[part] || [];
+          extList.forEach(ext => extensions.add(ext));
+        }
+      });
+    }
+
+    return extensions;
+  }, [accept, allowedTypes]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -116,16 +190,34 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
         return;
       }
 
-      // File type validation
-      if (!allowedTypes.includes(file.type)) {
-        const typeNames = allowedTypes.map(type => {
-          if (type === 'application/pdf') return 'PDF';
-          if (type.includes('jpeg') || type.includes('jpg')) return 'JPG';
-          if (type.includes('png')) return 'PNG';
-          return type;
-        }).join(', ');
+      // Get allowed extensions (memoized)
+      const fileExtension = getFileExtension(file.name);
+
+      // Validate MIME type
+      const isValidMimeType = allowedTypes.includes(file.type);
+      
+      // Validate file extension
+      const isValidExtension = getAllowedExtensions.has(fileExtension);
+
+      // Both MIME type and extension must be valid
+      if (!isValidMimeType || !isValidExtension) {
+        // Build user-friendly list of allowed extensions
+        const typeSet = new Set<string>();
+        allowedTypes.forEach(type => {
+          if (type === 'application/pdf') typeSet.add('PDF');
+          else if (type.includes('jpeg') || type.includes('jpg')) typeSet.add('JPG');
+          else if (type.includes('png')) typeSet.add('PNG');
+          else if (type.includes('msword') || type.includes('wordprocessingml')) typeSet.add('Word');
+          else typeSet.add(type);
+        });
+        const typeNames = Array.from(typeSet).join(', ');
         
-        const errorMsg = `"${file.name}" is not a supported file type. Please upload ${typeNames} files.`;
+        // Build extension list for error message
+        const extensionList = Array.from(getAllowedExtensions)
+          .map(ext => ext.toUpperCase().replace('.', ''))
+          .join(', ');
+        
+        const errorMsg = `"${file.name}" is not a supported file type. Please upload ${typeNames} files (${extensionList} extensions only).`;
         setErrorMessage(errorMsg);
         toast({
           title: 'Invalid file type',
@@ -213,7 +305,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     setErrorMessage(null);
   };
 
-  const formatFileSize = (bytes: number): string => {
+  const formatFileSizetomb = (bytes: number): string => {
     return (bytes / 1024 / 1024).toFixed(2);
   };
 
@@ -228,7 +320,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   };
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  const totalSizeMB = formatFileSize(totalSize);
+  const totalSizeMB = formatFileSizetomb(totalSize);
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -246,36 +338,76 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
       {showFileList && files.length > 0 && (
         <div className="space-y-2 mb-3">
           <div className="text-xs text-gray-500 mb-2 px-1">
-            {files.length} of {maxFiles} files selected • Total size: {totalSizeMB} MB
+            {files.length} of {maxFiles} {maxFiles === 1 ? 'file' : 'files'} selected • Total size: {totalSizeMB} MB
           </div>
           <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 #f1f5f9' }}>
-            {files.map((file) => (
-              <div key={file.id} className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">
-                <div className="flex items-start flex-1 min-w-0 overflow-hidden">
-                  {getFileIcon(file.type)}
-                  <div className="min-w-0 flex-1 overflow-hidden">
-                    <span className="text-sm break-words break-all block w-full text-gray-900">{file.name}</span>
-                    <span className="text-xs text-gray-500 block mt-1">
-                      {formatFileSize(file.size)} MB
-                    </span>
-                  </div>
+            {files.map((file) => {
+              const isImage = file.type?.startsWith("image/");
+
+              return (
+                <div key={file.id}>
+                  {/* LEFT SIDE CONTENT */}
+                  {isImage ? (
+                    <FileListItem
+                      key={file.id}
+                      file={file}
+                      onPreview={handlePreview}        
+                      onRemove={removeFile}       
+                    />
+                  ) : (
+                    <div className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">
+                      <div className="flex items-start flex-1 min-w-0 overflow-hidden">
+                        {getFileIcon(file.type)}
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <span className="text-sm break-words break-all block w-full text-gray-900 text-left">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500 block mt-1">
+                            {formatFileSize(file.size)}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(file.id)}
+                        className="h-8 w-8 p-0 flex-shrink-0 ml-2"
+                        disabled={disabled}
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFile(file.id)}
-                  className="h-8 w-8 p-0 flex-shrink-0 ml-2"
-                  disabled={disabled}
-                >
-                  <X className="h-4 w-4 text-gray-500" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
-      
+       {/* Simple preview dialog (example using shadcn Dialog) */}
+       {previewFile && (
+        <div className=''>
+
+        <Dialog open={!!previewFile} onOpenChange={() => setPreviewFile(null)}>
+           <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg">{previewFile.name}</DialogTitle>
+                      <DialogDescription>
+                        {formatFileSize(previewFile.size)}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-center items-center py-4">
+                      <img 
+                        src={previewFile.base64} 
+                        alt={previewFile.name} 
+                        className="max-h-[70vh] max-w-full object-contain rounded-md"
+                      />
+                    </div>
+                  </DialogContent>
+        </Dialog>
+        </div>
+      )}
       {/* File Upload Area */}
       <div className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center w-full overflow-hidden">
         <input 
@@ -283,22 +415,29 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
           type="file" 
           className="hidden"
           accept={accept}
-          multiple
+          multiple={maxFiles > 1}
           onChange={handleFileUpload}
           disabled={disabled || isProcessing}
         />
         <div className="flex flex-col items-center justify-center w-full">
           <Upload className="h-8 w-8 text-gray-400 mb-2 flex-shrink-0" />
           <p className="text-sm text-gray-500 mb-1 break-words px-2">
-            Drag and drop files here, or click to select files
+            {maxFiles === 1 
+              ? 'Drag and drop file here, or click to select file'
+              : 'Drag and drop files here, or click to select files'}
           </p>
           <p className="text-xs text-gray-400 break-words px-2">
-            {allowedTypes.map(type => {
-              if (type === 'application/pdf') return 'PDF';
-              if (type.includes('jpeg') || type.includes('jpg')) return 'JPG';
-              if (type.includes('png')) return 'PNG';
-              return type;
-            }).join(', ')} • Max size: {maxSize}MB per file • Max {maxFiles} files • Total: {maxTotalSize}MB
+            {(() => {
+              const typeSet = new Set<string>();
+              allowedTypes.forEach(type => {
+                if (type === 'application/pdf') typeSet.add('PDF');
+                else if (type.includes('jpeg') || type.includes('jpg')) typeSet.add('JPG');
+                else if (type.includes('png')) typeSet.add('PNG');
+                else if (type.includes('msword') || type.includes('wordprocessingml')) typeSet.add('Word');
+                else typeSet.add(type);
+              });
+              return Array.from(typeSet).join(', ');
+            })()} • Max size: {maxSize}MB per file • Max {maxFiles} {maxFiles === 1 ? 'file' : 'files'} • Total: {maxTotalSize}MB
           </p>
           <Button 
             type="button" 

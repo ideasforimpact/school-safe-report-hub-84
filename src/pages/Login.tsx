@@ -3,10 +3,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ShieldCheck, LogIn } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { AlertCircle, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { providerConfigs } from "@/utils/authProviders";
@@ -236,13 +235,15 @@ const Login = () => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="flex justify-center">
-            <div className="p-3 bg-white/30 backdrop-blur-md rounded-full border border-white/40 shadow-lg shadow-blue-200/20">
-              <ShieldCheck className="h-12 w-12 text-blue-600" />
-            </div>
+            <img 
+              src="/safeschool_weblogo.png" 
+              alt="Safe School Logo" 
+              className="h-20 w-auto object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold text-slate-700 mt-4">Safe School</h1>
-          <p className="text-slate-600 mt-1">Incident Management System</p>
-          <p className="text-sm text-slate-500 mt-2">Sign in to start protecting your school community</p>
+          <p className="text-slate-600 mt-1">School Safety Compliance System</p>
+          <p className="text-sm text-slate-500 mt-2">Protecting What Matters Most, Aligned With India's Child Safety Framework</p>
         </div>
 
         {/* Enhanced Glassy Card with Pastel Shadows */}
@@ -322,27 +323,33 @@ const Login = () => {
               </Button>
             </div>
           </CardContent>
-          <CardFooter className="flex-col gap-3">
-            <div className="w-full flex items-center gap-2 my-2">
-              <Separator className="flex-1 bg-slate-300/60" />
-              <span className="text-xs text-slate-500">NEED HELP?</span>
-              <Separator className="flex-1 bg-slate-300/60" />
-            </div>
-            
-            <Button 
-              type="button" 
-              variant="ghost" 
-              onClick={() => navigate('/home')} 
-              className="w-full transition-all hover:bg-white/60 backdrop-blur-sm text-slate-600 hover:text-slate-800 rounded-xl"
-            >
-              Back to Home
-            </Button>
-            
-            <p className="text-xs text-center text-slate-500 mt-4">
-              Contact your administrator if you're having trouble signing in
-            </p>
-          </CardFooter>
         </Card>
+        
+        {/* Terms and Privacy Policy Links */}
+        <div className="mt-6 mb-8 text-center">
+          <p className="text-xs text-slate-400 mb-2">
+            By signing in, you agree to our
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+            <button
+              onClick={() => navigate('/terms-of-service', { 
+                state: { fromLogin: true, originalRoute: '/login' } 
+              })}
+              className="hover:text-slate-700 transition-colors underline"
+            >
+              Terms of Service
+            </button>
+            <span>|</span>
+            <button
+              onClick={() => navigate('/privacy-policy', { 
+                state: { fromLogin: true, originalRoute: '/login' } 
+              })}
+              className="hover:text-slate-700 transition-colors underline"
+            >
+              Privacy Policy
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

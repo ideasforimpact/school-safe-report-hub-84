@@ -14,6 +14,7 @@ import RootCauseDisplay from './details/RootCauseDisplay';
 import ContributingFactorsDisplay from './details/ContributingFactorsDisplay';
 import ActionsList from './ActionsList';
 import IncidentClosureForm from './IncidentClosureForm';
+import PeopleInvolved from './PeopleInvolved';
 
 interface IncidentDetailsProps {
   incident: Incident;
@@ -117,6 +118,13 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
                 <path d="M7 7h14l-7 5 7 5H7"/>
               </svg>
               <span className="text-sm font-medium">Reopened Ticket</span>
+            </div>
+          )}
+
+          {/* People Involved section */}
+          {incident.peopleInvolved && incident.peopleInvolved.length > 0 && (
+            <div className="border-b pb-6">
+              <PeopleInvolved people={incident.peopleInvolved} />
             </div>
           )}
 

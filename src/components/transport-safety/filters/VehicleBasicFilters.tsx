@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Filter, FileCheck, FileX, FileWarning } from 'lucide-react';
+import { Filter, FileCheck, FileX, FileWarning, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +18,7 @@ interface VehicleBasicFiltersProps {
   setStatusFilter: (value: string) => void;
   typeFilter: string;
   setTypeFilter: (value: string) => void;
-  vehicleTypes: string[];
+  vehicleTypes: { id: string; name: string }[];
   documentTypeFilter: string;
   setDocumentTypeFilter: (value: string) => void;
   documentStatusFilters: DocumentStatusFilters;
@@ -52,7 +52,6 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
@@ -65,11 +64,19 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              {vehicleTypes.map(type => (
-                <SelectItem key={type} value={type}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </SelectItem>
-              ))}
+              {[...vehicleTypes]
+                .sort((a, b) => {
+                  const aIsOthers = a.name.toLowerCase() === 'others' || a.name.toLowerCase() === 'other';
+                  const bIsOthers = b.name.toLowerCase() === 'others' || b.name.toLowerCase() === 'other';
+                  if (aIsOthers && !bIsOthers) return 1; // a goes after b
+                  if (!aIsOthers && bIsOthers) return -1; // a goes before b
+                  return a.name.localeCompare(b.name);
+                })
+                .map((vehicleType) => (
+                  <SelectItem key={vehicleType.id} value={vehicleType.id}>
+                    {vehicleType.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
@@ -78,14 +85,12 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
         
         {activeFiltersCount > 0 && (
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm" 
             onClick={clearAllFilters}
             className="h-10 text-xs flex items-center gap-1"
           >
-            <Badge variant="secondary" className="text-xs mr-1">
-              {activeFiltersCount}
-            </Badge>
+            <X className="h-4 w-4 mr-1" />
             Clear filters
           </Button>
         )}

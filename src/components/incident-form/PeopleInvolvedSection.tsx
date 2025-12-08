@@ -94,7 +94,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     const updatedPeople = [...peopleInvolved];
     updatedPeople[index] = { 
       ...updatedPeople[index], 
-      name: `${student.name} (${student.studentId})` 
+      name: `${student.name} (${student.studentId})`,
+      id: student.id // Store the student ID for reference checking
     };
     setPeopleInvolved(updatedPeople);
     setIsSearching(prev => ({ ...prev, [index]: false }));

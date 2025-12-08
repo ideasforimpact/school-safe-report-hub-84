@@ -55,8 +55,14 @@ const formSchema = z.object({
     .max(25, { message: 'Name cannot exceed 25 characters' })
     .regex(/^[a-zA-Z\s]+$/, { message: 'Name can only contain letters and spaces' }),
   campus: z.string().min(1, { message: 'Campus is required' }),
+  campusId: z.string().optional(),
   grade: z.string().min(1, { message: 'Grade is required' }),
-  section: z.string().min(1, { message: 'Section is required' })
+  gradeId: z.string().optional(),
+  section: z.string().min(1, { message: 'Section is required' }),
+  sectionId: z.string().optional()
+}).refine((data) => data.campusId && data.gradeId && data.sectionId, {
+  message: "All IDs must be selected",
+  path: ["sectionId"] // Show error on section field
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -76,9 +82,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const [sections, setSections] = useState<Section[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   
-  // Selection states
+  // Selection states - track both IDs and names
   const [selectedCampus, setSelectedCampus] = useState<string>(defaultValues?.campus || '');
+  const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [selectedGrade, setSelectedGrade] = useState<string>(defaultValues?.grade || '');
+  const [selectedGradeId, setSelectedGradeId] = useState<string>('');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   
   // Filtered lists
   const [filteredGrades, setFilteredGrades] = useState<Grade[]>([]);
@@ -100,16 +109,22 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
         studentId: defaultValues?.studentId || '',
         name: peopleInvolved.name,
         campus: defaultValues?.campus || '',
+        campusId: defaultValues?.campusId || '',
         grade: defaultValues?.grade || '',
-        section: defaultValues?.section || ''
+        gradeId: defaultValues?.gradeId || '',
+        section: defaultValues?.section || '',
+        sectionId: defaultValues?.sectionId || ''
       };
     }
     return defaultValues || {
       studentId: '',
       name: '',
       campus: '',
+      campusId: '',
       grade: '',
-      section: ''
+      gradeId: '',
+      section: '',
+      sectionId: ''
     };
   };
 
@@ -171,6 +186,9 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   };
 
   // Fetch campuses, grades, and sections from Supabase - filtered by client_id
+  // Note: we only depend on clientId here so we don't re-run this effect
+  // after submit/save when defaultValues may change, which was causing a
+  // brief "Loading educational structure data..." flash.
   useEffect(() => {
     const fetchEducationalStructure = async () => {
       if (!employeeData?.clientId) {
@@ -224,20 +242,38 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
 
         // Handle pre-selected values for edit mode
         if (defaultValues?.campus && campusData) {
-          const selectedCampusId = campusData.find(c => c.name === defaultValues.campus)?.id;
-          if (selectedCampusId && gradeData) {
+          const foundCampusId = campusData.find(c => c.name === defaultValues.campus)?.id;
+          if (foundCampusId && gradeData) {
+            // Set campus ID state and form value
+            setSelectedCampusId(foundCampusId);
+            form.setValue('campusId', foundCampusId);
+
             const campusGrades = gradeData
-              .filter(g => g.campus_id === selectedCampusId)
+              .filter(g => g.campus_id === foundCampusId)
               .map(g => ({ id: g.id, name: g.name, campusId: g.campus_id }));
             setFilteredGrades(campusGrades);
             
             if (defaultValues.grade) {
-              const selectedGradeId = campusGrades.find(g => g.name === defaultValues.grade)?.id;
-              if (selectedGradeId && sectionData) {
-                setFilteredSections(sectionData
-                  .filter(s => s.grade_id === selectedGradeId)
-                  .map(s => ({ id: s.id, name: s.name, classId: s.grade_id }))
-                );
+              const foundGradeId = campusGrades.find(g => g.name === defaultValues.grade)?.id;
+              if (foundGradeId && sectionData) {
+                // Set grade ID state and form value
+                setSelectedGradeId(foundGradeId);
+                form.setValue('gradeId', foundGradeId);
+
+                const gradeSections = sectionData
+                  .filter(s => s.grade_id === foundGradeId)
+                  .map(s => ({ id: s.id, name: s.name, classId: s.grade_id }));
+                setFilteredSections(gradeSections);
+
+                if (defaultValues.section) {
+                  const foundSectionId = gradeSections.find(
+                    s => s.name === defaultValues.section
+                  )?.id;
+                  if (foundSectionId) {
+                    setSelectedSectionId(foundSectionId);
+                    form.setValue('sectionId', foundSectionId);
+                  }
+                }
               }
             }
           }
@@ -252,13 +288,16 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
     };
     
     fetchEducationalStructure();
-  }, [employeeData?.clientId, defaultValues]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeData?.clientId]);
 
   // Filter grades based on selected campus
   useEffect(() => {
     if (selectedCampus) {
       const campusObj = campuses.find(c => c.name === selectedCampus);
       if (campusObj) {
+        setSelectedCampusId(campusObj.id);
+        form.setValue('campusId', campusObj.id);
         const campusGrades = grades.filter(g => g.campusId === campusObj.id);
         setFilteredGrades(campusGrades);
       }
@@ -266,11 +305,17 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       // Reset grade and section when campus changes (unless in edit mode with matching values)
       if (!defaultValues?.grade || (defaultValues.campus !== selectedCampus)) {
         form.setValue('grade', '');
+        form.setValue('gradeId', '');
         setSelectedGrade('');
+        setSelectedGradeId('');
         form.setValue('section', '');
+        form.setValue('sectionId', '');
+        setSelectedSectionId('');
       }
     } else {
       setFilteredGrades([]);
+      setSelectedCampusId('');
+      form.setValue('campusId', '');
     }
   }, [selectedCampus, campuses, grades, form, defaultValues]);
 
@@ -279,6 +324,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
     if (selectedGrade) {
       const gradeObj = grades.find(g => g.name === selectedGrade);
       if (gradeObj) {
+        setSelectedGradeId(gradeObj.id);
+        form.setValue('gradeId', gradeObj.id);
         const gradeSections = sections.filter(s => s.classId === gradeObj.id);
         setFilteredSections(gradeSections);
       }
@@ -286,9 +333,13 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       // Reset section when grade changes (unless in edit mode with matching values)
       if (!defaultValues?.section || (defaultValues.grade !== selectedGrade)) {
         form.setValue('section', '');
+        form.setValue('sectionId', '');
+        setSelectedSectionId('');
       }
     } else {
       setFilteredSections([]);
+      setSelectedGradeId('');
+      form.setValue('gradeId', '');
     }
   }, [selectedGrade, grades, sections, form, defaultValues]);
 
@@ -298,6 +349,13 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       toast.error('Cannot save student with duplicate Student ID');
       return;
     }
+    
+    // Ensure all IDs are set before submission
+    if (!data.campusId || !data.gradeId || !data.sectionId) {
+      toast.error('Please ensure all fields are properly selected');
+      return;
+    }
+    
     onSubmit(data);
   };
 
@@ -306,7 +364,10 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
     form.reset();
     setStudentIdInput('');
     setSelectedCampus('');
+    setSelectedCampusId('');
     setSelectedGrade('');
+    setSelectedGradeId('');
+    setSelectedSectionId('');
     setFilteredGrades([]);
     setFilteredSections([]);
     if (onCancel) {
@@ -414,8 +475,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                 <Select 
                   value={field.value} 
                   onValueChange={(value) => {
-                    field.onChange(value);
-                    setSelectedCampus(value);
+                    const campus = campuses.find(c => c.name === value);
+                    if (campus) {
+                      field.onChange(value);
+                      form.setValue('campusId', campus.id);
+                      setSelectedCampus(value);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -443,8 +508,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
                 <Select 
                   value={field.value} 
                   onValueChange={(value) => {
-                    field.onChange(value);
-                    setSelectedGrade(value);
+                    const grade = filteredGrades.find(g => g.name === value);
+                    if (grade) {
+                      field.onChange(value);
+                      form.setValue('gradeId', grade.id);
+                      setSelectedGrade(value);
+                    }
                   }}
                   disabled={!selectedCampus || filteredGrades.length === 0}
                 >
@@ -472,7 +541,14 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
               <FormControl>
                 <Select 
                   value={field.value} 
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    const section = filteredSections.find(s => s.name === value);
+                    if (section) {
+                      field.onChange(value);
+                      form.setValue('sectionId', section.id);
+                      setSelectedSectionId(section.id);
+                    }
+                  }}
                   disabled={!selectedGrade || filteredSections.length === 0}
                 >
                   <SelectTrigger>

@@ -9,6 +9,7 @@ import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 import { EmployeeProvider as EmployeeContextProvider } from './contexts/employee/EmployeeContext';
 import { BackofficeClientProvider } from '@/components/providers/BackofficeClientProvider';
+import { TransportSafetyProvider } from '@/contexts/transport-safety/TransportSafetyContext';
 import RouteGuard from '@/components/RouteGuard';
 import ModuleSyncProvider from '@/components/employee/ModuleSyncProvider';
 
@@ -96,6 +97,8 @@ const BackofficeWrapper = ({ component: Component }) => {
 };
 
 import ComplianceDocumentsPage from '@/pages/ComplianceDocumentsPage';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 
 function App() {
@@ -107,6 +110,7 @@ function App() {
             <EmployeeVerificationProvider>
               <ModuleSyncProvider>
                 <AssessmentProvider>
+                <TransportSafetyProvider>
 
                 <Routes>
                   {/* Public routes - no authentication required */}
@@ -126,6 +130,10 @@ function App() {
                   {/* Public grievance routes */}
                   <Route path="/public-grievance-form" element={<PublicGrievanceForm />} />
                   <Route path="/grievance-thank-you" element={<ThankYouPage />} />
+
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-of-service" element={<TermsOfService />} />
+      
                   
                   {/* Make Home page the default route */}
                   <Route path="/" element={<Home />} />
@@ -353,6 +361,7 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster position="top-right" closeButton={true} />
+                </TransportSafetyProvider>
                 </AssessmentProvider>
               </ModuleSyncProvider>
             </EmployeeVerificationProvider>

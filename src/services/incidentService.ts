@@ -25,6 +25,7 @@ export interface IncidentRecord {
   root_cause?: string | null;
   learning_points?: string | null;
   action_taken?: string | null;
+  recommended_action?: any | null;
 }
 
 export const incidentService = {
@@ -39,6 +40,7 @@ export const incidentService = {
           ticket_id,
           description,
           reopen,
+          recommended_action,
           date,
           created_at,
           updated_at,

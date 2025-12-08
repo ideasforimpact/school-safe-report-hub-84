@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 
 interface Answer {
   questionId: string;
@@ -87,7 +88,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             throw new Error(`Failed to fetch assessment template: ${templateError.message}`);
           }
 
-          if (!templateData) {
+          // Determine which template data to use
+          let finalTemplateData = templateData || null;
+          
+          if (!finalTemplateData) {
             console.log(`Template with ID ${assessmentData.template_id} not found`);
             // Try to fetch without client_id filter as a fallback
             const { data: fallbackTemplateData, error: fallbackError } = await supabase
@@ -101,20 +105,43 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             }
             
             console.log('Found template using fallback method:', fallbackTemplateData);
-            setTemplate(fallbackTemplateData);
+            finalTemplateData = fallbackTemplateData;
           } else {
-            console.log('Fetched template data:', templateData);
-            setTemplate(templateData);
+            console.log('Fetched template data:', finalTemplateData);
           }
           
-          // Parse questions from JSONB and initialize answers array
-          const currentTemplate = templateData || null;
+          // Parse questions from JSONB and process them
+          const currentTemplate = finalTemplateData || null;
           if (currentTemplate) {
-            const questions = Array.isArray(currentTemplate.questions) 
+            const rawQuestions = Array.isArray(currentTemplate.questions) 
               ? (currentTemplate.questions as unknown as Question[])
               : [];
               
-            console.log('Parsed questions:', questions);
+            console.log('Raw questions from database:', rawQuestions);
+            
+            // Ensure all questions have an id - generate one if missing
+            const questions = rawQuestions.map((question: Question, index: number) => {
+              // If question doesn't have an id, generate one based on index
+              // This ensures each question has a unique identifier
+              if (!question.id) {
+                console.warn(`Question at index ${index} is missing an id. Generating one...`, question);
+                return {
+                  ...question,
+                  id: `question_${index}_${Date.now()}`
+                };
+              }
+              return question;
+            });
+              
+            console.log('Processed questions with IDs:', questions.map(q => ({ id: q.id, text: q.text?.substring(0, 50) })));
+            
+            // CRITICAL: Update template state with processed questions that have IDs
+            const templateWithProcessedQuestions = {
+              ...currentTemplate,
+              questions: questions
+            };
+            setTemplate(templateWithProcessedQuestions);
+            console.log('Set template with processed questions:', templateWithProcessedQuestions);
             
             // Load existing answers if they exist
             let existingAnswers: any[] = [];
@@ -129,22 +156,41 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             
             console.log('Existing answers from database:', existingAnswers);
             
-            const initialAnswers = questions.map((question: Question) => {
-              const existingAnswer = existingAnswers.find((ans: any) => 
+            // Initialize answers array - ensure each question has a corresponding answer entry
+            const initialAnswers = questions.map((question: Question, index: number) => {
+              // First try to find by questionId
+              let existingAnswer = existingAnswers.find((ans: any) => 
                 ans && typeof ans === 'object' && ans.questionId === question.id
               );
               
-              console.log(`Question ${question.id} existing answer:`, existingAnswer);
+              // If not found and questionId was undefined in existing answer, try to match by index
+              // This handles legacy data where questionId might be undefined
+              if (!existingAnswer && existingAnswers[index]) {
+                const answerByIndex = existingAnswers[index];
+                if (answerByIndex && typeof answerByIndex === 'object') {
+                  console.log(`Found answer by index ${index} for question ${question.id}`);
+                  existingAnswer = answerByIndex;
+                }
+              }
               
+              console.log(`Question ${question.id} (index ${index}) existing answer:`, existingAnswer);
+              
+              // CRITICAL: Always use question.id (which we've ensured exists) as questionId
               return {
-                questionId: question.id,
+                questionId: question.id, // This should never be undefined now
                 answer: existingAnswer?.answer !== undefined ? existingAnswer.answer : undefined,
                 comment: existingAnswer?.comment || '',
                 attachments: existingAnswer?.attachments || []
               };
             });
+              
+            // Validate that all answers have a questionId
+            const invalidAnswers = initialAnswers.filter(a => !a.questionId);
+            if (invalidAnswers.length > 0) {
+              console.error('ERROR: Some answers have undefined questionId!', invalidAnswers);
+            }
             
-            console.log('Initialized answers with existing data:', initialAnswers);
+            console.log('Initialized answers with existing data:', initialAnswers.map(a => ({ questionId: a.questionId, answer: a.answer })));
             setAnswers(initialAnswers);
           }
         } else {
@@ -163,14 +209,26 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   }, [assessmentId, clientId]);
 
   const handleAnswerChange = (questionId: string, field: string, value: any) => {
-    console.log(`Updating answer for question ${questionId}, field ${field}:`, value);
-    setAnswers(prev => 
-      prev.map(answer => 
-        answer.questionId === questionId 
-          ? { ...answer, [field]: value }
-          : answer
-      )
-    );
+    // CRITICAL: Validate questionId is not undefined or empty
+    if (!questionId || questionId === 'undefined') {
+      console.error(`[useAssessmentAnswerData] ERROR: Attempted to update answer with invalid questionId:`, questionId);
+      return;
+    }
+    
+    console.log(`[useAssessmentAnswerData] Updating answer for question ${questionId}, field ${field}:`, value);
+    setAnswers(prev => {
+      const updated = prev.map(answer => {
+        // CRITICAL: Only match if both questionIds are defined and equal
+        // This prevents matching answers with undefined questionIds
+        if (answer.questionId && questionId && answer.questionId === questionId) {
+          console.log(`[useAssessmentAnswerData] Found matching answer for questionId ${questionId}, updating ${field} to:`, value);
+          return { ...answer, [field]: value };
+        }
+        return answer;
+      });
+      console.log(`[useAssessmentAnswerData] Updated answers array:`, updated.map(a => ({ questionId: a.questionId, answer: a.answer })));
+      return updated;
+    });
   };
 
   const calculateProgress = () => {
@@ -187,7 +245,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   };
 
   const handleSaveAsDraft = async () => {
-    if (!assessment || !template || !assessmentId) {
+    if (!assessment || !template || !assessmentId || !employeeData?.id || !clientId) {
       console.error('Missing required data for saving draft:', { assessment, template, assessmentId });
       toast.error('Missing required data. Please try again.');
       return;
@@ -196,14 +254,47 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     setSaving(true);
     
     try {
-      const answersData = answers.map(answer => ({
+      // Upload attachments for all answers before saving draft (same as submit)
+      const { questionFileService } = await import('@/services/assessment/questionFileService');
+      // Use template title (name) instead of assessment name to match existing question file structure
+      const templateName = template?.title || template?.name || 'assessment';
+      
+      const answersWithUploadedAttachments = await Promise.all(
+        answers.map(async (answer) => {
+          if (!answer.attachments || answer.attachments.length === 0) {
+            return {
         questionId: answer.questionId,
         answer: answer.answer,
         comment: answer.comment || '',
-        attachments: answer.attachments || []
-      }));
+              attachments: []
+            };
+          }
 
-      console.log('Saving draft with answers:', answersData);
+          try {
+            console.log(`[Draft] Uploading attachments for question ${answer.questionId}:`, answer.attachments);
+            const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
+              answer.attachments,
+              clientId,
+              employeeData.id,
+              templateName,
+              answer.questionId
+            );
+            
+            return {
+              questionId: answer.questionId,
+              answer: answer.answer,
+              comment: answer.comment || '',
+              attachments: uploadedAttachments
+            };
+          } catch (uploadError) {
+            console.error(`[Draft] Error uploading attachments for question ${answer.questionId}:`, uploadError);
+            toast.error(`Failed to upload attachments for question. Please try again.`);
+            throw uploadError;
+          }
+        })
+      );
+
+      console.log('[Draft] Saving draft with answers:', answersWithUploadedAttachments);
 
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
       
@@ -211,7 +302,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         .from('assessments')
         .update({ 
           status: currentStatus,
-          answers: answersData
+          answers: answersWithUploadedAttachments as any
         })
         .eq('assessment_id', parseInt(assessmentId))
         .eq('client_id', clientId)
@@ -222,8 +313,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         throw new Error(`Failed to save draft: ${updateError.message}`);
       }
 
-      console.log('Draft saved successfully:', data);
-      setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersData } : null);
+      console.log('[Draft] Draft saved successfully:', data);
+      setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersWithUploadedAttachments } : null);
       toast.success('Assessment saved as draft successfully!');
       navigate('/assessments');
       
@@ -237,7 +328,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   };
 
   const handleSubmit = async () => {
-    if (!assessment || !template) return;
+    if (!assessment || !template || !employeeData?.id || !clientId) return;
     
     const questions = Array.isArray(template.questions) 
       ? (template.questions as unknown as Question[])
@@ -260,26 +351,59 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     setSubmitting(true);
     
     try {
+      // Upload attachments for all answers before submitting
+      const { questionFileService } = await import('@/services/assessment/questionFileService');
+      // Use template title (name) instead of assessment name to match existing question file structure
+      const templateName = template?.title || template?.name || 'assessment';
+      
+      const answersWithUploadedAttachments = await Promise.all(
+        answers.map(async (answer) => {
+          if (!answer.attachments || answer.attachments.length === 0) {
+            return {
+              questionId: answer.questionId,
+              answer: answer.answer,
+              comment: answer.comment || '',
+              attachments: []
+            };
+          }
+
+          try {
+            console.log(`Uploading attachments for question ${answer.questionId}:`, answer.attachments);
+            const uploadedAttachments = await questionFileService.uploadAnswerAttachments(
+              answer.attachments,
+              clientId,
+              employeeData.id,
+              templateName,
+              answer.questionId
+            );
+            
+            return {
+              questionId: answer.questionId,
+              answer: answer.answer,
+              comment: answer.comment || '',
+              attachments: uploadedAttachments
+            };
+          } catch (uploadError) {
+            console.error(`Error uploading attachments for question ${answer.questionId}:`, uploadError);
+            toast.error(`Failed to upload attachments for question. Please try again.`);
+            throw uploadError;
+          }
+        })
+      );
+
       // Calculate score
       const totalQuestions = questions.length;
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-      const answersData = answers.map(answer => ({
-        questionId: answer.questionId,
-        answer: answer.answer,
-        comment: answer.comment || '',
-        attachments: answer.attachments || []
-      }));
-
-      console.log('Submitting assessment with answers:', answersData);
+      console.log('Submitting assessment with answers:', answersWithUploadedAttachments);
 
       const { error: updateError } = await supabase
         .from('assessments')
         .update({ 
           status: 'Submitted',
           score: score,
-          answers: answersData as any
+          answers: answersWithUploadedAttachments as any
         })
         .eq('assessment_id', parseInt(assessmentId!))
         .eq('client_id', clientId);
@@ -309,8 +433,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             email: employeeData?.email || ''
           };
 
-          const { assessmentNotificationService } = await import('@/services/notification/assessmentNotificationService');
-          
           const notificationResult = await assessmentNotificationService.queueAssessmentSubmittedNotification(
             {
               id: fullAssessment.id,

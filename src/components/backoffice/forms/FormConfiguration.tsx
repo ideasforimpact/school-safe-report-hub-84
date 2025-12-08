@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +17,38 @@ interface FormConfigurationProps {
 }
 
 export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, onCancel, initialForm }) => {
+  // Determine excluded fields from initialForm if provided
+  const calculateExcludedFields = useMemo(() => {
+    if (!initialForm?.fields) {
+      return initialForm?.excluded_fields || [];
+    }
+    
+    // If form has fields, determine which default fields are excluded
+    // A field is excluded if it's in DEFAULT_GRIEVANCE_FIELDS but not in form.fields
+    const formFieldIds = new Set(initialForm.fields.map((f: FormField) => f.id));
+    const excluded = DEFAULT_GRIEVANCE_FIELDS
+      .filter(defaultField => !formFieldIds.has(defaultField.id))
+      .map(field => field.id);
+    
+    return excluded;
+  }, [initialForm]);
+
   const [formData, setFormData] = useState({
     title: initialForm?.title || 'Grievance Form',
     description: initialForm?.description || 'Submit your grievance or complaint',
-    excludedFields: initialForm?.excluded_fields || []
+    excludedFields: calculateExcludedFields
   });
+
+  // Update formData when initialForm changes
+  useEffect(() => {
+    if (initialForm) {
+      setFormData({
+        title: initialForm.title || 'Grievance Form',
+        description: initialForm.description || 'Submit your grievance or complaint',
+        excludedFields: calculateExcludedFields
+      });
+    }
+  }, [initialForm, calculateExcludedFields]);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleFieldToggle = (fieldId: string) => {

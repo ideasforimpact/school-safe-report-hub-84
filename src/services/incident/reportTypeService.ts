@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { incidentReferenceService } from "./incidentReferenceService";
 
 export interface ReportTypeItem {
   id: string;
@@ -182,6 +183,29 @@ export const reportTypeService = {
   // Delete report type - RLS handles client validation automatically
   deleteReportType: async (id: string) => {
     try {
+      // Get client_id for reference check
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const { data: employee, error: employeeError } = await supabase
+        .from('employees')
+        .select('client_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (employeeError || !employee) {
+        throw new Error('Employee record not found');
+      }
+
+      // Check if report type is referenced by incidents
+      const referenceCheck = await incidentReferenceService.checkReportTypeReferences(id, employee.client_id);
+      
+      if (referenceCheck.hasReferences) {
+        throw new Error(referenceCheck.message);
+      }
+
       const { error } = await supabase
         .from('incident_report_types')
         .delete()
@@ -202,6 +226,34 @@ export const reportTypeService = {
   // Toggle report type status - RLS handles client validation automatically
   toggleReportTypeStatus: async (id: string, isActive: boolean) => {
     try {
+      // If deactivating, check if report type is referenced by incidents
+      if (!isActive) {
+        // Get client_id for reference check
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const { data: employee, error: employeeError } = await supabase
+          .from('employees')
+          .select('client_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (employeeError || !employee) {
+          throw new Error('Employee record not found');
+        }
+
+        // Check if report type is referenced by incidents
+        const referenceCheck = await incidentReferenceService.checkReportTypeReferences(id, employee.client_id);
+        
+        if (referenceCheck.hasReferences) {
+          // Replace "delete" with "deactivate" in the error message
+          const deactivateMessage = referenceCheck.message.replace('Cannot delete', 'Cannot deactivate');
+          throw new Error(deactivateMessage);
+        }
+      }
+
       const { data, error } = await supabase
         .from('incident_report_types')
         .update({ 

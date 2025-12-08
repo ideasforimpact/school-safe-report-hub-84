@@ -483,6 +483,20 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           if (docType === 'manual' || docType === 'other' || docType === 'other_documents') {
                             const customName = doc.params?.document_name;
                             if (customName) {
+                              // For "other" document types, truncate display to 100 chars with tooltip
+                              if (docType === 'other' || docType === 'other_documents') {
+                                const truncated = customName.length > 100 
+                                  ? `${customName.slice(0, 100)}...` 
+                                  : customName;
+                                return (
+                                  <span 
+                                    className="inline-block max-w-[380px] truncate align-middle"
+                                    title={customName}
+                                  >
+                                    {truncated}
+                                  </span>
+                                );
+                              }
                               return customName;
                             }
                             // For manual documents, show the verification type if available
@@ -522,27 +536,41 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <TableCell className="w-[260px]">
                     <div className="flex items-center gap-2">
                       {(() => {
-                        const isGovApi = (doc as any).api_verification_method === 'api' 
-                          || doc.apiVerificationMethod === 'api' 
-                          || doc.apiVerificationStatus === 'completed';
+                        // Use the actual document_status_id from database to determine the label
+                        // statusName comes from getDocumentStatusName which reads from document_status table
+                        // This ensures we show what's actually stored in the database
                         
                         // Check if API verification failed with rejection reason
-                        const isApiFailedWithReason = isGovApi && 
-                          doc.verificationStatus === 'failed' && 
-                          doc.rejectReason;
+                        const isApiFailedWithReason = doc.verificationStatus === 'failed' && doc.rejectReason;
                         
-                        const labelOverride = isApiFailedWithReason
-                          ? 'Verification Rejected'
-                          : isGovApi
-                          ? 'Verified by Government'
-                          : (doc.verifiedByEmployeeId ? 'Verified by Manual' : undefined);
+                        // Determine label based on actual database status
+                        let labelOverride: string | undefined;
+                        
+                        if (isApiFailedWithReason) {
+                          labelOverride = 'Verification Rejected';
+                        } else if (doc.verificationStatus === 'verified') {
+                          // Check the actual status name from database
+                          if (statusName === 'governance') {
+                            labelOverride = 'Verified by Government';
+                          } else if (statusName === 'manual') {
+                            labelOverride = 'Verified by Manual';
+                          } else if (doc.verifiedByEmployeeId) {
+                            // Fallback: if verified_by is set but status name is not available
+                            labelOverride = 'Verified by Manual';
+                          }
+                          // If statusName is undefined or something else, don't override (use default badge)
+                        }
 
+                        // Only make badge clickable for "Verified by Government" (governance status)
+                        // "Verified by Manual" should not be clickable
+                        const shouldBeClickable = doc.verificationStatus !== 'pending' && statusName === 'governance';
+                        
                         return (
                           <VerificationStatusBadge 
                             status={doc.verificationStatus} 
                             documentStatusName={statusName}
                             isGovernance={isGovernanceVerified}
-                            onClick={doc.verificationStatus === 'pending' ? undefined : () => handleBadgeClick(doc)}
+                            onClick={shouldBeClickable ? () => handleBadgeClick(doc) : undefined}
                             documentLogs={doc.employee_docs_log}
                             documentId={doc.id}
                             documentType={docType}
@@ -614,14 +642,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   {/* Actions Column */}
                   <TableCell className="text-right">
                     {(() => {
-                      // Check if document is verified via API method
-                      const isApiVerified = doc.verificationStatus === 'verified' && 
-                        (doc.verificationMethod === 'api' || 
-                         doc.apiVerificationStatus === 'completed' || 
-                         doc.apiResponseData);
+                      // Check if document is verified via API method (governance status)
+                      // Keep buttons visible even after API verification to allow re-verification
+                      // Priority: Check statusName first (most reliable indicator)
+                      const isApiVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
                       
-                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual' && !isApiVerified;
-                      const hasVerifyManual = onQuickVerify && docType !== 'manual' && !isApiVerified;
+                      // Always show buttons regardless of verification status
+                      // This allows re-verification even after API verification
+                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual';
+                      const hasVerifyManual = onQuickVerify && docType !== 'manual';
                       
                       // Special handling for manual documents
                       if (docType === 'manual') {

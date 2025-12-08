@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -46,26 +47,83 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     incident.learningPoints || ''
   );
   
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(() => {
-    // Try multiple field names for backward compatibility
-    const factors = incident.contributingFactor || incident.contributingFactors || [];
-    
-    // Ensure we have valid contributing factors with proper structure
-    if (Array.isArray(factors) && factors.length > 0) {
-      return factors.map((factor, index) => ({
-        id: factor.id || `existing-${index}`,
-        category: factor.category || 'Unknown',
-        description: factor.description || '',
-        weight: factor.weight || 'Medium' as 'Low' | 'Medium' | 'High'
-      }));
-    }
-    
-    return [];
-  });
-  
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
+  const [isLoadingFactors, setIsLoadingFactors] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { state } = useEmployeeStore();
   const navigate = useNavigate();
+  
+  // Load and validate contributing factors on mount
+  React.useEffect(() => {
+    const loadContributingFactors = async () => {
+      setIsLoadingFactors(true);
+      try {
+        // Try multiple field names for backward compatibility
+        const factors = incident.contributingFactor || incident.contributingFactors || [];
+        
+        if (Array.isArray(factors) && factors.length > 0) {
+          // Check if any factors have timestamp IDs (old format) instead of UUIDs
+          const hasInvalidIds = factors.some(f => f.id && /^\d+$/.test(f.id));
+          
+          if (hasInvalidIds && state.employeeData?.clientId) {
+            // Fetch contributing factors from database to map category names to UUIDs
+            const { data: dbFactors } = await supabase
+              .from('contributing_factors')
+              .select('id, name')
+              .eq('client_id', state.employeeData.clientId);
+            
+            // Map old timestamp IDs to UUIDs by matching category name
+            const mappedFactors = factors.map((factor) => {
+              // If ID is a timestamp (numeric string), try to find matching UUID by category name
+              if (factor.id && /^\d+$/.test(factor.id) && factor.category) {
+                const matchingFactor = dbFactors?.find(db => db.name === factor.category);
+                if (matchingFactor) {
+                  console.log(`Mapped contributing factor "${factor.category}" from timestamp ID ${factor.id} to UUID ${matchingFactor.id}`);
+                  return {
+                    id: matchingFactor.id, // Use UUID from database
+                    category: factor.category,
+                    description: factor.description || '',
+                    weight: factor.weight || 'Medium' as 'Low' | 'Medium' | 'High'
+                  };
+                } else {
+                  console.warn(`Could not find UUID for contributing factor "${factor.category}" with timestamp ID ${factor.id}`);
+                }
+              }
+              
+              // If already a UUID or no category match found, use as-is
+              return {
+                id: factor.id || '',
+                category: factor.category || 'Unknown',
+                description: factor.description || '',
+                weight: factor.weight || 'Medium' as 'Low' | 'Medium' | 'High'
+              };
+            }).filter(f => f.id); // Remove factors without valid IDs
+            
+            setContributingFactors(mappedFactors);
+          } else {
+            // All IDs are already UUIDs, use as-is
+            const validFactors = factors.map((factor) => ({
+              id: factor.id || '',
+              category: factor.category || 'Unknown',
+              description: factor.description || '',
+              weight: factor.weight || 'Medium' as 'Low' | 'Medium' | 'High'
+            })).filter(f => f.id);
+            
+            setContributingFactors(validFactors);
+          }
+        } else {
+          setContributingFactors([]);
+        }
+      } catch (error) {
+        console.error('Error loading contributing factors:', error);
+        setContributingFactors([]);
+      } finally {
+        setIsLoadingFactors(false);
+      }
+    };
+    
+    loadContributingFactors();
+  }, [incident, state.employeeData?.clientId]);
   
   // Initialize current action with existing actionTaken data
   const [currentAction, setCurrentAction] = useState<Action>(() => {
@@ -110,13 +168,31 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Validate and ensure contributing factors have proper UUIDs from contributing_factors table
+      // Each factor should have an 'id' that is a UUID from the contributing_factors table
+      const validatedContributingFactors = contributingFactors.map((factor) => {
+        // Ensure the id is a valid UUID (not a timestamp)
+        if (!factor.id || factor.id.startsWith('existing-') || /^\d+$/.test(factor.id)) {
+          console.error('Invalid contributing factor ID detected:', factor);
+          throw new Error(`Contributing factor "${factor.category}" has an invalid ID. Please remove and re-add it.`);
+        }
+        
+        // Return only the fields needed for the database
+        return {
+          id: factor.id, // UUID from contributing_factors table
+          category: factor.category,
+          description: factor.description,
+          weight: factor.weight
+        };
+      });
+
       console.log('Closing incident with data:', {
         client_id: state.employeeData.clientId,
         incident_id: incident.id,
         root_cause_analysis: rootCause.trim(),
         learning_points: learningPoints.trim(),
         action_taken: currentAction.description.trim(),
-        contributing_factor: contributingFactors
+        contributing_factor: validatedContributingFactors
       });
 
       const { data, error } = await supabase.functions.invoke('close-incident', {
@@ -126,7 +202,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           root_cause_analysis: rootCause.trim(),
           learning_points: learningPoints.trim(),
           action_taken: currentAction.description.trim(),
-          contributing_factor: contributingFactors
+          contributing_factor: validatedContributingFactors
         }
       });
 
@@ -143,8 +219,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         console.log('=== STARTING CLOSURE NOTIFICATION ===');
         console.log('Employee ID:', state.employeeData?.id);
         console.log('Incident:', incident);
-        
-        const { incidentNotificationService } = await import('@/services/notification/incidentNotificationService');
         
         // Get closer details
         console.log('Fetching closer details for employee ID:', state.employeeData?.id);
@@ -199,7 +273,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
       onSubmit({
         rootCause,
         learningPoints,
-        contributingFactors,
+        contributingFactors: validatedContributingFactors,
         actions
       });
 
@@ -231,7 +305,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 my-4">
+        <div className="space-y-3 my-4">
           {/* Root Cause Analysis */}
           <RootCauseAnalysis 
             rootCause={rootCause}
@@ -254,10 +328,17 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           />
 
           {/* Contributing Factors Section */}
+          {isLoadingFactors ? (
+            <div className="space-y-4">
+              <h3 className="font-medium">Contributing Factors <span className="text-red-500">*</span></h3>
+              <div className="text-sm text-gray-500">Loading contributing factors...</div>
+            </div>
+          ) : (
           <ContributingFactorsSection 
             contributingFactors={contributingFactors}
             setContributingFactors={setContributingFactors}
           />
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">

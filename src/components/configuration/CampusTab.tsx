@@ -25,6 +25,9 @@ import { Plus, Pencil, Trash2, Loader2, Search, X } from 'lucide-react';
 import { CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/contexts/auth/useAuth';
 
 interface CampusTabProps {
   campuses: CampusItem[];
@@ -43,6 +46,7 @@ export const CampusTab = ({
   classes,
   loading = false
 }: CampusTabProps) => {
+  const { employeeData } = useAuth();
   const [newCampus, setNewCampus] = useState('');
   const [editingCampus, setEditingCampus] = useState<CampusItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -52,6 +56,45 @@ export const CampusTab = ({
   const [campusError, setCampusError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [campusReferences, setCampusReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+
+  // Pre-load reference info so we can disable delete button for linked campuses
+  useEffect(() => {
+    const clientId = employeeData?.clientId || employeeData?.client_id;
+    if (!clientId || campuses.length === 0) {
+      setCampusReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          campuses.map(async (campus) => {
+            const refInfo = await incidentReferenceService.checkLocationReferences(campus.id, clientId);
+            return { id: campus.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setCampusReferences(map);
+      } catch (error) {
+        console.error('Error preloading campus reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [campuses, employeeData]);
 
   // Validation: allow any characters, max 50 length
   const isValidCampusName = (name: string) => {
@@ -288,14 +331,59 @@ export const CampusTab = ({
                         <Pencil className="h-4 w-4" />
                       </Button>
                       
+                      {(() => {
+                        const refInfo = campusReferences[campus.id];
+                        const isLinked = refInfo?.hasReferences || false;
+                        const message = refInfo?.message || '';
+
+                        if (isLinked) {
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      disabled={true}
+                                      aria-disabled="true"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                      }}
+                                      className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent 
+                                  side="left" 
+                                  align="center" 
+                                  sideOffset={8} 
+                                  className="max-w-xs whitespace-normal text-left"
+                                >
+                                  <p className="text-xs leading-snug text-left">
+                                    {message}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        }
+
+                        return (
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={() => handleDeleteClick(campus)}
                         disabled={loading}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 const sb: any = supabase as any;
 import { CustomForm, FormField } from '@/types/formTypes';
@@ -14,6 +15,7 @@ import { toast } from 'sonner';
 import AltchaWidget from '@/components/captcha/AltchaWidget';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
+import { notificationService } from '@/services/notification/notificationService';
 
 const PublicFormPage = () => {
   const { previewUrl } = useParams() as { previewUrl?: string };
@@ -32,6 +34,7 @@ const PublicFormPage = () => {
   const [files, setFiles] = useState<Record<string, FileItem[]>>({});
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const altchaRef = useRef<{ value: string | null } | null>(null);
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
 
   useEffect(() => {
     const token = formIdQS || previewUrl;
@@ -187,9 +190,6 @@ const PublicFormPage = () => {
       const grievanceDescription = responses.description || responses.details || responses.grievance_description || 'No description provided';
       const submitterName = submission.submitter_name || responses.name || 'Anonymous';
 
-      // Import notification service dynamically
-      const { notificationService } = await import('@/services/notification/notificationService');
-
       // Create notification data following same pattern as assessments/incidents
       const notificationData = {
         module: 'grievance' as const,
@@ -256,15 +256,27 @@ const PublicFormPage = () => {
       setSubmitting(true);
 
       // Build base submission payload
+      // If anonymous, don't include name, email, phone in submitter fields
+      const filteredFormData = { ...formData };
+      if (isAnonymous) {
+        // Remove name, phone, email fields from formData for anonymous submissions
+        (form!.fields as FormField[]).forEach((field) => {
+          if (shouldHideField(field)) {
+            delete filteredFormData[field.id];
+          }
+        });
+      }
+      
       const baseSubmission = {
         form_id: form!.id,
         client_id: form!.client_id,
-        submitter_name: formData.name || null,
-        submitter_email: formData.contact || null,
-        submitter_phone: formData.contact || null,
+        submitter_name: isAnonymous ? 'Anonymous' : (formData.name || null),
+        submitter_email: isAnonymous ? null : (formData.contact || formData.email || null),
+        submitter_phone: isAnonymous ? null : (formData.phone || formData.contact || null),
         submitter_type: formData.submitter_type || null,
-        responses: formData,
-        status: 'pending'
+        responses: filteredFormData,
+        status: 'pending',
+        is_anonymous: isAnonymous
       };
 
       // Build files payload: { [fieldId]: [{ filename, size, contentType, base64Data }] }
@@ -297,7 +309,7 @@ const PublicFormPage = () => {
         throw new Error(fnError?.message || 'Failed to submit form');
       }
 
-      toast.success('Form submitted successfully!');
+      toast.success('Grievance submitted successfully!');
 
       const inserted = fnData.data;
       
@@ -328,11 +340,53 @@ const PublicFormPage = () => {
     }
   };
 
+  // Helper function to check if a field should be hidden when anonymous
+  const shouldHideField = (field: FormField): boolean => {
+    if (!isAnonymous) return false;
+    
+    const labelLower = (field.label || '').toLowerCase();
+    const fieldType = field.type?.toLowerCase();
+    
+    // Hide Name, Phone Number, and Email fields when anonymous
+    const isNameField = labelLower.includes('name') && !labelLower.includes('anonymous');
+    const isPhoneField = labelLower.includes('phone') || fieldType === 'phone';
+    const isEmailField = labelLower.includes('email') || fieldType === 'email';
+    
+    return isNameField || isPhoneField || isEmailField;
+  };
+
+  // Helper function to check if a field should be required
+  const isFieldRequired = (field: FormField): boolean => {
+    // If anonymous and field should be hidden, it's not required
+    if (shouldHideField(field)) return false;
+    
+    // Check if this is Name, Phone, or Email field
+    const labelLower = (field.label || '').toLowerCase();
+    const fieldType = field.type?.toLowerCase();
+    const fieldId = (field.id || '').toLowerCase();
+    
+    const isNameField = labelLower.includes('name') && !labelLower.includes('anonymous') || fieldId === 'name';
+    const isPhoneField = labelLower.includes('phone') || fieldType === 'phone' || fieldId === 'phone';
+    const isEmailField = labelLower.includes('email') || fieldType === 'email' || fieldId === 'email';
+    
+    // If not anonymous, Name, Phone, and Email are required
+    if (!isAnonymous && (isNameField || isPhoneField || isEmailField)) {
+      return true;
+    }
+    
+    // Otherwise, use the field's required property
+    return field.required || false;
+  };
+
   const validateForm = () => {
     if (!form) return false;
 
     for (const field of (form.fields as FormField[])) {
-      if (field.required) {
+      // Skip validation for hidden fields when anonymous
+      if (shouldHideField(field)) continue;
+      
+      // Check if field is required (considering anonymous state)
+      if (isFieldRequired(field)) {
         if (field.type === 'file') {
           if (!files[field.id] || files[field.id].length === 0) {
             toast.error(`${field.label} is required`);
@@ -341,9 +395,28 @@ const PublicFormPage = () => {
         } else if (field.type === 'captcha') {
           // No longer required for ALTCHA
         } else {
-          if (!formData[field.id] || formData[field.id].toString().trim() === '') {
+          const value = formData[field.id];
+          if (!value || value.toString().trim() === '') {
             toast.error(`${field.label} is required`);
             return false;
+          }
+          
+          // Additional validation for email format
+          if (field.type === 'email' || (field.id?.toLowerCase() === 'email' || (field.label || '').toLowerCase().includes('email'))) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value.toString().trim())) {
+              toast.error('Please enter a valid email address');
+              return false;
+            }
+          }
+          
+          // Additional validation for phone format
+          if (field.type === 'phone' || (field.id?.toLowerCase() === 'phone' || (field.label || '').toLowerCase().includes('phone'))) {
+            const phoneValue = value.toString().replace(/\D/g, '');
+            if (phoneValue.length !== 10) {
+              toast.error('Please enter a valid 10-digit phone number');
+              return false;
+            }
           }
         }
       }
@@ -352,14 +425,45 @@ const PublicFormPage = () => {
     return true;
   };
 
+  // Lightweight check used to disable the submit button when any required field is empty.
+  // This mirrors the required-field logic in validateForm but does NOT show toasts.
+  const hasMissingRequiredFields = (): boolean => {
+    if (!form) return true;
+
+    for (const field of (form.fields as FormField[])) {
+      // Skip hidden fields when anonymous
+      if (shouldHideField(field)) continue;
+
+      if (!isFieldRequired(field)) continue;
+
+      if (field.type === 'file') {
+        if (!files[field.id] || files[field.id].length === 0) {
+          return true;
+        }
+      } else if (field.type === 'captcha') {
+        // Captcha is handled separately via captchaToken for button disabling
+        continue;
+      } else {
+        const value = formData[field.id];
+        if (!value || value.toString().trim() === '') {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   const renderField = (field: FormField) => {
+    const isRequired = isFieldRequired(field);
+    
     switch (field.type) {
       case 'phone':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Input
               id={field.id}
@@ -399,7 +503,7 @@ const PublicFormPage = () => {
                 }
                 handleInputChange(field.id, onlyDigits);
               }}
-              required={field.required}
+              required={isRequired}
             />
           </div>
         );
@@ -409,7 +513,7 @@ const PublicFormPage = () => {
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Input
               id={field.id}
@@ -420,7 +524,7 @@ const PublicFormPage = () => {
               value={formData[field.id] || ''}
               onChange={(e) => handleInputChange(field.id, e.target.value)}
               maxLength={25}
-              required={field.required}
+              required={isRequired}
             />
           </div>
         );
@@ -430,7 +534,7 @@ const PublicFormPage = () => {
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Input
               id={field.id}
@@ -455,7 +559,7 @@ const PublicFormPage = () => {
                 const isTitle = labelLc.includes('subject') || labelLc.includes('title');
                 return isName ? 15 : (isTitle ? 25 : field.maxLength);
               })()}
-              required={field.required}
+              required={isRequired}
             />
           </div>
         );
@@ -465,7 +569,7 @@ const PublicFormPage = () => {
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Textarea
               id={field.id}
@@ -477,7 +581,7 @@ const PublicFormPage = () => {
                 const isDescription = labelLc.includes('description');
                 return isDescription ? 100 : field.maxLength;
               })()}
-              required={field.required}
+              required={isRequired}
               rows={4}
             />
           </div>
@@ -488,7 +592,7 @@ const PublicFormPage = () => {
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
               {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <Select
               value={formData[field.id] || ''}
@@ -627,13 +731,52 @@ const PublicFormPage = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {(form.fields as FormField[]).map(renderField)}
+              {/* Anonymous checkbox - always first */}
+              <div className="space-y-2 pb-4 border-b">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="anonymous-checkbox"
+                    checked={isAnonymous}
+                    onCheckedChange={(checked) => {
+                      setIsAnonymous(checked === true);
+                      // Clear name, phone, and email fields when checking anonymous
+                      if (checked === true) {
+                        const updatedData = { ...formData };
+                        (form.fields as FormField[]).forEach((field) => {
+                          if (shouldHideField(field)) {
+                            updatedData[field.id] = '';
+                          }
+                        });
+                        setFormData(updatedData);
+                      }
+                    }}
+                  />
+                  <Label 
+                    htmlFor="anonymous-checkbox" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Do you want to submit this grievance anonymously?
+                  </Label>
+                </div>
+              </div>
+              
+              {/* Render form fields, hiding Name, Phone, Email when anonymous */}
+              {(form.fields as FormField[]).map((field) => {
+                if (shouldHideField(field)) {
+                  return null; // Don't render hidden fields
+                }
+                return renderField(field);
+              })}
               
               <div className="pt-4">
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={submitting || (((form!.fields as FormField[]) || []).some((f: FormField) => f.type === 'captcha') && !captchaToken)}
+                  disabled={
+                    submitting ||
+                    (((form!.fields as FormField[]) || []).some((f: FormField) => f.type === 'captcha') && !captchaToken) ||
+                    hasMissingRequiredFields()
+                  }
                 >
                   {submitting ? (
                     <>

@@ -11,11 +11,16 @@ interface DocumentUploaderProps {
   clientId?: string;
   onClose: () => void;
   onSuccess?: (result: any) => void;
+  documentName: string;
+  disabled: boolean;
+  existingDocumentNames: string[];
 }
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId, onClose, onSuccess }) => {
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId, onClose, onSuccess , documentName, disabled,existingDocumentNames }) => {
+  
   const [files, setFiles] = useState<FileItem[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [duplicateError, setDuplicateError] = useState(""); 
 
   const uploadDocuments = async () => {
     if (files.length === 0) {
@@ -52,7 +57,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId
       }));
       
       // Use "Vehicle Documents" as the default name
-      const documentName = "Vehicle Documents";
+      const finalDocumentName = documentName.trim() || "Vehicle Documents";
       
       // Call the edge function to handle the upload
       const { data, error } = await supabase.functions.invoke('upload-vehicle-document', {
@@ -61,7 +66,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId
           clientId,
           files: filesForUpload,
           documentInfo: {
-            name: documentName,
+            name: finalDocumentName,
             type: 'upload',
             uploadedBy: 'user'
           }
@@ -72,7 +77,14 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId
         console.error('Upload error:', error);
         throw new Error(error.message);
       }
-
+      if (existingDocumentNames.includes(documentName.trim().toLowerCase())) {
+        toast({
+          title: "Duplicate Document Name",
+          description: "A document with this name already exists. Please choose another name.",
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: 'Files Uploaded',
         description: `Successfully uploaded ${files.length} file(s)`,
@@ -106,7 +118,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId
         maxFiles={5}
         maxSize={10}
         maxTotalSize={10}
-        disabled={uploading}
+        disabled={uploading || disabled}
       />
 
       <div className="flex justify-end space-x-2">
@@ -115,7 +127,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, clientId
         </Button>
         <Button 
           onClick={uploadDocuments} 
-          disabled={uploading || files.length === 0}
+          disabled={uploading || files.length === 0 || disabled || duplicateError !== ""}
         >
           {uploading ? 'Uploading...' : 'Upload Files'}
         </Button>

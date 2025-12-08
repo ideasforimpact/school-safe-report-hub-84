@@ -272,6 +272,50 @@ export const useBackofficeAuth = () => {
         sessionType: 'backoffice' // Mark as backoffice session
       });
 
+      // Step 11: Log RLS debug context so we can see auth.uid, client_id, admin flag
+      // Wait a bit for the session to be fully propagated before checking RLS context
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Verify session is still valid before calling RPC
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !currentSession) {
+        console.error('❌ RLS DEBUG: No valid session found after backoffice login:', sessionError);
+      } else {
+        console.log('⚠️ RLS DEBUG: Starting RLS policy check after backoffice login');
+        
+        try {
+          console.log('🔍 RLS DEBUG: Calling debug_current_rls_context RPC...');
+          const { data: rlsDebug, error: rpcError } = await supabase.rpc('debug_current_rls_context');
+          
+          if (rpcError) {
+            console.error('❌ RLS DEBUG: RPC call failed:', rpcError);
+            console.error('❌ RLS DEBUG: Error details:', {
+              message: rpcError.message,
+              code: rpcError.code,
+              details: rpcError.details,
+              hint: rpcError.hint
+            });
+          } else {
+            console.log('📊 RLS DEBUG: RPC response received:', rlsDebug);
+            
+            if (rlsDebug && Array.isArray(rlsDebug) && rlsDebug[0]) {
+              console.log('✅ RLS DEBUG: RLS context (backoffice login):', JSON.stringify(rlsDebug[0], null, 2));
+            } else {
+              console.warn('⚠️ RLS DEBUG: RLS context (backoffice login): no data returned or empty array');
+              console.warn('⚠️ RLS DEBUG: Response type:', typeof rlsDebug, 'Is array:', Array.isArray(rlsDebug));
+            }
+          }
+        } catch (rlsErr) {
+          console.error('❌ RLS DEBUG: Exception fetching RLS debug context (backoffice login):', rlsErr);
+          console.error('❌ RLS DEBUG: Exception details:', {
+            name: rlsErr instanceof Error ? rlsErr.name : 'Unknown',
+            message: rlsErr instanceof Error ? rlsErr.message : String(rlsErr),
+            stack: rlsErr instanceof Error ? rlsErr.stack : undefined
+          });
+        }
+      }
+
       console.log('Backoffice authentication successful:', {
         user: saasUser,
         employee: backofficeEmployeeData,

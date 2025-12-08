@@ -40,6 +40,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
 
 // Import the necessary types from auth context
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
@@ -169,6 +170,12 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     clientId: clientId,
     moduleAccessPayload: []
   });
+  
+  // Use a ref to store the latest formData for reliable access in async operations
+  const formDataRef = React.useRef(formData);
+  React.useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
 
   // Update formData when clientId changes
   useEffect(() => {
@@ -278,31 +285,46 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   };
 
   // Handler for adding a new user - Uses only moduleAccessPayload
-  const handleAddUser = async () => {
+  const handleAddUser = async (submittedFormData?: typeof formData) => {
     try {
       setIsLoading(true);
       
+      // Use the submitted formData if provided, otherwise fall back to ref/state
+      // This ensures we have the most recent data including moduleAccessPayload
+      const currentFormData = submittedFormData ? { ...submittedFormData } : { ...formDataRef.current };
+      
       // Make sure clientId is set
-      if (!formData.clientId && clientId) {
+      if (!currentFormData.clientId && clientId) {
+        currentFormData.clientId = clientId;
         setFormData(prev => ({
           ...prev,
           clientId: clientId
         }));
       }
       
-      console.log("Adding new user with data:", formData);
-      console.log("Module access payload:", formData.moduleAccessPayload);
+      console.log("Adding new user with data:", currentFormData);
+      console.log("Module access payload:", currentFormData.moduleAccessPayload);
       
-      if (!formData.moduleAccessPayload || formData.moduleAccessPayload.length === 0) {
+      if (!currentFormData.moduleAccessPayload || currentFormData.moduleAccessPayload.length === 0) {
         console.warn("No module access items selected.");
       }
+      
+      // Validate required fields
+      if (!currentFormData.firstName || !currentFormData.lastName || !currentFormData.employeeId) {
+        console.error("Missing required fields:", currentFormData);
+        toast.error("Please fill in all required fields (First Name, Last Name, and Employee ID)");
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("Starting to add new user with data:", currentFormData);
       
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
         [] as any,
         { 
-          ...formData, 
-          clientId: formData.clientId || clientId,
+          ...currentFormData, 
+          clientId: currentFormData.clientId || clientId,
           password: 'defaultPassword123',
           isActive: true,
           // Add required modulePermissions property to satisfy interface
@@ -312,25 +334,39 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         }
       );
       
+      console.log("addNewUser returned:", updatedUsers);
+      
       if (updatedUsers) {
+        console.log("addNewUser succeeded, checking employee fields...");
+        console.log("Employee fields check:", {
+          employeeId: currentFormData.employeeId,
+          employeeType: currentFormData.employeeType,
+          department: currentFormData.department,
+          joiningDate: currentFormData.joiningDate
+        });
+        
         // Also add the user as an employee using the Supabase edge function
-        if (formData.employeeId && formData.employeeType && formData.department && formData.joiningDate) {
+        // Make employeeType, department, and joiningDate optional - use defaults if not provided
+        if (currentFormData.employeeId) {
           try {
             // Prepare employee data for the edge function
+            // Use defaults for optional fields if not provided
             const employeeData = {
-              employeeId: formData.employeeId,
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              email: formData.email,
-              phone: formData.phone,
-              designation: formData.designation,
-              employeeType: formData.employeeType as any,
-              department: formData.department as any,
-              joiningDate: formData.joiningDate,
+              employeeId: currentFormData.employeeId,
+              firstName: currentFormData.firstName,
+              lastName: currentFormData.lastName,
+              email: currentFormData.email,
+              phone: currentFormData.phone || '',
+              designation: currentFormData.designation || '',
+              employeeType: (currentFormData.employeeType || 'permanent') as any,
+              department: (currentFormData.department || 'admin') as any,
+              joiningDate: currentFormData.joiningDate || new Date().toISOString().split('T')[0],
               status: 'active' as EmploymentStatus,
-              clientId: formData.clientId || clientId,
-              moduleAccessPayload: formData.moduleAccessPayload || []
+              clientId: currentFormData.clientId || clientId,
+              moduleAccessPayload: currentFormData.moduleAccessPayload || []
             };
+            
+            console.log("Prepared employee data for edge function:", employeeData);
             
             // First try the edge function
             try {
@@ -367,21 +403,38 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             }
             
             refreshEmployeesList();
+            
+            // Close dialog and reset form on success
+            resetForm();
+            setIsAddDialogOpen(false);
+            setIsLoading(false);
           } catch (empError) {
             console.error("Error adding employee record:", empError);
             toast.error("User added but employee record creation failed");
+            setIsLoading(false);
+            // Don't close dialog on error so user can retry
           }
+        } else {
+          console.warn("Employee ID is missing, skipping employee creation");
+          console.log("Available fields:", currentFormData);
+          // Still close the dialog and reset form even if employee creation is skipped
+          resetForm();
+          setIsAddDialogOpen(false);
+          setIsLoading(false);
+          toast.success("User added successfully (employee record creation skipped - missing employee ID)");
         }
-        
-        // toast.success("User added successfully");
-        resetForm();
-        setIsAddDialogOpen(false);
+      } else {
+        console.error("addNewUser returned null or undefined - user creation failed");
+        toast.error("Failed to add user. Please check the console for details.");
+        setIsLoading(false);
+        // Don't close the dialog on error so user can retry
       }
     } catch (error) {
       console.error("Error adding user:", error);
-      toast.error("Failed to add user");
-    } finally {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to add user: ${errorMessage}`);
       setIsLoading(false);
+      // Don't close the dialog on error so user can retry
     }
   };
 
@@ -447,31 +500,59 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
   // Handler for deleting a user
   const handleDeleteUser = async (userId: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    // Check if employee is linked to incidents - prevent deletion if linked
     try {
-      setIsLoading(true);
-      const updatedUsers = deleteExistingUser([] as any, userId);
-      if (updatedUsers) {
-        try {
-          const { data, error } = await supabase.functions.invoke('employee-management', {
-            body: JSON.stringify({
-              operation: 'delete',
-              id: userId
-            })
-          });
-          
-          if (error) throw error;
-          console.log("Employee deleted via edge function:", data);
-          
-          refreshEmployeesList();
-        } catch (edgeFuncError) {
-          console.error("Edge function delete error:", edgeFuncError);
-        }
-        
-        toast.success("User deleted successfully");
+      const refInfo = await incidentReferenceService.checkEmployeeReferences(userId, employeeData.clientId);
+      if (refInfo.hasReferences) {
+        toast.error(refInfo.message || `This employee is linked to ${refInfo.count} incident(s) and cannot be deleted.`);
+        return;
       }
     } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("Failed to delete user");
+      console.error('Error checking employee references:', error);
+      // Continue with deletion if check fails (fail open)
+    }
+
+    try {
+      setIsLoading(true);
+      
+      console.log("Attempting to delete employee with ID:", userId);
+      
+      // Call the edge function directly to delete the employee
+      const { data, error } = await supabase.functions.invoke('employee-management', {
+        body: JSON.stringify({
+          operation: 'delete',
+          id: userId
+        })
+      });
+      
+      if (error) {
+        console.error("Edge function delete error:", error);
+        throw error;
+      }
+      
+      // Check if the response contains an error
+      if (data && typeof data === 'object' && 'error' in data) {
+        console.error("Edge function returned error:", data.error);
+        toast.error(data.error || "Failed to delete employee");
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("Employee deleted via edge function:", data);
+      
+      // Refresh the employee list to reflect the deletion
+      await refreshEmployeesList();
+      
+      toast.success("Employee deleted successfully");
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to delete employee: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -756,6 +837,22 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   users={filteredUsers}
                   onEditClick={(user) => {
                     setCurrentUser(user);
+                    
+                    // Format joiningDate to YYYY-MM-DD format for date input
+                    let formattedJoiningDate = user.joiningDate || '';
+                    if (formattedJoiningDate) {
+                      try {
+                        // If it's an ISO string or other format, convert to YYYY-MM-DD
+                        const date = new Date(formattedJoiningDate);
+                        if (!isNaN(date.getTime())) {
+                          formattedJoiningDate = date.toISOString().split('T')[0];
+                        }
+                      } catch (e) {
+                        console.warn("Error formatting joining date:", e);
+                        // If already in YYYY-MM-DD format, keep it as is
+                      }
+                    }
+                    
                     setFormData({
                       firstName: user.firstName,
                       lastName: user.lastName,
@@ -765,22 +862,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       employeeId: user.employeeId,
                       employeeType: user.employeeType,
                       department: user.department,
-                      joiningDate: user.joiningDate,
+                      joiningDate: formattedJoiningDate,
                       clientId: user.clientId || clientId,
                       moduleAccessPayload: user.moduleAccessPayload || []
                     });
                     setIsEditDialogOpen(true);
                   }}
-                  onDeleteUser={async (id) => {
-                    try {
-                      await deleteExistingUser([] as any, id);
-                      await refreshEmployeesList();
-                      toast.success("User deleted successfully");
-                    } catch (error) {
-                      console.error("Error deleting user:", error);
-                      toast.error("Failed to delete user");
-                    }
-                  }}
+                  onDeleteUser={handleDeleteUser}
                   onDeactivateUser={async (id) => {
                     try {
                       await deactivateExistingUser([] as any, id);
@@ -821,7 +909,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           setIsOpen={setIsAddDialogOpen}
           formData={formData}
           setFormData={setFormData}
-          onSubmit={handleAddUser}
+          onSubmit={(formData) => handleAddUser(formData)}
           resetForm={resetForm}
           isLoading={isLoading}
           clientId={clientId}

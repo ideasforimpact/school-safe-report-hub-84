@@ -112,6 +112,9 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   // Get challan details for display
   const challanDetails = getChallanDetails();
 
+  console.log(challanDetails,"challanDetails");
+  
+
   return (
     <Card>
       <CardHeader>
@@ -202,7 +205,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Amount:</span>
-                    <span>₹{challan.amount || '0'}</span>
+                    <span>₹{challan.amount || challan.challan_amount || '0'}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Status:</span>
@@ -214,6 +217,12 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                     <div className="flex justify-between text-xs">
                       <span className="font-medium">Date:</span>
                       <span>{challan.challan_date}</span>
+                    </div>
+                  )}
+                  {(challan.Info || challan.challan_info) && (
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="font-medium">Info:</span>
+                      <span className="text-gray-700">{challan.Info || challan.challan_info}</span>
                     </div>
                   )}
                 </div>

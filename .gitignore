@@ -32,7 +32,17 @@ dist-ssr
 
 # Supabase local secrets
 supabase/.env
-supabase/.temp/
+supabase/.temp/cli-latest
+supabase/.temp/gotrue-version
+supabase/.temp/pooler-url
+supabase/.temp/postgres-version
+supabase/.temp/project-ref
+supabase/.temp/rest-version
+supabase/.temp/storage-migration
+
+
 supabase/migrations_copy/
 backup
 sql
+
+postman

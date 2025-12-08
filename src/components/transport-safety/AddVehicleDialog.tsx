@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
+import { Switch } from '@/components/ui/switch';
+import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -25,6 +27,7 @@ type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documen
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehicle }) => {
   const { addVehicle, updateVehicle, vehicles } = useTransportSafety();
   const { employeeData } = useAuth();
+  const { vehicleTypes, loading: vehicleTypesLoading } = useVehicleTypes();
   const [error, setError] = useState<string | null>(null);
   const [registrationNumberError, setRegistrationNumberError] = useState<string | null>(null);
   
@@ -34,23 +37,48 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
     defaultValues: {
       registrationNumber: '',
       type: 'other',
+      typeId: undefined,
+      internalVehicleName: '',
       make: '',
       model: '',
-      year: new Date().getFullYear(),
+      year: null,
       status: 'active',
       driver: '',
       route: '',
       capacity: undefined,
       clientId: employeeData?.clientId,
       employeeId: employeeData?.id
-    }
+    },
+    mode: 'onChange' // Validate on change so we can enable/disable submit button based on validity
   });
+
+  const resetForm = useCallback(() => {
+    reset({
+      registrationNumber: '',
+      type: 'other',
+      typeId: undefined,
+      internalVehicleName: '',
+      make: '',
+      model: '',
+      year: null,
+      status: 'active',
+      driver: '',
+      route: '',
+      capacity: undefined,
+      clientId: employeeData?.clientId,
+      employeeId: employeeData?.id
+    });
+    setError(null);
+    setRegistrationNumberError(null);
+  }, [reset, employeeData?.clientId, employeeData?.id]);
 
   // Populate form when vehicle is provided (edit mode)
   useEffect(() => {
     if (vehicle && open) {
       setValue('registrationNumber', vehicle.registrationNumber);
       setValue('type', vehicle.type);
+      setValue('typeId', vehicle.typeId);
+      setValue('internalVehicleName', vehicle.internalVehicleName || '');
       setValue('make', vehicle.make);
       setValue('model', vehicle.model);
       setValue('year', vehicle.year);
@@ -66,11 +94,9 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
-      reset();
-      setError(null);
-      setRegistrationNumberError(null);
+      resetForm();
     }
-  }, [open, reset]);
+  }, [open, resetForm]);
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     setError(null); // Clear any previous errors
@@ -97,18 +123,29 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         setError('Registration number is required');
         return;
       }
+      if (!data.internalVehicleName?.trim()) {
+        setError('Internal vehicle name is required');
+        return;
+      }
+      if (!data.typeId) {
+        setError('Vehicle type is required');
+        return;
+      }
       // Ensure numeric values are properly converted from strings or set to null if empty
       // For add mode, we only require registration number. Use defaults for the rest.
-      const yearValue = data.year ? Number(data.year) : new Date().getFullYear();
+      // Handle null, undefined, or falsy values as null
+      const yearValue = null;
       const capacityValue = data.capacity ? Number(data.capacity) : null;
 
       // Prepare the payload with proper data transformation
       const vehicleData = {
         registrationNumber: data.registrationNumber.trim(),
         type: data.type || 'other',
+        typeId: data.typeId,
+        internalVehicleName: (data.internalVehicleName || '').trim(),
         make: (data.make || '').trim(),
         model: (data.model || '').trim(),
-        year: yearValue,
+        year: null,
         driver: (data.driver || '').trim(),
         route: (data.route || '').trim(),
         capacity: capacityValue,
@@ -121,6 +158,8 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         mode: isEditMode ? 'UPDATE' : 'CREATE',
         vehicleId: isEditMode ? vehicle?.id : 'NEW',
         payload: vehicleData,
+        rawFormData: data,
+        yearValue: yearValue,
         employeeData: {
           clientId: employeeData.clientId,
           employeeId: employeeData?.id
@@ -130,7 +169,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
       if (isEditMode && vehicle) {
         console.log('Updating vehicle with ID:', vehicle.id);
         await updateVehicle(vehicle.id, vehicleData);
-        toast.success('Vehicle updated successfully');
+        // toast.success('Vehicle updated successfully');
       } else {
         console.log('Creating new vehicle');
         await addVehicle(vehicleData);
@@ -166,32 +205,30 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
               <Label htmlFor="registrationNumber">Registration Number<span className="text-red-500">*</span></Label>
               <Input 
                 id="registrationNumber" 
-                {...register('registrationNumber', { 
+                {...register('registrationNumber', {
                   required: "Registration number is required",
                   maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" },
                   pattern: {
-                    value: /^[A-Za-z0-9-]+$/,
-                    message: "Registration number can only contain letters, numbers, and hyphens."
+                    value: /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/,
+                    message: "Please enter a valid vehicle registration number (e.g., TN01AB1234)"
+                  },
+                  onChange: (e) => {
+                    const value = e.target.value as string;
+                    // Remove special characters except letters, numbers, and hyphens
+                    const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');
+                    if (value !== cleanedValue) {
+                      setRegistrationNumberError("Special characters are not allowed. Only letters, numbers are permitted.");
+                    } else {
+                      setRegistrationNumberError(null);
+                    }
+                    // Update the form value and trigger validation
+                    setValue('registrationNumber', cleanedValue, { shouldValidate: true, shouldDirty: true });
                   }
                 })}
-                placeholder="e.g., KA-01-AB-1234"
+                placeholder="e.g., TN01AB1234"
                 maxLength={10}
                 disabled={isSubmitting || isEditMode}
                 className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Remove special characters except letters, numbers, and hyphens
-                  const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');
-                  
-                  if (value !== cleanedValue) {
-                    setRegistrationNumberError("Special characters are not allowed. Only letters, numbers, and hyphens are permitted.");
-                  } else {
-                    setRegistrationNumberError(null);
-                  }
-                  
-                  // Update the form value
-                  setValue('registrationNumber', cleanedValue);
-                }}
               />
               {(errors.registrationNumber || registrationNumberError) && 
                 <p className="text-red-500 text-sm">{errors.registrationNumber?.message || registrationNumberError}</p>
@@ -200,6 +237,89 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 <p className="text-gray-500 text-xs mt-1">
                   Registration number cannot be changed after vehicle creation
                 </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="internalVehicleName">Internal Vehicle Name<span className="text-red-500">*</span></Label>
+              <Input 
+                id="internalVehicleName" 
+                {...register('internalVehicleName', { 
+                  required: "Internal vehicle name is required",
+                  minLength: { value: 10, message: "Internal vehicle name must be at least 10 characters" },
+                  maxLength: { value: 100, message: "Internal vehicle name cannot exceed 100 characters" },
+                  pattern: {
+                    value: /^[A-Za-z0-9\s]+$/,
+                    message: "Internal vehicle name can only contain letters, numbers, and spaces"
+                  },
+                  validate: (value) => {
+                    if (!value || value.trim() === '') {
+                      return "Internal vehicle name is required";
+                    }
+                    return true;
+                  }
+                })}
+                placeholder="e.g., School Bus 1"
+                maxLength={100}
+                disabled={isSubmitting}
+              />
+              {errors.internalVehicleName && (
+                <p className="text-red-500 text-sm">{errors.internalVehicleName.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="typeId">Vehicle Type<span className="text-red-500">*</span></Label>
+              <Select 
+                value={watch('typeId') || ''} 
+                onValueChange={(value) => {
+                  setValue('typeId', value, { shouldValidate: true });
+                }}
+                disabled={isSubmitting || vehicleTypesLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={vehicleTypesLoading ? "Loading..." : "Please select the vehicle type"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {vehicleTypesLoading ? (
+                    <SelectItem value="" disabled>Loading...</SelectItem>
+                  ) : (
+                    <>
+                      {/* Placeholder option shown initially when no type is selected */}
+                      <SelectItem value="" disabled>
+                        Please select the vehicle type
+                      </SelectItem>
+                      {[...vehicleTypes]
+                        .sort((a, b) => {
+                          const aIsOthers = a.name.toLowerCase() === 'others' || a.name.toLowerCase() === 'other';
+                          const bIsOthers = b.name.toLowerCase() === 'others' || b.name.toLowerCase() === 'other';
+                          if (aIsOthers && !bIsOthers) return 1; // a goes after b
+                          if (!aIsOthers && bIsOthers) return -1; // a goes before b
+                          return a.name.localeCompare(b.name);
+                        })
+                        .map((vehicleType) => (
+                          <SelectItem key={vehicleType.id} value={vehicleType.id}>
+                            {vehicleType.name}
+                          </SelectItem>
+                        ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <input
+                type="hidden"
+                {...register('typeId', {
+                  required: "Vehicle type is required",
+                  validate: (value) => {
+                    if (!value) {
+                      return "Vehicle type is required";
+                    }
+                    return true;
+                  }
+                })}
+              />
+              {errors.typeId && (
+                <p className="text-red-500 text-sm">{errors.typeId.message}</p>
               )}
             </div>
             {/* Legacy input fields removed per new UX requirement */}
@@ -229,7 +349,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                     <Input disabled value={`${model}${makerDesc && model !== '-' ? ` (${makerDesc})` : ''}`} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Vehicle Type</Label>
+                    <Label>Body Type</Label>
                     <Input disabled value={getVal('body_type')} />
                   </div>
                   <div className="space-y-2">
@@ -241,23 +361,36 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
             })()}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="active-status-toggle">Active</Label>
+              <Switch
+                id="active-status-toggle"
+                checked={(watch('status') || 'active') !== 'inactive'}
+                onCheckedChange={(checked) => {
+                  setValue('status', checked ? 'active' : 'inactive', { shouldValidate: true });
+                }}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => { reset(); onClose(); }}
+              onClick={() => { resetForm(); onClose(); }}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            {!isEditMode ? 
             <Button 
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isValid}
             >
               {isSubmitting ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Vehicle' : 'Add Vehicle')}
               {isSubmitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            </Button> : <></>}
+            </Button>
           </div>
         </form>
       </DialogContent>

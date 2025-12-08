@@ -21,6 +21,7 @@ const FileUploadInput = ({ questionId, readOnly, onFileUpload }: FileUploadInput
         className="sr-only"
         onChange={onFileUpload}
         multiple
+        accept=".pdf,.doc,.docx,.png,.jpeg,.jpg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/jpg"
       />
       <Label
         htmlFor={`file-${questionId}`}

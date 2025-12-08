@@ -1,14 +1,11 @@
 
 import React from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter,
-  DialogClose
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import StudentForm from './StudentForm';
 import { useStudents } from '@/contexts/StudentContext';
 import { Student } from '@/types/student';
@@ -48,8 +45,7 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
         <DialogHeader>
           <DialogTitle>Edit Student</DialogTitle>
         </DialogHeader>
-        
-        <StudentForm 
+        <StudentForm
           defaultValues={{
             studentId: student.studentId,
             name: student.name,
@@ -59,13 +55,8 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
           }}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
+          onCancel={() => onOpenChange(false)}
         />
-        
-        <DialogFooter className="mt-4">
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -59,7 +59,26 @@ const EditUserDialog = ({
       setSelectedModules(formData.moduleAccessPayload);
     }
     
-  }, [isOpen, formData.moduleAccessPayload]);
+    // Ensure joiningDate is properly formatted when dialog opens (only once when dialog opens)
+    if (isOpen && formData.joiningDate && currentUser) {
+      try {
+        const date = new Date(formData.joiningDate);
+        if (!isNaN(date.getTime())) {
+          const formattedDate = date.toISOString().split('T')[0];
+          // Only update if the format is different to avoid infinite loops
+          if (formattedDate !== formData.joiningDate) {
+            setFormData(prev => ({
+              ...prev,
+              joiningDate: formattedDate
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn("Error formatting joining date in EditUserDialog:", e);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, currentUser?.id]);
 
   // Module change handler that updates selectedModules state and formData
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
@@ -129,6 +148,7 @@ const EditUserDialog = ({
         designation: formData.designation,
         employeeType: formData.employeeType,
         department: formData.department,
+        joiningDate: formData.joiningDate, // Include joining date in update
         moduleAccessPayload: selectedModules,
         clientId: clientId // Ensure clientId is always included
       };

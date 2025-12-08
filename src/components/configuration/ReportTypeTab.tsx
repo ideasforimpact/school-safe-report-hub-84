@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil, Trash } from 'lucide-react';
 import { EditDialog } from './EditDialog';
@@ -18,6 +18,8 @@ import { reportTypeService } from '@/services/incident/reportTypeService';
 import { useReportTypes } from '@/hooks/useReportTypes';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Validation function for report type names (no special characters, max 25 chars)
 const isValidReportTypeName = (name: string) => {
@@ -80,6 +82,45 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   
   // Use the hook to get report types with RLS - no manual client validation needed
   const { reportTypes, loading, fetchReportTypes } = useReportTypes();
+  const [reportTypeReferences, setReportTypeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+
+  // Pre-load reference info so we can disable delete button for linked report types
+  useEffect(() => {
+    const clientId = employeeData?.clientId;
+    if (!clientId || reportTypes.length === 0) {
+      setReportTypeReferences({});
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchReferences = async () => {
+      try {
+        const results = await Promise.all(
+          reportTypes.map(async (type) => {
+            const refInfo = await incidentReferenceService.checkReportTypeReferences(type.id, clientId);
+            return { id: type.id, refInfo };
+          })
+        );
+
+        if (isCancelled) return;
+
+        const map: Record<string, IncidentReferenceCheck> = {};
+        results.forEach(({ id, refInfo }) => {
+          map[id] = refInfo;
+        });
+        setReportTypeReferences(map);
+      } catch (error) {
+        console.error('Error preloading report type reference info:', error);
+      }
+    };
+
+    fetchReferences();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [reportTypes, employeeData]);
 
   const handleAddReportType = async () => {
     if (!newTypeName.trim()) {
@@ -153,6 +194,15 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   };
 
   const handleToggleStatus = async (type: ReportType) => {
+    // Check if report type is linked to incidents - prevent deactivation if linked
+    const refInfo = reportTypeReferences[type.id];
+    if (refInfo?.hasReferences && type.is_active) {
+      const message = refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+        `This report type is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+      toast.error(message);
+      return;
+    }
+
     const newStatus = !type.is_active;
     const action = newStatus ? 'activate' as const : 'deactivate' as const;
     
@@ -174,7 +224,6 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           console.error('Error toggling report type status:', error);
           const errorMessage = error?.message || `Failed to ${newStatus ? 'activate' : 'deactivate'} report type`;
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-          toast.error(errorMessage);
         }
       },
       error: null,
@@ -205,7 +254,6 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           console.error('Error deleting report type:', error);
           const errorMessage = error?.message || 'Failed to delete report type';
           setConfirmationDialog(prev => ({ ...prev, error: errorMessage, isLoading: false }));
-          toast.error(errorMessage);
         }
       },
       error: null,
@@ -296,12 +344,52 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                 <TableCell title={type.description || '-'}>{type.description || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
+                    {(() => {
+                      const refInfo = reportTypeReferences[type.id];
+                      const isLinked = refInfo?.hasReferences;
+
+                      if (isLinked) {
+                        const message =
+                          refInfo?.message?.replace('Cannot delete', 'Cannot deactivate') ||
+                          `This report type is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deactivated.`;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <StatusSwitch 
+                                    variant="status"
+                                    checked={type.is_active} 
+                                    disabled={true}
+                                    aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
+                                  />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="left" 
+                                align="center" 
+                                sideOffset={8} 
+                                className="max-w-xs whitespace-normal text-left"
+                              >
+                                <p className="text-xs leading-snug text-left">
+                                  {message}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
+
+                      return (
                     <StatusSwitch 
                       variant="status"
                       checked={type.is_active} 
                       onCheckedChange={() => handleToggleStatus(type)}
                       aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
                     />
+                      );
+                    })()}
                     <Badge variant={type.is_active ? "success" : "destructive"}>
                       {type.is_active ? "Active" : "Inactive"}
                     </Badge>
@@ -317,15 +405,58 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                       <Pencil className="h-4 w-4" />
                       <span className="sr-only">Edit</span>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleDeleteReportType(type.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
+                    {(() => {
+                      const refInfo = reportTypeReferences[type.id];
+                      const isLinked = refInfo?.hasReferences;
+
+                      if (isLinked) {
+                        const message =
+                          refInfo?.message ||
+                          `This report type is linked to ${refInfo?.count ?? 0} incident(s) and cannot be deleted.`;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    aria-disabled="true"
+                                    className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                    <span className="sr-only">Delete</span>
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="left" 
+                                align="center" 
+                                sideOffset={8} 
+                                className="max-w-xs whitespace-normal text-left"
+                              >
+                                <p className="text-xs leading-snug text-left">
+                                  {message}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      }
+
+                      return (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleDeleteReportType(type.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </TableCell>
               </TableRow>
