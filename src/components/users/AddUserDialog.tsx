@@ -13,6 +13,7 @@ import ModuleAccess from './form/ModuleAccess';
 import { checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { NAME_MAX_LENGTH } from '@/services/employee/utils/excelValidationUtils';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -283,7 +284,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                   id="firstName"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  maxLength={25}
+                  maxLength={NAME_MAX_LENGTH}
                   required
                   className={formData.firstName && !isValidName(formData.firstName) ? 'border-red-500' : ''}
                 />
@@ -300,7 +301,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                   id="lastName"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  maxLength={25}
+                  maxLength={NAME_MAX_LENGTH}
                   required
                   className={formData.lastName && !isValidName(formData.lastName) ? 'border-red-500' : ''}
                 />

@@ -15,7 +15,39 @@ const requiredFields: (keyof RawEmployeeData)[] = [
   'joiningDate',
   'status'
 ];
+export const NAME_MAX_LENGTH = 25;
+export const PHONE_LENGTH = 10;
 
+// Name validation
+export const isValidName = (name: string): boolean => {
+  if (!name) return false;
+  return String(name).trim().length <= NAME_MAX_LENGTH;
+};
+
+// Phone: 10 digits, no letters, no spaces, no special chars
+export const isValidPhone = (phone: string): boolean => {
+  if (!phone) return false;
+  const trimmed = String(phone).trim();
+  return /^\d{10}$/.test(trimmed);
+};
+
+// Joining date must be a valid date
+export const isValidDate = (value: any): boolean => {
+  if (!value) return false;
+
+  if (value instanceof Date) {
+    return !isNaN(value.getTime());
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    const d = new Date(trimmed);
+    return !isNaN(d.getTime());
+  }
+
+  return false;
+};
 /**
  * Validates the data extracted from Excel
  * @param data The raw data extracted from Excel
@@ -106,6 +138,26 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         errors.push(`Row ${rowNum}: Invalid email format - ${row.email}`);
       }
     }
+
+    if (row.firstName && !isValidName(row.firstName)) {
+      errors.push(`Row ${rowNum}: First Name should be less than ${NAME_MAX_LENGTH} characters`);
+    }
+
+    if (row.lastName && !isValidName(row.lastName)) {
+      errors.push(`Row ${rowNum}: Last Name should be less than ${NAME_MAX_LENGTH} characters`);
+    } 
+    if (row.phone && !isValidPhone(row.phone)) {
+      errors.push(
+        `Row ${rowNum}: Phone must be exactly ${PHONE_LENGTH} digits with no letters or special characters`
+      );
+    }
+
+    if (row.joiningDate && !isValidDate(row.joiningDate)) {
+      errors.push(
+        `Row ${rowNum}: Joining Date must be a valid date (e.g., YYYY-MM-DD)`
+      );
+    }
+
   });
   
   return errors;
