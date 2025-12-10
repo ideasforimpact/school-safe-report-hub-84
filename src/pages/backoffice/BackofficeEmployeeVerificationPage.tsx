@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DateRange } from 'react-day-picker';
 import Layout from '@/components/layout/Layout';
@@ -7,12 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserCheck, Search, Eye, ArrowLeft } from 'lucide-react';
+import { UserCheck, Search, Eye, ArrowLeft, RefreshCw } from 'lucide-react';
 import VerificationStatusSummary from '@/components/employee-verification/VerificationStatusSummary';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
-import { backofficeEmployeeService, type EmployeeWithDocumentsSummary, type BackofficeClient } from '@/services/employee/backofficeEmployeeService';
+import {
+  backofficeEmployeeService,
+  type EmployeeWithDocumentsSummary,
+  type BackofficeClient
+} from '@/services/employee/backofficeEmployeeService';
+import { supabase } from '@/integrations/supabase/client'; 
 
 // Helper function to truncate text and show tooltip on hover
 const TruncatedText = ({ text, maxLength = 30 }: { text: string; maxLength?: number }) => {
@@ -133,6 +137,15 @@ const BackofficeEmployeeVerificationPage = () => {
     }
   }, [clients, toast]);
 
+  const refreshEmployees = useCallback(async () => {
+    if (clients.length === 0) return;
+
+    if (selectedClientId === 'all') {
+      await fetchAllEmployees();
+    } else {
+      await fetchEmployeesByClient(selectedClientId);
+    }
+  }, [clients.length, selectedClientId, fetchAllEmployees, fetchEmployeesByClient]);
   // Fetch all clients on component mount
   useEffect(() => {
     fetchClients();
@@ -140,14 +153,36 @@ const BackofficeEmployeeVerificationPage = () => {
 
   // Fetch employees when client selection changes (only after clients are loaded)
   useEffect(() => {
-    if (clients.length === 0) return; // Wait for clients to load
-    
-    if (selectedClientId === 'all') {
-      fetchAllEmployees();
-    } else if (selectedClientId) {
-      fetchEmployeesByClient(selectedClientId);
-    }
-  }, [selectedClientId, clients, fetchAllEmployees, fetchEmployeesByClient]);
+    if (clients.length === 0) return;
+
+    void refreshEmployees();
+  }, [clients, selectedClientId, refreshEmployees]);
+
+  useEffect(() => {
+    if (clients.length === 0) return;
+
+    const channel = supabase
+      .channel('backoffice-employee-documents')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'employee_documents'
+        },
+        async (payload) => {
+          console.log('📡 Backoffice: employee_documents change detected:', payload);
+
+          await refreshEmployees();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Unsubscribing from backoffice-employee-documents channel');
+      supabase.removeChannel(channel);
+    };
+  }, [clients.length, refreshEmployees]);
 
   // Filter employees based on search term and status
   const filteredEmployees = useMemo(() => {
@@ -210,6 +245,21 @@ const BackofficeEmployeeVerificationPage = () => {
     );
   }
 
+  const handleRefresh = () => {
+    setSearchTerm('');
+    setSelectedClientId('all');
+    setSelectedStatus('all');
+    setDateRange(undefined);
+
+    // Reload employees based on default filter "all"
+    fetchAllEmployees();
+
+    toast({
+      title: 'Refreshed',
+      description: 'Data updated successfully!'
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -234,11 +284,22 @@ const BackofficeEmployeeVerificationPage = () => {
         <Card>
           <CardHeader>
             <div className="space-y-4">
-              <div>
-                <CardTitle>Manual Document Verification Overview</CardTitle>
-                <CardDescription>
-                  View and manage manual document verification status for employees
-                </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Manual Document Verification Overview</CardTitle>
+                  <CardDescription>
+                    View and manage manual document verification status for employees
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
               </div>
               {/* Search box and filters on same row */}
               <div className="flex items-center gap-4">
