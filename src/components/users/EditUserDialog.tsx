@@ -15,6 +15,7 @@ import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { NAME_MAX_LENGTH } from '@/services/employee/utils/excelValidationUtils';
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage } from '@/constant/employeeConstant';
+import { NAME_MAX_LENGTH } from '@/services/employee/utils/excelValidationUtils';
 
 interface EditUserDialogProps {
   isOpen: boolean;
