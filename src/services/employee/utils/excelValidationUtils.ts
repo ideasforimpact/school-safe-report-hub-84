@@ -1,6 +1,6 @@
 
 import { RawEmployeeData } from '../types/importTypes';
-import { checkBulkEmployeeIdDuplicates } from '../employeeValidationService';
+import { checkBulkEmployeeIdDuplicates,checkBulkEmployeeEmailDuplicates } from '../employeeValidationService';
 
 /**
  * Required fields that must be present in the Excel file
@@ -20,6 +20,8 @@ export const PHONE_LENGTH = 10;
 
 // Name validation
 export const isValidName = (name: string): boolean => {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
   if (!name) return false;
   return String(name).trim().length <= NAME_MAX_LENGTH;
 };
@@ -48,12 +50,44 @@ export const isValidDate = (value: any): boolean => {
 
   return false;
 };
+// Joining date must be a valid *future* date (strictly after today)
+export const isFutureDate = (value: any): boolean => {
+  if (!isValidDate(value)) return false;
+
+  let date: Date;
+
+  if (value instanceof Date) {
+    date = value;
+  } else if (typeof value === 'string') {
+    date = new Date(value.trim());
+  } else {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+
+  return date > today;
+};
+
 /**
  * Validates the data extracted from Excel
  * @param data The raw data extracted from Excel
  * @param clientId The client ID to check for duplicate employee IDs (optional)
  * @returns Array of validation errors (empty if valid)
  */
+export const isValidEmployeeId = (employeeId: string): boolean => {
+  if (!employeeId) return false;
+  const trimmed = employeeId.trim();
+  if (!trimmed) return false;
+
+  // Only letters + numbers, length 1–15
+  const employeeIdRegex = /^[A-Za-z0-9]{1,15}$/;
+
+  return employeeIdRegex.test(trimmed);
+};
+
 export const validateExcelData = async (data: any[], clientId?: string): Promise<string[]> => {
   const errors: string[] = [];
   
@@ -86,12 +120,28 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
   }
   
   // Check for duplicate employee IDs within the file
-  const employeeIds = data.map(row => row.employeeId).filter(id => id);
+  const employeeIds: string[] = [];
+  const emailsRaw: string[] = [];
+   data.forEach(row => {
+    if (row.employeeId !== undefined && row.employeeId !== null && String(row.employeeId).trim() !== '') {
+      employeeIds.push(String(row.employeeId).trim());
+    }
+    if (row.email !== undefined && row.email !== null && String(row.email).trim() !== '') {
+      emailsRaw.push(String(row.email).trim().toLowerCase()); 
+    }
+  });
   const duplicateIds = employeeIds.filter((id, index) => employeeIds.indexOf(id) !== index);
   if (duplicateIds.length > 0) {
     const uniqueDuplicates = [...new Set(duplicateIds)];
     uniqueDuplicates.forEach(id => {
       errors.push(`Duplicate employee ID found in file: ${id}`);
+    });
+  }
+   const duplicateEmails = emailsRaw.filter((email, index) => emailsRaw.indexOf(email) !== index);
+  if (duplicateEmails.length > 0) {
+    const uniqueEmailDups = [...new Set(duplicateEmails)];
+    uniqueEmailDups.forEach(email => {
+      errors.push(`Duplicate email found in file: ${email}`);
     });
   }
 
@@ -117,6 +167,25 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     }
   }
 
+  if (clientId && emailsRaw.length > 0) {
+    try {
+      // remove empties and dedupe before calling DB
+      const uniqueEmails = [...new Set(emailsRaw.filter(e => e && e.trim()))];
+      if (uniqueEmails.length > 0) {
+        const { duplicates: emailDuplicates, errors: emailDbErrors } = await checkBulkEmployeeEmailDuplicates(uniqueEmails, clientId);
+        if (emailDbErrors && emailDbErrors.length > 0) {
+          errors.push(...emailDbErrors);
+        }
+        if (emailDuplicates && emailDuplicates.length > 0) {
+          emailDuplicates.forEach(email => {
+            errors.push(`Email '${email}' already exists for this client`);
+          });
+        }
+      }
+    } catch (err) {
+      errors.push('Error validating emails against existing records');
+    }
+  }
   // Validate each row
   data.forEach((row, index) => {
     const rowNum = index + 2; // +2 because Excel is 1-based and we're skipping header row
@@ -152,9 +221,21 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
       );
     }
 
-    if (row.joiningDate && !isValidDate(row.joiningDate)) {
+    if (row.joiningDate) {
+      if (!isValidDate(row.joiningDate)) {
+        errors.push(
+          `Row ${rowNum}: Joining Date must be a valid date (e.g., YYYY-MM-DD)`
+        );
+      } else if (!isFutureDate(row.joiningDate)) {
+        errors.push(
+          `Row ${rowNum}: Joining Date must be a future date (after today)`
+        );
+      }
+    }
+
+    if (row.employeeId && !isValidEmployeeId(row.employeeId)) {
       errors.push(
-        `Row ${rowNum}: Joining Date must be a valid date (e.g., YYYY-MM-DD)`
+        `Row ${rowNum}: Employee ID must contain only letters and numbers`
       );
     }
 

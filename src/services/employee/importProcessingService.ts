@@ -369,7 +369,7 @@ const transformEmployeeData = (dbEmployee: any): Employee => {
 export const showImportResultNotifications = (result: ImportResult): void => {
   // Show success toast for new employees
   if (result.successCount > 0) {
-    toast.success(`Successfully imported ${result.successCount} new employees`);
+    // toast.success(`Successfully imported ${result.successCount} new employees`);
   }
   
   // Show success toast for updated employees
