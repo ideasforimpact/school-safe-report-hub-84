@@ -76,9 +76,9 @@ serve(async (req) => {
         );
       }
 
-      const { name, icon, level, url: moduleUrl, active } = body;
+      const { name, icon, level, url: moduleUrl, active, order } = body;
 
-      console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl, active });
+      console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl, active, order });
 
       const { data, error } = await supabase
         .from('modules')
@@ -88,6 +88,7 @@ serve(async (req) => {
           level,
           url: moduleUrl,
           active,
+          order: order !== undefined ? order : null,
           updated_at: new Date().toISOString()
         })
         .eq('id', moduleId)
@@ -112,9 +113,9 @@ serve(async (req) => {
       );
     } else {
       // Handle CREATE
-      const { name, icon, level, url: moduleUrl, active = true } = body;
+      const { name, icon, level, url: moduleUrl, active = true, order } = body;
 
-      console.log('Creating module:', { name, icon, level, url: moduleUrl, active });
+      console.log('Creating module:', { name, icon, level, url: moduleUrl, active, order });
 
       const { data, error } = await supabase
         .from('modules')
@@ -123,7 +124,8 @@ serve(async (req) => {
           icon,
           level,
           url: moduleUrl,
-          active
+          active,
+          order: order !== undefined ? order : null
         })
         .select()
         .single();
