@@ -117,50 +117,61 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
 
   // Get employee_id from token (sub field)
   const employeeId = payload.sub;
+  console.log('Employee ID from token:', employeeId);
+  
+  // Try to get client_id from token payload first
+  let clientId = payload.client_id || payload.clientId || null;
+  
+  // If client_id is not in token, fetch from employee record
+  if (!clientId) {
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('id, client_id, status')
+      .eq('id', employeeId)
+      .single();
 
-  // Get employee record to get client_id
-  const { data: employee, error: employeeError } = await supabase
-    .from('employees')
-    .select('id, client_id, status')
-    .eq('id', employeeId)
-    .single();
+    if (employeeError || !employee) {
+      return {
+        employeeId: '',
+        clientId: '',
+        error: new Response(
+          JSON.stringify({ error: 'Employee not found' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      };
+    }
 
-  if (employeeError || !employee) {
-    return {
-      employeeId: '',
-      clientId: '',
-      error: new Response(
-        JSON.stringify({ error: 'Employee not found' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    };
+    if (!employee.status) {
+      return {
+        employeeId: '',
+        clientId: '',
+        error: new Response(
+          JSON.stringify({ error: 'Employee account is inactive' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      };
+    }
+
+    clientId = employee.client_id;
   }
 
-  if (!employee.status) {
+  if (!clientId) {
     return {
       employeeId: '',
       clientId: '',
       error: new Response(
-        JSON.stringify({ error: 'Employee account is inactive' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    };
-  }
-
-  if (!employee.client_id) {
-    return {
-      employeeId: '',
-      clientId: '',
-      error: new Response(
-        JSON.stringify({ error: 'Employee does not have a client_id assigned' }),
+        JSON.stringify({ error: 'Client ID not found in token or employee record' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     };
   }
 
+  console.log('Client ID:', clientId);
+  console.log('Employee ID:', employeeId);
+
   return {
-    employeeId: employee.id,
-    clientId: employee.client_id
+    employeeId: employeeId,
+    clientId: clientId
   };
 }
 
@@ -235,7 +246,7 @@ serve(async (req) => {
     // POST - Create visitor
     if (method === 'POST') {
       const body = await req.json();
-      const { name, mobile_no, purpose, whom_to_meet, employee_id, files, kyc_details } = body;
+      const { name, mobile_no, purpose, whom_to_meet, employee_id, files, kyc_details, vehicle_no, vehicle_type } = body;
 
       // Validate required fields (client_id comes from token, employee_id is optional - defaults to authenticated user)
       if (!name || !mobile_no || !purpose || !whom_to_meet) {
@@ -279,17 +290,23 @@ serve(async (req) => {
       }
 
       // Create visitor record
+      const visitorData: any = {
+        name,
+        mobile_no,
+        purpose,
+        whom_to_meet,
+        client_id: clientId,
+        employee_id: effectiveEmployeeId,
+        evidence_files: evidenceFiles
+      };
+
+      // Add vehicle fields if provided
+      if (vehicle_no !== undefined) visitorData.vehicle_no = vehicle_no;
+      if (vehicle_type !== undefined) visitorData.vehicle_type = vehicle_type;
+
       const { data: visitor, error: visitorError } = await supabase
         .from('visitors')
-        .insert({
-          name,
-          mobile_no,
-          purpose,
-          whom_to_meet,
-          client_id: clientId,
-          employee_id: effectiveEmployeeId,
-          evidence_files: evidenceFiles
-        })
+        .insert(visitorData)
         .select()
         .single();
 
@@ -336,7 +353,7 @@ serve(async (req) => {
     // PUT - Update visitor
     if (method === 'PUT') {
       const body = await req.json();
-      const { id, name, mobile_no, purpose, whom_to_meet, employee_id, files, kyc_details } = body;
+      const { id, name, mobile_no, purpose, whom_to_meet, employee_id, files, kyc_details, vehicle_no, vehicle_type } = body;
 
       if (!id) {
         return new Response(
@@ -407,6 +424,8 @@ serve(async (req) => {
       if (purpose !== undefined) updateData.purpose = purpose;
       if (whom_to_meet !== undefined) updateData.whom_to_meet = whom_to_meet;
       if (employee_id !== undefined) updateData.employee_id = employee_id;
+      if (vehicle_no !== undefined) updateData.vehicle_no = vehicle_no;
+      if (vehicle_type !== undefined) updateData.vehicle_type = vehicle_type;
       if (newFiles.length > 0) updateData.evidence_files = updatedFiles;
 
       // Update visitor
