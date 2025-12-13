@@ -114,6 +114,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           <div className="h-20 w-20 border rounded flex items-center justify-center overflow-hidden">
             {formData.logo ? (
               <img 
+                key={formData.logo} // Force re-render when logo changes
                 src={buildClientLogoUrl(formData.logo) || formData.logo} 
                 alt="Client logo" 
                 className="h-full w-full object-contain" 

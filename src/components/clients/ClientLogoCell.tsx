@@ -14,6 +14,7 @@ const ClientLogoCell = ({ name, logo }: ClientLogoCellProps) => {
       {logoUrl ? (
         <div className="h-10 w-10 overflow-hidden rounded">
           <img 
+            key={logo} // Force re-render when logo path changes
             src={logoUrl} 
             alt={`${name} logo`} 
             className="h-full w-full object-contain"
