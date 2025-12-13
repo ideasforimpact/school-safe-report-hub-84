@@ -78,5 +78,17 @@ export function buildClientLogoUrl(logoPath: string | null | undefined): string 
   }
   
   const normalizedBase = base.replace(/\/$/, '');
-  return `${normalizedBase}/client-logos/${filePath}`;
+  const url = `${normalizedBase}/client-logos/${filePath}`;
+  
+  // Add cache-busting parameter to force browser to fetch fresh image
+  // Use a hash of the logo path for consistency, but add timestamp to bust cache on updates
+  // The timestamp ensures the browser fetches a fresh image even if the path is the same
+  const pathHash = logoPath.split('').reduce((acc, char) => {
+    acc = ((acc << 5) - acc) + char.charCodeAt(0);
+    return acc & acc;
+  }, 0);
+  
+  // Use hash for path-based caching, but add timestamp to ensure fresh fetch
+  // This will cause the image to reload, but it's necessary to show updated logos
+  return `${url}?v=${Math.abs(pathHash)}&_=${Date.now()}`;
 }
