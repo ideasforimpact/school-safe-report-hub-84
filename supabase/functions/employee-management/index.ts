@@ -194,6 +194,7 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
           department: emp.department,
           joining_date: emp.joiningDate,
           status: true,
+          phone: emp.phone || null,
           client_id: clientId,
           user_id: emp.user_id || null,
           is_super_admin: emp.is_super_admin || false

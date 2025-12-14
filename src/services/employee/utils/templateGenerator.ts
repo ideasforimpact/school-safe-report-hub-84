@@ -10,6 +10,7 @@ export interface EmployeeTemplateData {
   'Department': string;
   'Joining Date': string;
   'Status': string;
+  'Module':string;
 }
 
 /**
@@ -25,7 +26,8 @@ const generateSampleData = (): EmployeeTemplateData[] => [
     'Employee Type': 'permanent',
     'Department': 'operations',
     'Joining Date': '2024-01-15',
-    'Status': 'active'
+    'Status': 'active',
+    'Module':'Incidents'
   },
   {
     'Employee ID': 'EMP002',
@@ -36,7 +38,8 @@ const generateSampleData = (): EmployeeTemplateData[] => [
     'Employee Type': 'contract',
     'Department': 'admin',
     'Joining Date': '2024-02-01',
-    'Status': 'active'
+    'Status': 'active',
+    'Module':'Incidents'
   },
   {
     'Employee ID': 'EMP003',
@@ -47,7 +50,8 @@ const generateSampleData = (): EmployeeTemplateData[] => [
     'Employee Type': 'permanent',
     'Department': 'hr',
     'Joining Date': '2024-01-20',
-    'Status': 'active'
+    'Status': 'active',
+    'Module':'Incidents'
   }
 ];
 
@@ -73,7 +77,8 @@ export const downloadExcelTemplate = (): void => {
     { wch: 15 }, // Employee Type
     { wch: 15 }, // Department
     { wch: 15 }, // Joining Date
-    { wch: 10 }  // Status
+    { wch: 10 },  // Status
+    { wch: 20 }  // Module
   ];
   worksheet['!cols'] = columnWidths;
   
@@ -131,7 +136,8 @@ export const getTemplateFormatInfo = () => ({
     'Employee Type',
     'Department',
     'Joining Date',
-    'Status'
+    'Status',
+    'Module'
   ],
   supportedFormats: ['XLSX', 'XLS', 'CSV'],
   employeeTypes: ['permanent', 'contract', 'temporary', 'intern'],

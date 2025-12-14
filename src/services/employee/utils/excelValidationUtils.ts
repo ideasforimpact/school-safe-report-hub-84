@@ -73,7 +73,25 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     'joiningDate',
     'status'
   ];
-  
+  const allowedModuleNames = [
+    'Incidents',
+    'Dashboard',
+    'Assessments',
+    'Employee Verification',
+    'Transport Safety',
+    'EduSafe Resources',
+    'Grievances',
+    'Users',
+    'Settings',
+    'Compliance Documents'
+  ];
+
+  // Helper for case-insensitive check
+  const isAllowedModuleName = (name: string): boolean => {
+    if (!name) return false;
+    const n = String(name).trim().toLowerCase();
+    return allowedModuleNames.some(am => am.toLowerCase() === n);
+  };
   const firstRow = data[0];
   const missingColumns = requiredColumns.filter(
     column => !Object.keys(firstRow).includes(column)
@@ -156,6 +174,41 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
       errors.push(
         `Row ${rowNum}: Joining Date must be a valid date (e.g., YYYY-MM-DD)`
       );
+    }
+
+    const moduleCandidates: string[] = [];
+
+    // If parser provided moduleAccessPayload as array of strings/objects
+    if (Array.isArray(row.moduleAccessPayload)) {
+      // If array-of-strings
+      if (row.moduleAccessPayload.length > 0 && typeof row.moduleAccessPayload[0] === 'string') {
+        row.moduleAccessPayload.forEach((m: string) => moduleCandidates.push(String(m)));
+      } else {
+        // array-of-objects: prefer .name or .module_id or .key
+        row.moduleAccessPayload.forEach((m: any) => {
+          if (m?.name) moduleCandidates.push(String(m.name));
+          else if (m?.module_id) moduleCandidates.push(String(m.module_id));
+          else if (m?.key) moduleCandidates.push(String(m.key));
+        });
+      }
+    }
+
+    // Alternative single-cell module column (comma separated)
+    const moduleCell =
+      row.Module ?? row.module ?? row['Module(s)'] ?? row['Assigned Module'] ?? row['assigned_module'] ?? '';
+    if (moduleCell && typeof moduleCell === 'string' && moduleCell.trim()) {
+      const parts = moduleCell.split(/[,;|\/]/).map((p: string) => p.trim()).filter(Boolean);
+      moduleCandidates.push(...parts);
+    }
+
+    // Deduplicate and validate
+    const uniqueModules = [...new Set(moduleCandidates.map(m => String(m).trim()).filter(Boolean))];
+
+    if (uniqueModules.length > 0) {
+      const invalidModules = uniqueModules.filter(m => !isAllowedModuleName(m));
+      if (invalidModules.length > 0) {
+        errors.push(`Row ${rowNum}: Invalid module(s) specified: ${invalidModules.join(', ')}. Allowed modules: ${allowedModuleNames.join(', ')}`);
+      }
     }
 
   });

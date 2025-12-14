@@ -8,4 +8,5 @@ export interface ModuleAccessItem {
     is_admin?: boolean;
     [key: string]: any;
   };
+  enabled: boolean,
 }

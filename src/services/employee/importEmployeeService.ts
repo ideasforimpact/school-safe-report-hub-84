@@ -7,6 +7,7 @@ import { processEmployeeData, showImportResultNotifications } from './importProc
 import { isValidEmployeeType, isValidDepartment, isValidStatus } from './utils/employeeValidationUtils';
 import { toast } from 'sonner';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { iModule } from '@/pages/UserManagement';
 
 /**
  * Process and import employees from Excel or CSV file
@@ -17,9 +18,9 @@ import { ModuleAccessItem } from '@/types/moduleAccess';
  * @param configuredModules Optional array of configured modules from Redux
  */
 export const processEmployeeExcel = async (
-  file: File, 
+  file: File,
   clientId?: string,
-  configuredModules?: Array<{id: string, name: string, key?: string}>
+  configuredModules?: iModule[]
 ): Promise<Employee[]> => {
   try {
     // Parse the file (Excel or CSV)
@@ -59,41 +60,28 @@ export const processEmployeeExcel = async (
       transportSafetyAdmin: true, // Enable Transport Safety Admin by default as requested
       eduSafeResourceAccess: false
     };
-    
-    // Create default module access payload based on configured modules or use Dashboard as fallback
-    let defaultModuleAccessPayload: ModuleAccessItem[] = [];
-    
+
+    const importedModuleNames = new Set(
+      rawData
+        .map(r => r.moduleAccessPayload?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    let matchedModules: iModule[] = [];
+
     if (configuredModules && configuredModules.length > 0) {
-      // Filter for Dashboard and other basic modules
-      const basicModules = configuredModules.filter(
-        module => module.name === "Dashboard" || module.name === "User"
+      matchedModules = configuredModules.filter(m =>
+        importedModuleNames.has(m.name.trim().toLowerCase())
       );
-      
-      if (basicModules.length > 0) {
-        defaultModuleAccessPayload = basicModules.map(module => ({
-          name: module.name,
-          key: module.key || module.id,
-          module_id: module.id,
-          employeeId: '' // Will be filled in per employee
-        }));
-      }
-      
-      console.log("Using configured modules for import:", defaultModuleAccessPayload);
     }
-    
-    // If no modules were found in configured modules, use the default Dashboard module
-    if (defaultModuleAccessPayload.length === 0) {
-      defaultModuleAccessPayload = [{
-        name: "Dashboard",
-        key: "user",
-        module_id: "f84132f7-48e0-45f1-ad3a-59e794ac9a8d",
-        employeeId: '' // Will be filled in per employee
-      }];
-      console.log("Using default Dashboard module for import");
-    }
-    
-    // Add default module permissions to each employee record
-    // and normalize/validate employee data fields
+
+    let defaultModuleAccessPayload: Omit<ModuleAccessItem, "employeeId">[] =
+      matchedModules.map(module => ({
+        name: module.name,
+        key: module.key || module.id,
+        module_id: module.id,
+        enabled: true
+      }));
     const processedData = rawData.map(emp => {
       // Generate default email if missing using firstName.lastName@example.com format
       const email = emp.email && emp.email.trim() !== '' 
@@ -108,7 +96,7 @@ export const processEmployeeExcel = async (
       // Assign module access payload with employee ID
       const moduleAccessPayload = defaultModuleAccessPayload.map(module => ({
         ...module,
-        employeeId: String(emp.employeeId || '')
+        employeeId: String(emp.employeeId)
       }));
       
       return {
