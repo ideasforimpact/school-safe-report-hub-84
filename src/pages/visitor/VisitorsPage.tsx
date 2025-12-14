@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, LogIn, Car } from 'lucide-react';
+import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import VisitorDetailDialog from '@/components/visitor/VisitorDetailDialog';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const VisitorsPage = () => {
   const { employeeData } = useAuth();
@@ -32,18 +33,39 @@ const VisitorsPage = () => {
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
+  // Toast deduplication - prevent multiple toasts for the same event within 2 seconds
+  const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null);
+  const TOAST_DEBOUNCE_MS = 2000; // 2 seconds
+
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'info') => {
+    const now = Date.now();
+    const lastToast = lastToastRef.current;
+
+    // Check if this is a duplicate toast within the debounce window
+    if (lastToast && lastToast.message === message && (now - lastToast.timestamp) < TOAST_DEBOUNCE_MS) {
+      console.log('[Toast] Duplicate toast prevented:', message);
+      return;
+    }
+
+    // Update the last toast reference
+    lastToastRef.current = { message, timestamp: now };
+
+    // Show the toast
+    if (type === 'success') {
+      toast.success(message);
+    } else if (type === 'error') {
+      toast.error(message);
+    } else {
+      toast.info(message);
+    }
+  }, []);
+
   // Get client_id and employee_id from auth context
   const clientId = employeeData?.clientId;
   const employeeId = employeeData?.id;
 
-  // Fetch visitors on component mount and when clientId changes
-  useEffect(() => {
-    if (clientId) {
-    fetchVisitors();
-    }
-  }, [clientId]);
-
-  const fetchVisitors = async () => {
+  // Fetch visitors function
+  const fetchVisitors = useCallback(async () => {
     if (!clientId) {
       toast.error('Client ID is required to fetch visitors');
       setLoading(false);
@@ -60,7 +82,219 @@ const VisitorsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId, employeeId]);
+
+  // Fetch visitors on component mount and when clientId or employeeId changes
+  useEffect(() => {
+    if (clientId) {
+      fetchVisitors();
+    }
+  }, [clientId, fetchVisitors]);
+
+  // Handle realtime visitor updates
+  const handleVisitorUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] Visitor update payload received:', payload);
+    
+    const updatedVisitor = payload.new;
+    const oldVisitor = payload.old;
+    const eventType = payload.eventType || (payload.new && !payload.old ? 'INSERT' : payload.old && !payload.new ? 'DELETE' : 'UPDATE');
+
+    // Determine event type
+    const isDelete = eventType === 'DELETE' || (!updatedVisitor && oldVisitor);
+    const isInsert = eventType === 'INSERT' || (updatedVisitor && !oldVisitor);
+    const isUpdate = eventType === 'UPDATE' || (updatedVisitor && oldVisitor);
+
+    // For DELETE events, check old visitor; otherwise check new visitor
+    const visitorToCheck = updatedVisitor || oldVisitor;
+    
+    // Filter by client_id and employee_id
+    if (!visitorToCheck) {
+      console.log('[Realtime] No visitor data in payload, skipping');
+      return;
+    }
+
+    if (visitorToCheck.client_id !== clientId) {
+      console.log('[Realtime] Client ID mismatch, skipping:', {
+        payloadClientId: visitorToCheck.client_id,
+        currentClientId: clientId
+      });
+      return;
+    }
+
+    // If employee_id filter is needed and doesn't match, skip
+    if (employeeId && visitorToCheck.employee_id !== employeeId) {
+      console.log('[Realtime] Employee ID mismatch, skipping:', {
+        payloadEmployeeId: visitorToCheck.employee_id,
+        currentEmployeeId: employeeId
+      });
+      return;
+    }
+
+    console.log('[Realtime] Processing visitor update:', {
+      eventType,
+      isInsert,
+      isUpdate,
+      isDelete,
+      visitorId: visitorToCheck.id
+    });
+
+    try {
+      if (isDelete) {
+        // Remove deleted visitor
+        setVisitors((prevVisitors) => {
+          const filtered = prevVisitors.filter((v) => v.id !== oldVisitor.id);
+          console.log('[Realtime] Visitor deleted, new count:', filtered.length);
+          return filtered;
+        });
+        showToast('Visitor removed', 'info');
+      } else if (isInsert) {
+        console.log('[Realtime] Inserting new visitor:', updatedVisitor.id);
+        // Try to fetch the complete visitor with KYC details
+        // If it fails (might be a race condition), refresh the list
+        try {
+          const fullVisitor = await visitorService.getVisitorById(updatedVisitor.id, clientId);
+          console.log('[Realtime] Fetched full visitor data:', fullVisitor);
+          
+          // Add new visitor at the beginning (most recent first)
+          setVisitors((prevVisitors) => {
+            // Check if visitor already exists (avoid duplicates)
+            const exists = prevVisitors.some(v => v.id === fullVisitor.id);
+            if (exists) {
+              console.log('[Realtime] Visitor already exists, updating instead');
+              return prevVisitors.map((v) => (v.id === fullVisitor.id ? fullVisitor : v));
+            }
+            console.log('[Realtime] Adding new visitor to list');
+            return [fullVisitor, ...prevVisitors];
+          });
+          showToast('Visitor updated', 'success');
+        } catch (fetchError) {
+          console.error('[Realtime] Error fetching new visitor, refreshing list:', fetchError);
+          // If fetching fails, refresh the entire list
+          await fetchVisitors();
+          showToast('Visitor updated', 'success');
+        }
+      } else if (isUpdate) {
+        console.log('[Realtime] Updating visitor:', updatedVisitor.id);
+        // Fetch the complete visitor with KYC details
+        try {
+          const fullVisitor = await visitorService.getVisitorById(updatedVisitor.id, clientId);
+          console.log('[Realtime] Fetched updated visitor data:', fullVisitor);
+          
+          // Update existing visitor
+          setVisitors((prevVisitors) => {
+            const exists = prevVisitors.some(v => v.id === fullVisitor.id);
+            if (exists) {
+              return prevVisitors.map((v) => (v.id === fullVisitor.id ? fullVisitor : v));
+            } else {
+              // If visitor doesn't exist in list, add it
+              console.log('[Realtime] Visitor not in list, adding');
+              return [fullVisitor, ...prevVisitors];
+            }
+          });
+          showToast('Visitor updated', 'info');
+        } catch (fetchError) {
+          console.error('[Realtime] Error fetching updated visitor, refreshing list:', fetchError);
+          // If fetching fails, refresh the entire list
+          await fetchVisitors();
+          showToast('Visitor updated', 'info');
+        }
+      }
+    } catch (error) {
+      console.error('[Realtime] Error handling visitor update:', error);
+      // Refresh the entire list on error
+      await fetchVisitors();
+    }
+  }, [clientId, employeeId, fetchVisitors, showToast]);
+
+  // Handle realtime visitor_kyc updates
+  const handleVisitorKycUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] Visitor KYC update payload received:', payload);
+    
+    const updatedKyc = payload.new;
+    const oldKyc = payload.old;
+
+    // For DELETE events, use old record; otherwise use new record
+    const kycToCheck = updatedKyc || oldKyc;
+
+    // Filter by client_id and employee_id
+    if (!kycToCheck) {
+      console.log('[Realtime] No KYC data in payload, skipping');
+      return;
+    }
+
+    if (kycToCheck.client_id !== clientId) {
+      console.log('[Realtime] Client ID mismatch for KYC, skipping');
+      return;
+    }
+
+    // If employee_id filter is needed and doesn't match, skip
+    if (employeeId && kycToCheck.employee_id !== employeeId) {
+      console.log('[Realtime] Employee ID mismatch for KYC, skipping');
+      return;
+    }
+
+    try {
+      // Fetch the visitor with updated KYC details
+      const visitorId = updatedKyc?.visitor_id || oldKyc?.visitor_id;
+      if (visitorId) {
+        console.log('[Realtime] Fetching visitor with updated KYC:', visitorId);
+        const fullVisitor = await visitorService.getVisitorById(visitorId, clientId);
+        console.log('[Realtime] Fetched visitor with KYC:', fullVisitor);
+
+        // Update the visitors list
+        setVisitors((prevVisitors) => {
+          const exists = prevVisitors.some(v => v.id === fullVisitor.id);
+          if (exists) {
+            return prevVisitors.map((v) => 
+              v.id === fullVisitor.id ? fullVisitor : v
+            );
+          } else {
+            // If visitor doesn't exist in list, add it
+            console.log('[Realtime] Visitor not in list, adding with KYC');
+            return [fullVisitor, ...prevVisitors];
+          }
+        });
+
+        showToast('Visitor updated', 'info');
+      } else {
+        console.log('[Realtime] No visitor_id in KYC payload');
+      }
+    } catch (error) {
+      console.error('[Realtime] Error handling visitor KYC update:', error);
+      // Refresh the entire list on error
+      await fetchVisitors();
+    }
+  }, [clientId, employeeId, fetchVisitors, showToast]);
+
+  // Set up realtime subscription for visitors table
+  // Filter by employee_id if available (more specific), otherwise by client_id
+  useRealTimeSubHook({
+    channelName: `visitors-${clientId}-${employeeId || 'all'}`,
+    events: '*',
+    table: 'visitors',
+    filter: employeeId 
+      ? `employee_id=eq.${employeeId}` 
+      : clientId 
+        ? `client_id=eq.${clientId}` 
+        : undefined,
+    enabled: !!(clientId || employeeId),
+    onPayload: handleVisitorUpdate,
+  });
+
+  // Set up realtime subscription for visitor_kyc table
+  // Filter by employee_id if available (more specific), otherwise by client_id
+  useRealTimeSubHook({
+    channelName: `visitor-kyc-${clientId}-${employeeId || 'all'}`,
+    events: '*',
+    table: 'visitor_kyc',
+    filter: employeeId 
+      ? `employee_id=eq.${employeeId}` 
+      : clientId 
+        ? `client_id=eq.${clientId}` 
+        : undefined,
+    enabled: !!(clientId || employeeId),
+    onPayload: handleVisitorKycUpdate,
+  });
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -139,10 +373,10 @@ const VisitorsPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button 
-              onClick={() => navigate('/visitors/trusted-vehicles')}
+              onClick={() => navigate('/visitors')}
             >
-              <Car className="h-4 w-4 mr-2" />
-              Add Trusted Vehicles
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              List Trusted Vehicles
             </Button>
             <Button 
               variant="ghost" 
