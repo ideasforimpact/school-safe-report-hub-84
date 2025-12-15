@@ -30,8 +30,9 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
           console.log("CSV headers:", headers);
           
           // Parse data rows
-          const jsonData = lines.slice(1).map((line, index) => {
-            const values = line.split(',').map(value => value.trim().replace(/"/g, ''));
+          const jsonData = lines.slice(1).map((line) => {
+            const values = (line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [])
+              .map(v => v.replace(/^"|"$/g, '').trim());
             const row: any = {};
             
             headers.forEach((header, i) => {
@@ -55,6 +56,26 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
                 }
               }
               return '';
+            };
+            
+            const findModuleField = (): string[] => {
+              const knownFieldNames = [
+                'Module', 'Modules', 'module', 'modules',
+                'Assigned Module', 'Assigned Modules', 'assigned_module',
+                'module_name', 'module(s)'
+              ];
+              const foundValues: any[] = [];
+              for (const key of Object.keys(row)) {
+                if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
+                  foundValues.push(row[key]);  
+                }
+              }
+              if (foundValues.length === 0) return [];
+
+              return foundValues
+                .flatMap(value => String(value).split(","))
+                .map(v => v.trim())
+                .filter(Boolean);
             };
             
             const findEmailField = (): string => {
@@ -95,7 +116,8 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
               joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date']) || 
                           (new Date().toISOString().split('T')[0]),
-              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active'
+              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active',
+              moduleAccessPayload: findModuleField()
             };
             
             console.log(`Mapped CSV row ${index + 1}:`, mappedData);
@@ -223,6 +245,24 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               
               return '';
             };
+          const findModuleField = (): string[] => {
+            const knownFieldNames = [
+              'Module', 'Modules', 'module', 'modules',
+              'Assigned Module', 'Assigned Modules', 'assigned_module',
+              'module_name', 'module(s)'
+            ];
+            const foundValues: any[] = [];
+            for (const key of Object.keys(row)) {
+              if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
+                foundValues.push(row[key]);  
+              }
+            }
+            if (foundValues.length === 0) return [];
+            return foundValues
+              .flatMap(value => String(value).split(","))
+              .map(v => v.trim())
+              .filter(Boolean);
+          };
             
             // Fix email mapping with enhanced detection
             const mappedData: RawEmployeeData = {
@@ -236,7 +276,9 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               // Handle date formats
               joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date']) || 
                           (new Date().toISOString().split('T')[0]),
-              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active'
+              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active',
+              moduleAccessPayload: findModuleField()
+
             };
             
             // Log each mapped row to debug
