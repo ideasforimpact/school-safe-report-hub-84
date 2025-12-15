@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { capitalizeClientName } from '@/utils/clientNameUtils';
@@ -7,13 +6,37 @@ import { capitalizeClientName } from '@/utils/clientNameUtils';
 interface AuthLoadingOverlayProps {
   isVisible: boolean;
 }
+const AUTH_CLIENT_NAME_KEY = 'clientName';
 
 const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
   const { user, employeeData } = useAuth();
-  
-  // Get client info from user or employeeData
+
+  const [displayName, setDisplayName] = useState<string>(() => {
+    try {
+      return (sessionStorage.getItem(AUTH_CLIENT_NAME_KEY) || '').trim();
+    } catch {
+      return '';
+    }
+  });
+
   const clientLogo = user?.client?.logo || employeeData?.client?.logo;
-  const clientName = capitalizeClientName(user?.client?.name || employeeData?.client?.name);
+
+  useEffect(() => {
+    const trySetFromRuntime = () => {
+      const raw = user?.client?.name ?? employeeData?.client?.name;
+      
+      if (raw) {
+        const cap = capitalizeClientName(raw);
+        if (cap && cap !== displayName) {
+          setDisplayName(cap);
+          try { sessionStorage.setItem(AUTH_CLIENT_NAME_KEY, cap); } catch {}
+        }
+        return true;
+      }
+      return false;
+    };
+    if (trySetFromRuntime()) return;
+  }, [user?.client?.name, employeeData?.client?.name]);
 
   if (!isVisible) return null;
 
@@ -46,9 +69,9 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
               
               {clientLogo ? (
                 <div className="relative z-10 w-full h-full bg-white rounded-2xl shadow-lg p-3">
-                  <img 
-                    src={clientLogo} 
-                    alt={`${clientName} logo`}
+                  <img
+                    src={clientLogo}
+                    alt={displayName ? `${displayName} logo` : 'client logo'}
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -64,18 +87,23 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
           
           {/* Welcome Text */}
           <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
-              Welcome to{' '}
-              <span className="bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-                {clientName}'s
-              </span>
-            </h2>
-            <h3 className="text-xl font-semibold text-primary-700">
-              Safety Command Center
-            </h3>
-            <p className="text-gray-600 mt-2 text-sm">
-              Your comprehensive safety management platform
-            </p>
+            {displayName ? (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">
+                  Welcome to{' '}
+                  <span className="bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
+                    {displayName}'s
+                  </span>
+                </h2>
+                <h3 className="text-xl font-semibold text-primary-700">Safety Command Center</h3>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">Welcome</h2>
+                <h3 className="text-xl font-semibold text-primary-700">Safety Command Center</h3>
+              </>
+            )}
+            <p className="text-gray-600 mt-2 text-sm">Your comprehensive safety management platform</p>
           </div>
           
           {/* Enhanced Loading Section */}

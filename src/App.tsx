@@ -103,6 +103,7 @@ const BackofficeWrapper = ({ component: Component }) => {
 import ComplianceDocumentsPage from '@/pages/ComplianceDocumentsPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import AuthCallback from './pages/callback';
 
 
 function App() {
@@ -122,7 +123,7 @@ function App() {
                   <Route path="/home" element={<Home />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/backoffice/login" element={<BackofficeLogin />} />
-                  
+                  <Route path="/callback" element={<AuthCallback />} />
                   {/* CAPTCHA Verification routes - public */}
                   <Route path="/captcha-verification" element={<CaptchaVerificationPage />} />
                   <Route path="/captcha-verification/:formId" element={<CaptchaVerificationPage />} />
