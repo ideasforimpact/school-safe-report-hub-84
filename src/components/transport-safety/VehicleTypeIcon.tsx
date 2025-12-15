@@ -29,7 +29,12 @@ const VehicleTypeIcon: React.FC<VehicleTypeIconProps> = ({
       case 'van':
         return <Car size={size} className={className} />;
       case 'motorcycle':
+      case 'two_wheeler':
+      case 'two-wheeler':
         return <Bike size={size} className={className} />;
+      case 'four_wheeler':
+      case 'four-wheeler':
+        return <Car size={size} className={className} />;
       case 'tractor':
         return <Tractor size={size} className={className} />;
       case 'other':
