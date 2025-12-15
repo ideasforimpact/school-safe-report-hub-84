@@ -124,7 +124,9 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         status: String(row.status),
         clientId: clientId, // Ensure clientId is passed through
         modulePermissions: modulePermissions,
-        moduleAccessPayload: row.moduleAccessPayload // Add default module access payload
+        moduleAccessPayload: Array.isArray(row.moduleAccessPayload)
+          ? row.moduleAccessPayload
+          : []      
       };
     });
     

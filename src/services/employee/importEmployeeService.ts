@@ -61,44 +61,34 @@ export const processEmployeeExcel = async (
       eduSafeResourceAccess: false
     };
 
-    const importedModuleNames = new Set(
-      rawData
-        .map(r => r.moduleAccessPayload?.trim().toLowerCase())
-        .filter(Boolean)
-    );
-
-    let matchedModules: iModule[] = [];
-
-    if (configuredModules && configuredModules.length > 0) {
-      matchedModules = configuredModules.filter(m =>
-        importedModuleNames.has(m.name.trim().toLowerCase())
+    const processedData = rawData.map(emp => {
+      const importedNamesForEmp = new Set(
+        (emp.moduleAccessPayload || [])
+          .map(v => v.trim().toLowerCase())
       );
-    }
 
-    let defaultModuleAccessPayload: Omit<ModuleAccessItem, "employeeId">[] =
-      matchedModules.map(module => ({
+      const matchedModulesForEmp: iModule[] =
+        configuredModules?.filter(m =>
+          importedNamesForEmp.has(m.name.trim().toLowerCase())
+        ) || [];
+
+      const moduleAccessPayload: ModuleAccessItem[] = matchedModulesForEmp.map(module => ({
         name: module.name,
         key: module.key || module.id,
         module_id: module.id,
-        enabled: true
-      }));
-    const processedData = rawData.map(emp => {
-      // Generate default email if missing using firstName.lastName@example.com format
-      const email = emp.email && emp.email.trim() !== '' 
-        ? emp.email 
-        : `${emp.firstName.toLowerCase().replace(/\s/g, '')}.${emp.lastName.toLowerCase().replace(/\s/g, '')}@example.com`;
-      
-      // Log generated emails for debugging
-      if (!emp.email || emp.email.trim() === '') {
-        console.warn(`Generated default email for ${emp.firstName} ${emp.lastName}: ${email}`);
-      }
-      
-      // Assign module access payload with employee ID
-      const moduleAccessPayload = defaultModuleAccessPayload.map(module => ({
-        ...module,
+        enabled: true,
         employeeId: String(emp.employeeId)
       }));
-      
+      const email =
+        emp.email?.trim() !== ""
+          ? emp.email
+          : `${emp.firstName.toLowerCase().replace(/\s/g, '')}.${emp.lastName
+              .toLowerCase()
+              .replace(/\s/g, '')}@example.com`;
+
+      if (!emp.email?.trim()) {
+        console.warn(`Generated default email for ${emp.firstName} ${emp.lastName}: ${email}`);
+      }
       return {
         ...emp,
         email,

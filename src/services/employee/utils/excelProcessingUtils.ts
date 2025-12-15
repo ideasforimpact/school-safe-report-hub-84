@@ -30,8 +30,9 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
           console.log("CSV headers:", headers);
           
           // Parse data rows
-          const jsonData = lines.slice(1).map((line, index) => {
-            const values = line.split(',').map(value => value.trim().replace(/"/g, ''));
+          const jsonData = lines.slice(1).map((line) => {
+            const values = (line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [])
+              .map(v => v.replace(/^"|"$/g, '').trim());
             const row: any = {};
             
             headers.forEach((header, i) => {
@@ -57,24 +58,24 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               return '';
             };
             
-            const findModuleField = (): string => {
+            const findModuleField = (): string[] => {
               const knownFieldNames = [
                 'Module', 'Modules', 'module', 'modules',
                 'Assigned Module', 'Assigned Modules', 'assigned_module',
                 'module_name', 'module(s)'
               ];
-              let moduleRaw: any = undefined;
+              const foundValues: any[] = [];
               for (const key of Object.keys(row)) {
                 if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
-                  moduleRaw = row[key];
-                  break;
+                  foundValues.push(row[key]);  
                 }
               }
-              if (!moduleRaw) return "";
-              if (Array.isArray(moduleRaw)) {
-                return moduleRaw.join(", ");
-              }
-              return String(moduleRaw);
+              if (foundValues.length === 0) return [];
+
+              return foundValues
+                .flatMap(value => String(value).split(","))
+                .map(v => v.trim())
+                .filter(Boolean);
             };
             
             const findEmailField = (): string => {
@@ -244,24 +245,23 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               
               return '';
             };
-          const findModuleField = (): string => {
+          const findModuleField = (): string[] => {
             const knownFieldNames = [
               'Module', 'Modules', 'module', 'modules',
               'Assigned Module', 'Assigned Modules', 'assigned_module',
               'module_name', 'module(s)'
             ];
-            let moduleRaw: any = undefined;
+            const foundValues: any[] = [];
             for (const key of Object.keys(row)) {
               if (knownFieldNames.some(v => v.toLowerCase() === key.toLowerCase())) {
-                moduleRaw = row[key];
-                break;
+                foundValues.push(row[key]);  
               }
             }
-            if (!moduleRaw) return "";
-            if (Array.isArray(moduleRaw)) {
-              return moduleRaw.join(", ");
-            }
-            return String(moduleRaw);
+            if (foundValues.length === 0) return [];
+            return foundValues
+              .flatMap(value => String(value).split(","))
+              .map(v => v.trim())
+              .filter(Boolean);
           };
             
             // Fix email mapping with enhanced detection

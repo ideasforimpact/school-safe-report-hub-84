@@ -10,7 +10,7 @@ export interface RawEmployeeData {
   joiningDate?: string;
   status?: string;
   [key: string]: any;
-  moduleAccessPayload?: string;
+  moduleAccessPayload?:  string[];
 }
 
 export interface ImportResult {
