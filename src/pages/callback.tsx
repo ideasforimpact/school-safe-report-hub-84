@@ -23,7 +23,6 @@ export default function AuthCallback() {
     }
 
     const firstModule = configured[0];
-    console.log(firstModule,'iuhfdsguygs');
     
     const route = firstModule.url;
 
