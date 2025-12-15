@@ -51,7 +51,22 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
 
   const formDataRef = useRef(formData);
-  
+  const mapModulesWithConfigured = (
+    importedModules,
+    configuredModules
+      ) => {
+        return importedModules.map(module => {
+          const match = configuredModules.find(
+            (cm) => cm.name.toLowerCase() === module.name.toLowerCase()
+          );
+
+          return {
+            ...module,
+            module_id: match ? match.id : null, 
+            enabled: !!match
+          };
+        });
+      };
   // Keep formDataRef in sync with formData
   useEffect(() => {
     formDataRef.current = formData;
@@ -70,10 +85,15 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       defaultModules,
       formData.employeeId
     );
-    setSelectedModules(initialDefaultModules);
+    const mappedModules = mapModulesWithConfigured(
+      initialDefaultModules,
+      state.configuredModules
+    );
+
+    setSelectedModules(mappedModules);
     setFormData(prev => ({
       ...prev,
-      moduleAccessPayload: initialDefaultModules
+      moduleAccessPayload: mappedModules
     }));
   }
     // eslint-disable-next-line react-hooks/exhaustive-deps
