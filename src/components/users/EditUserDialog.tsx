@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { NAME_MAX_LENGTH } from '@/services/employee/utils/excelValidationUtils';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -108,6 +109,8 @@ const EditUserDialog = ({
 
   // Name validation function (letters and spaces only, no special characters)
   const isValidName = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
     const nameRegex = /^[a-zA-Z\s]{1,25}$/;
     return nameRegex.test(name);
   };
@@ -126,12 +129,43 @@ const EditUserDialog = ({
     setIsOpen(false);
     resetForm();
   };
+  const isFormValid = () => {
+    const hasValidEmail = !formData.email || isValidEmail(formData.email);
 
+    // If email is filled, modules are required
+    const requiresModules = !!formData.email;
+    const hasSelectedModules = !requiresModules || selectedModules.length > 0;
+
+    return (
+      formData.firstName &&
+      formData.firstName.length <= 25 &&
+      isValidName(formData.firstName) &&
+      formData.lastName &&
+      formData.lastName.length <= 25 &&
+      isValidName(formData.lastName) &&
+      hasValidEmail &&
+      (!formData.phone || isValidPhone(formData.phone)) &&
+      (!formData.designation || isValidDesignation(formData.designation)) &&
+      formData.employeeId &&
+      isValidEmployeeId(formData.employeeId) &&
+      hasSelectedModules &&
+      !isUpdating &&
+      !isLoading
+    );
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!currentUser || !clientId) {
       toast.error("Missing user or client information");
+      return;
+    }
+    if (formData.email && selectedModules.length === 0) {
+      toast.error("Please select at least one module for this user");
+      return;
+    }
+    if (!isFormValid()) {
+      toast.error("Please fill in all required fields correctly");
       return;
     }
     
@@ -203,7 +237,7 @@ const EditUserDialog = ({
                   id="firstName"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  maxLength={25}
+                  maxLength={NAME_MAX_LENGTH}
                   required
                   className={formData.firstName && !isValidName(formData.firstName) ? 'border-red-500' : ''}
                 />
@@ -220,7 +254,7 @@ const EditUserDialog = ({
                   id="lastName"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  maxLength={25}
+                  maxLength={NAME_MAX_LENGTH}
                   required
                   className={formData.lastName && !isValidName(formData.lastName) ? 'border-red-500' : ''}
                 />
@@ -304,7 +338,15 @@ const EditUserDialog = ({
                   id="joiningDate"
                   type="date"
                   value={formData.joiningDate || ''}
-                  onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+                  onChange={(e) => {
+                      const selected = e.target.value;
+                      const today = new Date().toISOString().split("T")[0];
+                      if (selected < today) {
+                        toast.error("Joining date must be a future date");
+                        return;
+                      }
+                      setFormData({ ...formData, joiningDate: selected });
+                    }}
                 />
               </div>
             </div>
@@ -358,6 +400,11 @@ const EditUserDialog = ({
                   employeeId={formData.employeeId}
                   isSuperAdmin={targetIsSuperAdmin}
                 />
+                  {selectedModules.length === 0 && (
+                    <p className="text-xs text-red-500">
+                      Please select at least one module.
+                    </p>
+                  )}
               </div>
             )}
           </div>
@@ -365,7 +412,7 @@ const EditUserDialog = ({
             <Button type="button" variant="outline" onClick={handleClose} disabled={isUpdating || isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isUpdating || isLoading}>
+            <Button type="submit" disabled={isUpdating || isLoading || !isFormValid()}>
               {(isUpdating || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update User
             </Button>

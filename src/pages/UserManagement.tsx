@@ -484,6 +484,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
+            phone:employee.phone,
+            designation:employee.designation,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface

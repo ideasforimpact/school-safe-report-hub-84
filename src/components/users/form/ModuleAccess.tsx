@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -7,6 +7,7 @@ import { ModuleAccessItem } from '@/types/moduleAccess';
 import { Badge } from "@/components/ui/badge";
 import { Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import defaultModules from '@/utils/default-modules.json';
 
 interface ModuleAccessProps {
   selectedModules: ModuleAccessItem[];
@@ -31,6 +32,63 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
         module_id: module.id
       }))
     : [];
+    const hasAppliedDefaultsRef = useRef(false);
+  
+    useEffect(() => {
+      if (isSuperAdmin) return;
+      if (hasAppliedDefaultsRef.current) return;
+
+      const normalize = (s?: string) => String(s || '').trim().toLowerCase();
+
+      // Build indexed lookup for configured modules
+      const configuredMap: Record<string, any> = {};
+      (state.configuredModules || []).forEach((m: any) => {
+        configuredMap[normalize(m.module_id)] = m;
+        configuredMap[normalize(m.key)] = m;
+        configuredMap[normalize(m.name)] = m;
+      });
+
+      // Take only enabled defaults
+      const enabledDefaults = (defaultModules || []).filter((d: any) => d.enabled);
+
+      // Map each default to configured module → produce correct ModuleAccessItem
+      const mappedDefaults: ModuleAccessItem[] = enabledDefaults.map((d: any) => {
+        const match =
+          configuredMap[normalize(d.module_id)] ||
+          configuredMap[normalize(d.key)] ||
+          configuredMap[normalize(d.name)];
+
+        if (match) {
+          return {
+            key: match.key || d.key,
+            module_id: match.module_id,
+            name: match.name,
+            employeeId: employeeId,
+            level: { is_admin: !!d.defaultAdmin }
+          };
+        }
+
+        return {
+          key: d.key,
+          module_id: d.module_id,
+          name: d.name,
+          employeeId: employeeId,
+          level: { is_admin: !!d.defaultAdmin }
+        };
+      });
+
+      const toAdd = mappedDefaults.filter(md => {
+        return !selectedModules.some(s =>
+          normalize(s.module_id) === normalize(md.module_id)
+        );
+      });
+
+      if (toAdd.length > 0) {
+        onModuleChange([...selectedModules, ...toAdd]);
+      }
+
+      hasAppliedDefaultsRef.current = true;
+    }, [state.configuredModules, employeeId, isSuperAdmin]);
 
   // Helper function to check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {

@@ -486,6 +486,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     phone: employee.phone || null,
     designation: employee.designation || null,
     employee_type: employee.employeeType,
+    joining_date:employee.joiningDate,
     department: employee.department
   };
 

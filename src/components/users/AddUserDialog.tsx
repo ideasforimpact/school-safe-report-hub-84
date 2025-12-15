@@ -10,10 +10,13 @@ import { Loader2, Check, X } from 'lucide-react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
-import { checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
+import { checkEmployeeIdExists,checkEmployeeEmailExists } from '@/services/employee/employeeValidationService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import { NAME_MAX_LENGTH } from '@/services/employee/utils/excelValidationUtils';
+import defaultModules from "@/utils/default-modules.json";
+import { applyDefaultModules, DefaultModule } from "@/utils/moduleDefault";
+
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -39,13 +42,31 @@ interface AddUserDialogProps {
 }
 
 type EmployeeIdValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
+type EmailValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
 
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const { state } = useEmployeeStore();
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
+  const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
+
   const formDataRef = useRef(formData);
-  
+  const mapModulesWithConfigured = (
+    importedModules,
+    configuredModules
+      ) => {
+        return importedModules.map(module => {
+          const match = configuredModules.find(
+            (cm) => cm.name.toLowerCase() === module.name.toLowerCase()
+          );
+
+          return {
+            ...module,
+            module_id: match ? match.id : null, 
+            enabled: !!match
+          };
+        });
+      };
   // Keep formDataRef in sync with formData
   useEffect(() => {
     formDataRef.current = formData;
@@ -53,20 +74,31 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   
   // Debounce the employee ID to avoid excessive API calls
   const debouncedEmployeeId = useDebounce(formData.employeeId || '', 500);
-
+  const debouncedEmployeeEmail = useDebounce(formData.email || '', 500);
+  
   // Reset selectedModules when dialog opens to ensure clean state
   useEffect(() => {
-    if (isOpen) {
+  if (isOpen) {
       // Clear selectedModules when dialog opens
-      setSelectedModules([]);
-      // Also ensure formData.moduleAccessPayload is cleared
-      setFormData(prev => ({
-        ...prev,
-        moduleAccessPayload: []
-      }));
-    }
+    const initialDefaultModules = applyDefaultModules(
+      state.configuredModules || [],
+      defaultModules,
+      formData.employeeId
+    );
+    const mappedModules = mapModulesWithConfigured(
+      initialDefaultModules,
+      state.configuredModules
+    );
+
+    setSelectedModules(mappedModules);
+    setFormData(prev => ({
+      ...prev,
+      moduleAccessPayload: mappedModules
+    }));
+  }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+}, [isOpen, state.configuredModules, formData.employeeId]);
+
 
   // Log clientId for debugging
   console.log("AddUserDialog - ClientId from props:", clientId);
@@ -94,6 +126,34 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
     validateEmployeeId();
   }, [debouncedEmployeeId, clientId]);
+
+  useEffect(() => {
+    const validateEmployeeEmail = async () => {
+      if (!debouncedEmployeeEmail || !clientId) {
+        setEmailValidation('idle');
+        return;
+      }
+
+      if (!isValidEmail(debouncedEmployeeEmail)) {
+        setEmailValidation('error');
+        return;
+      }
+
+      setEmailValidation('checking');
+
+      try {
+        const exists = await checkEmployeeEmailExists(debouncedEmployeeEmail, clientId);
+        
+        setEmailValidation(exists ? 'exists' : 'available');
+      } catch (error) {
+        console.error('Error validating employee email:', error);
+        setEmailValidation('error');
+      }
+    };
+
+    validateEmployeeEmail();
+  }, [debouncedEmployeeEmail, clientId]);
+
 
   // Module change handler that directly updates moduleAccessPayload
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
@@ -123,6 +183,10 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     if (employeeIdValidation === 'exists') {
       console.warn("Cannot submit: Employee ID already exists");
       toast.error("Employee ID already exists. Please use a different ID.");
+      return;
+    }
+    if (formData.email && emailValidation === 'exists') {
+      toast.error("Email already exists. Please use a different email address.");
       return;
     }
     
@@ -206,6 +270,22 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     }
   };
 
+  const getEmployeeEmailValidationMessage = () => {
+    switch (emailValidation) {
+      case 'checking':
+        return 'Checking email availability...';
+      case 'available':
+        return 'Email is available';
+      case 'exists':
+        return 'Email already exists for this client';
+      case 'error':
+        return 'Error checking email';
+      default:
+        return '';
+    }
+  };
+
+
   // Email validation function
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -227,6 +307,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
   // Name validation function (letters and spaces only, no special characters)
   const isValidName = (name: string) => {
+     const trimmed = name.trim();
+    if (!trimmed) return false;
     const nameRegex = /^[a-zA-Z\s]{1,25}$/;
     return nameRegex.test(name);
   };
@@ -239,6 +321,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   // Check if form is valid for submission
   const isFormValid = () => {
     const hasValidEmail = !formData.email || isValidEmail(formData.email);
+    const isEmailUnique =
+      !formData.email ||
+      emailValidation === 'available' ||
+      emailValidation === 'idle';
+
     return (
       formData.firstName &&
       formData.firstName.length <= 25 &&
@@ -247,6 +334,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       formData.lastName.length <= 25 &&
       isValidName(formData.lastName) &&
       hasValidEmail &&
+      isEmailUnique &&
       (!formData.phone || isValidPhone(formData.phone)) &&
       (!formData.designation || isValidDesignation(formData.designation)) &&
       formData.employeeId &&
@@ -322,9 +410,22 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
-              {formData.email && !isValidEmail(formData.email) && (
-                <p className="text-xs text-red-500">Please enter a valid email address</p>
-              )}
+                {formData.email && !isValidEmail(formData.email) && (
+                  <p className="text-xs text-red-500">Please enter a valid email address</p>
+                )}
+                {formData.email && emailValidation !== 'idle' && isValidEmail(formData.email) && (
+                  <p
+                    className={`text-xs ${
+                      emailValidation === 'exists' || emailValidation === 'error'
+                        ? 'text-red-500'
+                        : emailValidation === 'available'
+                        ? 'text-green-500'
+                        : 'text-blue-500'
+                    }`}
+                  >
+                    {getEmployeeEmailValidationMessage()}
+                  </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -398,6 +499,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 <Input
                   id="joiningDate"
                   type="date"
+                  min={new Date().toISOString().split("T")[0]}
                   value={formData.joiningDate || ''}
                   onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
                 />
@@ -460,6 +562,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                   onModuleChange={handleModuleChange}
                   employeeId={formData.employeeId}
                 />
+                 {selectedModules.length === 0 && (
+                  <p className="text-xs text-red-500">
+                    Please select at least one module.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -469,7 +576,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             </Button>
             <Button 
               type="submit" 
-              disabled={!isFormValid() || employeeIdValidation === 'checking'}
+              disabled={!isFormValid() || employeeIdValidation === 'checking' || emailValidation === 'checking'}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add User
