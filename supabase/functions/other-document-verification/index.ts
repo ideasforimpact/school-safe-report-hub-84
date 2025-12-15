@@ -868,7 +868,7 @@ async function handleSocialPersonaCheck(requestBody, supabase, corsHeaders) {
       .single();
     const timestamp = new Date().getTime();
     const documentNumber = `SPC_${timestamp}`;
-    const initialLogEntry = { timestamp: new Date().toISOString(), action: 'social_persona_check_initiated', response: { documentTypeId, documentStatusId: inProgressStatus?.id } };
+    const initialLogEntry = { timestamp: new Date().toISOString(), action: 'social_personal_check_initiated', response: { documentTypeId, documentStatusId: inProgressStatus?.id } };
     const { data: insertData, error: insertError } = await supabase
       .from('employee_documents')
       .insert({
@@ -879,7 +879,7 @@ async function handleSocialPersonaCheck(requestBody, supabase, corsHeaders) {
         verification_status: 'in-progress',
         document_status_id: inProgressStatus?.id,
         employee_docs_log: [initialLogEntry],
-        params: params || { selected: 'social_persona_check' },
+        params: params || { selected: 'social_personal_check' },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -902,12 +902,12 @@ async function handleSocialPersonaCheck(requestBody, supabase, corsHeaders) {
       updatedAt: insertData.updated_at
     };
     return new Response(
-      JSON.stringify({ success: true, message: 'Social persona check initiated and processing started', document: documentResponse }),
+      JSON.stringify({ success: true, message: 'Social personal check initiated and processing started', document: documentResponse }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message || 'Failed to process social persona check' }),
+      JSON.stringify({ error: error.message || 'Failed to process social personal check' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

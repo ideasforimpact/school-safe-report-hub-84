@@ -230,7 +230,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     { value: "court_case_check", label: "Court Case Check" },
     { value: "police_verification", label: "Police Verification" },
     { value: "digital_credibility_check", label: "Digital Credibility Check" },
-    { value: "social_persona_check", label: "Social Personal Check" },
+    { value: "social_personal_check", label: "Social Personal Check" },
     { value: "drug_check", label: "Drug Check" },
   ];
 

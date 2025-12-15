@@ -371,7 +371,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
               type="button"
               variant="outline"
               onClick={addComment}
-              disabled={!currentComment.text.trim() || !currentComment.sentiment}
+              disabled={!currentComment.text.trim()}
               className="w-full flex items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4" />
