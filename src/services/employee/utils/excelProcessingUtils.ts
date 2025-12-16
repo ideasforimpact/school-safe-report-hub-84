@@ -46,6 +46,57 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
           
           // Use the same mapping logic as Excel
           const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
+          const normalizeDate = (value: any): string => {
+              if (!value) return "";
+
+              if (value instanceof Date && !isNaN(value.getTime())) {
+                const y = value.getFullYear();
+                const m = String(value.getMonth() + 1).padStart(2, "0");
+                const d = String(value.getDate()).padStart(2, "0");
+                return `${y}-${m}-${d}`;
+              }
+
+              const isExcelNumber = (v: any) =>
+                typeof v === "number" ||
+                (typeof v === "string" && /^[0-9]+$/.test(v));
+
+              if (isExcelNumber(value)) {
+                const serial = Number(value);
+                if (serial > 1 && serial < 60000) {
+                  const excelEpoch = new Date(1899, 11, 30);
+                  const date = new Date(excelEpoch.getTime() + serial * 86400000);
+                  const y = date.getFullYear();
+                  const m = String(date.getMonth() + 1).padStart(2, "0");
+                  const d = String(date.getDate()).padStart(2, "0");
+                  return `${y}-${m}-${d}`;
+                }
+              }
+
+              if (typeof value === "string" && value.includes("/")) {
+                const parts = value.split("/");
+                if (parts.length === 3) {
+                  let [d, m, y] = parts.map(v => v.trim());
+
+                  if (y.length === 2) y = "20" + y; 
+
+                  const date = new Date(Number(y), Number(m) - 1, Number(d));
+
+                  const yy = date.getFullYear();
+                  const mm = String(date.getMonth() + 1).padStart(2, "0");
+                  const dd = String(date.getDate()).padStart(2, "0");
+                  return `${yy}-${mm}-${dd}`;
+                }
+              }
+              const parsed = new Date(value);
+              if (!isNaN(parsed.getTime())) {
+                const y = parsed.getFullYear();
+                const m = String(parsed.getMonth() + 1).padStart(2, "0");
+                const d = String(parsed.getDate()).padStart(2, "0");
+                return `${y}-${m}-${d}`;
+              }
+
+              return String(value);
+            };
             const getFieldValue = (fieldNames: string[]): string => {
               for (const name of fieldNames) {
                 if (row[name] !== undefined) return String(row[name]);
@@ -114,8 +165,10 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
               employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
-              joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date']) || 
-                          (new Date().toISOString().split('T')[0]),
+              joiningDate: normalizeDate(getFieldValue([
+                              'Joining Date', 'JoiningDate', 'joiningDate', 'joining_date',
+                              'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date'
+                            ])) || new Date().toISOString().split("T")[0],
               status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active',
               moduleAccessPayload: findModuleField()
             };
@@ -199,6 +252,59 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
           const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
             // Enhanced mapping for various possible column names
             // First try exact match, then case-insensitive, then with spaces or underscores
+          const normalizeDate = (value: any): string => {
+              if (!value) return "";
+
+              if (value instanceof Date && !isNaN(value.getTime())) {
+                const y = value.getFullYear();
+                const m = String(value.getMonth() + 1).padStart(2, "0");
+                const d = String(value.getDate()).padStart(2, "0");
+                return `${y}-${m}-${d}`;
+              }
+
+              const isExcelNumber = (v: any) =>
+                typeof v === "number" ||
+                (typeof v === "string" && /^[0-9]+$/.test(v));
+
+              if (isExcelNumber(value)) {
+                const serial = Number(value);
+                if (serial > 1 && serial < 60000) {
+                  const excelEpoch = new Date(1899, 11, 30);
+                  const date = new Date(excelEpoch.getTime() + serial * 86400000);
+                  const y = date.getFullYear();
+                  const m = String(date.getMonth() + 1).padStart(2, "0");
+                  const d = String(date.getDate()).padStart(2, "0");
+                  return `${y}-${m}-${d}`;
+                }
+              }
+
+              if (typeof value === "string" && value.includes("/")) {
+                const parts = value.split("/");
+                if (parts.length === 3) {
+                  let [d, m, y] = parts.map(v => v.trim());
+
+                  if (y.length === 2) y = "20" + y; // Convert 25 → 2025
+
+                  const date = new Date(Number(y), Number(m) - 1, Number(d));
+
+                  const yy = date.getFullYear();
+                  const mm = String(date.getMonth() + 1).padStart(2, "0");
+                  const dd = String(date.getDate()).padStart(2, "0");
+                  return `${yy}-${mm}-${dd}`;
+                }
+              }
+
+              // 4. Try standard parsing
+              const parsed = new Date(value);
+              if (!isNaN(parsed.getTime())) {
+                const y = parsed.getFullYear();
+                const m = String(parsed.getMonth() + 1).padStart(2, "0");
+                const d = String(parsed.getDate()).padStart(2, "0");
+                return `${y}-${m}-${d}`;
+              }
+
+              return String(value);
+            };
             const getFieldValue = (fieldNames: string[]): string => {
               for (const name of fieldNames) {
                 // Try direct key match
@@ -274,8 +380,11 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
               // Handle date formats
-              joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date']) || 
-                          (new Date().toISOString().split('T')[0]),
+              joiningDate: normalizeDate(getFieldValue([
+                        'Joining Date', 'JoiningDate', 'joiningDate', 'joining_date',
+                        'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date'
+                      ])
+                    ) || new Date().toISOString().split("T")[0],
               status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active',
               moduleAccessPayload: findModuleField()
 

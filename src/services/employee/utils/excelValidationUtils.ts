@@ -26,6 +26,13 @@ export const isValidName = (name: string): boolean => {
   return String(name).trim().length <= NAME_MAX_LENGTH;
 };
 
+export const nameNotContainingNumbers = (name: string): boolean => {
+  if (!name) return false;
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  return !/\d/.test(trimmed);
+};
+
 // Phone: 10 digits, no letters, no spaces, no special chars
 export const isValidPhone = (phone: string): boolean => {
   if (!phone) return false;
@@ -68,7 +75,7 @@ export const isFutureDate = (value: any): boolean => {
   today.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
 
-  return date > today;
+  return date >= today;
 };
 
 /**
@@ -225,11 +232,15 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         errors.push(`Row ${rowNum}: Invalid email format - ${row.email}`);
       }
     }
-
+    if (row.firstName && !nameNotContainingNumbers(row.firstName)) {
+      errors.push(`Row ${rowNum}: First Name should only contain characters`);
+    }
     if (row.firstName && !isValidName(row.firstName)) {
       errors.push(`Row ${rowNum}: First Name should be less than ${NAME_MAX_LENGTH} characters`);
     }
-
+    if (row.lastName && !nameNotContainingNumbers(row.lastName)) {
+      errors.push(`Row ${rowNum}: Last Name should should only contain characters`);
+    } 
     if (row.lastName && !isValidName(row.lastName)) {
       errors.push(`Row ${rowNum}: Last Name should be less than ${NAME_MAX_LENGTH} characters`);
     } 

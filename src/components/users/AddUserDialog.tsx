@@ -334,6 +334,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       formData.lastName.length <= 25 &&
       isValidName(formData.lastName) &&
       hasValidEmail &&
+      formData.email&&
       isEmailUnique &&
       (!formData.phone || isValidPhone(formData.phone)) &&
       (!formData.designation || isValidDesignation(formData.designation)) &&
@@ -403,7 +404,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
               <Input
                 id="email"
                 type="email"
