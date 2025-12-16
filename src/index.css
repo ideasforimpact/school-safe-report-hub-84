@@ -136,6 +136,16 @@
   }
 }
 
+/* Hide scrollbars visually but keep scrolling functionality */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
 /* Add smooth scrolling to the whole document */
 html {
   scroll-behavior: smooth;
