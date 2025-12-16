@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft } from 'lucide-react';
+import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,6 +16,8 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import VisitorDetailDialog from '@/components/visitor/VisitorDetailDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { supabase } from '@/integrations/supabase/client';
+import * as XLSX from 'xlsx';
 
 const VisitorsPage = () => {
   const { employeeData } = useAuth();
@@ -30,8 +32,27 @@ const VisitorsPage = () => {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all'); // 'all' | 'two_wheeler' | 'four_wheeler' | 'trusted_vehicle'
+  
+  // Initialize date range with current date (today)
+  const getTodayDateRange = (): DateRange => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return {
+      from: today,
+      to: today,
+    };
+  };
+  
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(getTodayDateRange());
+  
+  // Trusted vehicles state
+  const [trustedVehicles, setTrustedVehicles] = useState<Array<{
+    id: string;
+    vehicle_no: string;
+    validity_from: string;
+    validity_to: string;
+  }>>([]);
 
   // Toast deduplication - prevent multiple toasts for the same event within 2 seconds
   const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null);
@@ -84,12 +105,42 @@ const VisitorsPage = () => {
     }
   }, [clientId, employeeId]);
 
+  // Fetch trusted vehicles
+  const fetchTrustedVehicles = useCallback(async () => {
+    if (!clientId) {
+      return;
+    }
+
+    try {
+      const { data, error } = await (supabase as any)
+        .from('trusted_vehicle')
+        .select('id, vehicle_no, validity_from, validity_to')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching trusted vehicles:', error);
+        return;
+      }
+
+      setTrustedVehicles((data || []) as Array<{
+        id: string;
+        vehicle_no: string;
+        validity_from: string;
+        validity_to: string;
+      }>);
+    } catch (error: any) {
+      console.error('Error fetching trusted vehicles:', error);
+    }
+  }, [clientId]);
+
   // Fetch visitors on component mount and when clientId or employeeId changes
   useEffect(() => {
     if (clientId) {
       fetchVisitors();
+      fetchTrustedVehicles();
     }
-  }, [clientId, fetchVisitors]);
+  }, [clientId, fetchVisitors, fetchTrustedVehicles]);
 
   // Handle realtime visitor updates
   const handleVisitorUpdate = useCallback(async (payload: any) => {
@@ -302,7 +353,24 @@ const VisitorsPage = () => {
     setIsRefreshing(false);
   };
 
-  // Filter visitors based on search, vehicle type, and date range
+  // Helper function to check if a trusted vehicle is valid (current date is within validity period)
+  const isTrustedVehicleValid = useCallback((validity_from: string, validity_to: string): boolean => {
+    if (!validity_from || !validity_to) {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const fromDate = new Date(validity_from);
+    const toDate = new Date(validity_to);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(0, 0, 0, 0);
+
+    return today >= fromDate && today <= toDate;
+  }, []);
+
+  // Filter visitors based on search, vehicle type, status filter, and date range
   const filteredVisitors = useMemo(() => {
     return visitors.filter((visitor) => {
       // Search filter - by name or vehicle number
@@ -316,7 +384,31 @@ const VisitorsPage = () => {
       }
 
       // Vehicle type filter
-      if (vehicleTypeFilter !== 'all') {
+      if (vehicleTypeFilter === 'trusted_vehicle') {
+        // Trusted vehicle filter logic
+        if (!visitor.vehicle_no) {
+          return false; // Visitor must have a vehicle number
+        }
+
+        // Check if visitor's vehicle number matches any valid trusted vehicle
+        const matchesTrustedVehicle = trustedVehicles.some((trustedVehicle) => {
+          // Case-insensitive comparison of vehicle numbers
+          const visitorVehicleNo = visitor.vehicle_no?.trim().toUpperCase();
+          const trustedVehicleNo = trustedVehicle.vehicle_no?.trim().toUpperCase();
+          
+          if (visitorVehicleNo !== trustedVehicleNo) {
+            return false;
+          }
+
+          // Check if the trusted vehicle is currently valid
+          return isTrustedVehicleValid(trustedVehicle.validity_from, trustedVehicle.validity_to);
+        });
+
+        if (!matchesTrustedVehicle) {
+          return false;
+        }
+      } else if (vehicleTypeFilter !== 'all') {
+        // Regular vehicle type filter (two_wheeler, four_wheeler)
         if (visitor.vehicle_type !== vehicleTypeFilter) {
           return false;
         }
@@ -342,7 +434,7 @@ const VisitorsPage = () => {
 
       return true;
     });
-  }, [visitors, searchTerm, vehicleTypeFilter, dateRange]);
+  }, [visitors, searchTerm, vehicleTypeFilter, dateRange, trustedVehicles, isTrustedVehicleValid]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -360,6 +452,106 @@ const VisitorsPage = () => {
     }
   };
 
+  // Export visitors to Excel
+  const handleExport = useCallback(() => {
+    try {
+      if (filteredVisitors.length === 0) {
+        toast.error('No visitors to export');
+        return;
+      }
+
+      // Collect all unique document types from all visitors
+      const documentTypes = new Set<string>();
+      filteredVisitors.forEach(visitor => {
+        visitor.visitor_kyc?.forEach(kyc => {
+          if (kyc.document_type) {
+            documentTypes.add(kyc.document_type);
+          }
+        });
+      });
+
+      // Sort document types for consistent column ordering
+      const sortedDocumentTypes = Array.from(documentTypes).sort();
+
+      // Prepare export data
+      const exportData = filteredVisitors.map(visitor => {
+        // Format evidence files
+        const evidenceFiles = visitor.evidence_files || [];
+        const evidenceFileNames = evidenceFiles.length > 0 
+          ? evidenceFiles.map(file => file.name || '-').join('; ')
+          : '-';
+        const evidenceFileTypes = evidenceFiles.length > 0
+          ? evidenceFiles.map(file => file.type || '-').join('; ')
+          : '-';
+
+        // Base visitor data
+        const row: any = {
+          'Type': visitor.vehicle_type === 'two_wheeler' ? 'Two Wheeler' : 
+                  visitor.vehicle_type === 'four_wheeler' ? 'Four Wheeler' : 
+                  visitor.vehicle_type || '-',
+          'Visitor Name': visitor.name || '-',
+          'Vehicle No': visitor.vehicle_no || '-',
+          'Mobile No': visitor.mobile_no || '-',
+          'Purpose': visitor.purpose || '-',
+          'Whom to Meet': visitor.whom_to_meet || '-',
+          'Entry Status': visitor.is_exit ? 'OUT' : 'IN',
+          'Entry Date': formatEntryDate(visitor.created_at),
+          'Evidence Files': evidenceFileNames,
+          'Evidence File Types': evidenceFileTypes,
+        };
+
+        // Add document type columns
+        sortedDocumentTypes.forEach(docType => {
+          // Find the document number for this document type for this visitor
+          const kycRecord = visitor.visitor_kyc?.find(kyc => kyc.document_type === docType);
+          row[docType] = kycRecord?.document_no || '-';
+        });
+
+        return row;
+      });
+
+      // Create worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      // Set column widths for better readability
+      const columnWidths = [
+        { wch: 15 }, // Type
+        { wch: 25 }, // Visitor Name
+        { wch: 15 }, // Vehicle No
+        { wch: 15 }, // Mobile No
+        { wch: 30 }, // Purpose
+        { wch: 25 }, // Whom to Meet
+        { wch: 12 }, // Entry Status
+        { wch: 15 }, // Entry Date
+        { wch: 40 }, // Evidence Files
+        { wch: 30 }, // Evidence File Types
+      ];
+      
+      // Add widths for document type columns
+      sortedDocumentTypes.forEach(() => {
+        columnWidths.push({ wch: 20 });
+      });
+      
+      worksheet['!cols'] = columnWidths;
+
+      // Create workbook
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Visitors');
+
+      // Generate filename with current date
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const filename = `visitors_export_${today}.xlsx`;
+
+      // Download file
+      XLSX.writeFile(workbook, filename);
+      
+      toast.success(`Exported ${filteredVisitors.length} visitor(s) successfully`);
+    } catch (error: any) {
+      console.error('Error exporting visitors:', error);
+      toast.error(error?.message || 'Failed to export visitors');
+    }
+  }, [filteredVisitors, formatEntryDate]);
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -373,10 +565,17 @@ const VisitorsPage = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button 
-              onClick={() => navigate('/visitors')}
+              onClick={() => navigate('/visitors/trusted-vehicles')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               List Trusted Vehicles
+            </Button>
+            <Button 
+              onClick={handleExport}
+              variant="outline"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
             </Button>
             <Button 
               variant="ghost" 
@@ -418,6 +617,7 @@ const VisitorsPage = () => {
                   <SelectItem value="all">All Vehicles</SelectItem>
                   <SelectItem value="two_wheeler">Two Wheeler</SelectItem>
                   <SelectItem value="four_wheeler">Four Wheeler</SelectItem>
+                  <SelectItem value="trusted_vehicle">Trusted Vehicle</SelectItem>
                 </SelectContent>
               </Select>
 
