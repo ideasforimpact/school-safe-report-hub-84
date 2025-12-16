@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useRef, useMemo } from 'react';
+import React, { createContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
   logoutUser, 
@@ -74,6 +74,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef<boolean>(false);
   const authCheckInProgressRef = useRef<boolean>(false);
   const initializationCompleteRef = useRef<boolean>(false);
+  const crossTabSyncRef = useRef<boolean>(false);
+  const currentTabIdRef = useRef<string>(`tab_${Date.now()}_${Math.random()}`);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
   
   // Use session refresh hook for automatic session validation
   const { refreshSession } = useSessionRefresh(5); // Check every 5 minutes
@@ -203,6 +206,246 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     navigate
   });
 
+  const broadcastToOtherTabs = useCallback((type: string, payload?: any) => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      if (!broadcastChannelRef.current) {
+        broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');
+      }
+      
+      broadcastChannelRef.current.postMessage({
+        type,
+        payload,
+        tabId: currentTabIdRef.current,
+        timestamp: Date.now()
+      });
+    }
+    
+    const eventKey = `supabase.auth.${type}`;
+    localStorage.setItem(eventKey, JSON.stringify({
+      payload,
+      tabId: currentTabIdRef.current,
+      timestamp: Date.now()
+    }));
+    
+    // Clean up the event after a short delay
+    setTimeout(() => {
+      localStorage.removeItem(eventKey);
+    }, 100);
+  }, []);
+
+  const handleLoginBroadcast = useCallback(() => {
+    console.log('📡 Broadcasting login to other tabs');
+    broadcastToOtherTabs('LOGIN');
+    
+    // Also trigger a session check in other tabs
+    setTimeout(() => {
+      localStorage.setItem('supabase.auth.trigger-sync', Date.now().toString());
+    }, 50);
+  }, [broadcastToOtherTabs]);
+
+  const handleLogoutBroadcast = useCallback(() => {
+    console.log('📡 Broadcasting logout to other tabs');
+    broadcastToOtherTabs('LOGOUT');
+    
+    localStorage.removeItem('supabase.auth.token');
+    localStorage.removeItem('authState');
+  }, [broadcastToOtherTabs]);
+
+  const handleLogoutSync = useRef(async (): Promise<void> => {
+    try {
+      console.log('🔄 Cross-tab sync: Processing logout sync');
+      
+      dispatch(clearAuth());
+      dispatch(resetEmployee());
+      
+      localStorage.removeItem('authState');
+      localStorage.removeItem('employeeData');
+      
+      sessionStorage.clear();
+      
+      localStorage.removeItem('supabase.auth.token');
+      
+      const shouldRedirectToBackoffice = isBackofficeUser || location.pathname.startsWith('/backoffice');
+      const targetPath = shouldRedirectToBackoffice ? '/backoffice/login' : '/login';
+      
+      navigate(targetPath, { replace: true });
+      
+      toast.info("Logged out from another tab");
+      
+    } catch (error) {
+      console.error('Sync logout error:', error);
+    }
+  }).current;
+
+  const handleLoginSync = useRef(async (): Promise<void> => {
+    try {
+      console.log('🔄 Cross-tab sync: Processing login sync');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session && !currentUser) {
+        setShowAuthLoading(true);
+        await handleUserAuthentication(session.user);
+        setShowAuthLoading(false);
+        
+        toast.info("Logged in from another tab");
+      }
+    } catch (error) {
+      console.error('Login sync error:', error);
+    }
+  }).current;
+
+  useEffect(() => {
+    if (crossTabSyncRef.current) return;
+    crossTabSyncRef.current = true;
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');
+      
+      const handleBroadcastMessage = (event: MessageEvent) => {
+        const { type, payload, tabId } = event.data;
+        
+        if (tabId === currentTabIdRef.current) return;
+        
+        console.log(`📡 Received broadcast: ${type} from tab ${tabId}`);
+        
+        switch (type) {
+          case 'LOGIN':
+            handleLoginSync();
+            break;
+            
+          case 'LOGOUT':
+            handleLogoutSync();
+            break;
+            
+          case 'SESSION_UPDATE':
+            // Refresh session
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (session && !currentUser) {
+                handleLoginSync();
+              } else if (!session && currentUser) {
+                handleLogoutSync();
+              }
+            });
+            break;
+        }
+      };
+
+      broadcastChannelRef.current.addEventListener('message', handleBroadcastMessage);
+    }
+
+    // Listen for storage changes from other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      // Skip changes from the current tab
+      if (e.key?.startsWith('tab_') && e.key !== currentTabIdRef.current) {
+        return;
+      }
+
+      // Handle auth state changes
+      if (e.key === 'supabase.auth.token') {
+        // When auth token changes in another tab, refresh session
+        setTimeout(async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session && !currentUser) {
+              // Another tab logged in - sync this tab
+              console.log('🔄 Storage event: Logging in from another tab');
+              setShowAuthLoading(true);
+              await handleUserAuthentication(session.user);
+              setShowAuthLoading(false);
+            } else if (!session && currentUser) {
+              // Another tab logged out - sync this tab
+              console.log('🔄 Storage event: Logging out from another tab');
+              handleLogoutSync();
+            }
+          } catch (error) {
+            console.error('Cross-tab sync error:', error);
+          }
+        }, 100);
+      }
+
+      if (e.key?.startsWith('supabase.auth.LOGOUT')) {
+        if (!authCoordinator.isLogoutInProgress()) {
+          console.log('🔄 Storage event: Processing logout from another tab');
+          handleLogoutSync();
+        }
+      }
+
+      if (e.key?.startsWith('supabase.auth.LOGIN')) {
+        console.log('🔄 Storage event: Processing login from another tab');
+        handleLoginSync();
+      }
+
+      if (e.key === 'supabase.auth.trigger-sync') {
+        localStorage.removeItem('supabase.auth.trigger-sync');
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session && !currentUser) {
+            handleLoginSync();
+          } else if (!session && currentUser) {
+            handleLogoutSync();
+          }
+        });
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    const setupTabHeartbeat = () => {
+      localStorage.setItem(currentTabIdRef.current, Date.now().toString());
+      
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('tab_') && key !== currentTabIdRef.current) {
+          const timestamp = parseInt(localStorage.getItem(key) || '0');
+          if (Date.now() - timestamp > 30000) {
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    };
+
+    // Initial heartbeat
+    setupTabHeartbeat();
+    
+    // Set up periodic heartbeat (every 10 seconds)
+    const heartbeatInterval = setInterval(setupTabHeartbeat, 10000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session && !currentUser) {
+            setShowAuthLoading(true);
+            handleUserAuthentication(session.user).finally(() => {
+              setShowAuthLoading(false);
+            });
+          } else if (!session && currentUser) {
+            handleLogoutSync();
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Also listen for window focus
+    window.addEventListener('focus', handleVisibilityChange);
+
+    // Cleanup function
+    return () => {
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.close();
+        broadcastChannelRef.current = null;
+      }
+      
+      window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+      clearInterval(heartbeatInterval);
+      localStorage.removeItem(currentTabIdRef.current);
+      crossTabSyncRef.current = false;
+    };
+  }, [currentUser, handleUserAuthentication, handleLoginSync, handleLogoutSync, location.pathname, isBackofficeUser, navigate]);
+
   // Setup Supabase auth listener for SSO authentication with enhanced logout handling
   useEffect(() => {
     if (authListenerSetupRef.current) return;
@@ -234,6 +477,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
 
             await handleUserAuthentication(session.user);
+            handleLoginBroadcast();
             
             // Wait a bit for the session to be fully propagated before checking RLS context
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -310,6 +554,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         // Only process SIGNED_OUT if it's not part of our own logout process
         if (!state.isLoggingOut && !authCoordinator.isLogoutInProgress()) {
+          handleLogoutBroadcast();
           dispatch(clearAuth());
           dispatch(resetEmployee());
           clearPersistedAuthState();
@@ -317,7 +562,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsProcessingAuth(false);
           toast.info("You have been logged out");
           logoutUser();
+          const shouldRedirectToBackoffice = isBackofficeUser || location.pathname.startsWith('/backoffice');
+          const targetPath = shouldRedirectToBackoffice ? '/backoffice/login' : '/login';
+          navigate(targetPath, { replace: true });
         }
+      } else if (event === 'TOKEN_REFRESHED') {
+        broadcastToOtherTabs('SESSION_UPDATE');
       }
     });
     
@@ -326,7 +576,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData]);
+  }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData, handleLoginBroadcast, handleLogoutBroadcast, broadcastToOtherTabs, location.pathname, isBackofficeUser, navigate]);
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
@@ -382,6 +632,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (user) {
         await setCurrentUserWithClientInfo(user);
+        handleLoginBroadcast();
         
         // Fetch employee data after successful login
         try {
@@ -453,22 +704,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       // Immediate state clearing - no setTimeout delays
-      dispatch(setLogoutState(true));
+      dispatch(setLogoutState(true)); 
+      handleLogoutBroadcast();
       dispatch(clearAuth());
       dispatch(resetEmployee());
       clearPersistedAuthState();
       logoutUser();
       
       // Sign out from Supabase (for SSO users)
-       await supabase.auth.signOut();
-      if (!isBackofficeUser) {
-        try {
-          await supabase.auth.signOut();
-        } catch (error) {
-          // Continue with logout even if Supabase fails
-          console.error('Supabase logout error:', error);
-        }
-      }
+      await supabase.auth.signOut();
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('authState');
       
       // Navigate immediately
       const shouldRedirectToBackoffice = isBackofficeUser || location.pathname.startsWith('/backoffice');
@@ -478,9 +724,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       toast.success("Successfully logged out");
       
       // Clear logout state immediately after navigation
-      dispatch(setLogoutState(false));
-      authCoordinator.endLogout();
-      authCoordinator.resetRedirectCounter();
+      setTimeout(() => {
+        dispatch(setLogoutState(false));
+        authCoordinator.endLogout();
+        authCoordinator.resetRedirectCounter();
+      }, 500);
       
     } catch (error) {
       console.error('❌ AuthProvider: Error during logout:', error);
@@ -613,8 +861,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }), [
     currentUser,
     displayUsers, 
+    handleLogin,
+    handleLogout,
     isAdmin,
     isSaasOwner,
+    handleChangePassword,
     authError,
     state.employeeData,
     isProcessingAuth
