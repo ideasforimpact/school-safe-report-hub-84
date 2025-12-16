@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     navigate
   });
 
-  const broadcastToOtherTabs = useCallback((type: string, payload?: any) => {
+  const broadcastToOtherTabs = useCallback((type: string) => {
     if (typeof BroadcastChannel !== 'undefined') {
       if (!broadcastChannelRef.current) {
         broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');
@@ -214,23 +214,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       broadcastChannelRef.current.postMessage({
         type,
-        payload,
         tabId: currentTabIdRef.current,
         timestamp: Date.now()
       });
     }
-    
-    const eventKey = `supabase.auth.${type}`;
-    localStorage.setItem(eventKey, JSON.stringify({
-      payload,
-      tabId: currentTabIdRef.current,
-      timestamp: Date.now()
-    }));
-    
-    // Clean up the event after a short delay
-    setTimeout(() => {
-      localStorage.removeItem(eventKey);
-    }, 100);
   }, []);
 
   const handleLoginBroadcast = useCallback(() => {
@@ -303,7 +290,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');
       
       const handleBroadcastMessage = (event: MessageEvent) => {
-        const { type, payload, tabId } = event.data;
+        const { type, tabId } = event.data;
         
         if (tabId === currentTabIdRef.current) return;
         
