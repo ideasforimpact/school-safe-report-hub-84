@@ -166,7 +166,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         'police_verification': 'processPoliceVerification',
         'court_case_check': 'processCourtCaseCheck',
         'digital_credibility_check': 'processDigitalCredibilityCheck',
-        'social_persona_check': 'processSocialPersonaCheck',
+        'social_personal_check': 'processSocialPersonaCheck',
         'drug_check': 'processDrugCheck',
       };
 
@@ -205,7 +205,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         'police_verification': 'police',
         'court_case_check': 'court_case',
         'digital_credibility_check': 'digital_credibility',
-        'social_persona_check': 'social_persona',
+        'social_personal_check': 'social_personal',
         'drug_check': 'drug',
       };
       const folderName = verificationTypeMap[verificationType] || verificationType;
@@ -327,7 +327,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         'police_verification': 'Police Verification Initiated',
         'court_case_check': 'Court Case Check Initiated',
         'digital_credibility_check': 'Digital Credibility Check Initiated',
-        'social_persona_check': 'Social Persona Check Initiated',
+        'social_personal_check': 'Social Personal Check Initiated',
         'drug_check': 'Drug Check Initiated',
       };
 
@@ -412,8 +412,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     });
   };
 
-  // Handle direct edge function calls for Court Case Check, Digital Credibility and Social Persona
-  const handleDirectSubmission = async (verificationType: 'court_case_check' | 'digital_credibility_check' | 'social_persona_check' | 'drug_check') => {
+  // Handle direct edge function calls for Court Case Check, Digital Credibility and Social Personal
+  const handleDirectSubmission = async (verificationType: 'court_case_check' | 'digital_credibility_check' | 'social_personal_check' | 'drug_check') => {
     const clientId = employeeData?.clientId || state.clientId;
     if (!clientId) {
       toast({
@@ -433,7 +433,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         ? 'processCourtCaseCheck'
         : verificationType === 'digital_credibility_check'
         ? 'processDigitalCredibilityCheck'
-        : verificationType === 'social_persona_check'
+        : verificationType === 'social_personal_check'
         ? 'processSocialPersonaCheck'
         : 'processDrugCheck';
       
@@ -459,7 +459,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           court_case_check: 'Court Case Check Initiated',
           police_verification: 'Police Verification Initiated',
           digital_credibility_check: 'Digital Credibility Check Initiated',
-          social_persona_check: 'Social Persona Check Initiated',
+          social_personal_check: 'Social Personal Check Initiated',
           drug_check: 'Drug Check Initiated',
         };
         toast({
@@ -486,7 +486,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         court_case_check: 'court case check',
         police_verification: 'police verification',
         digital_credibility_check: 'digital credibility check',
-        social_persona_check: 'social persona check',
+        social_personal_check: 'social personal check',
         drug_check: 'drug check',
       };
       toast({
@@ -609,7 +609,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             <option value="court_case_check">Court Case Check</option>
             <option value="police_verification">Police Verification</option>
             <option value="digital_credibility_check">Digital Credibility Check</option>
-            <option value="social_persona_check">Social Personal Check</option>
+            <option value="social_personal_check">Social Personal Check</option>
             <option value="drug_check">Drug Check</option>
           </select>
         </div>
@@ -654,11 +654,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           />
         )}
 
-        {otherType === 'social_persona_check' && (
+        {otherType === 'social_personal_check' && (
           <GeneralVerificationUploader
             files={manualVerificationFiles}
             setFiles={setManualVerificationFiles}
-            onUpload={(files) => handleManualVerificationUpload(files, 'social_persona_check')}
+            onUpload={(files) => handleManualVerificationUpload(files, 'social_personal_check')}
             isUploading={isProcessing}
             onCancel={onCancel}
           />
@@ -678,7 +678,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   };
 
   // Don't show the submit button for manual verification types - they all use uploader components with built-in submit buttons
-  const shouldShowSubmitButton = !isManualType || (otherType !== 'bank_statement_analysis' && otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check' && otherType !== 'digital_credibility_check' && otherType !== 'social_persona_check');
+  const shouldShowSubmitButton = !isManualType || (otherType !== 'bank_statement_analysis' && otherType !== 'court_case_check' && otherType !== 'police_verification' && otherType !== 'drug_check' && otherType !== 'digital_credibility_check' && otherType !== 'social_personal_check');
   const shouldShowForm = !isOtherDocuments; // Hide the default form for custom documents
 
   // If document already exists, show display mode instead of form
