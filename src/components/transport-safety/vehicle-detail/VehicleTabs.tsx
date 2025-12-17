@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
@@ -29,6 +29,7 @@ import { toast } from '@/hooks/use-toast';
 import { UploadedDocument, formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -59,66 +60,78 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     setDuplicateError("");
   };
   // Fetch uploaded documents from the database
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      if (!vehicleId) return;
-      
-      setIsLoadingDocuments(true);
-      try {
-        const { data, error } = await supabase
-          .from('vehicle_documents')
-          .select('*')
-          .eq('vehicle_id', vehicleId)
-          .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
-          
-        if (error) {
-          console.error('Error fetching documents:', error);
-          toast({
-            title: 'Error fetching documents',
-            description: 'There was an error fetching your documents',
-            variant: 'destructive',
-          });
-        }
-        
-        if (data && data.documents) {
-          // Safely transform the data using type assertion after validation
-          const rawDocuments = Array.isArray(data.documents) ? data.documents : [];
-          
-          // Transform and validate each document
-          const transformedDocuments: UploadedDocument[] = rawDocuments
-            .filter((doc: any) => 
-              doc && 
-              typeof doc.name === 'string' && 
-              typeof doc.type === 'string' && 
-              typeof doc.uploadedAt === 'string' &&
-              Array.isArray(doc.files)
-            )
-            .map((doc: any) => ({
-              name: doc.name,
-              type: doc.type,
-              uploadedAt: doc.uploadedAt,
-              files: Array.isArray(doc.files) 
-                ? doc.files.map((file: any) => ({
-                    name: file.name || 'Unnamed file',
-                    path: file.path || '',
-                    url: file.url || '',
-                    uploadedAt: file.uploadedAt || doc.uploadedAt
-                  }))
-                : []
-            }));
-            
-          setUploadedDocuments(transformedDocuments);
-        }
-      } catch (error) {
-        console.error('Error fetching documents:', error);
-      } finally {
-        setIsLoadingDocuments(false);
-      }
-    };
+
+  const fetchDocuments = async () => {
+    if (!vehicleId) return;
     
+    setIsLoadingDocuments(true);
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_documents')
+        .select('*')
+        .eq('vehicle_id', vehicleId)
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
+        
+      if (error) {
+        console.error('Error fetching documents:', error);
+        toast({
+          title: 'Error fetching documents',
+          description: 'There was an error fetching your documents',
+          variant: 'destructive',
+        });
+      }
+      
+      if (data && data.documents) {
+        // Safely transform the data using type assertion after validation
+        const rawDocuments = Array.isArray(data.documents) ? data.documents : [];
+        
+        // Transform and validate each document
+        const transformedDocuments: UploadedDocument[] = rawDocuments
+          .filter((doc: any) => 
+            doc && 
+            typeof doc.name === 'string' && 
+            typeof doc.type === 'string' && 
+            typeof doc.uploadedAt === 'string' &&
+            Array.isArray(doc.files)
+          )
+          .map((doc: any) => ({
+            name: doc.name,
+            type: doc.type,
+            uploadedAt: doc.uploadedAt,
+            files: Array.isArray(doc.files) 
+              ? doc.files.map((file: any) => ({
+                  name: file.name || 'Unnamed file',
+                  path: file.path || '',
+                  url: file.url || '',
+                  uploadedAt: file.uploadedAt || doc.uploadedAt
+                }))
+              : []
+          }));
+          
+        setUploadedDocuments(transformedDocuments);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDocuments();
   }, [vehicleId]);
-  
+  const handleDocumentUpdate = useCallback(async () => {
+    await fetchDocuments();
+  }, [fetchDocuments]);
+
+  useRealTimeSubHook({
+  channelName: `vehicle-documents-${vehicleId}`,
+  events: "*",
+  table: "vehicle_documents",
+  filter: vehicleId ? `vehicle_id=eq.${vehicleId}` : undefined,
+  enabled: !!vehicleId,
+  onPayload: handleDocumentUpdate,
+});
   // Find verification log entry to get history
   const getVerificationLog = () => {
     if (!vehicle?.verificationData) return null;
