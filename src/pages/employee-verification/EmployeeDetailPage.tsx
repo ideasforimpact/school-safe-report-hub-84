@@ -23,6 +23,43 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast as sonnerToast } from 'sonner';
 import AadharDetailsDialog from '@/components/employee-verification/documents-list/AadharDetailsDialog';
 
+export function useEmployeeDocumentsRealtime(employeeId: string | null, refetchDocuments: () => Promise<any>) {
+  useEffect(() => {
+    if (!employeeId) return;
+
+    const channel = supabase
+      .channel(`documents-${employeeId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "employee_documents",
+          filter: `employee_id=eq.${employeeId}`,
+        },
+        async (payload) => {
+          console.log("📌 Realtime Event:", payload);
+
+          await refetchDocuments();
+
+          if (payload.eventType === "INSERT") {
+            sonnerToast.success("New document uploaded");
+          }
+          if (payload.eventType === "UPDATE") {
+            sonnerToast.info("Document updated");
+          }
+          if (payload.eventType === "DELETE") {
+            sonnerToast.error("Document removed");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [employeeId, refetchDocuments]);
+}
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
@@ -284,38 +321,7 @@ const EmployeeDetailPage = () => {
       handleDigiLockerReturn();
     }
   }, [initialLoadComplete, documents, handleDigiLockerReturn]);
-  useEffect(() => {
-    if (!employeeId) return;
-
-    const channel = supabase
-      .channel(`documents-${employeeId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "employee_documents",
-          filter: `employee_id=eq.${employeeId}`,
-        },
-        async (payload) => {
-          console.log("📌 Realtime Event:", payload);
-          await refetchDocuments();
-          if (payload.eventType === "INSERT") {
-            sonnerToast.success("New document uploaded");
-          }
-          if (payload.eventType === "UPDATE") {
-            sonnerToast.info("Document updated");
-          }
-          if (payload.eventType === "DELETE") {
-            sonnerToast.error("Document removed");
-          }
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [employeeId, refetchDocuments]);
+  useEmployeeDocumentsRealtime(employeeId, refetchDocuments);
 
     const getEmployeeTypeDisplay = (type?: string) => {
     if (!type) return 'Not Specified';

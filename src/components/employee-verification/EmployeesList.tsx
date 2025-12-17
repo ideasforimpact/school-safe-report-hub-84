@@ -18,6 +18,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
+import { useEmployeeDocumentsRealtime } from '@/pages/employee-verification/EmployeeDetailPage';
 
 interface EmployeesListProps {
   employees: Employee[];
@@ -35,7 +36,10 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
       fetchEmployees();
     }
   }, [employees.length, isLoading, fetchEmployees]);
-
+ 
+employees.forEach(emp => {
+  useEmployeeDocumentsRealtime(emp.id, fetchEmployees);
+});
   // Get document status for an employee
   const getDocumentStatus = (employee: Employee) => {
     const documents = employee.documents || [];
