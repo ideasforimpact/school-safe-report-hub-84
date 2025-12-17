@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { TransportSafetyContextType, TransportSafetyProviderProps } from './types';
 import { Vehicle, VehicleDocument } from '@/types/transportSafety';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +11,7 @@ import {
   deleteVehicle as deleteVehicleService 
 } from '@/services/transport-safety/vehicleService';
 import { useAuth } from '@/contexts/auth';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const TransportSafetyContext = createContext<TransportSafetyContextType | undefined>(undefined);
 
@@ -207,6 +208,56 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
 
     toast.success(status === 'verified' ? "Document verified successfully" : "Document verification failed");
   };
+  
+  const handleVehicleUpdate = useCallback(async (payload: any) => {
+    console.log("[Realtime] Vehicle event received:", payload);
+
+    const event = payload.eventType;
+    const newVehicle = payload.new;
+    const oldVehicle = payload.old;
+    if (event === "DELETE") {
+      await fetchVehicles();
+      return;
+    }
+    const vehicleId =
+      newVehicle?.id ||
+      oldVehicle?.id ||
+      null;
+
+    if (!vehicleId) {
+      console.warn("[Realtime] No vehicle ID in payload → full refresh");
+      await fetchVehicles();
+      return;
+    }
+
+    try {
+      const refreshed = await getVehicleById(vehicleId, clientId);
+
+      if (!refreshed) {
+        await fetchVehicles();
+        return;
+      }
+
+      setVehicles(prev => {
+        const exists = prev.some(v => v.id === refreshed.id);
+        return exists
+          ? prev.map(v => (v.id === refreshed.id ? refreshed : v))
+          : [refreshed, ...prev];
+      });
+
+    } catch (err) {
+      console.error("[Realtime] Error refreshing vehicle:", err);
+      await fetchVehicles();
+    }
+  }, [clientId, fetchVehicles]);
+
+  useRealTimeSubHook({
+    channelName: `vehicles-${clientId}`,
+    events: "*",
+    table: "vehicles",
+    enabled: !!clientId,
+    onPayload: handleVehicleUpdate,
+  });
 
   return (
     <TransportSafetyContext.Provider
