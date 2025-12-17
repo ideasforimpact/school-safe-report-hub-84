@@ -297,8 +297,6 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
         vehicle_name: form.name,
         type: form.type,
         vehicle_no: form.vehicle_no,
-        client_id: clientId,
-        employee_id: employeeId,
         name: form.name,
         // Store dates as local date strings (YYYY-MM-DD) to avoid timezone shifts
         validity_from: form.validity_from ? format(form.validity_from, 'yyyy-MM-dd') : null,
@@ -307,13 +305,6 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
       }));
 
       // Call edge function to save bulk trusted vehicles
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Authentication required');
-        setLoading(false);
-        return;
-      }
-
       if (mode === 'edit' && initialVehicle) {
         // First update the existing vehicle (index 0)
         const [vehicleToUpdate, ...additionalVehicles] = vehiclesToInsert;
@@ -321,13 +312,11 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
         const { data, error } = await supabase.functions.invoke('trusted-vehicle-management', {
           body: {
             action: 'update',
+            clientId: clientId,
             vehicle: {
               id: initialVehicle.id,
               ...vehicleToUpdate,
             },
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
           },
         });
 
@@ -344,10 +333,9 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
           const { data: createData, error: createError } = await supabase.functions.invoke('trusted-vehicle-management', {
             body: {
               action: 'create_bulk',
+              clientId: clientId,
+              employee_id: employeeId,
               vehicles: additionalVehicles,
-            },
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
             },
           });
 
@@ -364,10 +352,9 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
       const { data, error } = await supabase.functions.invoke('trusted-vehicle-management', {
         body: {
           action: 'create_bulk',
+          clientId: clientId,
+          employee_id: employeeId,
           vehicles: vehiclesToInsert,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
         },
       });
 

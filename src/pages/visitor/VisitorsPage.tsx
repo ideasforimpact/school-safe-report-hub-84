@@ -32,7 +32,8 @@ const VisitorsPage = () => {
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all'); // 'all' | 'two_wheeler' | 'four_wheeler' | 'trusted_vehicle'
+  // 'all' | 'trusted_vehicle' | <visitor_vehicle_type.id>
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all');
   
   // Initialize date range with current date (today)
   const getTodayDateRange = (): DateRange => {
@@ -53,6 +54,50 @@ const VisitorsPage = () => {
     validity_from: string;
     validity_to: string;
   }>>([]);
+
+  // Visitor vehicle types (from visitor_vehicle_type table)
+  const [visitorVehicleTypes, setVisitorVehicleTypes] = useState<Array<{
+    id: string;
+    key: string;
+    name: string;
+    active: boolean;
+  }>>([]);
+
+  // Quick lookup map: vehicle_type id -> metadata
+  const visitorVehicleTypeMap = useMemo(() => {
+    const map: Record<string, { id: string; key: string; name: string; active: boolean }> = {};
+    visitorVehicleTypes.forEach((type) => {
+      map[type.id] = type;
+    });
+    return map;
+  }, [visitorVehicleTypes]);
+
+  // Ordered list for dropdown: Two Wheeler, Four Wheeler, Walk In, then any others
+  const orderedVisitorVehicleTypes = useMemo(() => {
+    const order = ['two_wheeler', 'four_wheeler', 'walk_in'];
+    const byKey: Record<string, typeof visitorVehicleTypes[number]> = {};
+    visitorVehicleTypes.forEach((t) => {
+      byKey[t.key] = t;
+    });
+
+    const result: typeof visitorVehicleTypes = [];
+
+    order.forEach((key) => {
+      const item = byKey[key];
+      if (item) {
+        result.push(item);
+      }
+    });
+
+    // Append any remaining types not in the predefined order
+    visitorVehicleTypes.forEach((t) => {
+      if (!order.includes(t.key)) {
+        result.push(t);
+      }
+    });
+
+    return result;
+  }, [visitorVehicleTypes]);
 
   // Toast deduplication - prevent multiple toasts for the same event within 2 seconds
   const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null);
@@ -141,6 +186,34 @@ const VisitorsPage = () => {
       fetchTrustedVehicles();
     }
   }, [clientId, fetchVisitors, fetchTrustedVehicles]);
+
+  // Fetch visitor vehicle types for dynamic filter options
+  const fetchVisitorVehicleTypes = useCallback(async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('visitor_vehicle_type')
+        .select('id, key, name, active')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching visitor vehicle types:', error);
+        return;
+      }
+
+      setVisitorVehicleTypes((data || []) as Array<{
+        id: string;
+        key: string;
+        name: string;
+        active: boolean;
+      }>);
+    } catch (error) {
+      console.error('Error fetching visitor vehicle types:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVisitorVehicleTypes();
+  }, [fetchVisitorVehicleTypes]);
 
   // Handle realtime visitor updates
   const handleVisitorUpdate = useCallback(async (payload: any) => {
@@ -408,7 +481,7 @@ const VisitorsPage = () => {
           return false;
         }
       } else if (vehicleTypeFilter !== 'all') {
-        // Regular vehicle type filter (two_wheeler, four_wheeler)
+        // Regular vehicle type filter based on visitor_vehicle_type.id
         if (visitor.vehicle_type !== vehicleTypeFilter) {
           return false;
         }
@@ -610,14 +683,19 @@ const VisitorsPage = () => {
 
               {/* Vehicle Type Filter */}
               <Select value={vehicleTypeFilter} onValueChange={setVehicleTypeFilter}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vehicles</SelectItem>
-                  <SelectItem value="two_wheeler">Two Wheeler</SelectItem>
-                  <SelectItem value="four_wheeler">Four Wheeler</SelectItem>
-                  <SelectItem value="trusted_vehicle">Trusted Vehicle</SelectItem>
+                  {/* Dynamic visitor vehicle types from visitor_vehicle_type table in required order */}
+                  {orderedVisitorVehicleTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                  {/* Special filter for trusted vehicles - appears last */}
+                  {/* <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem> */}
                 </SelectContent>
               </Select>
 
@@ -682,17 +760,28 @@ const VisitorsPage = () => {
                     <TableRow key={visitor.id}>
                       <TableCell>
                         {visitor.vehicle_type ? (
-                          <VehicleTypeIcon 
-                            type={visitor.vehicle_type} 
-                            size={24} 
-                            className={
-                              visitor.vehicle_type === 'two_wheeler' 
-                                ? 'text-blue-600' 
-                                : visitor.vehicle_type === 'four_wheeler'
-                                ? 'text-green-600'
-                                : 'text-gray-600'
+                          (() => {
+                            const typeMeta = visitorVehicleTypeMap[visitor.vehicle_type];
+                            const typeKey = typeMeta?.key;
+
+                            if (!typeKey) {
+                              return <span className="text-gray-400">-</span>;
                             }
-                          />
+
+                            return (
+                              <VehicleTypeIcon
+                                type={typeKey}
+                                size={24}
+                                className={
+                                  typeKey === 'two_wheeler'
+                                    ? 'text-blue-600'
+                                    : typeKey === 'four_wheeler'
+                                    ? 'text-green-600'
+                                    : 'text-gray-600'
+                                }
+                              />
+                            );
+                          })()
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}

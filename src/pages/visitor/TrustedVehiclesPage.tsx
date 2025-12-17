@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
-import { Car, ArrowLeft, Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Car, ArrowLeft, Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
+import { DateRange } from 'react-day-picker';
 import { useNavigate } from 'react-router-dom';
 import AddTrustedVehicleDialog from '@/components/visitor/AddTrustedVehicleDialog';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -42,6 +46,11 @@ const TrustedVehiclesPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [trustedVehicles, setTrustedVehicles] = useState<TrustedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all' | 'valid' | 'expired'
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Check if user has admin access to Visitor module
   const isSuperAdmin = isEmployeeSuperAdmin(state);
@@ -127,26 +136,79 @@ const TrustedVehiclesPage = () => {
     return today >= fromDate && today <= toDate;
   };
 
+  // Filter vehicles based on search, status, and date range
+  const filteredVehicles = useMemo(() => {
+    return trustedVehicles.filter((vehicle) => {
+      // Search filter - by name, type, vehicle name, or vehicle number
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          vehicle.name.toLowerCase().includes(searchLower) ||
+          vehicle.type.toLowerCase().includes(searchLower) ||
+          vehicle.vehicle_name.toLowerCase().includes(searchLower) ||
+          vehicle.vehicle_no.toLowerCase().includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== 'all') {
+        const isValid = getValidityStatus(vehicle);
+        if (statusFilter === 'valid' && !isValid) {
+          return false;
+        }
+        if (statusFilter === 'expired' && isValid) {
+          return false;
+        }
+      }
+
+      // Date range filter - filter by validity_from and validity_to
+      if (dateRange?.from || dateRange?.to) {
+        if (vehicle.validity_from) {
+          const fromDate = new Date(vehicle.validity_from);
+          fromDate.setHours(0, 0, 0, 0);
+          
+          if (dateRange.from && fromDate < dateRange.from) {
+            return false;
+          }
+        }
+        
+        if (vehicle.validity_to && dateRange.to) {
+          // Include the entire day for the "to" date
+          const toDateEnd = new Date(vehicle.validity_to);
+          toDateEnd.setHours(23, 59, 59, 999);
+          const rangeToDateEnd = new Date(dateRange.to);
+          rangeToDateEnd.setHours(23, 59, 59, 999);
+          
+          if (toDateEnd > rangeToDateEnd) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [trustedVehicles, searchTerm, statusFilter, dateRange]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDateRange(undefined);
+  };
+
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dateRange;
+
   const handleDeleteConfirm = async () => {
-    if (!vehicleToDelete) return;
+    if (!vehicleToDelete || !employeeData?.clientId) return;
 
     try {
       setIsDeleting(true);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Authentication required');
-        setIsDeleting(false);
-        return;
-      }
 
       const { data, error } = await supabase.functions.invoke('trusted-vehicle-management', {
         body: {
           action: 'delete',
           vehicle_id: vehicleToDelete.id,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          clientId: employeeData.clientId,
         },
       });
 
@@ -199,6 +261,67 @@ const TrustedVehiclesPage = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
+          {/* Filters */}
+          <div className="space-y-4 mb-6">
+            <div className="flex flex-wrap gap-4 items-center">
+              {/* Search */}
+              <div className="w-[400px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search by Name, Type, Vehicle Name, Vehicle Number"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="valid">Valid</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Date Range Filter */}
+              <div className="w-[300px]">
+                <DatePickerWithRange
+                  date={dateRange}
+                  onChange={setDateRange}
+                />
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="flex items-center gap-1"
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            
+            {/* Results count */}
+            <div className="text-sm text-gray-600">
+              <span>
+                Showing {filteredVehicles.length} of {trustedVehicles.length} trusted vehicle(s)
+              </span>
+              {hasActiveFilters && (
+                <span className="text-primary ml-2">Filters applied</span>
+              )}
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -206,11 +329,13 @@ const TrustedVehiclesPage = () => {
                 <p className="text-gray-500">Loading trusted vehicles...</p>
               </div>
             </div>
-          ) : trustedVehicles.length === 0 ? (
+          ) : filteredVehicles.length === 0 ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Car className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No Trusted Vehicles</p>
+              <p className="text-gray-500 text-lg">
+                {hasActiveFilters ? 'No trusted vehicles match your filters' : 'No Trusted Vehicles'}
+              </p>
             </div>
           </div>
           ) : (
@@ -229,7 +354,7 @@ const TrustedVehiclesPage = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {trustedVehicles.map((vehicle) => (
+                    {filteredVehicles.map((vehicle) => (
                       <TableRow key={vehicle.id}>
                         <TableCell className="font-medium">
                           {vehicle.name.length > 18 ? (
@@ -279,7 +404,22 @@ const TrustedVehiclesPage = () => {
                             <span>{vehicle.vehicle_name}</span>
                           )}
                         </TableCell>
-                        <TableCell>{vehicle.vehicle_no}</TableCell>
+                        <TableCell>
+                          {vehicle.vehicle_no.length > 18 ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-default">
+                                  {truncateText(vehicle.vehicle_no)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs break-words">{vehicle.vehicle_no}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span>{vehicle.vehicle_no}</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {vehicle.validity_from && vehicle.validity_to ? (
                             `${format(new Date(vehicle.validity_from), 'MMM dd yyyy')} - ${format(

@@ -23,6 +23,27 @@ function decodeBase64(base64: string): Uint8Array {
   return bytes;
 }
 
+// Transform DB visitor row so API returns a single vehicle_type object
+// vehicle_type: { id, key, name, active } and removes vehicle_type_info helper
+function transformVisitorRow(row: any): any {
+  if (!row) return row;
+
+  const transformed: any = { ...row };
+
+  if (row.vehicle_type_info) {
+    transformed.vehicle_type = {
+      id: row.vehicle_type_info.id,
+      key: row.vehicle_type_info.key,
+      name: row.vehicle_type_info.name,
+      active: row.vehicle_type_info.active,
+    };
+  }
+
+  delete transformed.vehicle_type_info;
+
+  return transformed;
+}
+
 // Helper function to sanitize filename
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -203,7 +224,7 @@ serve(async (req) => {
         // Get single visitor - must belong to authenticated user's client and employee
         const { data, error } = await supabase
           .from('visitors')
-          .select('*, visitor_kyc(*)')
+          .select('*, visitor_kyc(*), vehicle_type_info:visitor_vehicle_type(id, name, key, active)')
           .eq('id', visitorId)
           .eq('client_id', authenticatedClientId) // Enforce client_id match
           .eq('employee_id', authenticatedEmployeeId) // Enforce employee_id match
@@ -217,14 +238,14 @@ serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ data }),
+          JSON.stringify({ data: transformVisitorRow(data) }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
         // List visitors - filtered by authenticated user's client_id and employee_id
         const { data, error } = await supabase
           .from('visitors')
-          .select('*, visitor_kyc(*)')
+          .select('*, visitor_kyc(*), vehicle_type_info:visitor_vehicle_type(id, name, key, active)')
           .eq('client_id', authenticatedClientId) // Always filter by authenticated client
           .eq('employee_id', authenticatedEmployeeId) // Always filter by authenticated employee
           .order('created_at', { ascending: false });
@@ -236,8 +257,10 @@ serve(async (req) => {
           );
         }
 
+        const transformed = Array.isArray(data) ? data.map(transformVisitorRow) : data;
+
         return new Response(
-          JSON.stringify({ data }),
+          JSON.stringify({ data: transformed }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -271,6 +294,36 @@ serve(async (req) => {
         if (empError || !targetEmployee || targetEmployee.client_id !== clientId) {
           return new Response(
             JSON.stringify({ error: 'Invalid employee_id or employee does not belong to your client' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      // Validate vehicle_type UUID against visitor_vehicle_type table if provided
+      if (vehicle_type !== undefined && vehicle_type !== null) {
+        if (typeof vehicle_type !== 'string' || !vehicle_type.trim()) {
+          return new Response(
+            JSON.stringify({ error: 'vehicle_type must be a non-empty UUID string' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: vehicleTypeRow, error: vehicleTypeError } = await supabase
+          .from('visitor_vehicle_type')
+          .select('id, active')
+          .eq('id', vehicle_type)
+          .single();
+
+        if (vehicleTypeError || !vehicleTypeRow) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid vehicle_type: not found in visitor_vehicle_type table' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (vehicleTypeRow.active === false) {
+          return new Response(
+            JSON.stringify({ error: 'Selected vehicle_type is inactive' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -337,15 +390,15 @@ serve(async (req) => {
         }
       }
 
-      // Fetch complete visitor data with KYC
+      // Fetch complete visitor data with KYC and vehicle type info
       const { data: completeVisitor, error: fetchError } = await supabase
         .from('visitors')
-        .select('*, visitor_kyc(*)')
+        .select('*, visitor_kyc(*), vehicle_type_info:visitor_vehicle_type(id, name, key, active)')
         .eq('id', visitor.id)
         .single();
 
       return new Response(
-        JSON.stringify({ data: completeVisitor || visitor }),
+        JSON.stringify({ data: transformVisitorRow(completeVisitor || visitor) }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -395,6 +448,36 @@ serve(async (req) => {
           );
         }
         effectiveEmployeeId = employee_id;
+      }
+
+      // Validate vehicle_type UUID against visitor_vehicle_type table if provided
+      if (vehicle_type !== undefined && vehicle_type !== null) {
+        if (typeof vehicle_type !== 'string' || !vehicle_type.trim()) {
+          return new Response(
+            JSON.stringify({ error: 'vehicle_type must be a non-empty UUID string' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: vehicleTypeRow, error: vehicleTypeError } = await supabase
+          .from('visitor_vehicle_type')
+          .select('id, active')
+          .eq('id', vehicle_type)
+          .single();
+
+        if (vehicleTypeError || !vehicleTypeRow) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid vehicle_type: not found in visitor_vehicle_type table' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (vehicleTypeRow.active === false) {
+          return new Response(
+            JSON.stringify({ error: 'Selected vehicle_type is inactive' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Upload new files if provided
@@ -467,15 +550,15 @@ serve(async (req) => {
         }
       }
 
-      // Fetch complete visitor data with KYC
+      // Fetch complete visitor data with KYC and vehicle type info
       const { data: completeVisitor, error: fetchError2 } = await supabase
         .from('visitors')
-        .select('*, visitor_kyc(*)')
+        .select('*, visitor_kyc(*), vehicle_type_info:visitor_vehicle_type(id, name, key, active)')
         .eq('id', id)
         .single();
 
       return new Response(
-        JSON.stringify({ data: completeVisitor || updatedVisitor }),
+        JSON.stringify({ data: transformVisitorRow(completeVisitor || updatedVisitor) }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
