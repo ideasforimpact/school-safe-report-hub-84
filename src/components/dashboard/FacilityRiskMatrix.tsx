@@ -102,21 +102,23 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
         <p className="text-sm text-muted-foreground">Incident distribution by facility and priority</p>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {/* Header */}
-          <div className="grid grid-cols-6 gap-2 text-xs font-medium text-muted-foreground">
-            <div className="col-span-2">Facility</div>
-            <div className="text-center">Critical</div>
-            <div className="text-center">High</div>
-            <div className="text-center">Medium</div>
-            <div className="text-center">Low</div>
-          </div>
+        {facilityRiskData.length > 0 ? (
+          <div className="space-y-4">
+            <div className="h-96 overflow-auto no-scrollbar">
+              {/* Header */}
+              <div className="grid grid-cols-6 gap-2 text-xs font-medium text-muted-foreground mb-2">
+                <div className="col-span-2">Facility</div>
+                <div className="text-center">Critical</div>
+                <div className="text-center">High</div>
+                <div className="text-center">Medium</div>
+                <div className="text-center">Low</div>
+              </div>
 
-          {/* Facility rows */}
+              {/* Rows */}
           <div className="space-y-2">
-            {facilityRiskData.slice(0, 8).map((facility) => (
+            {facilityRiskData.map((facility) => (
               <div key={facility.name} className="grid grid-cols-6 gap-2 items-center">
-                <div className="col-span-2 text-sm font-medium truncate" title={facility.name}>
+                <div className="col-span-2 text-sm font-medium truncate">
                   {facility.name}
                 </div>
                 {['Critical', 'High', 'Medium', 'Low'].map((priority) => (
@@ -128,46 +130,42 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
                     {facility[priority] > 0 ? facility[priority] : ''}
                   </div>
                 ))}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+             {/* SUMMARY SECTION */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border">
+              <div className="text-center">
+                <div className="text-lg font-bold">{facilityRiskData.length}</div>
+                <div className="text-xs text-muted-foreground">Facilities</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {facilityRiskData.reduce((sum, f) => sum + (f.Critical || 0),0)}
+                </div>
+                <div className="text-xs text-muted-foreground">Critical</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {facilityRiskData[0]?.name || "N/A"}
+                </div>
+                <div className="text-xs text-muted-foreground">Highest Risk</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {facilityRiskData.reduce((sum, f) => sum + (f.total || 0), 0)}
+                </div>
+                <div className="text-xs text-muted-foreground">Total Incidents
+                </div>
+              </div>
+            </div>
           </div>
-
-          {facilityRiskData.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No facility data available
-            </div>
-          )}
-
-          {/* Legend and summary */}
-          {facilityRiskData.length > 0 && (
-            <div className="pt-4 border-t border-border space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-lg font-bold">{facilityRiskData.length}</div>
-                  <div className="text-xs text-muted-foreground">Facilities</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold">
-                    {facilityRiskData.reduce((sum, f) => sum + (f.Critical || 0), 0)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Critical</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold">
-                    {facilityRiskData[0]?.name || 'N/A'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Highest Risk</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold">
-                    {facilityRiskData.reduce((sum, f) => sum + (f.total || 0), 0)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Total Incidents</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No facility data available
+          </div>
+        )}
       </CardContent>
     </Card>
   );
