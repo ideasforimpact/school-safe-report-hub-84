@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Bus, Car, Truck, CircleDot, Bike, Tractor } from 'lucide-react';
+import { Bus, Car, Truck, CircleDot, Bike, Tractor, User } from 'lucide-react';
 
 interface VehicleTypeIconProps {
   type?: string; // Legacy: vehicle type string (bus, car, etc.)
@@ -30,13 +30,14 @@ const VehicleTypeIcon: React.FC<VehicleTypeIconProps> = ({
         return <Car size={size} className={className} />;
       case 'motorcycle':
       case 'two_wheeler':
-      case 'two-wheeler':
         return <Bike size={size} className={className} />;
       case 'four_wheeler':
-      case 'four-wheeler':
         return <Car size={size} className={className} />;
       case 'tractor':
         return <Tractor size={size} className={className} />;
+      case 'walk_in':
+        // Represent walk-in visitors with a colored person icon
+        return <User size={size} className={`${className ?? ''} text-emerald-500`} />;
       case 'other':
       case 'others':
         return <CircleDot size={size} className={className} />;
