@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -18,6 +18,7 @@ import { usePagination } from '@/hooks/usePagination';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface EmployeesListProps {
   employees: Employee[];
@@ -36,6 +37,19 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     }
   }, [employees.length, isLoading, fetchEmployees]);
 
+  const handleEmployeesRealtime = useCallback(
+    async () => {
+      await fetchEmployees();
+    },
+    [fetchEmployees]
+  );
+  useRealTimeSubHook({
+    channelName: "employees-realtime",
+    events: "*",
+    table: "employee_documents",
+    enabled: true,
+    onPayload: handleEmployeesRealtime,
+  });
   // Get document status for an employee
   const getDocumentStatus = (employee: Employee) => {
     const documents = employee.documents || [];
