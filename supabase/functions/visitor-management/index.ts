@@ -9,6 +9,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 import { verifyAccessToken } from '../_shared/safe-school/jwt.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const BUCKET_NAME = 'visitors_evidence';
 
@@ -215,6 +216,25 @@ serve(async (req) => {
 
     const authenticatedEmployeeId = authInfo.employeeId;
     const authenticatedClientId = authInfo.clientId;
+
+    // Validate IP whitelist
+    const url = new URL(req.url);
+    const ipValidation = await validateIPWhitelist(
+      supabase,
+      req,
+      authenticatedClientId,
+      url.pathname
+    );
+    
+    if (!ipValidation.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'IP_NOT_WHITELISTED',
+          message: 'Access denied. Your IP address is not whitelisted for this client.'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // GET - List visitors or get single visitor
     if (method === 'GET') {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 // Set up CORS headers for cross-origin requests - Added client-id to allowed headers
 const corsHeaders = {
@@ -34,6 +35,30 @@ serve(async (req) => {
     let body = {};
     if (req.method !== "GET" && req.method !== "OPTIONS") {
       body = await req.json();
+    }
+
+    // Get clientId from body or header for IP validation
+    const clientIdForValidation = body.client_id || clientIdFromHeader;
+    
+    // Validate IP whitelist if clientId is available
+    if (clientIdForValidation) {
+      const url = new URL(req.url);
+      const ipValidation = await validateIPWhitelist(
+        supabaseClient,
+        req,
+        clientIdForValidation,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'IP_NOT_WHITELISTED',
+            message: 'Access denied. Your IP address is not whitelisted for this client.'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Handle different API endpoints

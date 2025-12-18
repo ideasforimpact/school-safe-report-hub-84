@@ -1,7 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
-import { getSupabaseUrl, getSupabaseAnonKey } from '../_shared/env.ts';
+import { getSupabaseUrl, getSupabaseAnonKey, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +39,26 @@ serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
+      );
+    }
+
+    // Validate IP whitelist
+    const url = new URL(req.url);
+    const supabaseAdmin = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
+    const ipValidation = await validateIPWhitelist(
+      supabaseAdmin,
+      req,
+      client_id,
+      url.pathname
+    );
+    
+    if (!ipValidation.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'IP_NOT_WHITELISTED',
+          message: 'Access denied. Your IP address is not whitelisted for this client.'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

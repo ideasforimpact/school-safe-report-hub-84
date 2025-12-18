@@ -16,6 +16,7 @@ import { useStepValidation } from '@/hooks/useStepValidation';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { IPAddress } from './tabs/IPList';
 
 interface ClientDialogProps {
   isOpen: boolean;
@@ -161,10 +162,34 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     });
   };
 
+  const addIP = (ip: IPAddress) => {
+    setFormData({
+      ...formData,
+      whitelistedIPs: [...(formData.whitelistedIPs || []), ip]
+    });
+  };
+
+  const removeIP = (ip: string) => {
+    setFormData({
+      ...formData,
+      whitelistedIPs: (formData.whitelistedIPs || []).filter(ipAddr => ipAddr.ip !== ip)
+    });
+  };
+
+  const updateIP = (oldIp: string, newIp: IPAddress) => {
+    setFormData({
+      ...formData,
+      whitelistedIPs: (formData.whitelistedIPs || []).map(ipAddr => 
+        ipAddr.ip === oldIp ? newIp : ipAddr
+      )
+    });
+  };
+
   const safeFormData = {
     ...formData,
     allowedDomains: formData.allowedDomains || [],
-    superAdminAllowedDomains: formData.superAdminAllowedDomains || []
+    superAdminAllowedDomains: formData.superAdminAllowedDomains || [],
+    whitelistedIPs: formData.whitelistedIPs || []
   };
 
   const isProcessing = isSubmitting || isLoading || modulesLoading;
@@ -209,6 +234,9 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             onAddSuperAdminDomain={addSuperAdminDomain}
             onRemoveSuperAdminDomain={removeSuperAdminDomain}
             onProviderChange={handleAuthProviderChange}
+            onAddIP={addIP}
+            onRemoveIP={removeIP}
+            onUpdateIP={updateIP}
             showErrors={attemptedSteps.has(2)}
           />
         );

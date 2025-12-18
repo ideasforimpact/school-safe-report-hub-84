@@ -32,6 +32,7 @@ interface ClientData {
   clientTypeId?: string;
   authProviders?: Record<string, boolean>;
   website?: string;
+  whitelistedIPs?: Array<{ ip: string; name?: string }>;
 }
 
 interface ModuleInfo {
@@ -625,6 +626,127 @@ async function deleteClientData(clientId: string) {
   }
 }
 
+// Function to process IP whitelisting
+async function processIPWhitelist(clientId: string, whitelistedIPs: Array<{ ip: string; name?: string }>): Promise<boolean> {
+  try {
+    console.log(`Processing IP whitelist for client ${clientId}:`, JSON.stringify(whitelistedIPs, null, 2));
+    
+    if (!whitelistedIPs || whitelistedIPs.length === 0) {
+      console.log('No IPs to process, deactivating all existing IPs');
+      // Deactivate all existing IPs instead of deleting (for audit purposes)
+      const { error: deactivateError } = await supabase
+        .from('client_ip_whitelist')
+        .update({ is_active: false })
+        .eq('client_id', clientId);
+      
+      if (deactivateError) {
+        console.error(`Error deactivating IPs for client ${clientId}:`, deactivateError);
+        return false;
+      }
+      return true;
+    }
+
+    // Verify client exists
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .single();
+
+    if (clientError || !clientData) {
+      console.error(`Client ${clientId} does not exist in database:`, clientError);
+      return false;
+    }
+
+    // Get existing IPs
+    const { data: existingIPs, error: fetchError } = await supabase
+      .from('client_ip_whitelist')
+      .select('ip_address')
+      .eq('client_id', clientId);
+
+    if (fetchError) {
+      console.error(`Error fetching existing IPs for client ${clientId}:`, fetchError);
+      return false;
+    }
+
+    const existingIPSet = new Set(existingIPs?.map(ip => ip.ip_address) || []);
+
+    // Process each IP
+    for (const ipData of whitelistedIPs) {
+      const { ip, name } = ipData;
+      
+      if (!ip || ip.trim() === '') {
+        console.error('Invalid IP address:', ip);
+        continue;
+      }
+
+      const trimmedIP = ip.trim();
+
+      // Check if IP already exists
+      if (existingIPSet.has(trimmedIP)) {
+        // Update existing IP (reactivate if needed, update name)
+        console.log(`Updating existing IP: ${trimmedIP}`);
+        const { error: updateError } = await supabase
+          .from('client_ip_whitelist')
+          .update({
+            name: name || null,
+            is_active: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('client_id', clientId)
+          .eq('ip_address', trimmedIP);
+
+        if (updateError) {
+          console.error(`Error updating IP ${trimmedIP} for client ${clientId}:`, updateError);
+          return false;
+        }
+      } else {
+        // Insert new IP
+        console.log(`Inserting new IP: ${trimmedIP} with name: ${name || 'N/A'}`);
+        const { error: insertError } = await supabase
+          .from('client_ip_whitelist')
+          .insert({
+            client_id: clientId,
+            ip_address: trimmedIP,
+            name: name || null,
+            is_active: true
+          });
+
+        if (insertError) {
+          console.error(`Error inserting IP ${trimmedIP} for client ${clientId}:`, insertError);
+          return false;
+        }
+      }
+    }
+
+    // Deactivate IPs that are no longer in the list
+    const newIPSet = new Set(whitelistedIPs.map(ip => ip.ip.trim()));
+    const ipsToDeactivate = existingIPs?.filter(ip => !newIPSet.has(ip.ip_address)) || [];
+
+    if (ipsToDeactivate.length > 0) {
+      console.log(`Deactivating ${ipsToDeactivate.length} IPs that are no longer in the list`);
+      const ipsToDeactivateList = ipsToDeactivate.map(ip => ip.ip_address);
+      
+      const { error: deactivateError } = await supabase
+        .from('client_ip_whitelist')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .in('ip_address', ipsToDeactivateList);
+
+      if (deactivateError) {
+        console.error(`Error deactivating IPs for client ${clientId}:`, deactivateError);
+        return false;
+      }
+    }
+
+    console.log(`Successfully processed IP whitelist for client ${clientId}`);
+    return true;
+  } catch (err) {
+    console.error('Error in processIPWhitelist:', err);
+    return false;
+  }
+}
+
 // Function to process module access based on the provided module information
 async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[], isCreation: boolean = false): Promise<boolean> {
   try {
@@ -756,7 +878,7 @@ async function handleCreateClient(clientData: any) {
   let clientId: string | null = null;
   
   try {
-    const { modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
+    const { modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, ...clientInfo } = clientData;
     
     // Generate a new UUID for the client
     clientId = crypto.randomUUID();
@@ -847,6 +969,23 @@ async function handleCreateClient(clientData: any) {
       }
     }
     
+    // Process IP whitelist - client now exists in database
+    if (whitelistedIPs && whitelistedIPs.length > 0) {
+      console.log('Processing IP whitelist for newly created client...');
+      try {
+        const ipSuccess = await processIPWhitelist(clientId, whitelistedIPs);
+        if (!ipSuccess) {
+          throw new Error('Failed to process IP whitelist');
+        }
+        console.log('IP whitelist processed successfully');
+      } catch (ipError) {
+        console.error('Error processing IP whitelist:', ipError);
+        // Rollback client creation
+        await rollbackClientCreation(clientId);
+        throw new Error(`Failed to process IP whitelist: ${ipError.message}`);
+      }
+    }
+    
     return new Response(
       JSON.stringify({ success: true, client_id: clientId, client_logo_url: clientLogoUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -875,7 +1014,7 @@ async function handleUpdateClient(clientData: any) {
   });
   
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
+    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, ...clientInfo } = clientData;
     
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -953,6 +1092,16 @@ async function handleUpdateClient(clientData: any) {
       if (!employee) {
         console.error('Failed to update super admin employee');
       }
+    }
+    
+    // Process IP whitelist
+    if (whitelistedIPs !== undefined) {
+      console.log('Processing IP whitelist for client update...');
+      const ipSuccess = await processIPWhitelist(clientId, whitelistedIPs);
+      if (!ipSuccess) {
+        throw new Error('Failed to process IP whitelist');
+      }
+      console.log('IP whitelist processed successfully');
     }
     
     return new Response(

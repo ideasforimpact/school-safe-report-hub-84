@@ -13,6 +13,7 @@ import { checkRateLimit, getClientIdentifier } from '../_shared/safe-school/rate
 import { logger } from '../_shared/safe-school/logging.ts';
 import { successResponse, errorResponse, rateLimitResponse } from '../_shared/safe-school/response.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 serve(async (req) => {
   const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
@@ -82,7 +83,7 @@ serve(async (req) => {
     const supabase = getSupabaseAdminClient();
     const { data: employee, error: employeeError } = await supabase
       .from('employees')
-      .select('*')
+      .select('*, client_id')
       .eq('email', userEmail)
       .single();
 
@@ -91,6 +92,30 @@ serve(async (req) => {
       return errorResponse('USER_NOT_FOUND', 'User not found in employees table', 404, [
         { field: 'email', reason: 'User does not exist in employees table' },
       ]);
+    }
+
+    // Validate IP whitelist (if client_id is available)
+    if (employee.client_id) {
+      const url = new URL(req.url);
+      const ipValidation = await validateIPWhitelist(
+        supabase,
+        req,
+        employee.client_id,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        logger.warn('IP not whitelisted', { 
+          requestId, 
+          clientId: employee.client_id, 
+          reason: ipValidation.reason 
+        });
+        return errorResponse(
+          'IP_NOT_WHITELISTED',
+          'Access denied. Your IP address is not whitelisted for this client.',
+          403
+        );
+      }
     }
 
     // Generate tokens

@@ -10,6 +10,7 @@ import { checkRateLimit, getClientIdentifier } from '../_shared/safe-school/rate
 import { logger } from '../_shared/safe-school/logging.ts';
 import { successResponse, errorResponse, rateLimitResponse } from '../_shared/safe-school/response.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 serve(async (req) => {
   const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
@@ -67,6 +68,33 @@ serve(async (req) => {
     if (!employee.status) {
       logger.warn('Employee is inactive', { requestId, userId: payload.sub });
       return errorResponse('USER_INACTIVE', 'User account is inactive', 401);
+    }
+
+    // Get client_id from token payload
+    const clientId = payload.client_id || payload.clientId || null;
+    
+    // Validate IP whitelist (if client_id is available)
+    if (clientId) {
+      const url = new URL(req.url);
+      const ipValidation = await validateIPWhitelist(
+        supabase,
+        req,
+        clientId,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        logger.warn('IP not whitelisted', { 
+          requestId, 
+          clientId, 
+          reason: ipValidation.reason 
+        });
+        return errorResponse(
+          'IP_NOT_WHITELISTED',
+          'Access denied. Your IP address is not whitelisted for this client.',
+          403
+        );
+      }
     }
 
     logger.info('Token verified successfully', { requestId, userId: payload.sub });
