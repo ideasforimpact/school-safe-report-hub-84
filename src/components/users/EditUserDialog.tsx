@@ -170,7 +170,11 @@ const EditUserDialog = ({
     }
     
     setIsUpdating(true);
-    
+      const moduleAccessPayload = selectedModules.map(module => ({
+        ...module,
+        module_id: module.module_id, 
+        enabled: module.enabled !== false
+      }));
     try {
       const updateData = {
         id: currentUser.id,
@@ -183,7 +187,7 @@ const EditUserDialog = ({
         employeeType: formData.employeeType,
         department: formData.department,
         joiningDate: formData.joiningDate, // Include joining date in update
-        moduleAccessPayload: selectedModules,
+        moduleAccessPayload: moduleAccessPayload,
         clientId: clientId // Ensure clientId is always included
       };
       
