@@ -252,7 +252,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
             <h4 className="font-medium mb-2">Document Information</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium">Document ID:</span> {document.id.slice(0, 8)}...
+                <span className="font-medium">Document ID:</span> {document.id.slice(0, 8)}
               </div>
               <div>
                 <span className="font-medium">Status:</span> {document.verificationStatus}
