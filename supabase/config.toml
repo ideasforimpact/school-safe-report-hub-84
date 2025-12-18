@@ -126,3 +126,12 @@ verify_jwt = false
 [functions.visitor-management]
 verify_jwt = false
 
+[functions.get-trusted-vehicles]
+verify_jwt = false
+
+[functions.get-visitor-vehicle-types]
+verify_jwt = false
+
+[functions.visitor-exit]
+verify_jwt = false
+
