@@ -229,10 +229,10 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
             placeholder="Describe what happened..."
             className="min-h-[120px] bg-white border-gray-300"
             required
-            maxLength={200}
+            maxLength={2000}
           />
           <p className="text-xs text-gray-500 text-right">
-            {formData.description.length}/200 characters
+            {formData.description.length}/2000 characters
           </p>
         </div>
 

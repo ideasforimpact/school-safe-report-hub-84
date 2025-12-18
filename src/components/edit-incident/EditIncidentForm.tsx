@@ -516,8 +516,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                 onChange={handleChange}
                 placeholder="Describe what happened..."
                 className="min-h-[120px] bg-white border-gray-300"
+                maxLength={2000}
                 required
               />
+              <p className="text-xs text-gray-500 text-right">
+                {formData.description.length}/2000 characters
+              </p>
             </div>
 
             {/* Assign To - Using the AssignmentSection component */}
