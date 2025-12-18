@@ -11,6 +11,7 @@ import {
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { initialDocumentTypes, initialDocumentStatuses } from './initialData';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -229,6 +230,21 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     fetchDocumentTypes();
     fetchDocumentStatuses();
   }, []);
+  const handleEmployeeDocumentsRealtime = useCallback(
+    (payload: any) => {
+      const employeeId = payload.new?.employee_id || payload.old?.employee_id;
+      if (!employeeId) return;
+      fetchEmployeeDocuments(employeeId);
+    },
+    [fetchEmployeeDocuments]
+  );
+  useRealTimeSubHook({
+  channelName: 'employee-documents-realtime',
+  table: 'employee_documents',
+  events: "*",
+  enabled: true,
+  onPayload:handleEmployeeDocumentsRealtime,
+});
 
   return (
     <EmployeeVerificationContext.Provider value={contextValue}>
