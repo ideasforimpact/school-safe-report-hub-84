@@ -125,7 +125,11 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
   let payload;
   try {
     payload = await verifyAccessToken(token);
+    console.log(payload,"PAYLOAD");
+    
   } catch (error) {
+    console.log(error,"error");
+    
     return {
       employeeId: '',
       clientId: '',
