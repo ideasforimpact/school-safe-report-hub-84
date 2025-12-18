@@ -10,6 +10,7 @@ import { FileItem } from '@/types/fileTypes';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import AssignmentSection from './sections/AssignmentSection';
 import DragDropFileUpload from '@/components/file/DragDropFileUpload';
+import { DESCRIPTION_MAX_LENGTH } from '../constants';
 
 interface IncidentDetailsFormProps {
   formData: any;
@@ -229,10 +230,10 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
             placeholder="Describe what happened..."
             className="min-h-[120px] bg-white border-gray-300"
             required
-            maxLength={2000}
+            maxLength={DESCRIPTION_MAX_LENGTH}
           />
           <p className="text-xs text-gray-500 text-right">
-            {formData.description.length}/2000 characters
+            {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
           </p>
         </div>
 

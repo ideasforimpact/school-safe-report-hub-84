@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Person } from '@/types/incident';
+import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
 
 // Define the structure with an index signature for string keys
 export interface FormErrors {
@@ -23,8 +24,8 @@ export function useIncidentFormValidation() {
       newErrors.description = 'Description is required';
     } else if (formData.description.trim().length < 10) {
       newErrors.description = 'Description must be at least 10 characters';
-    } else if (formData.description.trim().length > 2000) {
-      newErrors.description = 'Description must be maximum 2000 characters';
+    } else if (formData.description.trim().length > DESCRIPTION_MAX_LENGTH) {
+      newErrors.description = `Description must be maximum ${DESCRIPTION_MAX_LENGTH} characters`;
     }
     
     // Validate date
