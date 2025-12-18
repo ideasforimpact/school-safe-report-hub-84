@@ -21,6 +21,7 @@ import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection'
 import { Student } from '@/types/student';
 import { formatFileSize } from '@/utils/fileUtils';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
+import { DESCRIPTION_MAX_LENGTH } from '../constants';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -517,7 +518,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                 placeholder="Describe what happened..."
                 className="min-h-[120px] bg-white border-gray-300"
                 required
+                maxLength={DESCRIPTION_MAX_LENGTH}
               />
+               <p className="text-xs text-gray-500 text-right">
+                {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
+              </p>
             </div>
 
             {/* Assign To - Using the AssignmentSection component */}
