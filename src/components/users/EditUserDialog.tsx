@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage } from '@/constant/employeeConstant';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -100,10 +101,9 @@ const EditUserDialog = ({
     return emailRegex.test(email);
   };
 
-  // Employee ID validation function (alphanumeric, max 15 characters)
+  // Employee ID validation function - uses constants from employeeConstant.ts
   const isValidEmployeeId = (employeeId: string) => {
-    const employeeIdRegex = /^[a-zA-Z0-9]{1,15}$/;
-    return employeeIdRegex.test(employeeId);
+    return validateEmployeeId(employeeId);
   };
 
   // Name validation function (letters and spaces only, no special characters)
@@ -287,15 +287,19 @@ const EditUserDialog = ({
                   id="employeeId"
                   value={formData.employeeId || ''}
                   onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                  maxLength={15}
+                  maxLength={EMPLOYEE_ID_CONSTANTS.MAX_LENGTH}
+                  minLength={EMPLOYEE_ID_CONSTANTS.MIN_LENGTH}
                   required
                   className={formData.employeeId && !isValidEmployeeId(formData.employeeId) ? 'border-red-500' : ''}
                 />
-                {formData.employeeId && formData.employeeId.length > 15 && (
-                  <p className="text-xs text-red-500">Employee ID cannot exceed 15 characters</p>
+                {formData.employeeId && formData.employeeId.length > EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && (
+                  <p className="text-xs text-red-500">Employee ID cannot exceed {EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters</p>
+                )}
+                {formData.employeeId && formData.employeeId.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && (
+                  <p className="text-xs text-red-500">Employee ID must be at least {EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters</p>
                 )}
                 {formData.employeeId && !isValidEmployeeId(formData.employeeId) && (
-                  <p className="text-xs text-red-500">Employee ID must be alphanumeric and maximum 15 characters</p>
+                  <p className="text-xs text-red-500">{getEmployeeIdErrorMessage()}</p>
                 )}
               </div>
               <div className="space-y-2">
