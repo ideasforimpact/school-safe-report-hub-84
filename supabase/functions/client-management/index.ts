@@ -218,8 +218,9 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
     }
     
     // Update existing employee if email changed
+
     if (existingEmployee.email !== superAdminEmail) {
-      const employeeId = superAdminEmail.split('@')[0];
+          const employeeId = superAdminEmail.split('@')[0];
       const { data, error } = await supabase
         .from('employees')
         .update({
