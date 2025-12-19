@@ -117,6 +117,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       setVerificationData(data.data);
       setLastCheckTime(new Date());
       setShowVerificationResults(true);
+
+      const challan = data?.data?.challan;
+      if (challan?.status_code === 500 || challan?.success === false) {
+        toast.error('Challan details could not be fetched.Contact support');
+      }
       
       // Update the vehicle in context with verification data
       updateVehicle(vehicleId, {
