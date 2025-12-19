@@ -19,8 +19,6 @@ import { applyDefaultModules, DefaultModule } from "@/utils/moduleDefault";
 
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage } from '@/constant/employeeConstant';
 
-
-
 interface AddUserDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
