@@ -49,21 +49,18 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
     }
   };
 
-  const handleViewFile = async (file: { path?: string; url?: string; name: string }) => {
+  const handleViewFile = (file: { path?: string; url?: string; name: string }) => {
     try {
       let viewUrl: string | null = null;
 
-      // If we have a path, create a signed URL from Supabase storage
+      // If we have a path, construct the public URL from Supabase storage
       if (file.path) {
-        const { data, error } = await supabase.storage
-          .from('visitors_evidence')
-          .createSignedUrl(file.path, 300);
-
-        if (error || !data?.signedUrl) {
-          throw new Error('Failed to generate view URL');
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+          throw new Error('Supabase URL is not configured');
         }
-
-        viewUrl = data.signedUrl;
+        // Construct URL: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
+        viewUrl = `${supabaseUrl}/storage/v1/object/public/visitors_evidence/${file.path}`;
       } else if (file.url) {
         // Use the URL directly if available
         viewUrl = file.url;
@@ -82,17 +79,14 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
       let downloadUrl: string | null = null;
       const fileName = file.name || 'file';
 
-      // If we have a path, create a signed URL from Supabase storage
+      // If we have a path, construct the public URL from Supabase storage
       if (file.path) {
-        const { data, error } = await supabase.storage
-          .from('visitors_evidence')
-          .createSignedUrl(file.path, 300, { download: fileName });
-
-        if (error || !data?.signedUrl) {
-          throw new Error('Failed to generate download URL');
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (!supabaseUrl) {
+          throw new Error('Supabase URL is not configured');
         }
-
-        downloadUrl = data.signedUrl;
+        // Construct URL: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
+        downloadUrl = `${supabaseUrl}/storage/v1/object/public/visitors_evidence/${file.path}`;
       } else if (file.url) {
         // Use the URL directly if available
         downloadUrl = file.url;
@@ -100,13 +94,26 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
         throw new Error('No file path or URL available');
       }
 
+      // Fetch the file
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+
+      // Get the blob
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
       // Create a temporary anchor element and trigger download
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = blobUrl;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
 
       toast.success(`Downloading ${fileName}`);
     } catch (error: any) {
