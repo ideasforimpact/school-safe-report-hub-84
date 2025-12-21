@@ -49,6 +49,45 @@ function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
 }
 
+// Helper function to detect MIME type from filename extension
+function getMimeTypeFromFilename(filename: string): string {
+  const extension = filename.split('.').pop()?.toLowerCase() || '';
+  
+  const mimeTypes: Record<string, string> = {
+    // Images
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'bmp': 'image/bmp',
+    'ico': 'image/x-icon',
+    
+    // Documents
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    
+    // Text
+    'txt': 'text/plain',
+    'csv': 'text/csv',
+    'html': 'text/html',
+    'xml': 'text/xml',
+    
+    // Archives
+    'zip': 'application/zip',
+    'rar': 'application/x-rar-compressed',
+    '7z': 'application/x-7z-compressed',
+  };
+  
+  return mimeTypes[extension] || 'application/octet-stream';
+}
+
 // Helper function to upload files to storage
 // Returns only paths (not URLs) to avoid exposing storage URLs in database
 async function uploadFiles(
@@ -69,12 +108,18 @@ async function uploadFiles(
       const sanitized = sanitizeFilename(file.name);
       const filePath = `${baseFolder}/${timestamp}_${randomStr}_${sanitized}`;
 
+      // Detect correct content type from filename if file.type is missing or generic
+      let contentType = file.type;
+      if (!contentType || contentType === 'application/octet-stream' || contentType === '') {
+        contentType = getMimeTypeFromFilename(file.name);
+      }
+
       // Decode base64 and upload
       const fileData = decodeBase64(file.base64);
       const { error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
         .upload(filePath, fileData, {
-          contentType: file.type || 'application/octet-stream',
+          contentType: contentType,
           upsert: false
         });
 
@@ -83,11 +128,11 @@ async function uploadFiles(
         throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
       }
 
-      // Store only the path, not the URL
+      // Store only the path, not the URL, with correct content type
       uploadedFiles.push({
         name: file.name,
         path: filePath,
-        type: file.type || 'application/octet-stream'
+        type: contentType
       });
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
