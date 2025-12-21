@@ -293,10 +293,9 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return emailRegex.test(email);
   };
 
-  // Employee ID validation function (alphanumeric, max 15 characters)
+  // Employee ID validation function - uses constants from employeeConstant.ts
   const isValidEmployeeId = (employeeId: string) => {
-    const employeeIdRegex = /^[a-zA-Z0-9]{1,15}$/;
-    return employeeIdRegex.test(employeeId);
+    return validateEmployeeId(employeeId);
   };
 
   // Phone validation (E.164 basic or 10-15 digits allowing +, space, hyphen)
@@ -340,6 +339,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       (!formData.phone || isValidPhone(formData.phone)) &&
       (!formData.designation || isValidDesignation(formData.designation)) &&
       formData.employeeId &&
+      formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH &&
+      formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH &&
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation === 'available' &&
       !isLoading
@@ -473,7 +474,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                     id="employeeId"
                     value={formData.employeeId || ''}
                     onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                    maxLength={15}
+                    maxLength={EMPLOYEE_ID_CONSTANTS.MAX_LENGTH}
+                    minLength={EMPLOYEE_ID_CONSTANTS.MIN_LENGTH}
                     className={`pr-10 ${
                       employeeIdValidation === 'exists' ? 'border-red-500 focus:border-red-500' :
                       employeeIdValidation === 'available' ? 'border-green-500 focus:border-green-500' : ''
@@ -492,8 +494,14 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                     {getEmployeeIdValidationMessage()}
                   </p>
                 )}
-                {formData.employeeId && !isValidEmployeeId(formData.employeeId) && (
-                  <p className="text-xs text-red-500">Employee ID must be alphanumeric and maximum 15 characters</p>
+                {formData.employeeId && formData.employeeId.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && (
+                  <p className="text-xs text-red-500">Employee ID must be at least {EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters</p>
+                )}
+                {formData.employeeId && formData.employeeId.length > EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && (
+                  <p className="text-xs text-red-500">Employee ID cannot exceed {EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters</p>
+                )}
+                {formData.employeeId && formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && !isValidEmployeeId(formData.employeeId) && (
+                  <p className="text-xs text-red-500">{getEmployeeIdErrorMessage()}</p>
                 )}
               </div>
               <div className="space-y-2">
