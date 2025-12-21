@@ -73,9 +73,10 @@ const VisitorsPage = () => {
     return map;
   }, [visitorVehicleTypes]);
 
-  // Ordered list for dropdown: Two Wheeler, Four Wheeler, Walk In, then any others
+  // Ordered list for dropdown: Filter out Two Wheeler and Four Wheeler, only show Walk In and others
   const orderedVisitorVehicleTypes = useMemo(() => {
-    const order = ['two_wheeler', 'four_wheeler', 'walk_in'];
+    const order = ['walk_in'];
+    const excludeKeys = ['two_wheeler', 'four_wheeler']; // Exclude these from dropdown
     const byKey: Record<string, typeof visitorVehicleTypes[number]> = {};
     visitorVehicleTypes.forEach((t) => {
       byKey[t.key] = t;
@@ -83,6 +84,7 @@ const VisitorsPage = () => {
 
     const result: typeof visitorVehicleTypes = [];
 
+    // Add Walk In first if it exists
     order.forEach((key) => {
       const item = byKey[key];
       if (item) {
@@ -90,9 +92,9 @@ const VisitorsPage = () => {
       }
     });
 
-    // Append any remaining types not in the predefined order
+    // Append any remaining types not in the predefined order and not excluded
     visitorVehicleTypes.forEach((t) => {
-      if (!order.includes(t.key)) {
+      if (!order.includes(t.key) && !excludeKeys.includes(t.key)) {
         result.push(t);
       }
     });
@@ -466,15 +468,16 @@ const VisitorsPage = () => {
 
         // Check if visitor's vehicle number matches any valid trusted vehicle
         const matchesTrustedVehicle = trustedVehicles.some((trustedVehicle) => {
-          // Case-insensitive comparison of vehicle numbers
-          const visitorVehicleNo = visitor.vehicle_no?.trim().toUpperCase();
-          const trustedVehicleNo = trustedVehicle.vehicle_no?.trim().toUpperCase();
+          // Case-insensitive comparison of vehicle numbers (normalize spaces and special characters)
+          const visitorVehicleNo = visitor.vehicle_no?.trim().replace(/\s+/g, '').toUpperCase();
+          const trustedVehicleNo = trustedVehicle.vehicle_no?.trim().replace(/\s+/g, '').toUpperCase();
           
-          if (visitorVehicleNo !== trustedVehicleNo) {
+          // Must match vehicle number exactly (after normalization)
+          if (!visitorVehicleNo || !trustedVehicleNo || visitorVehicleNo !== trustedVehicleNo) {
             return false;
           }
 
-          // Check if the trusted vehicle is currently valid
+          // Check if the trusted vehicle is currently valid (within validity period)
           return isTrustedVehicleValid(trustedVehicle.validity_from, trustedVehicle.validity_to);
         });
 
@@ -704,7 +707,7 @@ const VisitorsPage = () => {
                       {type.name}
                     </SelectItem>
                   ))}
-                  {/* Special filter for trusted vehicles - appears last */}
+                  {/* Special filter for trusted vehicles - commented out */}
                   {/* <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem> */}
                 </SelectContent>
               </Select>
