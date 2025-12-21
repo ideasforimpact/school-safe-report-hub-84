@@ -18,6 +18,7 @@ import VisitorDetailDialog from '@/components/visitor/VisitorDetailDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
+import { VISITOR_LIST_CONSTANTS, truncateVisitorName } from '@/constant/visitorConstant';
 
 const VisitorsPage = () => {
   const { employeeData } = useAuth();
@@ -444,8 +445,8 @@ const VisitorsPage = () => {
   }, []);
 
   // Filter visitors based on search, vehicle type, status filter, and date range
-  const filteredVisitors = useMemo(() => {
-    return visitors.filter((visitor) => {
+  const { filteredVisitors, totalFilteredCount } = useMemo(() => {
+    const filtered = visitors.filter((visitor) => {
       // Search filter - by name or vehicle number
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
@@ -507,6 +508,15 @@ const VisitorsPage = () => {
 
       return true;
     });
+
+    const totalCount = filtered.length;
+    // Limit to maximum display count
+    const displayed = filtered.slice(0, VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT);
+
+    return {
+      filteredVisitors: displayed,
+      totalFilteredCount: totalCount
+    };
   }, [visitors, searchTerm, vehicleTypeFilter, dateRange, trustedVehicles, isTrustedVehicleValid]);
 
   const handleClearFilters = () => {
@@ -722,7 +732,10 @@ const VisitorsPage = () => {
             
             <div className="flex justify-between items-center text-sm text-muted-foreground">
               <span>
-                Showing {filteredVisitors.length} of {visitors.length} visitors
+                Showing {filteredVisitors.length} of {totalFilteredCount} visitors
+                {totalFilteredCount > VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT && (
+                  <span className="text-gray-500"> (limited to {VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT})</span>
+                )}
               </span>
               {hasActiveFilters && (
                 <span className="text-primary">Filters applied</span>
@@ -786,7 +799,9 @@ const VisitorsPage = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{visitor.name}</TableCell>
+                      <TableCell className="font-medium" title={visitor.name}>
+                        {truncateVisitorName(visitor.name)}
+                      </TableCell>
                       <TableCell>{visitor.vehicle_no || '-'}</TableCell>
                       <TableCell>
                         {visitor.is_exit ? (
