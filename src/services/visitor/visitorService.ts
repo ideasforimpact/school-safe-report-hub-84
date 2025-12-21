@@ -1,5 +1,40 @@
 import { supabase } from '@/integrations/supabase/client';
 
+// Helper function to transform stored paths to full URLs when fetching
+// This ensures URLs are generated based on the current Supabase URL
+function transformEvidenceFiles(
+  evidenceFiles: any[],
+  supabaseUrl: string
+): Array<{ name: string; path: string; url: string; type: string }> {
+  if (!Array.isArray(evidenceFiles)) {
+    return [];
+  }
+
+  const BUCKET_NAME = 'visitors_evidence';
+
+  return evidenceFiles.map((file: any) => {
+    // If file already has a URL, check if it's a valid path-based structure
+    // Otherwise, construct URL from path
+    let url = file.url;
+    
+    if (file.path && !url) {
+      // Construct public URL from path
+      // Format: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
+      url = `${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/${file.path}`;
+    } else if (file.path && url && url.includes('/sign/')) {
+      // If URL contains /sign/, it's likely from old format, reconstruct from path
+      url = `${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/${file.path}`;
+    }
+
+    return {
+      name: file.name || 'Unknown',
+      path: file.path || '',
+      url: url || '',
+      type: file.type || 'application/octet-stream'
+    };
+  });
+}
+
 export interface VisitorKYC {
   id: string;
   client_id: string;
@@ -93,11 +128,20 @@ export const visitorService = {
         throw new Error(`Failed to fetch visitors: ${error.message}`);
       }
 
-      // Transform the data to ensure visitor_kyc is always an array
+      // Get Supabase URL for transforming paths to URLs
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('VITE_SUPABASE_URL is not set');
+      }
+
+      // Transform the data to ensure visitor_kyc is always an array and transform evidence files
       const visitors: Visitor[] = (data || []).map((visitor: any) => ({
         ...visitor,
         visitor_kyc: Array.isArray(visitor.visitor_kyc) ? visitor.visitor_kyc : [],
-        evidence_files: Array.isArray(visitor.evidence_files) ? visitor.evidence_files : []
+        evidence_files: transformEvidenceFiles(
+          Array.isArray(visitor.evidence_files) ? visitor.evidence_files : [],
+          supabaseUrl
+        )
       }));
 
       return visitors;
@@ -160,11 +204,20 @@ export const visitorService = {
         throw new Error('Visitor not found');
       }
 
-      // Ensure visitor_kyc is always an array
+      // Get Supabase URL for transforming paths to URLs
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('VITE_SUPABASE_URL is not set');
+      }
+
+      // Ensure visitor_kyc is always an array and transform evidence files
       return {
         ...data,
         visitor_kyc: Array.isArray(data.visitor_kyc) ? data.visitor_kyc : [],
-        evidence_files: Array.isArray(data.evidence_files) ? data.evidence_files : []
+        evidence_files: transformEvidenceFiles(
+          Array.isArray(data.evidence_files) ? data.evidence_files : [],
+          supabaseUrl
+        )
       } as Visitor;
     } catch (error) {
       console.error('Error in getVisitorById:', error);
