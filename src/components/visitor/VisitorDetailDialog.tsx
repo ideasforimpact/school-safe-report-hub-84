@@ -52,15 +52,20 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
   const handleViewFile = (file: { path?: string; url?: string; name: string }) => {
     try {
       let viewUrl: string | null = null;
-
+      console.log(file,"file");
+      
       // If we have a path, construct the public URL from Supabase storage
       if (file.path) {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        console.log(supabaseUrl,"supabaseUrl");
+        
         if (!supabaseUrl) {
           throw new Error('Supabase URL is not configured');
         }
         // Construct URL: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
         viewUrl = `${supabaseUrl}/storage/v1/object/public/visitors_evidence/${file.path}`;
+        console.log(viewUrl,"viewUrl");
+        
       } else if (file.url) {
         // Use the URL directly if available
         viewUrl = file.url;
