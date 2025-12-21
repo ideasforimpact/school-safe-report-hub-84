@@ -568,8 +568,10 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   console.log("Employee updated successfully:", updatedEmployee);
 
   // Handle module access update if provided
-  if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
+  if (employee.moduleAccessPayload !== undefined) {
     await handleEmployeeModuleAccess(supabaseClient, employee.id, employee.moduleAccessPayload);
+  } else {
+    console.log("No moduleAccessPayload provided, skipping module update");
   }
 
   return new Response(
@@ -580,7 +582,6 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     }
   );
 }
-
 async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: string, moduleAccessPayload: any[]) {
   try {
     // First, delete all existing module access for this employee
@@ -597,38 +598,50 @@ async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: strin
 
     console.log("Successfully deleted all module access for employee:", employeeId);
 
-    // Prepare module entries for insertion
-    const moduleEntries = moduleAccessPayload.map(moduleAccess => {
-      // Extract is_admin from the access_level or level property
-      let isAdmin = false;
-      
-      if (moduleAccess.level && typeof moduleAccess.level === 'object') {
-        isAdmin = moduleAccess.level.is_admin === true;
-      } else if (moduleAccess.access_level && typeof moduleAccess.access_level === 'object') {
-        isAdmin = moduleAccess.access_level.is_admin === true;
-      }
+    if (moduleAccessPayload && moduleAccessPayload.length > 0) {
+      const moduleEntries = moduleAccessPayload
+        .filter(moduleAccess => moduleAccess.enabled === true) // Only include enabled modules
+        .map(moduleAccess => {
+          let isAdmin = false;
 
-      return {
-        employee_id: employeeId,
-        module_id: moduleAccess.module_id,
-        level: { is_admin: isAdmin }
-      };
-    });
+          if (moduleAccess.level?.is_admin === true) {
+            isAdmin = true;
+          }
+          
+          const moduleId = moduleAccess.module_id;
+
+          if (!moduleId) {
+            console.error("Module entry missing module_id:", moduleAccess);
+            return null;
+          }
+
+          return {
+            employee_id: employeeId,
+            module_id: moduleId,
+            level: { is_admin: isAdmin }
+          };
+        })
+        .filter(entry => entry !== null); 
 
     console.log("Adding module entries:", moduleEntries);
 
-    // Insert new module access entries
-    const { error: insertError } = await supabaseClient
-      .from('employee_modules')
-      .insert(moduleEntries);
+      if (moduleEntries.length > 0) {
+        const { error: insertError } = await supabaseClient
+          .from('employee_modules')
+          .insert(moduleEntries);
 
-    if (insertError) {
-      console.error("Error inserting module entries:", insertError);
-      console.error("Error adding employee module access:", insertError);
-      return;
+        if (insertError) {
+          console.error("Error inserting module entries:", insertError);
+          return;
+        }
+
+        console.log("Successfully added module access for employee:", employeeId);
+      } else {
+        console.log("No enabled modules to add for employee:", employeeId);
+      }
+    } else {
+      console.log("No module access payload or empty array provided for employee:", employeeId);
     }
-
-    console.log("Successfully added module access for employee:", employeeId);
   } catch (error) {
     console.error("Error updating module access:", error);
   }

@@ -9,6 +9,7 @@ import { visitorService, Visitor, VisitorKYC } from '@/services/visitor/visitorS
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatSupabaseUrl } from '@/types/fileTypes';
 
 interface VisitorDetailDialogProps {
   open: boolean;
@@ -49,29 +50,19 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
     }
   };
 
-  const handleViewFile = async (file: { path?: string; url?: string; name: string }) => {
+  const handleViewFile = (file: { path?: string; url?: string; name: string }) => {
     try {
-      let viewUrl: string | null = null;
-
-      // If we have a path, create a signed URL from Supabase storage
-      if (file.path) {
-        const { data, error } = await supabase.storage
-          .from('visitors_evidence')
-          .createSignedUrl(file.path, 300);
-
-        if (error || !data?.signedUrl) {
-          throw new Error('Failed to generate view URL');
-        }
-
-        viewUrl = data.signedUrl;
-      } else if (file.url) {
-        // Use the URL directly if available
-        viewUrl = file.url;
+      const url = file.url;
+      if (url) {
+        // Use file.url directly and format it (same as VehicleTabs)
+        const formattedUrl = formatSupabaseUrl(url);
+        console.log(formattedUrl,"formattedUrl");
+        
+        // Open in new tab - browser will display if URL is correct
+        window.open(formattedUrl, '_blank', 'noopener,noreferrer');
       } else {
-        throw new Error('No file path or URL available');
+        throw new Error('No file URL available');
       }
-
-      window.open(viewUrl, '_blank', 'noopener,noreferrer');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to open file');
     }
@@ -79,35 +70,55 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
 
   const handleDownloadFile = async (file: { path?: string; url?: string; name: string }) => {
     try {
-      let downloadUrl: string | null = null;
-      const fileName = file.name || 'file';
-
-      // If we have a path, create a signed URL from Supabase storage
+      let downloadUrl: string;
+      const fileName = getOriginalFileName(file.name || 'file');
+      
+      // If we have a file path, use Supabase storage API to create a signed URL
       if (file.path) {
         const { data, error } = await supabase.storage
           .from('visitors_evidence')
           .createSignedUrl(file.path, 300, { download: fileName });
-
+        
         if (error || !data?.signedUrl) {
-          throw new Error('Failed to generate download URL');
+          // Fallback to direct URL if signed URL fails
+          downloadUrl = file.url ? formatSupabaseUrl(file.url) : '';
+          if (!downloadUrl) {
+            throw new Error('Failed to generate download URL');
+          }
+        } else {
+          downloadUrl = data.signedUrl;
         }
-
-        downloadUrl = data.signedUrl;
-      } else if (file.url) {
-        // Use the URL directly if available
-        downloadUrl = file.url;
       } else {
-        throw new Error('No file path or URL available');
+        // Use the formatted URL directly
+        if (!file.url) {
+          throw new Error('No file URL available');
+        }
+        downloadUrl = formatSupabaseUrl(file.url);
       }
-
+      
+      // Fetch the file
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+      
+      // Get the blob
+      const blob = await response.blob();
+      
+      // Create a temporary URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      
       // Create a temporary anchor element and trigger download
       const link = document.createElement('a');
-      link.href = downloadUrl;
+      link.href = blobUrl;
       link.download = fileName;
       document.body.appendChild(link);
       link.click();
+      
+      // Clean up
       document.body.removeChild(link);
-
+      window.URL.revokeObjectURL(blobUrl);
+      
       toast.success(`Downloading ${fileName}`);
     } catch (error: any) {
       toast.error(error?.message || 'Failed to download file');
@@ -120,6 +131,27 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
     } catch (error) {
       return dateString;
     }
+  };
+
+  // Extract original filename from name field (remove timestamp and random string prefix if present)
+  // Format: {timestamp}_{random}_{originalName} or just {originalName}
+  const getOriginalFileName = (fileName: string): string => {
+    if (!fileName) return '';
+    
+    // Check if filename starts with timestamp pattern (13 digits followed by underscore)
+    const timestampPattern = /^\d{13}_[a-z0-9]+_/;
+    if (timestampPattern.test(fileName)) {
+      // Remove timestamp and random string prefix
+      // Find the last underscore before the actual filename
+      const parts = fileName.split('_');
+      // Skip first two parts (timestamp and random string), join the rest
+      if (parts.length > 2) {
+        return parts.slice(2).join('_');
+      }
+    }
+    
+    // If no timestamp pattern, return as is (already original name)
+    return fileName;
   };
 
   if (!visitor && !loading) {
@@ -206,11 +238,13 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {visitor.evidence_files.map((file, index) => (
+                          {visitor.evidence_files.map((file, index) => {
+                            const originalFileName = getOriginalFileName(file.name);
+                            return (
                             <TableRow key={index}>
                               <TableCell className="font-medium flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-gray-400" />
-                                {file.name}
+                                {originalFileName}
                               </TableCell>
                               <TableCell>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded">
@@ -240,7 +274,8 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
                                 </div>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     ) : (

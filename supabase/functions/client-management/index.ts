@@ -218,8 +218,26 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
       return null;
     }
     
-    // Update existing employee if email changed
+    // Check if super admin email has changed ->
+    // If email changed, we need to set user_id to null before updating
+
+
+    
     if (existingEmployee.email !== superAdminEmail) {
+            // First, set user_id to null when email changes
+      const { error: nullifyError } = await supabase
+        .from('employees')
+        .update({ user_id: null })
+        .eq('id', existingEmployee.id);
+
+      if (nullifyError) {
+        console.error('Error setting user_id to null:', nullifyError);
+        // Continue with update even if nullify fails, but log the error
+      } else {
+        console.log('Successfully set user_id to null for employee:', existingEmployee.id);
+      }
+
+      // Then update the email and other fields
       const employeeId = superAdminEmail.split('@')[0];
       const { data, error } = await supabase
         .from('employees')

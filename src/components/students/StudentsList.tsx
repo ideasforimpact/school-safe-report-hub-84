@@ -111,8 +111,8 @@ const StudentsList = ({
           <TableRow key={student.id}>
             <TableCell>{student.studentId}</TableCell>
             <TableCell>{student.name}</TableCell>
-            <TableCell>{student.grade}</TableCell>
-            <TableCell>{student.section}</TableCell>
+            <TableCell>{student.grade_name || student.grade || '-'}</TableCell>
+            <TableCell>{student.section_name || student.section || '-'}</TableCell>
             <TableCell>{student.campus}</TableCell>
             <TableCell>{formatDistanceToNow(new Date(student.createdAt), { addSuffix: true })}</TableCell>
             <TableCell>

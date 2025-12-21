@@ -28,6 +28,7 @@ const HeaderLogo = ({ userClient, isSaasOwner, dashboardPath }: HeaderLogoProps)
       <Link to={dashboardPath} className="flex items-center space-x-3">
         {logoUrl ? (
           <img 
+            key={userClient?.logo} // Force re-render when logo path changes
             src={logoUrl} 
             alt={`${userClient?.name || 'Client'} logo`}
             className="h-12 w-auto object-contain"

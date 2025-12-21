@@ -18,6 +18,7 @@ import VisitorDetailDialog from '@/components/visitor/VisitorDetailDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
+import { VISITOR_LIST_CONSTANTS, truncateVisitorName } from '@/constant/visitorConstant';
 
 const VisitorsPage = () => {
   const { employeeData } = useAuth();
@@ -72,9 +73,10 @@ const VisitorsPage = () => {
     return map;
   }, [visitorVehicleTypes]);
 
-  // Ordered list for dropdown: Two Wheeler, Four Wheeler, Walk In, then any others
+  // Ordered list for dropdown: Filter out Two Wheeler and Four Wheeler, only show Walk In and others
   const orderedVisitorVehicleTypes = useMemo(() => {
-    const order = ['two_wheeler', 'four_wheeler', 'walk_in'];
+    const order = ['walk_in'];
+    const excludeKeys = ['two_wheeler', 'four_wheeler']; // Exclude these from dropdown
     const byKey: Record<string, typeof visitorVehicleTypes[number]> = {};
     visitorVehicleTypes.forEach((t) => {
       byKey[t.key] = t;
@@ -82,6 +84,7 @@ const VisitorsPage = () => {
 
     const result: typeof visitorVehicleTypes = [];
 
+    // Add Walk In first if it exists
     order.forEach((key) => {
       const item = byKey[key];
       if (item) {
@@ -89,9 +92,9 @@ const VisitorsPage = () => {
       }
     });
 
-    // Append any remaining types not in the predefined order
+    // Append any remaining types not in the predefined order and not excluded
     visitorVehicleTypes.forEach((t) => {
-      if (!order.includes(t.key)) {
+      if (!order.includes(t.key) && !excludeKeys.includes(t.key)) {
         result.push(t);
       }
     });
@@ -444,8 +447,8 @@ const VisitorsPage = () => {
   }, []);
 
   // Filter visitors based on search, vehicle type, status filter, and date range
-  const filteredVisitors = useMemo(() => {
-    return visitors.filter((visitor) => {
+  const { filteredVisitors, totalFilteredCount } = useMemo(() => {
+    const filtered = visitors.filter((visitor) => {
       // Search filter - by name or vehicle number
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
@@ -465,15 +468,16 @@ const VisitorsPage = () => {
 
         // Check if visitor's vehicle number matches any valid trusted vehicle
         const matchesTrustedVehicle = trustedVehicles.some((trustedVehicle) => {
-          // Case-insensitive comparison of vehicle numbers
-          const visitorVehicleNo = visitor.vehicle_no?.trim().toUpperCase();
-          const trustedVehicleNo = trustedVehicle.vehicle_no?.trim().toUpperCase();
+          // Case-insensitive comparison of vehicle numbers (normalize spaces and special characters)
+          const visitorVehicleNo = visitor.vehicle_no?.trim().replace(/\s+/g, '').toUpperCase();
+          const trustedVehicleNo = trustedVehicle.vehicle_no?.trim().replace(/\s+/g, '').toUpperCase();
           
-          if (visitorVehicleNo !== trustedVehicleNo) {
+          // Must match vehicle number exactly (after normalization)
+          if (!visitorVehicleNo || !trustedVehicleNo || visitorVehicleNo !== trustedVehicleNo) {
             return false;
           }
 
-          // Check if the trusted vehicle is currently valid
+          // Check if the trusted vehicle is currently valid (within validity period)
           return isTrustedVehicleValid(trustedVehicle.validity_from, trustedVehicle.validity_to);
         });
 
@@ -507,6 +511,15 @@ const VisitorsPage = () => {
 
       return true;
     });
+
+    const totalCount = filtered.length;
+    // Limit to maximum display count
+    const displayed = filtered.slice(0, VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT);
+
+    return {
+      filteredVisitors: displayed,
+      totalFilteredCount: totalCount
+    };
   }, [visitors, searchTerm, vehicleTypeFilter, dateRange, trustedVehicles, isTrustedVehicleValid]);
 
   const handleClearFilters = () => {
@@ -694,7 +707,7 @@ const VisitorsPage = () => {
                       {type.name}
                     </SelectItem>
                   ))}
-                  {/* Special filter for trusted vehicles - appears last */}
+                  {/* Special filter for trusted vehicles - commented out */}
                   {/* <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem> */}
                 </SelectContent>
               </Select>
@@ -722,7 +735,10 @@ const VisitorsPage = () => {
             
             <div className="flex justify-between items-center text-sm text-muted-foreground">
               <span>
-                Showing {filteredVisitors.length} of {visitors.length} visitors
+                Showing {filteredVisitors.length} of {totalFilteredCount} visitors
+                {totalFilteredCount > VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT && (
+                  <span className="text-gray-500"> (limited to {VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT})</span>
+                )}
               </span>
               {hasActiveFilters && (
                 <span className="text-primary">Filters applied</span>
@@ -786,7 +802,9 @@ const VisitorsPage = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{visitor.name}</TableCell>
+                      <TableCell className="font-medium" title={visitor.name}>
+                        {truncateVisitorName(visitor.name)}
+                      </TableCell>
                       <TableCell>{visitor.vehicle_no || '-'}</TableCell>
                       <TableCell>
                         {visitor.is_exit ? (

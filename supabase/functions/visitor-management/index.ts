@@ -50,15 +50,57 @@ function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
 }
 
+// Helper function to detect MIME type from filename extension
+function getMimeTypeFromFilename(filename: string): string {
+  const extension = filename.split('.').pop()?.toLowerCase() || '';
+  
+  const mimeTypes: Record<string, string> = {
+    // Images
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'bmp': 'image/bmp',
+    'ico': 'image/x-icon',
+    
+    // Documents
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    
+    // Text
+    'txt': 'text/plain',
+    'csv': 'text/csv',
+    'html': 'text/html',
+    'xml': 'text/xml',
+    
+    // Archives
+    'zip': 'application/zip',
+    'rar': 'application/x-rar-compressed',
+    '7z': 'application/x-7z-compressed',
+  };
+  
+  return mimeTypes[extension] || 'application/octet-stream';
+}
+
 // Helper function to upload files to storage
+// Returns only paths (not URLs) to avoid exposing storage URLs in database
 async function uploadFiles(
   supabase: any,
   files: Array<{ name: string; type: string; base64: string }>,
   clientId: string,
-  employeeId: string
-): Promise<Array<{ name: string; path: string; url: string; type: string }>> {
-  const uploadedFiles = [];
-  const baseFolder = `${clientId}/${employeeId}`;
+  employeeId: string,
+  visitorId: string
+): Promise<Array<{ name: string; path: string; type: string }>> {
+  const uploadedFiles: Array<{ name: string; path: string; type: string }> = [];
+  // Store files in structure: {client_id}/{employee_id}/{visitor_id}/filename
+  const baseFolder = `${clientId}/${employeeId}/${visitorId}`;
 
   for (const file of files) {
     try {
@@ -67,12 +109,18 @@ async function uploadFiles(
       const sanitized = sanitizeFilename(file.name);
       const filePath = `${baseFolder}/${timestamp}_${randomStr}_${sanitized}`;
 
+      // Detect correct content type from filename if file.type is missing or generic
+      let contentType = file.type;
+      if (!contentType || contentType === 'application/octet-stream' || contentType === '') {
+        contentType = getMimeTypeFromFilename(file.name);
+      }
+
       // Decode base64 and upload
       const fileData = decodeBase64(file.base64);
       const { error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
         .upload(filePath, fileData, {
-          contentType: file.type || 'application/octet-stream',
+          contentType: contentType,
           upsert: false
         });
 
@@ -81,16 +129,11 @@ async function uploadFiles(
         throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(BUCKET_NAME)
-        .getPublicUrl(filePath);
-
+      // Store only the path, not the URL, with correct content type
       uploadedFiles.push({
         name: file.name,
         path: filePath,
-        url: publicUrl,
-        type: file.type || 'application/octet-stream'
+        type: contentType
       });
     } catch (error) {
       console.error(`Error processing file ${file.name}:`, error);
@@ -99,6 +142,39 @@ async function uploadFiles(
   }
 
   return uploadedFiles;
+}
+
+// Helper function to transform stored paths to full URLs when fetching
+// This ensures URLs are generated based on the current environment
+function transformEvidenceFiles(
+  evidenceFiles: any[],
+  supabaseUrl: string
+): Array<{ name: string; path: string; url: string; type: string }> {
+  if (!Array.isArray(evidenceFiles)) {
+    return [];
+  }
+
+  return evidenceFiles.map((file: any) => {
+    // If file already has a URL, check if it's a valid path-based structure
+    // Otherwise, construct URL from path
+    let url = file.url;
+    
+    if (file.path && !url) {
+      // Construct public URL from path
+      // Format: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
+      url = `${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/${file.path}`;
+    } else if (file.path && url && url.includes('/sign/')) {
+      // If URL contains /sign/, it's likely from old format, reconstruct from path
+      url = `${supabaseUrl}/storage/v1/object/public/${BUCKET_NAME}/${file.path}`;
+    }
+
+    return {
+      name: file.name || 'Unknown',
+      path: file.path || '',
+      url: url || '',
+      type: file.type || 'application/octet-stream'
+    };
+  });
 }
 
 // Helper function to extract and verify token, then get employee and client info
@@ -126,7 +202,11 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
   let payload;
   try {
     payload = await verifyAccessToken(token);
+    console.log(payload,"PAYLOAD");
+    
   } catch (error) {
+    console.log(error,"error");
+    
     return {
       employeeId: '',
       clientId: '',
@@ -240,6 +320,8 @@ serve(async (req) => {
     if (method === 'GET') {
       const visitorId = url.searchParams.get('id');
 
+      const supabaseUrl = getSupabaseUrl();
+
       if (visitorId) {
         // Get single visitor - must belong to authenticated user's client and employee
         const { data, error } = await supabase
@@ -257,8 +339,14 @@ serve(async (req) => {
           );
         }
 
+        // Transform evidence files paths to URLs
+        const transformedData = transformVisitorRow(data);
+        if (transformedData.evidence_files) {
+          transformedData.evidence_files = transformEvidenceFiles(transformedData.evidence_files, supabaseUrl);
+        }
+
         return new Response(
-          JSON.stringify({ data: transformVisitorRow(data) }),
+          JSON.stringify({ data: transformedData }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } else {
@@ -277,7 +365,16 @@ serve(async (req) => {
           );
         }
 
-        const transformed = Array.isArray(data) ? data.map(transformVisitorRow) : data;
+        // Transform evidence files paths to URLs for each visitor
+        const transformed = Array.isArray(data) 
+          ? data.map((visitor: any) => {
+              const transformedVisitor = transformVisitorRow(visitor);
+              if (transformedVisitor.evidence_files) {
+                transformedVisitor.evidence_files = transformEvidenceFiles(transformedVisitor.evidence_files, supabaseUrl);
+              }
+              return transformedVisitor;
+            })
+          : data;
 
         return new Response(
           JSON.stringify({ data: transformed }),
@@ -349,20 +446,7 @@ serve(async (req) => {
         }
       }
 
-      // Upload files if provided
-      let evidenceFiles: any[] = [];
-      if (files && Array.isArray(files) && files.length > 0) {
-        try {
-          evidenceFiles = await uploadFiles(supabase, files, clientId, effectiveEmployeeId);
-        } catch (error) {
-          return new Response(
-            JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-
-      // Create visitor record
+      // Create visitor record first (without files) to get visitor_id
       const visitorData: any = {
         name,
         mobile_no,
@@ -370,7 +454,7 @@ serve(async (req) => {
         whom_to_meet,
         client_id: clientId,
         employee_id: effectiveEmployeeId,
-        evidence_files: evidenceFiles
+        evidence_files: []
       };
 
       // Add vehicle fields if provided
@@ -388,6 +472,32 @@ serve(async (req) => {
           JSON.stringify({ error: visitorError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      // Upload files if provided (now we have visitor_id)
+      let evidenceFiles: any[] = [];
+      if (files && Array.isArray(files) && files.length > 0) {
+        try {
+          evidenceFiles = await uploadFiles(supabase, files, clientId, effectiveEmployeeId, visitor.id);
+          
+          // Update visitor with evidence files (paths only, not URLs)
+          const { error: updateError } = await supabase
+            .from('visitors')
+            .update({ evidence_files: evidenceFiles })
+            .eq('id', visitor.id);
+
+          if (updateError) {
+            console.error('Error updating visitor with evidence files:', updateError);
+            // Continue anyway - files are uploaded but visitor record update failed
+          }
+        } catch (error) {
+          // If file upload fails, delete the visitor record
+          await supabase.from('visitors').delete().eq('id', visitor.id);
+          return new Response(
+            JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Create KYC details if provided
@@ -417,8 +527,16 @@ serve(async (req) => {
         .eq('id', visitor.id)
         .single();
 
+      const supabaseUrl = getSupabaseUrl();
+      const transformedData = transformVisitorRow(completeVisitor || visitor);
+      
+      // Transform evidence files paths to URLs
+      if (transformedData.evidence_files) {
+        transformedData.evidence_files = transformEvidenceFiles(transformedData.evidence_files, supabaseUrl);
+      }
+
       return new Response(
-        JSON.stringify({ data: transformVisitorRow(completeVisitor || visitor) }),
+        JSON.stringify({ data: transformedData }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -500,11 +618,11 @@ serve(async (req) => {
         }
       }
 
-      // Upload new files if provided
+      // Upload new files if provided (use visitor id for path structure)
       let newFiles: any[] = [];
       if (files && Array.isArray(files) && files.length > 0) {
         try {
-          newFiles = await uploadFiles(supabase, files, clientId, effectiveEmployeeId);
+          newFiles = await uploadFiles(supabase, files, clientId, effectiveEmployeeId, id);
         } catch (error) {
           return new Response(
             JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
@@ -577,8 +695,16 @@ serve(async (req) => {
         .eq('id', id)
         .single();
 
+      const supabaseUrl = getSupabaseUrl();
+      const transformedData = transformVisitorRow(completeVisitor || updatedVisitor);
+      
+      // Transform evidence files paths to URLs
+      if (transformedData.evidence_files) {
+        transformedData.evidence_files = transformEvidenceFiles(transformedData.evidence_files, supabaseUrl);
+      }
+
       return new Response(
-        JSON.stringify({ data: transformVisitorRow(completeVisitor || updatedVisitor) }),
+        JSON.stringify({ data: transformedData }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
