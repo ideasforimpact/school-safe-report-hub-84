@@ -219,6 +219,9 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
     
     // Check if super admin email has changed ->
     // If email changed, we need to set user_id to null before updating
+
+
+    
     if (existingEmployee.email !== superAdminEmail) {
             // First, set user_id to null when email changes
       const { error: nullifyError } = await supabase
