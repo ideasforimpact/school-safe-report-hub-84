@@ -61,34 +61,63 @@ const CRON_TRIGGERED_FUNCTIONS = [
  * @returns The client IP address as a string
  */
 export function getClientIP(req: Request): string {
-
-  
+  // Extract all IP-related headers for logging
   const netlifyIp = req.headers.get('x-nf-client-connection-ip');
-  if (netlifyIp) {
-    return netlifyIp;
-  }
-  // Cloudflare header (most reliable, can't be easily spoofed)
   const cfConnectingIp = req.headers.get('cf-connecting-ip');
-  if (cfConnectingIp) {
-    return cfConnectingIp.trim();
-  }
-  
-  // Real IP from proxy (Nginx, etc.)
   const realIp = req.headers.get('x-real-ip');
-  if (realIp) {
-    return realIp.trim();
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  
+  // Log all IP headers for debugging
+  logger.debug('IP Headers extracted from request', {
+    'x-nf-client-connection-ip': netlifyIp || 'not present',
+    'cf-connecting-ip': cfConnectingIp || 'not present',
+    'x-real-ip': realIp || 'not present',
+    'x-forwarded-for': forwardedFor || 'not present',
+    allHeaders: Object.fromEntries(req.headers.entries())
+  });
+  
+  // Priority 1: Netlify header
+  if (netlifyIp) {
+    const ip = netlifyIp.trim();
+    logger.debug('Using x-nf-client-connection-ip', { ip });
+    return ip;
   }
   
-  // Forwarded for header (may contain multiple IPs, take first)
-  const forwardedFor = req.headers.get('x-forwarded-for');
+  // Priority 2: Cloudflare header (most reliable, can't be easily spoofed)
+  if (cfConnectingIp) {
+    const ip = cfConnectingIp.trim();
+    logger.debug('Using cf-connecting-ip', { ip });
+    return ip;
+  }
+  
+  // Priority 3: Real IP from proxy (Nginx, etc.)
+  if (realIp) {
+    const ip = realIp.trim();
+    logger.debug('Using x-real-ip', { ip });
+    return ip;
+  }
+  
+  // Priority 4: Forwarded for header (may contain multiple IPs, take first)
   if (forwardedFor) {
     // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
     // We want the original client IP (first one)
-    return forwardedFor.split(',')[0].trim();
+    const ip = forwardedFor.split(',')[0].trim();
+    const allIPs = forwardedFor.split(',').map(i => i.trim());
+    logger.debug('Using x-forwarded-for (first IP)', { 
+      ip, 
+      allIPs,
+      totalIPs: allIPs.length 
+    });
+    return ip;
   }
   
   // Fallback - should rarely happen
-  logger.warn('Could not determine client IP from headers');
+  logger.warn('Could not determine client IP from headers', {
+    'x-nf-client-connection-ip': netlifyIp || 'not present',
+    'cf-connecting-ip': cfConnectingIp || 'not present',
+    'x-real-ip': realIp || 'not present',
+    'x-forwarded-for': forwardedFor || 'not present'
+  });
   return 'unknown';
 }
 
