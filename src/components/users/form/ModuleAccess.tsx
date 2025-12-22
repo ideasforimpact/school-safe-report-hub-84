@@ -33,9 +33,13 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       }))
     : [];
     const hasAppliedDefaultsRef = useRef(false);
-  
+    const isEditMode = !!employeeId;
+    useEffect(() => {
+      hasAppliedDefaultsRef.current = false;
+    }, [employeeId]);
     useEffect(() => {
       if (isSuperAdmin) return;
+      if (isEditMode) return;
       if (hasAppliedDefaultsRef.current) return;
 
       const normalize = (s?: string) => String(s || '').trim().toLowerCase();
@@ -58,37 +62,18 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
           configuredMap[normalize(d.key)] ||
           configuredMap[normalize(d.name)];
 
-        if (match) {
-          return {
-            key: match.key || d.key,
-            module_id: match.module_id,
-            name: match.name,
-            employeeId: employeeId,
-            level: { is_admin: !!d.defaultAdmin }
-          };
-        }
-
         return {
-          key: d.key,
-          module_id: d.module_id,
-          name: d.name,
-          employeeId: employeeId,
+          key: match?.key || d.key,
+          module_id: match?.module_id || d.module_id,
+          name: match?.name || d.name,
+          employeeId,
           level: { is_admin: !!d.defaultAdmin }
         };
       });
 
-      const toAdd = mappedDefaults.filter(md => {
-        return !selectedModules.some(s =>
-          normalize(s.module_id) === normalize(md.module_id)
-        );
-      });
-
-      if (toAdd.length > 0) {
-        onModuleChange([...selectedModules, ...toAdd]);
-      }
-
+      onModuleChange(mappedDefaults);
       hasAppliedDefaultsRef.current = true;
-    }, [state.configuredModules, employeeId, isSuperAdmin]);
+    }, [state.configuredModules, employeeId, isSuperAdmin, isEditMode]);
 
   // Helper function to check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {
