@@ -576,19 +576,21 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
           ref={scrollContainerRef}
           className="mt-3 h-[420px] overflow-y-auto pr-2 no-scrollbar"
         >
-          {/* Top add button, visually prominent and easy to notice */}
+          {/* Top add button, only visible in create mode */}
           <div className="flex items-center justify-between mb-3 pr-1">
             <span className="text-sm font-medium text-gray-600">Trusted Vehicles</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addForm}
-              className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Vehicle
-            </Button>
+            {mode === 'create' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addForm}
+                className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Vehicle
+              </Button>
+            )}
           </div>
 
           <div className="space-y-6 pb-4">
