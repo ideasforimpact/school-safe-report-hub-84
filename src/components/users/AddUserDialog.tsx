@@ -42,8 +42,8 @@ interface AddUserDialogProps {
   clientId?: string;
 }
 
-type EmployeeIdValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
-type EmailValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
+export type EmployeeIdValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
+export type EmailValidationStatus = 'idle' | 'checking' | 'available' | 'exists' | 'error';
 
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const { state } = useEmployeeStore();
