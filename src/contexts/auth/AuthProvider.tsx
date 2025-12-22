@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
+import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType, LogoutReason } from './types';
 import { 
   logoutUser, 
   loginUser, 
@@ -683,7 +683,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Simplified logout with immediate state clearing
-  const handleLogout = async (): Promise<void> => {
+  const handleLogout = async (reason?: LogoutReason, message?: string): Promise<void> => {
     // Check if logout is already in progress
     if (!authCoordinator.startLogout()) {
       return;
@@ -708,7 +708,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const targetPath = shouldRedirectToBackoffice ? '/backoffice/login' : '/login';
       
       navigate(targetPath, { replace: true });
-      toast.success("Successfully logged out");
+      
+      // Show appropriate message based on logout reason
+      if (reason === 'ip_not_whitelisted') {
+        const errorMessage = message || 'Your IP address is not whitelisted for this client. Please contact your administrator to add your IP address to the whitelist.';
+        toast.error(errorMessage);
+      } else if (reason === 'session_expired') {
+        toast.error(message || 'Your session has expired. Please log in again.');
+      } else if (reason === 'employee_inactive') {
+        toast.error(message || 'Your account is inactive. Please contact your administrator.');
+      } else if (reason === 'client_inactive') {
+        toast.error(message || 'Your organization account is inactive. Please contact your administrator.');
+      } else if (reason === 'validation_failed') {
+        toast.error(message || 'Validation failed. Please log in again.');
+      } else {
+        // Default success message for user-initiated logout
+        toast.success("Successfully logged out");
+      }
       
       // Clear logout state immediately after navigation
       setTimeout(() => {

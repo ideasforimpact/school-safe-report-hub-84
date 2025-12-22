@@ -3,6 +3,7 @@ import React from 'react';
 import DomainInput from './DomainInput';
 import SuperAdminDomainInput from './SuperAdminDomainInput';
 import AuthProvidersSection from './AuthProvidersSection';
+import IPWhitelistSection, { IPAddress } from './IPWhitelistSection';
 import { OAuthProviderName } from '@/utils/authProviders';
 
 interface AuthTabProps {
@@ -12,12 +13,16 @@ interface AuthTabProps {
     authProviders: {
       [key in OAuthProviderName]?: boolean;
     };
+    whitelistedIPs?: IPAddress[];
   };
   onAddDomain: (domain: string) => void;
   onRemoveDomain: (domain: string) => void;
   onAddSuperAdminDomain: (domain: string) => void;
   onRemoveSuperAdminDomain: (domain: string) => void;
   onProviderChange: (provider: OAuthProviderName, value: boolean) => void;
+  onAddIP?: (ip: IPAddress) => void;
+  onRemoveIP?: (ip: string) => void;
+  onUpdateIP?: (oldIp: string, newIp: IPAddress) => void;
   showErrors?: boolean;
 }
 
@@ -28,6 +33,9 @@ const AuthTab = ({
   onAddSuperAdminDomain,
   onRemoveSuperAdminDomain,
   onProviderChange,
+  onAddIP,
+  onRemoveIP,
+  onUpdateIP,
   showErrors = false
 }: AuthTabProps) => {
   const hasProviders = Object.values(formData.authProviders || {}).some(v => v);
@@ -52,6 +60,16 @@ const AuthTab = ({
       />
       {showErrors && (!formData.superAdminAllowedDomains || formData.superAdminAllowedDomains.length === 0) && (
         <p className="text-xs text-red-600">At least one super admin domain is required.</p>
+      )}
+      
+      {/* IP Whitelist Section */}
+      {onAddIP && onRemoveIP && (
+        <IPWhitelistSection
+          ips={formData.whitelistedIPs || []}
+          onAdd={onAddIP}
+          onRemove={onRemoveIP}
+          onUpdate={onUpdateIP}
+        />
       )}
       
       {/* Authentication Providers */}

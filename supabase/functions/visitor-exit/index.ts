@@ -121,6 +121,26 @@ serve(async (req) => {
     const authenticatedEmployeeId = authInfo.employeeId;
     const authenticatedClientId = authInfo.clientId;
 
+    // Validate IP whitelist
+    const url = new URL(req.url);
+    const { validateIPWhitelist } = await import('../_shared/safe-school/ipValidator.ts');
+    const ipValidation = await validateIPWhitelist(
+      supabase,
+      req,
+      authenticatedClientId,
+      url.pathname
+    );
+    
+    if (!ipValidation.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'IP_NOT_WHITELISTED',
+          message: 'Access denied. Your IP address is not whitelisted for this client.'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
     const body = await req.json();
     const { visitor_id, client_id, employee_id } = body;

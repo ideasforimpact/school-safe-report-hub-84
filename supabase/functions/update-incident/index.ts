@@ -2,6 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts'
 
 const supabase = createClient(
   getSupabaseUrl(),
@@ -155,6 +156,27 @@ Deno.serve(async (req) => {
     if (employeeError || !employee) {
       console.error('Error fetching employee data:', employeeError)
       throw new Error('Employee not found')
+    }
+
+    // Validate IP whitelist
+    if (employee.client_id) {
+      const url = new URL(req.url);
+      const ipValidation = await validateIPWhitelist(
+        supabase,
+        req,
+        employee.client_id,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'IP_NOT_WHITELISTED',
+            message: 'Access denied. Your IP address is not whitelisted for this client.'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Check permissions before allowing the update
