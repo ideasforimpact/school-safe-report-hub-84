@@ -61,6 +61,12 @@ const CRON_TRIGGERED_FUNCTIONS = [
  * @returns The client IP address as a string
  */
 export function getClientIP(req: Request): string {
+
+  
+  const netlifyIp = req.headers.get('x-nf-client-connection-ip');
+  if (netlifyIp) {
+    return netlifyIp;
+  }
   // Cloudflare header (most reliable, can't be easily spoofed)
   const cfConnectingIp = req.headers.get('cf-connecting-ip');
   if (cfConnectingIp) {
@@ -208,7 +214,7 @@ export async function isIPWhitelisted(
       .from('client_ip_whitelist')
       .select('ip_address')
       .eq('client_id', clientId)
-      .eq('is_active', true);
+      .eq('is_active',   true);
     
     if (error) {
       logger.error('Error checking IP whitelist', { 
@@ -297,6 +303,9 @@ export async function validateIPWhitelist(
   
   // Extract client IP
   const clientIP = getClientIP(req);
+
+  console.log(clientIP,"ipAddress");
+  
   
   // Check if IP is whitelisted
   const isWhitelisted = await isIPWhitelisted(supabase, clientId, clientIP);

@@ -1028,12 +1028,13 @@ async function handleCreateClient(clientData: any) {
 async function handleUpdateClient(clientData: any) {
   console.log('Updating client with data:', {
     ...clientData,
-    logo: clientData.logo ? 'Logo data present' : 'No logo data'
+    logo: clientData.logo ? 'Logo data present' : 'No logo data',
+    whitelistedIPs: clientData.whitelistedIPs
   });
   
   try {
     const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, ...clientInfo } = clientData;
-    
+        
     console.log('Logo data check:', {
       logoExists: !!logo,
       logoType: typeof logo,
@@ -1112,14 +1113,30 @@ async function handleUpdateClient(clientData: any) {
       }
     }
     
-    // Process IP whitelist
-    if (whitelistedIPs !== undefined) {
-      console.log('Processing IP whitelist for client update...');
-      const ipSuccess = await processIPWhitelist(clientId, whitelistedIPs);
+    // Process IP whitelist - always process if whitelistedIPs is provided (even if empty array)
+    // Empty array means deactivate all IPs, undefined/null means don't change IPs
+    // Check for both undefined and null to be safe
+    if (whitelistedIPs !== undefined && whitelistedIPs !== null) {
+      console.log('Processing IP whitelist for client update...', {
+        clientId,
+        whitelistedIPs,
+        whitelistedIPsType: typeof whitelistedIPs,
+        whitelistedIPsIsArray: Array.isArray(whitelistedIPs),
+        whitelistedIPsLength: Array.isArray(whitelistedIPs) ? whitelistedIPs.length : 'not an array',
+        whitelistedIPsStringified: JSON.stringify(whitelistedIPs)
+      });
+      const ipArray = Array.isArray(whitelistedIPs) ? whitelistedIPs : [];
+      const ipSuccess = await processIPWhitelist(clientId, ipArray);
       if (!ipSuccess) {
         throw new Error('Failed to process IP whitelist');
       }
       console.log('IP whitelist processed successfully');
+    } else {
+      console.log('whitelistedIPs is undefined or null, skipping IP whitelist update', {
+        whitelistedIPs,
+        isUndefined: whitelistedIPs === undefined,
+        isNull: whitelistedIPs === null
+      });
     }
     
     return new Response(

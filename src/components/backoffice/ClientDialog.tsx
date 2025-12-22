@@ -163,26 +163,26 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   };
 
   const addIP = (ip: IPAddress) => {
-    setFormData({
-      ...formData,
-      whitelistedIPs: [...(formData.whitelistedIPs || []), ip]
-    });
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      whitelistedIPs: [...(prevFormData.whitelistedIPs || []), ip]
+    }));
   };
 
   const removeIP = (ip: string) => {
-    setFormData({
-      ...formData,
-      whitelistedIPs: (formData.whitelistedIPs || []).filter(ipAddr => ipAddr.ip !== ip)
-    });
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      whitelistedIPs: (prevFormData.whitelistedIPs || []).filter(ipAddr => ipAddr.ip !== ip)
+    }));
   };
 
   const updateIP = (oldIp: string, newIp: IPAddress) => {
-    setFormData({
-      ...formData,
-      whitelistedIPs: (formData.whitelistedIPs || []).map(ipAddr => 
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      whitelistedIPs: (prevFormData.whitelistedIPs || []).map(ipAddr => 
         ipAddr.ip === oldIp ? newIp : ipAddr
       )
-    });
+    }));
   };
 
   const safeFormData = {

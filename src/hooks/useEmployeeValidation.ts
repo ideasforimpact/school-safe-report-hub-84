@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
-import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 
 /**
@@ -79,19 +78,89 @@ export const useEmployeeValidation = () => {
     isValidatingRef.current = true;
     
     try {
-      // Call the validate-employee edge function
-      const { data, error } = await supabase.functions.invoke('validate-employee', {
-        body: {
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        console.error('Supabase URL not found');
+        return;
+      }
+      
+      // Get the current session token for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.warn('No session token available for validation');
+        return;
+      }
+      
+      // Use fetch directly to get the response body (including for 403 errors)
+      const response = await fetch(`${supabaseUrl}/functions/v1/validate-employee`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           employeeId: employeeData.id,
           clientId: employeeData.clientId
-        }
+        }),
       });
       
+      // Parse response body (works for both 200 and 403)
+      let responseBody: any = null;
+      try {
+        const text = await response.text();
+        if (text) {
+          responseBody = JSON.parse(text);
+        }
+      } catch (e) {
+        console.warn('Failed to parse response body:', e);
+      }
+      
       // If validation fails and not already logging out, log out and redirect
-      if ((error || !data?.valid) && !state.isLoggingOut) {
-        console.error('Employee validation failed:', error?.message || data?.message,error,"error",employeeData.id,employeeData.clientId,employeeData, new Date());
-        toast.error('Your session has expired. Please log in again.');
-        logout();
+      if (!response.ok || !responseBody?.valid) {
+        if (state.isLoggingOut) {
+          return;
+        }
+        
+        let isIPWhitelistError = false;
+        let errorMessage: string | undefined = undefined;
+        let logoutReason: 'ip_not_whitelisted' | 'session_expired' | 'validation_failed' = 'validation_failed';
+        
+        // Check if it's an IP whitelist error from response body
+        if (responseBody) {
+          isIPWhitelistError = responseBody.code === 'IP_NOT_WHITELISTED' ||
+                              (responseBody.message && (
+                                responseBody.message.includes('not whitelisted') ||
+                                responseBody.message.includes('IP_NOT_WHITELISTED')
+                              ));
+        }
+        
+        // Also check response status - if 403, assume IP whitelist error
+        if (!isIPWhitelistError && response.status === 403) {
+          isIPWhitelistError = true;
+        }
+        
+        if (isIPWhitelistError) {
+          logoutReason = 'ip_not_whitelisted';
+          // Extract message from response body (this is the actual backend message)
+          if (responseBody?.message) {
+            errorMessage = responseBody.message;
+          } else {
+            // Use default formatted message if responseBody.message is not available
+            errorMessage = 'Your IP address is not whitelisted for this client. Please contact your administrator to add your IP address to the whitelist.';
+          }
+        } else {
+          logoutReason = 'session_expired';
+          // For non-IP errors, use responseBody.message or default
+          if (responseBody?.message) {
+            errorMessage = responseBody.message;
+          } else {
+            errorMessage = 'Your session has expired. Please log in again.';
+          }
+        }
+        
+        // Call logout with reason and message (toast will be shown in logout function)
+        logout(logoutReason, errorMessage);
         // Stop here if validation failed – no RLS debug in invalid state
         return;
       }

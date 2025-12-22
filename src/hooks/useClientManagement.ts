@@ -438,6 +438,16 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
+      // Ensure whitelistedIPs is always an array (never undefined or null)
+      const whitelistedIPs = Array.isArray(formData.whitelistedIPs) ? formData.whitelistedIPs : [];
+      
+      // console.log('Form data whitelistedIPs before update:', {
+      //   whitelistedIPs: formData.whitelistedIPs,
+      //   isArray: Array.isArray(formData.whitelistedIPs),
+      //   length: Array.isArray(formData.whitelistedIPs) ? formData.whitelistedIPs.length : 'not an array',
+      //   normalized: whitelistedIPs
+      // });
+      
       // Create the request payload with ALL client data
       const requestPayload = {
         operation: 'update',
@@ -458,7 +468,7 @@ export const useClientManagement = () => {
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
           website: formData.website,
-          whitelistedIPs: formData.whitelistedIPs || []
+          whitelistedIPs: whitelistedIPs // Always send as array, never undefined
         }
       };
       
@@ -466,7 +476,9 @@ export const useClientManagement = () => {
         operation: requestPayload.operation,
         client: {
           ...requestPayload.client,
-          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data'
+          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data',
+          whitelistedIPs: requestPayload.client.whitelistedIPs,
+          whitelistedIPsLength: requestPayload.client.whitelistedIPs?.length || 0
         }
       });
       
