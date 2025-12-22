@@ -130,7 +130,7 @@ export const getModuleAccessForUser = async (employee: { id: string; isSuperAdmi
     if (employee.isSuperAdmin && employee.clientId) {
       const { data, error } = await supabase
         .from('client_modules')
-        .select('*, modules(id, name)')
+        .select('module_id, modules(name)')
         .eq('client_id', employee.clientId)
         .eq('enabled', true);
 
@@ -139,23 +139,31 @@ export const getModuleAccessForUser = async (employee: { id: string; isSuperAdmi
         return [];
       }
 
-      // Map to ModuleAccessItem format for super admin (all modules with admin level)
-      return data.map(item => {
-        const moduleName = item.modules?.name || 'Unknown Module';
-        const moduleKey = item.module_id;
-        
-        return {
-          name: moduleName,
-          key: moduleKey,
-          employeeId: employee.id,
-          module_id: item.module_id,
-          level: { is_admin: true } // Super admin has admin level for all modules
-        };
-      });
-    } else {
-      // For regular employees, use existing function
-      return await getEmployeeModuleAccessItems(employee.id);
+      return data.map(item => ({
+        name: item.modules?.name ?? 'Unknown',
+        key: item.module_id,
+        module_id: item.module_id,
+        employeeId: employee.id,
+        enabled: true,
+        level: {
+          is_admin: true
+        }
+      }));
     }
+
+    const modules = await getEmployeeModuleAccessItems(employee.id);
+
+    return modules.map(m => ({
+      name: m.name,
+      key: m.key ?? m.module_id,
+      module_id: m.module_id,
+      employeeId: employee.id,
+      enabled: m.enabled ?? true,
+      level: {
+        is_admin: m.level?.is_admin ?? false
+      }
+    }));
+
   } catch (error) {
     console.error("Error getting module access for user:", error);
     return [];
