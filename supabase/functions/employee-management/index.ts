@@ -600,7 +600,7 @@ async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: strin
 
     if (moduleAccessPayload && moduleAccessPayload.length > 0) {
       const moduleEntries = moduleAccessPayload
-        .filter(moduleAccess => moduleAccess.enabled === true) // Only include enabled modules
+        .filter(moduleAccess => !!moduleAccess.module_id)
         .map(moduleAccess => {
           let isAdmin = false;
 
