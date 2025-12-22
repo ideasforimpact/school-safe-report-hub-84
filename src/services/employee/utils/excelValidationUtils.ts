@@ -1,6 +1,7 @@
 
 import { RawEmployeeData } from '../types/importTypes';
 import { checkBulkEmployeeIdDuplicates,checkBulkEmployeeEmailDuplicates } from '../employeeValidationService';
+import { EMPLOYEE_ID_CONSTANTS } from '@/constant/employeeConstant';
 
 /**
  * Required fields that must be present in the Excel file
@@ -90,7 +91,7 @@ export const isValidEmployeeId = (employeeId: string): boolean => {
   if (!trimmed) return false;
 
   // Only letters + numbers, length 1–15
-  const employeeIdRegex = /^[A-Za-z0-9]{1,15}$/;
+  const employeeIdRegex = /^.{1,25}$/;
 
   return employeeIdRegex.test(trimmed);
 };
@@ -257,14 +258,14 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         );
       } else if (!isFutureDate(row.joiningDate)) {
         errors.push(
-          `Row ${rowNum}: Joining Date must be a future date (after today)`
+          `Row ${rowNum}: Joining Date must be a current date or future date`
         );
       }
     }
 
     if (row.employeeId && !isValidEmployeeId(row.employeeId)) {
       errors.push(
-        `Row ${rowNum}: Employee ID must contain only letters and numbers`
+        `Row ${rowNum}: Employee ID must be between ${EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters`
       );
     }
 
