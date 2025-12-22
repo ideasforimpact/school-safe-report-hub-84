@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,12 @@ import { cn } from '@/lib/utils';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  getTrustedVehicleNameMaxLength,
+  getTrustedVehicleNameMinLength,
+  getTrustedVehicleTypeMaxLength,
+  getTrustedVehicleTypeMinLength,
+} from '@/constant/trustedVehicleConstant';
 
 interface TrustedVehicleFormData {
   name: string;
@@ -30,6 +36,11 @@ interface AddTrustedVehicleDialogProps {
   onSaveSuccess: () => void;
   clientId: string | null;
   employeeId: string | null;
+  /**
+   * Existing vehicle numbers for the client (used to prevent duplicates).
+   * Raw values from backend; they will be normalised internally.
+   */
+  existingVehicleNumbers?: string[];
   /**
    * Mode controls whether we're creating new trusted vehicles (default)
    * or editing an existing one.
@@ -56,6 +67,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
   onSaveSuccess,
   clientId,
   employeeId,
+  existingVehicleNumbers = [],
   mode = 'create',
   initialVehicle,
 }) => {
@@ -63,6 +75,17 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<number, Partial<Record<keyof TrustedVehicleFormData, string>>>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const normalizeVehicleNo = (value: string): string =>
+    (value || '').toUpperCase().trim();
+
+  const existingVehicleNumbersNormalized = useMemo(() => {
+    return new Set(
+      (existingVehicleNumbers || [])
+        .filter(Boolean)
+        .map((v) => normalizeVehicleNo(v))
+    );
+  }, [existingVehicleNumbers]);
 
   // Initialize / reset forms based on mode and initialVehicle
   useEffect(() => {
@@ -124,27 +147,56 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
     return null;
   };
 
-  const validateForm = (form: TrustedVehicleFormData, index: number): boolean => {
+  const getFormErrors = (
+    form: TrustedVehicleFormData,
+    index: number
+  ): Partial<Record<keyof TrustedVehicleFormData, string>> => {
     const formErrors: Partial<Record<keyof TrustedVehicleFormData, string>> = {};
 
     if (!form.name.trim()) {
       formErrors.name = 'Name is required';
-    } else if (form.name.length > 100) {
-      formErrors.name = 'Name must be 100 characters or less';
+    } else if (form.name.trim().length < getTrustedVehicleNameMinLength()) {
+      formErrors.name = `Name must be at least ${getTrustedVehicleNameMinLength()} characters`;
+    } else if (form.name.length > getTrustedVehicleNameMaxLength()) {
+      formErrors.name = `Name must be ${getTrustedVehicleNameMaxLength()} characters or less`;
     }
 
     if (!form.type.trim()) {
       formErrors.type = 'Type is required';
-    } else if (form.type.length > 50) {
-      formErrors.type = 'Type must be 50 characters or less';
+    } else if (form.type.trim().length < getTrustedVehicleTypeMinLength()) {
+      formErrors.type = `Type must be at least ${getTrustedVehicleTypeMinLength()} characters`;
+    } else if (form.type.length > getTrustedVehicleTypeMaxLength()) {
+      formErrors.type = `Type must be ${getTrustedVehicleTypeMaxLength()} characters or less`;
     }
 
-    if (!form.vehicle_no.trim()) {
+    const currentVehicleNoNormalized = normalizeVehicleNo(form.vehicle_no);
+
+    if (!currentVehicleNoNormalized) {
       formErrors.vehicle_no = 'Vehicle number is required';
     } else {
-      const vehicleNoError = validateVehicleNumber(form.vehicle_no);
+      const vehicleNoError = validateVehicleNumber(currentVehicleNoNormalized);
       if (vehicleNoError) {
         formErrors.vehicle_no = vehicleNoError;
+      }
+    }
+
+    // Duplicate vehicle number check against:
+    // - Existing vehicles from backend
+    // - Other forms in this dialog
+    if (!formErrors.vehicle_no && currentVehicleNoNormalized) {
+      // Check against existing records
+      if (existingVehicleNumbersNormalized.has(currentVehicleNoNormalized)) {
+        formErrors.vehicle_no = 'This vehicle number is already registered';
+      } else {
+        // Check against other forms in the same dialog
+        const hasDuplicateInForms = forms.some((f, i) => {
+          if (i === index) return false;
+          return normalizeVehicleNo(f.vehicle_no) === currentVehicleNoNormalized;
+        });
+
+        if (hasDuplicateInForms) {
+          formErrors.vehicle_no = 'Duplicate vehicle number in the list';
+        }
       }
     }
 
@@ -171,6 +223,12 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
     if (form.comments && form.comments.length > 100) {
       formErrors.comments = 'Comments must be 100 characters or less';
     }
+
+    return formErrors;
+  };
+
+  const validateForm = (form: TrustedVehicleFormData, index: number): boolean => {
+    const formErrors = getFormErrors(form, index);
 
     if (Object.keys(formErrors).length > 0) {
       setErrors(prev => ({ ...prev, [index]: formErrors }));
@@ -228,18 +286,62 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
   };
 
   const updateForm = (index: number, field: keyof TrustedVehicleFormData, value: any) => {
-    setForms(forms.map((form, i) => (i === index ? { ...form, [field]: value } : form)));
-    // Clear error for this field
-    if (errors[index]?.[field]) {
+    const updatedForms = forms.map((form, i) =>
+      i === index ? { ...form, [field]: value } : form
+    );
+    setForms(updatedForms);
+
+    const updatedForm = updatedForms[index];
+    const formErrors = getFormErrors(updatedForm, index);
+    const fieldError = formErrors[field];
+
+    // Live validation: update only the changed field's error
+    setErrors(prev => {
+      const next: typeof errors = { ...(prev || {}) };
+      const currentFormErrors = { ...(next[index] || {}) };
+
+      if (fieldError) {
+        currentFormErrors[field] = fieldError;
+      } else {
+        delete currentFormErrors[field];
+      }
+
+      if (Object.keys(currentFormErrors).length === 0) {
+        delete next[index];
+      } else {
+        next[index] = currentFormErrors;
+      }
+
+      return next;
+    });
+
+    // Special case: when vehicle number changes, we also need to update
+    // duplicate errors for other vehicle_no fields.
+    if (field === 'vehicle_no') {
+      const updatedVehicleNoNormalized = normalizeVehicleNo(updatedForm.vehicle_no);
+
       setErrors(prev => {
-        const newErrors = { ...prev };
-        if (newErrors[index]) {
-          delete newErrors[index][field];
-          if (Object.keys(newErrors[index]).length === 0) {
-            delete newErrors[index];
+        const next: typeof errors = { ...(prev || {}) };
+
+        updatedForms.forEach((form, i) => {
+          const allErrors = getFormErrors(form, i);
+          const vehicleError = allErrors.vehicle_no;
+          const formEntry = { ...(next[i] || {}) };
+
+          if (vehicleError) {
+            formEntry.vehicle_no = vehicleError;
+          } else {
+            delete formEntry.vehicle_no;
           }
-        }
-        return newErrors;
+
+          if (Object.keys(formEntry).length === 0) {
+            delete next[i];
+          } else {
+            next[i] = formEntry;
+          }
+        });
+
+        return next;
       });
     }
   };
@@ -254,21 +356,67 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
           } 
         : form
     ));
-    // Clear date errors
-    if (errors[index]?.validity_from || errors[index]?.validity_to) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        if (newErrors[index]) {
-          delete newErrors[index].validity_from;
-          delete newErrors[index].validity_to;
-          if (Object.keys(newErrors[index]).length === 0) {
-            delete newErrors[index];
+    // Re-validate dates for this form
+    const updatedForm =
+      forms[index]
+        ? {
+            ...forms[index],
+            validity_from: dateRange?.from || null,
+            validity_to: dateRange?.to || null,
           }
+        : null;
+
+    if (updatedForm) {
+      const dateErrors = getFormErrors(updatedForm, index);
+      setErrors(prev => {
+        const next = { ...(prev || {}) };
+        if (Object.keys(dateErrors).length === 0) {
+          if (next[index]) {
+            delete next[index].validity_from;
+            delete next[index].validity_to;
+            if (Object.keys(next[index]).length === 0) {
+              delete next[index];
+            }
+          }
+        } else {
+          next[index] = {
+            ...(next[index] || {}),
+            validity_from: dateErrors.validity_from,
+            validity_to: dateErrors.validity_to,
+          };
         }
-        return newErrors;
+        return next;
       });
     }
   };
+
+  const isSaveDisabled = useMemo(() => {
+    if (loading) return true;
+    if (!clientId || !employeeId) return true;
+
+    // Basic required fields and validation for each form
+    const hasInvalidForm = forms.some((form, index) => {
+      const basicMissing =
+        !form.name.trim() ||
+        !form.type.trim() ||
+        !normalizeVehicleNo(form.vehicle_no) ||
+        !form.validity_from ||
+        !form.validity_to;
+
+      if (basicMissing) return true;
+
+      const formErrors = getFormErrors(form, index);
+      return Object.keys(formErrors).length > 0;
+    });
+
+    if (hasInvalidForm) return true;
+
+    // Also respect any errors already stored in state (e.g., from live validation)
+    const hasStoredErrors =
+      Object.keys(errors).length > 0;
+
+    return hasStoredErrors;
+  }, [loading, clientId, employeeId, forms, errors, existingVehicleNumbersNormalized, mode]);
 
   const handleSave = async () => {
     if (!clientId || !employeeId) {
@@ -428,19 +576,21 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
           ref={scrollContainerRef}
           className="mt-3 h-[420px] overflow-y-auto pr-2 no-scrollbar"
         >
-          {/* Top add button, visually prominent and easy to notice */}
+          {/* Top add button, only visible in create mode */}
           <div className="flex items-center justify-between mb-3 pr-1">
             <span className="text-sm font-medium text-gray-600">Trusted Vehicles</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addForm}
-              className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Vehicle
-            </Button>
+            {mode === 'create' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addForm}
+                className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Vehicle
+              </Button>
+            )}
           </div>
 
           <div className="space-y-6 pb-4">
@@ -471,7 +621,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
                     id={`name-${index}`}
                     value={form.name}
                     onChange={(e) => updateForm(index, 'name', e.target.value)}
-                    maxLength={100}
+                    maxLength={getTrustedVehicleNameMaxLength()}
                     placeholder="Enter name"
                     className={errors[index]?.name ? 'border-red-500' : ''}
                   />
@@ -489,7 +639,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
                     id={`type-${index}`}
                     value={form.type}
                     onChange={(e) => updateForm(index, 'type', e.target.value)}
-                    maxLength={50}
+                    maxLength={getTrustedVehicleTypeMaxLength()}
                     placeholder="Enter type"
                     className={errors[index]?.type ? 'border-red-500' : ''}
                   />
@@ -512,8 +662,30 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
                       const cleaned = raw.replace(/[^A-Z0-9-]/g, '');
                       updateForm(index, 'vehicle_no', cleaned);
 
-                      // Live validation for vehicle number, mirroring AddVehicleDialog UX
-                      const errorMessage = cleaned ? validateVehicleNumber(cleaned) : 'Vehicle number is required';
+                      // Live validation for vehicle number, including duplicate checks
+                      const normalized = normalizeVehicleNo(cleaned);
+                      let errorMessage: string | null = null;
+
+                      if (!normalized) {
+                        errorMessage = 'Vehicle number is required';
+                      } else {
+                        errorMessage = validateVehicleNumber(normalized);
+
+                        if (!errorMessage) {
+                          if (existingVehicleNumbersNormalized.has(normalized)) {
+                            errorMessage = 'This vehicle number is already registered';
+                          } else {
+                            const hasDuplicateInForms = forms.some((f, i) => {
+                              if (i === index) return false;
+                              return normalizeVehicleNo(f.vehicle_no) === normalized;
+                            });
+
+                            if (hasDuplicateInForms) {
+                              errorMessage = 'Duplicate vehicle number in the list';
+                            }
+                          }
+                        }
+                      }
                       setErrors(prev => {
                         const current = { ...(prev[index] || {}) };
                         if (errorMessage) {
@@ -631,7 +803,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
           >
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave} disabled={loading}>
+          <Button type="button" onClick={handleSave} disabled={isSaveDisabled}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

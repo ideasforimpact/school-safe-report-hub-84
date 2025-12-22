@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface TrustedVehicle {
   id: string;
@@ -97,6 +98,20 @@ const TrustedVehiclesPage = () => {
     fetchTrustedVehicles();
   }, [fetchTrustedVehicles]);
 
+  // Keep list in sync with realtime changes on trusted_vehicle table
+  useRealTimeSubHook({
+    channelName: 'trusted-vehicle-changes',
+    table: 'trusted_vehicle',
+    schema: 'public',
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    enabled: !!employeeData?.clientId,
+    filter: employeeData?.clientId ? `client_id=eq.${employeeData.clientId}` : undefined,
+    onPayload: () => {
+      // Re-fetch whenever any trusted_vehicle row for this client changes
+      fetchTrustedVehicles();
+    },
+  });
+
   const handleSaveSuccess = () => {
     setIsDialogOpen(false);
     setIsEditDialogOpen(false);
@@ -121,19 +136,20 @@ const TrustedVehiclesPage = () => {
   };
 
   const getValidityStatus = (vehicle: TrustedVehicle) => {
-    if (!vehicle.validity_from || !vehicle.validity_to) {
+    if (!vehicle.validity_to) {
       return false;
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const fromDate = new Date(vehicle.validity_from);
     const toDate = new Date(vehicle.validity_to);
-    fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(0, 0, 0, 0);
 
-    return today >= fromDate && today <= toDate;
+    // A vehicle is considered valid as long as its end date has not passed.
+    // Even if the start date is in the future, it should be shown as "Valid"
+    // until the end date crosses the current date.
+    return toDate >= today;
   };
 
   // Filter vehicles based on search, status, and date range
@@ -517,6 +533,7 @@ const TrustedVehiclesPage = () => {
         onSaveSuccess={handleSaveSuccess}
         clientId={employeeData?.clientId || null}
         employeeId={employeeData?.id || null}
+        existingVehicleNumbers={trustedVehicles.map((v) => v.vehicle_no)}
         mode="create"
         initialVehicle={null}
       />
@@ -534,6 +551,10 @@ const TrustedVehiclesPage = () => {
           onSaveSuccess={handleSaveSuccess}
           clientId={employeeData?.clientId || null}
           employeeId={employeeData?.id || null}
+          // Exclude the current vehicle's number so it can be kept unchanged
+          existingVehicleNumbers={trustedVehicles
+            .filter((v) => v.id !== vehicleToEdit.id)
+            .map((v) => v.vehicle_no)}
           mode="edit"
           initialVehicle={{
             id: vehicleToEdit.id,
@@ -677,14 +698,6 @@ const TrustedVehiclesPage = () => {
             <p className="text-sm text-gray-700">
               Are you sure you want to delete this trusted vehicle?
             </p>
-            {vehicleToDelete && (
-              <div className="rounded-md bg-gray-50 p-3 text-sm">
-                <p className="font-medium">{vehicleToDelete.name}</p>
-                <p className="text-gray-600">
-                  {vehicleToDelete.vehicle_name} - {vehicleToDelete.vehicle_no}
-                </p>
-              </div>
-            )}
             <div className="flex justify-end space-x-2 pt-2">
               <Button
                 variant="outline"
