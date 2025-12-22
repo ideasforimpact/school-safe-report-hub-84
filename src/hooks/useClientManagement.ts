@@ -439,14 +439,17 @@ export const useClientManagement = () => {
       });
       
       // Ensure whitelistedIPs is always an array (never undefined or null)
-      const whitelistedIPs = Array.isArray(formData.whitelistedIPs) ? formData.whitelistedIPs : [];
+      // Normalize the IP whitelist data to ensure it's sent exactly as typed
+      const whitelistedIPs = Array.isArray(formData.whitelistedIPs) 
+        ? formData.whitelistedIPs
+            .filter(ip => ip && ip.ip && ip.ip.trim() !== '') // Filter out invalid entries
+            .map(ip => ({
+              ip: ip.ip.trim(), // Ensure IP is trimmed
+              name: ip.name && ip.name.trim() !== '' ? ip.name.trim() : null // Send null for empty names (matches backend expectation)
+            }))
+        : [];
       
-      // console.log('Form data whitelistedIPs before update:', {
-      //   whitelistedIPs: formData.whitelistedIPs,
-      //   isArray: Array.isArray(formData.whitelistedIPs),
-      //   length: Array.isArray(formData.whitelistedIPs) ? formData.whitelistedIPs.length : 'not an array',
-      //   normalized: whitelistedIPs
-      // });
+      console.log('Normalized whitelistedIPs being sent:', JSON.stringify(whitelistedIPs, null, 2));
       
       // Create the request payload with ALL client data
       const requestPayload = {

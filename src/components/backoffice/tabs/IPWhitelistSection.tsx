@@ -83,7 +83,7 @@ const IPWhitelistSection = ({ ips, onAdd, onRemove, onUpdate }: IPWhitelistSecti
 
     const ipAddress: IPAddress = {
       ip: newIP.trim(),
-      name: newIPName.trim() || undefined,
+      name: newIPName.trim() || undefined, // Keep as undefined here, will be normalized in useClientManagement
     };
 
     onAdd(ipAddress);
@@ -116,7 +116,7 @@ const IPWhitelistSection = ({ ips, onAdd, onRemove, onUpdate }: IPWhitelistSecti
     if (onUpdate) {
       onUpdate(editingIP.ip, {
         ip: editIPValue.trim(),
-        name: editIPName.trim() || undefined,
+        name: editIPName.trim() || undefined, // Keep as undefined here, will be normalized in useClientManagement
       });
       toast.success('IP address updated successfully');
     }
@@ -148,12 +148,24 @@ const IPWhitelistSection = ({ ips, onAdd, onRemove, onUpdate }: IPWhitelistSecti
               placeholder="e.g. 203.0.113.1" 
               value={editIPValue}
               onChange={(e) => setEditIPValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleUpdate();
+                }
+              }}
               className="font-mono"
             />
             <Input 
               placeholder="Name (optional)" 
               value={editIPName}
               onChange={(e) => setEditIPName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleUpdate();
+                }
+              }}
               className="w-40"
             />
           </div>
