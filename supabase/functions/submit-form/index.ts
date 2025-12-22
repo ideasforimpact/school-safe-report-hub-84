@@ -3,7 +3,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts"
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
-import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,26 +46,8 @@ serve(async (req) => {
       formData.is_anonymous = false
     }
 
-    // Validate IP whitelist if client_id is provided
-    if (formData.client_id) {
-      const url = new URL(req.url);
-      const ipValidation = await validateIPWhitelist(
-        supabaseClient,
-        req,
-        formData.client_id,
-        url.pathname
-      );
-      
-      if (!ipValidation.allowed) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'IP_NOT_WHITELISTED',
-            message: 'Access denied. Your IP address is not whitelisted for this client.'
-          }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    // IP whitelist check removed - form submissions are publicly accessible
+    // Forms should be accessible from anywhere without IP restrictions
 
     // Insert form submission first (without attachments)
     // formData includes: form_id, client_id, submitter_name, submitter_email, submitter_phone,

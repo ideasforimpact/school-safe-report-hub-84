@@ -14,6 +14,7 @@ const EXCEPTION_ROUTES = [
   '/public-grievance-form',
   '/grievance-thank-you',
   '/public-form',
+  '/form/', // Form submission routes - accessible from anywhere without IP restrictions
   // Add other public routes that should bypass IP check
 ];
 

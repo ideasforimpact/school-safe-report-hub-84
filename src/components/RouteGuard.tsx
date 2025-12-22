@@ -45,7 +45,8 @@ const RouteGuard = ({
   
   const isExceptionRoute = location.pathname.startsWith('/public-grievance-form') ||
                            location.pathname.startsWith('/grievance-thank-you') ||
-                           location.pathname.startsWith('/public-form');
+                           location.pathname.startsWith('/public-form') ||
+                           location.pathname.startsWith('/form/'); // Form routes are publicly accessible
 
   // Check IP whitelist after authentication (only once per route change)
   useEffect(() => {
