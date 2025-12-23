@@ -94,7 +94,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   const [filteredSections, setFilteredSections] = useState<Section[]>([]);
   
   // Student ID validation states
-  const [studentIdInput, setStudentIdInput] = useState<string>(defaultValues?.studentId || '');
+  const [studentIdInput, setStudentIdInput] = useState<string>(defaultValues?.studentId?.toUpperCase?.() || '');
   const [isCheckingStudentId, setIsCheckingStudentId] = useState<boolean>(false);
   const [studentIdExists, setStudentIdExists] = useState<boolean>(false);
   const [studentIdValidationMessage, setStudentIdValidationMessage] = useState<string>('');
@@ -181,8 +181,9 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
 
   // Handle student ID input change
   const handleStudentIdChange = (value: string) => {
-    setStudentIdInput(value);
-    form.setValue('studentId', value);
+    const upperValue = value.toUpperCase();
+    setStudentIdInput(upperValue);
+    form.setValue('studentId', upperValue);
   };
 
   // Fetch campuses, grades, and sections from Supabase - filtered by client_id
