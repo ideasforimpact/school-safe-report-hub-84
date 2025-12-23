@@ -181,7 +181,7 @@ const RouteGuard = ({
   return (
     <>
       {children ? <>{children}</> : <Outlet />}
-      {showIPValidationOverlay && (
+      {/* {showIPValidationOverlay && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl p-6 flex flex-col items-center gap-4 min-w-[200px]">
             <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div>
@@ -189,7 +189,7 @@ const RouteGuard = ({
             <p className="text-xs text-gray-500">Please wait</p>
           </div>
         </div>
-      )}
+      )} */}
     </>
   );
 };
