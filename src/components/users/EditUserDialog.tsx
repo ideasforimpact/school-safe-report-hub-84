@@ -476,10 +476,13 @@ const EditUserDialog = ({
                   <Input
                     id="employeeId"
                     value={formData.employeeId || ''}
-                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                    onChange={(e) => {
+                      const upperValue = e.target.value.toUpperCase();
+                      setFormData({ ...formData, employeeId: upperValue });
+                    }}
                     maxLength={EMPLOYEE_ID_CONSTANTS.MAX_LENGTH}
                     minLength={EMPLOYEE_ID_CONSTANTS.MIN_LENGTH}
-                    className={`pr-10 ${
+                    className={`pr-10 uppercase ${
                       employeeIdValidation === 'exists' ? 'border-red-500 focus:border-red-500' :
                       employeeIdValidation === 'available' ? 'border-green-500 focus:border-green-500' : ''
                     }`}
