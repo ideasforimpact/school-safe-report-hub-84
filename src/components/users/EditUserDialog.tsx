@@ -259,7 +259,8 @@ const EditUserDialog = ({
     resetForm();
   };
   const isFormValid = () => {
-    const hasValidEmail = !formData.email || isValidEmail(formData.email);
+    // Email is REQUIRED - must be present and valid
+    const hasValidEmail = formData.email && formData.email.trim() !== '' && isValidEmail(formData.email);
 
     // If email is filled, modules are required
     const requiresModules = !!formData.email;
@@ -272,13 +273,13 @@ const EditUserDialog = ({
       formData.lastName &&
       formData.lastName.length <= 25 &&
       isValidName(formData.lastName) &&
-      hasValidEmail &&
+      hasValidEmail && // Email is required and must be valid
       (!formData.phone || isValidPhone(formData.phone)) &&
       (!formData.designation || isValidDesignation(formData.designation)) &&
       formData.employeeId &&
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation !== 'exists' &&
-      emailValidation !=='exists'&&
+      emailValidation !== 'exists' &&
       employeeIdValidation !== 'checking' && 
       emailValidation !== 'checking' && 
       hasSelectedModules &&
@@ -411,7 +412,12 @@ const EditUserDialog = ({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                className={!formData.email || (formData.email && !isValidEmail(formData.email)) ? 'border-red-500' : ''}
               />
+                {!formData.email && (
+                  <p className="text-xs text-red-500">Email is required</p>
+                )}
                 {formData.email && !isValidEmail(formData.email) && (
                   <p className="text-xs text-red-500">Please enter a valid email address</p>
                 )}
