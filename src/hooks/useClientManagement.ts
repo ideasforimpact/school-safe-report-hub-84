@@ -3,6 +3,7 @@ import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/Clien
 import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { IPAddress } from '@/components/backoffice/tabs/IPList';
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
@@ -23,6 +24,7 @@ export interface ClientFormData {
   };
   superAdminAllowedDomains: string[];
   moduleInfoArray?: ModuleInfo[];
+  whitelistedIPs?: IPAddress[];
 }
 
 const initialFormData: ClientFormData = {
@@ -43,7 +45,8 @@ const initialFormData: ClientFormData = {
     zoho: false
   },
   superAdminAllowedDomains: [],
-  moduleInfoArray: []
+  moduleInfoArray: [],
+  whitelistedIPs: []
 };
 
 export const useClientManagement = () => {
@@ -186,7 +189,8 @@ export const useClientManagement = () => {
           allowedDomains: formData.allowedDomains,
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
-          website: formData.website
+          website: formData.website,
+          whitelistedIPs: formData.whitelistedIPs || []
         }
       };
       
@@ -362,11 +366,31 @@ export const useClientManagement = () => {
           toast.error('Failed to load super admin data');
         }
         
+        // Fetch whitelisted IPs
+        const { data: ipData, error: ipError } = await supabase
+          .from('client_ip_whitelist')
+          .select('ip_address, name')
+          .eq('client_id', clientId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+        
+        if (ipError) {
+          console.error('Error fetching whitelisted IPs:', ipError);
+          // Don't show error toast, just log it (IPs are optional)
+        }
+        
+        // Transform IP data to IPAddress format
+        const whitelistedIPs: IPAddress[] = ipData ? ipData.map((ip: any) => ({
+          ip: ip.ip_address,
+          name: ip.name || undefined
+        })) : [];
+        
         // Update the remaining fields once data arrives
         setFormData(prev => ({
           ...prev,
           superAdminEmail: employeeData?.email || '',
-          moduleInfoArray: moduleInfoArray
+          moduleInfoArray: moduleInfoArray,
+          whitelistedIPs: whitelistedIPs
         }));
       } catch (err) {
         console.error('Error in fetchClientData:', err);
@@ -414,6 +438,19 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
+      // Ensure whitelistedIPs is always an array (never undefined or null)
+      // Normalize the IP whitelist data to ensure it's sent exactly as typed
+      const whitelistedIPs = Array.isArray(formData.whitelistedIPs) 
+        ? formData.whitelistedIPs
+            .filter(ip => ip && ip.ip && ip.ip.trim() !== '') // Filter out invalid entries
+            .map(ip => ({
+              ip: ip.ip.trim(), // Ensure IP is trimmed
+              name: ip.name && ip.name.trim() !== '' ? ip.name.trim() : null // Send null for empty names (matches backend expectation)
+            }))
+        : [];
+      
+      console.log('Normalized whitelistedIPs being sent:', JSON.stringify(whitelistedIPs, null, 2));
+      
       // Create the request payload with ALL client data
       const requestPayload = {
         operation: 'update',
@@ -433,7 +470,8 @@ export const useClientManagement = () => {
           allowedDomains: formData.allowedDomains,
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
-          website: formData.website
+          website: formData.website,
+          whitelistedIPs: whitelistedIPs // Always send as array, never undefined
         }
       };
       
@@ -441,7 +479,9 @@ export const useClientManagement = () => {
         operation: requestPayload.operation,
         client: {
           ...requestPayload.client,
-          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data'
+          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data',
+          whitelistedIPs: requestPayload.client.whitelistedIPs,
+          whitelistedIPsLength: requestPayload.client.whitelistedIPs?.length || 0
         }
       });
       

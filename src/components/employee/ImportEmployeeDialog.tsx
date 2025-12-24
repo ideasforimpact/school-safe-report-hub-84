@@ -23,14 +23,40 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [isVerified, setIsVerified] = useState(false);
   const [manualClientId, setManualClientId] = useState<string>(clientId || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const readFileWithRetry = async (file: File, retries = 5, delay = 300): Promise<ArrayBuffer> => {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        return await file.arrayBuffer();
+      } catch (err: any) {
+        console.warn(`Read attempt ${attempt} failed`, err);
+        if (attempt === retries) throw err;
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+    throw new Error("Unable to read file after retries");
+  };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      console.log("File selected:", file.name, file.type, file.size);
-      setSelectedFile(file);
-      // Reset verification status when file changes
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    const originalFile = e.target.files[0];
+    try {
+      const buffer = await readFileWithRetry(originalFile, 5, 300);
+
+      const safeFile = new window.File([buffer], originalFile.name, {
+        type: originalFile.type,
+      });
+      setSelectedFile(safeFile);
       setIsVerified(false);
+
+      toast.success("File uploaded successfully.");
+    } catch (err: any) {
+      console.error("Could not read file:", err);
+
+      if (err?.name === "NotReadableError") {
+        toast.error("The file is temporarily locked by Excel. Please wait 1–2 seconds and try again.");
+      } else {
+        toast.error("Failed to load file. Please try again.");
+      }
     }
   };
 

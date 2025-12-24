@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,27 @@ serve(async (req) => {
       assignedTo,
       clientId
     } = await req.json();
+
+    // Validate IP whitelist
+    if (clientId) {
+      const url = new URL(req.url);
+      const ipValidation = await validateIPWhitelist(
+        supabaseClient,
+        req,
+        clientId,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'IP_NOT_WHITELISTED',
+            message: 'Access denied. Your IP address is not whitelisted for this client.'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     console.log('Creating incident with optimized approach');
 

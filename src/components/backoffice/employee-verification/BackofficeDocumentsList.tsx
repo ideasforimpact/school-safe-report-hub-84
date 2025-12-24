@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Calendar } from 'lucide-react';
+import { FileText, Calendar, Search, X } from 'lucide-react';
 import { Employee } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import BackofficeDocumentCard from './BackofficeDocumentCard';
@@ -11,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { File, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
+import { DateRange } from 'react-day-picker';
 
 interface BackofficeDocumentsListProps {
   employee: Employee;
@@ -21,7 +24,6 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   employee, 
   onRefresh 
 }) => {
-  const [timeFilter, setTimeFilter] = useState('all');
   const [filteredDocuments, setFilteredDocuments] = useState(employee.documents || []);
   const { documentTypes, fetchDocumentTypes } = useEmployeeVerification();
   const { toast } = useToast();
@@ -40,7 +42,13 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     employeeDocuments: employee.documents,
     employeeId: employee.id
   });
-
+  const [verificationFilter, setVerificationFilter] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined); 
+  const hasActiveFilters =
+    verificationFilter !== "all" ||
+    searchTerm.trim().length > 0 ||
+    (dateRange?.from != null || dateRange?.to != null);
   useEffect(() => {
     console.log('🔄 BackofficeDocumentsList: Fetching document types...');
     fetchDocumentTypes();
@@ -48,7 +56,34 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   useEffect(() => {
     filterDocuments();
-  }, [timeFilter, employee.documents, manualDocumentTypeId]);
+  }, [employee.documents, manualDocumentTypeId, verificationFilter, searchTerm, dateRange]);
+  
+  useEffect(() => {
+    if (!employee?.id) return;
+
+    const channel = supabase
+      .channel(`backoffice-employee-docs-${employee.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'employee_documents',
+          filter: `employee_id=eq.${employee.id}`
+        },
+        async (payload) => {
+          console.log('📡 BackofficeDocumentsList: employee_documents change detected:', payload);
+          // When any doc changes for this employee, ask parent to refetch
+          onRefresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Unsubscribing from backoffice-employee-docs channel');
+      supabase.removeChannel(channel);
+    };
+  }, [employee.id, onRefresh]);
 
   const toTitleCase = (value: string) => {
     return value
@@ -61,23 +96,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   const filterDocuments = () => {
     const documents = employee.documents || [];
-    const now = new Date();
-    
-    console.log('🔍 Filtering documents:', {
-      totalDocuments: documents.length,
-      manualDocumentTypeId,
-      documentTypes: documentTypes.map(t => ({ id: t.id, name: t.name }))
-    });
-    
-    // First filter by document type (only "Manual" documents)
     let filtered = documents.filter(doc => {
-      console.log('🔍 Checking document:', {
-        docId: doc.id,
-        docTypeId: doc.documentTypeId,
-        docTypeName: doc.documentTypeName,
-        matchesManualId: manualDocumentTypeId ? doc.documentTypeId === manualDocumentTypeId : false
-      });
-      
       if (manualDocumentTypeId) {
         return doc.documentTypeId === manualDocumentTypeId;
       }
@@ -85,42 +104,56 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
       const docType = documentTypes.find(type => type.id === doc.documentTypeId);
       const matchesByName = docType?.name.toLowerCase() === 'manual';
       const matchesByDocName = doc.documentTypeName?.toLowerCase() === 'manual';
-      
-      console.log('🔍 Document type matching:', {
-        docType,
-        matchesByName,
-        matchesByDocName,
-        finalMatch: matchesByName || matchesByDocName
-      });
-      
       return matchesByName || matchesByDocName;
     });
-    
-    // Then filter by time
-    switch (timeFilter) {
-      case 'today':
-        filtered = filtered.filter(doc => {
-          const docDate = new Date(doc.createdAt);
-          return docDate.toDateString() === now.toDateString();
-        });
-        break;
-      case 'week':
-        filtered = filtered.filter(doc => {
-          const docDate = new Date(doc.createdAt);
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          return docDate >= weekAgo;
-        });
-        break;
-      case 'month':
-        filtered = filtered.filter(doc => {
-          const docDate = new Date(doc.createdAt);
-          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          return docDate >= monthAgo;
-        });
-        break;
-      default:
-        // 'all' - no additional filtering
-        break;
+    if (verificationFilter !== 'all') {
+      filtered = filtered.filter(doc => {
+        const params: any = doc.params || {};
+        const typeValue =
+          params.otherType || params.document_name || params.selected;
+        return typeValue === verificationFilter;
+      });
+    }
+
+    if (dateRange?.from || dateRange?.to) {
+      const from = dateRange.from ? new Date(dateRange.from) : null;
+      const to = dateRange.to ? new Date(dateRange.to) : null;
+
+      filtered = filtered.filter(doc => {
+        const docDate = new Date(doc.createdAt);
+        if (isNaN(docDate.getTime())) return false;
+
+        if (from && docDate < from) return false;
+        if (to) {
+          const endOfTo = new Date(to);
+          endOfTo.setHours(23, 59, 59, 999);
+          if (docDate > endOfTo) return false;
+        }
+        return true;
+      });
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+
+      filtered = filtered.filter(doc => {
+        const displayName = getDisplayDocumentTypeName(doc).toLowerCase();
+        const id = String(doc.id ?? '').toLowerCase();
+        const params: any = doc.params || {};
+        const custom = (
+          params.document_name ||
+          params.otherType ||
+          params.selected ||
+          ''
+        )
+          .toString()
+          .toLowerCase();
+        return (
+          displayName.includes(term) ||
+          id.includes(term) ||
+          custom.includes(term)
+        );
+      });
     }
     
     setFilteredDocuments(filtered);
@@ -192,33 +225,83 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
       toast({ title: 'Error', description: err?.message || 'Failed to download file', variant: 'destructive' });
     }
   };
+  const VERIFICATION_TYPES = [
+    { value: "bank_statement_analysis", label: "Bank Statement Analysis" },
+    { value: "court_case_check", label: "Court Case Check" },
+    { value: "police_verification", label: "Police Verification" },
+    { value: "digital_credibility_check", label: "Digital Credibility Check" },
+    { value: "social_personal_check", label: "Social Personal Check" },
+    { value: "drug_check", label: "Drug Check" },
+  ];
 
+  
+ 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+     <CardHeader>
+        <div className="flex flex-col gap-4">  
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            <div>
-              <CardTitle>Manual Document Verification</CardTitle>
-              <p className="text-sm text-gray-500 mt-1">
-                {counts.total} documents • {counts.completed} completed • {counts.inProgress} in-progress • {counts.pending} pending • {counts.rejected} rejected
-              </p>
-            </div>
+            <CardTitle>Manual Document Verification</CardTitle>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
-            <Select value={timeFilter} onValueChange={setTimeFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">Last Week</SelectItem>
-                <SelectItem value="month">Last Month</SelectItem>
-              </SelectContent>
-            </Select>
+
+          <div className="flex flex-wrap items-center gap-4">
+
+            <div className="w-64">
+              <Select
+                value={verificationFilter}
+                onValueChange={setVerificationFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Verification Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Verification Types</SelectItem>
+                  {VERIFICATION_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date Range Picker */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Date Range:</span>
+              <DatePickerWithRange
+                date={dateRange}
+                onChange={setDateRange}
+                className="w-[280px]"
+              />
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                className="pl-8 w-48 md:w-72"
+                placeholder="Search by Document name / ID"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Clear Button */}
+            {hasActiveFilters && (
+              <Button
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setVerificationFilter("all");
+                  setSearchTerm("");
+                  setDateRange(undefined);
+                }}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -226,13 +309,8 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
         {filteredDocuments.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {timeFilter === 'all' ? 'No Manual Documents Available' : 'No Manual Documents in Selected Timeframe'}
-            </h3>
             <p className="text-gray-500">
-              {timeFilter === 'all' 
-                ? 'This employee has not uploaded any "Manual" type verification documents yet.'
-                : `No "Manual" type documents were uploaded in the selected timeframe (${timeFilter}).`}
+              No manual documents match the selected filters.
             </p>
           </div>
         ) : (

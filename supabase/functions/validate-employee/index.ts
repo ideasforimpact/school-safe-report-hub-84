@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.20.0";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 // Define CORS headers
 const corsHeaders = {
@@ -32,7 +33,16 @@ serve(async (req) => {
   }
   
   try {
-    // Check token role from Authorization header and extract user info
+    // Create Supabase admin client
+    const supabaseAdmin = createClient(
+      getSupabaseUrl(),
+      getSupabaseServiceRoleKey()
+    );
+    
+    // Parse request body
+    const { employeeId, clientId } = await req.json();
+    
+    // Check token role from Authorization header and extract user info (optional - for logging only)
     const authHeader = req.headers.get('Authorization');
     let tokenPayload: any | null = null;
     let userId: string | null = null;
@@ -46,6 +56,7 @@ serve(async (req) => {
         userId = tokenPayload.sub || null;
         isAuthenticated = tokenPayload.role === 'authenticated';
         
+        // Only reject if token is explicitly anonymous (not just missing)
         if (tokenPayload.role === 'anon') {
           console.warn('🚫 validate-employee: Anonymous token detected, returning 401', tokenPayload);
           return new Response(
@@ -64,15 +75,6 @@ serve(async (req) => {
         }
       }
     }
-    
-    // Create Supabase admin client
-    const supabaseAdmin = createClient(
-      getSupabaseUrl(),
-      getSupabaseServiceRoleKey()
-    );
-    
-    // Parse request body
-    const { employeeId, clientId } = await req.json();
     
     // Validate input
     if (!employeeId || !clientId) {
@@ -171,7 +173,33 @@ serve(async (req) => {
       );
     }
     
-    // If both client and employee are active, return success
+    // Validate IP whitelist - check if incoming request IP is allowed for this client
+    const url = new URL(req.url);
+    const ipValidation = await validateIPWhitelist(
+      supabaseAdmin,
+      req,
+      clientId,
+      url.pathname
+    );
+    
+    if (!ipValidation.allowed) {
+      console.log('IP not whitelisted for client:', clientId);
+      return new Response(
+        JSON.stringify({ 
+          valid: false,
+          isAuthenticated: isAuthenticated,
+          userId: userId,
+          message: 'Your IP address is not whitelisted for this client. Please contact your administrator to add your IP address to the whitelist.',
+          code: 'IP_NOT_WHITELISTED'
+        }),
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // If both client and employee are active, and IP is whitelisted, return success
     console.log('Employee validation successful');
     return new Response(
       JSON.stringify({ 

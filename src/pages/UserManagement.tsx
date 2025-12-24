@@ -76,6 +76,17 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   // No need to explicitly define role here since we're extending from User
 }
 
+export interface iModule {
+  id: string;
+  name: string;
+  key?: string;
+  icon?: string;
+  level?: string;
+  enabled?: boolean;
+  order?: number;
+  url?: string;
+}
+
 interface UserManagementProps {
   embedded?: boolean;
 }
@@ -473,6 +484,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
+            phone:employee.phone,
+            designation:employee.designation,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -639,7 +652,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      await processEmployeeExcel(file, clientId);
+      const userManagementModule = state.configuredModules;
+      await processEmployeeExcel(file, clientId, userManagementModule);
       await refreshEmployeesList();
       toast.success("Employees imported successfully");
     } catch (error) {

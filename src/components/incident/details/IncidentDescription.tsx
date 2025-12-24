@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 
 interface IncidentDescriptionProps {
@@ -10,7 +9,6 @@ const IncidentDescription: React.FC<IncidentDescriptionProps> = ({
   description,
   image
 }) => {
-
   const [expanded, setExpanded] = useState(false);
   const shortText =description.length > 500 ? description.substring(0, 500) + "..." : description;
   return (

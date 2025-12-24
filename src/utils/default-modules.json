@@ -1,0 +1,9 @@
+[
+  {
+    "key": "user",
+    "module_id": "",
+    "name": "Incidents",
+    "enabled": true,
+    "defaultAdmin": false
+  }
+]

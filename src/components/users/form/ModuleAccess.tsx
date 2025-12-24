@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -7,6 +7,7 @@ import { ModuleAccessItem } from '@/types/moduleAccess';
 import { Badge } from "@/components/ui/badge";
 import { Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import defaultModules from '@/utils/default-modules.json';
 
 interface ModuleAccessProps {
   selectedModules: ModuleAccessItem[];
@@ -31,6 +32,48 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
         module_id: module.id
       }))
     : [];
+    const hasAppliedDefaultsRef = useRef(false);
+    const isEditMode = !!employeeId;
+    useEffect(() => {
+      hasAppliedDefaultsRef.current = false;
+    }, [employeeId]);
+    useEffect(() => {
+      if (isSuperAdmin) return;
+      if (isEditMode) return;
+      if (hasAppliedDefaultsRef.current) return;
+
+      const normalize = (s?: string) => String(s || '').trim().toLowerCase();
+
+      // Build indexed lookup for configured modules
+      const configuredMap: Record<string, any> = {};
+      (state.configuredModules || []).forEach((m: any) => {
+        configuredMap[normalize(m.module_id)] = m;
+        configuredMap[normalize(m.key)] = m;
+        configuredMap[normalize(m.name)] = m;
+      });
+
+      // Take only enabled defaults
+      const enabledDefaults = (defaultModules || []).filter((d: any) => d.enabled);
+
+      // Map each default to configured module → produce correct ModuleAccessItem
+      const mappedDefaults: ModuleAccessItem[] = enabledDefaults.map((d: any) => {
+        const match =
+          configuredMap[normalize(d.module_id)] ||
+          configuredMap[normalize(d.key)] ||
+          configuredMap[normalize(d.name)];
+
+        return {
+          key: match?.key || d.key,
+          module_id: match?.module_id || d.module_id,
+          name: match?.name || d.name,
+          employeeId,
+          level: { is_admin: !!d.defaultAdmin }
+        };
+      });
+
+      onModuleChange(mappedDefaults);
+      hasAppliedDefaultsRef.current = true;
+    }, [state.configuredModules, employeeId, isSuperAdmin, isEditMode]);
 
   // Helper function to check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {

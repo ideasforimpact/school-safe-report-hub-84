@@ -134,7 +134,7 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
       <CardContent>
         {categoryData.length > 0 ? (
           <div className="space-y-4">
-            <div className="h-64">
+            <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

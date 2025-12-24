@@ -13,7 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
-import { Switch } from '@/components/ui/switch';
 import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 
 interface AddVehicleDialogProps {
@@ -75,7 +74,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
   // Populate form when vehicle is provided (edit mode)
   useEffect(() => {
     if (vehicle && open) {
-      setValue('registrationNumber', vehicle.registrationNumber);
+      setValue('registrationNumber', vehicle.registrationNumber?.toUpperCase?.() || vehicle.registrationNumber);
       setValue('type', vehicle.type);
       setValue('typeId', vehicle.typeId);
       setValue('internalVehicleName', vehicle.internalVehicleName || '');
@@ -209,14 +208,16 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                   required: "Registration number is required",
                   maxLength: { value: 10, message: "Registration number cannot exceed 10 characters" },
                   pattern: {
-                    value: /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/,
+                    value: /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/i,
                     message: "Please enter a valid vehicle registration number (e.g., TN01AB1234)"
                   },
                   onChange: (e) => {
-                    const value = e.target.value as string;
+                    const rawValue = e.target.value as string;
                     // Remove special characters except letters, numbers, and hyphens
-                    const cleanedValue = value.replace(/[^A-Za-z0-9-]/g, '');
-                    if (value !== cleanedValue) {
+                    let cleanedValue = rawValue.replace(/[^A-Za-z0-9-]/g, '');
+                    // Always store and display the registration number in uppercase
+                    cleanedValue = cleanedValue.toUpperCase();
+                    if (rawValue !== cleanedValue) {
                       setRegistrationNumberError("Special characters are not allowed. Only letters, numbers are permitted.");
                     } else {
                       setRegistrationNumberError(null);
@@ -228,7 +229,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 placeholder="e.g., TN01AB1234"
                 maxLength={10}
                 disabled={isSubmitting || isEditMode}
-                className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
+                className={`uppercase ${isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
               />
               {(errors.registrationNumber || registrationNumberError) && 
                 <p className="text-red-500 text-sm">{errors.registrationNumber?.message || registrationNumberError}</p>
@@ -246,7 +247,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 id="internalVehicleName" 
                 {...register('internalVehicleName', { 
                   required: "Internal vehicle name is required",
-                  minLength: { value: 10, message: "Internal vehicle name must be at least 10 characters" },
+                  minLength: { value: 2, message: "Internal vehicle name must be at least 2 characters" },
                   maxLength: { value: 100, message: "Internal vehicle name cannot exceed 100 characters" },
                   pattern: {
                     value: /^[A-Za-z0-9\s]+$/,
@@ -359,20 +360,6 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
                 </div>
               );
             })()}
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="active-status-toggle">Active</Label>
-              <Switch
-                id="active-status-toggle"
-                checked={(watch('status') || 'active') !== 'inactive'}
-                onCheckedChange={(checked) => {
-                  setValue('status', checked ? 'active' : 'inactive', { shouldValidate: true });
-                }}
-                disabled={isSubmitting}
-              />
-            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

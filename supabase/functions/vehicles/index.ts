@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,26 @@ serve(async (req) => {
     
     // Get query parameters for filtering
     const clientId = url.searchParams.get('client_id');
+
+    // Validate IP whitelist if clientId is provided
+    if (clientId) {
+      const ipValidation = await validateIPWhitelist(
+        supabase,
+        req,
+        clientId,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'IP_NOT_WHITELISTED',
+            message: 'Access denied. Your IP address is not whitelisted for this client.'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // GET /vehicles - List all vehicles
     if (req.method === 'GET' && path === 'vehicles') {

@@ -102,8 +102,8 @@ export const getManualVerificationDisplayName = (selected?: string) => {
       return 'Drug Check';
     case 'digital_credibility_check':
       return 'Digital Credibility Check';
-    case 'social_persona_check':
-      return 'Social Persona Check';
+    case 'social_personal_check':
+      return 'Social Personal Check';
     case 'employment_verification':
       return 'Employment Verification';
     case 'education_verification':

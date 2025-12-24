@@ -10,7 +10,9 @@ import {
   MessageSquare,
   Car,
   FileCheck,
-  ShieldCheck
+  ShieldCheck,
+  DoorOpen,
+  LogIn
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -43,6 +45,8 @@ const iconMap: Record<string, any> = {
   Car,
   FileCheck,
   ShieldCheck,
+  DoorOpen,
+  LogIn,
 };
 
 // Function to fetch modules from backend based on role type with caching

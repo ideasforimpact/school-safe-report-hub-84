@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,27 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Validate IP whitelist if clientId is provided
+    if (clientId) {
+      const url = new URL(req.url);
+      const ipValidation = await validateIPWhitelist(
+        supabaseAdmin,
+        req,
+        clientId,
+        url.pathname
+      );
+      
+      if (!ipValidation.allowed) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'IP_NOT_WHITELISTED',
+            message: 'Access denied. Your IP address is not whitelisted for this client.'
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     const bucketName = "compliance_documents";
 

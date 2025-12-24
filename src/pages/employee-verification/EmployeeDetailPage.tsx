@@ -22,6 +22,7 @@ import { fetchEmployeeVerificationData, fetchEmployeeDocuments } from '@/service
 import { supabase } from '@/integrations/supabase/client';
 import { toast as sonnerToast } from 'sonner';
 import AadharDetailsDialog from '@/components/employee-verification/documents-list/AadharDetailsDialog';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -44,10 +45,50 @@ const EmployeeDetailPage = () => {
   const [isProcessingDigiLocker, setIsProcessingDigiLocker] = useState(false);
   const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
   const [aadharVerificationData, setAadharVerificationData] = useState<any>(null);
-  
+  const handleEmployeeDocsUpdate = useCallback(
+    async (payload: any) => {
+
+      const newDoc = payload.new;
+      const oldDoc = payload.old;
+
+      const docToCheck = newDoc || oldDoc;
+
+      if (!docToCheck) return;
+
+      if (docToCheck.employee_id !== employeeId) {
+        console.log("Skipping event: employee mismatch");
+        return;
+      }
+
+      await refetchDocuments();
+
+      switch (payload.eventType) {
+        case "INSERT":
+          sonnerToast.success("New employee document added");
+          break;
+
+        case "UPDATE":
+          sonnerToast.info("Employee document updated");
+          break;
+
+        case "DELETE":
+          sonnerToast.error("Employee document deleted");
+          break;
+      }
+    },
+    [employeeId]
+  );
+
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
-
+  useRealTimeSubHook({
+    channelName: `documents-${employeeId}`,
+    events: "*",
+    table: "employee_documents",
+    filter: employeeId ? `employee_id=eq.${employeeId}` : undefined,
+    enabled: !!employeeId,
+    onPayload: handleEmployeeDocsUpdate,
+  });
   // DigiLocker return handling function
   const handleDigiLockerReturn = useCallback(async () => {
     const urlParams = new URLSearchParams(location.search);

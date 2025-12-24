@@ -1,9 +1,19 @@
+// Logout reason types
+export type LogoutReason = 
+  | 'ip_not_whitelisted' 
+  | 'session_expired' 
+  | 'employee_inactive' 
+  | 'client_inactive'
+  | 'validation_failed'
+  | 'user_logout'
+  | null;
+
 // Update the AuthContextType to include the employeeData property
 export interface AuthContextType {
   user: User | null;
   users: User[];
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (reason?: LogoutReason, message?: string) => Promise<void>;
   isAdmin: boolean;
   isSaasOwner: boolean;
   addUser: (userData: any) => void;

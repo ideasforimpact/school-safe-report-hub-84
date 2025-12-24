@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
@@ -10,6 +10,8 @@ import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
 import ImportStudentDialog from '@/components/students/ImportStudentDialog';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { fetchStudentsByClientId } from '@/services/student/fetchStudentService';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -162,6 +164,312 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     campusFilter !== 'all' ? 1 : 0,
     itemsPerPage !== 10 ? 1 : 0,
   ].reduce((sum, count) => sum + count, 0);
+
+  // Toast deduplication - prevent multiple toasts for the same event within 2 seconds
+  const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null);
+  const TOAST_DEBOUNCE_MS = 2000; // 2 seconds
+
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error' = 'info') => {
+    const now = Date.now();
+    const lastToast = lastToastRef.current;
+
+    // Check if this is a duplicate toast within the debounce window
+    if (lastToast && lastToast.message === message && (now - lastToast.timestamp) < TOAST_DEBOUNCE_MS) {
+      console.log('[Toast] Duplicate toast prevented:', message);
+      return;
+    }
+
+    // Update the last toast reference
+    lastToastRef.current = { message, timestamp: now };
+
+    // Show the toast
+    if (type === 'success') {
+      toast.success(message);
+    } else if (type === 'error') {
+      toast.error(message);
+    } else {
+      toast.info(message);
+    }
+  }, []);
+
+  // Get client_id from auth context
+  const clientId = employeeData?.clientId;
+  
+  // Debug: Log when clientId changes
+  React.useEffect(() => {
+    console.log('[StudentManagement] ClientId changed:', clientId);
+    console.log('[StudentManagement] Setting up realtime subscriptions for:', {
+      students: !!clientId,
+      grades: !!clientId,
+      sections: !!clientId
+    });
+  }, [clientId]);
+
+  // Handle realtime student updates
+  const handleStudentUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] Student update payload received:', payload);
+    
+    const updatedStudent = payload.new;
+    const oldStudent = payload.old;
+    const eventType = payload.eventType || (payload.new && !payload.old ? 'INSERT' : payload.old && !payload.new ? 'DELETE' : 'UPDATE');
+
+    // Determine event type
+    const isDelete = eventType === 'DELETE' || (!updatedStudent && oldStudent);
+    const isInsert = eventType === 'INSERT' || (updatedStudent && !oldStudent);
+    const isUpdate = eventType === 'UPDATE' || (updatedStudent && oldStudent);
+
+    // For DELETE events, check old student; otherwise check new student
+    const studentToCheck = updatedStudent || oldStudent;
+    
+    // Filter by client_id
+    if (!studentToCheck) {
+      console.log('[Realtime] No student data in payload, skipping');
+      return;
+    }
+
+    if (!clientId || studentToCheck.client_id !== clientId) {
+      console.log('[Realtime] Client ID mismatch, skipping:', {
+        payloadClientId: studentToCheck.client_id,
+        currentClientId: clientId
+      });
+      return;
+    }
+
+    console.log('[Realtime] Processing student update:', {
+      eventType,
+      isInsert,
+      isUpdate,
+      isDelete,
+      studentId: studentToCheck.id
+    });
+
+    try {
+      if (isDelete) {
+        // Remove deleted student - context will handle this via refresh
+        showToast('Student removed', 'info');
+        // Refresh to get updated list
+        await refreshStudents();
+      } else if (isInsert) {
+        console.log('[Realtime] Inserting new student:', updatedStudent.id);
+        // Fetch the complete student with grade/section names
+        try {
+          if (!clientId) return;
+          const fullStudent = await fetchStudentsByClientId(clientId);
+          const newStudent = fullStudent.find(s => s.id === updatedStudent.id);
+          
+          if (newStudent) {
+            console.log('[Realtime] Fetched full student data:', newStudent);
+            showToast('Student added', 'success');
+          }
+          
+          // Refresh to get updated list with new student
+          await refreshStudents();
+        } catch (fetchError) {
+          console.error('[Realtime] Error fetching new student, refreshing list:', fetchError);
+          // If fetching fails, refresh the entire list
+          await refreshStudents();
+          showToast('Student added', 'success');
+        }
+      } else if (isUpdate) {
+        console.log('[Realtime] Updating student:', updatedStudent.id);
+        // Fetch the complete student with grade/section names
+        try {
+          if (!clientId) return;
+          const fullStudent = await fetchStudentsByClientId(clientId);
+          const updatedStudentData = fullStudent.find(s => s.id === updatedStudent.id);
+          
+          if (updatedStudentData) {
+            console.log('[Realtime] Fetched updated student data:', updatedStudentData);
+            showToast('Student updated', 'info');
+          }
+          
+          // Refresh to get updated list
+          await refreshStudents();
+        } catch (fetchError) {
+          console.error('[Realtime] Error fetching updated student, refreshing list:', fetchError);
+          // If fetching fails, refresh the entire list
+          await refreshStudents();
+          showToast('Student updated', 'info');
+        }
+      }
+    } catch (error) {
+      console.error('[Realtime] Error handling student update:', error);
+      // Refresh the entire list on error
+      await refreshStudents();
+    }
+  }, [clientId, refreshStudents, showToast]);
+
+  // Handle realtime grades updates
+  const handleGradeUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] ===== Grade update handler called =====');
+    console.log('[Realtime] Full payload:', JSON.stringify(payload, null, 2));
+    console.log('[Realtime] Payload keys:', Object.keys(payload));
+    console.log('[Realtime] Event type:', payload.eventType);
+    
+    const updatedGrade = payload.new;
+    const oldGrade = payload.old;
+    
+    console.log('[Realtime] Updated grade (new):', updatedGrade);
+    console.log('[Realtime] Old grade:', oldGrade);
+    
+    // Filter by client_id
+    const gradeToCheck = updatedGrade || oldGrade;
+    
+    if (!gradeToCheck) {
+      console.log('[Realtime] ❌ No grade data in payload, skipping');
+      return;
+    }
+
+    console.log('[Realtime] Grade to check:', gradeToCheck);
+    console.log('[Realtime] Current clientId:', clientId);
+    console.log('[Realtime] Grade client_id:', gradeToCheck.client_id);
+
+    if (!clientId || gradeToCheck.client_id !== clientId) {
+      console.log('[Realtime] ❌ Client ID mismatch for grade, skipping:', {
+        payloadClientId: gradeToCheck.client_id,
+        currentClientId: clientId,
+        match: gradeToCheck.client_id === clientId
+      });
+      return;
+    }
+
+    console.log('[Realtime] ✅ Grade updated matches client, refreshing students list to update grade names');
+    
+    // Refresh students list to get updated grade names
+    try {
+      await refreshStudents();
+      console.log('[Realtime] ✅ Students list refreshed successfully');
+      showToast('Grade updated - student list refreshed', 'info');
+    } catch (error) {
+      console.error('[Realtime] ❌ Error refreshing students after grade update:', error);
+    }
+  }, [clientId, refreshStudents, showToast]);
+
+  // Handle realtime sections updates
+  const handleSectionUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] Section update payload received:', payload);
+    
+    const updatedSection = payload.new;
+    const oldSection = payload.old;
+    
+    // Filter by client_id
+    const sectionToCheck = updatedSection || oldSection;
+    
+    if (!sectionToCheck) {
+      console.log('[Realtime] No section data in payload, skipping');
+      return;
+    }
+
+    if (!clientId || sectionToCheck.client_id !== clientId) {
+      console.log('[Realtime] Client ID mismatch for section, skipping:', {
+        payloadClientId: sectionToCheck.client_id,
+        currentClientId: clientId
+      });
+      return;
+    }
+
+    console.log('[Realtime] Section updated, refreshing students list to update section names');
+    
+    // Refresh students list to get updated section names
+    try {
+      await refreshStudents();
+      showToast('Section updated - student list refreshed', 'info');
+    } catch (error) {
+      console.error('[Realtime] Error refreshing students after section update:', error);
+    }
+  }, [clientId, refreshStudents, showToast]);
+
+  // Handle realtime campuses updates
+  const handleCampusUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] Campus update payload received:', payload);
+    
+    const updatedCampus = payload.new;
+    const oldCampus = payload.old;
+    
+    // Filter by client_id
+    const campusToCheck = updatedCampus || oldCampus;
+    
+    if (!campusToCheck) {
+      console.log('[Realtime] No campus data in payload, skipping');
+      return;
+    }
+
+    if (!clientId || campusToCheck.client_id !== clientId) {
+      console.log('[Realtime] Client ID mismatch for campus, skipping:', {
+        payloadClientId: campusToCheck.client_id,
+        currentClientId: clientId
+      });
+      return;
+    }
+
+    console.log('[Realtime] Campus updated, refreshing students list to update campus names');
+    
+    // Refresh students list to get updated campus names
+    try {
+      await refreshStudents();
+      showToast('Campus updated - student list refreshed', 'info');
+    } catch (error) {
+      console.error('[Realtime] Error refreshing students after campus update:', error);
+    }
+  }, [clientId, refreshStudents, showToast]);
+
+  // Set up realtime subscription for students table
+  // Filter by client_id
+  useRealTimeSubHook({
+    channelName: `students-${clientId || 'all'}`,
+    events: '*',
+    table: 'students',
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onPayload: handleStudentUpdate,
+  });
+
+  // Set up realtime subscription for grades table
+  // Filter by client_id - when grades are updated, refresh students to show updated grade names
+  useRealTimeSubHook({
+    channelName: `grades-${clientId || 'all'}`,
+    events: ['UPDATE', 'INSERT', 'DELETE'],
+    table: 'grades',
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onPayload: (payload) => {
+      console.log('[Realtime] Grades subscription - Raw payload received:', payload);
+      console.log('[Realtime] Grades subscription - Event type:', payload.eventType);
+      console.log('[Realtime] Grades subscription - New data:', payload.new);
+      console.log('[Realtime] Grades subscription - Old data:', payload.old);
+      handleGradeUpdate(payload);
+    },
+    onStatusChange: (status) => {
+      console.log('[Realtime] Grades subscription status changed:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('[Realtime] Successfully subscribed to grades table for client:', clientId);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('[Realtime] Error subscribing to grades table');
+      }
+    },
+  });
+
+  // Set up realtime subscription for sections table
+  // Filter by client_id - when sections are updated, refresh students to show updated section names
+  useRealTimeSubHook({
+    channelName: `sections-${clientId || 'all'}`,
+    events: ['UPDATE', 'INSERT', 'DELETE'],
+    table: 'sections',
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onPayload: handleSectionUpdate,
+  });
+
+  // Set up realtime subscription for campuses table
+  // Filter by client_id - when campuses are updated, refresh students to show updated campus names
+  useRealTimeSubHook({
+    channelName: `campuses-${clientId || 'all'}`,
+    events: ['UPDATE', 'INSERT', 'DELETE'],
+    table: 'campuses',
+    filter: clientId ? `client_id=eq.${clientId}` : undefined,
+    enabled: !!clientId,
+    onPayload: handleCampusUpdate,
+  });
 
   const content = (
     <div className="space-y-6">

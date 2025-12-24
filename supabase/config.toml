@@ -111,3 +111,27 @@ verify_jwt = false
 [functions.edusafe-resource-client]
 verify_jwt = false
 
+[functions.safe-school-auth-info]
+verify_jwt = false
+
+[functions.safe-school-auth-refresh]
+verify_jwt = false
+
+[functions.safe-school-auth-logout]
+verify_jwt = false
+
+[functions.safe-school-auth-verify]
+verify_jwt = false
+
+[functions.visitor-management]
+verify_jwt = false
+
+[functions.get-trusted-vehicles]
+verify_jwt = false
+
+[functions.get-visitor-vehicle-types]
+verify_jwt = false
+
+[functions.visitor-exit]
+verify_jwt = false
+

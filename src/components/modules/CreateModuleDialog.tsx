@@ -37,6 +37,7 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
     icon: '',
     level: '',
     url: '',
+    order: null as number | null,
     active: true
   });
   const { toast } = useToast();
@@ -48,6 +49,7 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
         icon: module.icon || '',
         level: module.level || '',
         url: module.url || '',
+        order: module.order ?? null,
         active: module.active !== undefined ? module.active : true
       });
     } else {
@@ -56,6 +58,7 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
         icon: '',
         level: '',
         url: '',
+        order: null,
         active: true
       });
     }
@@ -106,7 +109,7 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
     }
   };
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string | boolean | number | null) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -173,6 +176,26 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
               value={formData.url}
               onChange={(e) => handleInputChange('url', e.target.value)}
               placeholder="Enter module URL"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="order">Order (Optional)</Label>
+            <Input
+              id="order"
+              type="number"
+              value={formData.order ?? ''}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                if (inputValue === '') {
+                  handleInputChange('order', null);
+                } else {
+                  const numValue = parseInt(inputValue, 10);
+                  handleInputChange('order', isNaN(numValue) ? null : numValue);
+                }
+              }}
+              placeholder="Enter order number"
+              min="0"
             />
           </div>
 

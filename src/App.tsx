@@ -54,6 +54,10 @@ import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVeri
 import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage';
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
+
+// Visitor Pages
+import VisitorsPage from '@/pages/visitor/VisitorsPage';
+import TrustedVehiclesPage from '@/pages/visitor/TrustedVehiclesPage';
 import BackofficeLogin from '@/pages/BackofficeLogin';
 import SettingsPage from '@/pages/SettingsPage';
 
@@ -99,6 +103,7 @@ const BackofficeWrapper = ({ component: Component }) => {
 import ComplianceDocumentsPage from '@/pages/ComplianceDocumentsPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import AuthCallback from './pages/callback';
 
 
 function App() {
@@ -118,7 +123,7 @@ function App() {
                   <Route path="/home" element={<Home />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/backoffice/login" element={<BackofficeLogin />} />
-                  
+                  <Route path="/callback" element={<AuthCallback />} />
                   {/* CAPTCHA Verification routes - public */}
                   <Route path="/captcha-verification" element={<CaptchaVerificationPage />} />
                   <Route path="/captcha-verification/:formId" element={<CaptchaVerificationPage />} />
@@ -215,7 +220,12 @@ function App() {
                   <Route path="/employee-verification" element={<RouteGuard requireAuth={true}><EmployeeVerificationPage /></RouteGuard>} />
                   <Route path="/employee-verification/:employeeId" element={<RouteGuard requireAuth={true}><EmployeeDetailPage /></RouteGuard>} />
                   <Route path="/employee-verification/:employeeId/upload-document" element={<RouteGuard requireAuth={true}><UploadDocumentPage /></RouteGuard>} />
-                  <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><VerificationDashboardPage /></RouteGuard>} />
+                  <Route path="/employee-verification/dashboard" element={<RouteGuard requireAuth={true}><VerificationDashboardPage /></RouteGuard> } />
+
+                  {/* Visitor routes */}
+                  <Route path="/visitor" element={<RouteGuard requireAuth={true}><VisitorsPage /></RouteGuard>} />
+                  <Route path="/visitors" element={<RouteGuard requireAuth={true}><VisitorsPage /></RouteGuard>} />
+                  <Route path="/visitors/trusted-vehicles" element={<RouteGuard requireAuth={true}><TrustedVehiclesPage /></RouteGuard>} />
 
                   {/* Backoffice routes - protected with RouteGuard and wrapped with BackofficeClientProvider */}
                   <Route path="/backoffice/dashboard" element={

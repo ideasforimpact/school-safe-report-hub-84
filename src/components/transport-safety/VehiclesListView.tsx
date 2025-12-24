@@ -29,12 +29,20 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   onRefresh,
   onEditVehicle
 }) => {
-  const {
-    paginatedItems,
-    currentPage,
-    setCurrentPage,
-    totalPages
-  } = usePagination(vehicles, 10);
+    const sortedVehicles = React.useMemo(() => {
+      return [...vehicles].sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+    }, [vehicles]);
+
+    const {
+      paginatedItems,
+      currentPage,
+      setCurrentPage,
+      totalPages
+    } = usePagination(sortedVehicles, 10);
 
   const getDocumentIcon = (status: string) => {
     switch (status) {

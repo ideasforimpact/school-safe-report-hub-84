@@ -46,6 +46,9 @@ serve(async (req) => {
       formData.is_anonymous = false
     }
 
+    // IP whitelist check removed - form submissions are publicly accessible
+    // Forms should be accessible from anywhere without IP restrictions
+
     // Insert form submission first (without attachments)
     // formData includes: form_id, client_id, submitter_name, submitter_email, submitter_phone,
     // submitter_type, responses, status, is_anonymous, and any other fields

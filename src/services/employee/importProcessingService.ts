@@ -109,14 +109,6 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       };
       
       // Create default module access payload with Dashboard module
-      const defaultModuleAccessPayload = [
-        {
-          name: "Dashboard",
-          key: "user",
-          module_id: "f84132f7-48e0-45f1-ad3a-59e794ac9a8d",
-          employeeId: String(row.employeeId).trim()
-        }
-      ];
       
       // Add default module permissions to each employee record
       // and normalize/validate employee data fields
@@ -132,7 +124,9 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         status: String(row.status),
         clientId: clientId, // Ensure clientId is passed through
         modulePermissions: modulePermissions,
-        moduleAccessPayload: defaultModuleAccessPayload // Add default module access payload
+        moduleAccessPayload: Array.isArray(row.moduleAccessPayload)
+          ? row.moduleAccessPayload
+          : []      
       };
     });
     
@@ -369,7 +363,7 @@ const transformEmployeeData = (dbEmployee: any): Employee => {
 export const showImportResultNotifications = (result: ImportResult): void => {
   // Show success toast for new employees
   if (result.successCount > 0) {
-    toast.success(`Successfully imported ${result.successCount} new employees`);
+    // toast.success(`Successfully imported ${result.successCount} new employees`);
   }
   
   // Show success toast for updated employees

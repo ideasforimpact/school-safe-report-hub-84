@@ -15,7 +15,9 @@ import {
   FileText,
   Users,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  DoorOpen,
+  LogIn
 } from 'lucide-react';
 import { loadAuthState } from '@/store/authPersistence';
 
@@ -31,6 +33,8 @@ const iconMap: Record<string, any> = {
   Users,
   Settings,
   ShieldCheck,
+  DoorOpen,
+  LogIn,
 };
 
 interface ModuleItem {
