@@ -22,6 +22,7 @@ export interface ClientFormData {
   authProviders: {
     [key in OAuthProviderName]?: boolean;
   };
+  superAdminEmailExists?: boolean;
   superAdminAllowedDomains: string[];
   moduleInfoArray?: ModuleInfo[];
   whitelistedIPs?: IPAddress[];

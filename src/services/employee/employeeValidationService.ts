@@ -145,3 +145,26 @@ export const checkBulkEmployeeEmailDuplicates = async (
   }
 };
 
+export const checkSuperAdminEmailExists = async (
+  email: string,
+): Promise<boolean> => {
+  try {
+    if (!email) return false;
+
+    const { data, error } = await supabase
+      .from('employees')
+      .select('id')
+      .ilike('email', email) // case-insensitive
+      .maybeSingle();
+
+    if (error) {
+      console.error(error);
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
