@@ -59,25 +59,25 @@ export const isValidDate = (value: any): boolean => {
   return false;
 };
 // Joining date must be a valid *future* date (strictly after today)
-export const isFutureDate = (value: any): boolean => {
-  if (!isValidDate(value)) return false;
+// export const isFutureDate = (value: any): boolean => {
+//   if (!isValidDate(value)) return false;
 
-  let date: Date;
+//   let date: Date;
 
-  if (value instanceof Date) {
-    date = value;
-  } else if (typeof value === 'string') {
-    date = new Date(value.trim());
-  } else {
-    return false;
-  }
+//   if (value instanceof Date) {
+//     date = value;
+//   } else if (typeof value === 'string') {
+//     date = new Date(value.trim());
+//   } else {
+//     return false;
+//   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  date.setHours(0, 0, 0, 0);
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+//   date.setHours(0, 0, 0, 0);
 
-  return date >= today;
-};
+//   return date >= today;
+// };
 
 /**
  * Validates the data extracted from Excel
@@ -255,10 +255,6 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
       if (!isValidDate(row.joiningDate)) {
         errors.push(
           `Row ${rowNum}: Joining Date must be a valid date (e.g., YYYY-MM-DD)`
-        );
-      } else if (!isFutureDate(row.joiningDate)) {
-        errors.push(
-          `Row ${rowNum}: Joining Date must be a current date or future date`
         );
       }
     }
