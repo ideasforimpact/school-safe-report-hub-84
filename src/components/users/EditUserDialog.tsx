@@ -13,8 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { NAME_MAX_LENGTH } from '@/services/employee/utils/excelValidationUtils';
-import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage } from '@/constant/employeeConstant';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_DESIGNATION_CONSTANTS } from '@/constant/employeeConstant';
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
@@ -111,6 +110,16 @@ const EditUserDialog = ({
     const validateEmployeeIdAsync = async () => {
       if (!debouncedEmployeeId || !clientId) {
         setEmployeeIdValidation('idle');
+        return;
+      }
+
+      if (debouncedEmployeeId.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH) {
+        setEmployeeIdValidation('idle');
+        return;
+      }
+
+      if (!isValidEmployeeId(debouncedEmployeeId)) {
+        setEmployeeIdValidation('error');
         return;
       }
 
@@ -245,11 +254,12 @@ const EditUserDialog = ({
   };
 
   const isValidPhone = (phone: string) => {
-    const phoneRegex = /^\d{10}$/;
-    return phoneRegex.test(phone);
+    return /^[6-9]\d{9}$/.test(phone);
   };
 
   const isValidDesignation = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
     const nameRegex = /^[a-zA-Z\s]{0,25}$/;
     return nameRegex.test(name);
   };
@@ -275,7 +285,9 @@ const EditUserDialog = ({
       isValidName(formData.lastName) &&
       hasValidEmail && // Email is required and must be valid
       (!formData.phone || isValidPhone(formData.phone)) &&
-      (!formData.designation || isValidDesignation(formData.designation)) &&
+      (!formData.designation ||(
+        formData.designation.length >= EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH &&
+        isValidDesignation(formData.designation))) &&
       formData.employeeId &&
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation !== 'exists' &&
@@ -375,12 +387,23 @@ const EditUserDialog = ({
                   id="firstName"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  maxLength={NAME_MAX_LENGTH}
+                  maxLength={EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH}
+                  minLength={EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH}
                   required
                   className={formData.firstName && !isValidName(formData.firstName) ? 'border-red-500' : ''}
                 />
-                {formData.firstName && formData.firstName.length > 25 && (
-                  <p className="text-xs text-red-500">First name cannot exceed 25 characters</p>
+              {formData.firstName &&
+                formData.firstName.length < EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH && (
+                  <p className="text-xs text-red-500">
+                    First name must be at least {EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH} characters
+                  </p>
+              )}
+
+              {formData.firstName &&
+                formData.firstName.length > EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH && (
+                  <p className="text-xs text-red-500">
+                    First name cannot exceed {EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH} characters
+                  </p>
                 )}
                 {formData.firstName && !isValidName(formData.firstName) && (
                   <p className="text-xs text-red-500">First name can only contain letters and spaces</p>
@@ -392,12 +415,23 @@ const EditUserDialog = ({
                   id="lastName"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  maxLength={NAME_MAX_LENGTH}
+                  maxLength={EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH}
+                  minLength={EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH}
                   required
                   className={formData.lastName && !isValidName(formData.lastName) ? 'border-red-500' : ''}
                 />
-                {formData.lastName && formData.lastName.length > 25 && (
-                  <p className="text-xs text-red-500">Last name cannot exceed 25 characters</p>
+                {formData.lastName &&
+                  formData.lastName.length < EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH && (
+                    <p className="text-xs text-red-500">
+                      Last name must be at least {EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH} character
+                    </p>
+                )}
+
+                {formData.lastName &&
+                  formData.lastName.length > EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH && (
+                    <p className="text-xs text-red-500">
+                      Last name cannot exceed {EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH} characters
+                    </p>
                 )}
                 {formData.lastName && !isValidName(formData.lastName) && (
                   <p className="text-xs text-red-500">Last name can only contain letters and spaces</p>
@@ -448,8 +482,16 @@ const EditUserDialog = ({
                 }}
                 maxLength={10}
               />
-              {formData.phone && !isValidPhone(formData.phone) && (
-                <p className="text-xs text-red-500">Enter a valid 10-digit mobile number</p>
+              {formData.phone && formData.phone.length < 10 && (
+                <p className="text-xs text-red-500">
+                  Mobile number must be 10 digits
+                </p>
+              )}
+
+              {formData.phone?.length === 10 && !isValidPhone(formData.phone) && (
+                <p className="text-xs text-red-500">
+                  Mobile number must be valid 
+                </p>
               )}
             </div>
 
@@ -462,10 +504,23 @@ const EditUserDialog = ({
                   const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 25);
                   setFormData({ ...formData, designation: value });
                 }}
-                maxLength={25}
+                minLength={EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH}
+                maxLength={EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH }
               />
+               {formData.designation &&
+                  formData.designation.length < EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH && (
+                    <p className="text-xs text-red-500">
+                      Designation must be at least {EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH} characters
+                    </p>
+                )}
+                {formData.designation &&
+                  formData.designation.length > EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH && (
+                    <p className="text-xs text-red-500">
+                      Designation cannot exceed {EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH} characters
+                    </p>
+                )}
               {formData.designation && !isValidDesignation(formData.designation) && (
-                <p className="text-xs text-red-500">Only letters and spaces, max 25 characters</p>
+                <p className="text-xs text-red-500">Only letters and spaces</p>
               )}
             </div>
 
@@ -492,14 +547,6 @@ const EditUserDialog = ({
                     {getEmployeeIdValidationIcon()}
                   </div>
                 </div>
-                {employeeIdValidation !== 'idle' && (
-                  <p className={`text-xs ${
-                    employeeIdValidation === 'exists' || employeeIdValidation === 'error' ? 'text-red-500' :
-                    employeeIdValidation === 'available' ? 'text-green-500' : 'text-blue-500'
-                  }`}>
-                    {getEmployeeIdValidationMessage()}
-                  </p>
-                )}
                 {formData.employeeId && formData.employeeId.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && (
                   <p className="text-xs text-red-500">Employee ID must be at least {EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters</p>
                 )}
@@ -508,6 +555,14 @@ const EditUserDialog = ({
                 )}
                 {formData.employeeId && formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && !isValidEmployeeId(formData.employeeId) && (
                   <p className="text-xs text-red-500">{getEmployeeIdErrorMessage()}</p>
+                )}
+                {employeeIdValidation !== 'idle' && (
+                  <p className={`text-xs ${
+                    employeeIdValidation === 'exists' || employeeIdValidation === 'error' ? 'text-red-500' :
+                    employeeIdValidation === 'available' ? 'text-green-500' : 'text-blue-500'
+                  }`}>
+                    {getEmployeeIdValidationMessage()}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">

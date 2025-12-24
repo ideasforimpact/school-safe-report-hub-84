@@ -1,7 +1,7 @@
 
 import { RawEmployeeData } from '../types/importTypes';
 import { checkBulkEmployeeIdDuplicates,checkBulkEmployeeEmailDuplicates } from '../employeeValidationService';
-import { EMPLOYEE_ID_CONSTANTS } from '@/constant/employeeConstant';
+import { EMPLOYEE_DESIGNATION_CONSTANTS, EMPLOYEE_ID_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_NAME_CONSTANTS } from '@/constant/employeeConstant';
 
 /**
  * Required fields that must be present in the Excel file
@@ -13,6 +13,7 @@ const requiredFields: (keyof RawEmployeeData)[] = [
   'email',
   'employeeType',
   'department',
+  'designation', 
   'joiningDate',
   'status'
 ];
@@ -20,11 +21,40 @@ export const NAME_MAX_LENGTH = 25;
 export const PHONE_LENGTH = 10;
 
 // Name validation
-export const isValidName = (name: string): boolean => {
+export const isValidFirstName = (name: string): boolean => {
+  if (!name) return false;
   const trimmed = name.trim();
   if (!trimmed) return false;
+
+  return (
+    trimmed.length >= EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH &&
+    trimmed.length <= EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH &&
+    EMPLOYEE_NAME_CONSTANTS.PATTERN.test(trimmed)
+  );
+};
+export const isValidLastName = (name: string): boolean => {
   if (!name) return false;
-  return String(name).trim().length <= NAME_MAX_LENGTH;
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+
+  return (
+    trimmed.length >= EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH &&
+    trimmed.length <= EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH &&
+    EMPLOYEE_LAST_NAME_CONSTANTS.PATTERN.test(trimmed)
+  );
+};
+
+export const isValidDesignation = (designation: string): boolean => {
+  if (!designation) return false;
+
+  const trimmed = designation.trim();
+  if (!trimmed) return false;
+
+  return (
+    trimmed.length >= EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH &&
+    trimmed.length <= EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH &&
+    EMPLOYEE_DESIGNATION_CONSTANTS.PATTERN.test(trimmed)
+  );
 };
 
 export const nameNotContainingNumbers = (name: string): boolean => {
@@ -38,7 +68,7 @@ export const nameNotContainingNumbers = (name: string): boolean => {
 export const isValidPhone = (phone: string): boolean => {
   if (!phone) return false;
   const trimmed = String(phone).trim();
-  return /^\d{10}$/.test(trimmed);
+  return /^[6-9]\d{9}$/.test(trimmed);
 };
 
 // Joining date must be a valid date
@@ -90,8 +120,9 @@ export const isValidEmployeeId = (employeeId: string): boolean => {
   const trimmed = employeeId.trim();
   if (!trimmed) return false;
 
-  // Only letters + numbers, length 1–15
-  const employeeIdRegex = /^.{1,25}$/;
+  const min = EMPLOYEE_ID_CONSTANTS.MIN_LENGTH; 
+  const max = EMPLOYEE_ID_CONSTANTS.MAX_LENGTH; 
+  const employeeIdRegex = new RegExp(`^[A-Za-z0-9]{${min},${max}}$`);
 
   return employeeIdRegex.test(trimmed);
 };
@@ -127,6 +158,21 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     'Settings',
     'Compliance Documents'
   ];
+  const ALLOWED_EMPLOYEE_TYPES = [
+    'permanent',
+    'contract',
+    'consultant',
+    'part time',
+  ];
+  const ALLOWED_DEPARTMENT = [
+    'admin',
+    'teaching',
+    'security',
+    'maintenance',
+    'transport',
+    'management',
+  ];
+const ALLOWED_STATUS = ['active'];
 
   // Helper for case-insensitive check
   const isAllowedModuleName = (name: string): boolean => {
@@ -144,7 +190,18 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
       errors.push(`Missing required column: ${column}`);
     });
   }
-  
+  const isValidEmployeeType = (employeeType: string): boolean => {
+  if (!employeeType) return false;
+    return ALLOWED_EMPLOYEE_TYPES.includes(employeeType.trim().toLowerCase());
+  };
+   const isValidDepartment = (department: string): boolean => {
+  if (!department) return false;
+    return ALLOWED_DEPARTMENT.includes(department.trim().toLowerCase());
+  };
+  const isValidStatus = (status: string): boolean => {
+    if (!status) return false;
+    return ALLOWED_STATUS.includes(status.trim().toLowerCase());
+  };
   // Check for duplicate employee IDs within the file
   const employeeIds: string[] = [];
   const emailsRaw: string[] = [];
@@ -236,19 +293,87 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     if (row.firstName && !nameNotContainingNumbers(row.firstName)) {
       errors.push(`Row ${rowNum}: First Name should only contain characters`);
     }
-    if (row.firstName && !isValidName(row.firstName)) {
-      errors.push(`Row ${rowNum}: First Name should be less than ${NAME_MAX_LENGTH} characters`);
+   if (row.firstName) {
+      const firstName = String(row.firstName).trim();
+
+      if (!firstName) {
+        errors.push(`Row ${rowNum}: First Name cannot be empty`);
+      }
+      else if (firstName.length < EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: First Name must be at least ${EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH} characters`
+        );
+      }
+      else if (firstName.length > EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: First Name cannot exceed ${EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH} characters`
+        );
+      }
+      else if (!EMPLOYEE_NAME_CONSTANTS.PATTERN.test(firstName)) {
+        errors.push(
+          `Row ${rowNum}: First Name can only contain letters and spaces`
+        );
+      }
     }
+
     if (row.lastName && !nameNotContainingNumbers(row.lastName)) {
       errors.push(`Row ${rowNum}: Last Name should should only contain characters`);
     } 
-    if (row.lastName && !isValidName(row.lastName)) {
-      errors.push(`Row ${rowNum}: Last Name should be less than ${NAME_MAX_LENGTH} characters`);
-    } 
-    if (row.phone && !isValidPhone(row.phone)) {
-      errors.push(
-        `Row ${rowNum}: Phone must be exactly ${PHONE_LENGTH} digits with no letters or special characters`
-      );
+    if (row.lastName) {
+      const lastName = String(row.lastName).trim();
+
+      if (!lastName) {
+        errors.push(`Row ${rowNum}: Last Name cannot be empty`);
+      }
+      else if (lastName.length < EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Last Name must be at least ${EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH} character`
+        );
+      }
+      else if (lastName.length > EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Last Name cannot exceed ${EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH} characters`
+        );
+      }
+      else if (!EMPLOYEE_LAST_NAME_CONSTANTS.PATTERN.test(lastName)) {
+        errors.push(
+          `Row ${rowNum}: Last Name can only contain letters and spaces`
+        );
+      }
+    }
+
+    if (row.phone) {
+      const phone = String(row.phone).trim();
+
+      if (!/^\d+$/.test(phone)) {
+        errors.push(`Row ${rowNum}: Phone number must contain only digits`);
+      } else if (phone.length !== PHONE_LENGTH) {
+        errors.push(`Row ${rowNum}: Phone number must be exactly ${PHONE_LENGTH} digits`);
+      } else if (!/^[6-9]/.test(phone)) {
+        errors.push(`Row ${rowNum}: Phone number must be valid`);
+      }
+    }
+    if (row.designation) {
+      const designation = String(row.designation).trim();
+
+      if (!designation) {
+        errors.push(`Row ${rowNum}: Designation cannot be empty`);
+      } 
+      else if (designation.length < EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Designation must be at least ${EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH} characters`
+        );
+      } 
+      else if (designation.length > EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Designation cannot exceed ${EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH} characters`
+        );
+      } 
+      else if (!EMPLOYEE_DESIGNATION_CONSTANTS.PATTERN.test(designation)) {
+        errors.push(
+          `Row ${rowNum}: Designation can only contain letters and spaces (no numbers or special characters)`
+        );
+      }
     }
 
     if (row.joiningDate) {
@@ -262,11 +387,22 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
         );
       }
     }
+    if (row.employeeId) {
+      const id = String(row.employeeId).trim();
 
-    if (row.employeeId && !isValidEmployeeId(row.employeeId)) {
-      errors.push(
-        `Row ${rowNum}: Employee ID must be between ${EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters`
-      );
+      if (id.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Employee ID must be at least ${EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters`
+        );
+      } else if (id.length > EMPLOYEE_ID_CONSTANTS.MAX_LENGTH) {
+        errors.push(
+          `Row ${rowNum}: Employee ID must not exceed ${EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters`
+        );
+      } else if (!isValidEmployeeId(id)) {
+        errors.push(
+          `Row ${rowNum}: Employee ID can contain only letters and numbers`
+        );
+      }
     }
 
     const moduleCandidates: string[] = [];
@@ -304,6 +440,33 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
       }
     }
 
+    if (row.employeeType) {
+      const emptyp = String(row.employeeType).trim();
+  
+      if (!isValidEmployeeType(emptyp)) {
+        errors.push(
+          `Row ${rowNum}: Invalid employee type '${emptyp}'. Allowed values are: ${ALLOWED_EMPLOYEE_TYPES.join(', ')}`
+        );
+      }
+    }
+    if (row.department) {
+      const dept = String(row.department).trim();
+  
+      if (!isValidDepartment(dept)) {
+        errors.push(
+          `Row ${rowNum}: Invalid department '${dept}'. Allowed values are: ${ALLOWED_DEPARTMENT.join(', ')}`
+        );
+      }
+    }
+    if (row.status) {
+      const status = String(row.status).trim();
+
+      if (!isValidStatus(status)) {
+        errors.push(
+          `Row ${rowNum}: Invalid status '${status}'. Allowed value is: active`
+        );
+      }
+    }
   });
   
   return errors;

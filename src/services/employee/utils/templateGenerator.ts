@@ -8,6 +8,7 @@ export interface EmployeeTemplateData {
   'Phone': string;
   'Employee Type': string;
   'Department': string;
+  'Designation':string;
   'Joining Date': string;
   'Status': string;
   'Module':string;
@@ -25,6 +26,7 @@ const generateSampleData = (): EmployeeTemplateData[] => [
     'Phone': '9876543210',
     'Employee Type': 'permanent',
     'Department': 'operations',
+    'Designation':'Professor',
     'Joining Date': '2024-01-15',
     'Status': 'active',
     'Module':'Incidents'
@@ -37,6 +39,7 @@ const generateSampleData = (): EmployeeTemplateData[] => [
     'Phone': '9876543210',
     'Employee Type': 'contract',
     'Department': 'admin',
+    'Designation':'Professor',
     'Joining Date': '2024-02-01',
     'Status': 'active',
     'Module':'Incidents'
@@ -48,6 +51,7 @@ const generateSampleData = (): EmployeeTemplateData[] => [
     'Email': 'mike.johnson@example.com',
     'Phone': '9876543210',
     'Employee Type': 'permanent',
+    'Designation':'Professor',
     'Department': 'hr',
     'Joining Date': '2024-01-20',
     'Status': 'active',
@@ -76,6 +80,7 @@ export const downloadExcelTemplate = (): void => {
     { wch: 15 }, // Phone
     { wch: 15 }, // Employee Type
     { wch: 15 }, // Department
+    { wch: 18 }, // Designation
     { wch: 15 }, // Joining Date
     { wch: 10 },  // Status
     { wch: 20 }  // Module
@@ -135,6 +140,7 @@ export const getTemplateFormatInfo = () => ({
     'Phone',
     'Employee Type',
     'Department',
+    'Designation',
     'Joining Date',
     'Status',
     'Module'
