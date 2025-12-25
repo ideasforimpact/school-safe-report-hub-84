@@ -8,7 +8,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 import { verifyAccessToken } from '../_shared/safe-school/jwt.ts';
-import { corsHeaders } from '../_shared/cors.ts';
+import { getCorsHeaders, corsHeaders } from '../_shared/cors.ts';
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
 
 const BUCKET_NAME = 'visitors_evidence';
@@ -191,7 +191,7 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
       clientId: '',
       error: new Response(
         JSON.stringify({ error: 'Authorization header with Bearer token is required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } }
       )
     };
   }
@@ -212,7 +212,7 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
       clientId: '',
       error: new Response(
         JSON.stringify({ error: 'Invalid or expired access token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } }
       )
     };
   }
@@ -238,7 +238,7 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
         clientId: '',
         error: new Response(
           JSON.stringify({ error: 'Employee not found' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } }
         )
       };
     }
@@ -249,7 +249,7 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
         clientId: '',
         error: new Response(
           JSON.stringify({ error: 'Employee account is inactive' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } }
         )
       };
     }
@@ -263,7 +263,7 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
       clientId: '',
       error: new Response(
         JSON.stringify({ error: 'Client ID not found in token or employee record' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(), 'Content-Type': 'application/json' } }
       )
     };
   }
@@ -278,9 +278,18 @@ async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
+  // Get CORS headers with origin support
+  const corsHeadersWithOrigin = getCorsHeaders(req);
+  
+  // Handle CORS preflight - MUST return CORS headers
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204,
+      headers: {
+        ...corsHeadersWithOrigin,
+        'Content-Length': '0'
+      }
+    });
   }
 
   try {
@@ -291,14 +300,22 @@ serve(async (req) => {
     // Extract and verify token, get employee_id and client_id
     const authInfo = await getAuthenticatedUserInfo(req, supabase);
     if (authInfo.error) {
-      return authInfo.error;
+      // Ensure CORS headers are included in error response
+      const errorResponse = authInfo.error;
+      const errorHeaders = new Headers(errorResponse.headers);
+      Object.entries(corsHeadersWithOrigin).forEach(([key, value]) => {
+        errorHeaders.set(key, value);
+      });
+      return new Response(errorResponse.body, {
+        status: errorResponse.status,
+        headers: errorHeaders
+      });
     }
 
     const authenticatedEmployeeId = authInfo.employeeId;
     const authenticatedClientId = authInfo.clientId;
 
     // Validate IP whitelist
-    const url = new URL(req.url);
     const ipValidation = await validateIPWhitelist(
       supabase,
       req,
@@ -312,7 +329,7 @@ serve(async (req) => {
           error: 'IP_NOT_WHITELISTED',
           message: 'Access denied. Your IP address is not whitelisted for this client.'
         }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -335,7 +352,7 @@ serve(async (req) => {
         if (error || !data) {
           return new Response(
             JSON.stringify({ error: 'Visitor not found or access denied' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 404, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -347,7 +364,7 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ data: transformedData }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       } else {
         // List visitors - filtered by authenticated user's client_id and employee_id
@@ -361,7 +378,7 @@ serve(async (req) => {
         if (error) {
           return new Response(
             JSON.stringify({ error: error.message }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -378,7 +395,7 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ data: transformed }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
     }
@@ -392,7 +409,7 @@ serve(async (req) => {
       if (!name || !mobile_no || !purpose || !whom_to_meet) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields: name, mobile_no, purpose, whom_to_meet' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -411,7 +428,7 @@ serve(async (req) => {
         if (empError || !targetEmployee || targetEmployee.client_id !== clientId) {
           return new Response(
             JSON.stringify({ error: 'Invalid employee_id or employee does not belong to your client' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -421,7 +438,7 @@ serve(async (req) => {
         if (typeof vehicle_type !== 'string' || !vehicle_type.trim()) {
           return new Response(
             JSON.stringify({ error: 'vehicle_type must be a non-empty UUID string' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -434,14 +451,14 @@ serve(async (req) => {
         if (vehicleTypeError || !vehicleTypeRow) {
           return new Response(
             JSON.stringify({ error: 'Invalid vehicle_type: not found in visitor_vehicle_type table' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
 
         if (vehicleTypeRow.active === false) {
           return new Response(
             JSON.stringify({ error: 'Selected vehicle_type is inactive' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -470,7 +487,7 @@ serve(async (req) => {
       if (visitorError) {
         return new Response(
           JSON.stringify({ error: visitorError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -495,7 +512,7 @@ serve(async (req) => {
           await supabase.from('visitors').delete().eq('id', visitor.id);
           return new Response(
             JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -537,7 +554,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ data: transformedData }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -549,7 +566,7 @@ serve(async (req) => {
       if (!id) {
         return new Response(
           JSON.stringify({ error: 'Missing required field: id' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -564,7 +581,7 @@ serve(async (req) => {
       if (fetchError || !existingVisitor) {
         return new Response(
           JSON.stringify({ error: 'Visitor not found or access denied' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 404, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -582,7 +599,7 @@ serve(async (req) => {
         if (empError || !targetEmployee || targetEmployee.client_id !== clientId) {
           return new Response(
             JSON.stringify({ error: 'Invalid employee_id or employee does not belong to your client' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
         effectiveEmployeeId = employee_id;
@@ -593,7 +610,7 @@ serve(async (req) => {
         if (typeof vehicle_type !== 'string' || !vehicle_type.trim()) {
           return new Response(
             JSON.stringify({ error: 'vehicle_type must be a non-empty UUID string' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -606,14 +623,14 @@ serve(async (req) => {
         if (vehicleTypeError || !vehicleTypeRow) {
           return new Response(
             JSON.stringify({ error: 'Invalid vehicle_type: not found in visitor_vehicle_type table' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
 
         if (vehicleTypeRow.active === false) {
           return new Response(
             JSON.stringify({ error: 'Selected vehicle_type is inactive' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -626,7 +643,7 @@ serve(async (req) => {
         } catch (error) {
           return new Response(
             JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
           );
         }
       }
@@ -660,7 +677,7 @@ serve(async (req) => {
       if (updateError) {
         return new Response(
           JSON.stringify({ error: updateError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -705,7 +722,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ data: transformedData }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -717,7 +734,7 @@ serve(async (req) => {
       if (!id) {
         return new Response(
           JSON.stringify({ error: 'Missing required field: id' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -732,7 +749,7 @@ serve(async (req) => {
       if (fetchError || !visitor) {
         return new Response(
           JSON.stringify({ error: 'Visitor not found or access denied' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 404, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -760,25 +777,26 @@ serve(async (req) => {
       if (deleteError) {
         return new Response(
           JSON.stringify({ error: deleteError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
 
       return new Response(
         JSON.stringify({ message: 'Visitor deleted successfully' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 405, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error in visitor-management:', error);
+    // Ensure CORS headers are ALWAYS returned, even for unhandled errors
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
     );
   }
 });
