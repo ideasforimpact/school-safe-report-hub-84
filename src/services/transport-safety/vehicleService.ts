@@ -353,3 +353,56 @@ export const deleteVehicle = async (id: string): Promise<boolean> => {
     return false;
   }
 };
+
+export const checkExistingRegistrations = async (
+  registrationNumbers: string[],
+  clientId: string
+): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('registration_number')
+    .in('registration_number', registrationNumbers)
+    .eq('client_id', clientId);
+
+  if (error) {
+    console.error(error);
+    throw new Error('Failed to check existing vehicles');
+  }
+
+  return (data || []).map(v => v.registration_number);
+};
+
+export const fetchVehicleTypeMap = async (): Promise<Record<string, string>> => {
+  const { data, error } = await supabase
+    .from('vehicle_type')
+    .select('id, name');
+
+  if (error) {
+    console.error(error);
+    throw new Error('Failed to fetch vehicle types');
+  }
+
+  const map: Record<string, string> = {};
+
+  data.forEach(v => {
+    const normalizedKey = v.name.trim().toUpperCase();
+    map[normalizedKey] = v.id;
+  });
+
+  return map;
+};
+
+export const fetchVehicleTypes = async (): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('vehicle_type')
+    .select('name')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching vehicle types:', error);
+    throw new Error('Unable to fetch vehicle types');
+  }
+  return (
+    data?.map(v => v.name.trim()) ?? []
+  );
+};
