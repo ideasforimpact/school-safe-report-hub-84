@@ -512,7 +512,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 <Input
                   id="joiningDate"
                   type="date"
-                  min={new Date().toISOString().split("T")[0]}
+                  // min={new Date().toISOString().split("T")[0]}
                   value={formData.joiningDate || ''}
                   onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
                 />

@@ -516,15 +516,7 @@ const EditUserDialog = ({
                   id="joiningDate"
                   type="date"
                   value={formData.joiningDate || ''}
-                  onChange={(e) => {
-                      const selected = e.target.value;
-                      const today = new Date().toISOString().split("T")[0];
-                      if (selected < today) {
-                        toast.error("Joining date must be a current date or future date");
-                        return;
-                      }
-                      setFormData({ ...formData, joiningDate: selected });
-                    }}
+                  onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
                 />
               </div>
             </div>
