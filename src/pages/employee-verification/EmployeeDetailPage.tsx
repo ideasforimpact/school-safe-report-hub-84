@@ -63,10 +63,6 @@ const EmployeeDetailPage = () => {
       await refetchDocuments();
 
       switch (payload.eventType) {
-        case "INSERT":
-          sonnerToast.success("New employee document added");
-          break;
-
         case "UPDATE":
           sonnerToast.info("Employee document updated");
           break;
