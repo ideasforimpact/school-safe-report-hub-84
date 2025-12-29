@@ -22,7 +22,7 @@ const ClientStatusFilter = ({ currentFilter, onFilterChange }: ClientStatusFilte
       >
         Active
       </Button>
-      <Button
+      {/* <Button
         variant={currentFilter === 'inactive' ? 'default' : 'outline'}
         size="sm"
         onClick={() => onFilterChange('inactive')}
@@ -35,7 +35,7 @@ const ClientStatusFilter = ({ currentFilter, onFilterChange }: ClientStatusFilte
         onClick={() => onFilterChange('all')}
       >
         All
-      </Button>
+      </Button> */}
     </div>
   );
 };
