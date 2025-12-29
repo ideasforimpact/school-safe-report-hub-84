@@ -7,6 +7,7 @@ export interface RawEmployeeData {
   phone?: string;
   employeeType?: string;
   department?: string;
+  designation?: string;
   joiningDate?: string;
   status?: string;
   [key: string]: any;

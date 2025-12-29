@@ -35,3 +35,34 @@ export const isValidEmployeeId = (employeeId: string): boolean => {
   return EMPLOYEE_ID_CONSTANTS.PATTERN.test(employeeId);
 };
 
+export const EMPLOYEE_NAME_CONSTANTS = {
+  MIN_LENGTH: 3,
+
+  MAX_LENGTH: 25,
+
+  PATTERN: /^[a-zA-Z\s]{3,25}$/,
+} as const;
+
+export const getEmployeeFirstnameErrorMessage = (): string => {
+  return `Employee ID must be between ${EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH} characters`;
+};
+
+export const EMPLOYEE_LAST_NAME_CONSTANTS = {
+  MIN_LENGTH: 2,
+
+  MAX_LENGTH: 25,
+
+  PATTERN: /^[a-zA-Z\s]{3,25}$/,
+} as const;
+
+export const getEmployeeLastnameErrorMessage = (): string => {
+  return `Employee ID must be between ${EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH} and ${EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH} characters`;
+};
+
+export const EMPLOYEE_DESIGNATION_CONSTANTS = {
+  MIN_LENGTH: 3,
+
+  MAX_LENGTH: 25,
+
+  PATTERN: /^[a-zA-Z\s]{3,25}$/,
+} as const;

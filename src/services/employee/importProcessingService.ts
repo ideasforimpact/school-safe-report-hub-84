@@ -120,6 +120,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         phone: row.phone ? String(row.phone) : undefined,
         employeeType: String(row.employeeType),
         department: String(row.department),
+        designation:String(row.designation),
         joiningDate: String(row.joiningDate),
         status: String(row.status),
         clientId: clientId, // Ensure clientId is passed through
