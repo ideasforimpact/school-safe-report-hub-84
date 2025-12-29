@@ -8,13 +8,14 @@ import EmptyVehiclesState from './EmptyVehiclesState';
 import AddVehicleDialog from './AddVehicleDialog';
 import { useVehicleFilters } from './filters/useVehicleFilters';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, FileText, RefreshCw } from 'lucide-react';
+import { AlertCircle, FileText, FileUp, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { getDocumentStatus, getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
 import { Vehicle } from '@/types/transportSafety';
+import ImportVehiclesDialog from './ImportVehiclesDialog';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -27,7 +28,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
-  
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const {
     // State
     searchQuery,
@@ -198,6 +199,15 @@ return (
       <h3 className="text-lg font-medium">Vehicle List</h3>
       <div className="flex gap-2">
         <Button 
+            onClick={() => setIsImportDialogOpen(true)}
+            className="flex items-center gap-2"
+            variant="secondary"
+            disabled={loading}
+          >
+            <FileUp className="h-4 w-4" />
+            <span>Import Vehicles</span>
+          </Button>
+        <Button 
           variant="outline" 
           size="sm" 
           onClick={exportToExcel} 
@@ -260,6 +270,12 @@ return (
       onClose={handleCloseEditDialog}
       vehicle={selectedVehicle}
     />
+   <ImportVehiclesDialog
+      isOpen={isImportDialogOpen}
+      onClose={() => setIsImportDialogOpen(false)}
+      onSuccess={handleRefresh}
+    />
+
   </div>
 );
 };
