@@ -116,27 +116,70 @@ const EmployeeVerificationPage = () => {
     setSearchTerm('');
     setDocumentStatusFilter('all');
   };
+  const employeeAnalyticsStats = useMemo(() => {
+    const totalEmployees = employees.length;
+
+    const verifiedEmployees = employees.filter(
+      (employee) => getOverallStatus(employee) === 'verified'
+    ).length;
+
+    return {
+      totalEmployees,
+      verifiedEmployees,
+    };
+  }, [employees]);
+
+
 
   return (
     <Layout>
       <div className="w-full py-6">
-        <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
-          <div className="flex items-center space-x-4">
-            <FileCheck className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold text-left">Employee Verification</h1>
-              <p className="text-gray-500 text-sm text-left">Manage and verify employee documents</p>
+        <div className="bg-gradient-to-r from-blue-50 to-transparent mb-8 rounded-xl border border-gray-200 p-6 mx-6">
+          <div className="flex flex-col gap-6">
+            <div className="flex justify-between items-start">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-blue-50 rounded-xl">
+                  <FileCheck className="h-6 w-6 text-primary" />
+                </div>
+
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    Employee Verification
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    Manage and verify employee documents
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                title="Refresh employees"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                />
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={handleRefresh} 
-              title="Refresh employees"
-            >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            </Button>
+
+            <div className="flex gap-80">
+              <div className='ms-16 '>
+                <p className="text-sm text-gray-500">Total Employees</p>
+                <p className="text-3xl font-semibold text-gray-900">
+                  {employeeAnalyticsStats.totalEmployees}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Verified Employees</p>
+                <p className="text-3xl font-semibold text-green-600">
+                  {employeeAnalyticsStats.verifiedEmployees}
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
 
