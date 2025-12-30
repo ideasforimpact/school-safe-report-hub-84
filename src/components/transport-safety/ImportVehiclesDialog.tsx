@@ -198,13 +198,21 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
 
         setIsLoading(true);
         try {
-            await importVehicles(
+            const { skippedVehicles } = await importVehicles(
                 selectedFile,
                 employeeData.clientId,
                 employeeData.id,
             );
 
-            toast.success('Vehicles imported successfully');
+            if (skippedVehicles.length > 0) {
+                toast.warning(
+                    `${skippedVehicles.length} vehicle(s) already exist. All other vehicles have been added successfully.`
+                );
+            }
+            else {
+                toast.success('Vehicles imported successfully');
+            }
+
             resetState();
             onSuccess();
             onClose();

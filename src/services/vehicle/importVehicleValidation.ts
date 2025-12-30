@@ -23,13 +23,24 @@ const ALLOWED_VEHICLE_TYPES = [
 
 export const validateVehicleRows = (
   rows: RawVehicleData[],
-  existingRegistrations: string[] = []
 ): string[] => {
+
+  if (
+    !rows.length ||
+    rows.every(row =>
+      Object.values(row).every(
+        value =>
+          value === undefined ||
+          value === null ||
+          (typeof value === 'string' && !value.trim())
+      )
+    )
+  ) {
+    return ['The uploaded file is empty. Please add at least one vehicle record.'];
+  }
+
   const errors: string[] = [];
   const seenInFile = new Set<string>();
-  const existingSet = new Set(
-    existingRegistrations.map(r => r.toUpperCase())
-  );
 
   rows.forEach((row, index) => {
     const rowNum = index + 2;
@@ -46,7 +57,11 @@ export const validateVehicleRows = (
       }
     });
 
-    const regNo = row.registrationNumber?.trim().toUpperCase();
+    const regNo =
+      row.registrationNumber !== undefined &&
+        row.registrationNumber !== null
+        ? String(row.registrationNumber).trim().toUpperCase()
+        : '';
     if (!regNo) return;
 
     if (!REGISTRATION_REGEX.test(regNo)) {
@@ -56,21 +71,16 @@ export const validateVehicleRows = (
     }
 
     if (seenInFile.has(regNo)) {
-      errors.push(
-        `Row ${rowNum}: Duplicate Registration Number "${regNo}" found in file`
-      );
-    } else {
-      seenInFile.add(regNo);
+      return;
     }
+    seenInFile.add(regNo);
 
-    if (existingSet.has(regNo)) {
-      errors.push(
-        `Row ${rowNum}: Registration Number "${regNo}" already exists`
-      );
-    }
 
-    const internalName = row.internalVehicleName?.trim();
-
+    const internalName =
+      row.internalVehicleName !== undefined &&
+        row.internalVehicleName !== null
+        ? String(row.internalVehicleName).trim()
+        : '';
     if (internalName) {
       if (internalName.length < 2) {
         errors.push(
@@ -91,7 +101,11 @@ export const validateVehicleRows = (
       }
     }
 
-    const vehicleType = row.vehicleType?.trim().toUpperCase();
+    const vehicleType =
+      row.vehicleType !== undefined &&
+        row.vehicleType !== null
+        ? String(row.vehicleType).trim().toUpperCase()
+        : '';
 
     if (
       vehicleType &&
