@@ -358,12 +358,45 @@ const IncidentsList = () => {
   console.log('📊 Total incidents cached:', allIncidents.length, 'Currently displayed:', displayedIncidents.length);
   console.log('🔍 Active filters:', filters);
 
+  const incidentAnalyticsStats = React.useMemo(() => {
+    const open = allIncidents.filter(i => i.status === 'Open').length;
+    const closed = allIncidents.filter(i => i.status === 'Closed').length;
+
+    return {
+      total: allIncidents.length,
+      open,
+      closed,
+    };
+  }, [allIncidents]);
+
   return (
     <Layout>
       <div className="space-y-6 p-6 w-full">
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
           <div className="w-full">
             <IncidentsHeader hasIncidentAdmin={hasIncidentAdmin} />
+            <div className="mt-4 flex gap-96">
+              <div>
+                <p className="text-sm text-gray-500">Total Incidents</p>
+                <p className="text-3xl font-semibold text-gray-900">
+                  {incidentAnalyticsStats.total}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Open Incidents</p>
+                <p className="text-3xl font-semibold text-orange-600">
+                  {incidentAnalyticsStats.open}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Closed Incidents</p>
+                <p className="text-3xl font-semibold text-green-600">
+                  {incidentAnalyticsStats.closed}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
