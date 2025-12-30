@@ -8,8 +8,21 @@ export const validateVehicleExcel = async (
   clientId: string
 ): Promise<string[]> => {
   const rawData = await parseVehicleFile(file);
-  const normalizedRegs = rawData
-    .map(v => v.registrationNumber?.trim().toUpperCase())
+  return validateVehicleRows(rawData);
+};
+
+export const importVehicles = async (
+  file: File,
+  clientId: string,
+  employeeId: string
+): Promise<{ skippedVehicles: string[] }> => {
+  const vehicles = await parseVehicleFile(file);
+  const normalizedRegs = vehicles
+    .map(v =>
+      v.registrationNumber !== undefined && v.registrationNumber !== null
+        ? String(v.registrationNumber).trim().toUpperCase()
+        : ''
+    )
     .filter(Boolean);
 
   const existingRegs = await checkExistingRegistrations(
@@ -17,17 +30,11 @@ export const validateVehicleExcel = async (
     clientId
   );
 
-  return validateVehicleRows(rawData, existingRegs);
-};
+  const existingSet = new Set(existingRegs.map(r => r.toUpperCase()));
 
-export const importVehicles = async (
-  file: File,
-  clientId: string,
-  employeeId: string
-) => {
-  const vehicles = await parseVehicleFile(file);
-
-  if (!vehicles.length) return;
+  if (!vehicles.length) {
+    return { skippedVehicles: [] };
+  }
 
   const errors = validateVehicleRows(vehicles);
   if (errors.length > 0) {
@@ -35,11 +42,35 @@ export const importVehicles = async (
   }
 
   const vehicleTypeMap = await fetchVehicleTypeMap();
-
+  const skippedVehicles: string[] = [];
+  const seenInFile = new Set<string>();
   const payload = vehicles.map((v, index) => {
-    const normalizedVehicleType = v.vehicleType
-      ?.trim()
-      .toUpperCase();
+    const registrationNumber =
+      v.registrationNumber !== undefined && v.registrationNumber !== null
+        ? String(v.registrationNumber).trim().toUpperCase()
+        : '';
+    if (!registrationNumber) return null;
+
+    if (seenInFile.has(registrationNumber)) {
+      skippedVehicles.push(registrationNumber);
+      return null;
+    }
+    seenInFile.add(registrationNumber);
+
+    if (existingSet.has(registrationNumber)) {
+      skippedVehicles.push(registrationNumber);
+      return null;
+    }
+
+    const internalVehicleName =
+      v.internalVehicleName !== undefined && v.internalVehicleName !== null
+        ? String(v.internalVehicleName).trim()
+        : '';
+
+    const normalizedVehicleType =
+      v.vehicleType !== undefined && v.vehicleType !== null
+        ? String(v.vehicleType).trim().toUpperCase()
+        : '';
 
     const typeId = vehicleTypeMap[normalizedVehicleType];
 
@@ -50,8 +81,8 @@ export const importVehicles = async (
     }
 
     return {
-      registration_number: v.registrationNumber.trim(),
-      internal_vehicle_name: v.internalVehicleName.trim(),
+      registration_number: registrationNumber,
+      internal_vehicle_name: internalVehicleName,
 
       type: typeId,
 
@@ -68,16 +99,19 @@ export const importVehicles = async (
       client_id: clientId,
       employee_id: employeeId,
     };
-  });
+  }).filter((v): v is NonNullable<typeof v> => Boolean(v));
 
-  const { error } = await supabase
-    .from('vehicles')
-    .insert(payload);
+  if (payload.length > 0) {
+    const { error } = await supabase
+      .from('vehicles')
+      .insert(payload);
 
-  if (error) {
-    console.error(error);
-    throw new Error('Failed to import vehicles');
+    if (error) {
+      console.error(error);
+      throw new Error('Failed to import vehicles');
+    }
   }
+  return { skippedVehicles };
 };
 
 
