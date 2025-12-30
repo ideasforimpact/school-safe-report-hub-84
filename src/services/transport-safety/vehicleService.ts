@@ -406,3 +406,34 @@ export const fetchVehicleTypes = async (): Promise<string[]> => {
     data?.map(v => v.name.trim()) ?? []
   );
 };
+const getLatestVehicleVerificationLog = (verificationData: any) => {
+  if (!Array.isArray(verificationData)) return null;
+
+  const log = verificationData.find(v => v.field === 'verification_log');
+  if (!log?.value) return null;
+
+  const latestKey = Object.keys(log.value).sort().pop();
+  return latestKey ? log.value[latestKey] : null;
+};
+
+const getVehicleChallans = (verificationData: any) => {
+  const log = getLatestVehicleVerificationLog(verificationData);
+  
+  if (!Array.isArray(log)) return [];
+  
+  const challanField = log.find(
+    (f: any) => f.field === 'challan_details'
+  );
+
+  return challanField?.value?.challan_details?.challans ?? [];
+};
+export const getPendingChallans = (verificationData: any) => {
+  const allChallans = getVehicleChallans(verificationData);
+  return allChallans.filter(
+    (c: any) =>
+      c.challan_status &&
+      c.challan_status.toLowerCase() !== 'disposed'
+  );
+};
+
+
