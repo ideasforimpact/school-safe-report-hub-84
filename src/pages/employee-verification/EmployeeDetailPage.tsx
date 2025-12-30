@@ -62,15 +62,6 @@ const EmployeeDetailPage = () => {
 
       await refetchDocuments();
 
-      switch (payload.eventType) {
-        case "UPDATE":
-          sonnerToast.info("Employee document updated");
-          break;
-
-        case "DELETE":
-          sonnerToast.error("Employee document deleted");
-          break;
-      }
     },
     [employeeId]
   );
@@ -366,7 +357,7 @@ const EmployeeDetailPage = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
+      <div className="container mx-auto py-6 px-4 sm:px-6 max-w-[107rem]">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
           <div className="flex items-center mb-4 sm:mb-0">
           <Button variant="ghost" size="sm" onClick={() => navigate('/employee-verification')} className="mr-4">
