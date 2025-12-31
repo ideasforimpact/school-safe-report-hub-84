@@ -1,1 +1,4 @@
 export const DESCRIPTION_MAX_LENGTH = 2000;
+export const TITLE_MAX_LENGTH =15;
+export const EDUSAFE_DESCRIPTION_MAX_LENGTH =100;
+export const EDUSAFE_TAG_MAX_LENGTH =50;

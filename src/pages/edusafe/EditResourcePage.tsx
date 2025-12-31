@@ -20,6 +20,7 @@ import { EduSafeProvider, useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { ResourceCategory, EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
+import { EDUSAFE_DESCRIPTION_MAX_LENGTH, EDUSAFE_TAG_MAX_LENGTH, TITLE_MAX_LENGTH } from '@/components/constants';
 
 const EditResourceContent = () => {
   const { resourceId } = useParams<{ resourceId: string }>();
@@ -259,10 +260,13 @@ const EditResourceContent = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Resource title"
+                  maxLength={TITLE_MAX_LENGTH}
                   required
                 />
               </div>
-              
+              <div className="text-xs text-gray-500 text-right">
+                  {title.length}/{TITLE_MAX_LENGTH} characters
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea 
@@ -270,10 +274,13 @@ const EditResourceContent = () => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Provide a brief description of this resource"
+                  maxLength={EDUSAFE_DESCRIPTION_MAX_LENGTH}
                   rows={3}
                 />
               </div>
-              
+              <div className="text-xs text-gray-500 text-right">
+                  {description.length}/{EDUSAFE_DESCRIPTION_MAX_LENGTH} characters
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select
@@ -302,6 +309,7 @@ const EditResourceContent = () => {
                     onChange={(e) => setTagInput(e.target.value)}
                     placeholder="Add tags"
                     onKeyDown={handleKeyDown}
+                    maxLength={EDUSAFE_TAG_MAX_LENGTH}
                   />
                   <Button 
                     type="button"
@@ -311,15 +319,19 @@ const EditResourceContent = () => {
                     Add
                   </Button>
                 </div>
-                
+                <div className="text-xs text-gray-500 text-right">
+                  {tagInput.length}/{EDUSAFE_TAG_MAX_LENGTH} characters
+                </div>
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {tags.map((tag) => (
                       <div 
                         key={tag} 
-                        className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full flex items-center"
+                        className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full flex items-center max-w-full break-all"
                       >
-                        {tag}
+                         <span className="truncate max-w-[200px]">
+                            {tag}
+                          </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveTag(tag)}

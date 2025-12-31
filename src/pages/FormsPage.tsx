@@ -649,7 +649,7 @@ const FormsPage = () => {
                       <div className="relative w-64">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                         <Input
-                          placeholder="Search grievance..."
+                          placeholder="Search name and title..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="pl-10"
@@ -671,7 +671,7 @@ const FormsPage = () => {
                       </div>
 
                       {/* 3. Form Type Filter */}
-                      <div className="w-48">
+                      {/* <div className="w-48">
                         <Select value={formTypeFilter} onValueChange={setFormTypeFilter}>
                           <SelectTrigger>
                             <SelectValue placeholder="All Types" />
@@ -685,7 +685,7 @@ const FormsPage = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
+                      </div> */}
 
                       {/* 4. Date Range Filter */}
                       <div className="flex items-center gap-2">
@@ -714,7 +714,12 @@ const FormsPage = () => {
                                 <CalendarIcon
                                   mode="single"
                                   selected={dateFrom}
-                                  onSelect={setDateFrom}
+                                  onSelect={(date) => {
+                                    setDateFrom(date);
+                                    if (dateTo && date && dateTo < date) {
+                                      setDateTo(undefined);
+                                    }
+                                  }}
                                   className="rounded-md border"
                                 />
                               </div>
@@ -724,6 +729,9 @@ const FormsPage = () => {
                                   mode="single"
                                   selected={dateTo}
                                   onSelect={setDateTo}
+                                  disabled={(date) =>
+                                    dateFrom ? date < dateFrom : false
+                                  }
                                   className="rounded-md border"
                                 />
                               </div>
@@ -767,7 +775,7 @@ const FormsPage = () => {
                               <TableHead>Name</TableHead>
                               <TableHead>Title</TableHead>
                               <TableHead>Mobile number</TableHead>
-                              <TableHead>Type</TableHead>
+                              <TableHead>Raised by</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Grievance Date</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
