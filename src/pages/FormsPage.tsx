@@ -220,6 +220,33 @@ const FormsPage = () => {
       toast.error('Failed to update form');
     }
   };
+  const grievanceStats = useMemo(() => {
+    if (!submissions) {
+      return {
+        open: 0,
+        closed: 0,
+        acknowledged: 0,
+      };
+    }
+
+    let open = 0;
+    let closed = 0;
+    let acknowledged = 0;
+
+    submissions.forEach((sub: any) => {
+      const status = (sub.status || 'pending').toLowerCase();
+
+      if (status === 'pending') {
+        open += 1;
+      } else if (status === 'acknowledged') {
+        acknowledged += 1;
+      } else if (status === 'resolved' || status === 'closed') {
+        closed += 1;
+      }
+    });
+
+    return { open, closed, acknowledged };
+  }, [submissions]);
 
   const handleDeleteForm = async (formId: string) => {
     if (!confirm('Are you sure you want to delete this form?')) return;
@@ -469,24 +496,45 @@ const FormsPage = () => {
   const Content = (
     <div className="w-full py-6">
       <div className="mx-6 space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <FileText className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold">
-                  {isBackoffice ? 'Form Management' : 'Grievances'}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  {isBackoffice 
-                    ? 'Configure grievance forms for clients' 
-                    : 'Search and manage grievances'
-                  }
-                </p>
-              </div>
+      <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
+          <div className="flex items-start gap-3">
+            <FileText className="h-8 w-8 mt-3 text-blue-600 shrink-0" />
+            <div>
+              <h1 className="text-2xl font-bold">
+                {isBackoffice ? 'Form Management' : 'Grievances'}
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {isBackoffice
+                  ? 'Configure grievance forms for clients'
+                  : 'Search and manage grievances'}
+              </p>
             </div>
           </div>
+          {!isBackoffice && (
+            <div className="mt-4 flex gap-96">
+              <div className='ms-12'>
+                <p className="text-sm text-gray-500">Open Grievances</p>
+                <p className="text-3xl font-semibold text-orange-600">
+                  {grievanceStats.open}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Acknowledged Grievances</p>
+                <p className="text-3xl font-semibold text-blue-600">
+                  {grievanceStats.acknowledged}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Closed Grievances</p>
+                <p className="text-3xl font-semibold text-green-600">
+                  {grievanceStats.closed}
+                </p>
+              </div>
+
+            </div>
+          )}
         </div>
 
         {/* Client Selection (backoffice only) */}
