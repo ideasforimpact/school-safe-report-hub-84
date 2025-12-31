@@ -104,6 +104,7 @@ import ComplianceDocumentsPage from '@/pages/ComplianceDocumentsPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import AuthCallback from './pages/callback';
+import TransportChallansPage from './pages/transport-safety/TransportChallansPage';
 
 
 function App() {
@@ -213,6 +214,7 @@ function App() {
                   {/* Transport Safety routes */}
                   <Route path="/transport-safety" element={<RouteGuard requireAuth={true}><TransportSafetyPage /></RouteGuard>} />
                   <Route path="/transport-safety/documents" element={<RouteGuard requireAuth={true}><DocumentsPage /></RouteGuard>} />
+                  <Route path="/transport-safety/challans" element={<RouteGuard requireAuth={true}><   TransportChallansPage /> </RouteGuard>} />
                   <Route path="/transport-safety/:vehicleId" element={<RouteGuard requireAuth={true}><VehicleDetailPage /></RouteGuard>} />
                   <Route path="/transport-safety/:vehicleId/documents" element={<RouteGuard requireAuth={true}><DocumentsPage /></RouteGuard>} />
                   
