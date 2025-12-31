@@ -41,7 +41,7 @@ interface BasicInfoTabProps {
 export const isValidClientName = (name: string) => {
   const trimmed = name.trim();
   if (!trimmed) return false;
-  return /^[A-Za-z]{1,50}$/.test(trimmed);
+  return /^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmed);
 };
 export const isValidContactPerson = (name: string) => {
    const trimmed = name.trim();
@@ -50,8 +50,10 @@ export const isValidContactPerson = (name: string) => {
  };
 
 export const isValidEmail = (email: string) => {
-   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
- };
+  const trimmed = email.trim();
+  if (!trimmed) return false;
+  return /^(?!.*\.\.)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/.test(trimmed);
+};
 export const isValidPhone = (phone?: string) => !!phone && /^[6-9]\d{9}$/.test(phone);
 
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false }: BasicInfoTabProps) => {
@@ -221,7 +223,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         )}
        {formData.name && !isValidClientName(formData.name) && (
           <p className="text-xs text-red-600">
-            Client name must contain only letters and no spaces.
+            Client name must contain only letters and spaces.
           </p>
         )}
       </div>
@@ -299,6 +301,14 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         <p className="text-xs text-gray-500">Checking email...</p>
       )}
 
+      {emailTouched &&
+        formData.superAdminEmail &&
+        !isValidEmail(formData.superAdminEmail) && (
+          <p className="text-xs text-red-600">
+            Enter a valid email address
+          </p>
+      )}
+
       {!checkingEmail &&
         emailTouched &&
         formData.superAdminEmail &&
@@ -361,6 +371,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         />
         {showErrors && !formData.email && (
           <p className="text-xs text-red-600">Email is required.</p>
+        )}
+        {!isValidEmail(formData.email) && (
+          <p className="text-xs text-red-600"> Enter a valid email address</p>
         )}
       </div>
       <div className="space-y-2">
