@@ -435,5 +435,18 @@ export const getPendingChallans = (verificationData: any) => {
       c.challan_status.toLowerCase() !== 'disposed'
   );
 };
+export const getVehiclesWithPendingChallans = async (
+  clientId: string
+): Promise<Vehicle[]> => {
+  try {
+    const vehicles = await getAllVehicles(clientId);
 
-
+    return vehicles.filter(vehicle => {
+      const pending = getPendingChallans(vehicle.verificationData);
+      return pending.length > 0;
+    });
+  } catch (error) {
+    console.error('Error fetching vehicles with pending challans:', error);
+    throw error;
+  }
+};
