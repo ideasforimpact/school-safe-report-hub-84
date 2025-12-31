@@ -18,12 +18,13 @@ import { useVehicleTypes } from '@/hooks/useVehicleTypes';
 interface AddVehicleDialogProps {
   open: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
   vehicle?: Vehicle; // Optional vehicle for edit mode
 }
 
 type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>;
 
-const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehicle }) => {
+const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose,onSuccess, vehicle }) => {
   const { addVehicle, updateVehicle, vehicles } = useTransportSafety();
   const { employeeData } = useAuth();
   const { vehicleTypes, loading: vehicleTypesLoading } = useVehicleTypes();
@@ -174,7 +175,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose, vehi
         await addVehicle(vehicleData);
         // toast.success('Vehicle added successfully');
       }
-      
+      onSuccess?.();
       reset();
       onClose();
     } catch (error) {
