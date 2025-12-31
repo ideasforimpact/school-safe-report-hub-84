@@ -45,10 +45,11 @@ const TransportSafetyPage = () => {
     fetchStats();
   }, [fetchStats]);
 
-  const handleVehicleRealtime = useCallback(async () => {
-    console.log('[Realtime] Vehicle updated → refreshing stats');
-    await fetchStats();
-  }, [fetchStats]);
+const handleVehicleRealtime = useCallback((payload: any) => {
+  console.log('[Realtime payload]', payload);
+  fetchStats();
+}, [fetchStats]);
+
 
   useRealTimeSubHook({
     channelName: `vehicles-${clientId}`,
@@ -118,6 +119,7 @@ const TransportSafetyPage = () => {
       <AddVehicleDialog
         open={showAddVehicle}
         onClose={() => setShowAddVehicle(false)}
+        onSuccess={fetchStats}
       />
     </Layout>
   );
