@@ -13,6 +13,12 @@ const corsHeaders = {
 const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
 const isQuickEKYC = integrationName === 'quickekyc';
 
+// OTP validity period: Read from environment variable (in minutes), default to 10 minutes
+const getOtpValidityMinutes = (): number => {
+  const validity = Deno.env.get('AADHAR_OTP_VALIDITY');
+  return validity ? parseInt(validity, 10) : 10;
+};
+
 // ============================================================================
 // QuickEKYC Functions
 // ============================================================================
@@ -396,7 +402,8 @@ serve(async (req) => {
       hasOtp: !!otp,
       hasClientId: !!client_id,
       hasVerificationNotes: !!verification_notes,
-      documentNumber
+      documentNumber,
+      requestBody
     });
     
     // Initialize Supabase client
@@ -641,7 +648,7 @@ serve(async (req) => {
       if (documentId) {
         const { data: document, error: docError } = await supabase
           .from('employee_documents')
-          .select('last_otp_generated')
+          .select('last_otp_generated, employee_id')
           .eq('id', documentId)
           .single();
         
@@ -656,20 +663,37 @@ serve(async (req) => {
           console.log("Last OTP time:", lastOtpTime.toISOString());
           console.log("Time difference since last OTP (minutes):", timeDiffMinutes);
           
-          // OTP validity period: 3 minutes
-          const OTP_VALIDITY_MINUTES = 3;
+          // OTP validity period: Read from environment variable (in minutes), default to 10 minutes
+          const OTP_VALIDITY_MINUTES = getOtpValidityMinutes();
           
-          // If it's been less than 3 minutes, OTP is still valid
+          // If it's been less than the validity period, OTP is still valid
           if (timeDiffMinutes < OTP_VALIDITY_MINUTES) {
             // Calculate remaining validity time in seconds
             const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
             console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
             
+            // Fetch client_id from employee if available
+            let clientIdForResponse: string | undefined = undefined;
+            if (document?.employee_id) {
+              const { data: employee } = await supabase
+                .from('employees')
+                .select('client_id')
+                .eq('id', document.employee_id)
+                .single();
+              if (employee?.client_id) {
+                clientIdForResponse = employee.client_id;
+              }
+            }
+            
+            // Return success response with otpStatus to indicate OTP input should be shown
             return new Response(
               JSON.stringify({ 
-                error: "OTP already sent and still valid", 
+                success: true,
+                message: "OTP already sent and still valid. Please enter the OTP.",
                 cooldownRemaining: remainingSeconds,
-                otpStatus: "valid" 
+                otpStatus: "valid",
+                showOtpInput: true,
+                client_id: clientIdForResponse // Include client_id for verifyAadharOtp
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
@@ -755,6 +779,30 @@ serve(async (req) => {
         );
       }
       
+      // Fetch client_id from employee if not provided in request body
+      let clientIdForVerification = client_id;
+      if (!clientIdForVerification && documentId) {
+        console.log("client_id not provided in request, fetching from employee document");
+        const { data: document } = await supabase
+          .from('employee_documents')
+          .select('employee_id')
+          .eq('id', documentId)
+          .single();
+        
+        if (document?.employee_id) {
+          const { data: employee } = await supabase
+            .from('employees')
+            .select('client_id')
+            .eq('id', document.employee_id)
+            .single();
+          
+          if (employee?.client_id) {
+            clientIdForVerification = employee.client_id;
+            console.log("Fetched client_id from employee:", clientIdForVerification);
+          }
+        }
+      }
+      
       // Get the 'api' key from request body to determine which integration to use
       // This should match the 'api' key returned from requestAadharOtp
       const requestApi = requestBody.api || integrationName || 'quickekyc';
@@ -762,7 +810,7 @@ serve(async (req) => {
       
       try {
         // Call verify OTP using the integration specified by the 'api' key from first call
-        const { response: apiResponse, data: rawData } = await verifyAadharOtpWithIntegration(otp, useApi, txnId, client_id);
+        const { response: apiResponse, data: rawData } = await verifyAadharOtpWithIntegration(otp, useApi, txnId, clientIdForVerification);
         
         console.log(`${useApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API verification response:`, JSON.stringify(rawData));
         
@@ -846,7 +894,8 @@ serve(async (req) => {
               api_verification_status: 'completed',
               api_verification_method: 'api',
               api_verification_date: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              last_otp_generated: null // Clear OTP timestamp after successful verification
             };
             
             // Add personal_info if we extracted it
