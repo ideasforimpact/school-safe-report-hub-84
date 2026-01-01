@@ -94,8 +94,19 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isOtherVerifying, setIsOtherVerifying] = useState(false);
   const [isOtherRejecting, setIsOtherRejecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [otpExpired, setOtpExpired] = useState(false);
 
   const autoStartedRef = useRef(false);
+
+  // Get OTP validity from environment variable (in minutes), default to 10 minutes
+  const OTP_VALIDITY_MINUTES = (() => {
+    const envValue = import.meta.env.VITE_AADHAR_OTP_VALIDITY;
+    const parsed = parseInt(envValue as string || '10', 10);
+    console.log('OTP Validity from env:', { envValue, parsed, finalMinutes: parsed });
+    return parsed;
+  })();
+  const OTP_VALIDITY_SECONDS = OTP_VALIDITY_MINUTES * 60;
+  console.log('OTP Validity in seconds:', OTP_VALIDITY_SECONDS);
 
   // Detail dialog states
   const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
@@ -168,6 +179,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         setCooldownTimerId(null);
       }
       setCooldownSeconds(null);
+      setOtpExpired(false); // Reset expired state when dialog closes
     }
     autoStartedRef.current = false;
   }, [open]);
@@ -185,9 +197,31 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   }, [open, quickStartMethod, isOther, isOtherDocuments]);
 
+  // Check if OTP was already generated and is still valid when dialog opens
+  useEffect(() => {
+    if (open && isAadhar && documentId && documents.length > 0) {
+      const currentDocument = documents.find(doc => doc.id === documentId);
+      if (currentDocument?.lastOtpGenerated) {
+        const lastOtpTime = new Date(currentDocument.lastOtpGenerated);
+        const currentTime = new Date();
+        const timeDiffMinutes = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60);
+        
+        // If OTP is still valid (less than validity period old), show OTP input
+        if (timeDiffMinutes < OTP_VALIDITY_MINUTES) {
+          const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
+          setShowOtpInput(true);
+          startCooldownTimer(remainingSeconds);
+          console.log('OTP already generated and still valid, showing OTP input');
+        }
+      }
+    }
+  }, [open, isAadhar, documentId, documents]);
+
   const startCooldownTimer = (seconds: number) => {
     console.info("Starting cooldown timer with seconds:", seconds, "current time:", new Date().toISOString());
+    console.info("OTP_VALIDITY_SECONDS constant:", OTP_VALIDITY_SECONDS, "OTP_VALIDITY_MINUTES:", OTP_VALIDITY_MINUTES);
     setCooldownSeconds(seconds);
+    setOtpExpired(false); // Reset expired state when starting new timer
     
     // Clear any existing timer
     if (cooldownTimerId !== null) {
@@ -200,6 +234,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         if (prevSeconds === null || prevSeconds <= 1) {
           clearInterval(timerId);
           setCooldownTimerId(null);
+          // When timer reaches 0, hide OTP input and show expired warning
+          if (showOtpInput) {
+            setShowOtpInput(false);
+            setOtpExpired(true);
+            setOtp(""); // Clear OTP input
+          }
           return null;
         }
         return prevSeconds - 1;
@@ -983,6 +1023,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         return;
       }
       setIsRequestingOtp(true);
+      setOtpExpired(false); // Reset expired state when requesting new OTP
       try {
         const { data, error } = await supabase.functions.invoke('employee-verification', {
           body: {
@@ -992,16 +1033,34 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
         });
         if (error) throw new Error(error.message || 'Failed to request OTP');
+        
+        // Handle case where OTP is already sent and still valid
+        if (data?.otpStatus === 'valid' && data?.showOtpInput) {
+          setShowOtpInput(true);
+          setOtpExpired(false); // Ensure expired state is false
+          if (data?.cooldownRemaining) {
+            startCooldownTimer(data.cooldownRemaining);
+          } else {
+            startCooldownTimer(OTP_VALIDITY_SECONDS);
+          }
+          // Store client_id from response for OTP verification if available
+          if (data?.client_id) {
+            setClientId(String(data.client_id));
+          }
+          return; // Don't show error, just show OTP input
+        }
+        
         if (data?.error) throw new Error(data.error);
         // Store client_id from response for OTP verification
         if (data?.client_id) {
           setClientId(String(data.client_id));
         }
         setShowOtpInput(true);
+        setOtpExpired(false); // Ensure expired state is false
         if (typeof data?.expires_in === 'number') {
           startCooldownTimer(data.expires_in);
         } else {
-          startCooldownTimer(300);
+          startCooldownTimer(OTP_VALIDITY_SECONDS);
         }
       } catch (err: any) {
         console.error('requestAadharOtp error:', err);
@@ -1113,13 +1172,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
     setIsVerifyingOtp(true);
     try {
+      // Build request body with client_id if available
+      const requestBody: any = {
+        action: 'verifyAadharOtp',
+        documentId,
+        otp
+      };
+      
+      // Include client_id if available (required for OTP verification)
+      if (clientId) {
+        requestBody.client_id = clientId;
+      }
+      
       const { data, error } = await supabase.functions.invoke('employee-verification', {
-        body: {
-          action: 'verifyAadharOtp',
-          documentId,
-          otp,
-          client_id: clientId || undefined
-        }
+        body: requestBody
       });
       if (error) throw new Error(error.message || 'Failed to verify OTP');
       if (data?.error || data?.success === false) throw new Error(data?.error || 'OTP verification failed');
@@ -1328,7 +1394,24 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             }
           </DialogDescription>
         </DialogHeader>
-        {!showOtpInput ? (
+        {otpExpired ? (
+          // OTP Expired Warning
+          <div className="flex flex-col gap-4 py-4">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <ShieldCheck className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-medium text-amber-800">OTP Expired</h3>
+                  <div className="mt-1 text-sm text-amber-700">
+                    The OTP has expired. Please click the "Request New OTP" button below to request a new OTP.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : !showOtpInput ? (
           // Consent checkbox content
           <div className="flex flex-col gap-4 py-4">
 
@@ -1369,7 +1452,21 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           </div>
         )}
         <DialogFooter className="flex justify-center sm:justify-end mt-4">
-          {showOtpInput ? (
+          {otpExpired ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleApiClick}
+                disabled={isRequestingOtp}
+                className="ml-2"
+              >
+                {isRequestingOtp ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Request New OTP
+              </Button>
+            </>
+          ) : showOtpInput ? (
             <>
               <Button variant="outline" onClick={handleCancel} disabled={isVerifyingOtp}>
                 Cancel

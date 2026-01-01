@@ -352,6 +352,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         apiVerificationMethod: doc.api_verification_method || undefined,
         rejectReason: (doc as any).reject_reason || undefined,
         personalInfo: (doc as any).personal_info || undefined,
+        lastOtpGenerated: doc.last_otp_generated || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
