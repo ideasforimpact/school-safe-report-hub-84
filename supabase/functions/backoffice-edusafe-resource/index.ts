@@ -189,6 +189,7 @@ async function updateResource(supabase: any, data: any) {
   const updateData: any = {
     title: data.title,
     description: data.description,
+    client_type_id:data.client_type_id,
     category: data.category,
     tags: Array.isArray(data.tags) ? data.tags : [],
     updated_at: new Date().toISOString()

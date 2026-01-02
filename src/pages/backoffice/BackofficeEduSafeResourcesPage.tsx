@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Layout from '@/components/layout/Layout';
+import { EDUSAFE_DESCRIPTION_MAX_LENGTH, EDUSAFE_TAG_MAX_LENGTH, TITLE_MAX_LENGTH } from '@/components/constants';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface BackofficeEduSafeResource {
   id: string;
@@ -63,8 +65,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   // Function to validate title - only allow letters, numbers, spaces, and basic punctuation
   const validateTitle = (value: string) => {
     // Allow letters, numbers, spaces, hyphens, and apostrophes
-    const validTitleRegex = /^[a-zA-Z0-9\s\-'()]+$/;
-    
+    const validTitleRegex = /^[a-zA-Z0-9][a-zA-Z0-9\s\-'()]*$/;
     if (!validTitleRegex.test(value)) {
       return 'Title can only contain letters, numbers, spaces, hyphens, and apostrophes';
     }
@@ -356,9 +357,32 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     resource.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+useRealTimeSubHook({
+  channelName: 'backoffice-edusafe-resource',
+  table: 'backoffice_edusafe_resource',
+  events: '*',
+  enabled: true,
+  onPayload: (payload) => {
+    const { eventType, old } = payload;
+    if (
+      eventType === 'DELETE' &&
+      currentResource &&
+      old?.id === currentResource.id
+    ) {
+      setIsEditDialogOpen(false);
+      resetForm();
+      setCurrentResource(null);
+    }
+
+
+    fetchAllResources();
+  },
+});
+
+
   return (
     <Layout>
-      <div className="flex flex-col w-full p-[50px]">
+      <div className="flex flex-col w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Button variant="ghost" size="sm" onClick={() => navigate('/backoffice/dashboard')} className="mr-2">
@@ -519,7 +543,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             
             <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label htmlFor="client-type">Client Type *</Label>
+                <Label htmlFor="client-type">Client Type <span className="text-red-500">*</span></Label>
                 <Select 
                   value={formData.client_type_id} 
                   onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
@@ -539,19 +563,24 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => {
-                    const value = e.target.value;
+                    let value = e.target.value;
+                    if (value.startsWith(' ')) return;
                     setFormData({ ...formData, title: value });
                     setTitleError(validateTitle(value));
                   }}
                   placeholder="Enter resource title"
                   required
+                  maxLength={TITLE_MAX_LENGTH}
                   disabled={uploadLoading}
                 />
+                <div className="text-xs text-gray-500 text-right">
+                  {formData.title.length}/{TITLE_MAX_LENGTH} characters
+                </div>
                 {titleError && (
                   <p className="text-xs text-red-500 mt-1">{titleError}</p>
                 )}
@@ -562,15 +591,23 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    if (value.startsWith(' ')) return;
+                    setFormData({ ...formData, description: value });
+                  }}
                   placeholder="Provide a brief description of this resource"
                   rows={3}
                   disabled={uploadLoading}
+                  maxLength={EDUSAFE_DESCRIPTION_MAX_LENGTH}
                 />
               </div>
-              
+              <div className="text-xs text-gray-500 text-right">
+                {formData.description.length}/{EDUSAFE_DESCRIPTION_MAX_LENGTH} characters
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
+                <Label htmlFor="category">Category <span className="text-red-500">*</span></Label>
                 <Select 
                   value={formData.category} 
                   onValueChange={(value) => setFormData({ ...formData, category: value })}
@@ -597,7 +634,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                       id="tags"
                       value={newTag}
                       onChange={(e) => {
-                        const value = e.target.value;
+                        let value = e.target.value;
+                        if (value.startsWith(' ')) return;
                         setNewTag(value);
                         setTagError(validateTag(value));
                       }}
@@ -605,6 +643,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                       placeholder="Add a tag and press Enter"
                       className="flex-1"
                       disabled={uploadLoading}
+                      maxLength={EDUSAFE_TAG_MAX_LENGTH}
                     />
                     <Button 
                       type="button" 
@@ -613,6 +652,9 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
+                  </div>
+                  <div className="text-xs text-gray-500 text-right">
+                    {newTag.length}/{EDUSAFE_TAG_MAX_LENGTH} characters
                   </div>
                   
                   {tagError && (
@@ -642,7 +684,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="file">File *</Label>
+                <Label htmlFor="file">File <span className="text-red-500">*</span></Label>
                 <Input
                   id="file"
                   type="file"
@@ -679,6 +721,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </Dialog>
 
         {/* Edit Resource Dialog */}
+      {isEditDialogOpen && currentResource && (
         <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
           setIsEditDialogOpen(open);
           if (!open) {
@@ -698,7 +741,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             
             <div className="space-y-6 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-client-type">Client Type *</Label>
+                <Label htmlFor="edit-client-type">Client Type <span className="text-red-500">*</span></Label>
                 <Select 
                   value={formData.client_type_id} 
                   onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
@@ -718,19 +761,24 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="edit-title">Title *</Label>
+                <Label htmlFor="edit-title">Title <span className="text-red-500">*</span></Label>
                 <Input
                   id="edit-title"
                   value={formData.title}
                   onChange={(e) => {
                     const value = e.target.value;
+                    if (value.startsWith(' ')) return;
                     setFormData({ ...formData, title: value });
                     setTitleError(validateTitle(value));
                   }}
                   placeholder="Enter resource title"
                   required
+                  maxLength={TITLE_MAX_LENGTH}
                   disabled={updateLoading}
                 />
+                <div className="text-xs text-gray-500 text-right">
+                  {formData.title.length}/{TITLE_MAX_LENGTH} characters
+                </div>
                 {titleError && (
                   <p className="text-xs text-red-500 mt-1">{titleError}</p>
                 )}
@@ -741,15 +789,23 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 <Textarea
                   id="edit-description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    if (value.startsWith(' ')) return;
+                    setFormData({ ...formData, description: value });
+                  }}
                   placeholder="Provide a brief description of this resource"
                   rows={3}
                   disabled={updateLoading}
+                  maxLength={EDUSAFE_DESCRIPTION_MAX_LENGTH}
                 />
               </div>
+                <div className="text-xs text-gray-500 text-right">
+                  {formData.description.length}/{EDUSAFE_DESCRIPTION_MAX_LENGTH} characters
+                </div>
               
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Category *</Label>
+                <Label htmlFor="edit-category">Category <span className="text-red-500">*</span></Label>
                 <Select 
                   value={formData.category} 
                   onValueChange={(value) => setFormData({ ...formData, category: value })}
@@ -776,7 +832,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                       id="edit-tags"
                       value={newTag}
                       onChange={(e) => {
-                        const value = e.target.value;
+                        let value = e.target.value;
+                        if (value.startsWith(' ')) return;
                         setNewTag(value);
                         setTagError(validateTag(value));
                       }}
@@ -784,6 +841,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                       placeholder="Add a tag and press Enter"
                       className="flex-1"
                       disabled={updateLoading}
+                      maxLength={EDUSAFE_TAG_MAX_LENGTH}
                     />
                     <Button 
                       type="button" 
@@ -792,6 +850,9 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
+                  </div>
+                  <div className="text-xs text-gray-500 text-right">
+                    {newTag.length}/{EDUSAFE_TAG_MAX_LENGTH} characters
                   </div>
                   
                   {tagError && (
@@ -898,6 +959,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
       </div>
     </Layout>
   );
