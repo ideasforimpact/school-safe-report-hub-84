@@ -68,7 +68,7 @@ const UploadDocumentPage = () => {
   }
 
   const handleSuccess = () => {
-    navigate(`/employee-verification/${employeeId}`);
+    navigate(`/employee-verification/${employeeId}/upload-document`);
   };
 
   return (
