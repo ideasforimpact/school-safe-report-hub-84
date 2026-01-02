@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useNavigate } from 'react-router-dom';
+import { EDUSAFE_DESCRIPTION_MAX_LENGTH, EDUSAFE_TAG_MAX_LENGTH, TITLE_MAX_LENGTH } from '../constants';
 
 interface ResourceUploadFormProps {
   onComplete?: () => void;
@@ -309,14 +310,14 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Resource title"
-            maxLength={15}
+            maxLength={TITLE_MAX_LENGTH}
             required
           />
           {titleError && (
             <p className="text-xs text-red-500 mt-1">{titleError}</p>
           )}
           <div className="text-xs text-gray-500 text-right">
-            {title.length}/15 characters
+            {title.length}/{TITLE_MAX_LENGTH} characters
           </div>
         </div>
         
@@ -329,12 +330,12 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide a brief description of this resource"
-            maxLength={100}
+            maxLength={EDUSAFE_DESCRIPTION_MAX_LENGTH}
             rows={3}
             required
           />
           <div className="text-xs text-gray-500 text-right">
-            {description.length}/100 characters
+            {description.length}/{EDUSAFE_DESCRIPTION_MAX_LENGTH} characters
           </div>
         </div>
         
@@ -398,6 +399,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
               onChange={(e) => handleTagInputChange(e.target.value)}
               placeholder="Add tags"
               onKeyDown={handleKeyDown}
+              maxLength={EDUSAFE_TAG_MAX_LENGTH}
             />
             <Button 
               type="button"
@@ -408,7 +410,9 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
               Add
             </Button>
           </div>
-          
+          <div className="text-xs text-gray-500 text-right">
+            {tagInput.length}/{EDUSAFE_TAG_MAX_LENGTH} characters
+          </div>
           {tagError && (
             <p className="text-xs text-red-500 mt-1">{tagError}</p>
           )}

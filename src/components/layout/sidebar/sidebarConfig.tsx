@@ -12,7 +12,8 @@ import {
   FileCheck,
   ShieldCheck,
   DoorOpen,
-  LogIn
+  LogIn,
+  MessageSquareWarning
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -47,6 +48,7 @@ const iconMap: Record<string, any> = {
   ShieldCheck,
   DoorOpen,
   LogIn,
+  MessageSquareWarning
 };
 
 // Function to fetch modules from backend based on role type with caching
@@ -306,7 +308,7 @@ export const getClientItems = (permissions: any) => [
     allowed: true,
   },
   {
-    icon: FileText,
+    icon: MessageSquareWarning,
     label: 'Forms',
     path: '/forms',
     allowed: true,

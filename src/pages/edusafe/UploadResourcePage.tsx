@@ -10,7 +10,7 @@ import ResourceUploadForm from '@/components/edusafe/ResourceUploadForm';
 
 const UploadResourceContent = () => {
   return (
-    <div className="container mx-auto py-6 max-w-3xl">
+    <div className="container mx-auto py-6 max-w-[107rem]">
       <div className="flex items-center mb-8">
         <Button asChild variant="ghost" className="mr-4">
           <Link to="/edusafe">
