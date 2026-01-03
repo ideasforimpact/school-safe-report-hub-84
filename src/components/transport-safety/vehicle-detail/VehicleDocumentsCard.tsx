@@ -208,7 +208,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                   </div>
                   {challan.accused_name && (
                     <div className="flex justify-between text-xs">
-                      <span className="font-medium">Violator Name:</span>
+                      <span className="font-medium">Accused Name:</span>
                       <span className="text-gray-700">{challan.accused_name}</span>
                     </div>
                   )}
@@ -267,7 +267,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
 
                   {challan.accused_name && (
                     <div className="flex justify-between text-xs">
-                      <span className="font-medium">Violator Name:</span>
+                      <span className="font-medium">Accused Name:</span>
                       <span className="text-gray-700">{challan.accused_name}</span>
                     </div>
                   )}
