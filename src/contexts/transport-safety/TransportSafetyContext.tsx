@@ -215,6 +215,19 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     const event = payload.eventType;
     const newVehicle = payload.new;
     const oldVehicle = payload.old;
+    
+    // CRITICAL SECURITY FIX: Validate that the vehicle belongs to the current client
+    // Even though we filter at subscription level, double-check here for safety
+    const vehicleToCheck = newVehicle || oldVehicle;
+    if (vehicleToCheck && vehicleToCheck.client_id && vehicleToCheck.client_id !== clientId) {
+      console.warn("[Realtime] Vehicle event for different client, ignoring:", {
+        vehicleClientId: vehicleToCheck.client_id,
+        currentClientId: clientId,
+        vehicleId: vehicleToCheck.id
+      });
+      return; // Ignore events for vehicles from other clients
+    }
+    
     if (event === "DELETE") {
       await fetchVehicles();
       return;
@@ -238,6 +251,16 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         return;
       }
 
+      // Double-check that the refreshed vehicle belongs to the current client
+      if (refreshed.clientId !== clientId) {
+        console.warn("[Realtime] Refreshed vehicle belongs to different client, ignoring:", {
+          vehicleClientId: refreshed.clientId,
+          currentClientId: clientId,
+          vehicleId: refreshed.id
+        });
+        return;
+      }
+
       setVehicles(prev => {
         const exists = prev.some(v => v.id === refreshed.id);
         return exists
@@ -255,6 +278,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     channelName: `vehicles-${clientId}`,
     events: "*",
     table: "vehicles",
+    filter: clientId ? `client_id=eq.${clientId}` : undefined, // CRITICAL: Filter by client_id to prevent cross-client access
     enabled: !!clientId,
     onPayload: handleVehicleUpdate,
   });

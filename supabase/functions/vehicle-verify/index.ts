@@ -144,7 +144,7 @@ function getSurePareConfig() {
   return {
     apiKey: Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '',
     baseUrl: 'https://kyc-api.surepass.io',
-    rcEndpoint: "/api/v1/rc/rc-full",
+    rcEndpoint: "/api/v1/rc/rc-v2",
     challanEndpoint: "/api/v1/rc/rc-related/challan-details"
   };
 }
