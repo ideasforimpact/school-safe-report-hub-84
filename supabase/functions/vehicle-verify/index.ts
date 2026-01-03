@@ -119,16 +119,26 @@ function validateQuickEKYCChallanResponse(challanData: any): boolean {
  * Process QuickEKYC Challan data
  */
 function processQuickEKYCChallanData(challanData: any) {
+  // Handle both possible response structures:
+  // 1. challanData.data.challan_data (old format)
+  // 2. challanData.data.challan_details.challans (new format from API)
+  const challansArray = 
+    Array.isArray(challanData.data?.challan_details?.challans)
+      ? challanData.data.challan_details.challans
+      : Array.isArray(challanData.data?.challan_data)
+        ? challanData.data.challan_data
+        : [];
+  
   return {
     challan_details: {
-      challans: Array.isArray(challanData.data?.challan_data)
-        ? challanData.data.challan_data.map((challan: any) => ({
-            ...challan,
-            // Add Info key from challan_info if it exists
-            Info: challan.challan_info || challan.Info || null
-          }))
-        : [],
-      successful_backends: []
+      challans: challansArray.map((challan: any) => ({
+        ...challan,
+        // Ensure challan_number is present (might be challan_no in some responses)
+        challan_number: challan.challan_number || challan.challan_no || challan.number,
+        // Add Info key from challan_info if it exists
+        Info: challan.challan_info || challan.Info || challan.offense_details || null
+      })),
+      successful_backends: challanData.data?.challan_details?.successful_backends || []
     }
   };
 }
@@ -871,16 +881,52 @@ serve(async (req) => {
     }
     
     // Add challan data as a specific field if available, with simplified structure
-    if (challanData && typeof challanData === 'object' && 'data' in challanData && challanData.data) {
-      // Process challan data using the appropriate integration handler
-      const processedChallanData = processChallanData(challanData);
+    // Check if challanData exists and has the expected structure
+    if (challanData && typeof challanData === 'object') {
+      // Check if challanData has data property (from API response)
+      const hasDataProperty = 'data' in challanData && challanData.data;
       
-      // Add to verification data only once
-      currentVerificationData.push({
-        field: 'challan_details',
-        value: processedChallanData,
-        verified: true
-      });
+      // Check if there's challan data structure in either format:
+      // 1. challanData.data.challan_details (SurePass/QuickEKYC new format) - even if challans array is empty
+      // 2. challanData.data.challan_data (QuickEKYC old format)
+      const hasChallanData = hasDataProperty && (
+        challanData.data.challan_details !== undefined ||
+        challanData.data.challan_data !== undefined
+      );
+      
+      if (hasChallanData) {
+        console.log('[Vehicle Verify] Processing challan data, structure:', {
+          hasData: true,
+          hasChallanDetails: !!challanData.data?.challan_details,
+          hasChallanData: !!challanData.data?.challan_data,
+          challansCount: challanData.data?.challan_details?.challans?.length || challanData.data?.challan_data?.length || 0
+        });
+        
+        // Process challan data using the appropriate integration handler
+        const processedChallanData = processChallanData(challanData);
+        
+        // Verify processed data has challans
+        const processedChallans = processedChallanData?.challan_details?.challans || [];
+        console.log('[Vehicle Verify] Processed challan data:', {
+          hasProcessedData: !!processedChallanData,
+          challansCount: processedChallans.length
+        });
+        
+        // Add to verification data only once
+        currentVerificationData.push({
+          field: 'challan_details',
+          value: processedChallanData,
+          verified: true
+        });
+      } else {
+        console.log('[Vehicle Verify] Challan data structure not recognized or empty:', {
+          hasDataProperty: !!hasDataProperty,
+          challanDataStructure: challanData ? Object.keys(challanData) : [],
+          dataStructure: challanData?.data ? Object.keys(challanData.data) : []
+        });
+      }
+    } else {
+      console.log('[Vehicle Verify] No challan data to process or invalid format');
     }
     
     // Store the current verification data in the log with timestamp as key
