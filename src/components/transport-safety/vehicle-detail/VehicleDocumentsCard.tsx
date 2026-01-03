@@ -204,8 +204,20 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                 <div key={index} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Challan No:</span>
-                    <span className="text-gray-900">{challan.challan_no || 'N/A'}</span>
+                    <span className="text-gray-900">{challan.challan_number || challan.challan_no || 'N/A'}</span>
                   </div>
+                  {challan.accused_name && (
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium">Violator Name:</span>
+                      <span className="text-gray-700">{challan.accused_name}</span>
+                    </div>
+                  )}
+                  {challan.challan_date && (
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium">Date:</span>
+                      <span className="text-gray-700">{formatDate(new Date(challan.challan_date))}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Amount:</span>
                     <span>₹{challan.amount || challan.challan_amount || '0'}</span>
@@ -216,10 +228,10 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                       {challan.challan_status || 'UNPAID'}
                     </span>
                   </div>
-                  {(challan.Info || challan.challan_info) && (
+                  {(challan.Info || challan.challan_info || challan.offense_details) && (
                     <div className="flex justify-between text-xs mt-1">
                       <span className="font-medium">Info:</span>
-                      <span className="text-gray-700">{challan.Info || challan.challan_info}</span>
+                      <span className="text-gray-700">{challan.Info || challan.challan_info || challan.offense_details}</span>
                     </div>
                   )}
                 </div>
@@ -253,12 +265,27 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                     <span>{challan.challan_number || challan.challan_no || 'N/A'}</span>
                   </div>
 
+                  {challan.accused_name && (
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium">Violator Name:</span>
+                      <span className="text-gray-700">{challan.accused_name}</span>
+                    </div>
+                  )}
+
+                  {challan.challan_date && (
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium">Date:</span>
+                      <span className="text-gray-700">{formatDate(new Date(challan.challan_date))}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Amount:</span>
                     <span>₹{challan.amount || challan.challan_amount || "0"}</span>
                   </div>
 
                   <div className="flex justify-between text-xs">
+                    <span className="font-medium">Status:</span>
                     <span className={challan.challan_status?.toUpperCase() === "PAID" ||
                       challan.challan_status?.toUpperCase() === "DISPOSED"
                       ? "text-green-600"
@@ -267,10 +294,10 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                     </span>
                   </div>
 
-                  {(challan.Info || challan.challan_info) && (
+                  {(challan.Info || challan.challan_info || challan.offense_details) && (
                     <div className="flex justify-between text-xs mt-1">
                       <span className="font-medium">Info:</span>
-                      <span>{challan.Info || challan.challan_info}</span>
+                      <span>{challan.Info || challan.challan_info || challan.offense_details}</span>
                     </div>
                   )}
 
