@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.update-trusted-vehicle-status]
 verify_jwt = false
+
+[functions.get-student-people-involved]
+verify_jwt = false
