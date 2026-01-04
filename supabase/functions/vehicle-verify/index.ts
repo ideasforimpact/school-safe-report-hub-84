@@ -10,9 +10,9 @@ const corsHeaders = {
 const supabaseUrl = getSupabaseUrl();
 const supabaseServiceKey = getSupabaseServiceRoleKey();
 
-// Integration selector
-const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
-const isQuickEKYC = integrationName === 'quickekyc';
+// Integration selector - Hardcoded to use SurePass as primary
+const integrationName = 'surepass'; // Hardcoded to SurePass
+const isQuickEKYC = false; // SurePass is primary, QuickEKYC is fallback
 
 // ============================================================================
 // QuickEKYC Functions
@@ -119,16 +119,26 @@ function validateQuickEKYCChallanResponse(challanData: any): boolean {
  * Process QuickEKYC Challan data
  */
 function processQuickEKYCChallanData(challanData: any) {
+  // Handle both possible response structures:
+  // 1. challanData.data.challan_data (old format)
+  // 2. challanData.data.challan_details.challans (new format from API)
+  const challansArray = 
+    Array.isArray(challanData.data?.challan_details?.challans)
+      ? challanData.data.challan_details.challans
+      : Array.isArray(challanData.data?.challan_data)
+        ? challanData.data.challan_data
+        : [];
+  
   return {
     challan_details: {
-      challans: Array.isArray(challanData.data?.challan_data)
-        ? challanData.data.challan_data.map((challan: any) => ({
-            ...challan,
-            // Add Info key from challan_info if it exists
-            Info: challan.challan_info || challan.Info || null
-          }))
-        : [],
-      successful_backends: []
+      challans: challansArray.map((challan: any) => ({
+        ...challan,
+        // Ensure challan_number is present (might be challan_no in some responses)
+        challan_number: challan.challan_number || challan.challan_no || challan.number,
+        // Add Info key from challan_info if it exists
+        Info: challan.challan_info || challan.Info || challan.offense_details || null
+      })),
+      successful_backends: challanData.data?.challan_details?.successful_backends || []
     }
   };
 }
@@ -144,7 +154,7 @@ function getSurePareConfig() {
   return {
     apiKey: Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '',
     baseUrl: 'https://kyc-api.surepass.io',
-    rcEndpoint: "/api/v1/rc/rc-full",
+    rcEndpoint: "/api/v1/rc/rc-v2",
     challanEndpoint: "/api/v1/rc/rc-related/challan-details"
   };
 }
@@ -260,64 +270,371 @@ function processSurePareChallanData(challanData: any) {
 // ============================================================================
 
 /**
- * Call RC API with fallback: Try QuickEKYC first, fallback to SurePare if status_code = 500
- * Returns both the response and parsed data
+ * Format date time to "2026-01-02 5.58pm" format (date with time in IST)
+ * Converts UTC to IST (Indian Standard Time, UTC+5:30)
  */
-async function callRCAPI(registrationNumber: string): Promise<{ response: Response; data: any }> {
-  // Primary: Always try QuickEKYC first
-  console.log('[RC API] Attempting primary: QuickEKYC');
-  const quickEKYResponse = await callQuickEKYCRCAPI(registrationNumber);
+function formatDateTime(date: Date): string {
+  // Convert UTC to IST (UTC+5:30)
+  // IST is 5 hours 30 minutes ahead of UTC
+  const istOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+  const istTime = date.getTime() + istOffset;
+  const istDate = new Date(istTime);
   
-  // Clone the response to read JSON without consuming the original
-  const quickEKYResponseClone = quickEKYResponse.clone();
-  const quickEKYData = await quickEKYResponseClone.json();
+  // Get date in YYYY-MM-DD format using IST
+  const year = istDate.getUTCFullYear();
+  const month = (istDate.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = istDate.getUTCDate().toString().padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
   
-  // Check if QuickEKYC returned status_code 500
-  if (quickEKYData?.status_code === 500) {
-    console.log('[RC API] QuickEKYC returned status_code 500, falling back to SurePare');
-    // Secondary: Fallback to SurePare
-    const surePareResponse = await callSurePareRCAPI(registrationNumber);
-    const surePareData = await surePareResponse.json();
-    return { response: surePareResponse, data: surePareData };
-  }
+  // Get time in 12-hour format (5.58pm) using IST
+  const hours = istDate.getUTCHours();
+  const minutes = istDate.getUTCMinutes();
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  const displayHours = hours % 12 || 12; // Convert to 12-hour format
+  const displayMinutes = minutes.toString().padStart(2, '0');
+  const timeStr = `${displayHours}.${displayMinutes}${ampm}`;
   
-  // QuickEKYC succeeded, return its response
-  console.log('[RC API] QuickEKYC succeeded, using QuickEKYC response');
-  return { response: quickEKYResponse, data: quickEKYData };
+  return `${dateStr} ${timeStr}`;
 }
 
 /**
- * Call Challan API with fallback: Try QuickEKYC first, fallback to SurePare if status_code = 500
- * Returns both the response and parsed data
+ * Log error to error_log structure
  */
-async function callChallanAPI(rcNumber: string, chassisNumber?: string, engineNumber?: string): Promise<{ response: Response; data: any }> {
-  // Primary: Always try QuickEKYC first
-  console.log('[Challan API] Attempting primary: QuickEKYC');
-  const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
-  
-  // Clone the response to read JSON without consuming the original
-  const quickEKYResponseClone = quickEKYResponse.clone();
-  const quickEKYData = await quickEKYResponseClone.json();
-  
-  // Check if QuickEKYC returned status_code 500
-  if (quickEKYData?.status_code === 500) {
-    console.log('[Challan API] QuickEKYC returned status_code 500, falling back to SurePare');
+function createErrorLogEntry(
+  provider: 'surepass' | 'quickeyc',
+  statusCode: number,
+  message: string,
+  apiUrl: string, // Full API URL instead of just 'rc' or 'challan'
+  payload: any
+): any {
+  return {
+    provider: provider,
+    status_code: statusCode,
+    msg: message,
+    date_time: formatDateTime(new Date()),
+    api: apiUrl, // Full API URL
+    payload: payload
+  };
+}
+
+/**
+ * Save error log to database
+ */
+async function saveErrorLog(
+  supabase: any,
+  vehicleId: string | undefined,
+  registrationNumber: string,
+  errorEntry: any
+): Promise<void> {
+  if (!vehicleId) {
+    // If no vehicleId, try to find by registration_number
+    const { data: vehicle } = await supabase
+      .from('vehicles')
+      .select('id, error_log')
+      .eq('registration_number', registrationNumber)
+      .single();
     
-    // Secondary: Fallback to SurePare (requires chassis and engine numbers)
-    if (!chassisNumber || !engineNumber) {
-      console.warn('[Challan API] Cannot fallback to SurePare: missing chassis or engine number');
-      // Return the QuickEKYC response even though it failed, as we can't fallback
-      return { response: quickEKYResponse, data: quickEKYData };
+    if (!vehicle) {
+      console.warn('Cannot save error log: vehicle not found');
+      return;
+    }
+    vehicleId = vehicle.id;
+  }
+
+  // Get existing error_log or initialize as empty array
+  const { data: vehicleData } = await supabase
+    .from('vehicles')
+    .select('error_log')
+    .eq('id', vehicleId)
+    .single();
+
+  const existingErrorLog = vehicleData?.error_log || [];
+  const updatedErrorLog = Array.isArray(existingErrorLog) 
+    ? [...existingErrorLog, errorEntry]
+    : [errorEntry];
+
+  // Update error_log column
+  const { error } = await supabase
+    .from('vehicles')
+    .update({ error_log: updatedErrorLog })
+    .eq('id', vehicleId);
+
+  if (error) {
+    console.error('Failed to save error log:', error);
+  } else {
+    console.log('Error log saved successfully');
+  }
+}
+
+/**
+ * Call RC API with fallback: Try SurePass first, fallback to QuickEKYC if error
+ * Returns both the response and parsed data, and error log entry if any
+ */
+async function callRCAPI(
+  registrationNumber: string,
+  supabase: any,
+  vehicleId: string | undefined
+): Promise<{ response: Response; data: any; errorLog?: any }> {
+  // Primary: Always try SurePass first
+  console.log('[RC API] Attempting primary: SurePass');
+  const surePassPayload = prepareSurePareRCPayload(registrationNumber);
+  
+  let surePassResponse: Response;
+  let surePassData: any;
+  let surePassError: any = null;
+
+  try {
+    const surePassConfig = getSurePareConfig();
+    const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.rcEndpoint}`;
+    
+    surePassResponse = await callSurePareRCAPI(registrationNumber);
+    surePassData = await surePassResponse.json();
+    
+    // Check if SurePass failed (not ok or success = false)
+    if (!surePassResponse.ok || surePassData?.success === false) {
+      surePassError = {
+        statusCode: surePassResponse.status,
+        message: surePassData?.message || surePassData?.error || 'SurePass API error',
+        data: surePassData
+      };
+      
+      // Log SurePass error
+      const errorEntry = createErrorLogEntry(
+        'surepass',
+        surePassResponse.status,
+        surePassError.message,
+        surePassApiUrl,
+        surePassPayload
+      );
+      
+      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+      
+      console.log('[RC API] SurePass failed, falling back to QuickEKYC');
+      
+      // Secondary: Fallback to QuickEKYC
+      const quickEKYConfig = getQuickEKYCConfig();
+      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.rcEndpoint}`;
+      const quickEKYPayload = prepareQuickEKYCRCPayload(registrationNumber, quickEKYConfig.apiKey);
+      const quickEKYResponse = await callQuickEKYCRCAPI(registrationNumber);
+      const quickEKYData = await quickEKYResponse.json();
+      
+      // Check if QuickEKYC also failed
+      if (quickEKYData?.status_code === 500 || !quickEKYResponse.ok) {
+        const quickEKYErrorEntry = createErrorLogEntry(
+          'quickeyc',
+          quickEKYResponse.status || 500,
+          quickEKYData?.message || 'QuickEKYC API error',
+          quickEKYApiUrl,
+          quickEKYPayload
+        );
+        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+      }
+      
+      return { response: quickEKYResponse, data: quickEKYData, errorLog: errorEntry };
     }
     
-    const surePareResponse = await callSurePareChallanAPI(rcNumber, chassisNumber, engineNumber);
-    const surePareData = await surePareResponse.json();
-    return { response: surePareResponse, data: surePareData };
+    // SurePass succeeded, return its response
+    console.log('[RC API] SurePass succeeded, using SurePass response');
+    return { response: surePassResponse, data: surePassData };
+    
+  } catch (error) {
+    // Network or other error with SurePass
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[RC API] SurePass exception:', errorMessage);
+    
+    const surePassConfig = getSurePareConfig();
+    const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.rcEndpoint}`;
+    
+    const errorEntry = createErrorLogEntry(
+      'surepass',
+      0, // 0 indicates network/exception error
+      errorMessage,
+      surePassApiUrl,
+      surePassPayload
+    );
+    
+    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+    
+    // Fallback to QuickEKYC
+    console.log('[RC API] SurePass exception, falling back to QuickEKYC');
+    try {
+      const quickEKYConfig = getQuickEKYCConfig();
+      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.rcEndpoint}`;
+      const quickEKYPayload = prepareQuickEKYCRCPayload(registrationNumber, quickEKYConfig.apiKey);
+      const quickEKYResponse = await callQuickEKYCRCAPI(registrationNumber);
+      const quickEKYData = await quickEKYResponse.json();
+      
+      if (quickEKYData?.status_code === 500 || !quickEKYResponse.ok) {
+        const quickEKYErrorEntry = createErrorLogEntry(
+          'quickeyc',
+          quickEKYResponse.status || 500,
+          quickEKYData?.message || 'QuickEKYC API error',
+          quickEKYApiUrl,
+          quickEKYPayload
+        );
+        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+      }
+      
+      return { response: quickEKYResponse, data: quickEKYData, errorLog: errorEntry };
+    } catch (quickEKYError) {
+      const quickEKYConfig = getQuickEKYCConfig();
+      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.rcEndpoint}`;
+      const quickEKYErrorMessage = quickEKYError instanceof Error ? quickEKYError.message : 'Unknown error';
+      const quickEKYErrorEntry = createErrorLogEntry(
+        'quickeyc',
+        0,
+        quickEKYErrorMessage,
+        quickEKYApiUrl,
+        prepareQuickEKYCRCPayload(registrationNumber, quickEKYConfig.apiKey)
+      );
+      await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+      throw error; // Re-throw the original SurePass error
+    }
   }
+}
+
+/**
+ * Call Challan API with fallback: Try SurePass first, fallback to QuickEKYC if error
+ * Returns both the response and parsed data, and error log entry if any
+ */
+async function callChallanAPI(
+  rcNumber: string,
+  chassisNumber: string | undefined,
+  engineNumber: string | undefined,
+  supabase: any,
+  vehicleId: string | undefined,
+  registrationNumber: string
+): Promise<{ response: Response; data: any; errorLog?: any }> {
+  // Primary: Always try SurePass first
+  console.log('[Challan API] Attempting primary: SurePass');
   
-  // QuickEKYC succeeded, return its response
-  console.log('[Challan API] QuickEKYC succeeded, using QuickEKYC response');
+  // SurePass requires chassis and engine numbers
+  if (!chassisNumber || !engineNumber) {
+    console.warn('[Challan API] Cannot use SurePass: missing chassis or engine number, trying QuickEKYC');
+    // Fallback directly to QuickEKYC if we don't have required params
+    const quickEKYConfig = getQuickEKYCConfig();
+    const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
+    const quickEKYPayload = prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey);
+    const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
+    const quickEKYData = await quickEKYResponse.json();
+    
+    if (quickEKYData?.status_code === 500 || !quickEKYResponse.ok) {
+      const errorEntry = createErrorLogEntry(
+        'quickeyc',
+        quickEKYResponse.status || 500,
+        quickEKYData?.message || 'QuickEKYC API error',
+        quickEKYApiUrl,
+        quickEKYPayload
+      );
+      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+    }
+    
   return { response: quickEKYResponse, data: quickEKYData };
+  }
+
+  const surePassConfig = getSurePareConfig();
+  const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.challanEndpoint}`;
+  const surePassPayload = prepareSurePareChallanPayload(rcNumber, chassisNumber, engineNumber);
+  let surePassResponse: Response;
+  let surePassData: any;
+
+  try {
+    surePassResponse = await callSurePareChallanAPI(rcNumber, chassisNumber, engineNumber);
+    surePassData = await surePassResponse.json();
+    
+    // Check if SurePass failed
+    if (!surePassResponse.ok || surePassData?.success === false) {
+      const errorMessage = surePassData?.message || surePassData?.error || 'SurePass API error';
+      console.log('[Challan API] SurePass failed, falling back to QuickEKYC');
+      
+      // Log SurePass error
+      const errorEntry = createErrorLogEntry(
+        'surepass',
+        surePassResponse.status,
+        errorMessage,
+        surePassApiUrl,
+        surePassPayload
+      );
+      
+      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+      
+      // Secondary: Fallback to QuickEKYC
+      const quickEKYConfig = getQuickEKYCConfig();
+      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
+      const quickEKYPayload = prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey);
+      const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
+      const quickEKYData = await quickEKYResponse.json();
+      
+      // Check if QuickEKYC also failed
+      if (quickEKYData?.status_code === 500 || !quickEKYResponse.ok) {
+        const quickEKYErrorEntry = createErrorLogEntry(
+          'quickeyc',
+          quickEKYResponse.status || 500,
+          quickEKYData?.message || 'QuickEKYC API error',
+          quickEKYApiUrl,
+          quickEKYPayload
+        );
+        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+      }
+      
+      return { response: quickEKYResponse, data: quickEKYData, errorLog: errorEntry };
+    }
+    
+    // SurePass succeeded, return its response
+    console.log('[Challan API] SurePass succeeded, using SurePass response');
+    return { response: surePassResponse, data: surePassData };
+    
+  } catch (error) {
+    // Network or other error with SurePass
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Challan API] SurePass exception:', errorMessage);
+    
+    const errorEntry = createErrorLogEntry(
+      'surepass',
+      0, // 0 indicates network/exception error
+      errorMessage,
+      surePassApiUrl,
+      surePassPayload
+    );
+    
+    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+    
+    // Fallback to QuickEKYC
+    console.log('[Challan API] SurePass exception, falling back to QuickEKYC');
+    try {
+      const quickEKYConfig = getQuickEKYCConfig();
+      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
+      const quickEKYPayload = prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey);
+      const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
+      const quickEKYData = await quickEKYResponse.json();
+      
+      if (quickEKYData?.status_code === 500 || !quickEKYResponse.ok) {
+        const quickEKYErrorEntry = createErrorLogEntry(
+          'quickeyc',
+          quickEKYResponse.status || 500,
+          quickEKYData?.message || 'QuickEKYC API error',
+          quickEKYApiUrl,
+          quickEKYPayload
+        );
+        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+      }
+      
+      return { response: quickEKYResponse, data: quickEKYData, errorLog: errorEntry };
+    } catch (quickEKYError) {
+      const quickEKYConfig = getQuickEKYCConfig();
+      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
+      const quickEKYErrorMessage = quickEKYError instanceof Error ? quickEKYError.message : 'Unknown error';
+      const quickEKYErrorEntry = createErrorLogEntry(
+        'quickeyc',
+        0,
+        quickEKYErrorMessage,
+        quickEKYApiUrl,
+        prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey)
+      );
+      await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
+      throw error; // Re-throw the original SurePass error
+    }
+  }
 }
 
 /**
@@ -345,7 +662,7 @@ function processChallanData(challanData: any) {
 }
 
 console.log(`Integration selected: ${integrationName || 'default'}`);
-console.log(`Using integration: ${isQuickEKYC ? 'QuickEKYC' : 'SurePare'}`);
+console.log(`Using integration: SurePass (primary), QuickEKYC (fallback)`);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -371,8 +688,8 @@ serve(async (req) => {
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
-    // Call RC API with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
-    const { response: rcResponse, data: providerData } = await callRCAPI(registrationNumber);
+    // Call RC API with fallback: SurePass primary, QuickEKYC secondary if error
+    const { response: rcResponse, data: providerData } = await callRCAPI(registrationNumber, supabase, vehicleId);
     
     // Check for errors
     if (!rcResponse.ok) {
@@ -400,15 +717,21 @@ serve(async (req) => {
       console.log(`Got vehicle data - RC: ${rcNumber}, Chassis: ${chassisNumber}, Engine: ${engineNumber}`);
       
       // Check if we have all required parameters for challan call
-      // For QuickEKYC, only rcNumber is needed; for SurePare, all three are required
-      const canCallChallan = isQuickEKYC 
-        ? rcNumber 
-        : (rcNumber && chassisNumber && engineNumber);
+      // For QuickEKYC, only rcNumber is needed; for SurePass, all three are required
+      // Since SurePass is primary, we prefer having all three, but can fallback to QuickEKYC with just rcNumber
+      const canCallChallan = rcNumber && (chassisNumber && engineNumber || true); // Can always try (SurePass needs all, QuickEKYC needs only rcNumber)
       
       if (canCallChallan) {
         try {
-          // Call Challan API with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
-          const { response: challanResponse, data: challanResponseData } = await callChallanAPI(rcNumber, chassisNumber, engineNumber);
+          // Call Challan API with fallback: SurePass primary, QuickEKYC secondary if error
+          const { response: challanResponse, data: challanResponseData } = await callChallanAPI(
+            rcNumber, 
+            chassisNumber, 
+            engineNumber,
+            supabase,
+            vehicleId,
+            registrationNumber
+          );
           challanData = challanResponseData;
           
           const challanOk = validateChallanResponse(challanData);
@@ -558,16 +881,52 @@ serve(async (req) => {
     }
     
     // Add challan data as a specific field if available, with simplified structure
-    if (challanData && typeof challanData === 'object' && 'data' in challanData && challanData.data) {
-      // Process challan data using the appropriate integration handler
-      const processedChallanData = processChallanData(challanData);
+    // Check if challanData exists and has the expected structure
+    if (challanData && typeof challanData === 'object') {
+      // Check if challanData has data property (from API response)
+      const hasDataProperty = 'data' in challanData && challanData.data;
       
-      // Add to verification data only once
-      currentVerificationData.push({
-        field: 'challan_details',
-        value: processedChallanData,
-        verified: true
-      });
+      // Check if there's challan data structure in either format:
+      // 1. challanData.data.challan_details (SurePass/QuickEKYC new format) - even if challans array is empty
+      // 2. challanData.data.challan_data (QuickEKYC old format)
+      const hasChallanData = hasDataProperty && (
+        challanData.data.challan_details !== undefined ||
+        challanData.data.challan_data !== undefined
+      );
+      
+      if (hasChallanData) {
+        console.log('[Vehicle Verify] Processing challan data, structure:', {
+          hasData: true,
+          hasChallanDetails: !!challanData.data?.challan_details,
+          hasChallanData: !!challanData.data?.challan_data,
+          challansCount: challanData.data?.challan_details?.challans?.length || challanData.data?.challan_data?.length || 0
+        });
+        
+        // Process challan data using the appropriate integration handler
+        const processedChallanData = processChallanData(challanData);
+        
+        // Verify processed data has challans
+        const processedChallans = processedChallanData?.challan_details?.challans || [];
+        console.log('[Vehicle Verify] Processed challan data:', {
+          hasProcessedData: !!processedChallanData,
+          challansCount: processedChallans.length
+        });
+        
+        // Add to verification data only once
+        currentVerificationData.push({
+          field: 'challan_details',
+          value: processedChallanData,
+          verified: true
+        });
+      } else {
+        console.log('[Vehicle Verify] Challan data structure not recognized or empty:', {
+          hasDataProperty: !!hasDataProperty,
+          challanDataStructure: challanData ? Object.keys(challanData) : [],
+          dataStructure: challanData?.data ? Object.keys(challanData.data) : []
+        });
+      }
+    } else {
+      console.log('[Vehicle Verify] No challan data to process or invalid format');
     }
     
     // Store the current verification data in the log with timestamp as key

@@ -172,7 +172,7 @@ function transformEvidenceFiles(
       name: file.name || 'Unknown',
       path: file.path || '',
       url: url || '',
-      type: file.type || 'application/octet-stream'
+      type: file.type 
     };
   });
 }
@@ -635,22 +635,49 @@ serve(async (req) => {
         }
       }
 
-      // Upload new files if provided (use visitor id for path structure)
-      let newFiles: any[] = [];
-      if (files && Array.isArray(files) && files.length > 0) {
-        try {
-          newFiles = await uploadFiles(supabase, files, clientId, effectiveEmployeeId, id);
-        } catch (error) {
-          return new Response(
-            JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
-            { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-          );
+      // Handle files update: separate new files (with base64) from existing files (with path/url)
+      let finalEvidenceFiles: any[] = [];
+      
+      // Check if files parameter was provided (even if empty array)
+      if (files !== undefined) {
+        if (Array.isArray(files) && files.length > 0) {
+          // Separate new files (have base64) from existing files (have path/url, no base64)
+          const newFilesToUpload = files.filter((file: any) => file.base64 && !file.path);
+          const existingFilesToKeep = files.filter((file: any) => file.path && !file.base64);
+          
+          // Upload new files if any
+          let uploadedNewFiles: any[] = [];
+          if (newFilesToUpload.length > 0) {
+            try {
+              uploadedNewFiles = await uploadFiles(supabase, newFilesToUpload, clientId, effectiveEmployeeId, id);
+            } catch (error) {
+              return new Response(
+                JSON.stringify({ error: `File upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` }),
+                { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+              );
+            }
+          }
+          
+          // Process existing files to keep - extract only path, name, type (remove url as it will be regenerated)
+          const processedExistingFiles = existingFilesToKeep.map((file: any) => ({
+            name: file.name,
+            path: file.path,
+            type: file.type 
+          }));
+          
+          // Combine: existing files to keep + newly uploaded files
+          // This replaces the evidence_files column - files not included in the request are effectively removed
+          // Example: If visitor has 3 files and you send only 2 files, the 3rd file will be removed from the column
+          // Note: Files are NOT deleted from storage, only removed from the evidence_files column
+          finalEvidenceFiles = [...processedExistingFiles, ...uploadedNewFiles];
+        } else {
+          // If files is an empty array [], clear all files
+          finalEvidenceFiles = [];
         }
+      } else {
+        // If files parameter is not provided (undefined), keep existing files (no change)
+        finalEvidenceFiles = Array.isArray(existingVisitor.evidence_files) ? existingVisitor.evidence_files : [];
       }
-
-      // Merge with existing files
-      const existingFiles = Array.isArray(existingVisitor.evidence_files) ? existingVisitor.evidence_files : [];
-      const updatedFiles = [...existingFiles, ...newFiles];
 
       // Prepare update data
       const updateData: any = {
@@ -664,7 +691,11 @@ serve(async (req) => {
       if (employee_id !== undefined) updateData.employee_id = employee_id;
       if (vehicle_no !== undefined) updateData.vehicle_no = vehicle_no;
       if (vehicle_type !== undefined) updateData.vehicle_type = vehicle_type;
-      if (newFiles.length > 0) updateData.evidence_files = updatedFiles;
+      
+      // Update evidence_files if files were provided (even if empty array to clear files)
+      if (files !== undefined) {
+        updateData.evidence_files = finalEvidenceFiles;
+      }
 
       // Update visitor
       const { data: updatedVisitor, error: updateError } = await supabase
