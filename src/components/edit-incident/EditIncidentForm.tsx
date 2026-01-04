@@ -197,6 +197,38 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       
       // Prepare updates - convert Person[] to Json for Supabase
       const filteredPeople = peopleInvolved.filter(p => p.name.trim() !== '');
+
+      console.log(filteredPeople,"filteredPeople");
+      
+      // ========== VALIDATE EXTERNAL STUDENTS BEFORE INCIDENT UPDATE ==========
+      // Filter external students from filteredPeople
+      const externalStudents = filteredPeople.filter((person: any) => 
+        person.role === 'Student' && (person.is_external === true)
+      );
+
+      // Validate external students before updating incident
+      if (externalStudents.length > 0) {
+        console.log(`Validating ${externalStudents.length} external student(s) before incident update...`);
+        
+        for (const externalStudent of externalStudents) {
+          const externalStudentId = (externalStudent as any).external_student_id || (externalStudent as any).id;
+          const externalClientId = (externalStudent as any).external_client_id;
+          
+          if (!externalStudentId) {
+            console.error('Validation failed: external_student_id is missing for external student:', externalStudent);
+            toast.error(`External student "${(externalStudent as any).name}" is missing required information (external_student_id). Please reselect the student.`);
+            throw new Error(`External student "${(externalStudent as any).name}" is missing external_student_id`);
+          }
+          
+          if (!externalClientId) {
+            console.error('Validation failed: external_client_id is missing for external student:', externalStudent);
+            toast.error(`External student "${(externalStudent as any).name}" is missing required information (external_client_id). Please reselect the student.`);
+            throw new Error(`External student "${(externalStudent as any).name}" is missing external_client_id`);
+          }
+        }
+        
+        console.log('All external students validated successfully');
+      }
       
       const updates = {
         type_id: formData.typeId,
@@ -225,6 +257,274 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
       }
 
       console.log('Incident updated successfully');
+
+      // ========== HANDLE EXTERNAL STUDENTS (UPDATE) ==========
+      // Function to create or update external student in external_students table
+      const createOrUpdateExternalStudent = async (externalStudentData: any): Promise<string | null> => {
+        try {
+          // Get external_student_id - prefer external_student_id field, fallback to id
+          const externalStudentId = externalStudentData.external_student_id || externalStudentData.id;
+          
+          if (!externalStudentId) {
+            console.error('Error: external_student_id is missing in externalStudentData:', externalStudentData);
+            return null;
+          }
+
+          // Check if external student already exists for this client
+          const { data: existingExternalStudent, error: checkError } = await supabase
+            .from('external_students' as any)
+            .select('id')
+            .eq('external_student_id', externalStudentId)
+            .eq('client_id', clientId)
+            .maybeSingle();
+
+          if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+            console.error('Error checking existing external student:', checkError);
+            return null;
+          }
+
+          // Prepare student_info JSONB with all student information
+          const studentInfo = {
+            gender: externalStudentData.gender || null,
+            email: externalStudentData.email || null,
+            status: externalStudentData.status || null,
+            grade_id: externalStudentData.grade_id || null,
+            section_id: externalStudentData.section_id || null,
+            grades: externalStudentData.grades || null,
+            sections: externalStudentData.sections || null,
+            client_id: externalStudentData.client_id || null
+          };
+
+          // Prepare data for insert/update
+          const externalStudentRecord = {
+            client_id: clientId, // This is the current client's ID (application client)
+            external_client_id: externalStudentData.external_client_id,
+            external_student_id: externalStudentId,
+            student_id: externalStudentData.student_id,
+            name: externalStudentData.name,
+            is_external: true,
+            is_active: true,
+            student_info: studentInfo,
+            updated_at: new Date().toISOString()
+          };
+
+          let externalStudentTableId: string;
+
+          if (existingExternalStudent) {
+            // Update existing record
+            const { data: updatedExternalStudent, error: updateError } = await supabase
+              .from('external_students' as any)
+              .update(externalStudentRecord)
+              .eq('id', (existingExternalStudent as any).id)
+              .select('id')
+              .single();
+
+            if (updateError || !updatedExternalStudent) {
+              console.error('Error updating external student:', updateError);
+              return null;
+            }
+
+            externalStudentTableId = (updatedExternalStudent as any).id;
+            console.log('Updated external student:', externalStudentTableId);
+          } else {
+            // Insert new record
+            const { data: newExternalStudent, error: insertError } = await supabase
+              .from('external_students' as any)
+              .insert({
+                ...externalStudentRecord,
+                created_at: new Date().toISOString()
+              })
+              .select('id')
+              .single();
+
+            if (insertError || !newExternalStudent) {
+              console.error('Error inserting external student:', insertError);
+              return null;
+            }
+
+            externalStudentTableId = (newExternalStudent as any).id;
+            console.log('Created external student:', externalStudentTableId);
+          }
+
+          return externalStudentTableId;
+        } catch (error) {
+          console.error('Error in createOrUpdateExternalStudent:', error);
+          return null;
+        }
+      };
+
+      // Function to create or update incident_external_students link
+      const createOrUpdateIncidentExternalStudent = async (
+        incidentId: string,
+        externalStudentTableId: string,
+        externalClientId: string | null,
+        applicationClientId: string
+      ): Promise<boolean> => {
+        try {
+          // Check if link already exists
+          const { data: existingLink, error: checkError } = await supabase
+            .from('incident_external_students' as any)
+            .select('id')
+            .eq('incident_id', incidentId)
+            .eq('external_student_id', externalStudentTableId)
+            .maybeSingle();
+
+          if (checkError && checkError.code !== 'PGRST116') {
+            console.error('Error checking existing incident-external student link:', checkError);
+            return false;
+          }
+
+          if (existingLink) {
+            // Link already exists, update timestamp, external_client_id, and client_id
+            const { error: updateError } = await supabase
+              .from('incident_external_students' as any)
+              .update({ 
+                updated_at: new Date().toISOString(),
+                external_client_id: externalClientId,
+                client_id: applicationClientId
+              })
+              .eq('id', (existingLink as any).id);
+
+            if (updateError) {
+              console.error('Error updating incident-external student link:', updateError);
+              return false;
+            }
+
+            console.log('Updated incident-external student link');
+          } else {
+            // Create new link
+            const { error: insertError } = await supabase
+              .from('incident_external_students' as any)
+              .insert({
+                incident_id: incidentId,
+                external_student_id: externalStudentTableId,
+                external_client_id: externalClientId,
+                client_id: applicationClientId,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+
+            if (insertError) {
+              console.error('Error inserting incident-external student link:', insertError);
+              return false;
+            }
+
+            console.log('Created incident-external student link');
+          }
+
+          return true;
+        } catch (error) {
+          console.error('Error in createOrUpdateIncidentExternalStudent:', error);
+          return false;
+        }
+      };
+
+      // ========== REMOVE UNLINKED EXTERNAL STUDENTS ==========
+      // Function to remove external student links that are no longer in peopleInvolved
+      const removeUnlinkedExternalStudents = async (
+        incidentId: string,
+        currentExternalStudentIds: string[],
+        applicationClientId: string
+      ): Promise<void> => {
+        try {
+          // Get all current links for this incident and client_id
+          const { data: currentLinks, error: fetchError } = await supabase
+            .from('incident_external_students' as any)
+            .select('id, external_student_id')
+            .eq('incident_id', incidentId)
+            .eq('client_id', applicationClientId);
+
+          if (fetchError) {
+            console.error('Error fetching current external student links:', fetchError);
+            return;
+          }
+
+          if (!currentLinks || currentLinks.length === 0) {
+            return;
+          }
+
+          // For each link, get the external_students record to find external_student_id
+          const linksToRemove: any[] = [];
+
+          for (const link of currentLinks) {
+            const { data: externalStudent, error: studentError } = await supabase
+              .from('external_students' as any)
+              .select('external_student_id')
+              .eq('id', (link as any).external_student_id)
+              .maybeSingle();
+
+            if (studentError || !externalStudent) {
+              console.warn('Could not fetch external student for link:', (link as any).id);
+              continue;
+            }
+
+            const externalStudentId = (externalStudent as any).external_student_id;
+            
+            // If this external_student_id is not in the current list, mark for removal
+            if (externalStudentId && !currentExternalStudentIds.includes(externalStudentId)) {
+              linksToRemove.push(link);
+            }
+          }
+
+          // Remove links that are no longer needed
+          for (const link of linksToRemove) {
+            const { error: deleteError } = await supabase
+              .from('incident_external_students' as any)
+              .delete()
+              .eq('id', (link as any).id)
+              .eq('incident_id', incidentId)
+              .eq('client_id', applicationClientId);
+
+            if (deleteError) {
+              console.error('Error removing external student link:', deleteError);
+            } else {
+              console.log('Removed external student link:', (link as any).id);
+            }
+          }
+        } catch (error) {
+          console.error('Error in removeUnlinkedExternalStudents:', error);
+        }
+      };
+
+      // Process external students from peopleInvolved (already validated above)
+      // Get current external student IDs from peopleInvolved
+      const currentExternalStudentIds = externalStudents
+        .map((student: any) => (student as any).external_student_id || student.id)
+        .filter((id: any) => id);
+
+      // Remove links for external students that are no longer in peopleInvolved
+      if (id) {
+        await removeUnlinkedExternalStudents(id, currentExternalStudentIds, clientId);
+      }
+
+      if (externalStudents.length > 0) {
+        // All validations passed, proceed with processing
+        console.log(`Processing ${externalStudents.length} external student(s)...`);
+
+        for (const externalStudent of externalStudents) {
+          try {
+            // Create or update external student
+            const externalStudentTableId = await createOrUpdateExternalStudent(externalStudent);
+
+            if (externalStudentTableId && id) {
+              // Get external_client_id from the external student data (already validated above)
+              const externalClientId = (externalStudent as any).external_client_id;
+              
+              // Link incident with external student (pass application client_id)
+              await createOrUpdateIncidentExternalStudent(id, externalStudentTableId, externalClientId, clientId);
+            } else {
+              console.warn('Failed to create/update external student, skipping link creation');
+              toast.warning(`Failed to save external student "${(externalStudent as any).name}"`);
+            }
+          } catch (error) {
+            console.error('Error processing external student:', error);
+            toast.error(`Error processing external student "${(externalStudent as any).name}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+            // Continue processing other external students even if one fails
+          }
+        }
+
+        console.log('External students processing completed');
+      }
       
       // Handle notifications for updates and reassignments
       try {

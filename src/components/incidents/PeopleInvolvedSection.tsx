@@ -61,6 +61,9 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
+  const [searchResults, setSearchResults] = useState<Record<number, Student[]>>({});
+  const [isSearchingAPI, setIsSearchingAPI] = useState<Record<number, boolean>>({});
+  const [searchTimeouts, setSearchTimeouts] = useState<Record<number, NodeJS.Timeout>>({});
   
   // State for AddStudentDialog
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
@@ -190,10 +193,118 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     });
   }, [peopleInvolved.length, fetchedStudents.length]);
 
+  // Search students using edge function
+  const searchStudentsAPI = useCallback(async (searchTerm: string, clientId: string) => {
+    if (!searchTerm || searchTerm.length < 3) {
+      return [];
+    }
+
+    try {
+      // Get session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        console.error('[Search Students] No authentication token available');
+        return [];
+      }
+
+      // Build URL with query params
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const url = new URL(`${supabaseUrl}/functions/v1/search-students`);
+      url.searchParams.set('search', searchTerm);
+      url.searchParams.set('client_id', clientId);
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('[Search Students] API error:', response.status, response.statusText);
+        return [];
+      }
+
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        // Return data in the same format as transformStudent from edge function
+        // This ensures consistent format for both internal and external students
+        return result.data.map((student: any) => ({
+          id: student.id,
+          student_id: student.student_id, // Keep original field name from API
+          name: student.name,
+          gender: student.gender || null,
+          email: student.email || null,
+          status: student.status || null,
+          grade_id: student.grade_id,
+          section_id: student.section_id,
+          client_id: student.client_id,
+          external_client_id: student.external_client_id || null, // Include external_client_id from API response
+          grades: student.grades || null,
+          sections: student.sections || null,
+          is_external: student.is_external || false,
+          // Also include legacy fields for backward compatibility
+          studentId: student.student_id,
+          grade: student.grades?.name || '',
+          section: student.sections?.name || '',
+          campus: '',
+          isExternal: student.is_external || false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      console.error('[Search Students] Error calling API:', error);
+      return [];
+    }
+  }, []);
+
   const handleSearch = (index: number, value: string, role: string) => {
     setSearchQueries(prev => ({ ...prev, [index]: value }));
     setIsSearching(prev => ({ ...prev, [index]: true }));
+
+    // Clear previous timeout
+    if (searchTimeouts[index]) {
+      clearTimeout(searchTimeouts[index]);
+    }
+
+    // For Student role, use edge function search
+    if (role === 'Student' && employeeData?.clientId) {
+      if (value.length < 3) {
+        // Clear search results if less than 3 characters
+        setSearchResults(prev => ({ ...prev, [index]: [] }));
+        setIsSearchingAPI(prev => ({ ...prev, [index]: false }));
+        return;
+      }
+
+      // Set loading state
+      setIsSearchingAPI(prev => ({ ...prev, [index]: true }));
+
+      // Debounce API call (500ms delay)
+      const timeout = setTimeout(async () => {
+        const results = await searchStudentsAPI(value, employeeData.clientId);
+        setSearchResults(prev => ({ ...prev, [index]: results }));
+        setIsSearchingAPI(prev => ({ ...prev, [index]: false }));
+      }, 500);
+
+      setSearchTimeouts(prev => ({ ...prev, [index]: timeout }));
+    }
   };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(searchTimeouts).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, [searchTimeouts]);
 
   const handleSelectPerson = (index: number, person: Employee | Student, role: string) => {
     if (role === 'Staff') {
@@ -202,10 +313,48 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const additionalFields = staff.id ? { id: staff.id } : undefined;
       onPersonChange(index, 'name', `${staff.firstName} ${staff.lastName}`, additionalFields);
     } else {
-      const student = person as Student;
-      // Update both name and id in a single atomic update
-      const additionalFields = student.id ? { id: student.id } : undefined;
-      onPersonChange(index, 'name', `${student.name} (${student.studentId})`, additionalFields);
+      const student = person as Student | any;
+      
+      // Check if this is an external student (from API) or internal student (from client-side)
+      const isExternal = student.is_external === true || student.isExternal === true;
+      
+      // Prepare all student information - use all available fields from the student object
+      const studentInfo: any = {
+        id: student.id || null,
+        student_id: student.student_id || student.studentId || null,
+        name: student.name,
+        is_external: isExternal ? true : false, // Explicitly set to false for internal students
+        // Include all fields from the student object
+        gender: student.gender || null,
+        email: student.email || null,
+        status: student.status || null,
+        grade_id: student.grade_id || null,
+        section_id: student.section_id || null,
+        client_id: student.client_id || employeeData?.clientId || null,
+        grades: student.grades || (student.grade ? { id: null, name: student.grade } : null),
+        sections: student.sections || (student.section ? { id: null, name: student.section } : null),
+      };
+      
+      // For external students, always include external_client_id and external_student_id from the API response
+      if (isExternal) {
+        studentInfo.external_client_id = student.external_client_id || null;
+        // external_student_id is the original student ID from the external system (stored as 'id' in the student object)
+        studentInfo.external_student_id = student.id || null;
+      }
+      
+      // Update name with student ID in parentheses
+      const studentId = student.student_id || student.studentId || '';
+      const displayName = studentId ? `${student.name} (${studentId})` : student.name;
+      
+      console.log('[PeopleInvolvedSection] Selected student:', {
+        student,
+        studentInfo,
+        isExternal,
+        displayName
+      });
+      
+      // Pass all student information as additional fields
+      onPersonChange(index, 'name', displayName, studentInfo);
     }
     setIsSearching(prev => ({ ...prev, [index]: false }));
     setSearchQueries(prev => ({ ...prev, [index]: '' }));
@@ -231,12 +380,24 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     // Only auto-fill if there was a search query (Scenario 2)
     // Don't auto-fill if there was no search query (Scenario 1)
     if (currentPersonIndex !== null && hadSearchQuery) {
-      // Update the person with the new student data
-      onPersonChange(currentPersonIndex, 'name', `${newStudent.name} (${newStudent.studentId})`);
-      // Store the student ID for reference checking
-      if (newStudent.id) {
-        onPersonChange(currentPersonIndex, 'id', newStudent.id);
-      }
+      // Prepare all student information for internal student
+      const studentInfo: any = {
+        id: newStudent.id || null,
+        student_id: newStudent.studentId || null,
+        name: newStudent.name,
+        is_external: false, // Newly added students are always internal
+        gender: null,
+        email: null,
+        status: null,
+        grade_id: null,
+        section_id: null,
+        client_id: employeeData?.clientId || null,
+        grades: newStudent.grade ? { id: null, name: newStudent.grade } : null,
+        sections: newStudent.section ? { id: null, name: newStudent.section } : null,
+      };
+      
+      // Update the person with the new student data including all information
+      onPersonChange(currentPersonIndex, 'name', `${newStudent.name} (${newStudent.studentId})`, studentInfo);
     }
     setIsAddStudentDialogOpen(false);
     setCurrentPersonIndex(null);
@@ -250,6 +411,24 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     if (onStudentAdded) {
       onStudentAdded();
     }
+  };
+
+  // Transform client-side student to match API format (from transformStudent in edge function)
+  const transformClientStudent = (student: Student): any => {
+    return {
+      id: student.id,
+      student_id: student.studentId,
+      name: student.name,
+      gender: null,
+      email: null,
+      status: null,
+      grade_id: null,
+      section_id: null,
+      client_id: employeeData?.clientId || null,
+      grades: student.grade ? { id: null, name: student.grade } : null,
+      sections: student.section ? { id: null, name: student.section } : null,
+      is_external: false
+    };
   };
 
   const getFilteredOptions = (index: number, role: string) => {
@@ -282,52 +461,55 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           })
         : availableStaff;
     } else if (role === 'Student') {
-      console.log('[PeopleInvolvedSection] getFilteredOptions for Student:', {
-        index,
-        searchQuery,
-        totalFetchedStudents: fetchedStudents.length,
-        selectedStudentNames,
-        fetchedStudents: fetchedStudents.map(s => ({ id: s.id, name: s.name }))
-      });
-      
-      const availableStudents = fetchedStudents.filter(student => {
-        const isSelected = selectedStudentNames.includes(student.name);
-        console.log(`[PeopleInvolvedSection] Student ${student.name} isSelected:`, isSelected);
-        return !isSelected;
-      });
-      
-      console.log('[PeopleInvolvedSection] Available students (after filtering selected):', {
-        count: availableStudents.length,
-        students: availableStudents.map(s => ({ id: s.id, name: s.name }))
-      });
-      
-      const filteredStudents = searchQuery
-        ? availableStudents.filter(student => {
-            const searchTerm = searchQuery.toLowerCase();
-            return student.name.toLowerCase().includes(searchTerm) ||
-                   student.studentId.toLowerCase().includes(searchQuery) ||
-                   (student.grade && student.grade.toLowerCase().includes(searchTerm)) ||
-                   (student.section && student.section.toLowerCase().includes(searchTerm));
-          })
-        : availableStudents;
-      
-      console.log('[PeopleInvolvedSection] Filtered students (after search):', {
-        count: filteredStudents.length,
-        students: filteredStudents.map(s => ({ id: s.id, name: s.name }))
-      });
-      
-      // Always add "Add Student" option at the end, and "No Student Found" only if no students are found
-      const result = [...filteredStudents];
-      
-      if (filteredStudents.length === 0) {
-        console.log('[PeopleInvolvedSection] No students found, adding placeholder options');
-        result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any);
+      // If search query is empty, show internal students from client-side data
+      if (searchQuery.length === 0) {
+        const availableInternalStudents = fetchedStudents.filter(student => {
+          const studentName = student.name;
+          return !selectedStudentNames.includes(studentName);
+        });
+
+        // Transform to match API format (same as transformStudent in edge function)
+        const transformedInternal = availableInternalStudents.map(transformClientStudent);
+        
+        return transformedInternal;
       }
       
-      // Always add "Add Student" option at the bottom
-      result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as any);
-      
-      console.log('[PeopleInvolvedSection] Returning filtered students with Add Student option:', result.length);
+      // If search query is less than 3 characters, show message
+      if (searchQuery.length > 0 && searchQuery.length < 3) {
+        return [{ id: 'min-chars', name: 'Please type at least 3 characters', isMinCharsMessage: true } as any];
+      }
+
+      // Use API search results if available (for Student role with >= 3 characters)
+      const apiSearchResults = searchResults[index] || [];
+      const isAPILoading = isSearchingAPI[index];
+
+      // Filter out already selected students
+      const availableStudents = apiSearchResults.filter(student => {
+        const studentName = student.name;
+        return !selectedStudentNames.includes(studentName);
+      });
+
+      const result: any[] = [];
+
+      // Show loading state
+      if (isAPILoading) {
+        result.push({ id: 'loading', name: 'Searching...', isLoading: true } as any);
+        return result;
+      }
+
+      // Add search results
+      if (availableStudents.length > 0) {
+        result.push(...availableStudents);
+      } else if (searchQuery.length >= 3) {
+        // No results found after API search
+        result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any);
+      }
+
+      // Always add "Add Student" option at the bottom (only if search query exists)
+      if (searchQuery.length >= 3) {
+        result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as any);
+      }
+
       return result;
     }
     return [];
@@ -423,6 +605,34 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
               <ul className="py-1 text-sm">
                 {filteredOptions.map((option) => {
+                  // Check if this is the "Please type at least 3 characters" message
+                  if (person.role === 'Student' && (option as any).isMinCharsMessage) {
+                    return (
+                      <li
+                        key="min-chars"
+                        className="px-3 py-2 text-gray-500 cursor-not-allowed"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-sm">Please type at least 3 characters</span>
+                        </div>
+                      </li>
+                    );
+                  }
+
+                  // Check if this is the loading state
+                  if (person.role === 'Student' && (option as any).isLoading) {
+                    return (
+                      <li
+                        key="loading"
+                        className="px-3 py-2 text-gray-500 cursor-not-allowed"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-sm">Searching...</span>
+                        </div>
+                      </li>
+                    );
+                  }
+                  
                   // Check if this is the "No Student Found" option
                   if (person.role === 'Student' && (option as any).isNoStudentOption) {
                     return (
@@ -473,12 +683,24 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                           </>
                         ) : (
                           <>
-                            <span className="font-medium">
-                              {(option as Student).name}
-                            </span>
-                            <span className="text-gray-500 ml-1">
-                              ({(option as Student).studentId}) - {(option as Student).grade} {(option as Student).section}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">
+                                {(option as any).name}
+                              </span>
+                              {(option as any).is_external && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                                  External
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-gray-500 text-xs mt-0.5">
+                              ({(option as any).student_id || (option as Student).studentId})
+                              {((option as any).grades?.name || (option as Student).grade || (option as any).sections?.name || (option as Student).section) && (
+                                <span className="ml-1">
+                                  - {((option as any).grades?.name || (option as Student).grade || '').trim()} {((option as any).sections?.name || (option as Student).section || '').trim()}
+                                </span>
+                              )}
+                            </div>
                           </>
                         )}
                       </div>
@@ -525,12 +747,24 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                               </>
                             ) : (
                               <>
-                                <span className="font-medium">
-                                  {(option as Student).name}
-                                </span>
-                                <span className="text-gray-500 ml-1">
-                                  ({(option as Student).studentId}) - {(option as Student).grade} {(option as Student).section}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {(option as any).name || (option as Student).name}
+                                  </span>
+                                  {((option as any).is_external) && (
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                                      External
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-gray-500 text-xs mt-0.5">
+                                  ({(option as any).student_id || (option as Student).studentId})
+                                  {((option as any).grades?.name || (option as Student).grade || (option as any).sections?.name || (option as Student).section) && (
+                                    <span className="ml-1">
+                                      - {((option as any).grades?.name || (option as Student).grade || '').trim()} {((option as any).sections?.name || (option as Student).section || '').trim()}
+                                    </span>
+                                  )}
+                                </div>
                               </>
                             )}
                           </div>
