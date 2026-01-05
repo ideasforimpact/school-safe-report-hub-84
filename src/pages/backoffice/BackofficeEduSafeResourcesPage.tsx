@@ -361,10 +361,6 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       <div className="flex flex-col w-full p-[50px]">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/backoffice/dashboard')} className="mr-2">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
             <h1 className="text-2xl font-bold">EduSafe Resources Management</h1>
           </div>
         </div>
