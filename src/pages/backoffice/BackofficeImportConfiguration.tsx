@@ -43,7 +43,6 @@ const BackofficeImportConfiguration = () => {
     if (!selectedClient) { toast.error('Select a client'); return; }
     setLoading(true);
     try {
-      // Extract arrays from local templates
       const categories = (categoriesTemplateJson as any)?.categories;
       const contributing_factors = (contributingFactorsTemplateJson as any)?.contributing_factors;
       const report_types = (reportTypesTemplateJson as any)?.report_types;
