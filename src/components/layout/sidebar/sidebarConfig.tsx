@@ -13,7 +13,11 @@ import {
   ShieldCheck,
   DoorOpen,
   LogIn,
-  MessageSquareWarning
+  MessageSquareWarning,
+  BookOpen,
+  Box,
+  Plug,
+  Download,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -48,8 +52,11 @@ const iconMap: Record<string, any> = {
   ShieldCheck,
   DoorOpen,
   LogIn,
-  MessageSquareWarning
-};
+  MessageSquareWarning,
+  BookOpen,
+  Box,
+  Plug,
+  Download};
 
 // Function to fetch modules from backend based on role type with caching
 let cachedBackofficeModules: Module[] | null = null;
