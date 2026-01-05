@@ -46,7 +46,6 @@ const TransportSafetyPage = () => {
   }, [fetchStats]);
 
 const handleVehicleRealtime = useCallback((payload: any) => {
-  console.log('[Realtime payload]', payload);
   fetchStats();
 }, [fetchStats]);
 
@@ -111,7 +110,7 @@ const handleVehicleRealtime = useCallback((payload: any) => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
-          <VehiclesList showAddVehicle={showAddVehicle} setShowAddVehicle={setShowAddVehicle} />
+          <VehiclesList showAddVehicle={showAddVehicle} setShowAddVehicle={setShowAddVehicle}  onVehiclesChanged={fetchStats} />
         </div>
       </div>
 
