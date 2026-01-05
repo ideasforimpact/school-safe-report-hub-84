@@ -1,6 +1,7 @@
 
 import { Client } from '@/contexts/ClientContext';
 import { toast } from "@/components/ui/sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Add a new client
@@ -93,4 +94,26 @@ export const getClientsFromStorage = (): Client[] => {
  */
 export const saveClientsToStorage = (clients: Client[]): void => {
   localStorage.setItem('clients', JSON.stringify(clients));
+};
+
+/**
+ * Fetch all client names from the database
+ */
+export const fetchClientNames = async (): Promise<Array<{ id: string; name: string }>> => {
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id, name')
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching client names:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in fetchClientNames:', error);
+    throw error;
+  }
 };

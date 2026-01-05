@@ -82,6 +82,7 @@ import ModulesPage from '@/pages/backoffice/ModulesPage';
 import BackofficeEduSafeResourcesPage from '@/pages/backoffice/BackofficeEduSafeResourcesPage';
 import BackofficeEmployeeVerificationPage from '@/pages/backoffice/BackofficeEmployeeVerificationPage';
 import BackofficeEmployeeDocumentsPage from '@/pages/backoffice/BackofficeEmployeeDocumentsPage';
+import IntegrationPage from '@/pages/backoffice/IntegrationPage';
 
 // Layout for Backoffice with Client Provider
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -248,6 +249,11 @@ function App() {
                   <Route path="/backoffice/modules" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <ModulesPage />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/integration" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <IntegrationPage />
                     </RouteGuard>
                   } />
 
