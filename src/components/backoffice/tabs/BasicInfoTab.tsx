@@ -372,7 +372,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {showErrors && !formData.email && (
           <p className="text-xs text-red-600">Email is required.</p>
         )}
-        {!isValidEmail(formData.email) && (
+        {formData.email && !isValidEmail(formData.email) && (
           <p className="text-xs text-red-600"> Enter a valid email address</p>
         )}
       </div>
