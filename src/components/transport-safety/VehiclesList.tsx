@@ -20,9 +20,10 @@ import ImportVehiclesDialog from './ImportVehiclesDialog';
 interface VehiclesListProps {
   showAddVehicle: boolean;
   setShowAddVehicle: (show: boolean) => void;
+  onVehiclesChanged: () => void;
 }
 
-const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
+const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
   const { vehicles, loading, error, fetchVehicles } = useTransportSafety();
   
   // State for edit dialog
@@ -273,7 +274,10 @@ return (
    <ImportVehiclesDialog
       isOpen={isImportDialogOpen}
       onClose={() => setIsImportDialogOpen(false)}
-      onSuccess={handleRefresh}
+      onSuccess={() => {
+        fetchVehicles();
+        onVehiclesChanged();
+      }}
     />
 
   </div>
