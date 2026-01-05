@@ -56,7 +56,9 @@ const iconMap: Record<string, any> = {
   BookOpen,
   Box,
   Plug,
-  Download};
+  Download,
+  Integration: Plug, // Alias for backward compatibility
+};
 
 // Function to fetch modules from backend based on role type with caching
 let cachedBackofficeModules: Module[] | null = null;
