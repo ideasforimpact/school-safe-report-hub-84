@@ -45,6 +45,43 @@ function transformVisitorRow(row: any): any {
   return transformed;
 }
 
+// Helper function to calculate validity based on validity_from and validity_to
+function calculateValidity(validityFrom: string | Date | null, validityTo: string | Date | null): boolean {
+  if (!validityFrom || !validityTo) {
+    return false;
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const fromDate = new Date(validityFrom);
+  fromDate.setHours(0, 0, 0, 0);
+  
+  const toDate = new Date(validityTo);
+  toDate.setHours(0, 0, 0, 0);
+  
+  return today >= fromDate && today <= toDate;
+}
+
+// Transform trusted vehicle row to match required structure
+function transformTrustedVehicleRow(row: any): any {
+  if (!row) return null;
+  
+  return {
+    id: row.id,
+    name: row.vehicle_name || row.name || '', // Use vehicle_name as name
+    type: row.type || '',
+    vehicle_no: row.vehicle_no || '',
+    client_id: row.client_id,
+    employee_id: row.employee_id,
+    entry_status: row.entry_status || null,
+    is_validity: calculateValidity(row.validity_from, row.validity_to),
+    is_trusted_vehicle: true,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 // Helper function to sanitize filename
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -339,6 +376,19 @@ serve(async (req) => {
 
       const supabaseUrl = getSupabaseUrl();
 
+      // Fetch trusted vehicles - filtered by client_id, employee_id, and entry_status = 'IN'
+      const { data: trustedVehiclesData, error: trustedVehiclesError } = await supabase
+        .from('trusted_vehicle')
+        .select('id, vehicle_name, type, vehicle_no, client_id, employee_id, entry_status, validity_from, validity_to')
+        .eq('client_id', authenticatedClientId)
+        .eq('employee_id', authenticatedEmployeeId)
+        .eq('entry_status', 'IN');
+
+      // Transform trusted vehicles
+      const trustedVehicles = trustedVehiclesError || !trustedVehiclesData
+        ? []
+        : trustedVehiclesData.map((tv: any) => transformTrustedVehicleRow(tv)).filter((tv: any) => tv !== null);
+
       if (visitorId) {
         // Get single visitor - must belong to authenticated user's client and employee
         const { data, error } = await supabase
@@ -363,7 +413,10 @@ serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ data: transformedData }),
+          JSON.stringify({ 
+            data: transformedData,
+            trusted_vehicles: trustedVehicles
+          }),
           { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       } else {
@@ -394,7 +447,10 @@ serve(async (req) => {
           : data;
 
         return new Response(
-          JSON.stringify({ data: transformed }),
+          JSON.stringify({ 
+            data: transformed,
+            trusted_vehicles: trustedVehicles
+          }),
           { headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
