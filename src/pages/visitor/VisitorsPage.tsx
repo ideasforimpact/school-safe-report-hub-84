@@ -57,7 +57,7 @@ const VisitorsPage = () => {
   }>>([]);
 
   // Visitor vehicle types (from visitor_vehicle_type table)
-  const [ , setVisitorVehicleTypes] = useState<Array<{
+  const [visitorVehicleTypes, setVisitorVehicleTypes] = useState<Array<{
     id: string;
     key: string;
     name: string;
@@ -67,22 +67,22 @@ const VisitorsPage = () => {
   // Quick lookup map: vehicle_type id -> metadata
   const visitorVehicleTypeMap = useMemo(() => {
     const map: Record<string, { id: string; key: string; name: string; active: boolean }> = {};
-      .forEach((type) => {
+    visitorVehicleTypes.forEach((type) => {
       map[type.id] = type;
     });
     return map;
-  }, [  ]);
+  }, [visitorVehicleTypes]);
 
   // Ordered list for dropdown: Filter out Two Wheeler and Four Wheeler, only show Walk In and others
   const orderedVisitorVehicleTypes = useMemo(() => {
     const order = ['walk_in'];
     const excludeKeys = ['two_wheeler', 'four_wheeler']; // Exclude these from dropdown
-    const byKey: Record<string, typeof  [number]> = {};
-      .forEach((t) => {
+    const byKey: Record<string, typeof visitorVehicleTypes[number]> = {};
+    visitorVehicleTypes.forEach((t) => {
       byKey[t.key] = t;
     });
 
-    const result: typeof   = [];
+    const result: typeof visitorVehicleTypes = [];
 
     // Add Walk In first if it exists
     order.forEach((key) => {
@@ -93,14 +93,14 @@ const VisitorsPage = () => {
     });
 
     // Append any remaining types not in the predefined order and not excluded
-      .forEach((t) => {
+    visitorVehicleTypes.forEach((t) => {
       if (!order.includes(t.key) && !excludeKeys.includes(t.key)) {
         result.push(t);
       }
     });
 
     return result;
-  }, [  ]);
+  }, [visitorVehicleTypes]);
 
   // Toast deduplication - prevent multiple toasts for the same event within 2 seconds
   const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null);
