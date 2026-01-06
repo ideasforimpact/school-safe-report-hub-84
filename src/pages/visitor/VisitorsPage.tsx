@@ -538,6 +538,40 @@ const VisitorsPage = () => {
     }
   };
 
+  // Helper function to format time from date string
+  const formatTime = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'HH:mm:ss');
+    } catch (error) {
+      return '-';
+    }
+  };
+
+  // Helper function to format date only (without time)
+  const formatDateOnly = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy');
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  // Helper function to get vehicle type name
+  const getVehicleTypeName = (vehicleType: string | null | undefined): string => {
+    if (!vehicleType) return '-';
+    
+    const typeMeta = visitorVehicleTypeMap[vehicleType];
+    if (typeMeta) {
+      return typeMeta.name;
+    }
+    
+    // Fallback for legacy types
+    if (vehicleType === 'two_wheeler') return 'Two Wheeler';
+    if (vehicleType === 'four_wheeler') return 'Four Wheeler';
+    
+    return vehicleType;
+  };
+
   // Export visitors to Excel
   const handleExport = useCallback(() => {
     try {
@@ -546,52 +580,33 @@ const VisitorsPage = () => {
         return;
       }
 
-      // Collect all unique document types from all visitors
-      const documentTypes = new Set<string>();
-      filteredVisitors.forEach(visitor => {
-        visitor.visitor_kyc?.forEach(kyc => {
-          if (kyc.document_type) {
-            documentTypes.add(kyc.document_type);
-          }
-        });
-      });
-
-      // Sort document types for consistent column ordering
-      const sortedDocumentTypes = Array.from(documentTypes).sort();
-
-      // Prepare export data
+      // Prepare export data with only required columns
       const exportData = filteredVisitors.map(visitor => {
-        // Format evidence files
-        const evidenceFiles = visitor.evidence_files || [];
-        const evidenceFileNames = evidenceFiles.length > 0 
-          ? evidenceFiles.map(file => file.name || '-').join('; ')
-          : '-';
-        const evidenceFileTypes = evidenceFiles.length > 0
-          ? evidenceFiles.map(file => file.type || '-').join('; ')
-          : '-';
-
-        // Base visitor data
-        const row: any = {
-          'Type': visitor.vehicle_type === 'two_wheeler' ? 'Two Wheeler' : 
-                  visitor.vehicle_type === 'four_wheeler' ? 'Four Wheeler' : 
-                  visitor.vehicle_type || '-',
-          'Visitor Name': visitor.name || '-',
-          'Vehicle No': visitor.vehicle_no || '-',
-          'Mobile No': visitor.mobile_no || '-',
-          'Purpose': visitor.purpose || '-',
-          'Whom to Meet': visitor.whom_to_meet || '-',
-          'Entry Status': visitor.is_exit ? 'OUT' : 'IN',
-          'Entry Date': formatEntryDate(visitor.created_at),
-          'Evidence Files': evidenceFileNames,
-          'Evidence File Types': evidenceFileTypes,
-        };
-
-        // Add document type columns
-        sortedDocumentTypes.forEach(docType => {
-          // Find the document number for this document type for this visitor
-          const kycRecord = visitor.visitor_kyc?.find(kyc => kyc.document_type === docType);
-          row[docType] = kycRecord?.document_no || '-';
+        // Get Aadhar details if KYC is done
+        const aadharKyc = visitor.visitor_kyc?.find(kyc => {
+          const docType = (kyc.document_type || '').toLowerCase();
+          return docType === 'aadhar' || docType === 'aadhaar';
         });
+        const aadharDetails = aadharKyc?.document_no || '-';
+
+        // Format entry date and times
+        const entryDate = formatDateOnly(visitor.created_at);
+        const inTime = formatTime(visitor.created_at);
+        const exitTime = visitor.is_exit ? formatTime(visitor.updated_at) : '-';
+
+        // Base visitor data with only required columns
+        const row: any = {
+          'Type': getVehicleTypeName(visitor.vehicle_type),
+          'Visitor Name': visitor.name || '-',
+          'Vehicle number': visitor.vehicle_no || '-',
+          'Phone number': visitor.mobile_no || '-',
+          'Purpose': visitor.purpose || '-',
+          'Whom to meet': visitor.whom_to_meet || '-',
+          'Date': entryDate,
+          'In Time': inTime,
+          'Exit Time': exitTime,
+          'Aadhar details': aadharDetails,
+        };
 
         return row;
       });
@@ -603,20 +618,15 @@ const VisitorsPage = () => {
       const columnWidths = [
         { wch: 15 }, // Type
         { wch: 25 }, // Visitor Name
-        { wch: 15 }, // Vehicle No
-        { wch: 15 }, // Mobile No
+        { wch: 18 }, // Vehicle number
+        { wch: 15 }, // Phone number
         { wch: 30 }, // Purpose
-        { wch: 25 }, // Whom to Meet
-        { wch: 12 }, // Entry Status
-        { wch: 15 }, // Entry Date
-        { wch: 40 }, // Evidence Files
-        { wch: 30 }, // Evidence File Types
+        { wch: 25 }, // Whom to meet
+        { wch: 15 }, // Date
+        { wch: 12 }, // In Time
+        { wch: 12 }, // Exit Time
+        { wch: 20 }, // Aadhar details
       ];
-      
-      // Add widths for document type columns
-      sortedDocumentTypes.forEach(() => {
-        columnWidths.push({ wch: 20 });
-      });
       
       worksheet['!cols'] = columnWidths;
 
@@ -636,7 +646,7 @@ const VisitorsPage = () => {
       console.error('Error exporting visitors:', error);
       toast.error(error?.message || 'Failed to export visitors');
     }
-  }, [filteredVisitors, formatEntryDate]);
+  }, [filteredVisitors, visitorVehicleTypeMap]);
 
   return (
     <Layout>
