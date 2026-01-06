@@ -538,10 +538,11 @@ const VisitorsPage = () => {
     }
   };
 
-  // Helper function to format time from date string
+  // Helper function to format time from date string (with AM/PM)
   const formatTime = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'HH:mm:ss');
+      // Use 12-hour format with AM/PM
+      return format(new Date(dateString), 'hh:mm:ss a');
     } catch (error) {
       return '-';
     }
