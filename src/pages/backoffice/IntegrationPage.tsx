@@ -8,7 +8,7 @@ import { fetchClientNames } from '@/services/client/clientService';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { fetchClientIntegrations, getSchoolsList, saveClientIntegration } from '@/services/integrationService';
+import { getSchoolsList, saveClientIntegration } from '@/services/integrationService';
 import {
   Select,
   SelectContent,
@@ -61,22 +61,16 @@ const IntegrationPage = () => {
     try {
       setLoading(true);
 
-      const [clientNames, integrations] = await Promise.all([
-        fetchClientNames(),
-        fetchClientIntegrations(),
-      ]);
+      const clientNames = await fetchClientNames();
 
-      const integrationMap = new Map(
-        integrations.map(i => [i.client_id, i])
-      );
       const integrationClients: IntegrationClient[] = clientNames.map(client => {
-        const integration = integrationMap.get(client.id);
+        const integration = client.client_integration?.[0]; 
 
         return {
           id: client.id,
           name: client.name,
           linkedClientName: integration?.target_client_name ?? null,
-          linkedStatus: integration ? integration.is_linked : null,
+          linkedStatus: integration?.is_linked ?? null,
           targetClientId: integration?.target_client_id ?? null,
           hasIntegration: !!integration,
         };

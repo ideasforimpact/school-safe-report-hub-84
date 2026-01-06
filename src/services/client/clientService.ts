@@ -99,19 +99,23 @@ export const saveClientsToStorage = (clients: Client[]): void => {
 /**
  * Fetch all client names from the database
  */
-export const fetchClientNames = async (): Promise<Array<{ id: string; name: string }>> => {
+export const fetchClientNames = async () => {
   try {
     const { data, error } = await supabase
       .from('clients')
-      .select('id, name')
+      .select(`
+        id,
+        name,
+        client_integration (
+          is_linked,
+          target_client_id,
+          target_client_name
+        )
+      `)
       .order('name', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching client names:', error);
-      throw error;
-    }
-
-    return data || [];
+    if (error) throw error;
+    return data ?? [];
   } catch (error) {
     console.error('Error in fetchClientNames:', error);
     throw error;

@@ -52,25 +52,25 @@ serve(async (req) => {
     });
 
     if (!externalResponse.ok) {
-      console.error(`[Search Students] External API error: ${externalResponse.status} ${externalResponse.statusText}`);
+      console.error(`[Search Client ] External API error: ${externalResponse.status} ${externalResponse.statusText}`);
       // Return empty array if external API fails
       return new Response(
         JSON.stringify({
           success: true,
           data: [],
         }),
-        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
     const externalData = await externalResponse.json();
-    console.log(`[Search Students] External API response:`, externalData);
+    console.log(`[Search Client ] External API response:`, externalData);
 
     // Transform external students with is_external: true
     // const externalStudents = externalData.data || [];
     const schools = externalData.schools ?? [];
 
-    console.log(`[Search Students] Found ${schools.length} school(s)`);
+    console.log(`[Search Client ] Found ${schools.length} school(s)`);
 
     return new Response(
       JSON.stringify({
@@ -87,7 +87,7 @@ serve(async (req) => {
     );
 
   } catch (externalError) {
-    console.error('[Search Students] Error calling external API:', externalError);
+    console.error('[Search Client ] Error calling external API:', externalError);
     // Return empty array if external API call fails
     return new Response(
       JSON.stringify({

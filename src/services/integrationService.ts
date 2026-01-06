@@ -57,17 +57,4 @@ export async function saveClientIntegration(payload: {
     }
 }
 
-export async function fetchClientIntegrations() {
-  const { data, error } = await supabase
-    .from('client_integration')
-    .select(`
-      client_id,
-      target_client_id,
-      target_client_name,
-      is_linked
-    `);
-
-  if (error) throw error;
-  return data ?? [];
-}
 
