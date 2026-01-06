@@ -196,6 +196,7 @@ const VisitorsPage = () => {
       const { data, error } = await (supabase as any)
         .from('visitor_vehicle_type')
         .select('id, key, name, active')
+        .eq('active', true)
         .order('name', { ascending: true });
 
       if (error) {
