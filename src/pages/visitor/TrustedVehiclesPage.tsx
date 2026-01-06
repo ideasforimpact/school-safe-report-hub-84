@@ -135,21 +135,22 @@ const TrustedVehiclesPage = () => {
     return text.substring(0, maxLength) + '...';
   };
 
+  // A vehicle is considered \"Valid\" only when today's date is within its validity period (inclusive).
   const getValidityStatus = (vehicle: TrustedVehicle) => {
-    if (!vehicle.validity_to) {
+    if (!vehicle.validity_from || !vehicle.validity_to) {
       return false;
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const fromDate = new Date(vehicle.validity_from);
     const toDate = new Date(vehicle.validity_to);
+    fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(0, 0, 0, 0);
 
-    // A vehicle is considered valid as long as its end date has not passed.
-    // Even if the start date is in the future, it should be shown as "Valid"
-    // until the end date crosses the current date.
-    return toDate >= today;
+    // Valid if today is between start and end date (inclusive)
+    return today >= fromDate && today <= toDate;
   };
 
   // Filter vehicles based on search, status, and date range
