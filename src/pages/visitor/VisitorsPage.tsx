@@ -57,7 +57,7 @@ const VisitorsPage = () => {
   }>>([]);
 
   // Visitor vehicle types (from visitor_vehicle_type table)
-  const [visitorVehicleTypes, setVisitorVehicleTypes] = useState<Array<{
+  const [ , setVisitorVehicleTypes] = useState<Array<{
     id: string;
     key: string;
     name: string;
@@ -67,22 +67,22 @@ const VisitorsPage = () => {
   // Quick lookup map: vehicle_type id -> metadata
   const visitorVehicleTypeMap = useMemo(() => {
     const map: Record<string, { id: string; key: string; name: string; active: boolean }> = {};
-    visitorVehicleTypes.forEach((type) => {
+      .forEach((type) => {
       map[type.id] = type;
     });
     return map;
-  }, [visitorVehicleTypes]);
+  }, [  ]);
 
   // Ordered list for dropdown: Filter out Two Wheeler and Four Wheeler, only show Walk In and others
   const orderedVisitorVehicleTypes = useMemo(() => {
     const order = ['walk_in'];
     const excludeKeys = ['two_wheeler', 'four_wheeler']; // Exclude these from dropdown
-    const byKey: Record<string, typeof visitorVehicleTypes[number]> = {};
-    visitorVehicleTypes.forEach((t) => {
+    const byKey: Record<string, typeof  [number]> = {};
+      .forEach((t) => {
       byKey[t.key] = t;
     });
 
-    const result: typeof visitorVehicleTypes = [];
+    const result: typeof   = [];
 
     // Add Walk In first if it exists
     order.forEach((key) => {
@@ -93,14 +93,14 @@ const VisitorsPage = () => {
     });
 
     // Append any remaining types not in the predefined order and not excluded
-    visitorVehicleTypes.forEach((t) => {
+      .forEach((t) => {
       if (!order.includes(t.key) && !excludeKeys.includes(t.key)) {
         result.push(t);
       }
     });
 
     return result;
-  }, [visitorVehicleTypes]);
+  }, [  ]);
 
   // Toast deduplication - prevent multiple toasts for the same event within 2 seconds
   const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null);
@@ -429,21 +429,22 @@ const VisitorsPage = () => {
     setIsRefreshing(false);
   };
 
-  // Helper function to check if a trusted vehicle is valid (current date is within validity period)
+  // Helper function to check if a trusted vehicle is valid.
+  // NOTE: This mirrors the logic in TrustedVehiclesPage.getValidityStatus:
+  // A vehicle is considered valid as long as its end date has not passed,
+  // even if the start date is in the future.
   const isTrustedVehicleValid = useCallback((validity_from: string, validity_to: string): boolean => {
-    if (!validity_from || !validity_to) {
+    if (!validity_to) {
       return false;
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const fromDate = new Date(validity_from);
     const toDate = new Date(validity_to);
-    fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(0, 0, 0, 0);
 
-    return today >= fromDate && today <= toDate;
+    return toDate >= today;
   }, []);
 
   // Filter visitors based on search, vehicle type, status filter, and date range
@@ -718,8 +719,8 @@ const VisitorsPage = () => {
                       {type.name}
                     </SelectItem>
                   ))}
-                  {/* Special filter for trusted vehicles - commented out */}
-                  {/* <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem> */}
+                  {/* Special filter for trusted vehicles */}
+                  <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem>
                 </SelectContent>
               </Select>
 
