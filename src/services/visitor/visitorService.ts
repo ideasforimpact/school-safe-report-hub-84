@@ -67,6 +67,7 @@ export interface Visitor {
   vehicle_no?: string | null;
   vehicle_type?: string | null;
   is_exit: boolean;
+  exit_time?: string | null;
   visitor_kyc: VisitorKYC[];
 }
 
@@ -103,6 +104,7 @@ export const visitorService = {
           vehicle_no,
           vehicle_type,
           is_exit,
+          exit_time,
           visitor_kyc (
             id,
             client_id,
@@ -180,6 +182,7 @@ export const visitorService = {
           vehicle_no,
           vehicle_type,
           is_exit,
+          exit_time,
           visitor_kyc (
             id,
             client_id,

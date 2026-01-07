@@ -46,21 +46,24 @@ function transformVisitorRow(row: any): any {
 }
 
 // Helper function to calculate validity based on validity_from and validity_to
+// NOTE: This mirrors the logic in TrustedVehiclesPage.getValidityStatus:
+// A vehicle is considered valid as long as its end date has not passed,
+// even if the start date is in the future.
 function calculateValidity(validityFrom: string | Date | null, validityTo: string | Date | null): boolean {
-  if (!validityFrom || !validityTo) {
+  if (!validityTo) {
     return false;
   }
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const fromDate = new Date(validityFrom);
-  fromDate.setHours(0, 0, 0, 0);
-  
   const toDate = new Date(validityTo);
   toDate.setHours(0, 0, 0, 0);
   
-  return today >= fromDate && today <= toDate;
+  // A vehicle is considered valid as long as its end date has not passed.
+  // Even if the start date is in the future, it should be shown as "Valid"
+  // until the end date crosses the current date.
+  return toDate >= today;
 }
 
 // Transform trusted vehicle row to match required structure
