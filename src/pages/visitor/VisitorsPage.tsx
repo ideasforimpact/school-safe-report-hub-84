@@ -610,6 +610,36 @@ const VisitorsPage = () => {
     return vehicleType;
   };
 
+  // Helper function to format document type name to readable format
+  const formatDocumentTypeName = (documentType: string): string => {
+    const typeMap: Record<string, string> = {
+      'aadhar': 'Aadhar Card',
+      'aadhaar': 'Aadhar Card',
+      'pan': 'PAN Card',
+      'pan_card': 'PAN Card',
+      'driving_license': 'Driving License',
+      'driving_licence': 'Driving Licence',
+      'passport': 'Passport',
+      'voter_id': 'Voter ID',
+      'bank_account': 'Bank Account',
+      'bank_statement': 'Bank Statement',
+      'manual': 'Manual Verification',
+      'other_documents': 'Other Documents',
+      'other': 'Other Document',
+    };
+    
+    const lowerType = documentType.toLowerCase();
+    if (typeMap[lowerType]) {
+      return typeMap[lowerType];
+    }
+    
+    // Fallback: convert snake_case to Title Case
+    return documentType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   // Export visitors to Excel
   const handleExport = useCallback(() => {
     try {
@@ -643,7 +673,8 @@ const VisitorsPage = () => {
               
               originalVisitor.visitor_kyc.forEach(kyc => {
                 if (kyc.document_type && kyc.document_no) {
-                  docNames.push(kyc.document_type);
+                  // Format document type name to readable format
+                  docNames.push(formatDocumentTypeName(kyc.document_type));
                   docNumbers.push(kyc.document_no);
                 }
               });
