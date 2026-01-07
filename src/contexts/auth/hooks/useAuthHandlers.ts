@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { User, UserRole, EmployeeData, Client, ClientType, DepartmentType, EmployeeType } from '../types';
+import { User, UserRole, EmployeeData, Client, ClientType, ClientIntegration, DepartmentType, EmployeeType } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -81,7 +81,7 @@ export const useAuthHandlers = ({
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
 
   // Helper function to fetch client and client type information
-  const fetchClientInfo = useCallback(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+  const fetchClientInfo = useCallback(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null, clientIntegration: ClientIntegration[] | null }> => {
     try {
       // Fetch client information with client type
       const { data: clientData, error: clientError } = await supabase
@@ -101,7 +101,37 @@ export const useAuthHandlers = ({
 
       if (clientError || !clientData) {
         console.error("Error fetching client data:", clientError);
-        return { client: null, clientType: null };
+        return { client: null, clientType: null, clientIntegration: null };
+      }
+
+      // Fetch client integration records using RPC function to bypass RLS
+      let clientIntegration: ClientIntegration[] | null = null;
+      try {
+        const { data: integrationData, error: integrationError } = await supabase
+          .rpc('get_client_integration_for_auth', { p_client_id: clientId });
+
+        if (!integrationError && integrationData && integrationData.length > 0) {
+          clientIntegration = integrationData.map((item: any) => ({
+            id: item.id,
+            client_id: item.client_id,
+            target_client_id: item.target_client_id,
+            target_client_name: item.target_client_name,
+            is_linked: item.is_linked,
+            active: item.active,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            updated_by: item.updated_by
+          }));
+          console.log('✅ Client integration fetched:', clientIntegration);
+        } else if (integrationError) {
+          console.error("Error fetching client integration:", integrationError);
+        } else {
+          console.log('ℹ️ No client integration records found for client:', clientId);
+        }
+      } catch (integrationErr) {
+        console.error("Error fetching client integration:", integrationErr);
+        // Continue with null integration if fetch fails
+        clientIntegration = null;
       }
 
       // Build logo URL from path if needed
@@ -122,7 +152,8 @@ export const useAuthHandlers = ({
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
-        client_type: clientData.client_type
+        client_type: clientData.client_type,
+        client_integration: clientIntegration
       };
 
       const clientType: ClientType | null = clientData.client_type ? {
@@ -133,10 +164,10 @@ export const useAuthHandlers = ({
         updated_at: clientData.client_type.updated_at
       } : null;
 
-      return { client, clientType };
+      return { client, clientType, clientIntegration };
     } catch (error) {
       console.error("Error in fetchClientInfo:", error);
-      return { client: null, clientType: null };
+      return { client: null, clientType: null, clientIntegration: null };
     }
   }, []);
   
@@ -637,7 +668,8 @@ export const useAuthHandlers = ({
         department: employeeRecord.department,
         employeeType: employeeRecord.employee_type,
         client: clientInfo.client,
-        clientType: clientInfo.clientType
+        clientType: clientInfo.clientType,
+        client_integration: clientInfo.clientIntegration
       };
       
       // Create a new user object with client information

@@ -106,66 +106,11 @@ serve(async (req) => {
 
     console.log(`[Search Students] Searching for: "${sanitizedSearch}" in client: ${queryClientId}`);
 
-    // ========== STEP 1: Search Internal Students ==========
-    let query = supabase
-      .from('students')
-      .select(`
-        id,
-        student_id,
-        name,
-        grade_id,
-        section_id,
-        client_id,
-        grades!students_grade_id_fkey (
-          id,
-          name
-        ),
-        sections!students_section_id_fkey (
-          id,
-          name
-        )
-      `)
-      .eq('client_id', queryClientId);
-
-    // Apply search filter
-    if (sanitizedSearch) {
-      query = query.or(`name.ilike.%${sanitizedSearch}%`);
-    }
-
-    const { data: internalStudents, error: internalError } = await query;
-
-    if (internalError) {
-      console.error('[Search Students] Error fetching internal students:', internalError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to search internal students' ,msg : internalError }),
-        { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Transform internal students with is_external: false
-    const transformedInternalStudents = (internalStudents || []).map(student => 
-      transformStudent(student, false,queryClientId)
-    );
-
-    // If we found internal students, return them
-    if (transformedInternalStudents.length > 0) {
-      console.log(`[Search Students] Found ${transformedInternalStudents.length} internal student(s)`);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: transformedInternalStudents,
-          client_id: queryClientId
-        }),
-        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // ========== STEP 2: Get External Client ID ==========
-    console.log('[Search Students] No internal students found, checking for external client integration');
-    
+    // ========== STEP 1: Check if Integration is Enabled ==========
+    // Check if client has integration enabled (is_linked === true and active === true)
     const { data: clientIntegration, error: integrationError } = await supabase
       .from('client_integration')
-      .select('target_client_id')
+      .select('target_client_id, is_linked, active')
       .eq('client_id', queryClientId)
       .eq('is_linked', true)
       .eq('active', true)
@@ -173,64 +118,21 @@ serve(async (req) => {
 
     if (integrationError) {
       console.error('[Search Students] Error fetching client integration:', integrationError);
-      // Return empty array if integration lookup fails
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: [],
-          client_id: queryClientId
-        }),
-        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-      );
+      // If integration lookup fails, fall back to internal search
+      console.log('[Search Students] Integration lookup failed, falling back to internal search');
     }
 
-    if (!clientIntegration || !clientIntegration.target_client_id) {
-      console.log('[Search Students] No external client integration found');
-      // Return empty array if no external integration
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: [],
-          client_id: queryClientId
-        }),
-        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-      );
-    }
+    const isIntegrationEnabled = clientIntegration && clientIntegration.is_linked === true && clientIntegration.active === true;
 
-    const externalClientId = clientIntegration.target_client_id;
-    console.log(`[Search Students] External client ID found: ${externalClientId}`);
-
-    // ========== STEP 3: Call External API ==========
-    const integrationApiKey = Deno.env.get('INTEGRATION_API_KEY');
-    const connectedSchoolBaseUrl = Deno.env.get('CONNECTED_SCHOOL_BASE_URL')
-    if (!integrationApiKey) {
-      console.error('[Search Sthttps://nxvsnvqumxxqksiqzjul.supabase.coudents] INTEGRATION_API_KEY not configured');
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: [],
-          client_id: queryClientId
-        }),
-        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const externalApiUrl = `${connectedSchoolBaseUrl}/functions/v1/share_student_records_with_connected_school?search=${encodeURIComponent(sanitizedSearch)}&client_id=${encodeURIComponent(externalClientId)}`;
-    
-    console.log(`[Search Students] Calling external API: ${externalApiUrl}`);
-
-    try {
-      const externalResponse = await fetch(externalApiUrl, {
-        method: 'GET',
-        headers: {
-          'x-api-key': integrationApiKey,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!externalResponse.ok) {
-        console.error(`[Search Students] External API error: ${externalResponse.status} ${externalResponse.statusText}`);
-        // Return empty array if external API fails
+    // ========== STEP 2: Route Based on Integration Status ==========
+    if (isIntegrationEnabled) {
+      // Integration is enabled - only return external results
+      console.log('[Search Students] Integration enabled - searching external API only');
+      
+      const externalClientId = clientIntegration.target_client_id;
+      
+      if (!externalClientId) {
+        console.log('[Search Students] No external client ID found, returning empty results');
         return new Response(
           JSON.stringify({
             success: true,
@@ -241,33 +143,131 @@ serve(async (req) => {
         );
       }
 
-      const externalData = await externalResponse.json();
-      console.log(`[Search Students] External API response:`, externalData);
+      console.log(`[Search Students] External client ID found: ${externalClientId}`);
 
-      // Transform external students with is_external: true
-      const externalStudents = externalData.data || [];
-      const transformedExternalStudents = externalStudents.map((student: any) => 
-        transformStudent(student, true,queryClientId)
+      // ========== STEP 3: Call External API ==========
+      const integrationApiKey = Deno.env.get('INTEGRATION_API_KEY');
+      const connectedSchoolBaseUrl = Deno.env.get('CONNECTED_SCHOOL_BASE_URL');
+      
+      if (!integrationApiKey || !connectedSchoolBaseUrl) {
+        console.log('[Search Students] Integration API key or base URL not configured');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: [],
+            client_id: queryClientId
+          }),
+          { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const externalApiUrl = `${connectedSchoolBaseUrl}/functions/v1/share_student_records_with_connected_school?search=${encodeURIComponent(sanitizedSearch)}&client_id=${encodeURIComponent(externalClientId)}`;
+      
+      console.log(`[Search Students] Calling external API: ${externalApiUrl}`);
+
+      try {
+        const externalResponse = await fetch(externalApiUrl, {
+          method: 'GET',
+          headers: {
+            'x-api-key': integrationApiKey,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!externalResponse.ok) {
+          console.error(`[Search Students] External API error: ${externalResponse.status} ${externalResponse.statusText}`);
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: [],
+              client_id: queryClientId
+            }),
+            { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const externalData = await externalResponse.json();
+        console.log(`[Search Students] External API response:`, externalData);
+
+        // Transform external students with is_external: true
+        const externalStudents = externalData.data || [];
+        const transformedExternalStudents = externalStudents.map((student: any) => 
+          transformStudent(student, true, queryClientId)
+        );
+
+        console.log(`[Search Students] Found ${transformedExternalStudents.length} external student(s)`);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: transformedExternalStudents,
+            client_id: queryClientId
+          }),
+          { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+
+      } catch (externalError) {
+        console.error('[Search Students] Error calling external API:', externalError);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: [],
+            client_id: queryClientId
+          }),
+          { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Integration is not enabled - only search internal database
+      console.log('[Search Students] Integration not enabled - searching internal database only');
+      
+      // ========== STEP 3: Search Internal Students ==========
+      let query = supabase
+        .from('students')
+        .select(`
+          id,
+          student_id,
+          name,
+          grade_id,
+          section_id,
+          client_id,
+          grades!students_grade_id_fkey (
+            id,
+            name
+          ),
+          sections!students_section_id_fkey (
+            id,
+            name
+          )
+        `)
+        .eq('client_id', queryClientId);
+
+      // Apply search filter
+      if (sanitizedSearch) {
+        query = query.or(`name.ilike.%${sanitizedSearch}%`);
+      }
+
+      const { data: internalStudents, error: internalError } = await query;
+
+      if (internalError) {
+        console.error('[Search Students] Error fetching internal students:', internalError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to search internal students', msg: internalError }),
+          { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Transform internal students with is_external: false
+      const transformedInternalStudents = (internalStudents || []).map(student => 
+        transformStudent(student, false, queryClientId)
       );
 
-      console.log(`[Search Students] Found ${transformedExternalStudents.length} external student(s)`);
+      console.log(`[Search Students] Found ${transformedInternalStudents.length} internal student(s)`);
 
       return new Response(
         JSON.stringify({
           success: true,
-          data: transformedExternalStudents,
-          client_id: queryClientId
-        }),
-        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
-      );
-
-    } catch (externalError) {
-      console.error('[Search Students] Error calling external API:', externalError);
-      // Return empty array if external API call fails
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: [],
+          data: transformedInternalStudents,
           client_id: queryClientId
         }),
         { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
