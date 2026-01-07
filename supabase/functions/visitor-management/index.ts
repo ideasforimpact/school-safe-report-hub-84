@@ -75,6 +75,7 @@ function transformTrustedVehicleRow(row: any): any {
     client_id: row.client_id,
     employee_id: row.employee_id,
     entry_status: row.entry_status || null,
+    exit_time: row.exit_time || null,
     is_validity: calculateValidity(row.validity_from, row.validity_to),
     is_trusted_vehicle: true,
     created_at: row.created_at,
@@ -377,9 +378,10 @@ serve(async (req) => {
       const supabaseUrl = getSupabaseUrl();
 
       // Fetch trusted vehicles - filtered by client_id, employee_id, and entry_status = 'IN'
+      // Include created_at, updated_at, and exit_time so they are available in the API response
       const { data: trustedVehiclesData, error: trustedVehiclesError } = await supabase
         .from('trusted_vehicle')
-        .select('id, vehicle_name, type, vehicle_no, client_id, employee_id, entry_status, validity_from, validity_to')
+        .select('id, vehicle_name, type, vehicle_no, client_id, employee_id, entry_status, validity_from, validity_to, exit_time, created_at, updated_at')
         .eq('client_id', authenticatedClientId)
         .eq('employee_id', authenticatedEmployeeId)
         .eq('entry_status', 'IN');

@@ -152,7 +152,7 @@ serve(async (req) => {
       );
     }
 
-    const { trusted_vehicle_id, entry_status } = body;
+    const { trusted_vehicle_id, entry_status, exit_time } = body;
 
     // Validate required fields
     if (!trusted_vehicle_id) {
@@ -177,6 +177,18 @@ serve(async (req) => {
       );
     }
 
+    // Optional: validate exit_time if provided (must be a valid date string)
+    let parsedExitDate: Date | null = null;
+    if (exit_time) {
+      parsedExitDate = new Date(exit_time);
+      if (isNaN(parsedExitDate.getTime())) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid exit_time format. Expected a valid date string.' }),
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Check if trusted vehicle exists and belongs to the authenticated client
     const { data: trustedVehicle, error: fetchError } = await supabase
       .from('trusted_vehicle')
@@ -192,13 +204,20 @@ serve(async (req) => {
       );
     }
 
-    // Update entry_status
+    // Update entry_status (and exit_time if provided)
+    const updatePayload: any = {
+      entry_status: entry_status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (parsedExitDate) {
+      // Store only the date component for exit_time
+      updatePayload.exit_time = parsedExitDate.toISOString().slice(0, 10);
+    }
+
     const { data: updatedTrustedVehicle, error: updateError } = await supabase
       .from('trusted_vehicle')
-      .update({
-        entry_status: entry_status,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', trusted_vehicle_id)
       .select()
       .single();
