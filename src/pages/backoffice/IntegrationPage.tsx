@@ -96,41 +96,6 @@ const IntegrationPage = () => {
     setIsViewDialogOpen(true);
   };
 
-  useEffect(() => {
-    if (!isLinkDialogOpen || !selectedClientId) return;
-
-    const fetchSchools = async () => {
-      try {
-        setSchoolsLoading(true);
-        const response = await getSchoolsList();
-
-        const schoolsData = response.data || [];
-        setSchools(schoolsData);
-
-        // 🔑 IMPORTANT: set selected value AFTER schools are set
-        const integration = clients.find(c => c.id === selectedClientId);
-
-        if (integration?.targetClientId) {
-          const exists = schoolsData.some(
-            s => s.id === integration.targetClientId
-          );
-
-          if (exists) {
-            setSelectedSchoolId(integration.targetClientId);
-          }
-        }
-      } catch (error) {
-        toast.error('Failed to load schools');
-      } finally {
-        setSchoolsLoading(false);
-      }
-    };
-
-    fetchSchools();
-  }, [isLinkDialogOpen, selectedClientId]);
-
-
-
   const handleLink = async (clientId: string, schoolId: string) => {
     try {
       setLinking(true);

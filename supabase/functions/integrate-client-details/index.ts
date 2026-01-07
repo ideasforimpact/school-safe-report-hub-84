@@ -56,10 +56,10 @@ serve(async (req) => {
       // Return empty array if external API fails
       return new Response(
         JSON.stringify({
-          success: true,
+          success: false,
           data: [],
         }),
-        { status: 500, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
       );
     }
 
