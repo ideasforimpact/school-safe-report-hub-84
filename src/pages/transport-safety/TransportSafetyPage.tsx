@@ -22,9 +22,13 @@ const TransportSafetyPage = () => {
   const clientId = employeeData?.clientId;
 
   const fetchStats = useCallback(async () => {
+    console.log(clientId,'clientID for vehicle');
+    
     if (!clientId) return;
 
     const vehicles = await getAllVehicles(clientId);
+    console.log(vehicles,'total pending vehicle count');
+
     setTotalVehicles(vehicles.length);
 
     const totalPending = vehicles.reduce((sum, vehicle) => {
@@ -37,7 +41,8 @@ const TransportSafetyPage = () => {
         }, 0)
       );
     }, 0);
-
+    console.log(totalPending,'totalPending');
+    
     setPendingAmount(totalPending);
   }, [clientId]);
 
@@ -54,7 +59,7 @@ const handleVehicleRealtime = useCallback((payload: any) => {
     channelName: `vehicles-${clientId}`,
     table: 'vehicles',
     events: '*',
-    enabled: !!clientId,
+    enabled: true,
     onPayload: handleVehicleRealtime,
   });
 
