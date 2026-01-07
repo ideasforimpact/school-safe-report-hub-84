@@ -152,7 +152,7 @@ serve(async (req) => {
       );
     }
 
-    const { trusted_vehicle_id, entry_status, exit_time } = body;
+    const { trusted_vehicle_id, entry_status, exit_time, in_time } = body;
 
     // Validate required fields
     if (!trusted_vehicle_id) {
@@ -177,13 +177,25 @@ serve(async (req) => {
       );
     }
 
-    // Optional: validate exit_time if provided (must be a valid date string)
+    // Optional: validate exit_time / in_time if provided (must be valid date/datetime)
     let parsedExitDate: Date | null = null;
+    let parsedInTime: Date | null = null;
+
     if (exit_time) {
       parsedExitDate = new Date(exit_time);
       if (isNaN(parsedExitDate.getTime())) {
         return new Response(
           JSON.stringify({ error: 'Invalid exit_time format. Expected a valid date string.' }),
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    if (in_time) {
+      parsedInTime = new Date(in_time);
+      if (isNaN(parsedInTime.getTime())) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid in_time format. Expected a valid datetime string.' }),
           { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
@@ -204,13 +216,31 @@ serve(async (req) => {
       );
     }
 
-    // Update entry_status (and exit_time if provided)
+    // Decide which time fields must be present based on entry_status
+    // If status is IN -> require valid in_time and set in_time (clear exit_time)
+    // If status is OUT -> require valid exit_time and set exit_time (keep existing in_time)
     const updatePayload: any = {
       entry_status: entry_status,
       updated_at: new Date().toISOString()
     };
 
-    if (parsedExitDate) {
+    if (entry_status === 'IN') {
+      if (!parsedInTime) {
+        return new Response(
+          JSON.stringify({ error: 'in_time is required when entry_status is IN' }),
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
+      updatePayload.in_time = parsedInTime.toISOString();
+      // When marking IN, clear any previous exit_time
+      updatePayload.exit_time = null;
+    } else if (entry_status === 'OUT') {
+      if (!parsedExitDate) {
+        return new Response(
+          JSON.stringify({ error: 'exit_time is required when entry_status is OUT' }),
+          { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+        );
+      }
       // Store only the date component for exit_time
       updatePayload.exit_time = parsedExitDate.toISOString().slice(0, 10);
     }
