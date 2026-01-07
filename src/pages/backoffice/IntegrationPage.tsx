@@ -6,6 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Plug, Eye, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { fetchClientNames } from '@/services/client/clientService';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import { getSchoolsList, saveClientIntegration } from '@/services/integrationService';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/contexts';
 
 interface Client {
   id: string;
@@ -16,29 +28,53 @@ interface IntegrationClient {
   id: string;
   name: string;
   linkedClientName: string | null;
-  linkedStatus: boolean;
+  linkedStatus: boolean | null;
+  targetClientId?: string | null;
+  hasIntegration: boolean;
 }
 
 const IntegrationPage = () => {
   const [clients, setClients] = useState<IntegrationClient[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [schools, setSchools] = useState<Client[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const [isLinked, setIsLinked] = useState(false);
+  const [dialogLoading, setDialogLoading] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewClient, setViewClient] = useState<IntegrationClient | null>(null);
+
 
   useEffect(() => {
     fetchClients();
   }, []);
-
+  useEffect(() => {
+    if (!isLinkDialogOpen) {
+      setIsLinked(false);
+    }
+  }, [isLinkDialogOpen]);
   const fetchClients = async () => {
     try {
       setLoading(true);
+
       const clientNames = await fetchClientNames();
-      
-      // Map client names to IntegrationClient format
-      const integrationClients: IntegrationClient[] = clientNames.map(client => ({
-        id: client.id,
-        name: client.name,
-        linkedClientName: null, // As of now, show "-"
-        linkedStatus: false, // As of now, false
-      }));
+
+      const integrationClients: IntegrationClient[] = clientNames.map(client => {
+        const integration = client.client_integration?.[0]; 
+
+        return {
+          id: client.id,
+          name: client.name,
+          linkedClientName: integration?.target_client_name ?? null,
+          linkedStatus: integration?.is_linked ?? null,
+          targetClientId: integration?.target_client_id ?? null,
+          hasIntegration: !!integration,
+        };
+      });
 
       setClients(integrationClients);
     } catch (error) {
@@ -47,15 +83,113 @@ const IntegrationPage = () => {
       setLoading(false);
     }
   };
-
-  const handleView = (clientId: string) => {
-    console.log('View client:', clientId);
-    // TODO: Implement view functionality
+  const resetDialogState = () => {
+    setIsLinkDialogOpen(false);
+    setSelectedClientId(null);
+    setSelectedSchoolId(null);
+    setIsLinked(false);
   };
 
-  const handleLink = (clientId: string) => {
-    console.log('Link client:', clientId);
-    // TODO: Implement link functionality
+
+  const handleView = (client: IntegrationClient) => {
+    setViewClient(client);
+    setIsViewDialogOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isLinkDialogOpen || !selectedClientId) return;
+
+    const fetchSchools = async () => {
+      try {
+        setSchoolsLoading(true);
+        const response = await getSchoolsList();
+
+        const schoolsData = response.data || [];
+        setSchools(schoolsData);
+
+        // 🔑 IMPORTANT: set selected value AFTER schools are set
+        const integration = clients.find(c => c.id === selectedClientId);
+
+        if (integration?.targetClientId) {
+          const exists = schoolsData.some(
+            s => s.id === integration.targetClientId
+          );
+
+          if (exists) {
+            setSelectedSchoolId(integration.targetClientId);
+          }
+        }
+      } catch (error) {
+        toast.error('Failed to load schools');
+      } finally {
+        setSchoolsLoading(false);
+      }
+    };
+
+    fetchSchools();
+  }, [isLinkDialogOpen, selectedClientId]);
+
+
+
+  const handleLink = async (clientId: string, schoolId: string) => {
+    try {
+      setLinking(true);
+
+      const selectedSchool = schools.find(s => s.id === schoolId);
+
+      if (!selectedSchool) {
+        toast.error('Invalid school selected');
+        return;
+      }
+
+      await saveClientIntegration({
+        clientId,
+        targetClientId: schoolId,
+        targetClientName: selectedSchool.name,
+        isLinked,
+        updatedBy: user?.id!,
+      });
+
+      toast.success(
+        isLinked ? 'Client linked successfully' : 'Client unlinked successfully'
+      );
+
+      await fetchClients();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to save integration');
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const openLinkDialog = async (client: IntegrationClient) => {
+    try {
+      setDialogLoading(true);
+      setSelectedClientId(client.id);
+      setIsLinked(client.linkedStatus ?? false);
+
+      const response = await getSchoolsList();
+      const schoolsData = response.data || [];
+      setSchools(schoolsData);
+
+      if (client.targetClientId) {
+        const exists = schoolsData.some(
+          s => s.id === client.targetClientId
+        );
+        if (exists) {
+          setSelectedSchoolId(client.targetClientId);
+        }
+      } else {
+        setSelectedSchoolId(null);
+      }
+
+      setIsLinkDialogOpen(true);
+    } catch (e) {
+      toast.error('Failed to load integration data');
+    } finally {
+      setDialogLoading(false);
+    }
   };
 
   return (
@@ -70,7 +204,7 @@ const IntegrationPage = () => {
             </div>
           </div>
         </div>
-        
+
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -114,16 +248,26 @@ const IntegrationPage = () => {
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>{client.linkedClientName || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={client.linkedStatus ? "default" : "secondary"}>
-                          {client.linkedStatus ? 'Linked' : 'Not Linked'}
-                        </Badge>
+                        {!client.hasIntegration ? (
+                          <Badge variant="secondary">
+                            Not Linked
+                          </Badge>
+                        ) : client.linkedStatus ? (
+                          <Badge className="bg-green-600 text-white">
+                            Linked
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">
+                            Unlinked
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleView(client.id)}
+                            onClick={() => handleView(client)}
                             title="View client"
                           >
                             <Eye className="h-4 w-4" />
@@ -131,10 +275,17 @@ const IntegrationPage = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleLink(client.id)}
+                            onClick={() => openLinkDialog(client)}
                             title="Link client"
                           >
-                            <LinkIcon className="h-4 w-4" />
+                            <LinkIcon
+                              className={`h-4 w-4 ${!client.hasIntegration
+                                ? 'text-gray-400'
+                                : client.linkedStatus
+                                  ? 'text-green-600'
+                                  : 'text-red-500'
+                                }`}
+                            />
                           </Button>
                         </div>
                       </TableCell>
@@ -146,6 +297,125 @@ const IntegrationPage = () => {
           </CardContent>
         </Card>
       </div>
+      {dialogLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg px-6 py-4 flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">Loading integration details…</span>
+          </div>
+        </div>
+      )}
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link Client</DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {/* School dropdown */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Please select the school
+              </label>
+
+              <Select
+                key={selectedClientId}
+                value={selectedSchoolId ?? undefined}
+                onValueChange={setSelectedSchoolId}
+                disabled={schoolsLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      schoolsLoading ? 'Loading schools...' : 'Select a school'
+                    }
+                  />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {schools.map((school) => (
+                    <SelectItem key={school.id} value={school.id}>
+                      {school.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Linked
+              </label>
+              <Switch checked={isLinked} onCheckedChange={setIsLinked} />
+            </div>
+          </div>
+
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetDialogState}
+              disabled={linking}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={async () => {
+                if (!selectedClientId || !selectedSchoolId) return;
+
+                await handleLink(selectedClientId, selectedSchoolId /* , isLinked */);
+
+                setIsLinkDialogOpen(false);
+                setSelectedClientId(null);
+                setSelectedSchoolId(null);
+                setIsLinked(false);
+              }}
+              disabled={linking || schoolsLoading || !selectedSchoolId}
+            >
+              {(linking || schoolsLoading) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Integration Details</DialogTitle>
+          </DialogHeader>
+
+          {viewClient && (
+            <div className="space-y-4 py-2">
+              <div>
+                <p className="text-sm text-gray-500">Client Name</p>
+                <p className="font-medium">{viewClient.name}</p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Linked Client Name</p>
+                <p className="font-medium">
+                  {viewClient.linkedClientName ?? '-'}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-500">Linked Status</p>
+                {!viewClient.hasIntegration ? (
+                  <Badge variant="secondary">Not Linked</Badge>
+                ) : viewClient.linkedStatus ? (
+                  <Badge className="bg-green-600 text-white">Linked</Badge>
+                ) : (
+                  <Badge variant="destructive">Unlinked</Badge>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </Layout>
   );
 };
