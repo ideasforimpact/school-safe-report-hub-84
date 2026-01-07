@@ -34,6 +34,7 @@ function transformTrustedVehicleRow(row: any): any {
     client_id: row.client_id,
     employee_id: row.employee_id,
     entry_status: row.entry_status || null,
+    in_time: row.in_time || null,
     exit_time: row.exit_time || null,
     is_validity: calculateValidity(row.validity_from, row.validity_to),
     is_trusted_vehicle: true,
