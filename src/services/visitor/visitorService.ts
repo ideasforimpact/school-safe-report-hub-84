@@ -75,18 +75,33 @@ export interface VisitorResponse {
   data: Visitor[];
 }
 
+export interface PaginatedVisitorsResponse {
+  visitors: Visitor[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export const visitorService = {
   /**
-   * Get all visitors for a specific client and employee
+   * Get visitors for a specific client and employee with server-side pagination
    * Fetches visitors with their corresponding KYC details as an array of objects
    */
-  async getVisitors(clientId: string, employeeId?: string | null): Promise<Visitor[]> {
+  async getVisitors(
+    clientId: string, 
+    employeeId?: string | null,
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<PaginatedVisitorsResponse> {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
       }
 
-      // Build query to fetch visitors with nested KYC details
+      const offset = (page - 1) * pageSize;
+
+      // Build query to fetch visitors with nested KYC details and count
       // Using type assertion because visitors table may not be in generated types yet
       let query = (supabase as any)
         .from('visitors')
@@ -115,7 +130,7 @@ export const visitorService = {
             created_at,
             updated_at
           )
-        `)
+        `, { count: 'exact' })
         .eq('client_id', clientId);
 
       // Optionally filter by employee_id if provided
@@ -123,7 +138,10 @@ export const visitorService = {
         query = query.eq('employee_id', employeeId);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Apply pagination and ordering
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
 
       if (error) {
         console.error('Error fetching visitors:', error);
@@ -146,7 +164,16 @@ export const visitorService = {
         )
       }));
 
-      return visitors;
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      return {
+        visitors,
+        totalCount,
+        page,
+        pageSize,
+        totalPages
+      };
     } catch (error) {
       console.error('Error in getVisitors:', error);
       throw error;
