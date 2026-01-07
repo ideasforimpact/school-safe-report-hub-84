@@ -59,7 +59,7 @@ const handleVehicleRealtime = useCallback((payload: any) => {
     channelName: `vehicles-${clientId}`,
     table: 'vehicles',
     events: '*',
-    enabled: !!clientId,
+    enabled: true,
     onPayload: handleVehicleRealtime,
   });
 
