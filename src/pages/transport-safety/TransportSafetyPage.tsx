@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Bus, Plus, ExternalLink } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -7,10 +7,8 @@ import VehiclesList from '@/components/transport-safety/VehiclesList';
 import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 import { useAuth } from '@/contexts';
 import {
-  getAllVehicles,
   getPendingChallans,
 } from '@/services/transport-safety/vehicleService';
-import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const TransportSafetyPage = () => {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
@@ -21,47 +19,25 @@ const TransportSafetyPage = () => {
   const navigate = useNavigate();
   const clientId = employeeData?.clientId;
 
-  const fetchStats = useCallback(async () => {
-    console.log(clientId,'clientID for vehicle');
-    
-    if (!clientId) return;
+const handleVehiclesChanged = useCallback(({ vehicles }) => {
+  setTotalVehicles(vehicles.length);
 
-    const vehicles = await getAllVehicles(clientId);
-    console.log(vehicles,'total pending vehicle count');
-
-    setTotalVehicles(vehicles.length);
-
-    const totalPending = vehicles.reduce((sum, vehicle) => {
-      const pending = getPendingChallans(vehicle.verificationData ?? []);
-      return (
-        sum +
-        pending.reduce((s, c) => {
-          const amount = Number(c.amount || c.challan_amount || 0);
-          return s + (isNaN(amount) ? 0 : amount);
-        }, 0)
-      );
-    }, 0);
-    console.log(totalPending,'totalPending');
-    
-    setPendingAmount(totalPending);
-  }, [clientId]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-const handleVehicleRealtime = useCallback((payload: any) => {
-  fetchStats();
-}, [fetchStats]);
+  const totalPending = vehicles.reduce((sum, vehicle) => {
+    const pending = getPendingChallans(vehicle.verificationData ?? []);
+    return (
+      sum +
+      pending.reduce((s, c) => {
+        const amount = Number(c.amount || c.challan_amount || 0);
+        return s + (isNaN(amount) ? 0 : amount);
+      }, 0)
+    );
+  }, 0);
+  console.log(totalPending,'totalpending');
+  
+  setPendingAmount(totalPending);
+}, []);
 
 
-  useRealTimeSubHook({
-    channelName: `vehicles-${clientId}`,
-    table: 'vehicles',
-    events: '*',
-    enabled: true,
-    onPayload: handleVehicleRealtime,
-  });
 
   return (
     <Layout>
@@ -115,7 +91,7 @@ const handleVehicleRealtime = useCallback((payload: any) => {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
-          <VehiclesList showAddVehicle={showAddVehicle} setShowAddVehicle={setShowAddVehicle}  onVehiclesChanged={fetchStats} />
+          <VehiclesList showAddVehicle={showAddVehicle} setShowAddVehicle={setShowAddVehicle}  onVehiclesChanged={handleVehiclesChanged} />
         </div>
       </div>
 
@@ -123,7 +99,6 @@ const handleVehicleRealtime = useCallback((payload: any) => {
       <AddVehicleDialog
         open={showAddVehicle}
         onClose={() => setShowAddVehicle(false)}
-        onSuccess={fetchStats}
       />
     </Layout>
   );

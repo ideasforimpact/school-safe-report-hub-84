@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
 import VehicleSearchBar from './filters/VehicleSearchBar';
@@ -20,7 +20,11 @@ import ImportVehiclesDialog from './ImportVehiclesDialog';
 interface VehiclesListProps {
   showAddVehicle: boolean;
   setShowAddVehicle: (show: boolean) => void;
-  onVehiclesChanged: () => void;
+  onVehiclesChanged: (data: {
+    total: number;
+    filtered: number;
+    vehicles: Vehicle[];
+  }) => void;
 }
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
@@ -118,7 +122,14 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
       pucUpto: pucField?.value || 'N/A'
     };
   };
-  
+  useEffect(() => {
+  onVehiclesChanged({
+    total: vehicles.length,
+    filtered: filteredVehicles.length,
+    vehicles,
+  });
+}, [vehicles, filteredVehicles, onVehiclesChanged]);
+
   // Export vehicles to Excel
   const exportToExcel = () => {
     try {
@@ -276,7 +287,6 @@ return (
       onClose={() => setIsImportDialogOpen(false)}
       onSuccess={() => {
         fetchVehicles();
-        onVehiclesChanged();
       }}
     />
 
