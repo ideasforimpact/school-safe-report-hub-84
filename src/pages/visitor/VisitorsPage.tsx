@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download } from 'lucide-react';
+import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -622,24 +622,37 @@ const VisitorsPage = () => {
       const exportData = filteredVisitors.map(item => {
         // For trusted vehicles, we don't have visitor-specific fields
         // For regular visitors, we need to find the original visitor to get KYC details
-        let aadharDetails = '-';
         let phoneNumber = '-';
         let purpose = '-';
         let whomToMeet = '-';
+        let documentNames = '-';
+        let documentNumbers = '-';
 
         if (!item.is_trusted_vehicle && item.visitor_id) {
           // Find the original visitor to get full details
           const originalVisitor = visitors.find(v => v.id === item.visitor_id);
           if (originalVisitor) {
-            // Get Aadhar details if KYC is done
-            const aadharKyc = originalVisitor.visitor_kyc?.find(kyc => {
-              const docType = (kyc.document_type || '').toLowerCase();
-              return docType === 'aadhar' || docType === 'aadhaar';
-            });
-            aadharDetails = aadharKyc?.document_no || '-';
             phoneNumber = originalVisitor.mobile_no || '-';
             purpose = originalVisitor.purpose || '-';
             whomToMeet = originalVisitor.whom_to_meet || '-';
+            
+            // Collect all KYC document types and their values
+            if (originalVisitor.visitor_kyc && originalVisitor.visitor_kyc.length > 0) {
+              const docNames: string[] = [];
+              const docNumbers: string[] = [];
+              
+              originalVisitor.visitor_kyc.forEach(kyc => {
+                if (kyc.document_type && kyc.document_no) {
+                  docNames.push(kyc.document_type);
+                  docNumbers.push(kyc.document_no);
+                }
+              });
+              
+              if (docNames.length > 0) {
+                documentNames = docNames.join(', ');
+                documentNumbers = docNumbers.join(', ');
+              }
+            }
           }
         }
 
@@ -659,7 +672,8 @@ const VisitorsPage = () => {
           'Date': entryDate,
           'In Time': inTime,
           'Exit Time': exitTime,
-          'Aadhar details': aadharDetails,
+          'Document Name': documentNames,
+          'Document No': documentNumbers,
         };
 
         return row;
@@ -679,7 +693,8 @@ const VisitorsPage = () => {
         { wch: 15 }, // Date
         { wch: 12 }, // In Time
         { wch: 12 }, // Exit Time
-        { wch: 20 }, // Aadhar details
+        { wch: 25 }, // Document Name
+        { wch: 30 }, // Document No
       ];
       
       worksheet['!cols'] = columnWidths;
@@ -700,7 +715,7 @@ const VisitorsPage = () => {
       console.error('Error exporting visitors:', error);
       toast.error(error?.message || 'Failed to export visitors');
     }
-  }, [filteredVisitors, visitorVehicleTypeMap]);
+  }, [filteredVisitors, visitors, visitorVehicleTypeMap]);
 
   return (
     <Layout>
@@ -874,7 +889,24 @@ const VisitorsPage = () => {
                       <TableCell className="font-medium" title={item.name}>
                         {truncateVisitorName(item.name)}
                       </TableCell>
-                      <TableCell>{item.vehicle_no || '-'}</TableCell>
+                      <TableCell>
+                        {item.vehicle_no ? (
+                          <div className="flex items-center gap-2">
+                            <span>{item.vehicle_no}</span>
+                            {item.is_trusted_vehicle && (
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-blue-100 text-blue-700 border-blue-300 px-1.5 py-0.5 h-5 flex items-center"
+                                title="Trusted Vehicle"
+                              >
+                                <ShieldCheck className="h-3 w-3" />
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
                       <TableCell>{formatEntryDate(item.created_at)}</TableCell>
                       <TableCell>{formatTime(item.in_time)}</TableCell>
                       <TableCell>{formatTime(item.exit_time)}</TableCell>
