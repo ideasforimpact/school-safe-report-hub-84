@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Settings, AlertTriangle, School, Users, GraduationCap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClientIntegration } from '@/hooks/useClientIntegration';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();
