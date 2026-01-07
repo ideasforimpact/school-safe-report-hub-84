@@ -161,7 +161,7 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { visitor_id, client_id, employee_id } = body;
+    const { visitor_id, client_id, employee_id, exit_time } = body;
 
     // Validate required fields
     if (!visitor_id) {
@@ -201,6 +201,22 @@ serve(async (req) => {
       );
     }
 
+    // Validate exit_time (required, must be a valid datetime string)
+    if (!exit_time) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required field: exit_time' }),
+        { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const parsedExitTime = new Date(exit_time);
+    if (isNaN(parsedExitTime.getTime())) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid exit_time format. Expected a valid datetime string.' }),
+        { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Check if visitor exists and belongs to the specified client and employee
     const { data: visitor, error: fetchError } = await supabase
       .from('visitors')
@@ -228,11 +244,12 @@ serve(async (req) => {
       );
     }
 
-    // Update visitor is_exit flag
+    // Update visitor is_exit flag and exit_time
     const { data: updatedVisitor, error: updateError } = await supabase
       .from('visitors')
       .update({
         is_exit: true,
+        exit_time: parsedExitTime.toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', visitor_id)
