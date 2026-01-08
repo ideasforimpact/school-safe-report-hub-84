@@ -1,5 +1,7 @@
 import React from 'react';
 import { useRealtimeModuleSync } from '@/hooks/useRealtimeModuleSync';
+import { useRealtimeClientIntegrationSync } from '@/hooks/useRealtimeClientIntegrationSync';
+
 
 interface ModuleSyncProviderProps {
   children: React.ReactNode;
@@ -13,6 +15,8 @@ interface ModuleSyncProviderProps {
 const ModuleSyncProvider: React.FC<ModuleSyncProviderProps> = ({ children }) => {
   // Initialize real-time module synchronization
   useRealtimeModuleSync();
+    // Initialize real-time client integration synchronization
+  useRealtimeClientIntegrationSync();
   
   return <>{children}</>;
 };

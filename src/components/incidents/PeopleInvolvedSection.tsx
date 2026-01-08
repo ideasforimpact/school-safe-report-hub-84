@@ -480,8 +480,9 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           return [];
         }
       } else {
-        // If search query is empty, show internal students from client-side data
+        // Integration is NOT enabled - show client-side students
         if (searchQuery.length === 0) {
+          // If search query is empty, show all internal students from client-side data
           const availableInternalStudents = fetchedStudents.filter(student => {
             const studentName = student.name;
             return !selectedStudentNames.includes(studentName);
@@ -503,8 +504,27 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const apiSearchResults = searchResults[index] || [];
       const isAPILoading = isSearchingAPI[index];
 
+      // When integration is disabled, also include local students that match the search
+      let localStudents: any[] = [];
+      if (!isIntegrationEnabled && searchQuery.length >= 3) {
+        const searchTerm = searchQuery.toLowerCase();
+        const matchingLocalStudents = fetchedStudents.filter(student => {
+          const studentName = student.name.toLowerCase();
+          const studentId = student.studentId?.toLowerCase() || '';
+          return (studentName.includes(searchTerm) || studentId.includes(searchTerm)) &&
+                 !selectedStudentNames.includes(student.name);
+        });
+        localStudents = matchingLocalStudents.map(transformClientStudent);
+      }
+
+      // Combine API results and local students, removing duplicates
+      const allStudents = [...apiSearchResults, ...localStudents];
+      const uniqueStudents = allStudents.filter((student, index, self) => 
+        index === self.findIndex(s => s.id === student.id || s.student_id === student.student_id)
+      );
+
       // Filter out already selected students
-      const availableStudents = apiSearchResults.filter(student => {
+      const availableStudents = uniqueStudents.filter(student => {
         const studentName = student.name;
         return !selectedStudentNames.includes(studentName);
       });
@@ -521,7 +541,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       if (availableStudents.length > 0) {
         result.push(...availableStudents);
       } else if (searchQuery.length >= 3) {
-        // No results found after API search
+        // No results found after search
         result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any);
       }
 
