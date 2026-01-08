@@ -196,7 +196,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
         </div>
 
         {/* Display challan details if available from API */}
-        {challanDetails && challanDetails.length > 0 && (
+        {/* {challanDetails && challanDetails.length > 0 && (
           <div className="mb-4">
             <h3 className="text-sm font-semibold mb-2 text-left">Challan Details</h3>
             <div className="space-y-2 border rounded-md p-3 bg-orange-50">
@@ -238,7 +238,6 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               ))}
             </div>
 
-            {/* View More Button */}
             {challanDetails.length > 1 && (
               <button
                 onClick={() => setShowAllChallans(true)}
@@ -248,7 +247,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               </button>
             )}
           </div>
-        )}
+        )} */}
         
         <Dialog open={showAllChallans} onOpenChange={setShowAllChallans}>
           <DialogContent className="max-h-[80vh] overflow-y-auto">

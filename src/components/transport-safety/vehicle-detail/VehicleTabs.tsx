@@ -30,6 +30,7 @@ import { UploadedDocument, formatSupabaseUrl, isPdfFile } from '@/types/fileType
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import VerificationDetailsDialog from '../VerificationDetailsDialog';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -702,33 +703,11 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       </TabsContent>
       
       {/* Verification Details Dialog */}
-      <Dialog open={showVerificationDetails} onOpenChange={setShowVerificationDetails}>
-        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Verification Details</DialogTitle>
-            <DialogDescription>
-              Registration details verified through Surepass API.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="border rounded-md divide-y">
-            {formatVerificationData(selectedVerificationData).map((field: any, index: number) => (
-              <div key={index} className="px-4 py-2">
-                <div className="font-medium text-gray-500">{field.label}:</div>
-                <div className="text-gray-900">
-                  {typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : String(field.value)}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <DialogFooter>
-            <Button onClick={() => setShowVerificationDetails(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+     <VerificationDetailsDialog
+  open={showVerificationDetails}
+  onOpenChange={setShowVerificationDetails}
+  verificationData={selectedVerificationData}
+/>
       
       {/* Upload Document Dialog */}
       <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>

@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { getLatestVerificationFieldValue } from '@/utils/transport-safety/documentStatusUtils';
+import VerificationDetailsDialog from '../VerificationDetailsDialog';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
@@ -50,6 +51,9 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const [showSafetyCheckConsent, setShowSafetyCheckConsent] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [challanError, setChallanError] = useState<string | null>(null);
+  const [hasChallanData, setHasChallanData] = useState<boolean>(true);
+
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
 
@@ -119,9 +123,14 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       setShowVerificationResults(true);
 
       const challan = data?.data?.challan;
-      if (challan?.status_code === 500 || challan?.success === false) {
-        toast.error('Challan details could not be fetched.Contact support');
+      if (!challan || challan?.status_code !== 200 || challan?.success === false) {
+        setChallanError('Challan details could not be fetched at this time. Please contact support.');
+        setHasChallanData(false);
+      } else {
+        setChallanError(null);
+        setHasChallanData(true);
       }
+
       
       // Update the vehicle in context with verification data
       updateVehicle(vehicleId, {
@@ -273,31 +282,14 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                   View Latest Verification
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Vehicle Verification Results</DialogTitle>
-                  <DialogDescription>
-                    Registration details verified through Surepass API.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="border rounded-md divide-y overflow-y-auto">
-                  {formatVerificationData(latestVerificationData).map((field: any, index: number) => (
-                    <div key={index} className="px-4 py-3">
-                      <div className="font-medium text-gray-500 mb-1">{field.label}:</div>
-                      <div className="text-gray-900 break-words">
-                        {typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <DialogFooter>
-                  <Button onClick={() => setShowVerificationResults(false)}>
-                    Close
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
+              <VerificationDetailsDialog
+                 open={showVerificationResults}
+  onOpenChange={setShowVerificationResults}
+  verificationData={latestVerificationData}
+  challanError={challanError}
+  hasChallanData={hasChallanData}
+  title="Latest Verification Details"
+              />
             </Dialog>
           </div>
         )}
