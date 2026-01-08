@@ -80,6 +80,7 @@ const VisitorsPage = () => {
     in_time: string | null; // For trusted vehicles: in_time, for visitors: created_at
     exit_time: string | null;
     is_trusted_vehicle: boolean;
+    entry_status?: string | null; // For trusted vehicles: entry_status (IN or OUT)
     // For visitors only
     visitor_id?: string;
     // For trusted vehicles only
@@ -185,7 +186,7 @@ const VisitorsPage = () => {
       });
     });
 
-    // Add trusted vehicles with entry_status = 'IN'
+    // Add trusted vehicles with entry_status = 'IN' or 'OUT'
     trustedVehiclesData.forEach((tv) => {
       unified.push({
         id: tv.id,
@@ -195,6 +196,7 @@ const VisitorsPage = () => {
         created_at: tv.created_at,
         in_time: tv.in_time || tv.created_at, // Use in_time if available, else created_at
         exit_time: tv.exit_time || null,
+        entry_status: tv.entry_status || null, // Include entry_status (IN or OUT)
         is_trusted_vehicle: true,
         trusted_vehicle_id: tv.id,
       });
@@ -226,13 +228,13 @@ const VisitorsPage = () => {
       setTotalPages(response.totalPages);
       setCurrentPage(page);
 
-      // Fetch trusted vehicles with entry_status = 'IN' and all required fields
+      // Fetch trusted vehicles with entry_status = 'IN' or 'OUT' and all required fields
       // Note: Trusted vehicles are fetched separately and combined with visitors
       const { data: trustedVehiclesData, error: trustedVehiclesError } = await (supabase as any)
         .from('trusted_vehicle')
         .select('id, vehicle_name, name, vehicle_no, client_id, employee_id, entry_status, in_time, exit_time, created_at, updated_at, validity_from, validity_to')
         .eq('client_id', clientId)
-        .eq('entry_status', 'IN');
+        .in('entry_status', ['IN', 'OUT']);
 
       if (employeeId) {
         // Optionally filter by employee_id if provided
