@@ -59,6 +59,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   console.log('Auth employeeData in incidents:', employeeData);
   console.log('Client type from auth:', clientType);
   console.log('Is school client:', isSchoolClient);
+  console.log("isIntegrationEnabled",isIntegrationEnabled);
+  
   
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
