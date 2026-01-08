@@ -381,14 +381,14 @@ serve(async (req) => {
 
       const supabaseUrl = getSupabaseUrl();
 
-      // Fetch trusted vehicles - filtered by client_id, employee_id, and entry_status = 'IN'
+      // Fetch trusted vehicles - filtered by client_id, employee_id, and entry_status IN or OUT
       // Include in_time, exit_time, created_at, updated_at so they are available in the API response
       const { data: trustedVehiclesData, error: trustedVehiclesError } = await supabase
         .from('trusted_vehicle')
         .select('id, vehicle_name, type, vehicle_no, client_id, employee_id, entry_status, validity_from, validity_to, in_time, exit_time, created_at, updated_at')
         .eq('client_id', authenticatedClientId)
         .eq('employee_id', authenticatedEmployeeId)
-        .eq('entry_status', 'IN');
+        .in('entry_status', ['IN', 'OUT']);
 
       // Transform trusted vehicles
       const trustedVehicles = trustedVehiclesError || !trustedVehiclesData
