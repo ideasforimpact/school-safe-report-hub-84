@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface PaginationInfo {
   currentPage: number;
@@ -115,7 +116,7 @@ const IncidentsList = () => {
 
     const response = await incidentDataService.fetchIncidentsForClientWithFilters(
       clientId,
-      false, 
+      true, 
       employeeDataForFiltering,
       hasIncidentAdmin,
       { page: 1, pageSize: pagination.pageSize },
@@ -395,7 +396,20 @@ const incidentAnalyticsStats = useMemo(() => {
     closed: originalIncidents.filter(i => i.status === 'Closed').length,
   };
 }, [originalIncidents]);
+  const handleIncidentsRealtime = useCallback(
+    (payload: any) => {
+      fetchOriginalIncidents();
+    },
+    [fetchOriginalIncidents]
+  );
 
+  useRealTimeSubHook({
+    channelName: 'incidents-realtime',
+    events: '*',
+    table: 'incidents',
+    enabled: true,
+    onPayload: handleIncidentsRealtime,
+  });
 
   return (
     <Layout>
