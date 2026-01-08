@@ -115,26 +115,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Fetch client integration records using RPC function to bypass RLS
+      // Fallback to direct query if RPC function doesn't exist (RLS is disabled)
       let clientIntegration: ClientIntegration[] | null = null;
       try {
-        const { data: integrationData, error: integrationError } = await supabase
+        // Try RPC function first
+        const { data: integrationData, error: integrationError } = await (supabase as any)
           .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
-        if (integrationError) {
-          console.error("❌ Error fetching client integration:", {
-            error: integrationError,
-            message: integrationError.message,
-            code: integrationError.code,
-            details: integrationError.details,
-            hint: integrationError.hint,
-            clientId: clientId
-          });
-          // If function doesn't exist, log a helpful message
-          if (integrationError.message?.includes('function') || integrationError.code === '42883') {
-            console.error("⚠️ The RPC function 'get_client_integration_for_auth' may not exist. Please run the migration: 20260110000000_create_get_client_integration_for_auth_function.sql");
-          }
-        } else if (integrationData && Array.isArray(integrationData)) {
-          if (integrationData.length > 0) {
+        if (!integrationError && integrationData && Array.isArray(integrationData) && integrationData.length > 0) {
           clientIntegration = integrationData.map((item: any) => ({
             id: item.id,
             client_id: item.client_id,
@@ -146,21 +134,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             updated_at: item.updated_at,
             updated_by: item.updated_by
           }));
-            console.log('✅ Client integration fetched:', {
-              count: clientIntegration.length,
-              records: clientIntegration,
-              clientId: clientId
-            });
-        } else {
-          console.log('ℹ️ No client integration records found for client:', clientId);
-        }
+          console.log('✅ Client integration fetched via RPC:', clientIntegration);
+        } else if (integrationError) {
+          // If RPC fails, try direct query (RLS is disabled)
+          console.warn("RPC function failed, trying direct query:", integrationError);
+          const { data: directData, error: directError } = await (supabase as any)
+            .from('client_integration')
+            .select('*')
+            .eq('client_id', clientId);
+
+          if (!directError && directData && directData.length > 0) {
+            clientIntegration = directData.map((item: any) => ({
+              id: item.id,
+              client_id: item.client_id,
+              target_client_id: item.target_client_id,
+              target_client_name: item.target_client_name,
+              is_linked: item.is_linked,
+              active: item.active,
+              created_at: item.created_at,
+              updated_at: item.updated_at,
+              updated_by: item.updated_by
+            }));
+            console.log('✅ Client integration fetched via direct query:', clientIntegration);
+          } else if (directError) {
+            console.error("Error fetching client integration (direct query):", directError);
+          } else {
+            console.log('ℹ️ No client integration records found for client:', clientId);
+          }
         } else {
           console.log('ℹ️ No client integration records found for client:', clientId);
         }
       } catch (integrationErr) {
         console.error("Error fetching client integration:", integrationErr);
-        // Continue with null integration if fetch fails
-        clientIntegration = null;
+        // Try direct query as fallback
+        try {
+          const { data: directData, error: directError } = await (supabase as any)
+            .from('client_integration')
+            .select('*')
+            .eq('client_id', clientId);
+
+          if (!directError && directData && directData.length > 0) {
+            clientIntegration = directData.map((item: any) => ({
+              id: item.id,
+              client_id: item.client_id,
+              target_client_id: item.target_client_id,
+              target_client_name: item.target_client_name,
+              is_linked: item.is_linked,
+              active: item.active,
+              created_at: item.created_at,
+              updated_at: item.updated_at,
+              updated_by: item.updated_by
+            }));
+            console.log('✅ Client integration fetched via direct query (fallback):', clientIntegration);
+          }
+        } catch (fallbackErr) {
+          console.error("Fallback query also failed:", fallbackErr);
+          clientIntegration = null;
+        }
       }
 
       // Build logo URL from path if needed
@@ -614,6 +644,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscription.unsubscribe();
     };
   }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData, handleLoginBroadcast, handleLogoutBroadcast, broadcastToOtherTabs, location.pathname, isBackofficeUser, navigate]);
+
+  // Note: Realtime subscription for client_integration is now handled by useRealtimeClientIntegrationSync hook
+  // which is called in ModuleSyncProvider. This ensures consistent behavior with module sync.
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
