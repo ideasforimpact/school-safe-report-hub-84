@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
 import { incidentDataService } from '@/services/incident/incidentDataService';
@@ -107,6 +107,36 @@ const IncidentsList = () => {
     console.log(`📄 Client-side pagination: Page ${page}/${totalPages}, showing ${paginatedData.length} of ${incidents.length} total incidents`);
   }, []);
 
+  const fetchOriginalIncidents = useCallback(async () => {
+    let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+    if (!clientId) return;
+
+    const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+
+    const response = await incidentDataService.fetchIncidentsForClientWithFilters(
+      clientId,
+      false, 
+      employeeDataForFiltering,
+      hasIncidentAdmin,
+      { page: 1, pageSize: pagination.pageSize },
+      {},
+      true
+    );
+    
+    setOriginalIncidents(response.data);
+  }, [employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
+
+  useEffect(() => {
+    if (employeeState.employeeData?.clientId || authEmployeeData?.clientId) {
+      fetchOriginalIncidents(); 
+      fetchIncidents(filters, true);
+    }
+  }, [
+    employeeState.employeeData?.clientId,
+    authEmployeeData?.clientId,
+    hasIncidentAdmin
+  ]);
+
   // Main fetch function with server-side filtering (eager loading)
   const fetchIncidents = useCallback(async (
     serverFilters: ServerFilters = {},
@@ -170,7 +200,7 @@ const IncidentsList = () => {
       console.log(`✅ Server returned ${response.totalCount} total incidents (ALL matching records)`);
 
       // Always preserve original incidents for restoration
-      setOriginalIncidents(response.data);
+    
 
       // Apply URL-driven client-side filter: students_involved => include incidents with at least one Student
       const studentsFilterActive = searchParams.get('filter') === 'students_involved';
@@ -358,16 +388,14 @@ const IncidentsList = () => {
   console.log('📊 Total incidents cached:', allIncidents.length, 'Currently displayed:', displayedIncidents.length);
   console.log('🔍 Active filters:', filters);
 
-  const incidentAnalyticsStats = React.useMemo(() => {
-    const open = allIncidents.filter(i => i.status === 'Open').length;
-    const closed = allIncidents.filter(i => i.status === 'Closed').length;
+const incidentAnalyticsStats = useMemo(() => {
+  return {
+    total: originalIncidents.length,
+    open: originalIncidents.filter(i => i.status === 'Open').length,
+    closed: originalIncidents.filter(i => i.status === 'Closed').length,
+  };
+}, [originalIncidents]);
 
-    return {
-      total: allIncidents.length,
-      open,
-      closed,
-    };
-  }, [allIncidents]);
 
   return (
     <Layout>
