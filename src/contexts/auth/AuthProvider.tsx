@@ -117,29 +117,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Fetch client integration records using RPC function to bypass RLS
       let clientIntegration: ClientIntegration[] | null = null;
       try {
-        const { data: integrationData, error: integrationError } = await supabase
+        console.log('🔍 Fetching client_integration for client_id:', clientId);
+        const { data: integrationData, error: integrationError } = await (supabase as any)
           .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
-        if (!integrationError && integrationData && integrationData.length > 0) {
-          clientIntegration = integrationData.map((item: any) => ({
-            id: item.id,
-            client_id: item.client_id,
-            target_client_id: item.target_client_id,
-            target_client_name: item.target_client_name,
-            is_linked: item.is_linked,
-            active: item.active,
-            created_at: item.created_at,
-            updated_at: item.updated_at,
-            updated_by: item.updated_by
-          }));
-          console.log('✅ Client integration fetched:', clientIntegration);
-        } else if (integrationError) {
-          console.error("Error fetching client integration:", integrationError);
+        if (integrationError) {
+          console.error("❌ Error fetching client integration:", {
+            error: integrationError,
+            message: integrationError.message,
+            code: integrationError.code,
+            details: integrationError.details,
+            hint: integrationError.hint,
+            clientId: clientId
+          });
+          // If function doesn't exist, log a helpful message
+          if (integrationError.message?.includes('function') || integrationError.code === '42883') {
+            console.error("⚠️ The RPC function 'get_client_integration_for_auth' may not exist. Please run the migration: 20260110000000_create_get_client_integration_for_auth_function.sql");
+          }
+        } else if (integrationData && Array.isArray(integrationData)) {
+          if (integrationData.length > 0) {
+            clientIntegration = integrationData.map((item: any) => ({
+              id: item.id,
+              client_id: item.client_id,
+              target_client_id: item.target_client_id,
+              target_client_name: item.target_client_name,
+              is_linked: item.is_linked,
+              active: item.active,
+              created_at: item.created_at,
+              updated_at: item.updated_at,
+              updated_by: item.updated_by
+            }));
+            console.log('✅ Client integration fetched:', {
+              count: clientIntegration.length,
+              records: clientIntegration,
+              clientId: clientId
+            });
+          } else {
+            console.log('ℹ️ No client integration records found for client:', clientId);
+          }
         } else {
-          console.log('ℹ️ No client integration records found for client:', clientId);
+          console.log('ℹ️ Client integration data is not an array or is null:', {
+            data: integrationData,
+            clientId: clientId
+          });
         }
       } catch (integrationErr) {
-        console.error("Error fetching client integration:", integrationErr);
+        console.error("❌ Exception fetching client integration:", {
+          error: integrationErr,
+          clientId: clientId,
+          stack: integrationErr instanceof Error ? integrationErr.stack : undefined
+        });
         // Continue with null integration if fetch fails
         clientIntegration = null;
       }
@@ -595,6 +622,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscription.unsubscribe();
     };
   }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData, handleLoginBroadcast, handleLogoutBroadcast, broadcastToOtherTabs, location.pathname, isBackofficeUser, navigate]);
+
+  // Note: Realtime subscription for client_integration is now handled by useRealtimeClientIntegrationSync hook
+  // which is called in ModuleSyncProvider. This ensures consistent behavior with module sync.
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
