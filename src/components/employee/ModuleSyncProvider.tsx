@@ -14,9 +14,6 @@ const ModuleSyncProvider: React.FC<ModuleSyncProviderProps> = ({ children }) => 
   // Initialize real-time module synchronization
   useRealtimeModuleSync();
   
-  // Initialize real-time client integration synchronization
-  useRealtimeClientIntegrationSync();
-  
   return <>{children}</>;
 };
 

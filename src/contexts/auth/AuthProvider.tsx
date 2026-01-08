@@ -117,8 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Fetch client integration records using RPC function to bypass RLS
       let clientIntegration: ClientIntegration[] | null = null;
       try {
-        console.log('🔍 Fetching client_integration for client_id:', clientId);
-        const { data: integrationData, error: integrationError } = await (supabase as any)
+        const { data: integrationData, error: integrationError } = await supabase
           .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
         if (integrationError) {
@@ -156,17 +155,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('ℹ️ No client integration records found for client:', clientId);
         }
         } else {
-          console.log('ℹ️ Client integration data is not an array or is null:', {
-            data: integrationData,
-            clientId: clientId
-          });
+          console.log('ℹ️ No client integration records found for client:', clientId);
         }
       } catch (integrationErr) {
-        console.error("❌ Exception fetching client integration:", {
-          error: integrationErr,
-          clientId: clientId,
-          stack: integrationErr instanceof Error ? integrationErr.stack : undefined
-        });
+        console.error("Error fetching client integration:", integrationErr);
         // Continue with null integration if fetch fails
         clientIntegration = null;
       }
