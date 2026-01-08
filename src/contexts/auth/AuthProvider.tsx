@@ -120,7 +120,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: integrationData, error: integrationError } = await supabase
           .rpc('get_client_integration_for_auth', { p_client_id: clientId });
 
-        if (!integrationError && integrationData && integrationData.length > 0) {
+        if (integrationError) {
+          console.error("❌ Error fetching client integration:", {
+            error: integrationError,
+            message: integrationError.message,
+            code: integrationError.code,
+            details: integrationError.details,
+            hint: integrationError.hint,
+            clientId: clientId
+          });
+          // If function doesn't exist, log a helpful message
+          if (integrationError.message?.includes('function') || integrationError.code === '42883') {
+            console.error("⚠️ The RPC function 'get_client_integration_for_auth' may not exist. Please run the migration: 20260110000000_create_get_client_integration_for_auth_function.sql");
+          }
+        } else if (integrationData && Array.isArray(integrationData)) {
+          if (integrationData.length > 0) {
           clientIntegration = integrationData.map((item: any) => ({
             id: item.id,
             client_id: item.client_id,
@@ -132,9 +146,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             updated_at: item.updated_at,
             updated_by: item.updated_by
           }));
-          console.log('✅ Client integration fetched:', clientIntegration);
-        } else if (integrationError) {
-          console.error("Error fetching client integration:", integrationError);
+            console.log('✅ Client integration fetched:', {
+              count: clientIntegration.length,
+              records: clientIntegration,
+              clientId: clientId
+            });
+        } else {
+          console.log('ℹ️ No client integration records found for client:', clientId);
+        }
         } else {
           console.log('ℹ️ No client integration records found for client:', clientId);
         }
