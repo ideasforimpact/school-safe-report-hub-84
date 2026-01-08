@@ -1,6 +1,6 @@
 -- Create RPC function to get client_integration records for authentication
 -- This function bypasses RLS and returns client_integration records for a given client_id
--- Used during authentication to fetch integration data
+
 
 CREATE OR REPLACE FUNCTION public.get_client_integration_for_auth(p_client_id uuid)
 RETURNS TABLE(
