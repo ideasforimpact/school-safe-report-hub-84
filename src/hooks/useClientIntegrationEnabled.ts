@@ -21,12 +21,10 @@ export const useClientIntegrationEnabled = () => {
       return false;
     }
 
-    // Find integration record where client_id matches current client, is_linked is true, and active is true
-    // This matches the logic in the search-students edge function
+    // Find integration record where client_id matches current client and active is true
     const enabledIntegration = employeeData.client_integration.find(
       (integration) => 
         integration.client_id === currentClientId && 
-        integration.is_linked === true &&
         integration.active === true
     );
 
@@ -47,7 +45,6 @@ export const useClientIntegrationEnabled = () => {
     return employeeData.client_integration.find(
       (integration) => 
         integration.client_id === currentClientId && 
-        integration.is_linked === true &&
         integration.active === true
     ) || null;
   }, [employeeData?.client_integration, employeeData?.clientId]);
