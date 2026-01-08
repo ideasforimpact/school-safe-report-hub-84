@@ -126,17 +126,17 @@ export const useAuthHandlers = ({
           }
         } else if (integrationData && Array.isArray(integrationData)) {
           if (integrationData.length > 0) {
-            clientIntegration = integrationData.map((item: any) => ({
-              id: item.id,
-              client_id: item.client_id,
-              target_client_id: item.target_client_id,
-              target_client_name: item.target_client_name,
-              is_linked: item.is_linked,
-              active: item.active,
-              created_at: item.created_at,
-              updated_at: item.updated_at,
-              updated_by: item.updated_by
-            }));
+          clientIntegration = integrationData.map((item: any) => ({
+            id: item.id,
+            client_id: item.client_id,
+            target_client_id: item.target_client_id,
+            target_client_name: item.target_client_name,
+            is_linked: item.is_linked,
+            active: item.active,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            updated_by: item.updated_by
+          }));
             console.log('✅ Client integration fetched in useAuthHandlers:', {
               count: clientIntegration.length,
               records: clientIntegration,

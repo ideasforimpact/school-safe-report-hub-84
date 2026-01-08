@@ -136,25 +136,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } else if (integrationData && Array.isArray(integrationData)) {
           if (integrationData.length > 0) {
-            clientIntegration = integrationData.map((item: any) => ({
-              id: item.id,
-              client_id: item.client_id,
-              target_client_id: item.target_client_id,
-              target_client_name: item.target_client_name,
-              is_linked: item.is_linked,
-              active: item.active,
-              created_at: item.created_at,
-              updated_at: item.updated_at,
-              updated_by: item.updated_by
-            }));
+          clientIntegration = integrationData.map((item: any) => ({
+            id: item.id,
+            client_id: item.client_id,
+            target_client_id: item.target_client_id,
+            target_client_name: item.target_client_name,
+            is_linked: item.is_linked,
+            active: item.active,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            updated_by: item.updated_by
+          }));
             console.log('✅ Client integration fetched:', {
               count: clientIntegration.length,
               records: clientIntegration,
               clientId: clientId
             });
-          } else {
-            console.log('ℹ️ No client integration records found for client:', clientId);
-          }
+        } else {
+          console.log('ℹ️ No client integration records found for client:', clientId);
+        }
         } else {
           console.log('ℹ️ Client integration data is not an array or is null:', {
             data: integrationData,
@@ -622,9 +622,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       subscription.unsubscribe();
     };
   }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData, handleLoginBroadcast, handleLogoutBroadcast, broadcastToOtherTabs, location.pathname, isBackofficeUser, navigate]);
-
-  // Note: Realtime subscription for client_integration is now handled by useRealtimeClientIntegrationSync hook
-  // which is called in ModuleSyncProvider. This ensures consistent behavior with module sync.
 
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
