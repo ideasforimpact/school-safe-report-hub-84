@@ -177,15 +177,15 @@ serve(async (req) => {
       );
     }
 
-    // Optional: validate exit_time / in_time if provided (must be valid date/datetime)
-    let parsedExitDate: Date | null = null;
+    // Optional: validate exit_time / in_time if provided (must be valid datetime)
+    let parsedExitTime: Date | null = null;
     let parsedInTime: Date | null = null;
 
     if (exit_time) {
-      parsedExitDate = new Date(exit_time);
-      if (isNaN(parsedExitDate.getTime())) {
+      parsedExitTime = new Date(exit_time);
+      if (isNaN(parsedExitTime.getTime())) {
         return new Response(
-          JSON.stringify({ error: 'Invalid exit_time format. Expected a valid date string.' }),
+          JSON.stringify({ error: 'Invalid exit_time format. Expected a valid datetime string.' }),
           { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
@@ -235,14 +235,14 @@ serve(async (req) => {
       // When marking IN, clear any previous exit_time
       updatePayload.exit_time = null;
     } else if (entry_status === 'OUT') {
-      if (!parsedExitDate) {
+      if (!parsedExitTime) {
         return new Response(
           JSON.stringify({ error: 'exit_time is required when entry_status is OUT' }),
           { status: 400, headers: { ...corsHeadersWithOrigin, 'Content-Type': 'application/json' } }
         );
       }
-      // Store only the date component for exit_time
-      updatePayload.exit_time = parsedExitDate.toISOString().slice(0, 10);
+      // Store the full datetime (ISO string) for exit_time
+      updatePayload.exit_time = parsedExitTime.toISOString();
     }
 
     const { data: updatedTrustedVehicle, error: updateError } = await supabase
