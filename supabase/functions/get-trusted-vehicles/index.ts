@@ -4,6 +4,48 @@ import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 import { verifyAccessToken } from '../_shared/safe-school/jwt.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// Helper function to calculate validity based on validity_from and validity_to
+// NOTE: This mirrors the logic in TrustedVehiclesPage.getValidityStatus:
+// A vehicle is considered valid as long as its end date has not passed,
+// even if the start date is in the future.
+function calculateValidity(validityFrom: string | Date | null, validityTo: string | Date | null): boolean {
+  if (!validityTo) {
+    return false;
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const toDate = new Date(validityTo);
+  toDate.setHours(0, 0, 0, 0);
+  
+  // A vehicle is considered valid as long as its end date has not passed.
+  // Even if the start date is in the future, it should be shown as "Valid"
+  // until the end date crosses the current date.
+  return toDate >= today;
+}
+
+// Transform trusted vehicle row to match required structure
+function transformTrustedVehicleRow(row: any): any {
+  if (!row) return null;
+  
+  return {
+    id: row.id,
+    name: row.vehicle_name || row.name || '', // Use vehicle_name as name
+    type: row.type || '',
+    vehicle_no: row.vehicle_no || '',
+    client_id: row.client_id,
+    employee_id: row.employee_id,
+    entry_status: row.entry_status || null,
+    in_time: row.in_time || null,
+    exit_time: row.exit_time || null,
+    is_validity: calculateValidity(row.validity_from, row.validity_to),
+    is_trusted_vehicle: true,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 // Reuse the same auth helper pattern as visitor-management
 async function getAuthenticatedUserInfo(req: Request, supabase: any): Promise<{
   employeeId: string;
@@ -154,8 +196,13 @@ serve(async (req) => {
       );
     }
 
+    // Transform trusted vehicles to match required structure
+    const transformedData = Array.isArray(data)
+      ? data.map((tv: any) => transformTrustedVehicleRow(tv)).filter((tv: any) => tv !== null)
+      : [];
+
     return new Response(
-      JSON.stringify({ data: data || [] }),
+      JSON.stringify({ data: transformedData }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

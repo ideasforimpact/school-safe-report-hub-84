@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
 import VehicleSearchBar from './filters/VehicleSearchBar';
@@ -8,26 +8,32 @@ import EmptyVehiclesState from './EmptyVehiclesState';
 import AddVehicleDialog from './AddVehicleDialog';
 import { useVehicleFilters } from './filters/useVehicleFilters';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, FileText, RefreshCw } from 'lucide-react';
+import { AlertCircle, FileText, FileUp, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { getDocumentStatus, getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
 import { Vehicle } from '@/types/transportSafety';
+import ImportVehiclesDialog from './ImportVehiclesDialog';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
   setShowAddVehicle: (show: boolean) => void;
+  onVehiclesChanged: (data: {
+    total: number;
+    filtered: number;
+    vehicles: Vehicle[];
+  }) => void;
 }
 
-const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
+const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
   const { vehicles, loading, error, fetchVehicles } = useTransportSafety();
   
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
-  
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const {
     // State
     searchQuery,
@@ -116,7 +122,14 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
       pucUpto: pucField?.value || 'N/A'
     };
   };
-  
+  useEffect(() => {
+  onVehiclesChanged({
+    total: vehicles.length,
+    filtered: filteredVehicles.length,
+    vehicles,
+  });
+}, [vehicles, filteredVehicles, onVehiclesChanged]);
+
   // Export vehicles to Excel
   const exportToExcel = () => {
     try {
@@ -198,6 +211,15 @@ return (
       <h3 className="text-lg font-medium">Vehicle List</h3>
       <div className="flex gap-2">
         <Button 
+            onClick={() => setIsImportDialogOpen(true)}
+            className="flex items-center gap-2"
+            variant="secondary"
+            disabled={loading}
+          >
+            <FileUp className="h-4 w-4" />
+            <span>Import Vehicles</span>
+          </Button>
+        <Button 
           variant="outline" 
           size="sm" 
           onClick={exportToExcel} 
@@ -260,6 +282,14 @@ return (
       onClose={handleCloseEditDialog}
       vehicle={selectedVehicle}
     />
+   <ImportVehiclesDialog
+      isOpen={isImportDialogOpen}
+      onClose={() => setIsImportDialogOpen(false)}
+      onSuccess={() => {
+        fetchVehicles();
+      }}
+    />
+
   </div>
 );
 };

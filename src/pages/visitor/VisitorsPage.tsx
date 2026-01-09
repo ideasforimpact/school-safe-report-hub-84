@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download } from 'lucide-react';
+import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +35,12 @@ const VisitorsPage = () => {
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10); // Fixed page size of 10
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  
   // Dialog state
   const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -48,13 +62,30 @@ const VisitorsPage = () => {
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(getTodayDateRange());
   
-  // Trusted vehicles state
+  // Trusted vehicles state (for filtering)
   const [trustedVehicles, setTrustedVehicles] = useState<Array<{
     id: string;
     vehicle_no: string;
     validity_from: string;
     validity_to: string;
   }>>([]);
+
+  // Unified list item type (combines visitors and trusted vehicles)
+  interface UnifiedListItem {
+    id: string;
+    name: string;
+    vehicle_no: string | null;
+    vehicle_type: string | null;
+    created_at: string;
+    in_time: string | null; // For trusted vehicles: in_time, for visitors: created_at
+    exit_time: string | null;
+    is_trusted_vehicle: boolean;
+    entry_status?: string | null; // For trusted vehicles: entry_status (IN or OUT)
+    // For visitors only
+    visitor_id?: string;
+    // For trusted vehicles only
+    trusted_vehicle_id?: string;
+  }
 
   // Visitor vehicle types (from visitor_vehicle_type table)
   const [visitorVehicleTypes, setVisitorVehicleTypes] = useState<Array<{
@@ -133,8 +164,54 @@ const VisitorsPage = () => {
   const clientId = employeeData?.clientId;
   const employeeId = employeeData?.id;
 
-  // Fetch visitors function
-  const fetchVisitors = useCallback(async () => {
+  // Unified list state (combines visitors and trusted vehicles)
+  const [unifiedList, setUnifiedList] = useState<UnifiedListItem[]>([]);
+
+  // Transform function to create unified list from visitors and trusted vehicles
+  const transformToUnifiedList = useCallback((visitors: Visitor[], trustedVehiclesData: any[]): UnifiedListItem[] => {
+    const unified: UnifiedListItem[] = [];
+
+    // Add visitors
+    visitors.forEach((visitor) => {
+      unified.push({
+        id: visitor.id,
+        name: visitor.name,
+        vehicle_no: visitor.vehicle_no || null,
+        vehicle_type: visitor.vehicle_type || null,
+        created_at: visitor.created_at,
+        in_time: visitor.created_at, // For visitors, use created_at as in_time
+        exit_time: visitor.exit_time || null,
+        is_trusted_vehicle: false,
+        visitor_id: visitor.id,
+      });
+    });
+
+    // Add trusted vehicles with entry_status = 'IN' or 'OUT'
+    trustedVehiclesData.forEach((tv) => {
+      unified.push({
+        id: tv.id,
+        name: tv.vehicle_name || tv.name || '',
+        vehicle_no: tv.vehicle_no || null,
+        vehicle_type: null, // Trusted vehicles don't have vehicle_type, will show default icon
+        created_at: tv.created_at,
+        in_time: tv.in_time || tv.created_at, // Use in_time if available, else created_at
+        exit_time: tv.exit_time || null,
+        entry_status: tv.entry_status || null, // Include entry_status (IN or OUT)
+        is_trusted_vehicle: true,
+        trusted_vehicle_id: tv.id,
+      });
+    });
+
+    // Sort by created_at descending (newest first)
+    return unified.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateB - dateA;
+    });
+  }, []);
+
+  // Fetch visitors function with server-side pagination
+  const fetchVisitors = useCallback(async (page: number = 1) => {
     if (!clientId) {
       toast.error('Client ID is required to fetch visitors');
       setLoading(false);
@@ -143,17 +220,59 @@ const VisitorsPage = () => {
 
     try {
       setLoading(true);
-      const data = await visitorService.getVisitors(clientId, employeeId);
-      setVisitors(data);
+      
+      // Fetch visitors with pagination
+      const response = await visitorService.getVisitors(clientId, employeeId, page, pageSize);
+      setVisitors(response.visitors);
+      setTotalCount(response.totalCount);
+      setTotalPages(response.totalPages);
+      setCurrentPage(page);
+
+      // Fetch trusted vehicles with entry_status = 'IN' or 'OUT' and all required fields
+      // Note: Trusted vehicles are fetched separately and combined with visitors
+      const { data: trustedVehiclesData, error: trustedVehiclesError } = await (supabase as any)
+        .from('trusted_vehicle')
+        .select('id, vehicle_name, name, vehicle_no, client_id, employee_id, entry_status, in_time, exit_time, created_at, updated_at, validity_from, validity_to')
+        .eq('client_id', clientId)
+        .in('entry_status', ['IN', 'OUT']);
+
+      if (employeeId) {
+        // Optionally filter by employee_id if provided
+        trustedVehiclesData?.filter((tv: any) => tv.employee_id === employeeId);
+      }
+
+      if (trustedVehiclesError) {
+        console.error('Error fetching trusted vehicles:', trustedVehiclesError);
+      }
+
+      // Transform to unified list
+      const unified = transformToUnifiedList(response.visitors, trustedVehiclesData || []);
+      setUnifiedList(unified);
+
+      // Also keep trusted vehicles for filtering logic
+      const { data: allTrustedVehicles, error: allTrustedError } = await (supabase as any)
+        .from('trusted_vehicle')
+        .select('id, vehicle_no, validity_from, validity_to')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+
+      if (!allTrustedError && allTrustedVehicles) {
+        setTrustedVehicles((allTrustedVehicles || []) as Array<{
+          id: string;
+          vehicle_no: string;
+          validity_from: string;
+          validity_to: string;
+        }>);
+      }
     } catch (error: any) {
       console.error('Error fetching visitors:', error);
       toast.error(error?.message || 'Failed to fetch visitors');
     } finally {
       setLoading(false);
     }
-  }, [clientId, employeeId]);
+  }, [clientId, employeeId, transformToUnifiedList, pageSize]);
 
-  // Fetch trusted vehicles
+  // Fetch trusted vehicles (for filtering only)
   const fetchTrustedVehicles = useCallback(async () => {
     if (!clientId) {
       return;
@@ -182,13 +301,19 @@ const VisitorsPage = () => {
     }
   }, [clientId]);
 
-  // Fetch visitors on component mount and when clientId or employeeId changes
+  // Fetch visitors on component mount and when clientId, employeeId, or currentPage changes
   useEffect(() => {
     if (clientId) {
-      fetchVisitors();
+      fetchVisitors(currentPage);
+    }
+  }, [clientId, currentPage, fetchVisitors]);
+
+  // Fetch trusted vehicles separately (for filtering logic)
+  useEffect(() => {
+    if (clientId) {
       fetchTrustedVehicles();
     }
-  }, [clientId, fetchVisitors, fetchTrustedVehicles]);
+  }, [clientId, fetchTrustedVehicles]);
 
   // Fetch visitor vehicle types for dynamic filter options
   const fetchVisitorVehicleTypes = useCallback(async () => {
@@ -196,6 +321,7 @@ const VisitorsPage = () => {
       const { data, error } = await (supabase as any)
         .from('visitor_vehicle_type')
         .select('id, key, name, active')
+        .eq('active', true)
         .order('name', { ascending: true });
 
       if (error) {
@@ -266,70 +392,21 @@ const VisitorsPage = () => {
     });
 
     try {
+      // Refresh the current page to ensure unified list is updated
+      // This includes both visitors and trusted vehicles
+      await fetchVisitors(currentPage);
+      
       if (isDelete) {
-        // Remove deleted visitor
-        setVisitors((prevVisitors) => {
-          const filtered = prevVisitors.filter((v) => v.id !== oldVisitor.id);
-          console.log('[Realtime] Visitor deleted, new count:', filtered.length);
-          return filtered;
-        });
         showToast('Visitor removed', 'info');
       } else if (isInsert) {
-        console.log('[Realtime] Inserting new visitor:', updatedVisitor.id);
-        // Try to fetch the complete visitor with KYC details
-        // If it fails (might be a race condition), refresh the list
-        try {
-          const fullVisitor = await visitorService.getVisitorById(updatedVisitor.id, clientId);
-          console.log('[Realtime] Fetched full visitor data:', fullVisitor);
-          
-          // Add new visitor at the beginning (most recent first)
-          setVisitors((prevVisitors) => {
-            // Check if visitor already exists (avoid duplicates)
-            const exists = prevVisitors.some(v => v.id === fullVisitor.id);
-            if (exists) {
-              console.log('[Realtime] Visitor already exists, updating instead');
-              return prevVisitors.map((v) => (v.id === fullVisitor.id ? fullVisitor : v));
-            }
-            console.log('[Realtime] Adding new visitor to list');
-            return [fullVisitor, ...prevVisitors];
-          });
-          showToast('Visitor updated', 'success');
-        } catch (fetchError) {
-          console.error('[Realtime] Error fetching new visitor, refreshing list:', fetchError);
-          // If fetching fails, refresh the entire list
-          await fetchVisitors();
-          showToast('Visitor updated', 'success');
-        }
+        showToast('Visitor updated', 'success');
       } else if (isUpdate) {
-        console.log('[Realtime] Updating visitor:', updatedVisitor.id);
-        // Fetch the complete visitor with KYC details
-        try {
-          const fullVisitor = await visitorService.getVisitorById(updatedVisitor.id, clientId);
-          console.log('[Realtime] Fetched updated visitor data:', fullVisitor);
-          
-          // Update existing visitor
-          setVisitors((prevVisitors) => {
-            const exists = prevVisitors.some(v => v.id === fullVisitor.id);
-            if (exists) {
-              return prevVisitors.map((v) => (v.id === fullVisitor.id ? fullVisitor : v));
-            } else {
-              // If visitor doesn't exist in list, add it
-              console.log('[Realtime] Visitor not in list, adding');
-              return [fullVisitor, ...prevVisitors];
-            }
-          });
-          showToast('Visitor updated', 'info');
-        } catch (fetchError) {
-          console.error('[Realtime] Error fetching updated visitor, refreshing list:', fetchError);
-          // If fetching fails, refresh the entire list
-          await fetchVisitors();
-          showToast('Visitor updated', 'info');
-        }
+        showToast('Visitor updated', 'info');
       }
     } catch (error) {
       console.error('[Realtime] Error handling visitor update:', error);
-      // Refresh the entire list on error
-      await fetchVisitors();
+      // Refresh the current page on error
+      await fetchVisitors(currentPage);
     }
   }, [clientId, employeeId, fetchVisitors, showToast]);
 
@@ -361,35 +438,13 @@ const VisitorsPage = () => {
     }
 
     try {
-      // Fetch the visitor with updated KYC details
-      const visitorId = updatedKyc?.visitor_id || oldKyc?.visitor_id;
-      if (visitorId) {
-        console.log('[Realtime] Fetching visitor with updated KYC:', visitorId);
-        const fullVisitor = await visitorService.getVisitorById(visitorId, clientId);
-        console.log('[Realtime] Fetched visitor with KYC:', fullVisitor);
-
-        // Update the visitors list
-        setVisitors((prevVisitors) => {
-          const exists = prevVisitors.some(v => v.id === fullVisitor.id);
-          if (exists) {
-            return prevVisitors.map((v) => 
-              v.id === fullVisitor.id ? fullVisitor : v
-            );
-          } else {
-            // If visitor doesn't exist in list, add it
-            console.log('[Realtime] Visitor not in list, adding with KYC');
-            return [fullVisitor, ...prevVisitors];
-          }
-        });
-
-        showToast('Visitor updated', 'info');
-      } else {
-        console.log('[Realtime] No visitor_id in KYC payload');
-      }
+      // Refresh the current page to ensure unified list is updated
+      await fetchVisitors(currentPage);
+      showToast('Visitor updated', 'info');
     } catch (error) {
       console.error('[Realtime] Error handling visitor KYC update:', error);
-      // Refresh the entire list on error
-      await fetchVisitors();
+      // Refresh the current page on error
+      await fetchVisitors(currentPage);
     }
   }, [clientId, employeeId, fetchVisitors, showToast]);
 
@@ -423,77 +478,90 @@ const VisitorsPage = () => {
     onPayload: handleVisitorKycUpdate,
   });
 
+  // Handle realtime trusted vehicle updates
+  const handleTrustedVehicleUpdate = useCallback(async (payload: any) => {
+    console.log('[Realtime] Trusted vehicle update payload received:', payload);
+    // Refresh the current page to ensure unified list is updated
+    await fetchVisitors(currentPage);
+    showToast('Trusted vehicle updated', 'info');
+  }, [fetchVisitors, showToast, currentPage]);
+
+  // Set up realtime subscription for trusted_vehicle table
+  useRealTimeSubHook({
+    channelName: `trusted-vehicle-${clientId}-${employeeId || 'all'}`,
+    events: '*',
+    table: 'trusted_vehicle',
+    filter: employeeId 
+      ? `employee_id=eq.${employeeId}` 
+      : clientId 
+        ? `client_id=eq.${clientId}` 
+        : undefined,
+    enabled: !!(clientId || employeeId),
+    onPayload: handleTrustedVehicleUpdate,
+  });
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchVisitors();
+    await fetchVisitors(currentPage);
     setIsRefreshing(false);
   };
 
-  // Helper function to check if a trusted vehicle is valid (current date is within validity period)
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // fetchVisitors will be called via useEffect when currentPage changes
+  };
+
+  // Helper function to check if a trusted vehicle is valid.
+  // NOTE: This mirrors the logic in TrustedVehiclesPage.getValidityStatus:
+  // A vehicle is considered valid as long as its end date has not passed,
+  // even if the start date is in the future.
   const isTrustedVehicleValid = useCallback((validity_from: string, validity_to: string): boolean => {
-    if (!validity_from || !validity_to) {
+    if (!validity_to) {
       return false;
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const fromDate = new Date(validity_from);
     const toDate = new Date(validity_to);
-    fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(0, 0, 0, 0);
 
-    return today >= fromDate && today <= toDate;
+    return toDate >= today;
   }, []);
 
-  // Filter visitors based on search, vehicle type, status filter, and date range
+  // Filter unified list based on search, vehicle type, status filter, and date range
   const { filteredVisitors, totalFilteredCount } = useMemo(() => {
-    const filtered = visitors.filter((visitor) => {
+    const filtered = unifiedList.filter((item) => {
       // Search filter - by name or vehicle number
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = 
-          visitor.name.toLowerCase().includes(searchLower) ||
-          (visitor.vehicle_no && visitor.vehicle_no.toLowerCase().includes(searchLower));
+          item.name.toLowerCase().includes(searchLower) ||
+          (item.vehicle_no && item.vehicle_no.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) return false;
       }
 
       // Vehicle type filter
       if (vehicleTypeFilter === 'trusted_vehicle') {
-        // Trusted vehicle filter logic
-        if (!visitor.vehicle_no) {
-          return false; // Visitor must have a vehicle number
-        }
-
-        // Check if visitor's vehicle number matches any valid trusted vehicle
-        const matchesTrustedVehicle = trustedVehicles.some((trustedVehicle) => {
-          // Case-insensitive comparison of vehicle numbers (normalize spaces and special characters)
-          const visitorVehicleNo = visitor.vehicle_no?.trim().replace(/\s+/g, '').toUpperCase();
-          const trustedVehicleNo = trustedVehicle.vehicle_no?.trim().replace(/\s+/g, '').toUpperCase();
-          
-          // Must match vehicle number exactly (after normalization)
-          if (!visitorVehicleNo || !trustedVehicleNo || visitorVehicleNo !== trustedVehicleNo) {
-            return false;
-          }
-
-          // Check if the trusted vehicle is currently valid (within validity period)
-          return isTrustedVehicleValid(trustedVehicle.validity_from, trustedVehicle.validity_to);
-        });
-
-        if (!matchesTrustedVehicle) {
+        // Show only trusted vehicles
+        if (!item.is_trusted_vehicle) {
           return false;
         }
       } else if (vehicleTypeFilter !== 'all') {
-        // Regular vehicle type filter based on visitor_vehicle_type.id
-        if (visitor.vehicle_type !== vehicleTypeFilter) {
+        // Regular vehicle type filter - only applies to visitors (not trusted vehicles)
+        if (item.is_trusted_vehicle) {
+          return false; // Trusted vehicles don't have vehicle_type, exclude them
+        }
+        if (item.vehicle_type !== vehicleTypeFilter) {
           return false;
         }
       }
 
       // Date range filter
       if (dateRange?.from || dateRange?.to) {
-        const entryDate = new Date(visitor.created_at);
+        const entryDate = new Date(item.created_at);
         
         if (dateRange.from && entryDate < dateRange.from) {
           return false;
@@ -512,20 +580,19 @@ const VisitorsPage = () => {
       return true;
     });
 
-    const totalCount = filtered.length;
-    // Limit to maximum display count
-    const displayed = filtered.slice(0, VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT);
-
+    // With server-side pagination, we don't need to limit the display count
+    // The server already limits to pageSize (10) records
     return {
-      filteredVisitors: displayed,
-      totalFilteredCount: totalCount
+      filteredVisitors: filtered,
+      totalFilteredCount: filtered.length
     };
-  }, [visitors, searchTerm, vehicleTypeFilter, dateRange, trustedVehicles, isTrustedVehicleValid]);
+  }, [unifiedList, searchTerm, vehicleTypeFilter, dateRange]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setVehicleTypeFilter('all');
     setDateRange(undefined);
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
   const hasActiveFilters = searchTerm || vehicleTypeFilter !== 'all' || dateRange;
@@ -538,6 +605,72 @@ const VisitorsPage = () => {
     }
   };
 
+  // Helper function to format time from date string (with AM/PM) - time only
+  const formatTime = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    try {
+      // Use 12-hour format with AM/PM (time only, no seconds)
+      return format(new Date(dateString), 'hh:mm a');
+    } catch (error) {
+      return '-';
+    }
+  };
+
+  // Helper function to format date only (without time)
+  const formatDateOnly = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy');
+    } catch (error) {
+      return dateString;
+    }
+  };
+
+  // Helper function to get vehicle type name
+  const getVehicleTypeName = (vehicleType: string | null | undefined): string => {
+    if (!vehicleType) return '-';
+    
+    const typeMeta = visitorVehicleTypeMap[vehicleType];
+    if (typeMeta) {
+      return typeMeta.name;
+    }
+    
+    // Fallback for legacy types
+    if (vehicleType === 'two_wheeler') return 'Two Wheeler';
+    if (vehicleType === 'four_wheeler') return 'Four Wheeler';
+    
+    return vehicleType;
+  };
+
+  // Helper function to format document type name to readable format
+  const formatDocumentTypeName = (documentType: string): string => {
+    const typeMap: Record<string, string> = {
+      'aadhar': 'Aadhar Card',
+      'aadhaar': 'Aadhar Card',
+      'pan': 'PAN Card',
+      'pan_card': 'PAN Card',
+      'driving_license': 'Driving License',
+      'driving_licence': 'Driving Licence',
+      'passport': 'Passport',
+      'voter_id': 'Voter ID',
+      'bank_account': 'Bank Account',
+      'bank_statement': 'Bank Statement',
+      'manual': 'Manual Verification',
+      'other_documents': 'Other Documents',
+      'other': 'Other Document',
+    };
+    
+    const lowerType = documentType.toLowerCase();
+    if (typeMap[lowerType]) {
+      return typeMap[lowerType];
+    }
+    
+    // Fallback: convert snake_case to Title Case
+    return documentType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   // Export visitors to Excel
   const handleExport = useCallback(() => {
     try {
@@ -546,52 +679,64 @@ const VisitorsPage = () => {
         return;
       }
 
-      // Collect all unique document types from all visitors
-      const documentTypes = new Set<string>();
-      filteredVisitors.forEach(visitor => {
-        visitor.visitor_kyc?.forEach(kyc => {
-          if (kyc.document_type) {
-            documentTypes.add(kyc.document_type);
+      // Prepare export data with only required columns
+      const exportData = filteredVisitors.map(item => {
+        // For trusted vehicles, we don't have visitor-specific fields
+        // For regular visitors, we need to find the original visitor to get KYC details
+        let phoneNumber = '-';
+        let purpose = '-';
+        let whomToMeet = '-';
+        let documentNames = '-';
+        let documentNumbers = '-';
+
+        if (!item.is_trusted_vehicle && item.visitor_id) {
+          // Find the original visitor to get full details
+          const originalVisitor = visitors.find(v => v.id === item.visitor_id);
+          if (originalVisitor) {
+            phoneNumber = originalVisitor.mobile_no || '-';
+            purpose = originalVisitor.purpose || '-';
+            whomToMeet = originalVisitor.whom_to_meet || '-';
+            
+            // Collect all KYC document types and their values
+            if (originalVisitor.visitor_kyc && originalVisitor.visitor_kyc.length > 0) {
+              const docNames: string[] = [];
+              const docNumbers: string[] = [];
+              
+              originalVisitor.visitor_kyc.forEach(kyc => {
+                if (kyc.document_type && kyc.document_no) {
+                  // Format document type name to readable format
+                  docNames.push(formatDocumentTypeName(kyc.document_type));
+                  docNumbers.push(kyc.document_no);
+                }
+              });
+              
+              if (docNames.length > 0) {
+                documentNames = docNames.join(', ');
+                documentNumbers = docNumbers.join(', ');
+              }
+            }
           }
-        });
-      });
+        }
 
-      // Sort document types for consistent column ordering
-      const sortedDocumentTypes = Array.from(documentTypes).sort();
+        // Format entry date and times
+        const entryDate = formatDateOnly(item.created_at);
+        const inTime = formatTime(item.in_time);
+        const exitTime = formatTime(item.exit_time);
 
-      // Prepare export data
-      const exportData = filteredVisitors.map(visitor => {
-        // Format evidence files
-        const evidenceFiles = visitor.evidence_files || [];
-        const evidenceFileNames = evidenceFiles.length > 0 
-          ? evidenceFiles.map(file => file.name || '-').join('; ')
-          : '-';
-        const evidenceFileTypes = evidenceFiles.length > 0
-          ? evidenceFiles.map(file => file.type || '-').join('; ')
-          : '-';
-
-        // Base visitor data
+        // Base data with only required columns
         const row: any = {
-          'Type': visitor.vehicle_type === 'two_wheeler' ? 'Two Wheeler' : 
-                  visitor.vehicle_type === 'four_wheeler' ? 'Four Wheeler' : 
-                  visitor.vehicle_type || '-',
-          'Visitor Name': visitor.name || '-',
-          'Vehicle No': visitor.vehicle_no || '-',
-          'Mobile No': visitor.mobile_no || '-',
-          'Purpose': visitor.purpose || '-',
-          'Whom to Meet': visitor.whom_to_meet || '-',
-          'Entry Status': visitor.is_exit ? 'OUT' : 'IN',
-          'Entry Date': formatEntryDate(visitor.created_at),
-          'Evidence Files': evidenceFileNames,
-          'Evidence File Types': evidenceFileTypes,
+          'Type': item.is_trusted_vehicle ? 'Trusted Vehicle' : getVehicleTypeName(item.vehicle_type),
+          'Visitor Name': item.name || '-',
+          'Vehicle number': item.vehicle_no || '-',
+          'Phone number': phoneNumber,
+          'Purpose': purpose,
+          'Whom to meet': whomToMeet,
+          'Date': entryDate,
+          'In Time': inTime,
+          'Exit Time': exitTime,
+          'Document Name': documentNames,
+          'Document No': documentNumbers,
         };
-
-        // Add document type columns
-        sortedDocumentTypes.forEach(docType => {
-          // Find the document number for this document type for this visitor
-          const kycRecord = visitor.visitor_kyc?.find(kyc => kyc.document_type === docType);
-          row[docType] = kycRecord?.document_no || '-';
-        });
 
         return row;
       });
@@ -603,20 +748,16 @@ const VisitorsPage = () => {
       const columnWidths = [
         { wch: 15 }, // Type
         { wch: 25 }, // Visitor Name
-        { wch: 15 }, // Vehicle No
-        { wch: 15 }, // Mobile No
+        { wch: 18 }, // Vehicle number
+        { wch: 15 }, // Phone number
         { wch: 30 }, // Purpose
-        { wch: 25 }, // Whom to Meet
-        { wch: 12 }, // Entry Status
-        { wch: 15 }, // Entry Date
-        { wch: 40 }, // Evidence Files
-        { wch: 30 }, // Evidence File Types
+        { wch: 25 }, // Whom to meet
+        { wch: 15 }, // Date
+        { wch: 12 }, // In Time
+        { wch: 12 }, // Exit Time
+        { wch: 25 }, // Document Name
+        { wch: 30 }, // Document No
       ];
-      
-      // Add widths for document type columns
-      sortedDocumentTypes.forEach(() => {
-        columnWidths.push({ wch: 20 });
-      });
       
       worksheet['!cols'] = columnWidths;
 
@@ -636,7 +777,7 @@ const VisitorsPage = () => {
       console.error('Error exporting visitors:', error);
       toast.error(error?.message || 'Failed to export visitors');
     }
-  }, [filteredVisitors, formatEntryDate]);
+  }, [filteredVisitors, visitors, visitorVehicleTypeMap]);
 
   return (
     <Layout>
@@ -707,8 +848,8 @@ const VisitorsPage = () => {
                       {type.name}
                     </SelectItem>
                   ))}
-                  {/* Special filter for trusted vehicles - commented out */}
-                  {/* <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem> */}
+                  {/* Special filter for trusted vehicles */}
+                  <SelectItem value="trusted_vehicle">Trusted Vehicles</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -735,9 +876,9 @@ const VisitorsPage = () => {
             
             <div className="flex justify-between items-center text-sm text-muted-foreground">
               <span>
-                Showing {filteredVisitors.length} of {totalFilteredCount} visitors
-                {totalFilteredCount > VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT && (
-                  <span className="text-gray-500"> (limited to {VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT})</span>
+                Showing {filteredVisitors.length} of {totalCount} visitors
+                {totalPages > 1 && (
+                  <span className="text-gray-500"> (Page {currentPage} of {totalPages})</span>
                 )}
               </span>
               {hasActiveFilters && (
@@ -763,21 +904,26 @@ const VisitorsPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Type of vehicle</TableHead>
                     <TableHead>Visitor Name</TableHead>
-                    <TableHead>Vehicle No</TableHead>
-                    <TableHead>Entry Status</TableHead>
-                    <TableHead>Entry Date</TableHead>
+                    <TableHead>Vehicle Number</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>In Time</TableHead>
+                    <TableHead>Exit Time</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredVisitors.map((visitor) => (
-                    <TableRow key={visitor.id}>
+                  {filteredVisitors.map((item) => (
+                    <TableRow key={item.id}>
                       <TableCell>
-                        {visitor.vehicle_type ? (
+                        {item.is_trusted_vehicle ? (
+                          // Trusted vehicle: show default vehicle icon
+                          <Car className="h-6 w-6 text-gray-600" />
+                        ) : item.vehicle_type ? (
+                          // Regular visitor: show visitor type icon
                           (() => {
-                            const typeMeta = visitorVehicleTypeMap[visitor.vehicle_type];
+                            const typeMeta = visitorVehicleTypeMap[item.vehicle_type];
                             const typeKey = typeMeta?.key;
 
                             if (!typeKey) {
@@ -802,39 +948,118 @@ const VisitorsPage = () => {
                           <span className="text-gray-400">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium" title={visitor.name}>
-                        {truncateVisitorName(visitor.name)}
+                      <TableCell className="font-medium" title={item.name}>
+                        {truncateVisitorName(item.name)}
                       </TableCell>
-                      <TableCell>{visitor.vehicle_no || '-'}</TableCell>
                       <TableCell>
-                        {visitor.is_exit ? (
-                          <Badge variant="destructive" className="bg-red-500 text-white">
-                            OUT
-                          </Badge>
+                        {item.vehicle_no ? (
+                          <div className="flex items-center gap-2">
+                            <span>{item.vehicle_no}</span>
+                            {item.is_trusted_vehicle && (
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-blue-100 text-blue-700 border-blue-300 px-1.5 py-0.5 h-5 flex items-center"
+                                title="Trusted Vehicle"
+                              >
+                                <ShieldCheck className="h-3 w-3" />
+                              </Badge>
+                            )}
+                          </div>
                         ) : (
-                          <Badge variant="default" className="bg-green-500 text-white">
-                            IN
-                          </Badge>
+                          '-'
                         )}
                       </TableCell>
-                      <TableCell>{formatEntryDate(visitor.created_at)}</TableCell>
+                      <TableCell>{formatEntryDate(item.created_at)}</TableCell>
+                      <TableCell>{formatTime(item.in_time)}</TableCell>
+                      <TableCell>{formatTime(item.exit_time)}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedVisitorId(visitor.id);
-                            setIsDialogOpen(true);
-                          }}
-                          title="View visitor details"
-                        >
-                          <Eye className="h-4 w-4 text-green-600" />
-                        </Button>
+                        {item.is_trusted_vehicle ? (
+                          // Trusted vehicles don't have detail view (or can be disabled)
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedVisitorId(item.visitor_id || item.id);
+                              setIsDialogOpen(true);
+                            }}
+                            title="View visitor details"
+                          >
+                            <Eye className="h-4 w-4 text-green-600" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {!loading && totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    {currentPage === 1 ? (
+                      <PaginationPrevious 
+                        aria-disabled="true"
+                        className="pointer-events-none opacity-50"
+                      />
+                    ) : (
+                      <PaginationPrevious 
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        className="cursor-pointer"
+                      />
+                    )}
+                  </PaginationItem>
+                  
+                  {/* Generate page numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          isActive={currentPage === pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  
+                  <PaginationItem>
+                    {currentPage === totalPages ? (
+                      <PaginationNext 
+                        aria-disabled="true" 
+                        className="pointer-events-none opacity-50"
+                      />
+                    ) : (
+                      <PaginationNext 
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        className="cursor-pointer"
+                      />
+                    )}
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </div>

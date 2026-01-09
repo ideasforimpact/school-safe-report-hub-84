@@ -54,7 +54,7 @@ const UserList = ({
 
   // Pre-load reference info so we can disable delete button for linked employees
   useEffect(() => {
-    const clientId = employeeData?.clientId || employeeData?.client_id;
+    const clientId = employeeData?.clientId;
     if (!clientId || users.length === 0) {
       setEmployeeReferences({});
       return;
@@ -96,13 +96,18 @@ const UserList = ({
   // Pagination logic
   const totalItems = users.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
+    const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA; // newest first
+    });
+  }, [users]);
   const paginatedUsers = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return users.slice(startIndex, endIndex);
-  }, [users, currentPage, itemsPerPage]);
-
+    return sortedUsers.slice(startIndex, endIndex);
+  }, [sortedUsers, currentPage, itemsPerPage]);
   // Reset to first page when items per page changes
   React.useEffect(() => {
     setCurrentPage(1);

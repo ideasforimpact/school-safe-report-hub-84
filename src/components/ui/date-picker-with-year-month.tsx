@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "./input";
 
 export interface DatePickerWithYearMonthProps {
   date: Date | undefined;
@@ -94,72 +95,91 @@ export function DatePickerWithYearMonth({
     }
     onChange(selectedDate);
   };
-
+  const formattedValue = date
+    ? date.toISOString().split("T")[0]
+    : "";
+     const handleChange = (value: string) => {
+    if (!value) {
+      onChange(undefined);
+    } else {
+      onChange(new Date(value));
+    }
+  };
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant={"outline"}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground",
-            className
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>{placeholderText}</span>}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="p-3 space-y-3">
-          {/* Year and Month Selectors */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Year" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  {years.map((year) => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map((month, index) => (
-                    <SelectItem key={index} value={index.toString()}>
-                      {month}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+    <Input
+        type="date"
+        value={formattedValue}
+        placeholder={placeholderText}
+        className={cn(className)}
+        min={`${minYear}-01-01`}
+        max={`${maxYear}-12-31`}
+        onChange={(e) => handleChange(e.target.value)}
+      />
+
+    // <Popover>
+    //   <PopoverTrigger asChild>
+    //     <Button
+    //       variant={"outline"}
+    //       className={cn(
+    //         "w-full justify-start text-left font-normal",
+    //         !date && "text-muted-foreground",
+    //         className
+    //       )}
+    //     >
+    //       <CalendarIcon className="mr-2 h-4 w-4" />
+    //       {date ? format(date, "PPP") : <span>{placeholderText}</span>}
+    //     </Button>
+    //   </PopoverTrigger>
+    //   <PopoverContent className="w-auto p-0" align="start">
+    //     <div className="p-3 space-y-3">
+    //       {/* Year and Month Selectors */}
+    //       <div className="flex gap-2">
+    //         <div className="flex-1">
+    //           <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
+    //             <SelectTrigger className="w-full">
+    //               <SelectValue placeholder="Year" />
+    //             </SelectTrigger>
+    //             <SelectContent className="max-h-[200px]">
+    //               {years.map((year) => (
+    //                 <SelectItem key={year} value={year.toString()}>
+    //                   {year}
+    //                 </SelectItem>
+    //               ))}
+    //             </SelectContent>
+    //           </Select>
+    //         </div>
+    //         <div className="flex-1">
+    //           <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
+    //             <SelectTrigger className="w-full">
+    //               <SelectValue placeholder="Month" />
+    //             </SelectTrigger>
+    //             <SelectContent>
+    //               {months.map((month, index) => (
+    //                 <SelectItem key={index} value={index.toString()}>
+    //                   {month}
+    //                 </SelectItem>
+    //               ))}
+    //             </SelectContent>
+    //           </Select>
+    //         </div>
+    //       </div>
           
-          {/* Calendar */}
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={handleDateSelect}
-            month={calendarDate}
-            onMonthChange={setCalendarDate}
-            disabled={(date) => {
-              const year = date.getFullYear();
-              return year < minYear || year > maxYear;
-            }}
-            initialFocus
-            className={cn("p-0 pointer-events-auto")}
-          />
-        </div>
-      </PopoverContent>
-    </Popover>
+    //       {/* Calendar */}
+    //       <Calendar
+    //         mode="single"
+    //         selected={date}
+    //         onSelect={handleDateSelect}
+    //         month={calendarDate}
+    //         onMonthChange={setCalendarDate}
+    //         disabled={(date) => {
+    //           const year = date.getFullYear();
+    //           return year < minYear || year > maxYear;
+    //         }}
+    //         initialFocus
+    //         className={cn("p-0 pointer-events-auto")}
+    //       />
+    //     </div>
+    //   </PopoverContent>
+    // </Popover>
   );
 }

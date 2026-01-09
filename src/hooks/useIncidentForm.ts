@@ -151,10 +151,18 @@ export const useIncidentForm = () => {
   const handlePersonChange = (
     index: number,
     field: keyof Person,
-    value: string
+    value: string,
+    additionalFields?: Record<string, any>
   ) => {
     const updatedPeople = [...peopleInvolved];
-    updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    const updatedPerson = { ...updatedPeople[index], [field]: value };
+    
+    // Merge additional fields if provided
+    if (additionalFields) {
+      Object.assign(updatedPerson, additionalFields);
+    }
+    
+    updatedPeople[index] = updatedPerson;
     setPeople(updatedPeople);
   };
 

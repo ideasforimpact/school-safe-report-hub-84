@@ -353,3 +353,100 @@ export const deleteVehicle = async (id: string): Promise<boolean> => {
     return false;
   }
 };
+
+export const checkExistingRegistrations = async (
+  registrationNumbers: string[],
+  clientId: string
+): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('vehicles')
+    .select('registration_number')
+    .in('registration_number', registrationNumbers)
+    .eq('client_id', clientId);
+
+  if (error) {
+    console.error(error);
+    throw new Error('Failed to check existing vehicles');
+  }
+
+  return (data || []).map(v => v.registration_number);
+};
+
+export const fetchVehicleTypeMap = async (): Promise<Record<string, string>> => {
+  const { data, error } = await supabase
+    .from('vehicle_type')
+    .select('id, name');
+
+  if (error) {
+    console.error(error);
+    throw new Error('Failed to fetch vehicle types');
+  }
+
+  const map: Record<string, string> = {};
+
+  data.forEach(v => {
+    const normalizedKey = v.name.trim().toUpperCase();
+    map[normalizedKey] = v.id;
+  });
+
+  return map;
+};
+
+export const fetchVehicleTypes = async (): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('vehicle_type')
+    .select('name')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching vehicle types:', error);
+    throw new Error('Unable to fetch vehicle types');
+  }
+  return (
+    data?.map(v => v.name.trim()) ?? []
+  );
+};
+const getLatestVehicleVerificationLog = (verificationData: any) => {
+  if (!Array.isArray(verificationData)) return null;
+
+  const log = verificationData.find(v => v.field === 'verification_log');
+  if (!log?.value) return null;
+
+  const latestKey = Object.keys(log.value).sort().pop();
+  return latestKey ? log.value[latestKey] : null;
+};
+
+const getVehicleChallans = (verificationData: any) => {
+  const log = getLatestVehicleVerificationLog(verificationData);
+  
+  if (!Array.isArray(log)) return [];
+  
+  const challanField = log.find(
+    (f: any) => f.field === 'challan_details'
+  );
+
+  return challanField?.value?.challan_details?.challans ?? [];
+};
+export const getPendingChallans = (verificationData: any) => {
+  const allChallans = getVehicleChallans(verificationData);
+  return allChallans.filter(
+    (c: any) =>
+      c.challan_status &&
+      c.challan_status.toLowerCase() !== 'disposed'
+  );
+};
+export const getVehiclesWithPendingChallans = async (
+  clientId: string
+): Promise<Vehicle[]> => {
+  try {
+    const vehicles = await getAllVehicles(clientId);
+
+    return vehicles.filter(vehicle => {
+      const pending = getPendingChallans(vehicle.verificationData);
+      return pending.length > 0;
+    });
+  } catch (error) {
+    console.error('Error fetching vehicles with pending challans:', error);
+    throw error;
+  }
+};

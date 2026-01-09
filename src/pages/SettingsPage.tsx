@@ -14,6 +14,7 @@ import { useEducationalConfigurationManagement } from '@/hooks/useEducationalCon
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
+import { useClientIntegration } from '@/hooks/useClientIntegration';
 
 const SettingsPage = () => {
   const [searchParams] = useSearchParams();
@@ -26,6 +27,9 @@ const SettingsPage = () => {
           handleAddClass, handleUpdateClass, handleDeleteClass,
           handleAddSection, handleUpdateSection, handleDeleteSection,
           handleAddFacility, handleUpdateFacility, handleDeleteFacility } = useEducationalConfigurationManagement();
+  
+  // Check if client integration is linked
+  const { isClientLinked } = useClientIntegration();
 
   // Check for tab parameter in URL and set active tab accordingly
   useEffect(() => {
@@ -96,7 +100,12 @@ const SettingsPage = () => {
               </TabsTrigger>
               {showEducationalTabs && (
                 <>
-                  <TabsTrigger value="student" className="flex items-center gap-2">
+                  <TabsTrigger 
+                    value="student" 
+                    className="flex items-center gap-2"
+                    disabled={isClientLinked}
+                    title={isClientLinked ? "Student Management is disabled when client integration is linked" : ""}
+                  >
                     <GraduationCap className="h-4 w-4" />
                     <span>Student Management</span>
                   </TabsTrigger>

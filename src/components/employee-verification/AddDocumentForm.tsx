@@ -301,7 +301,10 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
               files={files}
               isSubmitting={isSubmitting}
               onSubmit={handleSubmit}
-              onCancel={onSuccess || (() => {})}
+              onCancel={() => {
+                setSelectedTypeId(null);
+                setFiles([]);
+              }}
               onFileUploaded={handleFileUploaded}
             />
           )}

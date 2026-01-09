@@ -165,6 +165,7 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
               employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               joiningDate: normalizeDate(getFieldValue([
                               'Joining Date', 'JoiningDate', 'joiningDate', 'joining_date',
                               'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date'
@@ -379,6 +380,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
               employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
               department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               // Handle date formats
               joiningDate: normalizeDate(getFieldValue([
                         'Joining Date', 'JoiningDate', 'joiningDate', 'joining_date',

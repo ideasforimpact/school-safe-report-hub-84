@@ -14,6 +14,7 @@ import formTemplateJson from '@/templates/forms/form-template.json';
 import assessmentTemplatesJson from '@/templates/assessment/assessment_templates.json';
 import eduResourcesJson from '@/templates/edu_resources/edu_resource.json';
 import Layout from '@/components/layout/Layout';
+import { UploadCloud } from 'lucide-react';
 
 
 interface ClientRow { id: string; name: string }
@@ -38,12 +39,14 @@ const BackofficeImportConfiguration = () => {
   };
 
   useEffect(() => { fetchClientsAndLogs(); }, []);
+  const triggerImport = async (clientId: string) => {
+    if (!clientId) {
+      toast.error('Client not found');
+      return;
+    }
 
-  const triggerImport = async () => {
-    if (!selectedClient) { toast.error('Select a client'); return; }
     setLoading(true);
     try {
-      // Extract arrays from local templates
       const categories = (categoriesTemplateJson as any)?.categories;
       const contributing_factors = (contributingFactorsTemplateJson as any)?.contributing_factors;
       const report_types = (reportTypesTemplateJson as any)?.report_types;
@@ -66,10 +69,17 @@ const BackofficeImportConfiguration = () => {
         setLoading(false);
         return;
       }
-
-      const payload = { client_id: selectedClient, categories, contributing_factors, report_types, priorities, forms, assessment_templates, edu_resources };
-
-      console.log('Sending payload with forms, assessments, and edu resources:', { 
+      const payload = {
+        client_id: clientId,
+        categories,
+        contributing_factors,
+        report_types,
+        priorities,
+        forms,
+        assessment_templates,
+        edu_resources
+      };
+       console.log('Sending payload with forms, assessments, and edu resources:', { 
         client_id: selectedClient, 
         formsCount: forms.length,
         forms: forms.map(f => ({ title: f.title, fieldsCount: f.fields?.length || 0 })),
@@ -101,27 +111,6 @@ const BackofficeImportConfiguration = () => {
       <div className="space-y-8 p-[50px]">
         <Card>
           <CardHeader>
-            <CardTitle>Import Default Configuration</CardTitle>
-            <CardDescription>Select a client and trigger the import-configuration function. Clients already processed are hidden.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-end gap-3">
-            <div className="w-80">
-              <label className="block text-sm font-medium mb-2">Active Client</label>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger><SelectValue placeholder={selectableClients.length ? 'Select client' : 'All clients processed'} /></SelectTrigger>
-                <SelectContent>
-                  {selectableClients.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={triggerImport} disabled={!selectedClient || loading}>{loading ? 'Processing…' : 'Trigger Import'}</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
             <CardTitle>Client Import Status</CardTitle>
             <CardDescription>Latest runs from configuration_import_logs</CardDescription>
           </CardHeader>
@@ -134,23 +123,43 @@ const BackofficeImportConfiguration = () => {
                     <th className="py-2">Status</th>
                     <th className="py-2">Code</th>
                     <th className="py-2">Timestamp</th>
+                    <th className="py-2 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map(l => {
-                    const client = clients.find(c => c.id === l.client_id);
+                  {clients.map(client => {
+                    const log = logs.find(l => l.client_id === client.id);
+                    const isNewClient = !processedClientIds.has(client.id);
+
                     return (
-                      <tr key={l.id} className="border-t">
-                        <td className="py-2">{client?.name || l.client_id}</td>
-                        <td className="py-2 capitalize">{l.response_status}</td>
-                        <td className="py-2">{l.response_code}</td>
-                        <td className="py-2">{new Date(l.created_at).toLocaleString()}</td>
+                      <tr key={client.id} className="border-t">
+                        <td className="py-2">{client.name}</td>
+                        <td className="py-2 capitalize">
+                          {log?.response_status || 'Pending'}
+                        </td>
+                        <td className="py-2">
+                          {log?.response_code ?? '-'}
+                        </td>
+                        <td className="py-2">
+                          {log ? new Date(log.created_at).toLocaleString() : '-'}
+                        </td>
+                        <td className="py-2 text-center">
+                          {isNewClient && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Trigger Import"
+                              onClick={() => triggerImport(client.id)}
+                              disabled={loading}
+                              className="text-primary hover:text-primary/80"
+                            >
+                              <UploadCloud className="h-5 w-5" />
+                            </Button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
-                  {logs.length === 0 && (
-                    <tr><td className="py-6 text-gray-500" colSpan={4}>No imports yet</td></tr>
-                  )}
                 </tbody>
               </table>
             </div>

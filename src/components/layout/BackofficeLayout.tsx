@@ -74,7 +74,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       
       {/* Main content - Using flex-col for vertical layout */}
       <div className="flex-grow">
-        <main className="container mx-auto py-8 px-6">
+        <main className="container-fluid ps-12 px-12">
           {children}
         </main>
       </div>

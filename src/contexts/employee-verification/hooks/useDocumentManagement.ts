@@ -174,6 +174,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             notes?: string;
           }> : [],
           personalInfo: (doc as any).personal_info || undefined,
+          lastOtpGenerated: doc.last_otp_generated || undefined,
           createdAt: doc.created_at,
           updatedAt: doc.updated_at
         };

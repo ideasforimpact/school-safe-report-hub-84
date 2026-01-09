@@ -12,6 +12,7 @@ import {
 import { InstitutionType } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
 import { buildClientLogoUrl } from '@/lib/utils';
+import { checkSuperAdminEmailExists } from '@/services/employee/employeeValidationService';
 
 interface ClientType {
   id: string;
@@ -37,9 +38,30 @@ interface BasicInfoTabProps {
   showErrors?: boolean;
 }
 
+export const isValidClientName = (name: string) => {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  return /^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmed);
+};
+export const isValidContactPerson = (name: string) => {
+   const trimmed = name.trim();
+   if (!trimmed) return false;
+   return /^[A-Za-z\s]{1,20}$/.test(trimmed);
+ };
+
+export const isValidEmail = (email: string) => {
+  const trimmed = email.trim();
+  if (!trimmed) return false;
+  return /^(?!.*\.\.)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/.test(trimmed);
+};
+export const isValidPhone = (phone?: string) => !!phone && /^[6-9]\d{9}$/.test(phone);
+
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   const institutionTypes: InstitutionType[] = [
     'CBSE', 'IB', 'IGCSE', 'ICSE', 'Matric', 'Combined Campus', 'Other'
@@ -48,6 +70,49 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   useEffect(() => {
     fetchClientTypes();
   }, []);
+  
+ useEffect(() => {
+  if (!formData.superAdminEmail) {
+    setEmailExists(false);
+    setCheckingEmail(false);
+    setFormData((prev: any) => ({
+      ...prev,
+      superAdminEmailExists: false
+    }));
+    return;
+  }
+
+  if (!emailTouched) return;
+
+  if (!isValidEmail(formData.superAdminEmail)) {
+    setEmailExists(false);
+    setCheckingEmail(false);
+    setFormData((prev: any) => ({
+      ...prev,
+      superAdminEmailExists: false
+    }));
+    return;
+  }
+
+  const timeout = setTimeout(async () => {
+    setCheckingEmail(true);
+
+    const exists = await checkSuperAdminEmailExists(
+      formData.superAdminEmail
+    );
+
+    setEmailExists(exists);
+    setCheckingEmail(false);
+
+    setFormData((prev: any) => ({
+      ...prev,
+      superAdminEmailExists: exists
+    }));
+  }, 600);
+
+  return () => clearTimeout(timeout);
+}, [formData.superAdminEmail, emailTouched]);
+
 
   const fetchClientTypes = async () => {
     try {
@@ -156,6 +221,11 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {showErrors && !formData.name && (
           <p className="text-xs text-red-600">Client name is required.</p>
         )}
+       {formData.name && !isValidClientName(formData.name) && (
+          <p className="text-xs text-red-600">
+            Client name must contain only letters and spaces.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -208,23 +278,59 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         )}
       </div>
 
-      <div className="space-y-2">
-        <RequiredFieldLabel>
-          <label htmlFor="superAdminEmail">Super Admin Email</label>
-        </RequiredFieldLabel>
-        <Input
-          id="superAdminEmail"
-          type="email"
-          value={formData.superAdminEmail || ''}
-          onChange={(e) => setFormData({...formData, superAdminEmail: e.target.value})}
-          placeholder="Enter super admin email"
-          inputMode="email"
-          required
-        />
-        {showErrors && !formData.superAdminEmail && (
-          <p className="text-xs text-red-600">Super admin email is required.</p>
+    <div className="space-y-1">
+      <RequiredFieldLabel>
+        <label htmlFor="superAdminEmail">Super Admin Email</label>
+      </RequiredFieldLabel>
+      <Input
+        id="superAdminEmail"
+        type="email"
+        value={formData.superAdminEmail || ''}
+        onChange={(e) => {
+          setFormData({ ...formData, superAdminEmail: e.target.value });
+          setEmailTouched(true);
+        }}
+        placeholder="Enter super admin email"
+        inputMode="email"
+        required
+        className={emailExists ? 'border-red-500' : ''}
+      />
+
+      {/* Inline status messages */}
+      {checkingEmail && (
+        <p className="text-xs text-gray-500">Checking email...</p>
+      )}
+
+      {emailTouched &&
+        formData.superAdminEmail &&
+        !isValidEmail(formData.superAdminEmail) && (
+          <p className="text-xs text-red-600">
+            Enter a valid email address
+          </p>
+      )}
+
+      {!checkingEmail &&
+        emailTouched &&
+        formData.superAdminEmail &&
+        isValidEmail(formData.superAdminEmail) &&
+        !emailExists && (
+          <p className="text-xs text-green-600">
+            Email is available
+          </p>
+      )}
+
+        {emailExists && (
+          <p className="text-xs text-red-600">
+            Email already exists
+          </p>
         )}
-      </div>
+
+        {showErrors && !formData.superAdminEmail && (
+          <p className="text-xs text-red-600">
+            Super admin email is required
+          </p>
+        )}
+    </div>
       
       <div className="space-y-2">
         <RequiredFieldLabel>
@@ -237,7 +343,15 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           placeholder="Enter contact person name"
           maxLength={20}
           required
+          className={
+            formData.contactPerson && !isValidContactPerson(formData.contactPerson)
+              ? 'border-red-500'
+              : ''
+          }
         />
+        {formData.contactPerson && !isValidContactPerson(formData.contactPerson) && (
+          <p className="text-xs text-red-600">Contact person can only contain letters</p>
+        )}
         {showErrors && !formData.contactPerson && (
           <p className="text-xs text-red-600">Contact person is required.</p>
         )}
@@ -258,6 +372,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {showErrors && !formData.email && (
           <p className="text-xs text-red-600">Email is required.</p>
         )}
+        {formData.email && !isValidEmail(formData.email) && (
+          <p className="text-xs text-red-600"> Enter a valid email address</p>
+        )}
       </div>
       <div className="space-y-2">
         <RequiredFieldLabel>
@@ -267,13 +384,23 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           id="phone"
           type="tel"
           inputMode="tel"
-          pattern="[0-9+()\-\s]{7,20}"
           title="Enter a valid phone number"
           value={formData.phone}
           onChange={(e) => setFormData({...formData, phone: e.target.value})}
           placeholder="Enter phone number"
+          maxLength={10}
           required
+            className={
+            formData.phone && !isValidPhone(formData.phone)
+              ? 'border-red-500'
+              : ''
+          }
         />
+         {formData.phone && !isValidPhone(formData.phone) && (
+          <p className="text-xs text-red-600">
+            Phone number must be valid and should contain at least 10 digits.
+          </p>
+        )}
         {showErrors && !formData.phone && (
           <p className="text-xs text-red-600">Phone is required.</p>
         )}

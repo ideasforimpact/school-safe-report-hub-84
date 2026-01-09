@@ -110,6 +110,7 @@ export interface VerificationDocument {
     dob?: string;
     address?: string;
   };
+  lastOtpGenerated?: string; // Timestamp when OTP was last generated
   createdAt: string;
   updatedAt: string;
 }

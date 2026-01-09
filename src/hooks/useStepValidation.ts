@@ -1,31 +1,40 @@
 
 import { useMemo } from 'react';
 import { ClientFormData } from './useClientManagement';
+import { isValidEmail } from '@/services/employee/utils/employeeValidationUtils';
+import { isValidClientName, isValidContactPerson, isValidPhone } from '@/components/backoffice/tabs/BasicInfoTab';
 
 export const useStepValidation = (formData: ClientFormData) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const isValidEmail = (email?: string) => !!email && emailRegex.test(email);
-  const isValidPhone = (phone?: string) => !!phone && /[0-9+()\-\s]{7,20}/.test(phone);
 
+  const hasValidClientName =isValidClientName(formData.name);
+  const hasValidContactPerson =isValidContactPerson(formData.contactPerson);
+
+  const hasValidPhone =isValidPhone(formData.phone);
   const validateStep1 = useMemo(() => {
-    // Presence-only validation for smoother UX on step navigation
-    const hasRequired = !!(
-      formData.name &&
-      formData.email &&
-      formData.contactPerson &&
-      formData.phone &&
-      formData.superAdminEmail &&
-      formData.clientTypeId &&
-      formData.institutionType
-    );
-    return hasRequired;
-  }, [
+  const hasRequired =
+    !!formData.email &&
+    !!formData.name &&
+    !!formData.contactPerson &&
+    !!formData.phone &&
+    !!formData.clientTypeId &&
+    !!formData.institutionType;
+
+    const hasValidSuperAdminEmail =
+    isValidEmail(formData.superAdminEmail) &&
+    formData.superAdminEmailExists === false && 
+    isValidClientName; 
+
+  return hasRequired && hasValidSuperAdminEmail && hasValidClientName
+  && hasValidContactPerson && hasValidPhone;
+}, [
     formData.name,
     formData.email,
     formData.contactPerson,
     formData.phone,
     formData.superAdminEmail,
     formData.clientTypeId,
+    formData.superAdminEmailExists,
     formData.institutionType
   ]);
 
