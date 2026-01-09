@@ -284,11 +284,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
               </DialogTrigger>
               <VerificationDetailsDialog
                  open={showVerificationResults}
-  onOpenChange={setShowVerificationResults}
-  verificationData={latestVerificationData}
-  challanError={challanError}
-  hasChallanData={hasChallanData}
-  title="Latest Verification Details"
+                  onOpenChange={setShowVerificationResults}
+                  verificationData={latestVerificationData}
+                  challanError={challanError}
+                  hasChallanData={hasChallanData}
+                  title="Latest Verification Details"
               />
             </Dialog>
           </div>

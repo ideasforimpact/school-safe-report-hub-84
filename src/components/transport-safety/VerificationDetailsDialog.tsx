@@ -76,7 +76,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
             {challan.accused_name && (
                 <div className="flex justify-between text-xs">
-                    <span className="font-medium">Accused:</span>
+                    <span className="font-medium">Accused Name:</span>
                     <span>{challan.accused_name}</span>
                 </div>
             )}

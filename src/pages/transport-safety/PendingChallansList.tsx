@@ -25,6 +25,7 @@ import {
   getPendingChallans,
   getVehiclesWithPendingChallans,
 } from '@/services/transport-safety/vehicleService';
+import { formatDate } from '@/lib/utils';
 
 const PendingChallansList = () => {
   const { employeeData } = useAuth();
@@ -223,38 +224,53 @@ const PendingChallansList = () => {
           </DialogHeader>
 
           <div className="space-y-3">
-            {challanDetails.map((challan, index) => (
-              <div
-                key={index}
-                className="border rounded-md p-3 bg-orange-50"
-              >
+            {(challanDetails || []).map((challan: any, index: number) => (
+              <div key={index} className="border rounded-md p-3 bg-orange-50">
                 <div className="flex justify-between text-xs">
                   <span className="font-medium">Challan No:</span>
-                  <span>
-                    {challan.challan_number || challan.challan_no || 'N/A'}
-                  </span>
+                  <span>{challan.challan_number || challan.challan_no || 'N/A'}</span>
                 </div>
 
-                <div className="flex justify-between text-xs mt-1">
+                {challan.accused_name && (
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">Accused Name:</span>
+                    <span className="text-gray-700">{challan.accused_name}</span>
+                  </div>
+                )}
+
+                {challan.challan_date && (
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">Date:</span>
+                    <span className="text-gray-700">{formatDate(challan.challan_date)}</span>
+                  </div>
+                )}
+                
+                {challan.challan_place && (
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">Place:</span>
+                    <span className="text-gray-700">{challan.challan_place}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-xs">
                   <span className="font-medium">Amount:</span>
-                  <span>
-                    ₹{challan.amount || challan.challan_amount || '0'}
+                  <span>₹{challan.amount || challan.challan_amount || "0"}</span>
+                </div>
+
+                <div className="flex justify-between text-xs">
+                  <span className="font-medium">Status:</span>
+                  <span className={challan.challan_status?.toUpperCase() === "PAID" ||
+                    challan.challan_status?.toUpperCase() === "DISPOSED"
+                    ? "text-green-600"
+                    : "text-red-600"}>
+                    {challan.challan_status || "UNPAID"}
                   </span>
                 </div>
 
-                <div
-                  className={`text-xs mt-1 font-medium ${challan.challan_status?.toUpperCase() === 'PAID' ||
-                    challan.challan_status?.toUpperCase() === 'DISPOSED'
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                    }`}
-                >
-                  {challan.challan_status || 'UNPAID'}
-                </div>
-
-                {(challan.Info || challan.challan_info) && (
-                  <div className="text-xs mt-1 text-gray-600">
-                    {challan.Info || challan.challan_info}
+                {(challan.Info || challan.challan_info || challan.offense_details) && (
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="font-medium">Info:</span>
+                    <span>{challan.Info || challan.challan_info || challan.offense_details}</span>
                   </div>
                 )}
               </div>
