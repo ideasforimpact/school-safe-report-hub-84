@@ -247,9 +247,14 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
                   <div className="flex items-center gap-1">
                     {file.type.startsWith('image/') && (
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => openPreview(file)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openPreview(file);
+                        }}
                         className="h-8 w-8 p-0"
                       >
                         <Eye className="h-4 w-4" />
@@ -257,6 +262,7 @@ const DragDropFileUpload: React.FC<DragDropFileUploadProps> = ({
                     )}
                     
                     <Button
+                      type="button" 
                       variant="ghost"
                       size="sm"
                       onClick={() => removeFile(file.id)}
