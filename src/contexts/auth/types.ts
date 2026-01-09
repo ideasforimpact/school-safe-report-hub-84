@@ -92,6 +92,18 @@ export interface ClientType {
   updated_at: string;
 }
 
+export interface ClientIntegration {
+  id: string;
+  client_id: string;
+  target_client_id: string | null;
+  target_client_name: string | null;
+  is_linked: boolean;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -107,6 +119,7 @@ export interface Client {
   institution_type?: string;
   logo?: string;
   client_type?: ClientType;
+  client_integration?: ClientIntegration[] | null;
 }
 
 export interface EmployeeData {
@@ -120,6 +133,7 @@ export interface EmployeeData {
   employeeType?: string;
   client?: Client | null;
   clientType?: ClientType | null;
+  client_integration?: ClientIntegration[] | null;
 }
 
 export interface AuthProviderProps {

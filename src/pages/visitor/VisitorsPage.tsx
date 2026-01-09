@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download } from 'lucide-react';
+import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +34,12 @@ const VisitorsPage = () => {
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10); // Fixed page size of 10
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   
   // Dialog state
   const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(null);
@@ -66,6 +80,7 @@ const VisitorsPage = () => {
     in_time: string | null; // For trusted vehicles: in_time, for visitors: created_at
     exit_time: string | null;
     is_trusted_vehicle: boolean;
+    entry_status?: string | null; // For trusted vehicles: entry_status (IN or OUT)
     // For visitors only
     visitor_id?: string;
     // For trusted vehicles only
@@ -171,7 +186,7 @@ const VisitorsPage = () => {
       });
     });
 
-    // Add trusted vehicles with entry_status = 'IN'
+    // Add trusted vehicles with entry_status = 'IN' or 'OUT'
     trustedVehiclesData.forEach((tv) => {
       unified.push({
         id: tv.id,
@@ -181,6 +196,7 @@ const VisitorsPage = () => {
         created_at: tv.created_at,
         in_time: tv.in_time || tv.created_at, // Use in_time if available, else created_at
         exit_time: tv.exit_time || null,
+        entry_status: tv.entry_status || null, // Include entry_status (IN or OUT)
         is_trusted_vehicle: true,
         trusted_vehicle_id: tv.id,
       });
@@ -194,8 +210,8 @@ const VisitorsPage = () => {
     });
   }, []);
 
-  // Fetch visitors function
-  const fetchVisitors = useCallback(async () => {
+  // Fetch visitors function with server-side pagination
+  const fetchVisitors = useCallback(async (page: number = 1) => {
     if (!clientId) {
       toast.error('Client ID is required to fetch visitors');
       setLoading(false);
@@ -205,16 +221,20 @@ const VisitorsPage = () => {
     try {
       setLoading(true);
       
-      // Fetch visitors
-      const visitorsData = await visitorService.getVisitors(clientId, employeeId);
-      setVisitors(visitorsData);
+      // Fetch visitors with pagination
+      const response = await visitorService.getVisitors(clientId, employeeId, page, pageSize);
+      setVisitors(response.visitors);
+      setTotalCount(response.totalCount);
+      setTotalPages(response.totalPages);
+      setCurrentPage(page);
 
-      // Fetch trusted vehicles with entry_status = 'IN' and all required fields
+      // Fetch trusted vehicles with entry_status = 'IN' or 'OUT' and all required fields
+      // Note: Trusted vehicles are fetched separately and combined with visitors
       const { data: trustedVehiclesData, error: trustedVehiclesError } = await (supabase as any)
         .from('trusted_vehicle')
         .select('id, vehicle_name, name, vehicle_no, client_id, employee_id, entry_status, in_time, exit_time, created_at, updated_at, validity_from, validity_to')
         .eq('client_id', clientId)
-        .eq('entry_status', 'IN');
+        .in('entry_status', ['IN', 'OUT']);
 
       if (employeeId) {
         // Optionally filter by employee_id if provided
@@ -226,7 +246,7 @@ const VisitorsPage = () => {
       }
 
       // Transform to unified list
-      const unified = transformToUnifiedList(visitorsData, trustedVehiclesData || []);
+      const unified = transformToUnifiedList(response.visitors, trustedVehiclesData || []);
       setUnifiedList(unified);
 
       // Also keep trusted vehicles for filtering logic
@@ -250,7 +270,7 @@ const VisitorsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [clientId, employeeId, transformToUnifiedList]);
+  }, [clientId, employeeId, transformToUnifiedList, pageSize]);
 
   // Fetch trusted vehicles (for filtering only)
   const fetchTrustedVehicles = useCallback(async () => {
@@ -281,13 +301,19 @@ const VisitorsPage = () => {
     }
   }, [clientId]);
 
-  // Fetch visitors on component mount and when clientId or employeeId changes
+  // Fetch visitors on component mount and when clientId, employeeId, or currentPage changes
   useEffect(() => {
     if (clientId) {
-      fetchVisitors();
+      fetchVisitors(currentPage);
+    }
+  }, [clientId, currentPage, fetchVisitors]);
+
+  // Fetch trusted vehicles separately (for filtering logic)
+  useEffect(() => {
+    if (clientId) {
       fetchTrustedVehicles();
     }
-  }, [clientId, fetchVisitors, fetchTrustedVehicles]);
+  }, [clientId, fetchTrustedVehicles]);
 
   // Fetch visitor vehicle types for dynamic filter options
   const fetchVisitorVehicleTypes = useCallback(async () => {
@@ -366,9 +392,9 @@ const VisitorsPage = () => {
     });
 
     try {
-      // Refresh the entire list to ensure unified list is updated
+      // Refresh the current page to ensure unified list is updated
       // This includes both visitors and trusted vehicles
-      await fetchVisitors();
+      await fetchVisitors(currentPage);
       
       if (isDelete) {
         showToast('Visitor removed', 'info');
@@ -379,8 +405,8 @@ const VisitorsPage = () => {
       }
     } catch (error) {
       console.error('[Realtime] Error handling visitor update:', error);
-      // Refresh the entire list on error
-      await fetchVisitors();
+      // Refresh the current page on error
+      await fetchVisitors(currentPage);
     }
   }, [clientId, employeeId, fetchVisitors, showToast]);
 
@@ -412,13 +438,13 @@ const VisitorsPage = () => {
     }
 
     try {
-      // Refresh the entire list to ensure unified list is updated
-      await fetchVisitors();
+      // Refresh the current page to ensure unified list is updated
+      await fetchVisitors(currentPage);
       showToast('Visitor updated', 'info');
     } catch (error) {
       console.error('[Realtime] Error handling visitor KYC update:', error);
-      // Refresh the entire list on error
-      await fetchVisitors();
+      // Refresh the current page on error
+      await fetchVisitors(currentPage);
     }
   }, [clientId, employeeId, fetchVisitors, showToast]);
 
@@ -455,10 +481,10 @@ const VisitorsPage = () => {
   // Handle realtime trusted vehicle updates
   const handleTrustedVehicleUpdate = useCallback(async (payload: any) => {
     console.log('[Realtime] Trusted vehicle update payload received:', payload);
-    // Refresh the entire list to ensure unified list is updated
-    await fetchVisitors();
+    // Refresh the current page to ensure unified list is updated
+    await fetchVisitors(currentPage);
     showToast('Trusted vehicle updated', 'info');
-  }, [fetchVisitors, showToast]);
+  }, [fetchVisitors, showToast, currentPage]);
 
   // Set up realtime subscription for trusted_vehicle table
   useRealTimeSubHook({
@@ -476,8 +502,14 @@ const VisitorsPage = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await fetchVisitors();
+    await fetchVisitors(currentPage);
     setIsRefreshing(false);
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // fetchVisitors will be called via useEffect when currentPage changes
   };
 
   // Helper function to check if a trusted vehicle is valid.
@@ -548,13 +580,11 @@ const VisitorsPage = () => {
       return true;
     });
 
-    const totalCount = filtered.length;
-    // Limit to maximum display count
-    const displayed = filtered.slice(0, VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT);
-
+    // With server-side pagination, we don't need to limit the display count
+    // The server already limits to pageSize (10) records
     return {
-      filteredVisitors: displayed,
-      totalFilteredCount: totalCount
+      filteredVisitors: filtered,
+      totalFilteredCount: filtered.length
     };
   }, [unifiedList, searchTerm, vehicleTypeFilter, dateRange]);
 
@@ -562,6 +592,7 @@ const VisitorsPage = () => {
     setSearchTerm('');
     setVehicleTypeFilter('all');
     setDateRange(undefined);
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
   const hasActiveFilters = searchTerm || vehicleTypeFilter !== 'all' || dateRange;
@@ -610,6 +641,36 @@ const VisitorsPage = () => {
     return vehicleType;
   };
 
+  // Helper function to format document type name to readable format
+  const formatDocumentTypeName = (documentType: string): string => {
+    const typeMap: Record<string, string> = {
+      'aadhar': 'Aadhar Card',
+      'aadhaar': 'Aadhar Card',
+      'pan': 'PAN Card',
+      'pan_card': 'PAN Card',
+      'driving_license': 'Driving License',
+      'driving_licence': 'Driving Licence',
+      'passport': 'Passport',
+      'voter_id': 'Voter ID',
+      'bank_account': 'Bank Account',
+      'bank_statement': 'Bank Statement',
+      'manual': 'Manual Verification',
+      'other_documents': 'Other Documents',
+      'other': 'Other Document',
+    };
+    
+    const lowerType = documentType.toLowerCase();
+    if (typeMap[lowerType]) {
+      return typeMap[lowerType];
+    }
+    
+    // Fallback: convert snake_case to Title Case
+    return documentType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   // Export visitors to Excel
   const handleExport = useCallback(() => {
     try {
@@ -622,24 +683,38 @@ const VisitorsPage = () => {
       const exportData = filteredVisitors.map(item => {
         // For trusted vehicles, we don't have visitor-specific fields
         // For regular visitors, we need to find the original visitor to get KYC details
-        let aadharDetails = '-';
         let phoneNumber = '-';
         let purpose = '-';
         let whomToMeet = '-';
+        let documentNames = '-';
+        let documentNumbers = '-';
 
         if (!item.is_trusted_vehicle && item.visitor_id) {
           // Find the original visitor to get full details
           const originalVisitor = visitors.find(v => v.id === item.visitor_id);
           if (originalVisitor) {
-            // Get Aadhar details if KYC is done
-            const aadharKyc = originalVisitor.visitor_kyc?.find(kyc => {
-              const docType = (kyc.document_type || '').toLowerCase();
-              return docType === 'aadhar' || docType === 'aadhaar';
-            });
-            aadharDetails = aadharKyc?.document_no || '-';
             phoneNumber = originalVisitor.mobile_no || '-';
             purpose = originalVisitor.purpose || '-';
             whomToMeet = originalVisitor.whom_to_meet || '-';
+            
+            // Collect all KYC document types and their values
+            if (originalVisitor.visitor_kyc && originalVisitor.visitor_kyc.length > 0) {
+              const docNames: string[] = [];
+              const docNumbers: string[] = [];
+              
+              originalVisitor.visitor_kyc.forEach(kyc => {
+                if (kyc.document_type && kyc.document_no) {
+                  // Format document type name to readable format
+                  docNames.push(formatDocumentTypeName(kyc.document_type));
+                  docNumbers.push(kyc.document_no);
+                }
+              });
+              
+              if (docNames.length > 0) {
+                documentNames = docNames.join(', ');
+                documentNumbers = docNumbers.join(', ');
+              }
+            }
           }
         }
 
@@ -659,7 +734,8 @@ const VisitorsPage = () => {
           'Date': entryDate,
           'In Time': inTime,
           'Exit Time': exitTime,
-          'Aadhar details': aadharDetails,
+          'Document Name': documentNames,
+          'Document No': documentNumbers,
         };
 
         return row;
@@ -679,7 +755,8 @@ const VisitorsPage = () => {
         { wch: 15 }, // Date
         { wch: 12 }, // In Time
         { wch: 12 }, // Exit Time
-        { wch: 20 }, // Aadhar details
+        { wch: 25 }, // Document Name
+        { wch: 30 }, // Document No
       ];
       
       worksheet['!cols'] = columnWidths;
@@ -700,7 +777,7 @@ const VisitorsPage = () => {
       console.error('Error exporting visitors:', error);
       toast.error(error?.message || 'Failed to export visitors');
     }
-  }, [filteredVisitors, visitorVehicleTypeMap]);
+  }, [filteredVisitors, visitors, visitorVehicleTypeMap]);
 
   return (
     <Layout>
@@ -799,9 +876,9 @@ const VisitorsPage = () => {
             
             <div className="flex justify-between items-center text-sm text-muted-foreground">
               <span>
-                Showing {filteredVisitors.length} of {totalFilteredCount} visitors
-                {totalFilteredCount > VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT && (
-                  <span className="text-gray-500"> (limited to {VISITOR_LIST_CONSTANTS.MAX_DISPLAY_COUNT})</span>
+                Showing {filteredVisitors.length} of {totalCount} visitors
+                {totalPages > 1 && (
+                  <span className="text-gray-500"> (Page {currentPage} of {totalPages})</span>
                 )}
               </span>
               {hasActiveFilters && (
@@ -874,7 +951,24 @@ const VisitorsPage = () => {
                       <TableCell className="font-medium" title={item.name}>
                         {truncateVisitorName(item.name)}
                       </TableCell>
-                      <TableCell>{item.vehicle_no || '-'}</TableCell>
+                      <TableCell>
+                        {item.vehicle_no ? (
+                          <div className="flex items-center gap-2">
+                            <span>{item.vehicle_no}</span>
+                            {item.is_trusted_vehicle && (
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-blue-100 text-blue-700 border-blue-300 px-1.5 py-0.5 h-5 flex items-center"
+                                title="Trusted Vehicle"
+                              >
+                                <ShieldCheck className="h-3 w-3" />
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </TableCell>
                       <TableCell>{formatEntryDate(item.created_at)}</TableCell>
                       <TableCell>{formatTime(item.in_time)}</TableCell>
                       <TableCell>{formatTime(item.exit_time)}</TableCell>
@@ -900,6 +994,72 @@ const VisitorsPage = () => {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {!loading && totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    {currentPage === 1 ? (
+                      <PaginationPrevious 
+                        aria-disabled="true"
+                        className="pointer-events-none opacity-50"
+                      />
+                    ) : (
+                      <PaginationPrevious 
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        className="cursor-pointer"
+                      />
+                    )}
+                  </PaginationItem>
+                  
+                  {/* Generate page numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          isActive={currentPage === pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+                  
+                  <PaginationItem>
+                    {currentPage === totalPages ? (
+                      <PaginationNext 
+                        aria-disabled="true" 
+                        className="pointer-events-none opacity-50"
+                      />
+                    ) : (
+                      <PaginationNext 
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        className="cursor-pointer"
+                      />
+                    )}
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </div>

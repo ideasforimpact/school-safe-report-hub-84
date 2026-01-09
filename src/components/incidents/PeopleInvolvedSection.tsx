@@ -8,6 +8,7 @@ import { Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
+import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 
 interface UserBasicInfo {
   id: string;
@@ -45,6 +46,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onStudentAdded
 }) => {
   const { employeeData } = useAuth();
+  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
   const [fetchedStudents, setFetchedStudents] = useState<Student[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
@@ -57,6 +59,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   console.log('Auth employeeData in incidents:', employeeData);
   console.log('Client type from auth:', clientType);
   console.log('Is school client:', isSchoolClient);
+  console.log("isIntegrationEnabled",isIntegrationEnabled);
+  
   
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
@@ -135,8 +139,15 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     fetchStaffMembers();
   }, [employeeData?.clientId]);
 
-  // Fetch students filtered by client_id
+  // Fetch students filtered by client_id - only if integration is NOT enabled
   const fetchStudents = useCallback(async () => {
+    // Don't fetch client-side students if integration is enabled
+    if (isIntegrationEnabled) {
+      console.log('[PeopleInvolvedSection] Integration enabled - skipping client-side student fetch');
+      setFetchedStudents([]);
+      return;
+    }
+
     if (!employeeData?.clientId) return;
 
     try {
@@ -174,7 +185,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     } finally {
       setIsLoadingStudents(false);
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, isIntegrationEnabled]);
 
   useEffect(() => {
     fetchStudents();
@@ -461,17 +472,27 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           })
         : availableStaff;
     } else if (role === 'Student') {
-      // If search query is empty, show internal students from client-side data
-      if (searchQuery.length === 0) {
-        const availableInternalStudents = fetchedStudents.filter(student => {
-          const studentName = student.name;
-          return !selectedStudentNames.includes(studentName);
-        });
+      // If integration is enabled, don't show client-side students
+      if (isIntegrationEnabled) {
+        // Only show API search results when integration is enabled
+        if (searchQuery.length === 0) {
+          // Return empty array - no client-side data when integration is enabled
+          return [];
+        }
+      } else {
+        // Integration is NOT enabled - show client-side students
+        if (searchQuery.length === 0) {
+          // If search query is empty, show all internal students from client-side data
+          const availableInternalStudents = fetchedStudents.filter(student => {
+            const studentName = student.name;
+            return !selectedStudentNames.includes(studentName);
+          });
 
-        // Transform to match API format (same as transformStudent in edge function)
-        const transformedInternal = availableInternalStudents.map(transformClientStudent);
-        
-        return transformedInternal;
+          // Transform to match API format (same as transformStudent in edge function)
+          const transformedInternal = availableInternalStudents.map(transformClientStudent);
+          
+          return transformedInternal;
+        }
       }
       
       // If search query is less than 3 characters, show message
@@ -483,8 +504,27 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       const apiSearchResults = searchResults[index] || [];
       const isAPILoading = isSearchingAPI[index];
 
+      // When integration is disabled, also include local students that match the search
+      let localStudents: any[] = [];
+      if (!isIntegrationEnabled && searchQuery.length >= 3) {
+        const searchTerm = searchQuery.toLowerCase();
+        const matchingLocalStudents = fetchedStudents.filter(student => {
+          const studentName = student.name.toLowerCase();
+          const studentId = student.studentId?.toLowerCase() || '';
+          return (studentName.includes(searchTerm) || studentId.includes(searchTerm)) &&
+                 !selectedStudentNames.includes(student.name);
+        });
+        localStudents = matchingLocalStudents.map(transformClientStudent);
+      }
+
+      // Combine API results and local students, removing duplicates
+      const allStudents = [...apiSearchResults, ...localStudents];
+      const uniqueStudents = allStudents.filter((student, index, self) => 
+        index === self.findIndex(s => s.id === student.id || s.student_id === student.student_id)
+      );
+
       // Filter out already selected students
-      const availableStudents = apiSearchResults.filter(student => {
+      const availableStudents = uniqueStudents.filter(student => {
         const studentName = student.name;
         return !selectedStudentNames.includes(studentName);
       });
@@ -501,12 +541,12 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       if (availableStudents.length > 0) {
         result.push(...availableStudents);
       } else if (searchQuery.length >= 3) {
-        // No results found after API search
+        // No results found after search
         result.push({ id: 'no-student-found', name: 'No Student Found', isNoStudentOption: true } as any);
       }
 
-      // Always add "Add Student" option at the bottom (only if search query exists)
-      if (searchQuery.length >= 3) {
+      // Add "Add Student" option at the bottom (only if search query exists and integration is NOT enabled)
+      if (searchQuery.length >= 3 && !isIntegrationEnabled) {
         result.push({ id: 'add-student', name: 'Add Student', isAddOption: true } as any);
       }
 
@@ -647,8 +687,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     );
                   }
                   
-                  // Check if this is the "Add Student" option - render it at the bottom
-                  if (person.role === 'Student' && (option as any).isAddOption) {
+                  // Check if this is the "Add Student" option - render it at the bottom (only if integration is NOT enabled)
+                  if (person.role === 'Student' && (option as any).isAddOption && !isIntegrationEnabled) {
                     return (
                       <li
                         key="add-student"
@@ -770,8 +810,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                           </div>
                         </li>
                       ))}
-                    {/* Always show "Add Student" link at the bottom for Student role */}
-                    {person.role === 'Student' && (
+                    {/* Show "Add Student" link at the bottom for Student role (only if integration is NOT enabled) */}
+                    {person.role === 'Student' && !isIntegrationEnabled && (
                       <li
                         key="add-student"
                         className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-t border-gray-200"
@@ -795,8 +835,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                   <ul className="py-1 text-sm">
                     {filteredOptions.map((option) => {
-                      // Check if this is the "Add Student" option
-                      if (person.role === 'Student' && (option as any).isAddOption) {
+                      // Check if this is the "Add Student" option (only if integration is NOT enabled)
+                      if (person.role === 'Student' && (option as any).isAddOption && !isIntegrationEnabled) {
                         return (
                           <li
                             key="add-student"

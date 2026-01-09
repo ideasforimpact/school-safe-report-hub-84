@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Upload, FileUp, AlertCircle, Check, Loader2, Download, FileText } from 'lucide-react';
+import { Upload, FileUp, AlertCircle, Check, Loader2, Download, FileText, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
 import { downloadStudentExcelTemplate, downloadStudentCSVTemplate } from '@/services/student/utils/templateGenerator';
@@ -26,6 +26,23 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isValidated, setIsValidated] = useState(false);
   const [recordCount, setRecordCount] = useState<number | null>(null);
+  const [errorRowNumbers, setErrorRowNumbers] = useState<Set<number>>(new Set());
+
+  // Helper function to parse error messages and extract row numbers
+  const parseErrorRowNumbers = (errors: string[]): Set<number> => {
+    const rowNumbers = new Set<number>();
+    errors.forEach(error => {
+      // Match patterns like "Row 4:", "Row 5:", etc.
+      const match = error.match(/Row\s+(\d+):/i);
+      if (match) {
+        const rowNum = parseInt(match[1], 10);
+        if (!isNaN(rowNum)) {
+          rowNumbers.add(rowNum);
+        }
+      }
+    });
+    return rowNumbers;
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
@@ -33,6 +50,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setIsValidated(false);
     setValidationErrors([]);
     setRecordCount(null);
+    setErrorRowNumbers(new Set());
     
     // Auto-validate when a file is selected
     if (selectedFile) {
@@ -71,9 +89,15 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       const errors = await validateStudentExcel(selectedFile, employeeData.clientId);
       setValidationErrors(errors);
       
+      // Parse error row numbers
+      const errorRows = parseErrorRowNumbers(errors);
+      setErrorRowNumbers(errorRows);
+      
       // Estimate number of records from file size or extract it during validation
+      let totalRecords = 0;
       try {
         const data = await parseExcelForCount(selectedFile);
+        totalRecords = data;
         setRecordCount(data);
       } catch (e) {
         console.error("Couldn't determine record count", e);
@@ -121,13 +145,15 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       return;
     }
 
-    if (!isValidated) {
-      toast.error('Please validate the file before importing');
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available. Please ensure you are logged in properly.');
       return;
     }
 
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available. Please ensure you are logged in properly.');
+    // Check if there are any valid records to import
+    const validRecordCount = recordCount ? recordCount - errorRowNumbers.size : null;
+    if (validRecordCount !== null && validRecordCount <= 0) {
+      toast.error('No valid records to import. All records have errors.');
       return;
     }
 
@@ -135,12 +161,14 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
 
     try {
       // Show a message for large imports to manage user expectations
-      if (recordCount && recordCount > 100) {
-        toast.info(`Processing ${recordCount} records. This may take a moment...`);
+      const recordsToProcess = validRecordCount || recordCount;
+      if (recordsToProcess && recordsToProcess > 100) {
+        toast.info(`Processing ${recordsToProcess} records. This may take a moment...`);
       }
       
       // Use the enhanced import function with client-specific processing
-      await processStudentExcel(file, employeeData.clientId);
+      // Pass error row numbers to exclude them from import
+      await processStudentExcel(file, employeeData.clientId, Array.from(errorRowNumbers));
       handleDialogClose();
     } catch (error) {
       console.error('Import error:', error);
@@ -155,8 +183,13 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setValidationErrors([]);
     setIsUploading(false);
     setRecordCount(null);
+    setErrorRowNumbers(new Set());
     onOpenChange(false);
   };
+
+  // Calculate how many records will be imported (excluding error rows)
+  const validRecordCount = recordCount ? recordCount - errorRowNumbers.size : null;
+  const hasValidRecords = validRecordCount !== null && validRecordCount > 0;
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
@@ -244,25 +277,49 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
           </div>
 
           {validationErrors.length > 0 && (
-            <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">
-              <h3 className="font-medium flex items-center text-destructive mb-2">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                Validation Errors ({validationErrors.length} found)
-              </h3>
-              <div className="max-h-40 overflow-y-auto text-sm">
-                <ul className="list-disc pl-5 space-y-1">
-                  {validationErrors.slice(0, 10).map((error, index) => (
-                    <li key={index} className="text-destructive">
-                      {error}
-                    </li>
-                  ))}
-                  {validationErrors.length > 10 && (
-                    <li className="text-destructive font-medium">
-                      ... and {validationErrors.length - 10} more errors
-                    </li>
-                  )}
-                </ul>
+            <div className="space-y-3">
+              <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">
+                <h3 className="font-medium flex items-center text-destructive mb-2">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  Validation Errors ({validationErrors.length} found)
+                </h3>
+                <div className="max-h-40 overflow-y-auto text-sm">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {validationErrors.slice(0, 10).map((error, index) => (
+                      <li key={index} className="text-destructive">
+                        {error}
+                      </li>
+                    ))}
+                    {validationErrors.length > 10 && (
+                      <li className="text-destructive font-medium">
+                        ... and {validationErrors.length - 10} more errors
+                      </li>
+                    )}
+                  </ul>
+                </div>
               </div>
+              
+              {/* Confirmation message for importing valid records */}
+              {hasValidRecords && (
+                <div className="border border-blue-500/50 rounded-md p-3 bg-blue-500/10">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-800 mb-1">
+                        We exclude the error list from import
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Processed To Import: <strong>{validRecordCount}</strong> of {recordCount} records
+                        {errorRowNumbers.size > 0 && (
+                          <span className="block mt-1 text-xs">
+                            ({errorRowNumbers.size} record{errorRowNumbers.size !== 1 ? 's' : ''} with errors will be excluded)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -318,7 +375,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!isValidated || isUploading || !employeeData?.clientId}
+              disabled={(!isValidated && !hasValidRecords) || isUploading || !employeeData?.clientId || !file}
               className="gap-1"
             >
               {isUploading ? (

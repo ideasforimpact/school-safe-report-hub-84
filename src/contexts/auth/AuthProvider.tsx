@@ -1,5 +1,5 @@
 import React, { createContext, useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType, LogoutReason } from './types';
+import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType, ClientIntegration, LogoutReason } from './types';
 import { 
   logoutUser, 
   loginUser, 
@@ -91,9 +91,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
   // Helper function to fetch client and client type information
-  const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+  const fetchClientInfo = useRef(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null, clientIntegration: ClientIntegration[] | null }> => {
     try {
-      // Fetch client information with client type
+      // Fetch client information with client type and client integration
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
         .select(`
@@ -111,7 +111,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (clientError || !clientData) {
         console.error("Error fetching client data:", clientError);
-        return { client: null, clientType: null };
+        return { client: null, clientType: null, clientIntegration: null };
+      }
+
+      // Fetch client integration records using RPC function to bypass RLS
+      let clientIntegration: ClientIntegration[] | null = null;
+      try {
+        console.log('🔍 Fetching client_integration for client_id:', clientId);
+        const { data: integrationData, error: integrationError } = await (supabase as any)
+          .rpc('get_client_integration_for_auth', { p_client_id: clientId });
+
+        if (integrationError) {
+          console.error("❌ Error fetching client integration:", {
+            error: integrationError,
+            message: integrationError.message,
+            code: integrationError.code,
+            details: integrationError.details,
+            hint: integrationError.hint,
+            clientId: clientId
+          });
+          // If function doesn't exist, log a helpful message
+          if (integrationError.message?.includes('function') || integrationError.code === '42883') {
+            console.error("⚠️ The RPC function 'get_client_integration_for_auth' may not exist. Please run the migration: 20260110000000_create_get_client_integration_for_auth_function.sql");
+          }
+        } else if (integrationData && Array.isArray(integrationData)) {
+          if (integrationData.length > 0) {
+            clientIntegration = integrationData.map((item: any) => ({
+              id: item.id,
+              client_id: item.client_id,
+              target_client_id: item.target_client_id,
+              target_client_name: item.target_client_name,
+              is_linked: item.is_linked,
+              active: item.active,
+              created_at: item.created_at,
+              updated_at: item.updated_at,
+              updated_by: item.updated_by
+            }));
+            console.log('✅ Client integration fetched:', {
+              count: clientIntegration.length,
+              records: clientIntegration,
+              clientId: clientId
+            });
+          } else {
+            console.log('ℹ️ No client integration records found for client:', clientId);
+          }
+        } else {
+          console.log('ℹ️ Client integration data is not an array or is null:', {
+            data: integrationData,
+            clientId: clientId
+          });
+        }
+      } catch (integrationErr) {
+        console.error("❌ Exception fetching client integration:", {
+          error: integrationErr,
+          clientId: clientId,
+          stack: integrationErr instanceof Error ? integrationErr.stack : undefined
+        });
+        // Continue with null integration if fetch fails
+        clientIntegration = null;
       }
 
       // Build logo URL from path if needed
@@ -132,7 +189,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
-        client_type: clientData.client_type
+        client_type: clientData.client_type,
+        client_integration: clientIntegration
       };
 
       const clientType: ClientType | null = clientData.client_type ? {
@@ -143,10 +201,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         updated_at: clientData.client_type.updated_at
       } : null;
 
-      return { client, clientType };
+      return { client, clientType, clientIntegration };
     } catch (error) {
       console.error("Error in fetchClientInfo:", error);
-      return { client: null, clientType: null };
+      return { client: null, clientType: null, clientIntegration: null };
     }
   }).current;
 
@@ -169,7 +227,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // If user has clientId but no client info, fetch it
     if (user.clientId && !user.client) {
       try {
-        const { client, clientType } = await fetchClientInfo(user.clientId);
+        const { client, clientType, clientIntegration } = await fetchClientInfo(user.clientId);
         const userWithClientInfo = {
           ...user,
           client,
@@ -565,6 +623,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [handleUserAuthentication, dispatch, currentUser, state.isLoggingOut, state.configuredModules, state.employeeData, handleLoginBroadcast, handleLogoutBroadcast, broadcastToOtherTabs, location.pathname, isBackofficeUser, navigate]);
 
+  // Note: Realtime subscription for client_integration is now handled by useRealtimeClientIntegrationSync hook
+  // which is called in ModuleSyncProvider. This ensures consistent behavior with module sync.
+
   // Check Supabase auth on initialization and handle persisted state
   useEffect(() => {
     // Prevent infinite loops and respect coordinator blocks
@@ -633,7 +694,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
           
           if (employeeData && !error) {
-            const { client, clientType } = await fetchClientInfo(employeeData.client_id);
+            const { client, clientType, clientIntegration } = await fetchClientInfo(employeeData.client_id);
 
             const employee: EmployeeData = {
               id: employeeData.id,
@@ -645,7 +706,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               department: employeeData.department, 
               employeeType: employeeData.employee_type,
               client: client,
-              clientType: clientType
+              clientType: clientType,
+              client_integration: clientIntegration
             };
             
             console.log('🔍 AuthProvider - Employee data loaded:', employee);
