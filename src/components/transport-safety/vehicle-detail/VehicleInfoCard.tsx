@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Calendar, Trash2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { getLatestVerificationFieldValue } from '@/utils/transport-safety/documentStatusUtils';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
+import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
+import { VehicleChallans } from '@/types/transportSafety';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
@@ -48,11 +50,13 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showVerificationResults, setShowVerificationResults] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
+  const [apiResponseData, setApiResponseData] = useState<any>(null);
   const [showSafetyCheckConsent, setShowSafetyCheckConsent] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [challanError, setChallanError] = useState<string | null>(null);
   const [hasChallanData, setHasChallanData] = useState<boolean>(true);
+  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(null);
 
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
@@ -78,6 +82,22 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     
     return false;
   }, [isSuperAdmin, state.configuredModules]);
+
+  // Fetch vehicle_challans when component mounts
+  useEffect(() => {
+    const fetchVehicleChallans = async () => {
+      if (vehicleId) {
+        try {
+          const challans = await getVehicleChallans(vehicleId);
+          setVehicleChallans(challans);
+        } catch (error) {
+          console.error('Error fetching vehicle_challans:', error);
+        }
+      }
+    };
+
+    fetchVehicleChallans();
+  }, [vehicleId]);
 
   const getLatestVerificationData = () => {
     if (!vehicle.verificationData) return null;
@@ -119,30 +139,67 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       
       // Update verification status in component state
       setVerificationData(data.data);
+      setApiResponseData(data.data); // Store API response for dialog
       setLastCheckTime(new Date());
-      setShowVerificationResults(true);
-
-      const challan = data?.data?.challan;
-      if (!challan || challan?.status_code !== 200 || challan?.success === false) {
-        setChallanError('Challan details could not be fetched at this time. Please contact support.');
-        setHasChallanData(false);
-      } else {
-        setChallanError(null);
-        setHasChallanData(true);
-      }
-
       
-      // Update the vehicle in context with verification data
+      // Update the vehicle in context with verification data (minimal update)
       updateVehicle(vehicleId, {
         verificationStatus: data.data.status,
         verificationDate: data.data.verificationDate,
         verificationData: data.data.transformed
       });
+
+      // Refresh vehicle_challans after API call (challan data is stored in vehicle_challans table)
+      try {
+        const updatedChallans = await getVehicleChallans(vehicleId);
+        setVehicleChallans(updatedChallans);
+        
+        // Check challan status from vehicle_challans
+        if (updatedChallans) {
+          // Check if we have challan data (even if API call failed, we might have error data)
+          if (updatedChallans.latest_challan_data) {
+            // Check if the data contains actual challans or is an error response
+            const challanData = updatedChallans.latest_challan_data;
+            const hasChallans = 
+              (challanData?.data?.challan_details?.challans && Array.isArray(challanData.data.challan_details.challans) && challanData.data.challan_details.challans.length > 0) ||
+              (challanData?.data?.challan_data && Array.isArray(challanData.data.challan_data) && challanData.data.challan_data.length > 0) ||
+              (challanData?.challan_details?.challans && Array.isArray(challanData.challan_details.challans) && challanData.challan_details.challans.length > 0);
+            
+            if (hasChallans) {
+              setChallanError(null);
+              setHasChallanData(true);
+            } else if (updatedChallans.challan_status === false) {
+              // API call failed, but we have error data
+              setChallanError(null);
+              setHasChallanData(false);
+            } else {
+              // Data exists but no challans found (might be empty response)
+              setChallanError(null);
+              setHasChallanData(false);
+            }
+          } else {
+            // No challan data at all
+            setChallanError(null);
+            setHasChallanData(false);
+          }
+        } else {
+          // No challan record found (API might not have been called yet or failed completely)
+          setChallanError(null);
+          setHasChallanData(false);
+        }
+      } catch (challanFetchError) {
+        console.error('Error fetching vehicle_challans after API call:', challanFetchError);
+        setChallanError('Failed to fetch challan details. Please try again.');
+        setHasChallanData(false);
+      }
       
       // Process documents if they exist
       documents.forEach(doc => {
         verifyDocument(vehicleId, doc.id, 'verified', 'api', 'Automatically verified through Surepass API');
       });
+      
+      // Open verification dialog with API response data
+      setShowVerificationResults(true);
       
       // Close popup only after successful response
       setShowSafetyCheckConsent(false);
@@ -289,6 +346,9 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                   challanError={challanError}
                   hasChallanData={hasChallanData}
                   title="Latest Verification Details"
+                  vehicle={vehicle}
+                  apiResponse={apiResponseData}
+                  vehicleChallans={vehicleChallans}
               />
             </Dialog>
           </div>

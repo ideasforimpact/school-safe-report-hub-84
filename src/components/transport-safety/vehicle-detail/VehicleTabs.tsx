@@ -31,6 +31,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
+import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
+import { VehicleChallans } from '@/types/transportSafety';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -40,6 +42,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const { getVehicle } = useTransportSafety();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
   const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
+  const [vehicleChallans, setVehicleChallans] = React.useState<VehicleChallans | null>(null);
   const [showAddDocumentDialog, setShowAddDocumentDialog] = React.useState(false);
   const [showFilePreview, setShowFilePreview] = React.useState(false);
   const [selectedDocument, setSelectedDocument] = React.useState<VehicleDocument | null>(null);
@@ -120,6 +123,24 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
 
   useEffect(() => {
     fetchDocuments();
+  }, [vehicleId]);
+
+  // Fetch vehicle_challans when component mounts
+  useEffect(() => {
+    const fetchVehicleChallans = async () => {
+      if (vehicleId) {
+        try {
+          const challans = await getVehicleChallans(vehicleId);
+          console.log(challans,"challansApi1214");
+          
+          setVehicleChallans(challans);
+        } catch (error) {
+          console.error('Error fetching vehicle_challans:', error);
+        }
+      }
+    };
+
+    fetchVehicleChallans();
   }, [vehicleId]);
   const handleDocumentUpdate = useCallback(async () => {
     await fetchDocuments();
@@ -707,6 +728,8 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   open={showVerificationDetails}
   onOpenChange={setShowVerificationDetails}
   verificationData={selectedVerificationData}
+  vehicle={vehicle || undefined}
+  vehicleChallans={vehicleChallans}
 />
       
       {/* Upload Document Dialog */}

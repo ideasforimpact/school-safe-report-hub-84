@@ -1,4 +1,4 @@
-import { Vehicle, VehicleVerificationField } from '@/types/transportSafety';
+import { Vehicle, VehicleVerificationField, VehicleVerificationData } from '@/types/transportSafety';
 
 export interface DocumentStatus {
   status: 'valid' | 'expired' | 'expiring_soon' | 'missing';
@@ -282,4 +282,262 @@ export const getDocumentStatusColor = (status: string): string => {
     default:
       return 'bg-gray-100 border-gray-200 text-gray-800';
   }
+};
+
+/**
+ * Field order for verification data display
+ */
+const VERIFICATION_FIELD_ORDER = [
+  'display_type',
+  'display_year',
+  'rc_number',
+  'fit_up_to',
+  'registration_date',
+  'owner_name',
+  'father_name',
+  'present_address',
+  'permanent_address',
+  'vehicle_category',
+  'vehicle_chasi_number',
+  'vehicle_engine_number',
+  'maker_description',
+  'maker_model',
+  'body_type',
+  'fuel_type',
+  'color',
+  'norms_type',
+  'financer',
+  'insurance_company',
+  'insurance_policy_number',
+  'insurance_upto',
+  'manufacturing_date',
+  'manufacturing_date_formatted',
+  'registered_at',
+  'latest_by',
+  'less_info',
+  'tax_upto',
+  'tax_paid_upto',
+  'cubic_capacity',
+  'vehicle_gross_weight',
+  'no_cylinders',
+  'seat_capacity',
+  'sleeper_capacity',
+  'standing_capacity',
+  'wheelbase',
+  'unladen_weight',
+  'vehicle_category_description',
+  'pucc_number',
+  'pucc_upto',
+  'owner_number',
+  'rc_status',
+];
+
+/**
+ * Transform API response data into ordered format
+ * Returns array of { field, value, verified } objects in specified order
+ */
+export const transformApiResponseData = (
+  apiResponse: any,
+  vehicleChallans?: any
+): VehicleVerificationData[] => {
+  const result: VehicleVerificationData[] = [];
+  
+  // Get RC data from API response
+  let rcData: any = null;
+  
+  if (apiResponse?.original?.data) {
+    rcData = apiResponse.original.data;
+  } else if (apiResponse?.data) {
+    rcData = apiResponse.data;
+  }
+  
+  if (!rcData || typeof rcData !== 'object') {
+    return [];
+  }
+  
+  // Create a map of all available fields
+  const fieldMap = new Map<string, any>();
+  
+  Object.entries(rcData).forEach(([key, value]) => {
+    const fieldLower = key.toLowerCase();
+    // Skip internal fields
+    if (!['verification_log', 'last_response', 'status', 'rc_history_log', 'response_metadata', 'challan_details'].some(f => fieldLower.includes(f))) {
+      fieldMap.set(key, value);
+    }
+  });
+  
+  // Add fields in specified order
+  VERIFICATION_FIELD_ORDER.forEach(fieldName => {
+    if (fieldMap.has(fieldName)) {
+      result.push({
+        field: fieldName,
+        value: fieldMap.get(fieldName) ?? '',
+        verified: true
+      });
+      fieldMap.delete(fieldName);
+    }
+  });
+  
+  // Add remaining fields that weren't in the order list
+  fieldMap.forEach((value, fieldName) => {
+    result.push({
+      field: fieldName,
+      value: value ?? '',
+      verified: true
+    });
+  });
+  
+  // Add challan_details from vehicle_challans if available
+  if (vehicleChallans?.latest_challan_data) {
+    const challanData = vehicleChallans.latest_challan_data;
+    let challanDetails: any = null;
+    
+    if (challanData?.data?.challan_details) {
+      challanDetails = {
+        challan_details: challanData.data.challan_details
+      };
+    } else if (challanData?.data?.challan_data) {
+      challanDetails = {
+        challan_details: {
+          challans: Array.isArray(challanData.data.challan_data) 
+            ? challanData.data.challan_data 
+            : []
+        }
+      };
+    } else if (challanData?.challan_details) {
+      challanDetails = {
+        challan_details: challanData.challan_details
+      };
+    }
+    
+    if (challanDetails) {
+      result.push({
+        field: 'challan_details',
+        value: challanDetails,
+        verified: true
+      });
+    }
+  }
+  
+  return result;
+};
+
+/**
+ * Transform vehicle data from current_rc_data and vehicle_challans into the standard format
+ * Returns array of { field, value, verified } objects
+ * Challan details come from vehicle_challans table, not from API response
+ */
+export const transformVehicleData = (
+  vehicle: Vehicle | null | undefined
+): VehicleVerificationData[] => {
+  if (!vehicle) return [];
+
+  const result: VehicleVerificationData[] = [];
+  
+  // Get RC data from current_rc_data (preferred) or fallback to verificationData
+  let rcData: any = null;
+  
+  if (vehicle.currentRcData) {
+    // current_rc_data might be:
+    // 1. Full API response: { success: true, data: { ... } } or { status_code: 200, data: { ... } }
+    // 2. Just the data object: { ... }
+    // 3. Already the data object nested: { data: { ... } }
+    
+    if (vehicle.currentRcData.data && typeof vehicle.currentRcData.data === 'object') {
+      // Case 1 & 3: Has nested data property
+      rcData = vehicle.currentRcData.data;
+    } else if (vehicle.currentRcData.success !== undefined || vehicle.currentRcData.status_code !== undefined) {
+      // Case 1: Full API response but data might be at root level
+      rcData = vehicle.currentRcData.data || vehicle.currentRcData;
+    } else {
+      // Case 2: Already the data object
+      rcData = vehicle.currentRcData;
+    }
+  } else if (vehicle.verificationData && Array.isArray(vehicle.verificationData)) {
+    // Fallback: try to reconstruct from verificationData
+    const latestLog = getLatestVerificationLog(vehicle);
+    if (latestLog) {
+      // Convert array format to object format
+      rcData = {};
+      latestLog.forEach((item: VehicleVerificationField) => {
+        if (item.field !== 'challan_details' && 
+            item.field !== 'verification_log' && 
+            item.field !== 'last_response' && 
+            item.field !== 'status' &&
+            item.field !== 'rc_history_log') {
+          rcData[item.field] = item.value;
+        }
+      });
+    }
+  }
+
+  // Transform RC data fields
+  if (rcData && typeof rcData === 'object') {
+    // Fields to exclude (internal system fields, not user data)
+    const excludedFields = [
+      'verification_log',
+      'last_response',
+      'status',
+      'rc_history_log',
+      'response_metadata', // Exclude response_metadata as per user request
+    ];
+
+    // Process all fields from RC data
+    // Include all fields except excluded ones
+    Object.entries(rcData).forEach(([key, value]) => {
+      const fieldLower = key.toLowerCase();
+      
+      // Skip only internal system fields
+      if (excludedFields.some(f => fieldLower.includes(f))) {
+        return;
+      }
+
+      // Skip challan_details from RC data - we'll add it separately from vehicle_challans
+      if (fieldLower === 'challan_details') {
+        return;
+      }
+
+      result.push({
+        field: key,
+        value: value ?? '',
+        verified: true
+      });
+    });
+  }
+
+  // Add challan_details from vehicle_challans table
+  if (vehicle.vehicleChallans?.latest_challan_data) {
+    const challanData = vehicle.vehicleChallans.latest_challan_data;
+    
+    // Extract challan_details from different possible structures
+    let challanDetails: any = null;
+    
+    if (challanData?.data?.challan_details) {
+      challanDetails = {
+        challan_details: challanData.data.challan_details
+      };
+    } else if (challanData?.data?.challan_data) {
+      challanDetails = {
+        challan_details: {
+          challans: Array.isArray(challanData.data.challan_data) 
+            ? challanData.data.challan_data 
+            : []
+        }
+      };
+    } else if (challanData?.challan_details) {
+      challanDetails = {
+        challan_details: challanData.challan_details
+      };
+    }
+
+    if (challanDetails) {
+      result.push({
+        field: 'challan_details',
+        value: challanDetails,
+        verified: true
+      });
+    }
+  }
+
+  return result;
 };

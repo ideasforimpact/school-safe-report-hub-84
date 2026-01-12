@@ -4,7 +4,8 @@ import { Vehicle, VehicleDocument } from '@/types/transportSafety';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { 
-  getAllVehicles, 
+  getAllVehicles,
+  getAllVehiclesWithChallans, 
   getVehicleById, 
   addVehicle as addVehicleService, 
   updateVehicle as updateVehicleService, 
@@ -44,7 +45,8 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       }
 
       console.log('Fetching vehicles for client:', clientId);
-      const vehiclesData = await getAllVehicles(clientId);
+      // Use getAllVehiclesWithChallans to include vehicle_challans data
+      const vehiclesData = await getAllVehiclesWithChallans(clientId);
       
       console.log('Fetched vehicles:', vehiclesData);
       setVehicles(vehiclesData);
