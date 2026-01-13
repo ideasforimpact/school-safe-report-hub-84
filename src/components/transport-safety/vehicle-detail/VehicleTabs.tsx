@@ -30,6 +30,9 @@ import { UploadedDocument, formatSupabaseUrl, isPdfFile } from '@/types/fileType
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import VerificationDetailsDialog from '../VerificationDetailsDialog';
+import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
+import { VehicleChallans } from '@/types/transportSafety';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -39,6 +42,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const { getVehicle } = useTransportSafety();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
   const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
+  const [vehicleChallans, setVehicleChallans] = React.useState<VehicleChallans | null>(null);
   const [showAddDocumentDialog, setShowAddDocumentDialog] = React.useState(false);
   const [showFilePreview, setShowFilePreview] = React.useState(false);
   const [selectedDocument, setSelectedDocument] = React.useState<VehicleDocument | null>(null);
@@ -119,6 +123,24 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
 
   useEffect(() => {
     fetchDocuments();
+  }, [vehicleId]);
+
+  // Fetch vehicle_challans when component mounts
+  useEffect(() => {
+    const fetchVehicleChallans = async () => {
+      if (vehicleId) {
+        try {
+          const challans = await getVehicleChallans(vehicleId);
+          console.log(challans,"challansApi1214");
+          
+          setVehicleChallans(challans);
+        } catch (error) {
+          console.error('Error fetching vehicle_challans:', error);
+        }
+      }
+    };
+
+    fetchVehicleChallans();
   }, [vehicleId]);
   const handleDocumentUpdate = useCallback(async () => {
     await fetchDocuments();
@@ -702,33 +724,13 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       </TabsContent>
       
       {/* Verification Details Dialog */}
-      <Dialog open={showVerificationDetails} onOpenChange={setShowVerificationDetails}>
-        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Verification Details</DialogTitle>
-            <DialogDescription>
-              Registration details verified through Surepass API.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="border rounded-md divide-y">
-            {formatVerificationData(selectedVerificationData).map((field: any, index: number) => (
-              <div key={index} className="px-4 py-2">
-                <div className="font-medium text-gray-500">{field.label}:</div>
-                <div className="text-gray-900">
-                  {typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : String(field.value)}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <DialogFooter>
-            <Button onClick={() => setShowVerificationDetails(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+     <VerificationDetailsDialog
+  open={showVerificationDetails}
+  onOpenChange={setShowVerificationDetails}
+  verificationData={selectedVerificationData}
+  vehicle={vehicle || undefined}
+  vehicleChallans={vehicleChallans}
+/>
       
       {/* Upload Document Dialog */}
       <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>

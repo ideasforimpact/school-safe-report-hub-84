@@ -38,6 +38,8 @@ const VehicleDetailContent: React.FC = () => {
       // Fetch vehicle directly from database with client_id validation
       // This ensures that vehicles from other clients cannot be accessed
       const fetchedVehicle = await getVehicleById(vehicleId, clientId);
+      console.log(fetchedVehicle,"vehiclesDataApi");
+      
       
       if (!fetchedVehicle) {
         setError('Vehicle not found or you do not have access to this vehicle');
