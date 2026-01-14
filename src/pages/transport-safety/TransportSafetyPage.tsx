@@ -28,6 +28,8 @@ const TransportSafetyPage = () => {
       
       try {
         const vehicles = await getAllVehiclesWithChallans(clientId);
+        console.log(vehicles,'get the vehicles in all tab');
+        
         setTotalVehicles(vehicles.length);
         
         let totalPendingAmount = 0;
@@ -44,6 +46,7 @@ const TransportSafetyPage = () => {
         
         setPendingAmount(totalPendingAmount);
         setPendingChallanCount(totalPendingCount);
+        console.log({vehicles,totalPendingAmount,totalPendingCount},'get the vehicles in all tab');
       } catch (error) {
         console.error('Error fetching vehicles data:', error);
       }
@@ -70,6 +73,8 @@ const handleVehiclesChanged = useCallback(({ vehicles }) => {
   
   setPendingAmount(totalPendingAmount);
   setPendingChallanCount(totalPendingCount);
+  console.log({vehicles,totalPendingAmount,totalPendingCount},'happens with the vehicle');
+
 }, []);
 
 
