@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { validateExcelData } from '@/services/student/utils/excelValidationUtils';
 import { processStudentData } from '@/services/student/importProcessingService';
 import { RawStudentData } from '@/services/student/types/importTypes';
+import { parseStudentFile } from '@/services/student/utils/excelProcessingUtils';
 
 interface ImportStudentDialogProps {
   open: boolean;
@@ -83,10 +84,6 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     if (!selectedFile || !employeeData?.clientId) return;
 
     try {
-      const { parseStudentFile } = await import(
-        '@/services/student/utils/excelProcessingUtils'
-      );
-
       const parsed = structuredClone(await parseStudentFile(selectedFile));
 
       setParsedData(parsed);
