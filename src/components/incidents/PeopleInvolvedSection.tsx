@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
+import { NOTES_MAX_LENGTH } from '../constants';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface UserBasicInfo {
   id: string;
@@ -102,8 +104,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   }, [employeeData?.clientId]);
 
   // Fetch staff members when component mounts
-  useEffect(() => {
-    const fetchStaffMembers = async () => {
+    const fetchStaffMembers = useCallback(async () => {
       if (!employeeData?.clientId) return;
 
       try {
@@ -114,30 +115,27 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           .eq('client_id', employeeData.clientId)
           .eq('status', true);
 
-        if (error) {
-          console.error('Error fetching staff members:', error);
-          toast.error('Failed to load staff members');
-          return;
-        }
+        if (error) throw error;
 
-        const mappedStaff = staffData.map(emp => ({
+        setStaffMembers(
+        staffData.map(emp => ({
           id: emp.id,
           firstName: emp.first_name,
           lastName: emp.last_name,
           email: emp.email
-        }));
-
-        setStaffMembers(mappedStaff);
+        }))
+        );
       } catch (error) {
         console.error('Error fetching staff members:', error);
         toast.error('Failed to load staff members');
       } finally {
         setIsLoadingStaff(false);
       }
-    };
+    }, [employeeData?.clientId]);
 
-    fetchStaffMembers();
-  }, [employeeData?.clientId]);
+    useEffect(() => {
+      fetchStaffMembers();
+    }, [fetchStaffMembers]);
 
   // Fetch students filtered by client_id - only if integration is NOT enabled
   const fetchStudents = useCallback(async () => {
@@ -571,6 +569,41 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     return person.name;
   };
 
+  useEffect(() => {
+    if (!staffMembers.length) return;
+
+    const validStaffIds = staffMembers.map(s => s.id);
+    
+    peopleInvolved.forEach((person, index) => {
+      if (
+        person.role === 'Staff' &&
+        person.id &&                     
+        !validStaffIds.includes(person.id)
+      ) {
+        console.warn('[PeopleInvolved] Staff deleted, removing:', person);
+        onRemovePerson(index);
+      }
+    });
+  }, [staffMembers]);
+
+  useEffect(() => {
+    if (!fetchedStudents.length) return;
+
+    const validStudentIds = fetchedStudents.map(s => s.id);
+
+    peopleInvolved.forEach((person, index) => {
+      if (
+        person.role === 'Student' &&
+        person.id &&
+        !validStudentIds.includes(person.id)
+      ) {
+        console.warn('[PeopleInvolved] Student deleted, removing:', person);
+        onRemovePerson(index);
+      }
+    });
+  }, [fetchedStudents]);
+
+
   const renderNameField = (person: Person, index: number) => {
     const hasError = errors[`peopleInvolved.${index}.name`];
     
@@ -910,6 +943,20 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     
     return options;
   };
+  useRealTimeSubHook({
+    channelName: 'employees-realtime',
+    table: 'employees',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: fetchStaffMembers,
+  });
+  useRealTimeSubHook({
+    channelName: 'students-realtime',
+    table: 'students',
+    events: '*',
+    enabled: !!employeeData?.clientId && !isIntegrationEnabled,
+    onPayload: fetchStudents,
+  });
 
   return (
     <div className="space-y-4">
@@ -973,6 +1020,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     value={person.notes || ''}
                     onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
                     className="w-full p-2 border rounded-md text-sm"
+                    maxLength={NOTES_MAX_LENGTH}
                     placeholder="Additional notes"
                   />
                 </div>

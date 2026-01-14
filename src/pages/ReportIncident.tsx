@@ -22,6 +22,7 @@ import { TicketIdService } from '@/services/incident/ticketIdService';
 import { FileItem } from '@/types/fileTypes';
 import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
+import { ArrowLeft } from 'lucide-react';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -695,6 +696,14 @@ const ReportIncident = () => {
         {/* Header section */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto">
+            <Button 
+              variant="ghost" 
+              className="flex items-center -ml-4 mb-4"
+              onClick={() => navigate(`/incidents`)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Incident Details
+            </Button>
             <h1 className="text-2xl font-semibold text-gray-900">
               Report New Incident
             </h1>
@@ -731,7 +740,7 @@ const ReportIncident = () => {
                 <Button 
                   type="button" 
                   variant="outline"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(-1)}
                   className="px-6 border-gray-300"
                   disabled={isSubmitting}
                 >
