@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface Employee {
   id: string;
@@ -118,6 +119,18 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
     onOpenChange(false);
     setSelectedEmployeeId('');
   };
+
+  const handleEmployeeUpdate = useCallback(async () => {
+    await fetchEmployees();
+  }, [fetchEmployees]);
+
+  useRealTimeSubHook({
+    channelName: `employees-${clientId}`,
+    events: "*",
+    table: "employees",
+    enabled: !!clientId,
+    onPayload: handleEmployeeUpdate,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
