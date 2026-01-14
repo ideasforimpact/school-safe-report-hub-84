@@ -12,6 +12,7 @@ import { useIncidents } from '@/contexts/incident';
 import { useState, useEffect, useCallback } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
 import { FileItem, ContributingFactor, Action } from '@/types/incident';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -145,6 +146,14 @@ const IncidentDetail = () => {
     }
   }, [incidentDetailProps.handleStatusChange, statusUpdate, handleRefreshIncident]);
   
+  useRealTimeSubHook({
+    channelName: `incident-comments-${id}`,
+    events: '*',
+    table: 'incidents',
+    enabled: !!id,
+    onPayload: handleRefreshIncident,
+  });
+ 
   if (isLoading || isFetchingIncident) {
     return (
       <Layout>

@@ -87,7 +87,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
 
   return (
     <div className="bg-white rounded-md border shadow-sm p-4">
-      <h3 className="font-medium text-lg mb-3">Add Comment</h3>
+      <h3 className="font-medium text-lg mb-3">Add Comment <span className="text-red-500">*</span></h3>
       
       <div className="space-y-4">
         <div className="flex flex-col space-y-2">
