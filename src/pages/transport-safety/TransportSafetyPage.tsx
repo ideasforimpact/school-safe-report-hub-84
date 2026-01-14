@@ -7,34 +7,69 @@ import VehiclesList from '@/components/transport-safety/VehiclesList';
 import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 import { useAuth } from '@/contexts';
 import {
-  getPendingChallans,
+  getPendingChallansFromVehicleChallans,
+  getAllVehiclesWithChallans,
 } from '@/services/transport-safety/vehicleService';
 
 const TransportSafetyPage = () => {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [totalVehicles, setTotalVehicles] = useState(0);
   const [pendingAmount, setPendingAmount] = useState(0);
+  const [pendingChallanCount, setPendingChallanCount] = useState(0);
 
   const { employeeData } = useAuth();
   const navigate = useNavigate();
   const clientId = employeeData?.clientId;
 
+  // Fetch vehicles with challans data
+  React.useEffect(() => {
+    const fetchVehiclesData = async () => {
+      if (!clientId) return;
+      
+      try {
+        const vehicles = await getAllVehiclesWithChallans(clientId);
+        setTotalVehicles(vehicles.length);
+        
+        let totalPendingAmount = 0;
+        let totalPendingCount = 0;
+        
+        vehicles.forEach(vehicle => {
+          const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+          totalPendingCount += pending.length;
+          totalPendingAmount += pending.reduce((sum, c) => {
+            const amount = Number(c.amount || c.challan_amount || 0);
+            return sum + (isNaN(amount) ? 0 : amount);
+          }, 0);
+        });
+        
+        setPendingAmount(totalPendingAmount);
+        setPendingChallanCount(totalPendingCount);
+      } catch (error) {
+        console.error('Error fetching vehicles data:', error);
+      }
+    };
+    
+    fetchVehiclesData();
+  }, [clientId]);
+
 const handleVehiclesChanged = useCallback(({ vehicles }) => {
   setTotalVehicles(vehicles.length);
-
-  const totalPending = vehicles.reduce((sum, vehicle) => {
-    const pending = getPendingChallans(vehicle.verificationData ?? []);
-    return (
-      sum +
-      pending.reduce((s, c) => {
-        const amount = Number(c.amount || c.challan_amount || 0);
-        return s + (isNaN(amount) ? 0 : amount);
-      }, 0)
-    );
-  }, 0);
-  console.log(totalPending,'totalpending');
   
-  setPendingAmount(totalPending);
+  // Recalculate pending challans from vehicle_challans
+  let totalPendingAmount = 0;
+  let totalPendingCount = 0;
+  
+  vehicles.forEach(vehicle => {
+    const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+    totalPendingCount += pending.length;
+    totalPendingAmount += pending.reduce((sum, c) => {
+      const amount = Number(c.amount || c.challan_amount || 0);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+  });
+  
+  setPendingAmount(totalPendingAmount);
+  setPendingChallanCount(totalPendingCount);
 }, []);
 
 
@@ -64,7 +99,14 @@ const handleVehiclesChanged = useCallback(({ vehicles }) => {
                   </div>
 
                   <div>
-                    <p className="text-sm text-gray-500">Pending Challan</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-500">Pending Challan</p>
+                      {pendingChallanCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 text-xs font-bold text-white bg-orange-500 rounded-full">
+                          {pendingChallanCount}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-3xl font-semibold text-orange-600">
                       ₹{pendingAmount.toLocaleString('en-IN')}
                     </p>
