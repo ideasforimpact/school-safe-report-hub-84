@@ -231,7 +231,9 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     }
     
     if (event === "DELETE") {
-      await fetchVehicles();
+      setVehicles(prev =>
+        prev.filter(v => v.id !== oldVehicle.id)
+      );
       return;
     }
     const vehicleId =
@@ -280,8 +282,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     channelName: `vehicles-${clientId}`,
     events: "*",
     table: "vehicles",
-    filter: clientId ? `client_id=eq.${clientId}` : undefined, // CRITICAL: Filter by client_id to prevent cross-client access
-    enabled: !!clientId,
+    enabled: true,
     onPayload: handleVehicleUpdate,
   });
 
