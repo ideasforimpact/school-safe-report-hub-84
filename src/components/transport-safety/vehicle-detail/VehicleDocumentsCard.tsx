@@ -36,7 +36,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     };
 
     fetchVehicleChallans();
-  }, [vehicleId]);
+  }, [vehicleId, vehicle.verificationDate, vehicle.verificationStatus]);
   
   // Check if vehicle has verification data
   const hasVerificationData = vehicle.verificationData && vehicle.verificationData.length > 0;
