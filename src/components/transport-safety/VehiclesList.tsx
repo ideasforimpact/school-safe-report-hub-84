@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx';
 import { getDocumentStatus, getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
 import { Vehicle } from '@/types/transportSafety';
 import ImportVehiclesDialog from './ImportVehiclesDialog';
+import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -68,30 +69,10 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     setSelectedVehicle(undefined);
   };
   
-  // Function to check if a vehicle has challan records
+  // Function to check if a vehicle has pending challan records from vehicle_challans table
   const hasChallan = (vehicle) => {
-    // Check for challan in verification log data
-    if (vehicle.verificationData) {
-      // Get the latest verification log
-      const latestLog = getLatestVerificationLog(vehicle);
-      if (!latestLog) return false;
-      
-      // Find challan_details in the latest log
-      const challanDetails = latestLog.find(item => item.field === 'challan_details');
-      if (challanDetails && challanDetails.value && 
-          challanDetails.value.challan_details && 
-          challanDetails.value.challan_details.challans && 
-          challanDetails.value.challan_details.challans.length > 0) {
-        return true;
-      }
-    }
-    
-    // Fallback to check for any specific notes or properties that indicate a challan
-    return vehicle.documents.some(doc => 
-      doc.notes?.toLowerCase().includes('challan') || 
-      doc.issuedBy?.toLowerCase().includes('police') ||
-      doc.provider?.toLowerCase().includes('police')
-    );
+    const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+    return pending.length > 0;
   };
   
   // Get document statuses for a vehicle

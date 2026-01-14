@@ -1,18 +1,17 @@
 
-import React, { useState } from 'react';
-import { FileX, FileCheck, ShieldAlert, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileX, FileCheck, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
-import { Vehicle } from '@/types/transportSafety';
+import { Vehicle, VehicleChallans } from '@/types/transportSafety';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
-  getDocumentStatusColor,
-  findVerificationField,
-  getLatestVerificationLog
+  getDocumentStatusColor
 } from '@/utils/transport-safety/documentStatusUtils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
+import ChallanDetailsDialog from '../ChallanDetailsDialog';
 
 interface VehicleDocumentsCardProps {
   vehicle: Vehicle;
@@ -20,6 +19,24 @@ interface VehicleDocumentsCardProps {
 
 const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) => {
   const { id: vehicleId, documents } = vehicle;
+  const [vehicleChallans, setVehicleChallans] = useState<VehicleChallans | null>(null);
+  const [showChallanDetails, setShowChallanDetails] = useState(false);
+  
+  // Fetch vehicle_challans when component mounts
+  useEffect(() => {
+    const fetchVehicleChallans = async () => {
+      if (vehicleId) {
+        try {
+          const challans = await getVehicleChallans(vehicleId);
+          setVehicleChallans(challans);
+        } catch (error) {
+          console.error('Error fetching vehicle_challans:', error);
+        }
+      }
+    };
+
+    fetchVehicleChallans();
+  }, [vehicleId]);
   
   // Check if vehicle has verification data
   const hasVerificationData = vehicle.verificationData && vehicle.verificationData.length > 0;
@@ -45,61 +62,6 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     }
   };
   
-  // Check for challan details in verification data
-  const hasChallanFromApi = () => {
-    if (!hasVerificationData) return false;
-    
-    // Find the verification_log entry
-    const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
-    if (!logEntry || !logEntry.value) return false;
-    
-    // Get the latest verification log
-    const latestLog = getLatestVerificationLog(vehicle);
-    if (!latestLog) return false;
-    
-    // Find challan_details in the latest log
-    const challanDetails = latestLog.find(item => item.field === 'challan_details');
-    if (challanDetails && challanDetails.value && 
-        challanDetails.value.challan_details && 
-        challanDetails.value.challan_details.challans && 
-        challanDetails.value.challan_details.challans.length > 0 && challanDetails.value.challan_details.challans.some(
-        c => c.challan_status?.toLowerCase() === "pending")) {
-      return true;
-    }
-    
-    return false;
-  };
-  
-  // Get the latest challan data from verification log
-  const getChallanDetails = () => {
-    if (!hasVerificationData) return [];
-    
-    // Get the latest verification log
-    const latestLog = getLatestVerificationLog(vehicle);
-    if (!latestLog) return [];
-    
-    // Find challan_details in the latest log
-    const challanDetails = latestLog.find(item => item.field === 'challan_details');
-    if (challanDetails && challanDetails.value && challanDetails.value.challan_details) {
-      return challanDetails.value.challan_details.challans || [];
-    }
-    
-    return [];
-  };
-  
-  const hasChallanFromNotes = () => {
-    // Check for any specific notes or properties that indicate a challan
-    return documents.some(doc => 
-      doc.notes?.toLowerCase().includes('challan') || 
-      doc.issuedBy?.toLowerCase().includes('police') ||
-      doc.provider?.toLowerCase().includes('police')
-    );
-  };
-  
-  const hasChallan = () => {
-    return hasChallanFromApi() || hasChallanFromNotes();
-  };
-  
   // Format date in a user-friendly way
   const formatDate = (dateStr: Date | null | undefined): string => {
     if (!dateStr) return 'Not Available';
@@ -111,12 +73,44 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     }
   };
 
-  // Get challan details for display
-  const challanDetails = getChallanDetails();
-  const [showAllChallans, setShowAllChallans] = useState(false);
+  // Get challan count from vehicle_challans
+  const getChallanCount = (): number => {
+    if (!vehicleChallans?.latest_challan_data) {
+      return 0;
+    }
 
-  console.log(challanDetails,"challanDetails");
-  
+    const challanData = vehicleChallans.latest_challan_data;
+    
+    // Handle different challan response structures
+    if (challanData?.data?.challan_details?.challans) {
+      const challans = challanData.data.challan_details.challans;
+      if (Array.isArray(challans)) {
+        return challans.length;
+      }
+    }
+    if (challanData?.data?.challan_data) {
+      const challans = challanData.data.challan_data;
+      if (Array.isArray(challans)) {
+        return challans.length;
+      }
+    }
+    if (challanData?.challan_details?.challans) {
+      const challans = challanData.challan_details.challans;
+      if (Array.isArray(challans)) {
+        return challans.length;
+      }
+    }
+    if (Array.isArray(challanData)) {
+      return challanData.length;
+    }
+    if (Array.isArray(challanData?.data)) {
+      return challanData.data.length;
+    }
+    
+    return 0;
+  };
+
+  const challanCount = getChallanCount();
 
   return (
     <Card>
@@ -176,136 +170,27 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
           
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Challan Status</span>
-            {hasVerificationData ? (
-              hasChallan() ? (
-                <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4 text-orange-600" />
-                  <span>Pending Challan</span>
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="bg-green-100 border-green-200 text-green-800 text-xs flex items-center gap-1">
-                  <span>No Pending Challans</span>
-                </Badge>
-              )
+            {challanCount > 0 ? (
+              <button
+                onClick={() => setShowChallanDetails(true)}
+                className="text-blue-600 hover:text-blue-800 text-xs font-medium underline cursor-pointer"
+              >
+                Click here to View Details
+              </button>
             ) : (
-              <Badge variant="outline" className="bg-gray-100 border-gray-200 text-gray-800 text-xs flex items-center gap-1">
-                <span>Not Available</span>
+              <Badge variant="outline" className="bg-green-100 border-green-200 text-green-800 text-xs flex items-center gap-1">
+                <span>No Challan Found</span>
               </Badge>
             )}
           </div>
         </div>
 
-        {/* Display challan details if available from API */}
-        {challanDetails && challanDetails.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold mb-2 text-left">Challan Details</h3>
-            <div className="space-y-2 border rounded-md p-3 bg-orange-50">
-              {(challanDetails.slice(0, 1) ?? []).map((challan: any, index: number)  => (
-                <div key={index} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">Challan No:</span>
-                    <span className="text-gray-900">{challan.challan_number || challan.challan_no || 'N/A'}</span>
-                  </div>
-                  {challan.accused_name && (
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium">Accused Name:</span>
-                      <span className="text-gray-700">{challan.accused_name}</span>
-                    </div>
-                  )}
-                  {challan.challan_date && (
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium">Date:</span>
-                      <span className="text-gray-700">{formatDate(new Date(challan.challan_date))}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">Amount:</span>
-                    <span>₹{challan.amount || challan.challan_amount || '0'}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">Status:</span>
-                    <span className={challan.challan_status?.toUpperCase() === 'DISPOSED' || challan.challan_status?.toUpperCase() === 'PAID' ? 'text-green-600' : 'text-red-600'}>
-                      {challan.challan_status || 'UNPAID'}
-                    </span>
-                  </div>
-                  {(challan.Info || challan.challan_info || challan.offense_details) && (
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className="font-medium">Info:</span>
-                      <span className="text-gray-700">{challan.Info || challan.challan_info || challan.offense_details}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* View More Button */}
-            {challanDetails.length > 1 && (
-              <button
-                onClick={() => setShowAllChallans(true)}
-                className="text-blue-600 text-xs mt-2 underline"
-              >
-                View More
-              </button>
-            )}
-          </div>
-        )}
-        
-        <Dialog open={showAllChallans} onOpenChange={setShowAllChallans}>
-          <DialogContent className="max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>All Challans</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-3">
-              {(challanDetails || []).map((challan: any, index: number) => (
-                <div key={index} className="border rounded-md p-3 bg-orange-50">
-
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">Challan No:</span>
-                    <span>{challan.challan_number || challan.challan_no || 'N/A'}</span>
-                  </div>
-
-                  {challan.accused_name && (
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium">Accused Name:</span>
-                      <span className="text-gray-700">{challan.accused_name}</span>
-                    </div>
-                  )}
-
-                  {challan.challan_date && (
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium">Date:</span>
-                      <span className="text-gray-700">{formatDate(new Date(challan.challan_date))}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">Amount:</span>
-                    <span>₹{challan.amount || challan.challan_amount || "0"}</span>
-                  </div>
-
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">Status:</span>
-                    <span className={challan.challan_status?.toUpperCase() === "PAID" ||
-                      challan.challan_status?.toUpperCase() === "DISPOSED"
-                      ? "text-green-600"
-                      : "text-red-600"}>
-                      {challan.challan_status || "UNPAID"}
-                    </span>
-                  </div>
-
-                  {(challan.Info || challan.challan_info || challan.offense_details) && (
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className="font-medium">Info:</span>
-                      <span>{challan.Info || challan.challan_info || challan.offense_details}</span>
-                    </div>
-                  )}
-
-                </div>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Challan Details Dialog */}
+        <ChallanDetailsDialog
+          open={showChallanDetails}
+          onOpenChange={setShowChallanDetails}
+          vehicleChallans={vehicleChallans}
+        />
 
         <div className="space-y-4">
           {documents.map(document => (

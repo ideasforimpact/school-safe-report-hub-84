@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Vehicle, VehicleType } from "@/types/transportSafety";
+import { Vehicle, VehicleType, VehicleChallans } from "@/types/transportSafety";
 
 // Get all vehicles from the database filtered by client_id
 export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
@@ -75,7 +75,10 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
   try {
     let query = supabase
       .from('vehicles')
-      .select('*')
+      .select(`
+        *,
+        vehicle_challans (*)
+      `)
       .eq('id', id);
     
     // Add client_id filter if provided
@@ -130,7 +133,16 @@ export const getVehicleById = async (id: string, clientId?: string): Promise<Veh
             value: item.value,
             verified: Boolean(item.verified)
           })) 
-        : []
+        : [],
+      // Include RC fields from vehicles table
+      currentRcData: data.current_rc_data,
+      provider: data.provider,
+      statusCode: data.status_code,
+      rcStatus: data.rc_status,
+      // Include vehicle_challans data
+      vehicleChallans: Array.isArray(data.vehicle_challans) && data.vehicle_challans.length > 0
+        ? data.vehicle_challans[0] // Get the first (and should be only) challan record
+        : null
     };
   } catch (error) {
     console.error('Error in getVehicleById:', error);
@@ -416,7 +428,8 @@ const getLatestVehicleVerificationLog = (verificationData: any) => {
   return latestKey ? log.value[latestKey] : null;
 };
 
-const getVehicleChallans = (verificationData: any) => {
+// Helper function to extract challans from verificationData (legacy - used for old data structure)
+const getChallansFromVerificationData = (verificationData: any) => {
   const log = getLatestVehicleVerificationLog(verificationData);
   
   if (!Array.isArray(log)) return [];
@@ -427,26 +440,226 @@ const getVehicleChallans = (verificationData: any) => {
 
   return challanField?.value?.challan_details?.challans ?? [];
 };
+// Legacy function - kept for backward compatibility
 export const getPendingChallans = (verificationData: any) => {
-  const allChallans = getVehicleChallans(verificationData);
+  const allChallans = getChallansFromVerificationData(verificationData);
   return allChallans.filter(
     (c: any) =>
       c.challan_status &&
       c.challan_status.toLowerCase() !== 'disposed'
   );
 };
+
+/**
+ * Extract challans from vehicle_challans.latest_challan_data
+ */
+export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChallans | null): any[] => {
+  if (!vehicleChallans?.latest_challan_data) {
+    return [];
+  }
+
+  const challanData = vehicleChallans.latest_challan_data;
+  
+  // Handle different challan response structures
+  if (challanData?.data?.challan_details?.challans) {
+    const challans = challanData.data.challan_details.challans;
+    if (Array.isArray(challans)) {
+      return challans;
+    }
+  }
+  if (challanData?.data?.challan_data) {
+    const challans = challanData.data.challan_data;
+    if (Array.isArray(challans)) {
+      return challans;
+    }
+  }
+  if (challanData?.challan_details?.challans) {
+    const challans = challanData.challan_details.challans;
+    if (Array.isArray(challans)) {
+      return challans;
+    }
+  }
+  if (Array.isArray(challanData)) {
+    return challanData;
+  }
+  if (Array.isArray(challanData?.data)) {
+    return challanData.data;
+  }
+  
+  return [];
+};
+
+/**
+ * Get pending challans from vehicle_challans table
+ */
+export const getPendingChallansFromVehicleChallans = (vehicleChallans: VehicleChallans | null): any[] => {
+  const allChallans = extractChallansFromVehicleChallans(vehicleChallans);
+  return allChallans.filter(
+    (c: any) =>
+      c.challan_status &&
+      !['DISPOSED', 'PAID'].includes(c.challan_status.toUpperCase())
+  );
+};
+
+/**
+ * Get all vehicles with their vehicle_challans data
+ */
+export const getAllVehiclesWithChallans = async (clientId?: string): Promise<Vehicle[]> => {
+  try {
+    let query = supabase
+      .from('vehicles')
+      .select(`
+        *,
+        vehicle_challans (*)
+      `);
+    
+    if (clientId) {
+      query = query.eq('client_id', clientId);
+    }
+    
+    const { data, error } = await query;
+      
+    if (error) {
+      console.error('Error fetching vehicles with challans:', error);
+      throw error;
+    }
+    
+    // Fetch vehicle types to get icons and names
+    const { data: vehicleTypes } = await supabase
+      .from('vehicle_type' as any)
+      .select('id, name, icon');
+    
+    const vehicleTypeMap = new Map(
+      (vehicleTypes || []).map((vt: any) => [vt.id, vt])
+    );
+    
+    // Transform the raw data to match our Vehicle type
+    return data.map((vehicle: any) => {
+      const vehicleType = vehicleTypeMap.get(vehicle.type) as any;
+      const vehicleChallans = vehicle.vehicle_challans && vehicle.vehicle_challans.length > 0 
+        ? vehicle.vehicle_challans[0] 
+        : null;
+      
+      return {
+        id: vehicle.id,
+        registrationNumber: vehicle.registration_number,
+        type: vehicle.type as VehicleType,
+        typeId: vehicle.type,
+        typeName: vehicleType?.name || undefined,
+        vehicleTypeIcon: vehicleType?.icon || null,
+        internalVehicleName: (vehicle as any).internal_vehicle_name,
+        make: vehicle.make,
+        model: vehicle.model,
+        year: vehicle.year,
+        driver: vehicle.driver,
+        route: vehicle.route,
+        capacity: vehicle.capacity,
+        status: vehicle.status as 'active' | 'maintenance' | 'inactive',
+        active: vehicle.active !== undefined ? vehicle.active : true,
+        clientId: vehicle.client_id,
+        employeeId: vehicle.employee_id,
+        documents: [],
+        createdAt: vehicle.created_at,
+        updatedAt: vehicle.updated_at,
+        verificationStatus: vehicle.verification_status,
+        verificationDate: vehicle.verification_date,
+        verificationData: Array.isArray(vehicle.verification_data) 
+          ? vehicle.verification_data.map((item: any) => ({
+              field: String(item.field || ''),
+              value: item.value,
+              verified: Boolean(item.verified)
+            })) 
+          : [],
+        vehicleChallans: vehicleChallans ? {
+          id: vehicleChallans.id,
+          vehicle_id: vehicleChallans.vehicle_id,
+          latest_challan_data: vehicleChallans.latest_challan_data,
+          challan_status: vehicleChallans.challan_status,
+          challan_status_code: vehicleChallans.challan_status_code,
+          challan_history_log: vehicleChallans.challan_history_log,
+          provider: vehicleChallans.provider,
+          success_api_count: vehicleChallans.success_api_count,
+          error_api_count: vehicleChallans.error_api_count,
+          created_at: vehicleChallans.created_at,
+          updated_at: vehicleChallans.updated_at
+        } : undefined
+      };
+    });
+  } catch (error) {
+    console.error('Error in getAllVehiclesWithChallans:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get vehicles with pending challans from vehicle_challans table
+ */
 export const getVehiclesWithPendingChallans = async (
   clientId: string
 ): Promise<Vehicle[]> => {
   try {
-    const vehicles = await getAllVehicles(clientId);
+    const vehicles = await getAllVehiclesWithChallans(clientId);
 
     return vehicles.filter(vehicle => {
-      const pending = getPendingChallans(vehicle.verificationData);
+      const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
       return pending.length > 0;
     });
   } catch (error) {
     console.error('Error fetching vehicles with pending challans:', error);
     throw error;
+  }
+};
+
+/**
+ * Get vehicle_challans record by vehicle_id
+ * Returns the latest_challan_data and other challan information
+ */
+export const getVehicleChallans = async (vehicleId: string): Promise<VehicleChallans | null> => {
+  try {
+    console.log('[getVehicleChallans] Fetching challans for vehicle_id:', vehicleId);
+    
+    const { data, error } = await supabase
+      .from('vehicle_challans')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(); // Use maybeSingle() instead of single() to avoid error when no record exists
+    
+    if (error) {
+      console.error('[getVehicleChallans] Error fetching vehicle_challans:', error);
+      return null;
+    }
+    
+    if (!data) {
+      console.log('[getVehicleChallans] No vehicle_challans record found for vehicle_id:', vehicleId);
+      return null;
+    }
+    
+    console.log('[getVehicleChallans] Found vehicle_challans record:', {
+      id: data.id,
+      hasLatestChallanData: !!data.latest_challan_data,
+      challanStatus: data.challan_status,
+      provider: data.provider,
+      latestChallanDataKeys: data.latest_challan_data ? Object.keys(data.latest_challan_data) : []
+    });
+    
+    // Transform to VehicleChallans type
+    return {
+      id: data.id,
+      vehicle_id: data.vehicle_id,
+      latest_challan_data: data.latest_challan_data,
+      challan_status: data.challan_status,
+      challan_status_code: data.challan_status_code,
+      challan_history_log: data.challan_history_log,
+      provider: data.provider,
+      success_api_count: data.success_api_count,
+      error_api_count: data.error_api_count,
+      created_at: data.created_at,
+      updated_at: data.updated_at
+    };
+  } catch (error) {
+    console.error('[getVehicleChallans] Exception in getVehicleChallans:', error);
+    return null;
   }
 };

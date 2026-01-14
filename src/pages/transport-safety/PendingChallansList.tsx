@@ -5,12 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
 import VehicleSearchBar from '@/components/transport-safety/filters/VehicleSearchBar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import VerificationDetailsDialog from '@/components/transport-safety/VerificationDetailsDialog';
 import {
   Table,
   TableHeader,
@@ -22,7 +17,7 @@ import {
 
 import type { Vehicle } from '@/types/transportSafety';
 import {
-  getPendingChallans,
+  getPendingChallansFromVehicleChallans,
   getVehiclesWithPendingChallans,
 } from '@/services/transport-safety/vehicleService';
 
@@ -32,13 +27,13 @@ const PendingChallansList = () => {
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAllChallans, setShowAllChallans] = useState(false);
-  const [challanDetails, setChallanDetails] = useState<any[]>([]);
+  const [showChallanDetails, setShowChallanDetails] = useState(false);
+  const [selectedVehicleChallans, setSelectedVehicleChallans] = useState<Vehicle['vehicleChallans'] | null>(null);
 
   const getTotalPendingAmount = (
-    verificationData: Vehicle['verificationData']
+    vehicleChallans: Vehicle['vehicleChallans']
   ): number => {
-    const pending = getPendingChallans(verificationData ?? []);
+    const pending = getPendingChallansFromVehicleChallans(vehicleChallans || null);
 
     return pending.reduce((sum, challan) => {
       const amount = Number(challan.challan_amount ?? challan.amount ?? 0);
@@ -49,7 +44,7 @@ const PendingChallansList = () => {
   const totalPendingAllVehicles = useMemo(() => {
     return vehicles.reduce(
       (sum, vehicle) =>
-        sum + getTotalPendingAmount(vehicle.verificationData),
+        sum + getTotalPendingAmount(vehicle.vehicleChallans),
       0
     );
   }, [vehicles]);
@@ -64,12 +59,6 @@ const PendingChallansList = () => {
     );
   }, [vehicles, searchQuery]);
 
-  const totalSelectedVehicleAmount = useMemo(() => {
-    return challanDetails.reduce((sum, challan) => {
-      const amount = Number(challan.amount ?? challan.challan_amount ?? 0);
-      return sum + (isNaN(amount) ? 0 : amount);
-    }, 0);
-  }, [challanDetails]);
 
   useEffect(() => {
     if (!employeeData?.clientId) return;
@@ -155,11 +144,11 @@ const PendingChallansList = () => {
               </TableRow>
             ) : (
               filteredVehicles.map(vehicle => {
-                const pendingChallans = getPendingChallans(
-                  vehicle.verificationData ?? []
+                const pendingChallans = getPendingChallansFromVehicleChallans(
+                  vehicle.vehicleChallans || null
                 );
                 const totalAmount = getTotalPendingAmount(
-                  vehicle.verificationData
+                  vehicle.vehicleChallans
                 );
 
                 return (
@@ -196,8 +185,8 @@ const PendingChallansList = () => {
                       <button
                         className="text-sm text-blue-600 hover:underline"
                         onClick={() => {
-                          setChallanDetails(pendingChallans);
-                          setShowAllChallans(true);
+                          setSelectedVehicleChallans(vehicle.vehicleChallans || null);
+                          setShowChallanDetails(true);
                         }}
                       >
                         View challans
@@ -211,57 +200,15 @@ const PendingChallansList = () => {
         </Table>
       </div>
 
-      <Dialog open={showAllChallans} onOpenChange={setShowAllChallans}>
-        <DialogContent className="max-h-[80vh] max-w-[100vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>All Challans</DialogTitle>
-            <div className="mt-2 flex justify-end">
-              <Badge className="border-red-300 text-red-700 bg-red-50 font-semibold">
-                ₹{totalSelectedVehicleAmount.toLocaleString('en-IN')}
-              </Badge>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            {challanDetails.map((challan, index) => (
-              <div
-                key={index}
-                className="border rounded-md p-3 bg-orange-50"
-              >
-                <div className="flex justify-between text-xs">
-                  <span className="font-medium">Challan No:</span>
-                  <span>
-                    {challan.challan_number || challan.challan_no || 'N/A'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="font-medium">Amount:</span>
-                  <span>
-                    ₹{challan.amount || challan.challan_amount || '0'}
-                  </span>
-                </div>
-
-                <div
-                  className={`text-xs mt-1 font-medium ${challan.challan_status?.toUpperCase() === 'PAID' ||
-                    challan.challan_status?.toUpperCase() === 'DISPOSED'
-                    ? 'text-green-600'
-                    : 'text-red-600'
-                    }`}
-                >
-                  {challan.challan_status || 'UNPAID'}
-                </div>
-
-                {(challan.Info || challan.challan_info) && (
-                  <div className="text-xs mt-1 text-gray-600">
-                    {challan.Info || challan.challan_info}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <VerificationDetailsDialog
+        open={showChallanDetails}
+        onOpenChange={setShowChallanDetails}
+        vehicleChallans={selectedVehicleChallans}
+        title="Challan Details"
+        showChallanTabs={false}
+        hideMainTabs={true}
+        verificationData={null}
+      />
 
     </div>
   );

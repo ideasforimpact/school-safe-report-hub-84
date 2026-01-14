@@ -77,7 +77,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const crossTabSyncRef = useRef<boolean>(false);
   const currentTabIdRef = useRef<string>(`tab_${Date.now()}_${Math.random()}`);
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
-  
+  const ALL_TAB_SYNC_ENABLED =import.meta.env.VITE_ALL_TAB_LOGIN_LOGOUT === 'true';
+
   // Use session refresh hook for automatic session validation
   const { refreshSession } = useSessionRefresh(5); // Check every 5 minutes
 
@@ -267,7 +268,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const broadcastToOtherTabs = useCallback((type: string) => {
     if (typeof BroadcastChannel !== 'undefined') {
       if (!broadcastChannelRef.current) {
-        broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');
+        if (!ALL_TAB_SYNC_ENABLED) return;
+
+        broadcastChannelRef.current = new BroadcastChannel('supabase_auth_channel');      
       }
       
       broadcastChannelRef.current.postMessage({
@@ -279,21 +282,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const handleLoginBroadcast = useCallback(() => {
-    console.log('📡 Broadcasting login to other tabs');
+    if (!ALL_TAB_SYNC_ENABLED) return;
     broadcastToOtherTabs('LOGIN');
-    
-    // Also trigger a session check in other tabs
     setTimeout(() => {
-      localStorage.setItem('supabase.auth.trigger-sync', Date.now().toString());
+      localStorage.setItem(
+        'supabase.auth.trigger-sync',
+        Date.now().toString()
+      );
     }, 50);
   }, [broadcastToOtherTabs]);
 
-  const handleLogoutBroadcast = useCallback(() => {
-    console.log('📡 Broadcasting logout to other tabs');
+const handleLogoutBroadcast = useCallback(() => {
+  if (!ALL_TAB_SYNC_ENABLED) return;
     broadcastToOtherTabs('LOGOUT');
-    
-    localStorage.removeItem('supabase.auth.token');
-    localStorage.removeItem('authState');
   }, [broadcastToOtherTabs]);
 
   const handleLogoutSync = useRef(async (): Promise<void> => {
@@ -341,6 +342,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }).current;
 
   useEffect(() => {
+    if (!ALL_TAB_SYNC_ENABLED) {
+      console.info('Cross-tab auth sync disabled via env');
+      return;
+    }
     if (crossTabSyncRef.current) return;
     crossTabSyncRef.current = true;
 
@@ -381,6 +386,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for storage changes from other tabs
     const handleStorageChange = (e: StorageEvent) => {
+      if (!ALL_TAB_SYNC_ENABLED) return;
       // Skip changes from the current tab
       if (e.key?.startsWith('tab_') && e.key !== currentTabIdRef.current) {
         return;
@@ -599,7 +605,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         // Only process SIGNED_OUT if it's not part of our own logout process
         if (!state.isLoggingOut && !authCoordinator.isLogoutInProgress()) {
-          handleLogoutBroadcast();
+          if (ALL_TAB_SYNC_ENABLED) {
+            handleLogoutBroadcast();
+          }
           dispatch(clearAuth());
           dispatch(resetEmployee());
           clearPersistedAuthState();
@@ -612,8 +620,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           navigate(targetPath, { replace: true });
         }
       } else if (event === 'TOKEN_REFRESHED') {
-        broadcastToOtherTabs('SESSION_UPDATE');
-      }
+          if (ALL_TAB_SYNC_ENABLED) {
+            broadcastToOtherTabs('SESSION_UPDATE');
+          }      
+        }
     });
     
     authListenerSetupRef.current = true;

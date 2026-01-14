@@ -17,6 +17,7 @@ import {
   getLatestVerificationLog,
   getLatestVerificationFieldValue
 } from '@/utils/transport-safety/documentStatusUtils';
+import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
@@ -58,7 +59,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     }
   };
 
-  const hasChallan = (vehicle: Vehicle) => {
+  // Legacy function - check verification_data
+  const hasChallanFromVerification = (vehicle: Vehicle) => {
     // Check for challan in verification log data
     if (vehicle.verificationData) {
       // Get the latest verification log
@@ -81,6 +83,18 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
       doc.issuedBy?.toLowerCase().includes('police') ||
       doc.provider?.toLowerCase().includes('police')
     );
+  };
+
+  // Check for pending challans from vehicle_challans table
+  const hasPendingChallans = (vehicle: Vehicle) => {
+    const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+    return pending.length > 0;
+  };
+  
+  // Get pending challan count
+  const getPendingChallanCount = (vehicle: Vehicle) => {
+    const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
+    return pending.length;
   };
 
   // Check if vehicle has been verified
@@ -127,7 +141,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               const insuranceStatus = hasVerification ? getDocumentStatus(vehicle, 'insurance').status : 'unverified';
               const fcStatus = hasVerification ? getDocumentStatus(vehicle, 'fitness').status : 'unverified';
               const pollutionStatus = hasVerification ? getDocumentStatus(vehicle, 'pollution').status : 'unverified';
-              const vehicleHasChallan = hasVerification ? hasChallan(vehicle) : false;
+              const vehicleHasChallan = hasPendingChallans(vehicle);
+              const pendingChallanCount = getPendingChallanCount(vehicle);
               const rowClassName = hasVerification ? getVehicleRowClassName(vehicle) : "hover:bg-muted/50 border-l-4 border-l-gray-300";
               
               return <TableRow key={vehicle.id} className={rowClassName}>
@@ -195,22 +210,21 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell className="text-left">
-                    {hasVerification ? (
-                      vehicleHasChallan ? (
-                        <div className="flex justify-start">
-                          <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1 w-fit">
+                    {vehicleHasChallan ? (
+                      <div className="flex justify-start">
+                        <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1 w-fit">
                           <Flag className="h-4 w-4 text-orange-600" />
                           <span>Yes</span>
+                          {pendingChallanCount > 0 && (
+                            <span className="inline-flex items-center justify-center min-w-[18px] h-4 px-1 text-xs font-bold text-white bg-orange-600 rounded-full ml-1">
+                              {pendingChallanCount}
+                            </span>
+                          )}
                         </Badge>
-                        </div>
-                      ) : (
-                        <div className="flex justify-start">
-                        <span className="text-gray-500 text-xs">-</span>
-                        </div>
-                      )
+                      </div>
                     ) : (
                       <div className="flex justify-start">
-                      <span className="text-gray-400 text-xs">-</span>
+                        <span className="text-gray-500 text-xs">-</span>
                       </div>
                     )}
                   </TableCell>

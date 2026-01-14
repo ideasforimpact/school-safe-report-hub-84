@@ -42,6 +42,20 @@ export interface VehicleVerificationData {
   verified: boolean;
 }
 
+export interface VehicleChallans {
+  id: string;
+  vehicle_id: string;
+  latest_challan_data: any;
+  challan_status: boolean;
+  challan_status_code: string | null;
+  challan_history_log: any;
+  provider: string | null;
+  success_api_count: number;
+  error_api_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Vehicle {
   id: string;
   registrationNumber: string;
@@ -67,4 +81,11 @@ export interface Vehicle {
   verificationDate?: string;
   verificationData?: VehicleVerificationData[];
   verification_log?: Record<string, any>; // Legacy field, keeping for backward compatibility
+  // RC API fields
+  currentRcData?: any; // current_rc_data from vehicles table
+  provider?: string | null; // surepass or quickeyc
+  statusCode?: string | null; // status_code from API
+  rcStatus?: string | null; // success or error
+  // Challan data
+  vehicleChallans?: VehicleChallans | null;
 }
