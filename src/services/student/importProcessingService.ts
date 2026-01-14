@@ -138,23 +138,17 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
     
     // Execute bulk create operation if needed
     if (studentsToCreate.length > 0) {
-      const { data: createdData, error: createError } = await supabase
-        .from('students')
-        .insert(studentsToCreate)
-        .select();
-        
-      if (createError) {
-        console.error('Error creating students in bulk:', createError);
-        throw new Error(`Failed to add students: ${createError.message}`);
-      }
-      
-      if (createdData) {
-        result.addedStudents = result.addedStudents.concat(
-          createdData.map(transformStudentData)
-        );
-        result.successCount = createdData.length;
-        console.log(`Successfully added ${createdData.length} new students`);
-      }
+      const { data, error } = await supabase.functions.invoke(
+        'student-management',
+        {
+          method: 'POST',
+          headers: { path: 'bulk-create', 'client-id': clientId },
+          body: {
+            students: studentsToCreate,
+            client_id: clientId
+          }
+        }
+      );
     }
     
     // Execute bulk update operation if needed
@@ -195,18 +189,7 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
 /**
  * Transform database student data to match frontend Student type
  */
-const transformStudentData = (dbStudent: any): Student => {
-  return {
-    id: dbStudent.id,
-    studentId: dbStudent.student_id,
-    name: dbStudent.name,
-    grade: dbStudent.grade,
-    section: dbStudent.section,
-    campus: dbStudent.campus,
-    createdAt: dbStudent.created_at,
-    updatedAt: dbStudent.updated_at
-  };
-};
+
 
 /**
  * Display appropriate toast notifications for import results

@@ -103,7 +103,8 @@ serve(async (req) => {
           validationBody.client_id = clientIdFromHeader;
         }
         return await handleValidateImport(validationBody, corsHeaders);
-        
+      case "bulk-create":
+        return await handleBulkCreate(body, corsHeaders);
       case "bulk-update":
         return await handleBulkUpdate(body, corsHeaders);
 
@@ -1008,3 +1009,76 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
     );
   }
 }
+async function handleBulkCreate(body: any, corsHeaders: Record<string, string>) {
+  const students = body.students || [];
+  const clientId = body.client_id;
+
+  if (!students.length) {
+    return new Response(
+      JSON.stringify({ error: "No students provided" }),
+      { status: 400, headers: corsHeaders }
+    );
+  }
+
+  // 🔹 Fetch academic structure ONCE
+  const [campuses, grades, sections] = await Promise.all([
+    supabaseClient.from("campuses").select("id, name").eq("client_id", clientId),
+    supabaseClient.from("grades").select("id, name, campus_id").eq("client_id", clientId),
+    supabaseClient.from("sections").select("id, name, grade_id").eq("client_id", clientId)
+  ]);
+
+  const campusMap = new Map(
+    campuses.data.map(c => [c.name.toLowerCase(), c.id])
+  );
+
+  const gradeMap = new Map(
+    grades.data.map(g => [`${g.campus_id}:${g.name.toLowerCase()}`, g.id])
+  );
+
+  const sectionMap = new Map(
+    sections.data.map(s => [`${s.grade_id}:${s.name.toLowerCase()}`, s.id])
+  );
+
+  const insertRows = [];
+  const errors = [];
+
+  students.forEach((s, index) => {
+    const row = index + 2;
+
+    const campusId = campusMap.get(s.campus.toLowerCase());
+    if (!campusId) return errors.push(`Row ${row}: Invalid campus`);
+
+    const gradeId = gradeMap.get(`${campusId}:${s.grade.toLowerCase()}`);
+    if (!gradeId) return errors.push(`Row ${row}: Invalid grade`);
+
+    const sectionId = sectionMap.get(`${gradeId}:${s.section.toLowerCase()}`);
+    if (!sectionId) return errors.push(`Row ${row}: Invalid section`);
+
+    insertRows.push({
+      student_id: s.student_id,
+      name: s.name,
+      campus: s.campus,
+      grade: s.grade,
+      section: s.section,
+      campus_id: campusId,
+      grade_id: gradeId,
+      section_id: sectionId,
+      client_id: clientId
+    });
+  });
+
+  if (errors.length) {
+    return new Response(
+      JSON.stringify({ valid: false, errors }),
+      { headers: corsHeaders }
+    );
+  }
+
+  await supabaseClient.from("students").insert(insertRows);
+
+  return new Response(
+    JSON.stringify({ success: true, inserted: insertRows.length }),
+    { headers: corsHeaders }
+  );
+}
+

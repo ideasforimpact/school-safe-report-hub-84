@@ -96,10 +96,25 @@ const StudentsList = ({
     <div>
       <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead><IdCard className="h-4 w-4 mr-2" /> Student ID</TableHead>
-          <TableHead><User className="h-4 w-4 mr-2" /> Name</TableHead>
-          <TableHead><School className="h-4 w-4 mr-2" /> Grade</TableHead>
+        <TableRow className=''>
+        <TableHead>
+          <div className="flex items-center">
+            <IdCard className="h-4 w-4 mr-2" />
+            <span> Student ID</span>
+          </div>
+        </TableHead>          
+        <TableHead> 
+          <div className="flex items-center">
+            <User className="h-4 w-4 mr-2" />
+            <span> Name</span>
+          </div>
+        </TableHead>
+        <TableHead>
+          <div className="flex items-center">
+            <School className="h-4 w-4 mr-2" />
+            <span> Grade</span>
+          </div>
+        </TableHead>
           <TableHead>Section</TableHead>
           <TableHead>Campus</TableHead>
           <TableHead>Added</TableHead>

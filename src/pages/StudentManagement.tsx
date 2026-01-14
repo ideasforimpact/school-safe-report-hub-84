@@ -206,98 +206,9 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   }, [clientId]);
 
   // Handle realtime student updates
-  const handleStudentUpdate = useCallback(async (payload: any) => {
-    console.log('[Realtime] Student update payload received:', payload);
-    
-    const updatedStudent = payload.new;
-    const oldStudent = payload.old;
-    const eventType = payload.eventType || (payload.new && !payload.old ? 'INSERT' : payload.old && !payload.new ? 'DELETE' : 'UPDATE');
-
-    // Determine event type
-    const isDelete = eventType === 'DELETE' || (!updatedStudent && oldStudent);
-    const isInsert = eventType === 'INSERT' || (updatedStudent && !oldStudent);
-    const isUpdate = eventType === 'UPDATE' || (updatedStudent && oldStudent);
-
-    // For DELETE events, check old student; otherwise check new student
-    const studentToCheck = updatedStudent || oldStudent;
-    
-    // Filter by client_id
-    if (!studentToCheck) {
-      console.log('[Realtime] No student data in payload, skipping');
-      return;
-    }
-
-    if (!clientId || studentToCheck.client_id !== clientId) {
-      console.log('[Realtime] Client ID mismatch, skipping:', {
-        payloadClientId: studentToCheck.client_id,
-        currentClientId: clientId
-      });
-      return;
-    }
-
-    console.log('[Realtime] Processing student update:', {
-      eventType,
-      isInsert,
-      isUpdate,
-      isDelete,
-      studentId: studentToCheck.id
-    });
-
-    try {
-      if (isDelete) {
-        // Remove deleted student - context will handle this via refresh
-        showToast('Student removed', 'info');
-        // Refresh to get updated list
-        await refreshStudents();
-      } else if (isInsert) {
-        console.log('[Realtime] Inserting new student:', updatedStudent.id);
-        // Fetch the complete student with grade/section names
-        try {
-          if (!clientId) return;
-          const fullStudent = await fetchStudentsByClientId(clientId);
-          const newStudent = fullStudent.find(s => s.id === updatedStudent.id);
-          
-          if (newStudent) {
-            console.log('[Realtime] Fetched full student data:', newStudent);
-            showToast('Student added', 'success');
-          }
-          
-          // Refresh to get updated list with new student
-          await refreshStudents();
-        } catch (fetchError) {
-          console.error('[Realtime] Error fetching new student, refreshing list:', fetchError);
-          // If fetching fails, refresh the entire list
-          await refreshStudents();
-          showToast('Student added', 'success');
-        }
-      } else if (isUpdate) {
-        console.log('[Realtime] Updating student:', updatedStudent.id);
-        // Fetch the complete student with grade/section names
-        try {
-          if (!clientId) return;
-          const fullStudent = await fetchStudentsByClientId(clientId);
-          const updatedStudentData = fullStudent.find(s => s.id === updatedStudent.id);
-          
-          if (updatedStudentData) {
-            console.log('[Realtime] Fetched updated student data:', updatedStudentData);
-            showToast('Student updated', 'info');
-          }
-          
-          // Refresh to get updated list
-          await refreshStudents();
-        } catch (fetchError) {
-          console.error('[Realtime] Error fetching updated student, refreshing list:', fetchError);
-          // If fetching fails, refresh the entire list
-          await refreshStudents();
-          showToast('Student updated', 'info');
-        }
-      }
-    } catch (error) {
-      console.error('[Realtime] Error handling student update:', error);
-      // Refresh the entire list on error
-      await refreshStudents();
-    }
-  }, [clientId, refreshStudents, showToast]);
+  const handleStudentUpdate = useCallback(async () => {
+    await refreshStudents();
+  }, [refreshStudents]);
 
   // Handle realtime grades updates
   const handleGradeUpdate = useCallback(async (payload: any) => {
@@ -419,7 +330,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     channelName: `students-${clientId || 'all'}`,
     events: '*',
     table: 'students',
-    filter: clientId ? `client_id=eq.${clientId}` : undefined,
     enabled: !!clientId,
     onPayload: handleStudentUpdate,
   });
