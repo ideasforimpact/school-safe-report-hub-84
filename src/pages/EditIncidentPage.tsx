@@ -102,7 +102,7 @@ const EditIncidentPage = () => {
             <Button 
               variant="ghost" 
               className="flex items-center -ml-4 mb-4"
-              onClick={() => navigate(`/incident/${id}`)}
+              onClick={() => navigate(`/incidents`)}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Incident Details
