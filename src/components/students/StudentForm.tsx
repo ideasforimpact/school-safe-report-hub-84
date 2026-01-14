@@ -175,6 +175,8 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
 
   // Name validation function (letters and spaces only, no special characters)
   const isValidName = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
     const nameRegex = /^[a-zA-Z\s]{1,25}$/;
     return nameRegex.test(name);
   };

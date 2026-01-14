@@ -146,14 +146,59 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
     const rowNumber = index + 2;
     
     // Validate student ID format
-    if (row.studentId && typeof row.studentId === 'string' && row.studentId.length < 2) {
-      errors.push(`Row ${rowNumber}: Student ID "${row.studentId}" is too short`);
+    if (row.studentId && typeof row.studentId === 'string') {
+      const studentId = row.studentId.trim();
+
+      if (studentId.length < 2) {
+        errors.push(`Row ${rowNumber}: Student ID "${studentId}" is too short`);
+      }
+
+      if (studentId.length > 15) {
+        errors.push(
+          `Row ${rowNumber}: Student ID "${studentId}" should not exceed 15 characters`
+        );
+      }
+
+      const studentIdRegex = /^[A-Za-z0-9]+$/;
+
+      if (!studentIdRegex.test(studentId)) {
+        errors.push(
+          `Row ${rowNumber}: Student ID "${studentId}" must not contain spaces or special characters. Only letters and numbers are allowed`
+        );
+      }
     }
-    
+
+  
     // Validate name format
-    if (row.name && typeof row.name === 'string' && row.name.length < 2) {
-      errors.push(`Row ${rowNumber}: Name "${row.name}" is too short`);
+    if (row.name && typeof row.name === 'string') {
+      const name = row.name;
+
+      if (/^\s/.test(name)) {
+        errors.push(
+          `Row ${rowNumber}: Name "${name}" should not start with a space`
+        );
+      }
+
+      if (/\d/.test(name)) {
+        errors.push(
+          `Row ${rowNumber}: Name "${name}" should not contain numbers`
+        );
+      }
+
+      if (name.length < 2) {
+        errors.push(
+          `Row ${rowNumber}: Name "${name}" should have at least 2 characters`
+        );
+      }
+
+      if (name.length > 25) {
+        errors.push(
+          `Row ${rowNumber}: Name "${name}" should not exceed 25 characters`
+        );
+      }
     }
+
+
   });
   
   return errors;
