@@ -32,8 +32,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
 }) => {
     const sortedVehicles = React.useMemo(() => {
       return [...vehicles].sort((a, b) => {
-        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
         return dateB - dateA;
       });
     }, [vehicles]);
