@@ -280,8 +280,8 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     channelName: `vehicles-${clientId}`,
     events: "*",
     table: "vehicles",
-    filter: clientId ? `client_id=eq.${clientId}` : undefined, // CRITICAL: Filter by client_id to prevent cross-client access
-    enabled: !!clientId,
+    // filter: clientId ? `client_id=eq.${clientId}` : undefined, // CRITICAL: Filter by client_id to prevent cross-client access
+    enabled: true,
     onPayload: handleVehicleUpdate,
   });
 
