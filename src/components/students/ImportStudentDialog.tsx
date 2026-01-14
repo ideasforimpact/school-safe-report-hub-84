@@ -10,6 +10,10 @@ import { downloadStudentExcelTemplate, downloadStudentCSVTemplate } from '@/serv
 import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Progress } from '@/components/ui/progress';
+import { validateExcelData } from '@/services/student/utils/excelValidationUtils';
+import { processStudentData } from '@/services/student/importProcessingService';
+import { RawStudentData } from '@/services/student/types/importTypes';
+import { parseStudentFile } from '@/services/student/utils/excelProcessingUtils';
 
 interface ImportStudentDialogProps {
   open: boolean;
@@ -27,6 +31,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
   const [isValidated, setIsValidated] = useState(false);
   const [recordCount, setRecordCount] = useState<number | null>(null);
   const [errorRowNumbers, setErrorRowNumbers] = useState<Set<number>>(new Set());
+  const [parsedData, setParsedData] = useState<RawStudentData[] | null>(null);
 
   // Helper function to parse error messages and extract row numbers
   const parseErrorRowNumbers = (errors: string[]): Set<number> => {
@@ -43,18 +48,50 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     });
     return rowNumbers;
   };
+  const handleValidateParsedData = async (data: RawStudentData[]) => {
+    if (!employeeData?.clientId) return;
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setIsValidating(true);
+    setValidationErrors([]);
+
+    try {
+      const errors = await validateExcelData(
+        structuredClone(data),
+        employeeData.clientId
+      );
+
+      setValidationErrors(errors);
+      setErrorRowNumbers(parseErrorRowNumbers(errors));
+      setIsValidated(errors.length === 0);
+
+      if (errors.length === 0) {
+        toast.success('File validated successfully');
+      }
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
     setFile(selectedFile);
     setIsValidated(false);
     setValidationErrors([]);
     setRecordCount(null);
     setErrorRowNumbers(new Set());
-    
-    // Auto-validate when a file is selected
-    if (selectedFile) {
-      handleValidateFile(selectedFile);
+    setParsedData(null);
+
+    if (!selectedFile || !employeeData?.clientId) return;
+
+    try {
+      const parsed = structuredClone(await parseStudentFile(selectedFile));
+
+      setParsedData(parsed);
+      setRecordCount(parsed.length);
+
+      await handleValidateParsedData(parsed);
+    } catch (e) {
+      toast.error('Failed to read file');
     }
   };
 
@@ -140,38 +177,22 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
   };
 
   const handleImport = async () => {
-    if (!file) {
-      toast.error('Please select a file first');
-      return;
-    }
-
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available. Please ensure you are logged in properly.');
-      return;
-    }
-
-    // Check if there are any valid records to import
-    const validRecordCount = recordCount ? recordCount - errorRowNumbers.size : null;
-    if (validRecordCount !== null && validRecordCount <= 0) {
-      toast.error('No valid records to import. All records have errors.');
-      return;
-    }
+    if (!parsedData || !employeeData?.clientId) return;
 
     setIsUploading(true);
 
     try {
-      // Show a message for large imports to manage user expectations
-      const recordsToProcess = validRecordCount || recordCount;
-      if (recordsToProcess && recordsToProcess > 100) {
-        toast.info(`Processing ${recordsToProcess} records. This may take a moment...`);
-      }
+      const importData = structuredClone(parsedData);
       
-      // Use the enhanced import function with client-specific processing
-      // Pass error row numbers to exclude them from import
-      await processStudentExcel(file, employeeData.clientId, Array.from(errorRowNumbers));
+      await processStudentData(
+        importData.filter((_, i) => !errorRowNumbers.has(i + 2)),
+        employeeData.clientId
+      );
+
       handleDialogClose();
-    } catch (error) {
-      console.error('Import error:', error);
+    } catch (e) {
+      toast.error('Import failed');
+    } finally {
       setIsUploading(false);
     }
   };
@@ -193,7 +214,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Import Students</DialogTitle>
           <DialogDescription>
@@ -286,7 +307,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
                 <div className="max-h-40 overflow-y-auto text-sm">
                   <ul className="list-disc pl-5 space-y-1">
                     {validationErrors.slice(0, 10).map((error, index) => (
-                      <li key={index} className="text-destructive">
+                      <li key={index} className="text-destructive break-all">
                         {error}
                       </li>
                     ))}
@@ -358,8 +379,8 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               Cancel
             </Button>
             <Button
-              onClick={() => handleValidateFile()}
-              disabled={!file || isValidating || !employeeData?.clientId}
+              onClick={() => parsedData && handleValidateParsedData(parsedData)}
+              disabled={!parsedData || isValidating || !employeeData?.clientId}
               variant="outline"
             >
               {isValidating ? (
