@@ -140,6 +140,8 @@ const IncidentDetail = () => {
   const handleStatusChangeWrapper = useCallback(async () => {
     try {
       await incidentDetailProps.handleStatusChange(statusUpdate);
+      console.log('real time update',statusUpdate,id);
+      
       handleRefreshIncident();
     } catch (error) {
       console.error('Error updating status:', error);
