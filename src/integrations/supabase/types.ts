@@ -1739,6 +1739,8 @@ export type Database = {
           last_name: string
           employee_id: string
           is_super_admin: boolean
+          department: string
+          employee_type: string
         }[]
       }
       get_masked_document_number: {

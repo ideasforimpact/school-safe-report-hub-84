@@ -18,10 +18,10 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
       }
     }
     
-    // First, fetch employees
+    // First, fetch employees with employee_type and department joins
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select('*')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
       .eq('client_id', clientId); // MANDATORY client_id filter
 
     if (employeesError) {
@@ -85,9 +85,9 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         dateOfBirth: '',
         address: '',
         joiningDate: record.joining_date || new Date().toISOString(),
-        department: record.department || '',
-        position:  record.employee_type || '',
-        employeeType: (record.employee_type as Employee['employeeType']) || 'permanent',
+        department: (record.department as any)?.department_name || record.department || '',
+        position: (record.employee_type as any)?.type_name || '',
+        employeeType: (record.employee_type as any)?.type_name || 'permanent',
         status: record.status === true,
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
@@ -121,10 +121,10 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
       }
     }
     
-    // First, fetch only active employees
+    // First, fetch only active employees with employee_type and department joins
     const { data: employeesData, error: employeesError } = await supabase
       .from('employees')
-      .select('*')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
       .eq('client_id', clientId) // MANDATORY client_id filter
       .eq('status', true); // Only fetch active employees
 
@@ -189,9 +189,9 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         dateOfBirth: '',
         address: '',
         joiningDate: record.joining_date || new Date().toISOString(),
-        department: record.department || '',
-        position: record.employee_type || '',
-        employeeType: (record.employee_type as Employee['employeeType']) || 'permanent',
+        department: (record.department as any)?.department_name || record.department || '',
+        position: (record.employee_type as any)?.type_name || '',
+        employeeType: (record.employee_type as any)?.type_name || 'permanent',
         status: record.status === true,
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
@@ -215,7 +215,7 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
     // Build query with mandatory client_id filter if provided
     let query = supabase
       .from('employees')
-      .select('*')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
       .eq('id', id);
     
     // SECURITY: Add client_id filter if provided
@@ -247,9 +247,9 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),
-      department: data.department || '',
-      position: data.employee_type || '',
-      employeeType: (data.employee_type as Employee['employeeType']) || 'permanent',
+      department: (data.department as any)?.department_name || data.department || '',
+      position: (data.employee_type as any)?.type_name || '',
+      employeeType: (data.employee_type as any)?.type_name || 'permanent',
       status: data.status === true,
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
@@ -278,7 +278,7 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
     // SECURITY: Query will be automatically filtered by RLS policies
     const { data, error } = await supabase
       .from('employees')
-      .select('*')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -306,9 +306,9 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),
-      department: data.department || '',
-      position: data.employee_type || '',
-      employeeType: (data.employee_type as Employee['employeeType']) || 'permanent',
+      department: (data.department as any)?.department_name || data.department || '',
+      position: (data.employee_type as any)?.type_name || '',
+      employeeType: (data.employee_type as any)?.type_name || 'permanent',
       status: data.status === true,
       createdAt: data.created_at || new Date().toISOString(),
       updatedAt: data.updated_at || new Date().toISOString(),
