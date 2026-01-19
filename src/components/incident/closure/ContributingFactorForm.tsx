@@ -159,8 +159,15 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
           Description <span className="text-red-500">*</span>
         </label>
         <Input
-          value={currentFactor.description}
-          onChange={(e) => setCurrentFactor({...currentFactor, description: e.target.value})}
+          value={currentFactor.description} 
+           onChange={(e) => {
+            const value = e.target.value;
+            if (value.startsWith(' ')) return;
+            setCurrentFactor({
+              ...currentFactor,
+              description: value
+            });
+          }}
           placeholder="Describe this contributing factor"
           maxLength={150}
         />

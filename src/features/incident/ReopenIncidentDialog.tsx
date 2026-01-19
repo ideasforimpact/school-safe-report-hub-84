@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { REOPEN_REASON_MAX_LENGTH } from '@/components/constants';
 
 interface ReopenIncidentDialogProps {
   open: boolean;
@@ -37,9 +38,9 @@ const ReopenIncidentDialog: React.FC<ReopenIncidentDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         
-        <div className="py-4">
+        <div>
           <Label htmlFor="reopen-reason" className="text-sm font-medium">
-            Reason for Reopening *
+            Reason for Reopening <span className="text-red-500">*</span>
           </Label>
           <Textarea
             id="reopen-reason"
@@ -47,8 +48,12 @@ const ReopenIncidentDialog: React.FC<ReopenIncidentDialogProps> = ({
             value={reopenReason}
             onChange={(e) => onReopenReasonChange(e.target.value)}
             className="mt-2"
+            maxLength={REOPEN_REASON_MAX_LENGTH}
             rows={3}
           />
+        </div>
+        <div className="text-xs text-gray-500 text-right">
+          {reopenReason.length}/{REOPEN_REASON_MAX_LENGTH} characters
         </div>
 
         <AlertDialogFooter>
