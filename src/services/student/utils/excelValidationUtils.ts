@@ -173,6 +173,12 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
     if (row.name && typeof row.name === 'string') {
       const name = row.name;
 
+      if (!/^[A-Za-z\s]+$/.test(name)) {
+        errors.push(
+          `Row ${rowNumber}: Name "${row.name}" must contain only letters and spaces (no numbers or special characters)`
+        );
+      }
+
       if (/^\s/.test(name)) {
         errors.push(
           `Row ${rowNumber}: Name "${name}" should not start with a space`
