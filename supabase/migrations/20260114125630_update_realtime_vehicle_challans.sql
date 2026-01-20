@@ -9,9 +9,18 @@ BEGIN
   END IF;
 END $$;
 
--- 2️⃣ Add vehicle_challans table to realtime publication
--- (Safe even if the table is already added)
-ALTER PUBLICATION supabase_realtime ADD TABLE vehicle_challans;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'vehicle_challans'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE vehicle_challans;
+  END IF;
+END $$;
 
 -- 3️⃣ Ensure Row Level Security is enabled
 ALTER TABLE vehicle_challans ENABLE ROW LEVEL SECURITY;
