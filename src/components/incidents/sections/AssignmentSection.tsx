@@ -70,6 +70,8 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
     }, [fetchEmployees]);
 
     const handleEmployeesRealtime = useCallback(async () => {
+      console.log('real time update',employeeData?.clientId);
+      
       await fetchEmployees();
     }, [fetchEmployees]);
 
@@ -77,7 +79,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       channelName: 'employees-realtime',
       events: '*',
       table: 'employees',
-      enabled: !!employeeData?.clientId,
+      enabled: true,
       onPayload: handleEmployeesRealtime,
     });
 

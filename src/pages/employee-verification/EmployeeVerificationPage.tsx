@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import FilterBar from '@/components/employee-verification/filters/FilterBar';
@@ -7,11 +7,14 @@ import { FileCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
@@ -130,7 +133,31 @@ const EmployeeVerificationPage = () => {
   }, [employees]);
 
 
+  const handleEmployeesRealtime = useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current);
+    }
 
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchEmployees();
+    }, 300);
+  }, [fetchEmployees]);
+
+
+  useRealTimeSubHook({
+    channelName: 'employees-realtime',
+    table: 'employees',
+    events: '*',
+    enabled: true,
+    onPayload: handleEmployeesRealtime,
+  });
+  useRealTimeSubHook({
+    channelName: 'employee-documents-realtime',
+    table: 'employee_documents',
+    events: '*',
+    enabled: true,
+    onPayload: handleEmployeesRealtime,
+  });
   return (
     <Layout>
       <div className="w-full py-6">

@@ -8,7 +8,6 @@ import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 import { useAuth } from '@/contexts';
 import {
   getPendingChallansFromVehicleChallans,
-  getAllVehiclesWithChallans,
 } from '@/services/transport-safety/vehicleService';
 
 const TransportSafetyPage = () => {
@@ -20,37 +19,7 @@ const TransportSafetyPage = () => {
   const { employeeData } = useAuth();
   const navigate = useNavigate();
   const clientId = employeeData?.clientId;
-
-  // Fetch vehicles with challans data
-  React.useEffect(() => {
-    const fetchVehiclesData = async () => {
-      if (!clientId) return;
-      
-      try {
-        const vehicles = await getAllVehiclesWithChallans(clientId);
-        setTotalVehicles(vehicles.length);
-        
-        let totalPendingAmount = 0;
-        let totalPendingCount = 0;
-        
-        vehicles.forEach(vehicle => {
-          const pending = getPendingChallansFromVehicleChallans(vehicle.vehicleChallans || null);
-          totalPendingCount += pending.length;
-          totalPendingAmount += pending.reduce((sum, c) => {
-            const amount = Number(c.amount || c.challan_amount || 0);
-            return sum + (isNaN(amount) ? 0 : amount);
-          }, 0);
-        });
-        
-        setPendingAmount(totalPendingAmount);
-        setPendingChallanCount(totalPendingCount);
-      } catch (error) {
-        console.error('Error fetching vehicles data:', error);
-      }
-    };
-    
-    fetchVehiclesData();
-  }, [clientId]);
+  
 
 const handleVehiclesChanged = useCallback(({ vehicles }) => {
   setTotalVehicles(vehicles.length);
@@ -70,6 +39,8 @@ const handleVehiclesChanged = useCallback(({ vehicles }) => {
   
   setPendingAmount(totalPendingAmount);
   setPendingChallanCount(totalPendingCount);
+  console.log({vehicles,totalPendingAmount,totalPendingCount},'happens with the vehicle');
+
 }, []);
 
 

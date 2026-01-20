@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,6 +27,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { checkStudentIdExists } from '@/services/student/studentValidationService';
 import { useAuth } from '@/contexts/auth';
 import { Person } from '@/types/incident';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface Campus {
   id: string;
@@ -192,8 +193,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   // Note: we only depend on clientId here so we don't re-run this effect
   // after submit/save when defaultValues may change, which was causing a
   // brief "Loading educational structure data..." flash.
-  useEffect(() => {
-    const fetchEducationalStructure = async () => {
+    const fetchEducationalStructure = useCallback(async () => {
       if (!employeeData?.clientId) {
         console.log('No client ID available, skipping data fetch');
         setDataLoading(false);
@@ -288,11 +288,12 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       } finally {
         setDataLoading(false);
       }
-    };
-    
-    fetchEducationalStructure();
+    }, [employeeData?.clientId, defaultValues, form]);
+
+    useEffect(() => {
+      fetchEducationalStructure();
+    }, [fetchEducationalStructure]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeData?.clientId]);
 
   // Filter grades based on selected campus
   useEffect(() => {
@@ -377,6 +378,39 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
       onCancel();
     }
   };
+  useRealTimeSubHook({
+    channelName: `campuses-student-form-${employeeData?.clientId}`,
+    table: 'campuses',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: () => {
+      console.log('[Realtime] Campus changed → refetching');
+      fetchEducationalStructure();
+    },
+  });
+
+  useRealTimeSubHook({
+    channelName: `grades-student-form-${employeeData?.clientId}`,
+    table: 'grades',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: () => {
+      console.log('[Realtime] Grade changed → refetching');
+      fetchEducationalStructure();
+    },
+  });
+
+  useRealTimeSubHook({
+    channelName: `sections-student-form-${employeeData?.clientId}`,
+    table: 'sections',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: () => {
+      console.log('[Realtime] Section changed → refetching');
+      fetchEducationalStructure();
+    },
+  });
+
 
   if (dataLoading) {
     return (

@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 
 const FormsPage = () => {
@@ -491,6 +492,19 @@ const FormsPage = () => {
       setIsSubmittingAcknowledgment(false);
     }
   };
+  const handleSubmissionUpdated = () => {
+    console.log('realtime enabled for forms');
+    refetchSubmissions();
+  };
+
+
+  useRealTimeSubHook({
+    channelName: `form-submissions-${effectiveClientId}`,
+    table: 'form_submissions',
+    events: '*',
+    enabled: !!effectiveClientId,
+    onPayload: handleSubmissionUpdated,
+  });
 
   // Shared header and content wrapper depending on mode
   const Content = (

@@ -3,3 +3,4 @@ export const TITLE_MAX_LENGTH =15;
 export const EDUSAFE_DESCRIPTION_MAX_LENGTH =100;
 export const EDUSAFE_TAG_MAX_LENGTH =50;
 export const NOTES_MAX_LENGTH =200;
+export const REOPEN_REASON_MAX_LENGTH =1000;

@@ -175,10 +175,17 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
             {parsed.beforeReason && (
               <p className="text-sm text-gray-700">{parsed.beforeReason}</p>
             )}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-gray-900">Reason:</span>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 break-words max-w-full">
-                <span className="break-words whitespace-normal">{parsed.reason}</span>
+            <div className="flex items-start gap-2">
+              <span className="text-sm font-medium text-gray-900 shrink-0">Reason:</span>
+              <Badge
+                variant="outline"
+                  className="
+                    bg-blue-50
+                    text-blue-700
+                    border-blue-200
+                    break-words 
+                    max-w-full block whitespace-normal break-all px-3 py-2 rounded-lg">
+                    {parsed.reason}
               </Badge>
             </div>
           </div>
