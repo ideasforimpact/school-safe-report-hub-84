@@ -542,13 +542,13 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
                   date={targetDateFrom}
                   onChange={setTargetDateFrom}
                   placeholderText="Target date from"
-                  className="w-48"
+                  className="w-52"
                 />
                 <DatePicker
                   date={targetDateTo}
                   onChange={setTargetDateTo}
                   placeholderText="Target date to"
-                  className="w-48"
+                  className="w-52"
                   disabledDates={(date) =>
                     targetDateFrom ? date < targetDateFrom : false
                   }
