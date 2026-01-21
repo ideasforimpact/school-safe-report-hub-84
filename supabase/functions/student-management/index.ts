@@ -563,13 +563,7 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
       );
     }
 
-    if (existingStudents && existingStudents.length > 0) {
-      existingStudents.forEach(existing => {
-        const rowIndex = students.findIndex(s => s.studentId === existing.student_id);
-        const rowNumber = rowIndex >= 0 ? rowIndex + 2 : 'Unknown';
-        errors.push(`Row ${rowNumber}: Student ID "${existing.student_id}" already exists in your organization`);
-      });
-    }
+   
   }
 
   // If there are duplicate errors, return them immediately

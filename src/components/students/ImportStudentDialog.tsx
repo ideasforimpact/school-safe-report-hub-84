@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Upload, FileUp, AlertCircle, Check, Loader2, Download, FileText, Info } from 'lucide-react';
@@ -14,6 +13,14 @@ import { validateExcelData } from '@/services/student/utils/excelValidationUtils
 import { processStudentData } from '@/services/student/importProcessingService';
 import { RawStudentData } from '@/services/student/types/importTypes';
 import { parseStudentFile } from '@/services/student/utils/excelProcessingUtils';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog"
 
 interface ImportStudentDialogProps {
   open: boolean;
@@ -32,6 +39,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
   const [recordCount, setRecordCount] = useState<number | null>(null);
   const [errorRowNumbers, setErrorRowNumbers] = useState<Set<number>>(new Set());
   const [parsedData, setParsedData] = useState<RawStudentData[] | null>(null);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
 
   // Helper function to parse error messages and extract row numbers
   const parseErrorRowNumbers = (errors: string[]): Set<number> => {
@@ -53,15 +61,18 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
 
     setIsValidating(true);
     setValidationErrors([]);
+    setValidationWarnings([]);
 
     try {
-      const errors = await validateExcelData(
-        structuredClone(data),
-        employeeData.clientId
-      );
-
+      const { errors, warnings, skippedRowNumbers } = await validateExcelData(structuredClone(data), employeeData.clientId);
       setValidationErrors(errors);
-      setErrorRowNumbers(parseErrorRowNumbers(errors));
+      setValidationWarnings(warnings);
+      const mergedSkippedRows = new Set<number>([
+        ...parseErrorRowNumbers(errors),
+        ...skippedRowNumbers,
+      ]);
+      setErrorRowNumbers(mergedSkippedRows);
+
       setIsValidated(errors.length === 0);
 
       if (errors.length === 0) {
@@ -202,6 +213,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setFile(null);
     setIsValidated(false);
     setValidationErrors([]);
+    setValidationWarnings([]);
     setIsUploading(false);
     setRecordCount(null);
     setErrorRowNumbers(new Set());
@@ -213,16 +225,16 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
   const hasValidRecords = validRecordCount !== null && validRecordCount > 0;
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="sm:max-w-[500px] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Import Students</DialogTitle>
-          <DialogDescription>
+    <AlertDialog open={open} onOpenChange={handleDialogClose}>
+      <AlertDialogContent className="sm:max-w-[500px] overflow-hidden">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Import Students</AlertDialogTitle>
+          <AlertDialogDescription>
             Upload a CSV or Excel file containing student information. The file should have columns for Student ID, Name, Grade, Section, and Campus. 
             <br />
             <strong>Note:</strong> Student IDs must be unique within your organization.
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
         <div className="space-y-6">
           {/* Template Download Section */}
@@ -343,13 +355,41 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               )}
             </div>
           )}
+          {validationWarnings.length > 0 && (
+            <div className="border border-yellow-300 bg-yellow-50 rounded-md p-3 max-h-40 overflow-y-auto no-scrollbar">
+              <p className="text-sm font-medium text-yellow-700 mb-2">
+                Duplicate Students ({validationWarnings.length})
+              </p>
+
+              <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+                {validationWarnings.slice(0, 10).map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+
+                {validationWarnings.length > 10 && (
+                  <li className="font-medium">
+                    ... and {validationWarnings.length - 10} more duplicates
+                  </li>
+                )}
+              </ul>
+
+              <p className="text-xs text-yellow-700 mt-2">
+                These students will be skipped during import.
+              </p>
+            </div>
+          )}
+
 
           {isValidated && validationErrors.length === 0 && (
             <div className="border border-green-500/50 rounded-md p-3 bg-green-500/10">
               <p className="text-green-600 flex items-center">
                 <Check className="h-4 w-4 mr-1" />
-                File is valid and ready to import - no duplicate student IDs found
-                {recordCount && ` (${recordCount} records)`}
+                File is valid and ready to import
+                {validationWarnings.length > 0 && (
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    {validationWarnings.length} duplicate record(s) will be skipped
+                  </span>
+                )}
               </p>
             </div>
           )}
@@ -374,7 +414,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             </div>
           )}
 
-          <DialogFooter className="flex justify-end space-x-2">
+          <AlertDialogFooter className="flex justify-end space-x-2">
             <Button variant="outline" onClick={handleDialogClose}>
               Cancel
             </Button>
@@ -405,10 +445,10 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
                 <><FileUp className="h-4 w-4 mr-1" /> Import Students</>
               )}
             </Button>
-          </DialogFooter>
+          </AlertDialogFooter>
         </div>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

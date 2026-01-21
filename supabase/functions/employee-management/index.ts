@@ -149,11 +149,11 @@ serve(async (req) => {
 async function handleBulkImport(supabaseClient: any, employees: any[], clientId: string) {
   console.log("Processing bulk import for", employees?.length, "employees with clientId:", clientId);
   
-  if (!employees || !Array.isArray(employees) || employees.length === 0) {
+  if (!Array.isArray(employees) || employees.length === 0) {
     return new Response(
-      JSON.stringify({ 
-        error: "Invalid employees data",
-        details: "Employees array is required and must not be empty"
+      JSON.stringify({
+        success: false,
+        error: "Employees array is required and must not be empty",
       }),
       { 
         status: 400, 
@@ -162,96 +162,122 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     );
   }
 
-  const result = {
-    success: true,
-    created: 0,
-    updated: 0,
-    errors: [],
-    employees: []
-  };
+  const emails = employees.map(e => e.email?.toLowerCase());
+  const employeeIds = employees.map(e => e.employeeId);
 
-  // Process employees in batches to avoid overwhelming the database
-  const batchSize = 50;
-  for (let i = 0; i < employees.length; i += batchSize) {
-    const batch = employees.slice(i, i + batchSize);
-    console.log(`Processing batch ${Math.floor(i/batchSize) + 1} of ${Math.ceil(employees.length/batchSize)}`);
-    
-    for (const emp of batch) {
-      try {
-        // Check for duplicate email within the same client
-        const { data: existingEmailEmployee } = await supabaseClient
-          .from('employees')
-          .select('id')
-          .eq('email', emp.email)
-          .eq('client_id', clientId)
-          .maybeSingle();
+  const { data: existingEmployees, error: fetchError } =
+    await supabaseClient
+      .from("employees")
+      .select("email, employee_id")
+      .eq("client_id", clientId)
+      .or(
+        `email.in.(${emails.join(",")}),employee_id.in.(${employeeIds.join(",")})`
+      );
 
-        if (existingEmailEmployee) {
-          result.errors.push(`Employee with email ${emp.email} already exists`);
-          continue;
-        }
-
-        // Check for duplicate Employee ID within the same client
-        const { data: existingEmployeeIdEmployee } = await supabaseClient
-          .from('employees')
-          .select('id')
-          .eq('employee_id', emp.employeeId)
-          .eq('client_id', clientId)
-          .maybeSingle();
-
-        if (existingEmployeeIdEmployee) {
-          result.errors.push(`Employee with ID ${emp.employeeId} already exists`);
-          continue;
-        }
-
-        // Create employee record
-        const employeeData = {
-          employee_id: emp.employeeId,
-          first_name: emp.firstName,
-          last_name: emp.lastName,
-          email: emp.email,
-          employee_type: emp.employeeType,
-          department: emp.department,
-          designation:emp.designation,
-          joining_date: emp.joiningDate,
-          status: true,
-          phone: emp.phone || null,
-          client_id: clientId,
-          user_id: emp.user_id || null,
-          is_super_admin: emp.is_super_admin || false
-        };
-
-        const { data: newEmployee, error: createError } = await supabaseClient
-          .from('employees')
-          .insert(employeeData)
-          .select('*')
-          .single();
-
-        if (createError) {
-          console.error("Error creating employee:", createError);
-          result.errors.push(`Failed to create employee ${emp.employeeId}: ${createError.message}`);
-          continue;
-        }
-
-        result.created++;
-        result.employees.push(newEmployee);
-
-        // Handle module access if provided
-        if (emp.moduleAccessPayload && Array.isArray(emp.moduleAccessPayload)) {
-          await handleEmployeeModuleAccess(supabaseClient, newEmployee.id, emp.moduleAccessPayload);
-        }
-
-      } catch (empError) {
-        console.error("Error processing employee:", empError);
-        result.errors.push(`Error processing employee ${emp.employeeId}: ${empError.message}`);
+  if (fetchError) {
+    console.error("Duplicate check failed:", fetchError);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Failed to check existing employees",
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
+    );
+  }
+
+  const existingEmailSet = new Set(
+    (existingEmployees || []).map(e => e.email?.toLowerCase())
+  );
+  const existingIdSet = new Set(
+    (existingEmployees || []).map(e => e.employee_id)
+  );
+
+  const insertPayload: any[] = [];
+  const errors: string[] = [];
+
+  for (const emp of employees) {
+    if (!emp.email || !emp.employeeId) {
+      errors.push("Missing email or employeeId");
+      continue;
+    }
+
+    if (existingEmailSet.has(emp.email.toLowerCase())) {
+      errors.push(`Duplicate email: ${emp.email}`);
+      continue;
+    }
+
+    if (existingIdSet.has(emp.employeeId)) {
+      errors.push(`Duplicate employee ID: ${emp.employeeId}`);
+      continue;
+    }
+
+    insertPayload.push({
+      employee_id: emp.employeeId,
+      first_name: emp.firstName,
+      last_name: emp.lastName || null,
+      email: emp.email,
+      employee_type: emp.employeeType,
+      department: emp.department,
+      designation: emp.designation || null,
+      joining_date: emp.joiningDate,
+      phone: emp.phone || null,
+      status: true,
+      client_id: clientId,
+      user_id: emp.user_id || null,
+      is_super_admin: emp.is_super_admin || false,
+    });
+  }
+  
+  let insertedEmployees: any[] = [];
+
+  if (insertPayload.length > 0) {
+    const { data, error: insertError } = await supabaseClient
+      .from("employees")
+      .insert(insertPayload)
+      .select("id, employee_id");
+
+    if (insertError) {
+      console.error("Insert failed:", insertError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to insert employees",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    insertedEmployees = data || [];
+  }
+
+  for (let i = 0; i < insertedEmployees.length; i++) {
+    const emp = employees[i];
+    const employeeId = insertedEmployees[i]?.id;
+
+    if (employeeId && Array.isArray(emp.moduleAccessPayload)) {
+      await handleEmployeeModuleAccess(
+        supabaseClient,
+        employeeId,
+        emp.moduleAccessPayload
+      );
     }
   }
 
-  console.log("Bulk import completed:", result);
 
   return new Response(
-    JSON.stringify(result),
+    JSON.stringify({
+      success: true,
+      received: employees.length,
+      inserted: insertedEmployees.length,
+      skipped: errors.length,
+      errors,
+    }),
     { 
       status: 200, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

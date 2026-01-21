@@ -127,9 +127,9 @@ export const isValidEmployeeId = (employeeId: string): boolean => {
   return employeeIdRegex.test(trimmed);
 };
 
-export const validateExcelData = async (data: any[], clientId?: string): Promise<string[]> => {
+export const validateExcelData = async (data: any[], clientId?: string): Promise<{ errors: string[]; warnings: string[] }> => {
   const errors: string[] = [];
-  
+  const warnings: string[] = [];
   if (!Array.isArray(data) || data.length === 0) {
     errors.push("No data found in the Excel file");
     return errors;
@@ -217,14 +217,14 @@ const ALLOWED_STATUS = ['active'];
   if (duplicateIds.length > 0) {
     const uniqueDuplicates = [...new Set(duplicateIds)];
     uniqueDuplicates.forEach(id => {
-      errors.push(`Duplicate employee ID found in file: ${id}`);
+      warnings.push(`Employee ID '${id}' is duplicated in the file and will be skipped`);
     });
   }
    const duplicateEmails = emailsRaw.filter((email, index) => emailsRaw.indexOf(email) !== index);
   if (duplicateEmails.length > 0) {
     const uniqueEmailDups = [...new Set(duplicateEmails)];
     uniqueEmailDups.forEach(email => {
-      errors.push(`Duplicate email found in file: ${email}`);
+      warnings.push(`Email '${email}' is duplicated and will be skipped`);
     });
   }
 
@@ -241,7 +241,7 @@ const ALLOWED_STATUS = ['active'];
       // Add duplicate employee ID errors
       if (duplicates.length > 0) {
         duplicates.forEach(id => {
-          errors.push(`Employee ID '${id}' already exists for this client`);
+          warnings.push(`Employee ID '${id}' already exists and will be skipped`);
         });
       }
     } catch (error) {
@@ -261,7 +261,7 @@ const ALLOWED_STATUS = ['active'];
         }
         if (emailDuplicates && emailDuplicates.length > 0) {
           emailDuplicates.forEach(email => {
-            errors.push(`Email '${email}' already exists for this client`);
+            warnings.push(`Email '${email}' already exists and will be skipped`);
           });
         }
       }
@@ -465,7 +465,7 @@ const ALLOWED_STATUS = ['active'];
     }
   });
   
-  return errors;
+  return { errors, warnings };
 };
 
 /**
