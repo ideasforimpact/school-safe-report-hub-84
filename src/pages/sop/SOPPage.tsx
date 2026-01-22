@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import SOPHeader from '@/components/sop/SOPHeader';
+import AssignSOPDialog from '@/components/sop/AssignSOPDialog';
 import AddSOPDialog from '@/components/sop/AddSOPDialog';
+import ViewSOPDialog from '@/components/sop/ViewSOPDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -25,7 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Edit, Flag, Eye, UserPlus, Search } from 'lucide-react';
+import { Edit, Eye, UserPlus, Search, Users, User } from 'lucide-react';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface SOP {
   id: string;
@@ -41,11 +44,27 @@ interface SOP {
   created_at: string;
   updated_at: string;
   assigned_sop?: number;
+  assigned_group_count?: number;
+  assigned_employee_count?: number;
+  creator_name?: string | null;
+  assignments?: {
+    group_id: string | null;
+    group_name: string | null;
+    group_type: string | null;
+    group_status: boolean | null;
+    employee_count?: number | null;
+    created_by_id: string | null;
+    created_by_name: string | null;
+  }[];
 }
 
 const SOPPage = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSOP, setEditingSOP] = useState<SOP | null>(null);
+  const [assigningSOP, setAssigningSOP] = useState<SOP | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [viewingSOP, setViewingSOP] = useState<SOP | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [sops, setSops] = useState<SOP[]>([]);
   const [allSops, setAllSops] = useState<SOP[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +74,9 @@ const SOPPage = () => {
   const employeeData = getEmployeeData(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   const { client } = useClient();
+
+  // Resolve clientId similarly to AddSOPDialog to avoid null client from context
+  const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
   useEffect(() => {
     fetchSOPs();
@@ -133,9 +155,26 @@ const SOPPage = () => {
   };
 
   const handleSOPCreated = () => {
-    // Refresh SOP list
+    // Refresh SOP list after create/update
     fetchSOPs();
     setEditingSOP(null);
+  };
+
+  const handleAssignClick = (sop: SOP) => {
+    setAssigningSOP(sop);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssignDialogChange = (open: boolean) => {
+    if (!open) {
+      setAssigningSOP(null);
+    }
+    setAssignDialogOpen(open);
+  };
+
+  const handleAssignedSummaryUpdate = (_assignedCount: number) => {
+    // Always refetch from backend so list reflects latest sop_assigned state
+    fetchSOPs();
   };
 
   const handleDialogClose = (open: boolean) => {
@@ -151,6 +190,29 @@ const SOPPage = () => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
+
+  // Real-time updates: refetch SOPs whenever SOP or sop_assigned changes for this client
+  useRealTimeSubHook({
+    channelName: 'sop-realtime',
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'sop',
+    filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
+    enabled: !!resolvedClientId,
+    onPayload: () => {
+      fetchSOPs();
+    },
+  });
+
+  useRealTimeSubHook({
+    channelName: 'sop-assigned-realtime',
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'sop_assigned',
+    filter: resolvedClientId ? `client_id=eq.${resolvedClientId}` : undefined,
+    enabled: !!resolvedClientId,
+    onPayload: () => {
+      fetchSOPs();
+    },
+  });
 
   return (
     <Layout>
@@ -215,7 +277,10 @@ const SOPPage = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Category Name</TableHead>
-                    <TableHead>Assigned SOP</TableHead>
+                    <TableHead>Assigned Groups</TableHead>
+                    <TableHead>Assigned Employees</TableHead>
+                    <TableHead>Completed</TableHead>
+                    <TableHead>To be Done</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -232,15 +297,15 @@ const SOPPage = () => {
                         {sop.category_name ? truncateText(sop.category_name, 15) : '-'}
                       </TableCell>
                       <TableCell>
-                        {sop.assigned_sop && sop.assigned_sop > 0 ? (
+                        {sop.assigned_group_count && sop.assigned_group_count > 0 ? (
                           <Badge 
                             variant="outline" 
                             className="bg-orange-50 border-orange-300 text-orange-700 flex items-center gap-1.5 w-fit"
                           >
-                            <Flag className="h-3 w-3" />
+                            <Users className="h-3 w-3" />
                             <span>Yes</span>
-                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-orange-500 rounded-full">
-                              {sop.assigned_sop}
+                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-orange-700 bg-orange-100 rounded-full">
+                              {sop.assigned_group_count}
                             </span>
                           </Badge>
                         ) : (
@@ -248,13 +313,37 @@ const SOPPage = () => {
                             variant="outline" 
                             className="bg-red-50 border-red-300 text-red-700 flex items-center gap-1.5 w-fit"
                           >
-                            <Flag className="h-3 w-3" />
+                            <Users className="h-3 w-3" />
                             <span>No</span>
-                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
-                              {sop.assigned_sop || 0}
+                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-red-700 bg-red-100 rounded-full">
+                              {sop.assigned_group_count || 0}
                             </span>
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className={(sop.assigned_employee_count || 0) > 0 
+                            ? 'bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit'
+                            : 'bg-gray-50 border-gray-300 text-gray-700 flex items-center gap-1.5 w-fit'}
+                        >
+                          <User className="h-3 w-3" />
+                          <span>{(sop.assigned_employee_count || 0) > 0 ? 'Yes' : 'No'}</span>
+                          <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full ${
+                            (sop.assigned_employee_count || 0) > 0
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {sop.assigned_employee_count || 0}
+                          </span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600">-</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-600">-</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -271,8 +360,8 @@ const SOPPage = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              // TODO: Implement view functionality
-                              console.log('View SOP:', sop.id);
+                              setViewingSOP(sop);
+                              setViewDialogOpen(true);
                             }}
                             className="h-8 w-8 p-0"
                             title="View"
@@ -284,7 +373,7 @@ const SOPPage = () => {
                             size="sm"
                             onClick={() => {
                               // TODO: Implement assign person functionality
-                              console.log('Assign person to SOP:', sop.id);
+                              handleAssignClick(sop);
                             }}
                             className="h-8 w-8 p-0"
                             title="Assign Person"
@@ -307,6 +396,33 @@ const SOPPage = () => {
           onOpenChange={handleDialogClose}
           onSuccess={handleSOPCreated}
           editingSOP={editingSOP}
+        />
+
+        {/* Assign SOP Dialog */}
+        <AssignSOPDialog
+          open={assignDialogOpen}
+          onOpenChange={handleAssignDialogChange}
+          sopId={assigningSOP?.id || null}
+          clientId={resolvedClientId}
+          employeeId={employeeData?.id || null}
+          initialGroupIds={
+            assigningSOP?.assignments
+              ?.map((a) => a.group_id)
+              .filter((id): id is string => Boolean(id)) || []
+          }
+          onAssigned={handleAssignedSummaryUpdate}
+        />
+
+        {/* View SOP Dialog */}
+        <ViewSOPDialog
+          open={viewDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setViewingSOP(null);
+            }
+            setViewDialogOpen(open);
+          }}
+          sop={viewingSOP}
         />
       </div>
     </Layout>

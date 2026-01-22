@@ -86,41 +86,144 @@ serve(async (req) => {
 
       const categoryMap = new Map((categories || []).map((c: any) => [c.id, c.category_name]));
 
-      // Get SOP IDs to fetch assigned counts
+      // Get SOP IDs to fetch assigned counts and group details
       const sopIds = (sopData || []).map((s: any) => s.id);
       
-      // Fetch assigned counts for each SOP
-      let assignedCountMap = new Map<string, number>();
+      // Fetch assigned counts and group/creator details for each SOP
+      const assignedCountMap = new Map<string, number>();
+      const assignmentsBySopId = new Map<string, any[]>();
+
       if (sopIds.length > 0) {
-        const { data: assignedData } = await supabaseClient
+        const { data: assignedData, error: assignedError } = await supabaseClient
           .from('sop_assigned')
-          .select('sop_id')
+          .select(`
+            sop_id,
+            created_by,
+            group:groups (
+              id,
+              name,
+              group_type,
+              status,
+              group_employees:group_employees!group_employees_group_id_fkey (
+                employee_id,
+                employee:employees!group_employees_employee_id_fkey (
+                  id,
+                  first_name,
+                  last_name,
+                  email
+                )
+              )
+            ),
+            creator:employees!sop_assigned_created_by_fkey (
+              id,
+              first_name,
+              last_name
+            )
+          `)
           .in('sop_id', sopIds);
+
+        if (assignedError) {
+          console.error('[fetch-sop] Error fetching assignments (admin):', assignedError);
+        }
 
         if (assignedData) {
           assignedData.forEach((item: any) => {
             const count = assignedCountMap.get(item.sop_id) || 0;
             assignedCountMap.set(item.sop_id, count + 1);
+
+            const existing = assignmentsBySopId.get(item.sop_id) || [];
+            existing.push(item);
+            assignmentsBySopId.set(item.sop_id, existing);
           });
         }
       }
 
+      // Fetch SOP creator names
+      const creatorIds = [
+        ...new Set((sopData || []).map((s: any) => s.employee_id).filter(Boolean)),
+      ];
+
+      const creatorMap = new Map<string, { id: string; first_name: string; last_name: string }>();
+
+      if (creatorIds.length > 0) {
+        const { data: creators } = await supabaseClient
+          .from('employees')
+          .select('id, first_name, last_name')
+          .in('id', creatorIds);
+
+        (creators || []).forEach((emp: any) => {
+          creatorMap.set(emp.id, emp);
+        });
+      }
+
       // Format data
-      formattedSOPs = (sopData || []).map((sop: any) => ({
-        id: sop.id,
-        title: sop.title,
-        category_id: sop.category_id,
-        category_name: categoryMap.get(sop.category_id) || null,
-        description: sop.description,
-        status: sop.status,
-        procedure_steps: Array.isArray(sop.procedure_steps) ? sop.procedure_steps : [],
-        important_notes: sop.important_notes,
-        client_id: sop.client_id,
-        employee_id: sop.employee_id,
-        created_at: sop.created_at,
-        updated_at: sop.updated_at,
-        assigned_sop: assignedCountMap.get(sop.id) || 0,
-      }));
+      formattedSOPs = (sopData || []).map((sop: any) => {
+        const creator = sop.employee_id ? creatorMap.get(sop.employee_id) : null;
+        const assignments = assignmentsBySopId.get(sop.id) || [];
+
+        const formattedAssignments = assignments.map((item: any) => {
+          const group = item.group;
+          const createdByEmp = item.creator;
+          const members = (group?.group_employees || []) as { 
+            employee_id: string;
+            employee?: {
+              id: string;
+              first_name: string | null;
+              last_name: string | null;
+              email: string | null;
+            } | null;
+          }[];
+          const employees = members
+            .filter((m) => m.employee)
+            .map((m) => ({
+              id: m.employee!.id,
+              first_name: m.employee!.first_name || '',
+              last_name: m.employee!.last_name || '',
+              email: m.employee!.email || '',
+              full_name: `${m.employee!.first_name || ''} ${m.employee!.last_name || ''}`.trim() || m.employee!.email || 'Unknown',
+            }));
+          return {
+            group_id: group?.id || null,
+            group_name: group?.name || null,
+            group_type: group?.group_type || null,
+            group_status: group?.status ?? null,
+            employee_count: members.length,
+            employees: employees,
+            created_by_id: createdByEmp?.id || null,
+            created_by_name: createdByEmp
+              ? `${createdByEmp.first_name ?? ''} ${createdByEmp.last_name ?? ''}`.trim()
+              : null,
+          };
+        });
+
+        const assignedGroupCount = formattedAssignments.length;
+        const assignedEmployeeCount = formattedAssignments.reduce(
+          (sum: number, a: any) => sum + (a.employee_count || 0),
+          0,
+        );
+
+        return {
+          id: sop.id,
+          title: sop.title,
+          category_id: sop.category_id,
+          category_name: categoryMap.get(sop.category_id) || null,
+          description: sop.description,
+          status: sop.status,
+          procedure_steps: Array.isArray(sop.procedure_steps) ? sop.procedure_steps : [],
+          important_notes: sop.important_notes,
+          client_id: sop.client_id,
+          employee_id: sop.employee_id,
+          created_at: sop.created_at,
+          updated_at: sop.updated_at,
+          assigned_sop: assignedGroupCount,
+          assigned_group_count: assignedGroupCount,
+          assigned_employee_count: assignedEmployeeCount,
+          creator_name: creator
+            ? `${creator.first_name ?? ''} ${creator.last_name ?? ''}`.trim()
+            : null,
+          assignments: formattedAssignments,
+        };
+      });
     } else {
       // Normal user: Fetch SOPs from sop_assigned table filtered by client_id and employee_id
       if (!client_id || !employee_id) {
@@ -182,20 +285,75 @@ serve(async (req) => {
       // Get unique SOP IDs to fetch assigned counts
       const uniqueSopIds = [...new Set((data || []).filter((item: any) => item.sop).map((item: any) => item.sop.id))];
       
-      // Fetch assigned counts for each SOP
-      let assignedCountMap = new Map<string, number>();
+      // Fetch assigned counts and group/creator details for each SOP
+      const assignedCountMap = new Map<string, number>();
+      const assignmentsBySopId = new Map<string, any[]>();
       if (uniqueSopIds.length > 0) {
-        const { data: assignedData } = await supabaseClient
+        const { data: assignedData, error: assignedError } = await supabaseClient
           .from('sop_assigned')
-          .select('sop_id')
+          .select(`
+            sop_id,
+            created_by,
+            group:groups (
+              id,
+              name,
+              group_type,
+              status,
+              group_employees:group_employees!group_employees_group_id_fkey (
+                employee_id,
+                employee:employees!group_employees_employee_id_fkey (
+                  id,
+                  first_name,
+                  last_name,
+                  email
+                )
+              )
+            ),
+            creator:employees!sop_assigned_created_by_fkey (
+              id,
+              first_name,
+              last_name
+            )
+          `)
           .in('sop_id', uniqueSopIds);
+
+        if (assignedError) {
+          console.error('[fetch-sop] Error fetching assignments (user):', assignedError);
+        }
 
         if (assignedData) {
           assignedData.forEach((item: any) => {
             const count = assignedCountMap.get(item.sop_id) || 0;
             assignedCountMap.set(item.sop_id, count + 1);
+
+            const existing = assignmentsBySopId.get(item.sop_id) || [];
+            existing.push(item);
+            assignmentsBySopId.set(item.sop_id, existing);
           });
         }
+      }
+
+      // Fetch SOP creator names
+      const creatorIds = [
+        ...new Set(
+          (data || [])
+            .filter((item: any) => item.sop)
+            .map((item: any) => item.sop.employee_id)
+            .filter(Boolean),
+        ),
+      ];
+
+      const creatorMap = new Map<string, { id: string; first_name: string; last_name: string }>();
+
+      if (creatorIds.length > 0) {
+        const { data: creators } = await supabaseClient
+          .from('employees')
+          .select('id, first_name, last_name')
+          .in('id', creatorIds);
+
+        (creators || []).forEach((emp: any) => {
+          creatorMap.set(emp.id, emp);
+        });
       }
 
       // Format for normal user (from sop_assigned with nested sop)
@@ -203,6 +361,50 @@ serve(async (req) => {
         .filter((item: any) => item.sop) // Filter out any items without sop
         .map((item: any) => {
           const sop = item.sop;
+          const creator = sop.employee_id ? creatorMap.get(sop.employee_id) : null;
+          const assignments = assignmentsBySopId.get(sop.id) || [];
+
+          const formattedAssignments = assignments.map((a: any) => {
+            const group = a.group;
+            const createdByEmp = a.creator;
+            const members = (group?.group_employees || []) as { 
+              employee_id: string;
+              employee?: {
+                id: string;
+                first_name: string | null;
+                last_name: string | null;
+                email: string | null;
+              } | null;
+            }[];
+            const employees = members
+              .filter((m) => m.employee)
+              .map((m) => ({
+                id: m.employee!.id,
+                first_name: m.employee!.first_name || '',
+                last_name: m.employee!.last_name || '',
+                email: m.employee!.email || '',
+                full_name: `${m.employee!.first_name || ''} ${m.employee!.last_name || ''}`.trim() || m.employee!.email || 'Unknown',
+              }));
+            return {
+              group_id: group?.id || null,
+              group_name: group?.name || null,
+              group_type: group?.group_type || null,
+              group_status: group?.status ?? null,
+              employee_count: members.length,
+              employees: employees,
+              created_by_id: createdByEmp?.id || null,
+              created_by_name: createdByEmp
+                ? `${createdByEmp.first_name ?? ''} ${createdByEmp.last_name ?? ''}`.trim()
+                : null,
+            };
+          });
+
+          const assignedGroupCount = formattedAssignments.length;
+          const assignedEmployeeCount = formattedAssignments.reduce(
+            (sum: number, a: any) => sum + (a.employee_count || 0),
+            0,
+          );
+
           return {
             id: sop.id,
             title: sop.title,
@@ -216,7 +418,13 @@ serve(async (req) => {
             employee_id: sop.employee_id,
             created_at: sop.created_at,
             updated_at: sop.updated_at,
-            assigned_sop: assignedCountMap.get(sop.id) || 0,
+            assigned_sop: assignedGroupCount,
+            assigned_group_count: assignedGroupCount,
+            assigned_employee_count: assignedEmployeeCount,
+            creator_name: creator
+              ? `${creator.first_name ?? ''} ${creator.last_name ?? ''}`.trim()
+              : null,
+            assignments: formattedAssignments,
           };
         });
     }

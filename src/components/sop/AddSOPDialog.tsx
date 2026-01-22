@@ -241,9 +241,19 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     setLoading(true);
 
     try {
-      // Get client_id and employee_id
-      const clientId = client?.id || null;
+      // Get client_id and employee_id (both mandatory)
+      const clientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
       const employeeId = employeeData?.id || null;
+
+      if (!clientId) {
+        toast.error('Missing client information. Please refresh and try again.');
+        return;
+      }
+
+      if (!employeeId) {
+        toast.error('Missing employee information. Please re-login and try again.');
+        return;
+      }
 
       // Call edge function to create or update SOP
       const functionName = editingSOP ? 'update-sop' : 'create-sop';

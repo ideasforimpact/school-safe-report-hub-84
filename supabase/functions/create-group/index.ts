@@ -316,35 +316,34 @@ async function handleUpdate(supabaseClient: any, data: any) {
   }
 
   // Handle group_employees updates
-  if (group_type === 'Employee' && employee_ids && employee_ids.length > 0) {
-    // Get existing employee IDs for this group
-    const { data: existing, error: existingError } = await supabaseClient
+  if (group_type === 'Employee') {
+    // Always remove existing employees for this group, then insert the new set
+    const { error: deleteError } = await supabaseClient
       .from('group_employees')
-      .select('employee_id')
-      .eq('group_id', group_id);
+      .delete()
+      .eq('group_id', group_id)
+      .eq('client_id', client_id);
 
-    if (existingError) {
-      console.error("Error fetching existing group employees:", existingError);
-    } else {
-      const existingIds = new Set(existing?.map((e: any) => e.employee_id) || []);
-      const newIds = employee_ids.filter((id: string) => !existingIds.has(id));
+    if (deleteError) {
+      console.error("Error deleting existing group employees:", deleteError);
+    }
 
-      if (newIds.length > 0) {
-        const groupEmployees = newIds.map((empId: string) => ({
-          group_id: group_id,
-          employee_id: empId,
-          role_id: null,
-          client_id,
-          created_by_employee_id: employee_id
-        }));
+    // Insert updated employee list (if any)
+    if (employee_ids && employee_ids.length > 0) {
+      const groupEmployees = employee_ids.map((empId: string) => ({
+        group_id: group_id,
+        employee_id: empId,
+        role_id: null,
+        client_id,
+        created_by_employee_id: employee_id
+      }));
 
-        const { error: geError } = await supabaseClient
-          .from('group_employees')
-          .insert(groupEmployees);
+      const { error: geError } = await supabaseClient
+        .from('group_employees')
+        .insert(groupEmployees);
 
-        if (geError) {
-          console.error("Error inserting new group employees:", geError);
-        }
+      if (geError) {
+        console.error("Error inserting updated group employees:", geError);
       }
     }
   } else if (group_type === 'Department' && department_id) {

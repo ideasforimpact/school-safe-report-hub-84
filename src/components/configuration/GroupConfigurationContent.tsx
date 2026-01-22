@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ interface Group {
   employee_id: string;
   created_at: string;
   updated_at: string;
+  member_count?: number;
 }
 
 const GroupConfigurationContent = () => {
@@ -59,13 +60,28 @@ const GroupConfigurationContent = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('groups' as any)
-        .select('*')
+        .select('*, group_employees:group_employees(count)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setGroups((data || []) as Group[]);
+      const mapped = (data || []).map((g: any) => ({
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        group_type: g.group_type,
+        status: g.status,
+        client_id: g.client_id,
+        employee_id: g.employee_id,
+        created_at: g.created_at,
+        updated_at: g.updated_at,
+        member_count: Array.isArray(g.group_employees) && g.group_employees.length > 0
+          ? g.group_employees[0].count
+          : 0,
+      })) as Group[];
+
+      setGroups(mapped);
     } catch (error: any) {
       console.error('Error fetching groups:', error);
       toast.error('Failed to load groups');
@@ -211,6 +227,7 @@ const GroupConfigurationContent = () => {
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Group Type</TableHead>
+              <TableHead>Employees</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -242,16 +259,45 @@ const GroupConfigurationContent = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={group.group_type === 'Department' ? 'default' : 'secondary'}
-                    >
-                      {group.group_type}
-                    </Badge>
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 border border-amber-200">
+                      {group.group_type === 'Department' ? 'Department' : 'Employee'}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={group.status ? 'default' : 'secondary'}>
+                    {group.member_count && group.member_count > 0 ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-orange-50 border-orange-300 text-orange-700 flex items-center gap-1.5 w-fit"
+                      >
+                        <Users className="h-3 w-3" />
+                        <span>Yes</span>
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-orange-500 rounded-full">
+                          {group.member_count}
+                        </span>
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-red-50 border-red-300 text-red-700 flex items-center gap-1.5 w-fit"
+                      >
+                        <Users className="h-3 w-3" />
+                        <span>No</span>
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                          {group.member_count || 0}
+                        </span>
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold border ${
+                        group.status
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
+                    >
                       {group.status ? 'Active' : 'Inactive'}
-                    </Badge>
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

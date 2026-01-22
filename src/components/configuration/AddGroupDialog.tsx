@@ -10,8 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
+import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
 
 interface AddGroupDialogProps {
   isOpen: boolean;
@@ -133,6 +134,12 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
     );
   };
 
+  const employeeOptions: SearchMultiSelectOption[] = employees.map((emp) => ({
+    id: emp.id,
+    label: `${emp.first_name} ${emp.last_name}`,
+    description: emp.email,
+  }));
+
   const validateForm = () => {
     if (!name || name.length < 2 || name.length > 100) {
       toast.error('Name must be between 2 and 100 characters');
@@ -204,7 +211,13 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl"
+        onInteractOutside={(event) => {
+          // Disable closing when clicking outside the dialog
+          event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{editingGroup ? 'Edit Group' : 'Add Group'}</DialogTitle>
         </DialogHeader>
@@ -242,19 +255,27 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
             <p className="text-xs text-gray-500">2-1000 characters (optional)</p>
           </div>
 
-          {/* Group Type Radio */}
+          {/* Group Type Radio - horizontal layout */}
           <div className="space-y-2">
             <Label>
               Group Type <span className="text-red-500">*</span>
             </Label>
-            <RadioGroup value={groupType} onValueChange={(value) => setGroupType(value as 'Department' | 'Employee')}>
+            <RadioGroup
+              value={groupType}
+              onValueChange={(value) => setGroupType(value as 'Department' | 'Employee')}
+              className="flex flex-row items-center gap-6"
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Department" id="department" />
-                <Label htmlFor="department" className="cursor-pointer">Department</Label>
+                <Label htmlFor="department" className="cursor-pointer">
+                  Department
+                </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="Employee" id="employee" />
-                <Label htmlFor="employee" className="cursor-pointer">Employee</Label>
+                <Label htmlFor="employee" className="cursor-pointer">
+                  Employee
+                </Label>
               </div>
             </RadioGroup>
           </div>
@@ -284,49 +305,57 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
             </div>
           )}
 
-          {/* Employee Multi-Select */}
+          {/* Employee Search + Multi-Select (Add/Edit) */}
           {groupType === 'Employee' && (
             <div className="space-y-2">
               <Label>
                 Employees <span className="text-red-500">*</span>
               </Label>
-              <div className="border rounded-md p-4 max-h-60 overflow-y-auto">
-                {loadingEmployees ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="ml-2 text-sm text-gray-500">Loading employees...</span>
-                  </div>
-                ) : employees.length === 0 ? (
-                  <p className="text-sm text-gray-500">No employees available</p>
-                ) : (
-                  <div className="space-y-2">
-                    {employees.map((employee) => (
-                      <div key={employee.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`employee-${employee.id}`}
-                          checked={selectedEmployees.includes(employee.id)}
-                          onCheckedChange={() => handleEmployeeToggle(employee.id)}
-                        />
-                        <Label
-                          htmlFor={`employee-${employee.id}`}
-                          className="cursor-pointer flex-1"
-                        >
-                          {employee.first_name} {employee.last_name} ({employee.email})
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+
+              <SearchMultiSelect
+                options={employeeOptions}
+                selectedIds={selectedEmployees}
+                onChange={setSelectedEmployees}
+                placeholder={
+                  loadingEmployees ? 'Loading employees...' : 'Search by name or email...'
+                }
+                  disabled={loadingEmployees}
+              />
+
+              {/* Selected employees summary */}
               {selectedEmployees.length > 0 && (
-                <p className="text-xs text-gray-500">
-                  {selectedEmployees.length} employee(s) selected
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-gray-600">
+                    Selected Employees ({selectedEmployees.length})
+                  </p>
+                  <ScrollArea className="max-h-32 rounded-md border p-2">
+                    <div className="flex flex-wrap gap-2">
+                      {employees
+                        .filter((emp) => selectedEmployees.includes(emp.id))
+                        .map((emp) => (
+                          <div
+                            key={emp.id}
+                            className="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-800"
+                          >
+                            <span>
+                              {emp.first_name} {emp.last_name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleEmployeeToggle(emp.id)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </ScrollArea>
+                </div>
               )}
             </div>
           )}
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Cancel

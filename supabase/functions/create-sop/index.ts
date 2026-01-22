@@ -14,8 +14,9 @@ interface CreateSOPRequest {
   status: boolean;
   procedure_steps: string[];
   important_notes?: string | null;
-  client_id?: string | null;
-  employee_id?: string | null;
+  // These are mandatory for SOP creation
+  client_id: string | null;
+  employee_id: string | null;
 }
 
 serve(async (req) => {
@@ -94,42 +95,59 @@ serve(async (req) => {
       )
     }
 
-    // Validate client_id if provided
-    if (client_id) {
-      const { data: client, error: clientError } = await supabaseClient
-        .from('clients')
-        .select('id')
-        .eq('id', client_id)
-        .single()
-
-      if (clientError || !client) {
-        return new Response(
-          JSON.stringify({ error: 'Validation error', details: 'Invalid client ID' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
+    // client_id and employee_id are mandatory for SOP creation
+    if (!client_id) {
+      return new Response(
+        JSON.stringify({ error: 'Validation error', details: 'client_id is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    // Validate employee_id if provided
-    if (employee_id) {
-      const { data: employee, error: employeeError } = await supabaseClient
-        .from('employees')
-        .select('id')
-        .eq('id', employee_id)
-        .single()
+    if (!employee_id) {
+      return new Response(
+        JSON.stringify({ error: 'Validation error', details: 'employee_id is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
-      if (employeeError || !employee) {
-        return new Response(
-          JSON.stringify({ error: 'Validation error', details: 'Invalid employee ID' }),
-          { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        )
-      }
+    // Validate client_id
+    const { data: client, error: clientError } = await supabaseClient
+      .from('clients')
+      .select('id')
+      .eq('id', client_id)
+      .single()
+
+    if (clientError || !client) {
+      return new Response(
+        JSON.stringify({ error: 'Validation error', details: 'Invalid client ID' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Validate employee_id
+    const { data: employee, error: employeeError } = await supabaseClient
+      .from('employees')
+      .select('id')
+      .eq('id', employee_id)
+      .single()
+
+    if (employeeError || !employee) {
+      return new Response(
+        JSON.stringify({ error: 'Validation error', details: 'Invalid employee ID' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
     // Prepare SOP data
@@ -140,8 +158,8 @@ serve(async (req) => {
       status,
       procedure_steps: procedure_steps,
       important_notes: important_notes?.trim() || null,
-      client_id: client_id || null,
-      employee_id: employee_id || null,
+      client_id,
+      employee_id,
     }
 
     // Insert SOP into database
