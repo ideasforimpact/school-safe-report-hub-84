@@ -157,11 +157,6 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       return;
     }
 
-    if (!isValidContributingFactorName(currentName.trim())) {
-      setError('Name must be alphanumeric with spaces only, maximum 25 characters');
-      return;
-    }
-
     try {
       setError(null);
       setIsAdding(true);
@@ -293,6 +288,9 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       },
     });
   };
+  const isNameInvalid =
+    !currentName.trim() ||
+    !isValidContributingFactorName(currentName.trim());
 
   const getWeightBadgeClass = (weight: string | null | undefined) => {
     switch (weight) {
@@ -510,8 +508,13 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
               <Input
                 id="name"
                 value={currentName}
-                onChange={(e) => setCurrentName(e.target.value)}
-                className={`${error ? 'border-red-500' : ''} ${currentName && !isValidContributingFactorName(currentName) ? 'border-red-500' : ''}`}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCurrentName(value);
+                  if (value.trim() && isValidContributingFactorName(value.trim())) {
+                    setError(null);
+                  }
+                }}
                 maxLength={25}
                 required
               />
@@ -556,7 +559,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             }} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleAdd} disabled={isAdding || !!error}>
+            <Button onClick={handleAdd} disabled={isAdding || isNameInvalid}>
               {isAdding ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -606,8 +609,13 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
               <Input
                 id="edit-name"
                 value={currentName}
-                onChange={(e) => setCurrentName(e.target.value)}
-                className={`${error ? 'border-red-500' : ''} ${currentName && !isValidContributingFactorName(currentName) ? 'border-red-500' : ''}`}
+                 onChange={(e) => {
+                  const value = e.target.value;
+                  setCurrentName(value);
+                  if (value.trim() && isValidContributingFactorName(value.trim())) {
+                    setError(null);
+                  }
+                }}
                 maxLength={25}
                 required
               />
@@ -651,7 +659,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             }} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={isUpdating || !!error}>
+            <Button onClick={handleEdit} disabled={isUpdating || isNameInvalid}>
               {isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
