@@ -28,6 +28,7 @@ import {
     validateVehicleExcel,
 } from '@/services/vehicle/importVehicleService';
 import { useAuth } from '@/contexts';
+import FileUploadValidator from '../common/FileUploadValidator';
 
 interface ImportVehiclesDialogProps {
     isOpen: boolean;
@@ -334,42 +335,12 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
                         )}
                     </div>
                 </div>
-                {validationErrors.length > 0 && (
-                    <div className="border border-red-300 bg-red-50 rounded-md p-3 max-h-48 overflow-y-auto no-scrollbar">
-                        <p className="text-sm font-medium text-red-700 mb-2">
-                            Validation Errors ({validationErrors.length})
-                        </p>
-                        <ul className="list-disc list-inside space-y-1 text-sm text-red-600">
-                            {validationErrors.map((error, index) => (
-                                <li key={index}>{error}</li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-                {validationWarnings.length > 0 && (
-                    <div className="border border-yellow-300 bg-yellow-50 rounded-md p-3 max-h-40 overflow-y-auto no-scrollbar">
-                        <p className="text-sm font-medium text-yellow-700 mb-2">
-                            Duplicate Vehicles ({validationWarnings.length})
-                        </p>
-
-                        <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
-                            {validationWarnings.slice(0, 10).map((warning, index) => (
-                                <li key={index}>{warning}</li>
-                            ))}
-
-                            {validationWarnings.length > 10 && (
-                                <li className="font-medium">
-                                    ... and {validationWarnings.length - 10} more duplicates
-                                </li>
-                            )}
-                        </ul>
-
-                        <p className="text-xs text-yellow-700 mt-2">
-                            These vehicles were skipped during import.
-                        </p>
-                    </div>
-                )}
-
+               <FileUploadValidator
+                errors={validationErrors}
+                warnings={validationWarnings}
+                warningTitle="Duplicate Vehicles"
+                warningFooterText="These Vehicles will be skipped during import."
+                />
                 <AlertDialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
                     <Button
                         variant="secondary"

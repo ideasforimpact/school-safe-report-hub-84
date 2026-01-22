@@ -14,6 +14,7 @@ import { Loader2, UploadCloud, FileCheck, Download, FileText, X, File } from 'lu
 import { toast } from 'sonner';
 import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { downloadExcelTemplate, downloadCSVTemplate, getTemplateFormatInfo } from '@/services/employee/utils/templateGenerator';
+import FileUploadValidator from '../common/FileUploadValidator';
 
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
@@ -313,41 +314,12 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             </p>
           </div> */}
         </div>
-        {validationErrors.length > 0 && (
-          <div className="border border-red-300 bg-red-50 rounded-md p-3 max-h-48 overflow-y-auto no-scrollbar">
-            <p className="text-sm font-medium text-red-700 mb-2">
-              Validation Errors ({validationErrors.length})
-            </p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-red-600">
-              {validationErrors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {validationWarnings.length > 0 && (
-          <div className="border border-yellow-300 bg-yellow-50 rounded-md p-3 max-h-40 overflow-y-auto no-scrollbar">
-            <p className="text-sm font-medium text-yellow-700 mb-2">
-              Duplicate Employees ({validationWarnings.length})
-            </p>
-
-            <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
-              {validationWarnings.slice(0, 10).map((warning, index) => (
-                <li key={index}>{warning}</li>
-              ))}
-
-              {validationWarnings.length > 10 && (
-                <li className="font-medium">
-                  ... and {validationWarnings.length - 10} more duplicates
-                </li>
-              )}
-            </ul>
-
-            <p className="text-xs text-yellow-700 mt-2">
-              These employees will be skipped during import.
-            </p>
-          </div>
-        )}
+        <FileUploadValidator
+          errors={validationErrors}
+          warnings={validationWarnings}
+          warningTitle="Duplicate Employees"
+          warningFooterText="These employees will be skipped during import."
+        />
 
         <AlertDialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
           <Button 
