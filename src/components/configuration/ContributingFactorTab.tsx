@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import { contributingFactorService, ContributingFactorItem } from '@/services/in
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 // Validation function for contributing factor names (no special characters, max 25 chars)
 const isValidContributingFactorName = (name: string) => {
@@ -80,25 +81,27 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   });
   
   // Fetch contributing factors directly using the service
-  useEffect(() => {
-    async function fetchContributingFactors() {
-      if (!employeeData?.clientId) {
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        const result = await contributingFactorService.getContributingFactors(employeeData.clientId);
-        setFactors(result);
-      } catch (error) {
-        console.error('Error fetching contributing factors:', error);
-      } finally {
-        setLoading(false);
-      }
+  const fetchContributingFactors = useCallback(async () => {
+    if (!employeeData?.clientId) {
+      setLoading(false);
+      return;
     }
-    
-    fetchContributingFactors();
+    try {
+      setLoading(true);
+      const result = await contributingFactorService.getContributingFactors(
+        employeeData.clientId
+      );
+      setFactors(result);
+    } catch (error) {
+      console.error('Error fetching contributing factors:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [employeeData?.clientId]);
+
+  useEffect(() => {
+    fetchContributingFactors();
+  }, [fetchContributingFactors]);
 
   // Pre-load reference info so we can disable delete button for linked factors
   useEffect(() => {
@@ -279,6 +282,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
           // propDeleteFactor(id);
           
           setConfirmationDialog(prev => ({ ...prev, open: false }));
+          toast.success(`Contributing factor deleted successfully`);
         } catch (error: any) {
           console.error('Error deleting contributing factor:', error);
           const errorMessage = error?.message || 'Failed to delete contributing factor';
@@ -302,6 +306,14 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         return 'bg-gray-100 text-gray-800';
     }
   };
+  useRealTimeSubHook({
+    channelName: `contributing-factors-${employeeData?.clientId}`,
+    table: 'contributing_factors',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: fetchContributingFactors,
+  });
+
 
   if (!employeeData?.clientId) {
     return (
@@ -634,6 +646,8 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             <Button variant="outline" onClick={() => {
               setIsEditDialogOpen(false);
               setError(null);
+              setCurrentName('');
+              setCurrentDescription('');
             }} disabled={loading}>
               Cancel
             </Button>

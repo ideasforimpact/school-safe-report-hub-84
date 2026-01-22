@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { IncidentRelatedConfig } from '@/pages/configuration/IncidentRelatedConfig';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useState, useEffect } from 'react';
@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { ContributingFactorItem, contributingFactorService } from '@/services/incident/contributingFactorService';
 import { reportTypeService } from '@/services/incident/reportTypeService';
 import { priorityService } from '@/services/incident/priorityService';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useAuth } from '@/contexts';
 
 interface ReportType {
   id: string;
@@ -30,6 +32,7 @@ const IncidentConfigurationContent = () => {
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { employeeData } = useAuth();
 
   // Use the existing hook for categories and subcategories
   const {
@@ -41,7 +44,8 @@ const IncidentConfigurationContent = () => {
     deleteCategory,
     addSubcategory,
     updateSubcategory,
-    deleteSubcategory
+    deleteSubcategory,
+    loadData,
   } = useIncidentCategories();
 
   // Fetch contributing factors
@@ -374,6 +378,27 @@ const IncidentConfigurationContent = () => {
       toast.error('An unexpected error occurred');
     }
   };
+
+  const handleCategoriesUpdated = useCallback(() => {
+    loadData();
+  }, [loadData]);
+
+
+  useRealTimeSubHook({
+    channelName: `incident-categories-${employeeData?.clientId}`,
+    events: '*',
+    table: 'incident_categories',
+    enabled: !!employeeData?.clientId,
+    onPayload: handleCategoriesUpdated,
+  });
+
+  useRealTimeSubHook({
+    channelName: `incident-subcategories-${employeeData?.clientId}`,
+    events: '*',
+    table: 'incident_subcategories',
+    enabled: !!employeeData?.clientId,
+    onPayload: handleCategoriesUpdated,
+  });
 
   // Wait for data to load
   if (loading || categoriesLoading) {

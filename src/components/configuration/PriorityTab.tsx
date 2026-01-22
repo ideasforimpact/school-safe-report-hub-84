@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -20,6 +20,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 // Validation function for priority names (no special characters, max 25 chars)
 const isValidPriorityName = (name: string) => {
@@ -296,6 +297,18 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     if (statusFilter === 'active') return priority.is_active;
     if (statusFilter === 'inactive') return !priority.is_active;
     return true;
+  });
+
+  const refreshPriorities = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  useRealTimeSubHook({
+    channelName: `incident-priorities-${employeeData?.clientId}`,
+    table: 'incident_priorities',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refreshPriorities,
   });
 
   return (

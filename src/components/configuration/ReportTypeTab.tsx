@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil, Trash } from 'lucide-react';
 import { EditDialog } from './EditDialog';
@@ -20,6 +20,7 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 // Validation function for report type names (no special characters, max 25 chars)
 const isValidReportTypeName = (name: string) => {
@@ -268,6 +269,19 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     if (statusFilter === 'inactive') return !type.is_active;
     return true;
   });
+
+  const refreshReportTypes = useCallback(() => {
+    fetchReportTypes();
+  }, [fetchReportTypes]);
+
+  useRealTimeSubHook({
+    channelName: `incident-report-types-${employeeData?.clientId}`,
+    table: 'incident_report_types',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refreshReportTypes,
+  });
+
 
   return (
     <div className="space-y-4">

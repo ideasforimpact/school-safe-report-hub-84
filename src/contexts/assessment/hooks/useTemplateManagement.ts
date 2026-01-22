@@ -40,7 +40,12 @@ export const useTemplateManagement = (userId?: string) => {
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {
       console.log('Creating template with data:', templateData);
-      const id = await templateService.createTemplate(templateData);
+      
+      const id = await templateService.createTemplate({
+        ...templateData,
+        clientId: employeeData.clientId,
+        createdBy: employeeData.id
+      });
       console.log('Template created with ID:', id);
       toast.success('Template created successfully');
       await loadTemplates(); // Refresh the list
