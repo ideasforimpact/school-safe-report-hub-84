@@ -102,7 +102,7 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
   const loadGroupEmployees = async (groupId: string) => {
     try {
       const { data, error } = await supabase
-        .from('group_employees')
+        .from('group_employees' as any)
         .select('employee_id, role_id')
         .eq('group_id', groupId);
 
@@ -111,13 +111,13 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
       if (data && data.length > 0) {
         if (editingGroup?.group_type === 'Department') {
           // For department groups, set the department from role_id
-          const roleId = data[0]?.role_id;
+          const roleId = (data[0] as any)?.role_id;
           if (roleId) {
             setSelectedDepartment(roleId);
           }
         } else {
           // For employee groups, set selected employees
-          const empIds = data.map((item) => item.employee_id).filter(Boolean);
+          const empIds = data.map((item: any) => item.employee_id).filter(Boolean);
           setSelectedEmployees(empIds);
         }
       }
@@ -140,14 +140,34 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
     description: emp.email,
   }));
 
+  // Helper function to check for special characters (allows alphanumeric, spaces, and basic punctuation)
+  const hasSpecialCharacters = (text: string): boolean => {
+    // Allow: letters, numbers, spaces, hyphens, underscores, periods, commas, apostrophes, parentheses
+    // Disallow: other special characters like @, #, $, %, ^, &, *, etc.
+    const allowedPattern = /^[a-zA-Z0-9\s\-_.,'()]+$/;
+    return !allowedPattern.test(text);
+  };
+
   const validateForm = () => {
     if (!name || name.length < 2 || name.length > 100) {
       toast.error('Name must be between 2 and 100 characters');
       return false;
     }
 
+    // Check for special characters in name
+    if (hasSpecialCharacters(name)) {
+      toast.error('Name cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.');
+      return false;
+    }
+
     if (description && (description.length < 2 || description.length > 1000)) {
       toast.error('Description must be between 2 and 1000 characters');
+      return false;
+    }
+
+    // Check for special characters in description
+    if (description && hasSpecialCharacters(description)) {
+      toast.error('Description cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.');
       return false;
     }
 
@@ -170,11 +190,33 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
     try {
       setSubmitting(true);
 
+      // Check for duplicate group name (case-insensitive, within same client)
+      const trimmedName = name.trim();
+      const { data: existingGroups, error: checkError } = await supabase
+        .from('groups' as any)
+        .select('id, name')
+        .eq('client_id', clientId)
+        .ilike('name', trimmedName);
+
+      if (checkError) {
+        console.error('Error checking for duplicate group:', checkError);
+      } else if (existingGroups && existingGroups.length > 0) {
+        // If editing, allow if it's the same group
+        if (editingGroup && existingGroups && existingGroups.some((g: any) => g.id === editingGroup.id)) {
+          // Same group, allow update
+        } else {
+          // Duplicate found
+          toast.error(`A group with the name "${trimmedName}" already exists`);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const payload: any = {
         action: editingGroup ? 'update' : 'create',
         client_id: clientId,
         employee_id: employeeId,
-        name: name.trim(),
+        name: trimmedName,
         description: description.trim() || null,
         group_type: groupType,
       };
@@ -231,7 +273,13 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
             <Input
               id="name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only alphanumeric, spaces, and basic punctuation
+                if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
+                  setName(value);
+                }
+              }}
               placeholder="Enter group name"
               minLength={2}
               maxLength={100}
@@ -246,7 +294,13 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only alphanumeric, spaces, and basic punctuation
+                if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
+                  setDescription(value);
+                }
+              }}
               placeholder="Enter group description (optional)"
               minLength={2}
               maxLength={1000}

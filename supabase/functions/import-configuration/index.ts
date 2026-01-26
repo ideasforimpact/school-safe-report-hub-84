@@ -585,6 +585,123 @@ serve(async (req) => {
       }
     }
 
+    // Create "All" group and assign all employees
+    try {
+      // Get super admin employee_id for this client
+      let superAdminEmployeeId: string | null = null;
+      const { data: superAdminData, error: superAdminError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('is_super_admin', true)
+        .single();
+
+      if (superAdminError || !superAdminData) {
+        console.log('Warning: Could not find super admin employee for client:', clientId);
+      } else {
+        superAdminEmployeeId = superAdminData.id;
+        console.log(`Found super admin employee ID: ${superAdminEmployeeId}`);
+
+        // Get all employee_ids for this client
+        const { data: allEmployees, error: employeesError } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('client_id', clientId)
+          .eq('status', true);
+
+        if (employeesError) {
+          console.log('Error fetching employees:', employeesError);
+        } else if (allEmployees && allEmployees.length > 0) {
+          const employeeIds = allEmployees.map(emp => emp.id);
+          console.log(`Found ${employeeIds.length} employees for client ${clientId}`);
+
+          // Check if "All" group exists for this client
+          const { data: existingGroup, error: groupCheckError } = await supabase
+            .from('groups')
+            .select('id')
+            .eq('client_id', clientId)
+            .eq('name', 'All')
+            .single();
+
+          let groupId: string | null = null;
+
+          if (groupCheckError && groupCheckError.code === 'PGRST116' && superAdminEmployeeId) {
+            // Group doesn't exist, create it
+            console.log('Creating "All" group for client:', clientId);
+            const { data: newGroup, error: createGroupError } = await supabase
+              .from('groups')
+              .insert({
+                name: 'All',
+                description: 'All employees group - includes all employees in the organization',
+                group_type: 'Employee',
+                status: true,
+                client_id: clientId,
+                employee_id: superAdminEmployeeId,
+              })
+              .select('id')
+              .single();
+
+            if (createGroupError || !newGroup) {
+              console.log('Error creating "All" group:', createGroupError);
+            } else {
+              groupId = newGroup.id;
+              console.log(`Successfully created "All" group with ID: ${groupId}`);
+            }
+          } else if (existingGroup) {
+            // Group already exists
+            groupId = existingGroup.id;
+            console.log(`"All" group already exists with ID: ${groupId}`);
+          } else if (groupCheckError) {
+            console.log('Error checking for existing "All" group:', groupCheckError);
+          }
+
+          // If we have a group_id and superAdminEmployeeId, insert employees into group_employees
+          if (groupId && superAdminEmployeeId) {
+            // Get existing group_employees to avoid duplicates
+            const { data: existingGroupEmployees, error: existingError } = await supabase
+              .from('group_employees')
+              .select('employee_id')
+              .eq('group_id', groupId);
+
+            const existingEmployeeIds = new Set(
+              (existingGroupEmployees || []).map((ge: any) => ge.employee_id).filter(Boolean)
+            );
+
+            // Filter out employees that are already in the group
+            const employeesToAdd = employeeIds.filter(empId => !existingEmployeeIds.has(empId));
+
+            if (employeesToAdd.length > 0) {
+              console.log(`Adding ${employeesToAdd.length} employees to "All" group`);
+              const groupEmployeesToInsert = employeesToAdd.map((empId: string) => ({
+                group_id: groupId,
+                employee_id: empId,
+                role_id: null,
+                client_id: clientId,
+                created_by_employee_id: superAdminEmployeeId,
+              }));
+
+              const { error: insertError } = await supabase
+                .from('group_employees')
+                .insert(groupEmployeesToInsert);
+
+              if (insertError) {
+                console.log('Error inserting employees into "All" group:', insertError);
+              } else {
+                console.log(`Successfully added ${employeesToAdd.length} employees to "All" group`);
+              }
+            } else {
+              console.log('All employees are already in the "All" group');
+            }
+          }
+        } else {
+          console.log(`No active employees found for client ${clientId}`);
+        }
+      }
+    } catch (error) {
+      console.log('Error creating "All" group:', error);
+      // Don't fail the entire import if this fails
+    }
+
     // Write log to intermediate table
     const logPayload = {
       client_id: clientId,
