@@ -1,5 +1,5 @@
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle } from 'lucide-react';
+import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, Users, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,23 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
   const { isLoading, fetchEmployees } = useEmployeeVerification();
   const navigate = useNavigate();
 
+  // Debug: Log employee data with SOP statistics
+  useEffect(() => {
+    if (employees.length > 0) {
+      console.log('[EmployeesList] Received', employees.length, 'employees');
+      employees.forEach((emp, index) => {
+        const sopStats = emp.sopStatistics;
+        console.log(`[EmployeesList] Employee ${index + 1}: ${emp.name} (${emp.id})`, {
+          hasSopStatistics: !!sopStats,
+          sopStatistics: sopStats || 'MISSING',
+          totalSOPs: sopStats?.totalSOPs ?? 'N/A',
+          totalSOPsSignedOff: sopStats?.totalSOPsSignedOff ?? 'N/A',
+          totalSOPsToBeDone: sopStats?.totalSOPsToBeDone ?? 'N/A'
+        });
+      });
+    }
+  }, [employees]);
+
   // Ensure employees are fetched when component mounts if not already loaded
   useEffect(() => {
     if (employees.length === 0 && !isLoading) {
@@ -49,6 +66,40 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     table: "employee_documents",
     enabled: true,
     onPayload: handleEmployeesRealtime,
+  });
+
+  // Real-time updates for SOP statistics - refresh employees to get updated stats
+  useRealTimeSubHook({
+    channelName: "employee-sop-stats-assigned",
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'sop_assigned',
+    enabled: true,
+    onPayload: () => {
+      // Refresh employees to get updated SOP stats
+      fetchEmployees();
+    },
+  });
+
+  useRealTimeSubHook({
+    channelName: "employee-sop-stats-signoff",
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'sop_signoff_request',
+    enabled: true,
+    onPayload: () => {
+      // Refresh employees to get updated SOP stats
+      fetchEmployees();
+    },
+  });
+
+  useRealTimeSubHook({
+    channelName: "employee-sop-stats-group-employees",
+    events: ['INSERT', 'UPDATE', 'DELETE'],
+    table: 'group_employees',
+    enabled: true,
+    onPayload: () => {
+      // Refresh employees to get updated SOP stats
+      fetchEmployees();
+    },
   });
   // Get document status for an employee
   const getDocumentStatus = (employee: Employee) => {
@@ -85,7 +136,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed');
     const failed = documents.filter(doc => doc.verificationStatus === 'failed');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress' || doc.verificationStatus === 'in_progress');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending' || doc.verificationStatus === 'in-progress');
     const total = documents.length;
 
     if (total === 0) {
@@ -163,13 +214,16 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Total SOPs</TableHead>
+              <TableHead>Signed Off</TableHead>
+              <TableHead>To be Done</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-6 text-gray-500">
+                <TableCell colSpan={8} className="text-center py-6 text-gray-500">
                   No employees match your current filters.
                 </TableCell>
               </TableRow>
@@ -198,16 +252,68 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                       <div className="flex items-center gap-2">
                         <span>{displayName}</span>
                         {hasDifferentDobs && (
-                          <AlertTriangle 
-                            className="h-4 w-4 text-red-600 flex-shrink-0" 
-                            title="Different dates of birth found across documents" 
-                          />
+                          <div title="Different dates of birth found across documents">
+                            <AlertTriangle 
+                              className="h-4 w-4 text-red-600 flex-shrink-0" 
+                            />
+                          </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>{formatDepartment(employee.department)}</TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const stats = employee.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
+                        if (stats.totalSOPs === 0) {
+                          return <span className="text-sm text-gray-500">-</span>;
+                        }
+                        return (
+                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
+                            <Users className="h-3.5 w-3.5 text-gray-600" />
+                            <span className="text-gray-600">Yes</span>
+                            <span className="bg-gray-600 text-white rounded-full px-1.5 py-0.5 text-xs font-semibold">
+                              {stats.totalSOPs}
+                            </span>
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const stats = employee.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
+                        if (stats.totalSOPsSignedOff === 0) {
+                          return <span className="text-sm text-gray-500">-</span>;
+                        }
+                        return (
+                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-green-100 text-green-800 border-green-200">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                            <span className="text-green-600">Done</span>
+                            <span className="bg-green-600 text-white rounded-full px-1.5 py-0.5 text-xs font-semibold">
+                              {stats.totalSOPsSignedOff}
+                            </span>
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const stats = employee.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
+                        if (stats.totalSOPsToBeDone === 0) {
+                          return <span className="text-sm text-gray-500">-</span>;
+                        }
+                        return (
+                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-amber-100 text-amber-800 border-amber-200">
+                            <Clock className="h-3.5 w-3.5 text-amber-600" />
+                            <span className="text-amber-600">Pending</span>
+                            <span className="bg-amber-600 text-white rounded-full px-1.5 py-0.5 text-xs font-semibold">
+                              {stats.totalSOPsToBeDone}
+                            </span>
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">

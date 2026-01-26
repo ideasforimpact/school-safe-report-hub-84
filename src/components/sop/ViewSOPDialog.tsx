@@ -3,8 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, User, Layers } from 'lucide-react';
+import { FileText, User, Layers, AlertCircle } from 'lucide-react';
 
 interface SOPAssignment {
   group_id: string | null;
@@ -35,6 +34,7 @@ interface ViewSOPDialogProps {
     created_at: string;
     creator_name?: string | null;
     procedure_steps?: string[];
+    important_notes?: string | null;
     assignments?: SOPAssignment[];
   } | null;
 }
@@ -73,7 +73,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
           </TabsList>
 
           <TabsContent value="info" className="mt-4">
-            <ScrollArea className="max-h-[65vh] pr-2">
+            <div className="max-h-[65vh] overflow-y-auto pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -130,8 +130,21 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Important Notes - Card with orange border */}
+                {sop.important_notes && (
+                  <div className="rounded-lg border border-orange-300 bg-white p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-4 w-4 text-orange-600" />
+                      <h3 className="text-sm font-semibold text-orange-600">Important Notes</h3>
+                    </div>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                      {sop.important_notes}
+                    </p>
+                  </div>
+                )}
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           <TabsContent value="steps" className="mt-4">

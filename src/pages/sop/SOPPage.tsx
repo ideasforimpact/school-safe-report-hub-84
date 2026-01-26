@@ -4,6 +4,8 @@ import SOPHeader from '@/components/sop/SOPHeader';
 import AssignSOPDialog from '@/components/sop/AssignSOPDialog';
 import AddSOPDialog from '@/components/sop/AddSOPDialog';
 import ViewSOPDialog from '@/components/sop/ViewSOPDialog';
+import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
+import SignoffRequestDialog from '@/components/sop/SignoffRequestDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -27,8 +29,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Edit, Eye, UserPlus, Search, Users, User } from 'lucide-react';
+import { Edit, Eye, UserPlus, Search, Users, User, CheckCircle, Clock, Clock3, Trash2 } from 'lucide-react';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface SOP {
   id: string;
@@ -46,6 +64,8 @@ interface SOP {
   assigned_sop?: number;
   assigned_group_count?: number;
   assigned_employee_count?: number;
+  completed_count?: number;
+  to_be_done_count?: number;
   creator_name?: string | null;
   assignments?: {
     group_id: string | null;
@@ -53,9 +73,19 @@ interface SOP {
     group_type: string | null;
     group_status: boolean | null;
     employee_count?: number | null;
+    employees?: Array<{
+      id: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      full_name: string;
+    }> | null;
     created_by_id: string | null;
     created_by_name: string | null;
   }[];
+  signoff_request_status?: string;
+  sop_signoff_request_exist?: boolean;
+  completed_date?: string | null;
 }
 
 const SOPPage = () => {
@@ -65,6 +95,14 @@ const SOPPage = () => {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [viewingSOP, setViewingSOP] = useState<SOP | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [groupDetailsDialogOpen, setGroupDetailsDialogOpen] = useState(false);
+  const [selectedGroupsForDialog, setSelectedGroupsForDialog] = useState<any[]>([]);
+  const [selectedSopTitleForDialog, setSelectedSopTitleForDialog] = useState<string>('');
+  const [signoffDialogOpen, setSignoffDialogOpen] = useState(false);
+  const [signoffSOP, setSignoffSOP] = useState<SOP | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [sopToDelete, setSopToDelete] = useState<SOP | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [sops, setSops] = useState<SOP[]>([]);
   const [allSops, setAllSops] = useState<SOP[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +147,8 @@ const SOPPage = () => {
   const fetchSOPs = async () => {
     setLoading(true);
     try {
-      const clientId = client?.id || null;
+      // Use resolvedClientId which properly gets client_id from employeeData
+      const clientId = resolvedClientId;
       const employeeId = employeeData?.id || null;
 
       const { data, error } = await supabase.functions.invoke('fetch-sop', {
@@ -177,6 +216,54 @@ const SOPPage = () => {
     fetchSOPs();
   };
 
+  const handleDeleteClick = (sop: SOP) => {
+    setSopToDelete(sop);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!sopToDelete || !resolvedClientId) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-sop', {
+        body: {
+          sop_id: sopToDelete.id,
+          client_id: resolvedClientId,
+        },
+      });
+
+      if (error) {
+        console.error('Error deleting SOP:', error);
+        toast.error('Failed to delete SOP');
+        return;
+      }
+
+      if (data && data.error) {
+        toast.error(data.details || data.error || 'Failed to delete SOP');
+        return;
+      }
+
+      toast.success('SOP deleted successfully');
+      setDeleteDialogOpen(false);
+      setSopToDelete(null);
+      fetchSOPs();
+    } catch (error) {
+      console.error('Error deleting SOP:', error);
+      toast.error('Failed to delete SOP');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Check if SOP is assigned to any groups
+  const isSOPAssigned = (sop: SOP): boolean => {
+    return (sop.assignments && sop.assignments.length > 0) || 
+           (sop.assigned_group_count && sop.assigned_group_count > 0) || false;
+  };
+
   const handleDialogClose = (open: boolean) => {
     if (!open) {
       setEditingSOP(null);
@@ -189,6 +276,51 @@ const SOPPage = () => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  };
+
+  // Render text with tooltip if truncated
+  const renderTextWithTooltip = (text: string | null | undefined, maxLength: number = 25) => {
+    if (!text) return <span>-</span>;
+    const isTruncated = text.length > maxLength;
+    const displayText = isTruncated ? truncateText(text, maxLength) : text;
+
+    if (isTruncated) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help">{displayText}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="max-w-xs break-words">{text}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return <span>{displayText}</span>;
+  };
+
+  // Format date in 12-hour format with AM/PM
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      let hours = date.getHours();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const hoursStr = hours.toString().padStart(2, '0');
+      
+      return `${month}/${day}/${year} ${hoursStr}:${minutes} ${ampm}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   };
 
   // Real-time updates: refetch SOPs whenever SOP or sop_assigned changes for this client
@@ -219,7 +351,13 @@ const SOPPage = () => {
       <div className="w-full py-6">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
-          <SOPHeader onCreateSOP={handleCreateSOP} />
+          <SOPHeader 
+            onCreateSOP={handleCreateSOP}
+            onStatisticsRefresh={() => {
+              // Statistics will be refreshed automatically via real-time hooks
+              // This callback can be used for additional actions if needed
+            }}
+          />
         </div>
 
         {/* Main Content Card */}
@@ -270,6 +408,7 @@ const SOPPage = () => {
               <p className="text-gray-500 text-lg">No SOPs found</p>
             </div>
           ) : (
+            <TooltipProvider>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -277,10 +416,20 @@ const SOPPage = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Category Name</TableHead>
-                    <TableHead>Assigned Groups</TableHead>
-                    <TableHead>Assigned Employees</TableHead>
-                    <TableHead>Completed</TableHead>
-                    <TableHead>To be Done</TableHead>
+                    {isSuperAdmin ? (
+                      <>
+                        <TableHead>Assigned Groups</TableHead>
+                        <TableHead>Assigned Employees</TableHead>
+                        <TableHead>Completed</TableHead>
+                        <TableHead>To be Done</TableHead>
+                      </>
+                                ) : (
+                                  <>
+                                    <TableHead>Assigned Groups</TableHead>
+                                    <TableHead>Completed At</TableHead>
+                                    <TableHead>Status</TableHead>
+                                  </>
+                                )}
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -288,24 +437,26 @@ const SOPPage = () => {
                   {sops.map((sop) => (
                     <TableRow key={sop.id}>
                       <TableCell className="font-medium">
-                        {truncateText(sop.title, 15)}
+                        {renderTextWithTooltip(sop.title, 25)}
                       </TableCell>
                       <TableCell>
-                        {sop.description || '-'}
+                        {renderTextWithTooltip(sop.description, 25)}
                       </TableCell>
                       <TableCell>
-                        {sop.category_name ? truncateText(sop.category_name, 15) : '-'}
+                        {renderTextWithTooltip(sop.category_name, 25)}
                       </TableCell>
+                      {isSuperAdmin ? (
+                        <>
                       <TableCell>
-                        {sop.assigned_group_count && sop.assigned_group_count > 0 ? (
+                            {sop.assigned_group_count && sop.assigned_group_count > 0 ? (
                           <Badge 
                             variant="outline" 
                             className="bg-orange-50 border-orange-300 text-orange-700 flex items-center gap-1.5 w-fit"
                           >
-                            <Users className="h-3 w-3" />
+                                <Users className="h-3 w-3" />
                             <span>Yes</span>
-                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-orange-700 bg-orange-100 rounded-full">
-                              {sop.assigned_group_count}
+                                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-orange-700 bg-orange-100 rounded-full">
+                                  {sop.assigned_group_count}
                             </span>
                           </Badge>
                         ) : (
@@ -313,73 +464,189 @@ const SOPPage = () => {
                             variant="outline" 
                             className="bg-red-50 border-red-300 text-red-700 flex items-center gap-1.5 w-fit"
                           >
-                            <Users className="h-3 w-3" />
+                                <Users className="h-3 w-3" />
                             <span>No</span>
-                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-red-700 bg-red-100 rounded-full">
-                              {sop.assigned_group_count || 0}
+                                <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-red-700 bg-red-100 rounded-full">
+                                  {sop.assigned_group_count || 0}
                             </span>
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant="outline" 
-                          className={(sop.assigned_employee_count || 0) > 0 
-                            ? 'bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit'
-                            : 'bg-gray-50 border-gray-300 text-gray-700 flex items-center gap-1.5 w-fit'}
-                        >
-                          <User className="h-3 w-3" />
-                          <span>{(sop.assigned_employee_count || 0) > 0 ? 'Yes' : 'No'}</span>
-                          <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full ${
-                            (sop.assigned_employee_count || 0) > 0
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {sop.assigned_employee_count || 0}
-                          </span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600">-</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600">-</span>
-                      </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="outline" 
+                              className={(sop.assigned_employee_count || 0) > 0 
+                                ? 'bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit'
+                                : 'bg-gray-50 border-gray-300 text-gray-700 flex items-center gap-1.5 w-fit'}
+                            >
+                              <User className="h-3 w-3" />
+                              <span>{(sop.assigned_employee_count || 0) > 0 ? 'Yes' : 'No'}</span>
+                              <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold rounded-full ${
+                                (sop.assigned_employee_count || 0) > 0
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {sop.assigned_employee_count || 0}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="outline" 
+                              className="bg-green-50 border-green-300 text-green-700 flex items-center gap-1.5 w-fit"
+                            >
+                              <CheckCircle className="h-3 w-3" />
+                              <span>Done</span>
+                              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-green-500 rounded-full">
+                                {sop.completed_count ?? 0}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="outline" 
+                              className="bg-amber-50 border-amber-300 text-amber-700 flex items-center gap-1.5 w-fit"
+                            >
+                              <Clock className="h-3 w-3" />
+                              <span>Pending</span>
+                              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-amber-500 rounded-full">
+                                {sop.to_be_done_count ?? 0}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell>
+                            {sop.assignments && sop.assignments.length > 0 ? (
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 border-blue-300 text-blue-700 flex items-center gap-1.5 w-fit cursor-pointer hover:bg-blue-100"
+                                onClick={() => {
+                                  setSelectedGroupsForDialog(sop.assignments || []);
+                                  setSelectedSopTitleForDialog(sop.title);
+                                  setGroupDetailsDialogOpen(true);
+                                }}
+                              >
+                                <Users className="h-3 w-3" />
+                                <span>{sop.assignments.length} group{sop.assignments.length === 1 ? '' : 's'}</span>
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-gray-500">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {sop.completed_date ? (
+                              <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                                <Clock3 className="h-3.5 w-3.5" />
+                                <span>{formatDate(sop.completed_date)}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-500">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {sop.signoff_request_status === 'Completed' ? (
+                              <Badge className="bg-green-100 text-green-800">
+                                Signed off
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-amber-100 text-amber-800">
+                                In-progress
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </>
+                      )}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditSOP(sop)}
-                            className="h-8 w-8 p-0"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4 text-purple-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setViewingSOP(sop);
-                              setViewDialogOpen(true);
-                            }}
-                            className="h-8 w-8 p-0"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Implement assign person functionality
-                              handleAssignClick(sop);
-                            }}
-                            className="h-8 w-8 p-0"
-                            title="Assign Person"
-                          >
-                            <UserPlus className="h-4 w-4 text-purple-600" />
-                          </Button>
+                          {isSuperAdmin ? (
+                            <>
+                              {(() => {
+                                const isAssigned = isSOPAssigned(sop);
+                                return (
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleEditSOP(sop)}
+                                            disabled={isAssigned}
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <Edit className={`h-4 w-4 ${isAssigned ? 'text-gray-400' : 'text-purple-600'}`} />
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      {isAssigned && (
+                                        <TooltipContent>
+                                          <p>Cannot edit SOP that is assigned to groups</p>
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDeleteClick(sop)}
+                                            disabled={isAssigned}
+                                            className="h-8 w-8 p-0"
+                                          >
+                                            <Trash2 className={`h-4 w-4 ${isAssigned ? 'text-gray-400' : 'text-red-600'}`} />
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      {isAssigned && (
+                                        <TooltipContent>
+                                          <p>Cannot delete SOP that is assigned to groups</p>
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setViewingSOP(sop);
+                                        setViewDialogOpen(true);
+                                      }}
+                                      className="h-8 w-8 p-0"
+                                      title="View"
+                                    >
+                                      <Eye className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        handleAssignClick(sop);
+                                      }}
+                                      className="h-8 w-8 p-0"
+                                      title="Assign Person"
+                                    >
+                                      <UserPlus className="h-4 w-4 text-purple-600" />
+                                    </Button>
+                                  </>
+                                );
+                              })()}
+                            </>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSignoffSOP(sop);
+                                setSignoffDialogOpen(true);
+                              }}
+                              className="h-8 w-8 p-0"
+                              title="View"
+                            >
+                              <Eye className="h-4 w-4 text-green-600" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -387,6 +654,7 @@ const SOPPage = () => {
                 </TableBody>
               </Table>
             </div>
+            </TooltipProvider>
           )}
         </div>
 
@@ -424,6 +692,55 @@ const SOPPage = () => {
           }}
           sop={viewingSOP}
         />
+
+        {/* Group Details Dialog */}
+        <GroupDetailsDialog
+          open={groupDetailsDialogOpen}
+          onOpenChange={setGroupDetailsDialogOpen}
+          groups={selectedGroupsForDialog}
+          sopTitle={selectedSopTitleForDialog}
+          isSuperAdmin={isSuperAdmin}
+        />
+
+        {/* Signoff Request Dialog */}
+        <SignoffRequestDialog
+          open={signoffDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSignoffSOP(null);
+            }
+            setSignoffDialogOpen(open);
+          }}
+          sop={signoffSOP}
+          clientId={resolvedClientId}
+          employeeId={employeeData?.id || null}
+          sopSignoffRequestExist={signoffSOP?.sop_signoff_request_exist}
+          onSuccess={() => {
+            fetchSOPs();
+          }}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete SOP</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{sopToDelete?.title}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteConfirm} 
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

@@ -42,13 +42,14 @@ export const useEmployeeManagement = () => {
       // The enhanced API now includes document summaries
       const employeesData = await getActiveEmployeesFromApi(clientId, false);
       
-      console.log(`Successfully loaded ${employeesData.length} employees with documents for client: ${clientId}`);
+      console.log(`[useEmployeeManagement] Successfully loaded ${employeesData.length} employees with documents for client: ${clientId}`);
       
-      // Log document counts for debugging
+      // Log document counts and SOP statistics for debugging
       employeesData.forEach(emp => {
         const docCount = emp.documents?.length || 0;
         const verifiedCount = emp.documents?.filter(doc => doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed').length || 0;
-        console.log(`Employee ${emp.name}: ${docCount} documents, ${verifiedCount} verified`);
+        const sopStats = emp.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
+    
       });
 
       setEmployees(employeesData);

@@ -19,6 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Group {
   id: string;
@@ -31,6 +37,7 @@ interface Group {
   created_at: string;
   updated_at: string;
   member_count?: number;
+  is_assigned_to_sop?: boolean;
 }
 
 const GroupConfigurationContent = () => {
@@ -66,6 +73,29 @@ const GroupConfigurationContent = () => {
 
       if (error) throw error;
 
+      // Get all group IDs to check SOP assignments
+      const groupIds = (data || []).map((g: any) => g.id);
+
+      // Check which groups are assigned to any SOP
+      let assignedGroupIds = new Set<string>();
+      if (groupIds.length > 0) {
+        const { data: sopAssignedData, error: sopAssignedError } = await supabase
+          .from('sop_assigned')
+          .select('group_id')
+          .in('group_id', groupIds)
+          .not('group_id', 'is', null);
+
+        if (sopAssignedError) {
+          console.error('Error checking SOP assignments:', sopAssignedError);
+        } else if (sopAssignedData) {
+          assignedGroupIds = new Set(
+            sopAssignedData
+              .map((item: any) => item.group_id)
+              .filter((id: string | null) => id !== null)
+          );
+        }
+      }
+
       const mapped = (data || []).map((g: any) => ({
         id: g.id,
         name: g.name,
@@ -79,6 +109,7 @@ const GroupConfigurationContent = () => {
         member_count: Array.isArray(g.group_employees) && g.group_employees.length > 0
           ? g.group_employees[0].count
           : 0,
+        is_assigned_to_sop: assignedGroupIds.has(g.id),
       })) as Group[];
 
       setGroups(mapped);
@@ -118,6 +149,11 @@ const GroupConfigurationContent = () => {
   };
 
   const handleEditGroup = (group: Group) => {
+    // Safety check: prevent editing if group is assigned to any SOP
+    if (group.is_assigned_to_sop) {
+      toast.error('Cannot edit group that is assigned to any SOP');
+      return;
+    }
     setEditingGroup(group);
     setIsAddDialogOpen(true);
   };
@@ -129,6 +165,14 @@ const GroupConfigurationContent = () => {
 
   const handleDeleteConfirm = async () => {
     if (!groupToDelete || !clientId || !employeeId) return;
+
+    // Safety check: prevent deletion if group is assigned to any SOP
+    if (groupToDelete.is_assigned_to_sop) {
+      toast.error('Cannot delete group that is assigned to any SOP');
+      setDeleteDialogOpen(false);
+      setGroupToDelete(null);
+      return;
+    }
 
     try {
       const { error } = await supabase.functions.invoke('create-group', {
@@ -300,22 +344,48 @@ const GroupConfigurationContent = () => {
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditGroup(group)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteClick(group)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
+                    <TooltipProvider>
+                      <div className="flex justify-end gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditGroup(group)}
+                                disabled={group.is_assigned_to_sop}
+                              >
+                                <Edit className={`h-4 w-4 ${group.is_assigned_to_sop ? 'text-gray-400' : 'text-purple-600'}`} />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {group.is_assigned_to_sop && (
+                            <TooltipContent>
+                              <p>Cannot edit group that is assigned to any SOP</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(group)}
+                                disabled={group.is_assigned_to_sop}
+                              >
+                                <Trash2 className={`h-4 w-4 ${group.is_assigned_to_sop ? 'text-gray-400' : 'text-red-500'}`} />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {group.is_assigned_to_sop && (
+                            <TooltipContent>
+                              <p>Cannot delete group that is assigned to any SOP</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </div>
+                    </TooltipProvider>
                   </TableCell>
                 </TableRow>
               ))
