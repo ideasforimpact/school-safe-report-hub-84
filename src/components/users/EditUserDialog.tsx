@@ -17,6 +17,8 @@ import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmpl
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
+import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -54,6 +56,8 @@ const EditUserDialog = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const { clientId } = useEmployeeData();
   const { state: employeeState } = useEmployeeStore();
+  const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes();
+  const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
   const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
   const originalEmployeeIdRef = useRef<string | undefined>(undefined);
@@ -90,6 +94,46 @@ const EditUserDialog = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentUser?.id]);
+
+  // Map employee_type name to ID when employee types are loaded and formData has a name
+  useEffect(() => {
+    if (isOpen && !employeeTypesLoading && employeeTypes.length > 0 && formData.employeeType) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      // If employeeType is not a UUID, it's likely a name - map it to ID
+      if (!uuidRegex.test(formData.employeeType)) {
+        const matchingType = employeeTypes.find(
+          type => type.type_name.toLowerCase() === formData.employeeType?.toLowerCase()
+        );
+        if (matchingType) {
+          setFormData(prev => ({
+            ...prev,
+            employeeType: matchingType.id as any
+          }));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, employeeTypesLoading, employeeTypes, formData.employeeType]);
+
+  // Map department name to ID when employee departments are loaded and formData has a name
+  useEffect(() => {
+    if (isOpen && !employeeDepartmentsLoading && employeeDepartments.length > 0 && formData.department) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      // If department is not a UUID, it's likely a name - map it to ID
+      if (!uuidRegex.test(formData.department)) {
+        const matchingDept = employeeDepartments.find(
+          dept => dept.department_name.toLowerCase() === formData.department?.toLowerCase()
+        );
+        if (matchingDept) {
+          setFormData(prev => ({
+            ...prev,
+            department: matchingDept.id as any
+          }));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, employeeDepartmentsLoading, employeeDepartments, formData.department]);
 
   // Module change handler that updates selectedModules state and formData
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
@@ -581,16 +625,18 @@ const EditUserDialog = ({
                 <Label htmlFor="employeeType">Employee Type</Label>
                 <Select
                   value={formData.employeeType}
-                  onValueChange={(value) => setFormData({ ...formData, employeeType: value as EmployeeType })}
+                  onValueChange={(value) => setFormData({ ...formData, employeeType: value as any })}
+                  disabled={employeeTypesLoading}
                 >
                   <SelectTrigger id="employeeType">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder={employeeTypesLoading ? "Loading..." : "Select type"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="permanent">Permanent</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="consultant">Consultant</SelectItem>
-                    <SelectItem value="part_time">Part Time</SelectItem>
+                    {employeeTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.type_name.charAt(0).toUpperCase() + type.type_name.slice(1).replace('_', ' ')}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -598,18 +644,18 @@ const EditUserDialog = ({
                 <Label htmlFor="department">Department</Label>
                 <Select
                   value={formData.department}
-                  onValueChange={(value) => setFormData({ ...formData, department: value as DepartmentType })}
+                  onValueChange={(value) => setFormData({ ...formData, department: value as any })}
+                  disabled={employeeDepartmentsLoading}
                 >
                   <SelectTrigger id="department">
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder={employeeDepartmentsLoading ? "Loading..." : "Select department"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="teaching">Teaching</SelectItem>
-                    <SelectItem value="security">Security</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="transport">Transport</SelectItem>
-                    <SelectItem value="management">Management</SelectItem>
+                    {employeeDepartments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.department_name.charAt(0).toUpperCase() + dept.department_name.slice(1)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

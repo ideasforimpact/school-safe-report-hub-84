@@ -15,6 +15,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import defaultModules from "@/utils/default-modules.json";
 import { applyDefaultModules, DefaultModule } from "@/utils/moduleDefault";
+import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
 
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, getEmployeeFirstnameErrorMessage, getEmployeeLastnameErrorMessage, EMPLOYEE_DESIGNATION_CONSTANTS } from '@/constant/employeeConstant';
 
@@ -46,6 +48,8 @@ export type EmailValidationStatus = 'idle' | 'checking' | 'available' | 'exists'
 
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const { state } = useEmployeeStore();
+  const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes();
+  const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
   const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
@@ -580,16 +584,18 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 <Label htmlFor="employeeType">Employee Type</Label>
                 <Select
                   value={formData.employeeType}
-                  onValueChange={(value) => setFormData({ ...formData, employeeType: value as EmployeeType })}
+                  onValueChange={(value) => setFormData({ ...formData, employeeType: value as any })}
+                  disabled={employeeTypesLoading}
                 >
                   <SelectTrigger id="employeeType">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder={employeeTypesLoading ? "Loading..." : "Select type"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="permanent">Permanent</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="consultant">Consultant</SelectItem>
-                    <SelectItem value="part_time">Part Time</SelectItem>
+                    {employeeTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.type_name.charAt(0).toUpperCase() + type.type_name.slice(1).replace('_', ' ')}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -597,18 +603,18 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 <Label htmlFor="department">Department</Label>
                 <Select
                   value={formData.department}
-                  onValueChange={(value) => setFormData({ ...formData, department: value as DepartmentType })}
+                  onValueChange={(value) => setFormData({ ...formData, department: value as any })}
+                  disabled={employeeDepartmentsLoading}
                 >
                   <SelectTrigger id="department">
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder={employeeDepartmentsLoading ? "Loading..." : "Select department"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="teaching">Teaching</SelectItem>
-                    <SelectItem value="security">Security</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="transport">Transport</SelectItem>
-                    <SelectItem value="management">Management</SelectItem>
+                    {employeeDepartments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.department_name.charAt(0).toUpperCase() + dept.department_name.slice(1)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

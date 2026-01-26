@@ -19,7 +19,8 @@ import {
   DoorOpen,
   LogIn,
   MessageSquareWarning,
-  Plug
+  Plug,
+  BookOpen
 } from 'lucide-react';
 import { loadAuthState } from '@/store/authPersistence';
 
@@ -39,6 +40,7 @@ const iconMap: Record<string, any> = {
   LogIn,
   MessageSquareWarning,
   Integration: Plug, // Alias for backward compatibility
+  BookOpen,
 };
 
 interface ModuleItem {

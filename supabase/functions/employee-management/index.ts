@@ -146,6 +146,109 @@ serve(async (req) => {
   }
 });
 
+// Helper function to map employee_type text to UUID
+async function getEmployeeTypeId(supabaseClient: any, employeeType: string): Promise<string | null> {
+  // If it's already a UUID, return it
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(employeeType)) {
+    return employeeType;
+  }
+
+  // Normalize the text value
+  const normalizedType = employeeType.toLowerCase().trim();
+  
+  // Map common variations
+  const typeMapping: Record<string, string> = {
+    'permanent': 'permanent',
+    'contract': 'contract',
+    'consultant': 'consultant',
+    'part_time': 'part_time',
+    'part-time': 'part_time',
+    'parttime': 'part_time',
+    'full-time': 'permanent',
+    'fulltime': 'permanent',
+    'intern': 'consultant' // Map intern to consultant as fallback
+  };
+
+  const mappedType = typeMapping[normalizedType] || normalizedType;
+
+  // Fetch the employee_type ID from the database
+  const { data: employeeTypeData, error } = await supabaseClient
+    .from('employee_type')
+    .select('id')
+    .eq('type_name', mappedType)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching employee_type:", error);
+    return null;
+  }
+
+  if (!employeeTypeData) {
+    console.warn(`Employee type '${employeeType}' not found, defaulting to 'permanent'`);
+    // Default to permanent if not found
+    const { data: defaultType } = await supabaseClient
+      .from('employee_type')
+      .select('id')
+      .eq('type_name', 'permanent')
+      .maybeSingle();
+    return defaultType?.id || null;
+  }
+
+  return employeeTypeData.id;
+}
+
+// Helper function to map department text to UUID
+async function getDepartmentId(supabaseClient: any, department: string): Promise<string | null> {
+  // If it's already a UUID, return it
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(department)) {
+    return department;
+  }
+
+  // Normalize the text value
+  const normalizedDept = department.toLowerCase().trim();
+  
+  // Map common variations
+  const deptMapping: Record<string, string> = {
+    'admin': 'admin',
+    'administration': 'admin',
+    'teaching': 'teaching',
+    'security': 'security',
+    'maintenance': 'maintenance',
+    'transport': 'transport',
+    'management': 'management',
+    'operations': 'admin' // Map operations to admin as fallback
+  };
+
+  const mappedDept = deptMapping[normalizedDept] || normalizedDept;
+
+  // Fetch the employee_departments ID from the database
+  const { data: departmentData, error } = await supabaseClient
+    .from('employee_departments')
+    .select('id')
+    .eq('department_name', mappedDept)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching employee_departments:", error);
+    return null;
+  }
+
+  if (!departmentData) {
+    console.warn(`Department '${department}' not found, defaulting to 'admin'`);
+    // Default to admin if not found
+    const { data: defaultDept } = await supabaseClient
+      .from('employee_departments')
+      .select('id')
+      .eq('department_name', 'admin')
+      .maybeSingle();
+    return defaultDept?.id || null;
+  }
+
+  return departmentData.id;
+}
+
 async function handleBulkImport(supabaseClient: any, employees: any[], clientId: string) {
   console.log("Processing bulk import for", employees?.length, "employees with clientId:", clientId);
   
@@ -162,7 +265,13 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     );
   }
 
-  const result = {
+  const result: {
+    success: boolean;
+    created: number;
+    updated: number;
+    errors: string[];
+    employees: any[];
+  } = {
     success: true,
     created: 0,
     updated: 0,
@@ -204,14 +313,19 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
           continue;
         }
 
+        // Map employee_type text to ID if needed
+        const employeeTypeId = await getEmployeeTypeId(supabaseClient, emp.employeeType || 'permanent');
+        // Map department text to ID if needed
+        const departmentId = await getDepartmentId(supabaseClient, emp.department || 'admin');
+
         // Create employee record
         const employeeData = {
           employee_id: emp.employeeId,
           first_name: emp.firstName,
           last_name: emp.lastName,
           email: emp.email,
-          employee_type: emp.employeeType,
-          department: emp.department,
+          employee_type: employeeTypeId,
+          department: departmentId,
           designation:emp.designation,
           joining_date: emp.joiningDate,
           status: true,
@@ -336,6 +450,11 @@ async function handleCreate(supabaseClient: any, employee: any) {
     );
   }
 
+  // Map employee_type text to ID if needed
+  const employeeTypeId = await getEmployeeTypeId(supabaseClient, employee.employeeType || 'permanent');
+  // Map department text to ID if needed
+  const departmentId = await getDepartmentId(supabaseClient, employee.department || 'admin');
+
   // Create employee record
   const employeeData = {
     employee_id: employee.employeeId,
@@ -344,8 +463,8 @@ async function handleCreate(supabaseClient: any, employee: any) {
     email: employee.email,
     phone: employee.phone || null,
     designation: employee.designation || null,
-    employee_type: employee.employeeType,
-    department: employee.department,
+    employee_type: employeeTypeId,
+    department: departmentId,
     joining_date: employee.joiningDate,
     status: true,
     client_id: clientId,
@@ -499,17 +618,33 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     }
   }
 
+  // Map employee_type text to ID if needed
+  const employeeTypeId = employee.employeeType 
+    ? await getEmployeeTypeId(supabaseClient, employee.employeeType)
+    : undefined;
+  // Map department text to ID if needed
+  const departmentId = employee.department 
+    ? await getDepartmentId(supabaseClient, employee.department)
+    : undefined;
+
   // Update employee record
-  const updateData = {
+  const updateData: any = {
     first_name: employee.firstName,
     last_name: employee.lastName,
     email: employee.email,
     phone: employee.phone || null,
     designation: employee.designation || null,
-    employee_type: employee.employeeType,
-    joining_date:employee.joiningDate,
-    department: employee.department
+    joining_date:employee.joiningDate
   };
+
+  // Only include employee_type if provided
+  if (employeeTypeId) {
+    updateData.employee_type = employeeTypeId;
+  }
+  // Only include department if provided
+  if (departmentId) {
+    updateData.department = departmentId;
+  }
 
   // Only include employee_id in update if it's provided
   if (employee.employeeId) {
