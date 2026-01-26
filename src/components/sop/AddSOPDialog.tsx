@@ -117,7 +117,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     setLoadingCategories(true);
     try {
       const { data, error } = await supabase
-        .from('sop_categories')
+        .from('sop_categories' as any)
         .select('id, category_name')
         .order('category_name', { ascending: true });
 
@@ -127,7 +127,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
         return;
       }
 
-      setCategories(data || []);
+      setCategories((data || []) as unknown as SOPCategory[]);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load categories');
@@ -153,24 +153,35 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     );
   };
 
+  // Helper function to check for special characters (allows alphanumeric, spaces, and basic punctuation)
+  const hasSpecialCharacters = (text: string): boolean => {
+    // Allow: letters, numbers, spaces, hyphens, underscores, periods, commas, apostrophes, parentheses
+    // Disallow: other special characters like @, #, $, %, ^, &, *, etc.
+    const allowedPattern = /^[a-zA-Z0-9\s\-_.,'()]+$/;
+    return !allowedPattern.test(text);
+  };
+
   // Validation for form fields
   const isFormValid = useMemo(() => {
     // Title validation
     const titleValid = title.trim().length >= SOP_VALIDATION.title.min && 
-                       title.trim().length <= SOP_VALIDATION.title.max;
+                       title.trim().length <= SOP_VALIDATION.title.max &&
+                       !hasSpecialCharacters(title.trim());
     
     // Category validation
     const categoryValid = categoryId !== '';
     
     // Description validation
     const descriptionValid = description.trim().length >= SOP_VALIDATION.description.min && 
-                             description.trim().length <= SOP_VALIDATION.description.max;
+                             description.trim().length <= SOP_VALIDATION.description.max &&
+                             !hasSpecialCharacters(description.trim());
     
-    // Procedure steps validation - at least one step with valid length
+    // Procedure steps validation - at least one step with valid length and no special characters
     const stepsValid = procedureSteps.some(step => {
       const trimmed = step.step.trim();
       return trimmed.length >= SOP_VALIDATION.procedureStep.min && 
-             trimmed.length <= SOP_VALIDATION.procedureStep.max;
+             trimmed.length <= SOP_VALIDATION.procedureStep.max &&
+             !hasSpecialCharacters(trimmed);
     });
     
     return titleValid && categoryValid && descriptionValid && stepsValid;
@@ -187,12 +198,17 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     e.preventDefault();
 
     // Validate title
-    if (title.trim().length < SOP_VALIDATION.title.min) {
+    const trimmedTitle = title.trim();
+    if (trimmedTitle.length < SOP_VALIDATION.title.min) {
       toast.error(`Title must be at least ${SOP_VALIDATION.title.min} characters`);
       return;
     }
-    if (title.trim().length > SOP_VALIDATION.title.max) {
+    if (trimmedTitle.length > SOP_VALIDATION.title.max) {
       toast.error(`Title must not exceed ${SOP_VALIDATION.title.max} characters`);
+      return;
+    }
+    if (hasSpecialCharacters(trimmedTitle)) {
+      toast.error('Title cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.');
       return;
     }
 
@@ -203,12 +219,17 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     }
 
     // Validate description
-    if (description.trim().length < SOP_VALIDATION.description.min) {
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < SOP_VALIDATION.description.min) {
       toast.error(`Description must be at least ${SOP_VALIDATION.description.min} characters`);
       return;
     }
-    if (description.trim().length > SOP_VALIDATION.description.max) {
+    if (trimmedDescription.length > SOP_VALIDATION.description.max) {
       toast.error(`Description must not exceed ${SOP_VALIDATION.description.max} characters`);
+      return;
+    }
+    if (hasSpecialCharacters(trimmedDescription)) {
+      toast.error('Description cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.');
       return;
     }
 
@@ -216,8 +237,15 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
     const validSteps = procedureSteps
       .filter(step => {
         const trimmed = step.step.trim();
-        return trimmed.length >= SOP_VALIDATION.procedureStep.min && 
-               trimmed.length <= SOP_VALIDATION.procedureStep.max;
+        if (trimmed.length < SOP_VALIDATION.procedureStep.min || 
+            trimmed.length > SOP_VALIDATION.procedureStep.max) {
+          return false;
+        }
+        if (hasSpecialCharacters(trimmed)) {
+          toast.error('Procedure steps cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.');
+          return false;
+        }
+        return true;
       })
       .map(step => step.step.trim());
 
@@ -247,20 +275,43 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
 
       if (!clientId) {
         toast.error('Missing client information. Please refresh and try again.');
+        setLoading(false);
         return;
       }
 
       if (!employeeId) {
         toast.error('Missing employee information. Please re-login and try again.');
+        setLoading(false);
         return;
+      }
+
+      // Check for duplicate SOP title (case-insensitive, within same client)
+      const { data: existingSOPs, error: checkError } = await supabase
+        .from('sop' as any)
+        .select('id, title')
+        .eq('client_id', clientId)
+        .ilike('title', trimmedTitle);
+
+      if (checkError) {
+        console.error('Error checking for duplicate SOP:', checkError);
+      } else if (existingSOPs && existingSOPs.length > 0) {
+        // If editing, allow if it's the same SOP
+        if (editingSOP && existingSOPs && existingSOPs.some((s: any) => s.id === editingSOP.id)) {
+          // Same SOP, allow update
+        } else {
+          // Duplicate found
+          toast.error(`An SOP with the title "${trimmedTitle}" already exists`);
+          setLoading(false);
+          return;
+        }
       }
 
       // Call edge function to create or update SOP
       const functionName = editingSOP ? 'update-sop' : 'create-sop';
       const requestBody: any = {
-        title: title.trim(),
+        title: trimmedTitle,
         category_id: categoryId,
-        description: description.trim() || null,
+        description: trimmedDescription || null,
         status: status,
         procedure_steps: validSteps,
         important_notes: importantNotes.trim() || null,
@@ -336,7 +387,13 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only alphanumeric, spaces, and basic punctuation
+                if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
+                  setTitle(value);
+                }
+              }}
               placeholder="Enter SOP title"
               maxLength={SOP_VALIDATION.title.max}
               required
@@ -344,6 +401,11 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             {title && (title.trim().length < SOP_VALIDATION.title.min || title.trim().length > SOP_VALIDATION.title.max) && (
               <p className="text-xs text-red-500">
                 Title must be between {SOP_VALIDATION.title.min} and {SOP_VALIDATION.title.max} characters
+              </p>
+            )}
+            {title && hasSpecialCharacters(title.trim()) && (
+              <p className="text-xs text-red-500">
+                Title cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.
               </p>
             )}
           </div>
@@ -375,7 +437,13 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow only alphanumeric, spaces, and basic punctuation
+                if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
+                  setDescription(value);
+                }
+              }}
               placeholder="Brief description of the procedure"
               rows={3}
               maxLength={SOP_VALIDATION.description.max}
@@ -384,6 +452,11 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             {description && (description.trim().length < SOP_VALIDATION.description.min || description.trim().length > SOP_VALIDATION.description.max) && (
               <p className="text-xs text-red-500">
                 Description must be between {SOP_VALIDATION.description.min} and {SOP_VALIDATION.description.max} characters
+              </p>
+            )}
+            {description && hasSpecialCharacters(description.trim()) && (
+              <p className="text-xs text-red-500">
+                Description cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.
               </p>
             )}
           </div>
@@ -420,7 +493,13 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
                     <div className="flex-1">
                       <Input
                         value={step.step}
-                        onChange={(e) => handleStepChange(step.id, e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Allow only alphanumeric, spaces, and basic punctuation
+                          if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
+                            handleStepChange(step.id, value);
+                          }
+                        }}
                         placeholder={`Step ${index + 1}`}
                         maxLength={SOP_VALIDATION.procedureStep.max}
                         className={showStepError ? 'border-red-500' : ''}
@@ -428,6 +507,11 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
                       {showStepError && (
                         <p className="text-xs text-red-500 mt-1">
                           Step must be between {SOP_VALIDATION.procedureStep.min} and {SOP_VALIDATION.procedureStep.max} characters
+                        </p>
+                      )}
+                      {step.step.trim() && hasSpecialCharacters(step.step.trim()) && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Step cannot contain special characters. Only letters, numbers, spaces, and basic punctuation (.,-_\'()) are allowed.
                         </p>
                       )}
                     </div>
