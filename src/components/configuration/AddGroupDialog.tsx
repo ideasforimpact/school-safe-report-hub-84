@@ -140,6 +140,12 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
     description: emp.email,
   }));
 
+  // Helper function to capitalize first character
+  const capitalizeFirstChar = (str: string): string => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
   // Helper function to check for special characters (allows alphanumeric, spaces, and basic punctuation)
   const hasSpecialCharacters = (text: string): boolean => {
     // Allow: letters, numbers, spaces, hyphens, underscores, periods, commas, apostrophes, parentheses
@@ -351,7 +357,7 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
                 <SelectContent>
                   {employeeDepartments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
-                      {dept.department_name}
+                      {capitalizeFirstChar(dept.department_name)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -49,6 +49,7 @@ const GroupConfigurationContent = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [groupTypeFilter, setGroupTypeFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -140,8 +141,13 @@ const GroupConfigurationContent = () => {
       filtered = filtered.filter((group) => group.status === statusValue);
     }
 
+    // Group Type filter
+    if (groupTypeFilter !== 'all') {
+      filtered = filtered.filter((group) => group.group_type === groupTypeFilter);
+    }
+
     return filtered;
-  }, [groups, searchTerm, statusFilter]);
+  }, [groups, searchTerm, statusFilter, groupTypeFilter]);
 
   const handleAddGroup = () => {
     setEditingGroup(null);
@@ -244,13 +250,26 @@ const GroupConfigurationContent = () => {
             </SelectContent>
           </Select>
         </div>
-        {(searchTerm || statusFilter !== 'all') && (
+        <div>
+          <Select value={groupTypeFilter} onValueChange={setGroupTypeFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by group type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Group Types</SelectItem>
+              <SelectItem value="Department">Department</SelectItem>
+              <SelectItem value="Employee">Employee</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {(searchTerm || statusFilter !== 'all' || groupTypeFilter !== 'all') && (
           <Button
             variant="outline"
             size="icon"
             onClick={() => {
               setSearchTerm('');
               setStatusFilter('all');
+              setGroupTypeFilter('all');
             }}
           >
             <X className="h-4 w-4" />

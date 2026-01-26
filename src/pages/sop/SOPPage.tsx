@@ -108,6 +108,8 @@ const SOPPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
@@ -118,9 +120,29 @@ const SOPPage = () => {
 
   useEffect(() => {
     fetchSOPs();
+    fetchCategories();
   }, []);
 
-  // Filter SOPs based on search and status
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sop_categories' as any)
+        .select('id, category_name')
+        .order('category_name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        return;
+      }
+
+      setCategories((data || []) as unknown as Array<{ id: string; category_name: string }>);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  // Filter SOPs based on search, status, and category
   useEffect(() => {
     let filtered = [...allSops];
 
@@ -141,8 +163,13 @@ const SOPPage = () => {
       filtered = filtered.filter((sop) => sop.status === statusValue);
     }
 
+    // Apply category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter((sop) => sop.category_id === categoryFilter);
+    }
+
     setSops(filtered);
-  }, [searchTerm, statusFilter, allSops]);
+  }, [searchTerm, statusFilter, categoryFilter, allSops]);
 
   const fetchSOPs = async () => {
     setLoading(true);
@@ -365,7 +392,7 @@ const SOPPage = () => {
           {/* Filters Section */}
           <div className="mb-6 flex flex-wrap items-center gap-4">
             {/* Search Box */}
-            <div className="relative flex-1 min-w-[250px]">
+            <div className="relative w-[250px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search by name, description, category..."
@@ -373,6 +400,23 @@ const SOPPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+            </div>
+
+            {/* Category Filter */}
+            <div className="w-[180px]">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.category_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Status Filter */}
