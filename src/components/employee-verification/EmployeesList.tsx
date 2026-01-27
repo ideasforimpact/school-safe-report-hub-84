@@ -335,33 +335,33 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
         </Table>
       </div>
       
-      {totalPages > 1 && (
+    {totalPages > 1 && (
         <div className="flex justify-center mt-4">
           <Pagination>
-            <PaginationContent>
+            <PaginationContent className="flex items-center gap-3">
               <PaginationItem>
-                <PaginationPrevious 
+                <PaginationPrevious
                   onClick={goToPreviousPage}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={
+                    currentPage === 1
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
                 />
               </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
-                <PaginationItem key={pageNumber}>
-                  <PaginationLink
-                    onClick={() => setCurrentPage(pageNumber)}
-                    isActive={currentPage === pageNumber}
-                    className="cursor-pointer"
-                  >
-                    {pageNumber}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              
               <PaginationItem>
-                <PaginationNext 
+                <span className="px-3 py-1 text-sm font-medium text-gray-700">
+                  {currentPage} of {totalPages}
+                </span>
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
                   onClick={goToNextPage}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  className={
+                    currentPage === totalPages
+                      ? "pointer-events-none opacity-50"
+                      : "cursor-pointer"
+                  }
                 />
               </PaginationItem>
             </PaginationContent>

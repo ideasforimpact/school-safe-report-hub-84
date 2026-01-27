@@ -470,7 +470,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
               const docType = doc.documentTypeName?.toLowerCase();
               const showCommentsIcon = docType === 'other' && hasVerificationHistory(doc);
-              
+              const hasVerifyApi =
+                onQuickVerify &&
+                docType !== 'other' &&
+                docType !== 'other_documents' &&
+                docType !== 'manual';
+
+              const hasVerifyManual =
+                onQuickVerify && docType !== 'manual';
               return (
                 <TableRow key={doc.id}>
                   <TableCell>
@@ -640,208 +647,107 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   </TableCell>
                   
                   {/* Actions Column */}
-                  <TableCell className="text-right">
-                    {(() => {
-                      // Check if document is verified via API method (governance status)
-                      // Keep buttons visible even after API verification to allow re-verification
-                      // Priority: Check statusName first (most reliable indicator)
-                      const isApiVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
-                      
-                      // Always show buttons regardless of verification status
-                      // This allows re-verification even after API verification
-                      const hasVerifyApi = onQuickVerify && docType !== 'other' && docType !== 'other_documents' && docType !== 'manual';
-                      const hasVerifyManual = onQuickVerify && docType !== 'manual';
-                      
-                      // Special handling for manual documents
-                      if (docType === 'manual') {
-                        const docUrl = (doc.params as any)?.document_url || doc.documentImage;
-                        // Use documents_files column
-                        const filesFromDb = (doc as any).documents_files || [];
-                        const overrideCount = filesCountOverrides[doc.id];
-                        const hasFiles = overrideCount !== undefined ? overrideCount > 0 : (Array.isArray(filesFromDb) && filesFromDb.length > 0);
-                        console.log({ filesFromDb, overrideCount, hasFiles }, "FilesData");
-                        
-                        
-                        return (
-                          <div className="flex items-center justify-end space-x-2 w-full">
-                            {/* Files button - only if document has files */}
-                            {hasFiles && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleFilesClick(doc.id, doc.employeeId, filesFromDb)}
-                                title="View and Manage Files"
-                                className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                              >
-                                <File className="h-4 w-4 mr-1" />
-                                Files
-                              </Button>
-                            )}
-                            
-                            {/* Delete button for manual documents */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDeleteDialog(doc.id)}
-                              title="Delete Document"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        );
-                      }
-                      
-                      // If has Verify API, use left alignment (normal flow)
-                      if (hasVerifyApi) {
-                        return (
-                          <div className="flex items-center justify-center space-x-2">
-      <Button
-        variant="verifyApi"
-        size="sm"
-        onClick={() => onQuickVerify(doc.id, 'api')}
-        title={`Government API verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
-        className="border border-gray-300 hover:border-gray-400 bg-gray-50/90 hover:bg-gray-100/95 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
-      >
-        <GovernmentEmblemIcon size={18} />
-      </Button>
-                            
-                            {hasVerifyManual && (
-                              <Button
-                                variant="verifyManual"
-                                size="sm"
-                                onClick={() => onQuickVerify(doc.id, 'manual')}
-                                title={`Manual verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
-                              >
-                                <Wrench className="h-4 w-4" />
-                                <span>Verify Manual</span>
-                              </Button>
-                            )}
-                            
-                            {showCommentsIcon && (
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleCommentsClick(doc)}
-                                title="View comments and verification history"
-                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                                <span className="sr-only">Comments</span>
-      </Button>
-    )}
+               <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2 w-full whitespace-nowrap">
 
-                            {/* Actions Menu Dropdown */}
-                            {(() => { const docUrl = (doc.params as any)?.document_url || doc.documentImage; return (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" title="More actions" className="ml-auto">
-                                  <MoreVertical className="h-4 w-4" />
-                                  <span className="sr-only">More actions</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40 bg-white border shadow-lg z-50">
-                                {docUrl && (
-                                  <>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleViewDocument(docUrl)}
-                                      className="cursor-pointer"
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      View
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => handleDownloadDocument(docUrl)}
-                                      className="cursor-pointer"
-                                    >
-                                      <Download className="h-4 w-4 mr-2" />
-                                      Download
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => openDeleteDialog(doc.id)}
-                                  className="cursor-pointer text-red-600 focus:text-red-600"
-                                >
-                                  <Trash className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            ); })()}
-                          </div>
-                        );
-                      } 
-                      
-                      // If no Verify API, use right alignment for Verify Manual and menu
-                      return (
-                        <div className="flex items-center justify-end space-x-2 w-full">
-                          {hasVerifyManual && (
-      <Button
-        variant="verifyManual"
-        size="sm"
-        onClick={() => onQuickVerify(doc.id, 'manual')}
-        title={`Manual verification${doc.documentTypeName ? ` for ${doc.documentTypeName}` : ''}`}
-      >
-        <Wrench className="h-4 w-4" />
-        <span>Verify Manual</span>
-      </Button>
-    )}
-                          
-                       {showCommentsIcon && (
-                         <Button 
-                           variant="outline" 
-                           size="sm"
-                           onClick={() => handleCommentsClick(doc)}
-                           title="View comments and verification history"
-                           className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                         >
-                           <MessageCircle className="h-4 w-4" />
-                           <span className="sr-only">Comments</span>
-                         </Button>
-                       )}
-                       
-                       {/* Actions Menu Dropdown */}
-                       <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button variant="outline" size="sm" title="More actions" className="ml-auto">
-                             <MoreVertical className="h-4 w-4" />
-                             <span className="sr-only">More actions</span>
-                           </Button>
-                         </DropdownMenuTrigger>
-                         <DropdownMenuContent align="end" className="w-40 bg-white border shadow-lg z-50">
-                           {(doc.documentImage || (doc.params as any)?.document_url) && (
-                             <>
-                               <DropdownMenuItem 
-                                 onClick={() => handleViewDocument((doc.params as any)?.document_url || doc.documentImage)}
-                                 className="cursor-pointer"
-                               >
-                                 <Eye className="h-4 w-4 mr-2" />
-                                 View
-                               </DropdownMenuItem>
-                               <DropdownMenuItem 
-                                 onClick={() => handleDownloadDocument((doc.params as any)?.document_url || doc.documentImage)}
-                                 className="cursor-pointer"
-                               >
-                                 <Download className="h-4 w-4 mr-2" />
-                                 Download
-                               </DropdownMenuItem>
-                             </>
-                           )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => openDeleteDialog(doc.id)}
-                              className="cursor-pointer text-red-600 focus:text-red-600"
-                            >
-                              <Trash className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                         </DropdownMenuContent>
-                       </DropdownMenu>
+                      {/* API Verify */}
+                      {hasVerifyApi && (
+                        <Button
+                          variant="verifyApi"
+                          size="sm"
+                          onClick={() => onQuickVerify(doc.id, 'api')}
+                          className="h-8 px-2"
+                          title="Government API verification"
+                        >
+                          <GovernmentEmblemIcon size={18} />
+                        </Button>
+                      )}
+
+                      {/* Manual Verify */}
+                      {hasVerifyManual && (
+                        <Button
+                          variant="verifyManual"
+                          size="sm"
+                          onClick={() => onQuickVerify(doc.id, 'manual')}
+                          className="h-8"
+                        >
+                          <Wrench className="h-4 w-4" />
+                          <span className="ml-1">Verify Manual</span>
+                        </Button>
+                      )}
+
+                      {/* Files (manual docs only) */}
+                      {docType === 'manual' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleFilesClick(
+                              doc.id,
+                              doc.employeeId,
+                              (doc as any).documents_files || []
+                            )
+                          }
+                          className="h-8"
+                        >
+                          <File className="h-4 w-4 mr-1" />
+                          Files
+                        </Button>
+                      )}
+
+                      {/* Actions menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end" className="w-40">
+                          {(doc.documentImage || (doc.params as any)?.document_url) && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleViewDocument(
+                                    (doc.params as any)?.document_url ||
+                                      doc.documentImage
+                                  )
+                                }
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleDownloadDocument(
+                                    (doc.params as any)?.document_url ||
+                                      doc.documentImage
+                                  )
+                                }
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+
+                          <DropdownMenuItem
+                            onClick={() => openDeleteDialog(doc.id)}
+                            className="text-red-600"
+                          >
+                            <Trash className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                      );
-                    })()}
                   </TableCell>
                 </TableRow>
               );
