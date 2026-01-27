@@ -307,21 +307,10 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       continue;
     }
  
-    if (existingEmailSet.has(emp.email.toLowerCase())) {
-      errors.push(`Duplicate email: ${emp.email}`);
-      continue;
-    }
- 
-    if (existingIdSet.has(emp.employeeId)) {
-      errors.push(`Duplicate employee ID: ${emp.employeeId}`);
-      continue;
-    }
- 
-        // Map employee_type text to ID if needed
-        const employeeTypeId = await getEmployeeTypeId(supabaseClient, emp.employeeType || 'permanent');
-        // Map department text to ID if needed
-        const departmentId = await getDepartmentId(supabaseClient, emp.department || 'admin');
- 
+    // Map employee_type text to ID if needed
+    const employeeTypeId = await getEmployeeTypeId(supabaseClient, emp.employeeType || 'permanent');
+    // Map department text to ID if needed
+    const departmentId = await getDepartmentId(supabaseClient, emp.department || 'admin');
     insertPayload.push({
       employee_id: emp.employeeId,
       first_name: emp.firstName,

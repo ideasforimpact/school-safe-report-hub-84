@@ -151,6 +151,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       console.error("Error importing file:", error);
       toast.error(`Import failed: ${(error as Error).message}`);
     } finally {
+      resetState();
       setIsLoading(false);
     }
   };

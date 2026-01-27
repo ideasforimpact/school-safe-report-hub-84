@@ -383,10 +383,10 @@ export const showImportResultNotifications = (result: ImportResult): void => {
     });
     
     // If there are more errors, show summary
-    if (result.errors.length > 2) {
-      const remainingCount = result.errors.length - 2;
-      toast.error(`${remainingCount} additional error${remainingCount > 1 ? 's' : ''} occurred. Check console for full details.`);
-    }
+    // if (result.errors.length > 2) {
+    //   const remainingCount = result.errors.length - 2;
+    //   toast.error(`${remainingCount} additional error${remainingCount > 1 ? 's' : ''} occurred. Check console for full details.`);
+    // }
   }
 };
 
