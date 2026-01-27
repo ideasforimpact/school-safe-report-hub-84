@@ -106,6 +106,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import AuthCallback from './pages/callback';
 import TransportChallansPage from './pages/transport-safety/TransportChallansPage';
+import SOPPage from './pages/sop/SOPPage';
+import AssignedSOPPage from './pages/sop/AssignedSOPPage';
 
 
 function App() {
@@ -228,7 +230,12 @@ function App() {
                   {/* Visitor routes */}
                   <Route path="/visitor" element={<RouteGuard requireAuth={true}><VisitorsPage /></RouteGuard>} />
                   <Route path="/visitors" element={<RouteGuard requireAuth={true}><VisitorsPage /></RouteGuard>} />
-                  <Route path="/visitors/trusted-vehicles" element={<RouteGuard requireAuth={true}><TrustedVehiclesPage /></RouteGuard>} />
+                  <Route path="/visitors/trusted-vehicles" element={<RouteGuard requireAuth={true}><TrustedVehiclesPage /></RouteGuard> } />
+
+                  {/* SOP routes */}
+                  <Route path="/sops" element={<RouteGuard requireAuth={true}><SOPPage /></RouteGuard>} />
+                  <Route path="/sop" element={<RouteGuard requireAuth={true}><SOPPage /></RouteGuard>} />
+                  <Route path="/sops/assigned" element={<RouteGuard requireAuth={true}><AssignedSOPPage /></RouteGuard>} />
 
                   {/* Backoffice routes - protected with RouteGuard and wrapped with BackofficeClientProvider */}
                   <Route path="/backoffice/dashboard" element={
