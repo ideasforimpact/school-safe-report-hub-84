@@ -50,7 +50,6 @@ const DuplicateTemplateDialog: React.FC<DuplicateTemplateDialogProps> = ({
         questions: template.questions
       });
       
-      toast.success('Template duplicated successfully');
       setOpen(false);
       
       if (onDuplicate) {
