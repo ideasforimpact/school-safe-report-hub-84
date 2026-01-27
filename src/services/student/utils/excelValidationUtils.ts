@@ -19,12 +19,23 @@ const requiredFields: (keyof RawStudentData)[] = [
  * Validate Excel/CSV data to ensure all required fields are present and valid
  * Now includes client-specific duplicate student ID checking
  */
-export const validateExcelData = async (data: RawStudentData[], clientId?: string): Promise<string[]> => {
+export const validateExcelData = async (data: RawStudentData[], clientId?: string): Promise<{
+  errors: string[];
+  warnings: string[];
+  skippedRowNumbers: Set<number>;
+}> => {
   const errors: string[] = [];
+  const warnings: string[] = [];
+  const skippedRowNumbers = new Set<number>();
   
+  const result = () => ({
+      errors,
+      warnings,
+      skippedRowNumbers,
+    });
   if (!data || data.length === 0) {
     errors.push('File contains no data');
-    return errors;
+    return result();
   }
 
   console.log('Raw Excel/CSV data:', data);
@@ -32,7 +43,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
   // Check for client ID availability
   if (!clientId) {
     errors.push('Client information not available. Please ensure you are logged in properly.');
-    return errors;
+    return result();
   }
 
   // Validate required fields and collect student IDs for duplicate checking
@@ -65,7 +76,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
 
   // Early return if there are basic validation errors
   if (errors.length > 0) {
-    return errors;
+    return result();
   }
 
   // Check for duplicates within the file itself
@@ -87,7 +98,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
 
   // If there are internal duplicates, return early
   if (errors.length > 0) {
-    return errors;
+    return result();
   }
 
   // Check for existing student IDs in the database
@@ -100,14 +111,20 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
   if (duplicates.length > 0) {
     duplicates.forEach(duplicateId => {
       const rowIndex = studentIdsToCheck.findIndex(id => id === duplicateId);
-      const rowNumber = rowIndex >= 0 ? rowIndex + 2 : 'Unknown';
-      errors.push(`Row ${rowNumber}: Student ID "${duplicateId}" already exists in your organization`);
+      const rowNumber = rowIndex >= 0 ? rowIndex + 2 : undefined;
+
+      if (rowNumber) {
+        skippedRowNumbers.add(rowNumber);
+        warnings.push(
+          `Row ${rowNumber}: Student ID "${duplicateId}" already exists and will be skipped`
+        );
+      }
     });
   }
 
   // If there are duplicate errors, return early before API validation
   if (errors.length > 0) {
-    return errors;
+    return result();
   }
 
   // Proceed with campus/grade/section validation via API
@@ -130,11 +147,12 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
     if (validationError) {
       console.error('Validation API error:', validationError);
       errors.push('Failed to validate educational structure: API error');
-      return errors;
+      return result();
     }
 
     if (!validationResult.valid && validationResult.errors) {
-      return [...errors, ...validationResult.errors];
+      errors.push(...validationResult.errors);
+      return result();
     }
   } catch (error) {
     console.error('Error during educational structure validation:', error);
@@ -207,7 +225,11 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
 
   });
   
-  return errors;
+  return {
+    errors,
+    warnings,
+    skippedRowNumbers
+  };
 };
 
 /**
