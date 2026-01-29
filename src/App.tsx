@@ -108,6 +108,7 @@ import AuthCallback from './pages/callback';
 import TransportChallansPage from './pages/transport-safety/TransportChallansPage';
 import SOPPage from './pages/sop/SOPPage';
 import AssignedSOPPage from './pages/sop/AssignedSOPPage';
+import ModuleRouteGuard from './components/ModuleRouteGuard';
 
 
 function App() {
@@ -120,7 +121,7 @@ function App() {
               <ModuleSyncProvider>
                 <AssessmentProvider>
                 <TransportSafetyProvider>
-
+                   <ModuleRouteGuard />
                 <Routes>
                   {/* Public routes - no authentication required */}
                   <Route path="/login" element={<Login />} />
