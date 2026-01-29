@@ -100,7 +100,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
       setTitle('');
       setCategoryId('');
       setDescription('');
-      setStatus(false);
+      setStatus(true);
       setProcedureSteps([{ id: '1', step: '' }]);
       setImportantNotes('');
     }
