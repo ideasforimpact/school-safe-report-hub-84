@@ -163,15 +163,35 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
 
     // Extract employee_id from the email (part before @ symbol)
     const employeeId = superAdminEmail.split('@')[0];
+    const { data: adminDept,adminDepterror } = await supabase
+      .from('employee_departments')
+      .select('id')
+      .eq('department_name', 'admin')
+      .single();
+
+    const { data: emptype,emptypeterror } = await supabase
+      .from('employee_type')
+      .select('id')
+      .eq('type_name', 'permanent')
+      .single();
     
+    console.log('fetch the department id',adminDept);
+    console.log('fetch the type id',emptype);
+    
+    if (adminDepterror || !adminDept) {
+      throw new Error('Admin department not found');
+    }
+    if (emptypeterror || !emptype) {
+      throw new Error('permanent type not found');
+    }
     // Create the employee record
     const employeeData = {
       employee_id: employeeId,
       first_name: employeeId, // Using the part before @ as first name
       last_name: '', // Empty last name
       email: superAdminEmail,
-      department: 'Admin',
-      employee_type: 'permanent',
+      department: adminDept.id,
+      employee_type: emptype.id,
       status: true,
       is_super_admin: true,
       client_id: clientId,
