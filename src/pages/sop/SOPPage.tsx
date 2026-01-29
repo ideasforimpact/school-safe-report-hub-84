@@ -591,11 +591,11 @@ const SOPPage = () => {
                           </TableCell>
                           <TableCell>
                             {sop.signoff_request_status === 'Completed' ? (
-                              <Badge className="bg-green-100 text-green-800">
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                                 Signed off
                               </Badge>
                             ) : (
-                              <Badge className="bg-amber-100 text-amber-800">
+                              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
                                 In-progress
                               </Badge>
                             )}

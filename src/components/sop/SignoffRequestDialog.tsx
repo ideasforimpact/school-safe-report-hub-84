@@ -1,34 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogOverlay,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, User, AlertCircle, CheckCircle2, Download, Printer, Clock3 } from 'lucide-react';
+import {
+  Loader2,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  Download,
+  Clock3,
+  Check,
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface SOPAssignment {
   group_id: string | null;
   group_name: string | null;
-  group_type: string | null;
-  group_status: boolean | null;
-  employee_count?: number | null;
-  employees?: Array<{
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    full_name: string;
-  }> | null;
-  created_by_id: string | null;
-  created_by_name: string | null;
 }
 
 interface SignoffRequestDialogProps {
@@ -38,13 +30,10 @@ interface SignoffRequestDialogProps {
     id: string;
     title: string;
     description?: string | null;
-    category_name?: string | null;
     status?: boolean;
-    creator_name?: string | null;
     procedure_steps?: string[];
     important_notes?: string | null;
     assignments?: SOPAssignment[];
-    signoff_request_status?: string;
     sop_signoff_request_exist?: boolean;
     completed_date?: string | null;
   } | null;
@@ -64,69 +53,46 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
   onSuccess,
 }) => {
   const [submitting, setSubmitting] = useState(false);
+  const [understoodSteps, setUnderstoodSteps] = useState<boolean[]>([]);
 
-  if (!open || !sop) return null;
+  const isActive = sop?.status ?? false;
+  const procedureSteps = sop?.procedure_steps || [];
+  const assignments = sop?.assignments || [];
+  const isSignedOff =sopSignoffRequestExist || sop?.sop_signoff_request_exist;
 
-  const isActive = sop.status ?? false;
-  const assignments = sop.assignments || [];
-  const procedureSteps = sop.procedure_steps || [];
+  useEffect(() => {
+    if (!sop?.procedure_steps?.length) {
+      setUnderstoodSteps([]);
+      return;
+    }
 
-  // Determine signoff status
-  const signoffStatus = sopSignoffRequestExist || sop.sop_signoff_request_exist
-    ? 'Signed Off'
-    : 'In-progress';
+    setUnderstoodSteps(sop.procedure_steps.map(() => false));
+  }, [sop?.procedure_steps]);
 
-  const statusBadge = (
-    <Badge className={isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-      {isActive ? 'Active' : 'Inactive'}
-    </Badge>
-  );
 
-  const signoffStatusBadge = (
-    <Badge
-      className={
-        signoffStatus === 'Signed Off'
-          ? 'bg-green-100 text-green-800'
-          : 'bg-amber-100 text-amber-800'
-      }
-    >
-      {signoffStatus}
-    </Badge>
-  );
-
-  const assignedGroupNames = assignments
-    .map((a) => a.group_name)
-    .filter(Boolean);
+  const signoffStatus =
+    sopSignoffRequestExist || sop?.sop_signoff_request_exist
+      ? 'Signed Off'
+      : 'In-progress';
 
   const groupIds = assignments
     .map((a) => a.group_id)
     .filter((id): id is string => Boolean(id));
 
-  // Format date in 12-hour format with AM/PM
-  const formatDate = (dateString: string | null | undefined): string => {
+  const formatDate = (dateString?: string | null) => {
     if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
-      const year = date.getFullYear();
-      
-      let hours = date.getHours();
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      const hoursStr = hours.toString().padStart(2, '0');
-      
-      return `${month}/${day}/${year} ${hoursStr}:${minutes} ${ampm}`;
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return '';
-    }
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
   };
 
   const handleDownloadPDF = () => {
-    // TODO: Implement PDF download functionality
     toast.info('PDF download functionality coming soon');
   };
 
@@ -135,7 +101,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
   };
 
   const handleSignoffRequest = async () => {
-    if (!clientId || !employeeId || !sop.id || groupIds.length === 0) {
+    if (!clientId || !employeeId || !sop?.id || groupIds.length === 0) {
       toast.error('Missing required information for signoff request');
       return;
     }
@@ -143,263 +109,225 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
     try {
       setSubmitting(true);
 
-      const { data, error } = await supabase.functions.invoke('sop-signoff-request', {
-        body: {
-          sop_id: sop.id,
-          client_id: clientId,
-          employee_id: employeeId,
-          group_ids: groupIds,
-        },
-      });
+      const { error } = await supabase.functions.invoke(
+        'sop-signoff-request',
+        {
+          body: {
+            sop_id: sop.id,
+            client_id: clientId,
+            employee_id: employeeId,
+            group_ids: groupIds,
+          },
+        }
+      );
 
-      if (error) {
-        console.error('Error submitting signoff request:', error);
-        const message = (error as any)?.message || 'Failed to submit signoff request';
-        toast.error(message);
-        return;
-      }
-
-      if (data?.error) {
-        const detail = data.details ? `: ${data.details}` : '';
-        toast.error(`${data.error}${detail}`);
-        return;
-      }
+      if (error) throw error;
 
       toast.success('Signoff request submitted successfully');
       onOpenChange(false);
       onSuccess?.();
-    } catch (error: any) {
-      console.error('Error submitting signoff request:', error);
-      const message = error?.message || 'Failed to submit signoff request';
-      toast.error(message);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to submit signoff request');
     } finally {
       setSubmitting(false);
     }
   };
+  const allStepsUnderstood =
+    procedureSteps.length > 0 &&
+    understoodSteps.length === procedureSteps.length &&
+    understoodSteps.every(Boolean);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Signoff Request
-          </DialogTitle>
-        </DialogHeader>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogOverlay className="bg-black/40" />
 
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="info">SOP Information</TabsTrigger>
-            <TabsTrigger value="steps">Procedure Steps</TabsTrigger>
-            <TabsTrigger value="groups">Assigned Groups</TabsTrigger>
-          </TabsList>
+      <AlertDialogContent className="max-w-4xl p-0 bg-white rounded-lg overflow-hidden">
 
-          <TabsContent value="info" className="mt-4">
-            <div className="max-h-[65vh] overflow-y-auto pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl">{sop.title}</CardTitle>
-                      <div className="flex items-center gap-2">
-                        {statusBadge}
-                        {signoffStatusBadge}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Category - Column wise */}
-                    <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                      <p className="text-sm font-medium text-gray-600">Category :</p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {sop.category_name || '-'}
-                      </p>
-                    </div>
+        {!sop ? (
+          <div className="p-6 text-sm text-gray-500">
+            Loading SOP...
+          </div>
+        ) : (
+          <>
+            {/* HEADER */}
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-gray-600" />
+                <h2 className="text-lg font-semibold">{sop.title}</h2>
 
-                    {/* Description - Full width, wrap nicely */}
-                    {sop.description && (
-                      <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                        <p className="text-sm font-medium text-gray-600">Description :</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                          {sop.description}
-                        </p>
-                      </div>
-                    )}
+                <Badge
+                  className={
+                    isActive
+                      ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                  }
+                >
+                  {isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
 
-                    {/* Created By - Column wise */}
-                    <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                      <p className="text-sm font-medium text-gray-600">Created By :</p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {sop.creator_name || '-'}
-                      </p>
-                    </div>
-
-                    {/* Assigned to Groups - Badge design, wrap nicely */}
-                    <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
-                      <p className="text-sm font-medium text-gray-600">Assigned to Groups :</p>
-                      <div className="flex flex-col gap-2">
-                        <div className="flex flex-wrap gap-2">
-                          {assignedGroupNames.length > 0 ? (
-                            assignedGroupNames.map((groupName, index) => (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="bg-blue-50 border-blue-300 text-blue-700"
-                              >
-                                {groupName}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-500">-</span>
-                          )}
-                        </div>
-                        {sop.completed_date && (
-                          <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            <span>Signed off on {formatDate(sop.completed_date)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Important Notes - Card with orange border */}
-                {sop.important_notes && (
-                  <div className="rounded-lg border border-orange-300 bg-white p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-4 w-4 text-orange-600" />
-                      <h3 className="text-sm font-semibold text-orange-600">Important Notes</h3>
-                    </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
-                      {sop.important_notes}
-                    </p>
-                  </div>
+              <div className="flex items-center gap-3 ">
+              <Badge
+                  className={
+                    signoffStatus === 'Signed Off'
+                      ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                      : 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+                  }
+                >
+                  {signoffStatus}
+                </Badge>
+                {sop.completed_date && (
+                  <span className="text-sm text-gray-500 flex items-center gap-1">
+                    <Clock3 className="h-4 w-4" />
+                    Signed off on {formatDate(sop.completed_date)}
+                  </span>
                 )}
+
+                <button
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-md p-1 hover:bg-gray-100"
+                >
+                  ✕
+                </button>
               </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="steps" className="mt-4">
-            <div className="max-h-[65vh] overflow-y-auto pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-black">Procedure Steps</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {procedureSteps.length > 0 ? (
-                    <div className="space-y-3">
-                      {procedureSteps.map((step, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-sm">
-                            {index + 1}
+            {/* BODY */}
+            <div className="px-6 py-6 space-y-6 max-h-[70vh] overflow-y-auto no-scrollbar">
+
+              {/* OVERVIEW */}
+              <div className="border rounded-lg p-4">
+                <h3 className="text-sm font-semibold mb-2">Overview</h3>
+                <p className="text-sm text-gray-700">
+                  {sop.description || '-'}
+                </p>
+              </div>
+
+              {/* PROCEDURE STEPS */}
+              <div className="p-2">
+                <h3 className="text-sm font-semibold mb-4">Procedure Steps</h3>
+
+                <div className="space-y-3">
+                  {procedureSteps.map((step, index) => {
+                    const isUnderstood = isSignedOff || understoodSteps[index];
+
+
+                    return (
+                      <div
+                        key={index}
+                        className={`flex items-start justify-between gap-4 p-4 rounded-lg border bg-white
+                        border-l-[6px] transition-colors duration-200
+                        ${isUnderstood
+                            ? 'border-l-green-500 border-gray-200'
+                            : 'border-l-gray-300 border-gray-200'
+                          }`}
+                      >
+
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center border
+                                ${isUnderstood
+                                ? 'bg-green-600 border-green-600'
+                                : 'bg-gray-100 border-gray-300'
+                              }`}
+                          >
+                            <Check
+                              className={`h-4 w-4 ${isUnderstood ? 'text-white' : 'text-gray-400'
+                                }`}
+                            />
                           </div>
-                          <p className="text-sm text-gray-700 flex-1 pt-1.5">
+
+                          <p className="text-sm text-gray-700 pt-1">
                             {step}
                           </p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 py-4">No procedure steps available.</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
-          <TabsContent value="groups" className="mt-4">
-            <div className="max-h-[65vh] overflow-y-auto pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {assignments.length === 0 ? (
-                <div className="text-sm text-gray-500 p-4">No groups assigned to this SOP.</div>
-              ) : (
-                <div className="space-y-3">
-                  {assignments.map((assignment) => (
-                    <Card key={assignment.group_id || Math.random()}>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">
-                            {assignment.group_name || 'Unnamed Group'}
-                          </CardTitle>
-                          <Badge
-                            className={
-                              assignment.group_status
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {assignment.group_status ? 'Active' : 'Inactive'}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {/* Group Type - Column wise */}
-                        {assignment.group_type && (
-                          <div className="grid grid-cols-[120px_1fr] gap-4 items-center">
-                            <p className="text-xs font-medium text-gray-500">Group Type :</p>
-                            <p className="text-sm font-semibold text-gray-900">
-                              {assignment.group_type}
-                            </p>
-                          </div>
-                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          disabled={isUnderstood || isSignedOff}
 
-                        {/* Created By - Column wise */}
-                        <div className="grid grid-cols-[120px_1fr] gap-4 items-center">
-                          <p className="text-xs font-medium text-gray-500">Created By :</p>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <p className="text-sm font-semibold text-gray-900">
-                              {assignment.created_by_name || '-'}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          onClick={() =>
+                            setUnderstoodSteps((prev) => {
+                              const updated = [...prev];
+                              updated[index] = true;
+                              return updated;
+                            })
+                          }
+                          title={isUnderstood ? 'Understood' : 'Mark as understood'}
+                          className={`h-8 w-8 transition-colors
+                            ${isUnderstood
+                              ? 'text-green-600 cursor-default'
+                              : 'text-gray-400 hover:text-green-600'
+                            }`}
+                        >
+                          <CheckCircle2 className="h-5 w-5" />
+                        </Button>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {sop.important_notes && (
+                <div className="border border-orange-300 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <h3 className="text-sm font-semibold text-orange-600">
+                      Important Notes
+                    </h3>
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    {sop.important_notes}
+                  </p>
                 </div>
               )}
             </div>
-          </TabsContent>
-        </Tabs>
 
-        <DialogFooter className="mt-4 pt-4 border-t flex justify-end gap-2">
-          <Button
-            onClick={handleDownloadPDF}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handlePrint}
-            className="border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
-          >
-            Print
-          </Button>
-          {!sopSignoffRequestExist && !sop.sop_signoff_request_exist && (
-            <Button
-              onClick={handleSignoffRequest}
-              disabled={submitting || groupIds.length === 0}
-              variant="outline"
-              className="border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Sign Off
-                </>
-              )}
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className="flex items-center justify-end px-6 py-4 border-t bg-gray-50">
+            <div className="flex gap-2">
+              <Button
+                className="bg-blue-600 text-white"
+                onClick={handleDownloadPDF}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+
+              <Button variant="outline" onClick={handlePrint}>
+                Print
+              </Button>
+
+              {!sopSignoffRequestExist &&
+                !sop.sop_signoff_request_exist && (
+                  <Button
+                    variant="outline"
+                    disabled={
+                      submitting ||
+                      groupIds.length === 0 ||
+                      !allStepsUnderstood
+                    }
+                    onClick={handleSignoffRequest}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Sign Off
+                      </>
+                    )}
+                  </Button>
+                )}
+            </div>
+          </div>
+          </>
+        )}
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 
