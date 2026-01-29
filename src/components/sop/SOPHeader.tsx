@@ -294,15 +294,6 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
                   </p>
                 </div>
               </div>
-
-              {/* Assigned SOP link below metrics */}
-              <button
-                onClick={handleAssignedSOP}
-                className="mt-4 inline-flex items-center gap-1 text-sm text-orange-600 hover:underline"
-              >
-                <ExternalLink className="h-4 w-4" />
-                View all Assigned SOPs →
-              </button>
             </div>
           </div>
         </div>
