@@ -215,8 +215,6 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
               <TableHead>Department</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Total SOPs</TableHead>
-              <TableHead>Signed Off</TableHead>
-              <TableHead>To be Done</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -266,50 +264,20 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                     </TableCell>
                     <TableCell>
                       {(() => {
-                        const stats = employee.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
+                        const stats = employee.sopStatistics || {
+                          totalSOPs: 0,
+                          totalSOPsSignedOff: 0,
+                        };
+
                         if (stats.totalSOPs === 0) {
                           return <span className="text-sm text-gray-500">-</span>;
                         }
+
                         return (
-                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-gray-100 text-gray-800 border-gray-200">
-                            <Users className="h-3.5 w-3.5 text-gray-600" />
-                            <span className="text-gray-600">Yes</span>
-                            <span className="bg-gray-600 text-white rounded-full px-1.5 py-0.5 text-xs font-semibold">
-                              {stats.totalSOPs}
-                            </span>
-                          </Badge>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const stats = employee.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
-                        if (stats.totalSOPsSignedOff === 0) {
-                          return <span className="text-sm text-gray-500">-</span>;
-                        }
-                        return (
-                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-green-100 text-green-800 border-green-200">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                            <span className="text-green-600">Done</span>
-                            <span className="bg-green-600 text-white rounded-full px-1.5 py-0.5 text-xs font-semibold">
-                              {stats.totalSOPsSignedOff}
-                            </span>
-                          </Badge>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const stats = employee.sopStatistics || { totalSOPs: 0, totalSOPsSignedOff: 0, totalSOPsToBeDone: 0 };
-                        if (stats.totalSOPsToBeDone === 0) {
-                          return <span className="text-sm text-gray-500">-</span>;
-                        }
-                        return (
-                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-amber-100 text-amber-800 border-amber-200">
-                            <Clock className="h-3.5 w-3.5 text-amber-600" />
-                            <span className="text-amber-600">Pending</span>
-                            <span className="bg-amber-600 text-white rounded-full px-1.5 py-0.5 text-xs font-semibold">
-                              {stats.totalSOPsToBeDone}
+                          <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-blue-100 text-blue-800 border-blue-200">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="font-semibold">
+                              {stats.totalSOPsSignedOff}/{stats.totalSOPs}
                             </span>
                           </Badge>
                         );
