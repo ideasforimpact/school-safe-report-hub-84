@@ -152,8 +152,8 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
             {/* HEADER */}
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-gray-600" />
-                <h2 className="text-lg font-semibold">{sop.title}</h2>
+                <FileText className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                <h2 className="text-lg font-semibold break-all whitespace-normal">{sop.title}</h2>
 
                 <Badge
                   className={
@@ -178,7 +178,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
                 </Badge>
                 {sop.completed_date && (
                   <span className="text-sm text-gray-500 flex items-center gap-1">
-                    <Clock3 className="h-4 w-4" />
+                    <Clock3 className="h-4 w-4 flex-shrink-0" />
                     Signed off on {formatDate(sop.completed_date)}
                   </span>
                 )}
@@ -198,7 +198,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
               {/* OVERVIEW */}
               <div className="border rounded-lg p-4">
                 <h3 className="text-sm font-semibold mb-2">Overview</h3>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 break-all whitespace-normal">
                   {sop.description || '-'}
                 </p>
               </div>
@@ -207,7 +207,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
               <div className="p-2">
                 <h3 className="text-sm font-semibold mb-4">Procedure Steps</h3>
 
-                <div className="space-y-3">
+                <div className="space-y-3 break-all whitespace-normal">
                   {procedureSteps.map((step, index) => {
                     const isUnderstood = isSignedOff || understoodSteps[index];
 
@@ -277,7 +277,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
                       Important Notes
                     </h3>
                   </div>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-gray-700 break-all whitespace-normal">
                     {sop.important_notes}
                   </p>
                 </div>
