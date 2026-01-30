@@ -181,7 +181,7 @@ const AssignSOPDialog: React.FC<AssignSOPDialogProps> = ({
                     .map((group) => (
                       <div
                         key={group.id}
-                        className="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-800"
+                        className="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-800 break-all whitespace-normal"
                       >
                         <span>
                           {group.name}

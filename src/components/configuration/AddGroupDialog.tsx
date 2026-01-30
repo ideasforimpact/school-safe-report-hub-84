@@ -117,7 +117,12 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
           }
         } else {
           // For employee groups, set selected employees
-          const empIds = data.map((item: any) => item.employee_id).filter(Boolean);
+          const empIds = data
+            .filter((item: any) => item.employee.status === true)
+            .map((item: any) => item.employee_id)
+            .filter(Boolean);
+          console.log(empIds,'selected emp id');
+          
           setSelectedEmployees(empIds);
         }
       }
@@ -279,9 +284,9 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
             <Input
               id="name"
               value={name}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Allow only alphanumeric, spaces, and basic punctuation
+             onChange={(e) => {
+                let value = e.target.value;
+                value = value.replace(/^\s+/, '');
                 if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
                   setName(value);
                 }
@@ -388,7 +393,8 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
                   <p className="text-xs font-medium text-gray-600">
                     Selected Employees ({selectedEmployees.length})
                   </p>
-                  <ScrollArea className="max-h-32 rounded-md border p-2">
+                  <ScrollArea className="h-32 rounded-md border">
+                    <div className="p-2">
                     <div className="flex flex-wrap gap-2">
                       {employees
                         .filter((emp) => selectedEmployees.includes(emp.id))
@@ -410,9 +416,10 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
                           </div>
                         ))}
                     </div>
-                  </ScrollArea>
-                </div>
-              )}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
             </div>
           )}
         </div>

@@ -769,8 +769,9 @@ const SOPPage = () => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete SOP</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{sopToDelete?.title}"? This action cannot be undone.
+              <AlertDialogDescription className='break-all whitespace-normal'>
+                Are you sure you want to delete "{sopToDelete?.title}"? <br />
+                <span> This action cannot be undone.</span>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -428,8 +428,9 @@ const GroupConfigurationContent = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Group</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the group "{groupToDelete?.name}"? This action cannot be undone.
+            <AlertDialogDescription className='break-all whitespace-normal'>
+              Are you sure you want to delete the group "{groupToDelete?.name}"? <br />
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
