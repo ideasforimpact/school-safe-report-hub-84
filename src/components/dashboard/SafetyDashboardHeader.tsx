@@ -2,6 +2,8 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Shield, Calendar, Clock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { employeeTypeName } from '@/services/employeeNameHelpers';
+import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 
 interface SafetyDashboardHeaderProps {
   stats: {
@@ -26,7 +28,7 @@ interface SafetyDashboardHeaderProps {
 
 const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) => {
   const { employeeData } = useAuth();
-
+  const { employeeTypes } = useEmployeeTypes();
   // Use direct client object from employeeData
   const userClient = employeeData?.client || null;
 
@@ -62,6 +64,11 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
   const assessmentActivityScore = activeA === 0 || overdueA === 0
     ? 100
     : Math.min(100, Math.round(100 * (overdueA * 1.0 / activeA)));
+  
+  const employeeTypeLabel = employeeData?.isSuperAdmin
+    ? 'Super Admin'
+    : employeeTypeName(employeeData?.employeeType, employeeTypes);
+
 
   // Overall Safety Score - only calculate if all data exists
   const overallSafetyScore = allDataExists 
@@ -125,7 +132,7 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
                 <div className="flex items-center space-x-1">
                   <span className="font-medium">Welcome, {employeeData.firstName} {employeeData.lastName}</span>
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {employeeData.isSuperAdmin ? 'Super Admin' : employeeData.employeeType}
+                   {employeeTypeLabel}
                   </span>
                 </div>
               )}
