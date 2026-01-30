@@ -248,6 +248,29 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
     }
   };
 
+  const InlineLoader = () => (
+    <svg
+      className="h-5 w-5 animate-spin text-gray-400"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
+  );
+
+
   const handleAssignedSOP = () => {
     navigate('/sops/assigned');
   };
@@ -255,7 +278,6 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
   if (!isSuperAdmin) {
     // Non-super admin: show employee-specific statistics
   return (
-      <div className="mx-6 mb-8 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4 flex-1">
             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
@@ -274,7 +296,7 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
                 <div>
                   <p className="text-sm text-gray-500">Total SOPs</p>
                   <p className="text-3xl font-semibold text-gray-900">
-                    {employeeLoading ? '-' : employeeTotalSOPs}
+                    {employeeLoading ? <InlineLoader /> : employeeTotalSOPs}
                   </p>
                 </div>
 
@@ -282,7 +304,7 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
                 <div>
                   <p className="text-sm text-gray-500">Total SOPs Signed off</p>
                   <p className="text-3xl font-semibold text-green-600">
-                    {employeeLoading ? '-' : employeeTotalSOPsSignedOff}
+                    {employeeLoading ? <InlineLoader /> : employeeTotalSOPsSignedOff}
                   </p>
                 </div>
 
@@ -290,20 +312,18 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
                 <div>
                   <p className="text-sm text-gray-500">To be Done</p>
                   <p className="text-3xl font-semibold text-orange-600">
-                    {employeeLoading ? '-' : employeeTotalSOPsToBeDone}
+                    {employeeLoading ? <InlineLoader /> : employeeTotalSOPsToBeDone}
                   </p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
   // Super admin: show statistics header
   return (
-    <div className="mx-6 mb-8 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4 flex-1">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
@@ -322,23 +342,22 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
               <div>
                 <p className="text-sm text-gray-500">Total SOPs</p>
                 <p className="text-3xl font-semibold text-gray-900">
-                  {loading ? '-' : totalSOPs}
+                  {loading ? <InlineLoader /> : totalSOPs}
                 </p>
               </div>
 
+             {/* Number of Employees Involved */}
+              <div>
+                <p className="text-sm text-gray-500">Number of Employees Involved</p>
+                <p className="text-3xl font-semibold text-gray-900">
+                  {loading ? <InlineLoader /> : totalEmployeesInvolved}
+                </p>
+              </div>
               {/* Total SOPs Signed off */}
               <div>
                 <p className="text-sm text-gray-500">Total SOPs Signed off</p>
                 <p className="text-3xl font-semibold text-green-600">
-                  {loading ? '-' : totalSOPsSignedOff}
-                </p>
-              </div>
-
-              {/* Number of Employees Involved */}
-              <div>
-                <p className="text-sm text-gray-500">Number of Employees Involved</p>
-                <p className="text-3xl font-semibold text-gray-900">
-                  {loading ? '-' : totalEmployeesInvolved}
+                  {loading ? <InlineLoader /> : totalSOPsSignedOff}
                 </p>
               </div>
 
@@ -346,7 +365,7 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
               <div>
                 <p className="text-sm text-gray-500">To be Done</p>
                 <p className="text-3xl font-semibold text-orange-600">
-                  {loading ? '-' : totalSOPsToBeDone}
+                  {loading ? <InlineLoader /> : totalSOPsToBeDone}
                 </p>
               </div>
       </div>
@@ -371,7 +390,6 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
             Add SOP
           </Button>
         </div>
-    </div>
   );
 };
 

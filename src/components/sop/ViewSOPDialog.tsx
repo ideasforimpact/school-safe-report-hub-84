@@ -78,7 +78,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                 <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl">{sop.title}</CardTitle>
+                      <CardTitle className="text-xl break-all whitespace-normal">{sop.title}</CardTitle>
                       <div>{statusBadge}</div>
                     </div>
                   </CardHeader>
@@ -95,7 +95,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                     {sop.description && (
                       <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
                         <p className="text-sm font-medium text-gray-600">Description :</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-all">
                           {sop.description}
                         </p>
                       </div>
@@ -138,7 +138,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                       <AlertCircle className="h-4 w-4 text-orange-600" />
                       <h3 className="text-sm font-semibold text-orange-600">Important Notes</h3>
                     </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap break-all">
                       {sop.important_notes}
                     </p>
                   </div>
@@ -155,7 +155,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                 </CardHeader>
                 <CardContent>
                   {sop.procedure_steps && sop.procedure_steps.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 whitespace-pre-wrap break-all">
                       {sop.procedure_steps.map((step, index) => (
                         <div key={index} className="flex items-start gap-3">
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-sm">

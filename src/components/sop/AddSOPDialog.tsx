@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, 
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle } 
+from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -372,11 +370,11 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editingSOP ? 'Edit SOP' : 'Add New SOP'}</DialogTitle>
-        </DialogHeader>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto no-scrollbar">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{editingSOP ? 'Edit SOP' : 'Add New SOP'}</AlertDialogTitle>
+        </AlertDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
@@ -494,8 +492,8 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
                       <Input
                         value={step.step}
                         onChange={(e) => {
-                          const value = e.target.value;
-                          // Allow only alphanumeric, spaces, and basic punctuation
+                          let value = e.target.value;
+                          value = value.replace(/^\s+/, '');
                           if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
                             handleStepChange(step.id, value);
                           }
@@ -569,7 +567,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             </div>
           )}
 
-          <DialogFooter>
+          <AlertDialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -584,10 +582,10 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             >
               {loading ? (editingSOP ? 'Updating...' : 'Creating...') : (editingSOP ? 'Update SOP' : 'Create SOP')}
             </Button>
-          </DialogFooter>
+          </AlertDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

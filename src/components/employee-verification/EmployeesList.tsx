@@ -277,7 +277,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                           <Badge className="gap-1 px-2 py-1 font-medium text-xs bg-blue-100 text-blue-800 border-blue-200">
                             <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />
                             <span className="font-semibold">
-                              {stats.totalSOPsSignedOff}/{stats.totalSOPs}
+                              {stats.totalSOPs}/{stats.totalSOPsSignedOff}
                             </span>
                           </Badge>
                         );
