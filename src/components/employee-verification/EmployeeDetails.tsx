@@ -6,9 +6,14 @@ import { format } from 'date-fns';
 import EditEmployeeDialog from './EditEmployeeDialog';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
-import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo, renderDobDisplay, renderAddressDisplay } from './utils/personalInfoUtils';
 import { AlertTriangle } from 'lucide-react';
+import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
+import {
+  employeeTypeName,
+  employeeDepartmentName
+} from '@/services/employeeNameHelpers';
+import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 
 interface EmployeeDetailsProps {
   employee: Employee;
@@ -17,7 +22,9 @@ interface EmployeeDetailsProps {
 
 const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }) => {
   const { getEmployeeDocuments } = useEmployeeVerification();
-  
+  const { employeeDepartments } = useEmployeeDepartments();
+  const { employeeTypes } = useEmployeeTypes();
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM d, yyyy');
@@ -60,11 +67,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
   const docs = documents || getEmployeeDocuments(employee.id);
   const aggregatedPersonalInfo = aggregatePersonalInfo(docs);
 
-  const getEmployeeTypeDisplay = (type?: string) => {
-    if (!type) return 'Not Specified';
-    
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  };
 
   // Calculate verification summary from employee documents
   const getVerificationSummary = () => {
@@ -89,6 +91,17 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
       total: employeeDocuments.length
     };
   };
+
+  const employeeTypeLabel = employeeTypeName(
+    employee.employeeType,
+    employeeTypes
+  );
+
+  const departmentLabel = employeeDepartmentName(
+    employee.department,
+    employeeDepartments
+  );
+
 
   // Prepare truncated name for card display (limit 200 chars with tooltip)
   const fullName = employee.name || '';
@@ -115,7 +128,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
               )}
             </div>
             <p className="text-gray-500 text-left">
-              {getEmployeeTypeDisplay(employee.employeeType)} · {formatDepartment(employee.department)}
+              {employeeTypeLabel} · {departmentLabel}
             </p>
           </div>
           {aadharProfileImage && (
@@ -160,7 +173,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Department</p>
-            <p className="font-medium text-left">{formatDepartment(employee.department)}</p>
+            <p className="font-medium text-left">{departmentLabel}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Designation</p>
@@ -168,7 +181,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Employee Type</p>
-            <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
+            <p className="font-medium text-left">{employeeTypeLabel}</p>
           </div>
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>
