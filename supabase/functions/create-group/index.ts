@@ -144,7 +144,7 @@ async function handleCreate(supabaseClient: any, data: any) {
     );
   }
 
-  // Create the group
+  // Create the group (store department_id when group_type is Department)
   const { data: group, error: groupError } = await supabaseClient
     .from('groups')
     .insert({
@@ -153,7 +153,8 @@ async function handleCreate(supabaseClient: any, data: any) {
       group_type,
       client_id,
       employee_id,
-      status: true
+      status: true,
+      department_id: group_type === 'Department' ? department_id || null : null
     })
     .select()
     .single();
@@ -284,7 +285,7 @@ async function handleUpdate(supabaseClient: any, data: any) {
     );
   }
 
-  // Update the group
+  // Update the group (store department_id when group_type is Department, clear when Employee)
   const updateData: any = {
     updated_at: new Date().toISOString()
   };
@@ -292,6 +293,11 @@ async function handleUpdate(supabaseClient: any, data: any) {
   if (name) updateData.name = name;
   if (description !== undefined) updateData.description = description;
   if (group_type) updateData.group_type = group_type;
+  if (group_type === 'Department') {
+    updateData.department_id = department_id || null;
+  } else if (group_type === 'Employee') {
+    updateData.department_id = null;
+  }
 
   const { data: group, error: groupError } = await supabaseClient
     .from('groups')
@@ -347,7 +353,18 @@ async function handleUpdate(supabaseClient: any, data: any) {
       }
     }
   } else if (group_type === 'Department' && department_id) {
-    // Get all employees with this department
+    // Remove all existing group_employees first (e.g. when switching from Employee to Department), then insert department members
+    const { error: deleteError } = await supabaseClient
+      .from('group_employees')
+      .delete()
+      .eq('group_id', group_id)
+      .eq('client_id', client_id);
+
+    if (deleteError) {
+      console.error("Error deleting existing group employees:", deleteError);
+    }
+
+    // Get all employees with this department and insert
     const { data: employees, error: empError } = await supabaseClient
       .from('employees')
       .select('id')
@@ -358,37 +375,20 @@ async function handleUpdate(supabaseClient: any, data: any) {
     if (empError) {
       console.error("Error fetching employees by department:", empError);
     } else if (employees && employees.length > 0) {
-      // Get existing employee IDs for this group
-      const { data: existing, error: existingError } = await supabaseClient
+      const groupEmployees = employees.map((emp: any) => ({
+        group_id: group_id,
+        employee_id: emp.id,
+        role_id: department_id,
+        client_id,
+        created_by_employee_id: employee_id
+      }));
+
+      const { error: geError } = await supabaseClient
         .from('group_employees')
-        .select('employee_id')
-        .eq('group_id', group_id);
+        .insert(groupEmployees);
 
-      if (existingError) {
-        console.error("Error fetching existing group employees:", existingError);
-      } else {
-        const existingIds = new Set(existing?.map((e: any) => e.employee_id) || []);
-        const newIds = employees
-          .map((emp: any) => emp.id)
-          .filter((id: string) => !existingIds.has(id));
-
-        if (newIds.length > 0) {
-          const groupEmployees = newIds.map((empId: string) => ({
-            group_id: group_id,
-            employee_id: empId,
-            role_id: department_id,
-            client_id,
-            created_by_employee_id: employee_id
-          }));
-
-          const { error: geError } = await supabaseClient
-            .from('group_employees')
-            .insert(groupEmployees);
-
-          if (geError) {
-            console.error("Error inserting new group employees:", geError);
-          }
-        }
+      if (geError) {
+        console.error("Error inserting group employees for department:", geError);
       }
     }
   }
