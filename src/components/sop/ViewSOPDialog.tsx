@@ -112,7 +112,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                     {/* Assigned to Groups - Badge design, wrap nicely */}
                     <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
                       <p className="text-sm font-medium text-gray-600">Assigned to Groups :</p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 break-all whitespace-normal">
                         {assignedGroupNames.length > 0 ? (
                           assignedGroupNames.map((groupName, index) => (
                             <Badge
@@ -185,7 +185,7 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                     <Card key={assignment.group_id || Math.random()}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">
+                          <CardTitle className="text-base break-all whitespace-normal">
                             {assignment.group_name || 'Unnamed Group'}
                           </CardTitle>
                           <div className="flex items-center gap-2">

@@ -464,7 +464,7 @@ const SOPPage = () => {
                       <>
                         <TableHead>Assigned Groups</TableHead>
                         <TableHead>Assigned Employees</TableHead>
-                        <TableHead>Completed</TableHead>
+                        <TableHead>Signed Off</TableHead>
                         <TableHead>To be Done</TableHead>
                       </>
                                 ) : (

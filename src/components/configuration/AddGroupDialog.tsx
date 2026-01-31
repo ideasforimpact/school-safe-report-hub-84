@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client' ;
 import { toast } from 'sonner';
 import { Loader2, X } from 'lucide-react';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
@@ -102,10 +102,16 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
   const loadGroupEmployees = async (groupId: string) => {
     try {
       const { data, error } = await supabase
-        .from('group_employees' as any)
-        .select('employee_id, role_id')
-        .eq('group_id', groupId);
-
+          .from('group_employees' as any)
+          .select(`
+            employee_id,
+            role_id,
+            employee:employees!group_employees_employee_id_fkey!inner (
+              status
+            )
+          `)
+          .eq('group_id', groupId)
+          .eq('employee.status', true);
       if (error) throw error;
 
       if (data && data.length > 0) {
@@ -118,7 +124,6 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
         } else {
           // For employee groups, set selected employees
           const empIds = data
-            .filter((item: any) => item.employee.status === true)
             .map((item: any) => item.employee_id)
             .filter(Boolean);
           console.log(empIds,'selected emp id');
