@@ -5,6 +5,11 @@ import { useEmployeeStore } from "@/store/EmployeeContext";
 const normalize = (p: string) =>
   p.toLowerCase().replace(/\/+$/, "");
 
+  const GLOBAL_ALLOWED_ROUTES = [
+    "/report-incident",
+    "/new-insights",
+    "/learning-points"
+  ];
 const ModuleRouteGuard = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -15,6 +20,10 @@ const ModuleRouteGuard = () => {
     const currentPath = normalize(location.pathname);
 
     if (currentPath.startsWith("/backoffice")) return;
+
+    if (GLOBAL_ALLOWED_ROUTES.some(route => currentPath.startsWith(route))) {
+      return;
+    }
 
     if (!configuredModules || configuredModules.length === 0) return;
 
