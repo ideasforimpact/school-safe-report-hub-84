@@ -34,6 +34,7 @@ interface Group {
   status: boolean;
   client_id: string;
   employee_id: string;
+  department_id?: string | null;
   created_at: string;
   updated_at: string;
   member_count?: number;
@@ -69,7 +70,7 @@ const GroupConfigurationContent = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('groups' as any)
-        .select('*, group_employees:group_employees(count)')
+        .select('id, name, description, group_type, status, client_id, employee_id, department_id, created_at, updated_at, group_employees:group_employees(count)')
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
@@ -106,6 +107,7 @@ const GroupConfigurationContent = () => {
         status: g.status,
         client_id: g.client_id,
         employee_id: g.employee_id,
+        department_id: g.department_id ?? null,
         created_at: g.created_at,
         updated_at: g.updated_at,
         member_count: Array.isArray(g.group_employees) && g.group_employees.length > 0
@@ -161,6 +163,21 @@ const GroupConfigurationContent = () => {
       toast.error('Cannot edit group that is assigned to any SOP');
       return;
     }
+    console.log('[Edit Group] Clicked – full group info:', {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      group_type: group.group_type,
+      department_id: group.department_id ?? null,
+      status: group.status,
+      client_id: group.client_id,
+      employee_id: group.employee_id,
+      member_count: group.member_count,
+      is_assigned_to_sop: group.is_assigned_to_sop,
+      created_at: group.created_at,
+      updated_at: group.updated_at,
+      raw: group,
+    });
     setEditingGroup(group);
     setIsAddDialogOpen(true);
   };

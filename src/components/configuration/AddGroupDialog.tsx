@@ -51,10 +51,20 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (editingGroup) {
+        console.log('[AddGroupDialog] Edit popup opened – editingGroup:', {
+          id: editingGroup.id,
+          name: editingGroup.name,
+          description: editingGroup.description,
+          group_type: editingGroup.group_type,
+          raw: editingGroup,
+        });
         setName(editingGroup.name || '');
         setDescription(editingGroup.description || '');
         setGroupType(editingGroup.group_type || 'Department');
-        // Load existing group employees for editing
+        // Use department_id from group when available (so edit shows selected department)
+        const deptId = (editingGroup as { department_id?: string | null }).department_id;
+        setSelectedDepartment(deptId ?? '');
+        // Load existing group employees for editing (fallback for department from role_id if no department_id on group yet)
         loadGroupEmployees(editingGroup.id);
       } else {
         resetForm();
@@ -114,11 +124,22 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
           .eq('employee.status', true);
       if (error) throw error;
 
+      if (editingGroup?.group_type === 'Department') {
+        console.log('[AddGroupDialog] Group employees (department group):', {
+          group_id: editingGroup?.id,
+          group_employees_count: data?.length ?? 0,
+          group_employees_raw: data ?? [],
+          department_id_from_group: (editingGroup as { department_id?: string | null }).department_id ?? null,
+        });
+      }
+
       if (data && data.length > 0) {
         if (editingGroup?.group_type === 'Department') {
-          // For department groups, set the department from role_id
-          const roleId = (data[0] as any)?.role_id;
-          if (roleId) {
+          // Fallback: set department from role_id when group has no department_id yet (e.g. before migration)
+          const rowWithDept = (data as any[]).find((r) => r.role_id);
+          const roleId = rowWithDept?.role_id ?? (data[0] as any)?.role_id;
+          const hasDeptOnGroup = !!(editingGroup as { department_id?: string | null }).department_id;
+          if (roleId && !hasDeptOnGroup) {
             setSelectedDepartment(roleId);
           }
         } else {
@@ -126,8 +147,11 @@ const AddGroupDialog: React.FC<AddGroupDialogProps> = ({
           const empIds = data
             .map((item: any) => item.employee_id)
             .filter(Boolean);
-          console.log(empIds,'selected emp id');
-          
+          console.log('[AddGroupDialog] Group employees (employee group):', {
+            group_id: editingGroup?.id,
+            group_employees_raw: data,
+            selected_employee_ids: empIds,
+          });
           setSelectedEmployees(empIds);
         }
       }
