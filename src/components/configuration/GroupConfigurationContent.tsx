@@ -53,6 +53,7 @@ const GroupConfigurationContent = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
 
   useEffect(() => {
@@ -181,6 +182,8 @@ const GroupConfigurationContent = () => {
     }
 
     try {
+      setIsDeleting(true);
+
       const { error } = await supabase.functions.invoke('create-group', {
         body: {
           action: 'delete',
@@ -199,6 +202,8 @@ const GroupConfigurationContent = () => {
     } catch (error: any) {
       console.error('Error deleting group:', error);
       toast.error(error?.message || 'Failed to delete group');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -435,8 +440,14 @@ const GroupConfigurationContent = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className={`bg-red-600 hover:bg-red-700 ${
+                isDeleting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+              >
+              {isDeleting ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

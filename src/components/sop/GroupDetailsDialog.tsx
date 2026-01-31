@@ -44,10 +44,10 @@ const GroupDetailsDialog: React.FC<GroupDetailsDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Assigned Groups
+            Assigned Groups -
             {sopTitle && (
-              <span className="text-sm font-normal text-gray-500">
-                - {sopTitle}
+              <span className="text-sm font-normal text-gray-500  break-all whitespace-normal">
+                 {sopTitle}
               </span>
             )}
           </DialogTitle>
@@ -64,7 +64,7 @@ const GroupDetailsDialog: React.FC<GroupDetailsDialogProps> = ({
                 <Card key={assignment.group_id || Math.random()}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">
+                      <CardTitle className="text-base  break-all whitespace-normal">
                         {assignment.group_name || 'Unnamed Group'}
                       </CardTitle>
                       <div className="flex items-center gap-2">
