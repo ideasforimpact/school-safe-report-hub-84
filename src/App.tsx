@@ -122,7 +122,7 @@ function App() {
               <ModuleSyncProvider>
                 <AssessmentProvider>
                 <TransportSafetyProvider>
-                   <ModuleRouteGuard />
+                   {/* <ModuleRouteGuard /> */}
                 <Routes>
                   {/* Public routes - no authentication required */}
                   <Route path="/login" element={<Login />} />
