@@ -591,7 +591,7 @@ $function$;
 -- ============================================
 -- Function to get employee by email for authentication
 CREATE OR REPLACE FUNCTION public.get_employee_by_email_for_auth(user_email text)
- RETURNS TABLE(id uuid, email text, client_id uuid, user_id uuid, status boolean, first_name text, last_name text, employee_id text, is_super_admin boolean, department text, employee_type text)
+ RETURNS TABLE(id uuid, email text, client_id uuid, user_id uuid, status boolean, first_name text, last_name text, employee_id text, is_super_admin boolean, department uuid, employee_type uuid)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'

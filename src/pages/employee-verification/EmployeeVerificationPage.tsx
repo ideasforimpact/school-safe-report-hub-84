@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import FilterBar from '@/components/employee-verification/filters/FilterBar';
@@ -7,14 +7,18 @@ import { FileCheck, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
   const [searchParams] = useSearchParams();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
 
   // Filter employees based on all criteria
   // Helper function to get overall status based on priority logic
@@ -41,7 +45,12 @@ const EmployeeVerificationPage = () => {
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
-      // Search filter
+      const documents = employee.documents || [];
+
+      if (documentTypeFilter !== 'all' && documents.length === 0) {
+        return false;
+      }
+
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = 
@@ -53,19 +62,38 @@ const EmployeeVerificationPage = () => {
         if (!matchesSearch) return false;
       }
 
-      // Document status filter based on overall status
-      if (documentStatusFilter !== 'all') {
-        const overallStatus = getOverallStatus(employee);
-        
-        // Filter based on overall status, not individual document status
-        if (documentStatusFilter !== overallStatus) {
+      if (documentTypeFilter !== 'all') {
+        const matchingDoc = documents.find((doc) => {
+          if (doc.documentTypeId !== documentTypeFilter) return false;
+
+          if (documentStatusFilter === 'all') return true;
+
+          if (documentStatusFilter === 'verified') {
+            return ['verified', 'completed'].includes(doc.verificationStatus);
+          }
+
+          if (documentStatusFilter === 'pending') {
+            return ['pending', 'in-progress'].includes(doc.verificationStatus);
+          }
+
+          if (documentStatusFilter === 'failed') {
+            return ['failed', 'rejected'].includes(doc.verificationStatus);
+          }
+
           return false;
-        }
+        });
+
+        if (!matchingDoc) return false;
+      }
+
+      if (documentTypeFilter === 'all' && documentStatusFilter !== 'all') {
+        const overallStatus = getOverallStatus(employee);
+        if (overallStatus !== documentStatusFilter) return false;
       }
 
       return true;
     });
-  }, [employees, searchTerm, documentStatusFilter]);
+  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter]);
 
   // Parse URL parameters and set initial filters
   useEffect(() => {
@@ -115,6 +143,7 @@ const EmployeeVerificationPage = () => {
   const handleClearFilters = () => {
     setSearchTerm('');
     setDocumentStatusFilter('all');
+    setDocumentTypeFilter('all');
   };
   const employeeAnalyticsStats = useMemo(() => {
     const totalEmployees = employees.length;
@@ -130,7 +159,31 @@ const EmployeeVerificationPage = () => {
   }, [employees]);
 
 
+  const handleEmployeesRealtime = useCallback(() => {
+    if (realtimeTimeoutRef.current) {
+      clearTimeout(realtimeTimeoutRef.current);
+    }
 
+    realtimeTimeoutRef.current = setTimeout(() => {
+      fetchEmployees();
+    }, 300);
+  }, [fetchEmployees]);
+
+
+  useRealTimeSubHook({
+    channelName: 'employees-realtime',
+    table: 'employees',
+    events: '*',
+    enabled: true,
+    onPayload: handleEmployeesRealtime,
+  });
+  useRealTimeSubHook({
+    channelName: 'employee-documents-realtime',
+    table: 'employee_documents',
+    events: '*',
+    enabled: true,
+    onPayload: handleEmployeesRealtime,
+  });
   return (
     <Layout>
       <div className="w-full py-6">
@@ -191,6 +244,8 @@ const EmployeeVerificationPage = () => {
             onSearchChange={setSearchTerm}
             documentStatusFilter={documentStatusFilter}
             onDocumentStatusChange={setDocumentStatusFilter}
+            documentTypeFilter={documentTypeFilter}
+            onDocumentTypeChange={setDocumentTypeFilter}
             onClearFilters={handleClearFilters}
             resultCount={filteredEmployees.length}
             totalCount={employees.length}

@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,7 @@ import {
     validateVehicleExcel,
 } from '@/services/vehicle/importVehicleService';
 import { useAuth } from '@/contexts';
+import FileUploadValidator from '../common/FileUploadValidator';
 
 interface ImportVehiclesDialogProps {
     isOpen: boolean;
@@ -48,6 +49,9 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
     const [isVerifying, setIsVerifying] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,6 +60,8 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
         setIsVerified(false);
         setIsVerifying(false);
         setIsLoading(false);
+        setValidationErrors([]);
+        setValidationWarnings([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -130,7 +136,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
 
             setSelectedFile(safeFile);
             setIsVerified(false);
-
+            setValidationErrors([]);
             toast.success('File uploaded successfully');
         } catch (err: any) {
             console.error('Could not read file:', err);
@@ -149,6 +155,7 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
     const removeFile = () => {
         setSelectedFile(null);
         setIsVerified(false);
+        setValidationErrors([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -161,29 +168,25 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
         }
 
         setIsVerifying(true);
+        setValidationErrors([]);
         try {
-            const errors = await validateVehicleExcel(
+            const { errors, warnings } = await validateVehicleExcel(
                 selectedFile,
                 employeeData.clientId,
             );
 
-            if (errors.length > 0) {
-                errors.slice(0, 3).forEach(err => toast.error(err));
+            setValidationErrors(errors);
+            setValidationWarnings(warnings);
 
-                if (errors.length > 3) {
-                    toast.error(
-                        `${errors.length - 3} more validation errors. Check console.`,
-                    );
-                }
+            // Verified if NO blocking errors
+            setIsVerified(errors.length === 0);
 
-                setIsVerified(false);
-            } else {
+            if (errors.length === 0) {
                 toast.success('File validated successfully');
-                setIsVerified(true);
             }
         } catch (error) {
             console.error('Validation error:', error);
-            toast.error('Validation failed');
+            setValidationErrors(['Validation failed. Please try again.']);
             setIsVerified(false);
         } finally {
             setIsVerifying(false);
@@ -191,33 +194,21 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
     };
 
     const handleImport = async () => {
-        if (!selectedFile || !isVerified) {
-            toast.error('Please verify the file before importing');
-            return;
-        }
+        if (!selectedFile || !isVerified) return;
 
         setIsLoading(true);
         try {
-            const { skippedVehicles } = await importVehicles(
+            await importVehicles(
                 selectedFile,
                 employeeData.clientId,
                 employeeData.id,
             );
 
-            if (skippedVehicles.length > 0) {
-                toast.warning(
-                    `${skippedVehicles.length} vehicle(s) already exist. All other vehicles have been added successfully.`
-                );
-            }
-            else {
-                toast.success('Vehicles imported successfully');
-            }
-
+            toast.success('Vehicles imported successfully');
             resetState();
             onSuccess();
             onClose();
         } catch (err) {
-            console.error('Import failed:', err);
             toast.error('Vehicle import failed');
         } finally {
             setIsLoading(false);
@@ -225,11 +216,11 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Import Vehicles</DialogTitle>
-                </DialogHeader>
+        <AlertDialog open={isOpen} onOpenChange={handleDialogChange}>
+            <AlertDialogContent className="sm:max-w-md">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Import Vehicles</AlertDialogTitle>
+                </AlertDialogHeader>
 
                 <div className="grid gap-4 py-4">
                     {/* Template section */}
@@ -344,7 +335,13 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
                         )}
                     </div>
                 </div>
-                <DialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
+               <FileUploadValidator
+                errors={validationErrors}
+                warnings={validationWarnings}
+                warningTitle="Duplicate Vehicles"
+                warningFooterText="These Vehicles will be skipped during import."
+                />
+                <AlertDialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
                     <Button
                         variant="secondary"
                         type="button"
@@ -374,17 +371,17 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
                         </Button>
                         <Button
                             onClick={handleImport}
-                            disabled={!selectedFile || isLoading || !isVerified}
+                            disabled={!selectedFile || isLoading || !isVerified || validationErrors.length > 0}
                             className="w-full sm:w-auto"
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Import
                         </Button>
                     </div>
-                </DialogFooter>
+                </AlertDialogFooter>
 
-            </DialogContent>
-        </Dialog>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 };
 

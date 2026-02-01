@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
 import { Paperclip, Send, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import DragDropFileUpload from '../file/DragDropFileUpload';
 
 interface InlineCommentFormProps {
   incidentId: string;
@@ -87,7 +87,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
 
   return (
     <div className="bg-white rounded-md border shadow-sm p-4">
-      <h3 className="font-medium text-lg mb-3">Add Comment</h3>
+      <h3 className="font-medium text-lg mb-3">Add Comment <span className="text-red-500">*</span></h3>
       
       <div className="space-y-4">
         <div className="flex flex-col space-y-2">
@@ -105,7 +105,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           
           {showFileUpload && (
             <div className="border-t pt-3 mt-2">
-              <MultipleFilesUpload
+              <DragDropFileUpload
                 onFilesChange={setCommentFiles}
                 initialFiles={commentFiles}
                 maxFiles={3}

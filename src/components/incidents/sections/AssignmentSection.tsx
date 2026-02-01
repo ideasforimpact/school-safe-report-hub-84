@@ -1,10 +1,10 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface Employee {
   id: string;
@@ -31,10 +31,8 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   
   // Fetch employees based on client_id
-  useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchEmployees = useCallback(async () => {
       if (!employeeData?.clientId) {
-        console.log('No client ID available for fetching employees');
         setIsLoadingEmployees(false);
         return;
       }
@@ -43,39 +41,48 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
         setIsLoadingEmployees(true);
         console.log('Fetching employees for client:', employeeData.clientId);
 
-        const { data: employeesData, error } = await supabase
+        const { data, error } = await supabase
           .from('employees')
           .select('id, first_name, last_name, email')
           .eq('client_id', employeeData.clientId)
-          .eq('status', true); // Only active employees
+          .eq('status', true);
 
-        if (error) {
-          console.error('Error fetching employees:', error);
-          toast.error('Failed to load employees');
-          return;
-        }
+        if (error) throw error;
 
-        console.log('Fetched employees:', employeesData);
-        const mappedEmployees = employeesData.map(emp => ({
-          id: emp.id,
-          firstName: emp.first_name,
-          lastName: emp.last_name,
-          email: emp.email
-        }));
-        
-        setEmployees(mappedEmployees);
-      } catch (error) {
-        console.error('Error fetching employees:', error);
+        setEmployees(
+          data.map(emp => ({
+            id: emp.id,
+            firstName: emp.first_name,
+            lastName: emp.last_name,
+            email: emp.email,
+          }))
+        );
+      } catch (err) {
+        console.error(err);
         toast.error('Failed to load employees');
       } finally {
         setIsLoadingEmployees(false);
       }
-    };
+    }, [employeeData?.clientId]);
 
-    fetchEmployees();
-  }, [employeeData?.clientId]);
-  
-  // Find the selected employee
+    useEffect(() => {
+      fetchEmployees();
+    }, [fetchEmployees]);
+
+    const handleEmployeesRealtime = useCallback(async () => {
+      console.log('real time update',employeeData?.clientId);
+      
+      await fetchEmployees();
+    }, [fetchEmployees]);
+
+    useRealTimeSubHook({
+      channelName: 'employees-realtime',
+      events: '*',
+      table: 'employees',
+      enabled: true,
+      onPayload: handleEmployeesRealtime,
+    });
+
   const selectedEmployee = employees.find(emp => emp.id === owner);
   const selectedEmployeeDisplay = selectedEmployee 
     ? `${selectedEmployee.firstName} ${selectedEmployee.lastName} (${selectedEmployee.email})` 

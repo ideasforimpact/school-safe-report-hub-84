@@ -19,9 +19,9 @@ const PeopleInvolved: React.FC<PeopleInvolvedProps> = ({ people }) => {
         <div className="space-y-2">
           {people.map((person, index) => (
             <div key={index} className="flex flex-col space-y-1 border-b pb-2 last:border-b-0">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center">
                 <span className="font-medium">{person.name || 'Unnamed'}</span>
-                <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-700">
+                <span className="text-xs ms-3 px-2 py-1 bg-gray-100 rounded-full text-gray-700">
                   {person.role}
                 </span>
               </div>

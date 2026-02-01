@@ -6,10 +6,53 @@ import { checkExistingRegistrations, fetchVehicleTypeMap } from '../transport-sa
 export const validateVehicleExcel = async (
   file: File,
   clientId: string
-): Promise<string[]> => {
+): Promise<{ errors: string[]; warnings: string[] }> => {
   const rawData = await parseVehicleFile(file);
-  return validateVehicleRows(rawData);
+
+  const errors = validateVehicleRows(rawData);
+  const warnings: string[] = [];
+
+  const normalizedRegs = rawData
+    .map(v =>
+      v.registrationNumber !== undefined && v.registrationNumber !== null
+        ? String(v.registrationNumber).trim().toUpperCase()
+        : ''
+    )
+    .filter(Boolean);
+
+  const seen = new Map<string, number[]>();
+  normalizedRegs.forEach((reg, index) => {
+    if (!seen.has(reg)) seen.set(reg, []);
+    seen.get(reg)!.push(index + 2);
+  });
+
+  seen.forEach((rows, reg) => {
+    if (rows.length > 1) {
+      warnings.push(
+        `Vehicle "${reg}" appears multiple times in rows ${rows.join(', ')}`
+      );
+    }
+  });
+
+  if (normalizedRegs.length > 0) {
+    const existingRegs = await checkExistingRegistrations(
+      normalizedRegs,
+      clientId
+    );
+
+    existingRegs.forEach(reg => {
+      const rowIndex = normalizedRegs.findIndex(r => r === reg.toUpperCase());
+      const rowNumber = rowIndex >= 0 ? rowIndex + 2 : 'Unknown';
+
+      warnings.push(
+        `Row ${rowNumber}: Vehicle "${reg}" already exists and will be skipped`
+      );
+    });
+  }
+
+  return { errors, warnings };
 };
+
 
 export const importVehicles = async (
   file: File,

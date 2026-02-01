@@ -232,7 +232,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
             )}
             {fieldLabel && (
               <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="field" className="text-right text-sm font-medium col-span-1">
+                <label htmlFor="field" className="text-right text-sm font-medium inline-flex items-center gap-1 whitespace-nowrap">
                   {fieldLabel} {isRequired && <span className="text-red-500">*</span>}
                 </label>
                 <div className="col-span-3">

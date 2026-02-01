@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck, FileText } from "lucide-react";
+import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck, FileText, UsersRound } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
@@ -13,6 +13,7 @@ import { EducationalStructureConfig } from '@/pages/configuration/EducationalStr
 import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
+import GroupConfigurationContent from '@/components/configuration/GroupConfigurationContent';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useClientIntegration } from '@/hooks/useClientIntegration';
 
@@ -98,6 +99,10 @@ const SettingsPage = () => {
                 <Users className="h-4 w-4" />
                 <span>User Management</span>
               </TabsTrigger>
+              <TabsTrigger value="group" className="flex items-center gap-2">
+                <UsersRound className="h-4 w-4" />
+                <span>Group Configuration</span>
+              </TabsTrigger>
               {showEducationalTabs && (
                 <>
                   <TabsTrigger 
@@ -161,6 +166,18 @@ const SettingsPage = () => {
                 </CardHeader>
                 <CardContent>
                   <UserManagement embedded={true} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="group" className="p-0">
+              <Card className="w-full">
+                <CardHeader>
+                  <CardTitle>Group Configuration</CardTitle>
+                  <CardDescription>Manage groups and their members</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GroupConfigurationContent />
                 </CardContent>
               </Card>
             </TabsContent>

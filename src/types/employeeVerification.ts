@@ -22,6 +22,13 @@ export interface Employee {
   firstName?: string;
   lastName?: string;
   isSuperAdmin?: boolean; // Added this property to fix the error
+  
+  // SOP Statistics
+  sopStatistics?: {
+    totalSOPs: number;
+    totalSOPsSignedOff: number;
+    totalSOPsToBeDone: number;
+  };
 }
 
 export interface DocumentType {

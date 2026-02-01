@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import SearchFilter from '@/components/incidents/filters/SearchFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
+import EmployeeDocumentTypeFilter from './EmployeeDocumentTypeFilter';
+
 
 interface FilterBarProps {
   searchTerm: string;
@@ -10,6 +12,8 @@ interface FilterBarProps {
   documentStatusFilter: string;
   onDocumentStatusChange: (value: string) => void;
   onClearFilters: () => void;
+  documentTypeFilter: string;
+  onDocumentTypeChange: (value: string) => void;
   resultCount: number;
   totalCount: number;
 }
@@ -21,10 +25,14 @@ const FilterBar: React.FC<FilterBarProps> = ({
   onDocumentStatusChange,
   onClearFilters,
   resultCount,
+  documentTypeFilter,
+  onDocumentTypeChange,
   totalCount
 }) => {
-  const hasActiveFilters = searchTerm || 
-    documentStatusFilter !== 'all';
+ const hasActiveFilters =
+    searchTerm ||
+    documentStatusFilter !== 'all' ||
+    documentTypeFilter !== 'all';
 
   return (
     <div className="space-y-4 mb-6">
@@ -36,6 +44,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
             placeholder="Search by name, email, employee ID"
           />
         </div>
+
+        <EmployeeDocumentTypeFilter
+          value={documentTypeFilter}
+          onChange={onDocumentTypeChange}
+        />
         
         <DocumentStatusFilter
           value={documentStatusFilter}

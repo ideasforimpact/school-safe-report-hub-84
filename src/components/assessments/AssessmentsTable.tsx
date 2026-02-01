@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentViewDialog from './view/AssessmentViewDialog';
 import ReassignAssessmentDialog from './ReassignAssessmentDialog';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface AssessmentTemplate {
   questions: any;
@@ -406,6 +407,13 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
   const canReassignAssessment = (assessment: Assessment) => {
     return hasAssessmentAdmin && assessment.created_by === currentUserEmployeeId;
   };
+    useRealTimeSubHook({
+      channelName: `assessment-${clientId}`,
+      events: "*",
+      table: "assessments",
+      enabled: !!clientId,
+      onPayload: handleAssessmentUpdated,
+    });
 
   if (!clientId) {
     return (
@@ -534,13 +542,16 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
                   date={targetDateFrom}
                   onChange={setTargetDateFrom}
                   placeholderText="Target date from"
-                  className="w-48"
+                  className="w-52"
                 />
                 <DatePicker
                   date={targetDateTo}
                   onChange={setTargetDateTo}
                   placeholderText="Target date to"
-                  className="w-48"
+                  className="w-52"
+                  disabledDates={(date) =>
+                    targetDateFrom ? date < targetDateFrom : false
+                  }
                 />
               </div>
 

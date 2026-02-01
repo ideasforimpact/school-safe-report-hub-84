@@ -281,6 +281,6 @@ export function useIncidentCategories() {
     addSubcategory,
     updateSubcategory,
     deleteSubcategory,
-    refreshData: loadData
+    loadData
   };
 }

@@ -21,6 +21,7 @@ export interface Person {
   role: 'Student' | 'Staff' | 'Other';
   notes?: string;
   id?: string;
+  student_id?:string;
 }
 
 export interface UserRef {

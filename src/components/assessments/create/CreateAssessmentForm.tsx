@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
 interface Employee {
   id: string;
@@ -55,9 +56,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const clientId = employeeData?.clientId || user?.clientId;
 
   // Fetch employees filtered by client_id
-  React.useEffect(() => {
-    const fetchEmployees = async () => {
-      if (!clientId) {
+  const fetchEmployees = useCallback(async () => {
+    if (!clientId) {
         console.log('No client ID available for fetching employees');
         setEmployeesLoading(false);
         return;
@@ -88,46 +88,47 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       } finally {
         setEmployeesLoading(false);
       }
-    };
-
-    fetchEmployees();
   }, [clientId]);
 
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
   // Fetch existing assessment names for duplicate validation
-  React.useEffect(() => {
-    const fetchExistingAssessments = async () => {
-      if (!clientId) {
-        setAssessmentsLoading(false);
+  const fetchExistingAssessments = useCallback(async () => {
+    if (!clientId) {
+      setAssessmentsLoading(false);
+      return;
+    }
+
+    try {
+      setAssessmentsLoading(true);
+      console.log('Fetching existing assessments for client:', clientId);
+
+      const { data: assessmentsData, error } = await supabase
+        .from('assessments')
+        .select('name')
+        .eq('client_id', clientId);
+
+      if (error) {
+        console.error('Error fetching existing assessments:', error);
         return;
       }
 
-      try {
-        setAssessmentsLoading(true);
-        console.log('Fetching existing assessments for client:', clientId);
+      const assessmentNames = assessmentsData?.map(assessment => assessment.name.toLowerCase()) || [];
+      console.log('Existing assessment names:', assessmentNames);
+      setExistingAssessments(assessmentNames);
+    } catch (error) {
+      console.error('Error fetching existing assessments:', error);
+    } finally {
+      setAssessmentsLoading(false);
+    }
 
-        const { data: assessmentsData, error } = await supabase
-          .from('assessments')
-          .select('name')
-          .eq('client_id', clientId);
-
-        if (error) {
-          console.error('Error fetching existing assessments:', error);
-          return;
-        }
-
-        const assessmentNames = assessmentsData?.map(assessment => assessment.name.toLowerCase()) || [];
-        console.log('Existing assessment names:', assessmentNames);
-        setExistingAssessments(assessmentNames);
-      } catch (error) {
-        console.error('Error fetching existing assessments:', error);
-      } finally {
-        setAssessmentsLoading(false);
-      }
-    };
-
-    fetchExistingAssessments();
   }, [clientId]);
-
+  useEffect(() => {
+    fetchExistingAssessments();
+  }, [fetchExistingAssessments]);
   // Find the selected employee
   const selectedEmployee = employees.find(emp => emp.id === formData.assignedTo);
   const selectedEmployeeDisplay = selectedEmployee 
@@ -294,7 +295,28 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       navigate('/assessments');
     }
   };
+  const handleAssessmentUpdate = useCallback(async () => {
+    await fetchExistingAssessments();
+  }, [fetchExistingAssessments]);
+  const handleEmployeeUpdate = useCallback(async () => {
+    await fetchEmployees();
+  }, [fetchEmployees]);
 
+  useRealTimeSubHook({
+    channelName: `employees-${clientId}`,
+    events: "*",
+    table: "employees",
+    enabled: !!clientId,
+    onPayload: handleEmployeeUpdate,
+  });
+
+  useRealTimeSubHook({
+    channelName: `assessment-${clientId}`,
+    events: "*",
+    table: "assessments",
+    enabled: !!clientId,
+    onPayload: handleAssessmentUpdate,
+  });
   if (!clientId) {
     return (
       <div className="space-y-6">

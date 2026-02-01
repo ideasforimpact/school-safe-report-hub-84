@@ -1,7 +1,9 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Crown, Shield, User } from "lucide-react";
-import { formatDepartment } from "@/lib/formatUtils";
+import { useEmployeeDepartments } from "@/hooks/useEmployeeDepartments";
+import { employeeDepartmentName } from "@/services/employeeNameHelpers";
+
 
 interface UserRoleBadgeProps {
   isSaasOwner: boolean;
@@ -16,6 +18,13 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department 
 }) => {
+  const { employeeDepartments } = useEmployeeDepartments();
+
+  const departmentLabel = employeeDepartmentName(
+    department,
+    employeeDepartments
+  );
+
   // Log values for debugging
   console.log("UserRoleBadge Props:", { isSaasOwner, isAdmin, isSuperAdmin, department });
   
@@ -24,7 +33,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
     return (
       <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1">
         <Crown className="h-3 w-3" />
-        SaaS Owner {department ? `(${formatDepartment(department)})` : ''}
+        SaaS Owner {departmentLabel ? `(${departmentLabel})` : ''}
       </Badge>
     );
   }
@@ -34,7 +43,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
     return (
       <Badge variant="default" className="bg-[#1e40af] hover:bg-[#1e40af] flex items-center gap-1">
         <Shield className="h-3 w-3" />
-        Super Admin {department ? `(${formatDepartment(department)})` : ''}
+        Super Admin {departmentLabel ? `(${departmentLabel})` : ''}
       </Badge>
     );
   }
@@ -44,7 +53,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
     return (
       <Badge variant="default" className="bg-green-600 hover:bg-green-700 flex items-center gap-1">
         <Shield className="h-3 w-3" />
-        Admin {department ? `(${formatDepartment(department)})` : ''}
+        Admin {departmentLabel ? `(${departmentLabel})` : ''}
       </Badge>
     );
   }
@@ -54,7 +63,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
     return (
       <Badge variant="default" className="bg-gray-600 hover:bg-gray-700 flex items-center gap-1">
         <User className="h-3 w-3" />
-        {formatDepartment(department)}
+        {departmentLabel}
       </Badge>
     );
   }

@@ -1,10 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealTimeSubHook } from './useRealTimeSubHook';
 
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
@@ -37,7 +38,7 @@ export function useEducationalConfigurationManagement() {
   }, [employeeData?.clientId]);
 
   // Fetch campuses
-  const fetchCampuses = async () => {
+  const fetchCampuses = useCallback(async () => {
     if (!employeeData?.clientId) return;
     
     setLoading(true);
@@ -58,10 +59,10 @@ export function useEducationalConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
 
   // Fetch classes/grades
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     if (!employeeData?.clientId) return;
     
     setLoading(true);
@@ -83,10 +84,10 @@ export function useEducationalConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
 
   // Fetch sections with campus_id
-  const fetchSections = async () => {
+  const fetchSections = useCallback(async () => {
     if (!employeeData?.clientId) return;
     
     setLoading(true);
@@ -109,10 +110,10 @@ export function useEducationalConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
 
   // Fetch facilities
-  const fetchFacilities = async () => {
+  const fetchFacilities = useCallback(async () => {
     if (!employeeData?.clientId) return;
     
     setLoading(true);
@@ -134,7 +135,7 @@ export function useEducationalConfigurationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeData?.clientId]);
 
   // Campus management with Supabase
   const handleAddCampus = async (name: string) => {
@@ -497,6 +498,56 @@ export function useEducationalConfigurationManagement() {
       setLoading(false);
     }
   };
+
+  const refetchAllEducationalConfig = useCallback(async () => {
+    if (!employeeData?.clientId) return;
+
+    await Promise.all([
+      fetchCampuses(),
+      fetchClasses(),
+      fetchSections(),
+      fetchFacilities(),
+    ]);
+  }, [
+    employeeData?.clientId,
+    fetchCampuses,
+    fetchClasses,
+    fetchSections,
+    fetchFacilities,
+  ]);
+
+  useRealTimeSubHook({
+    channelName: 'edu-campuses',
+    table: 'campuses',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refetchAllEducationalConfig,
+  });
+
+  useRealTimeSubHook({
+    channelName: 'edu-classes',
+    table: 'grades', // your DB table for classes
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refetchAllEducationalConfig,
+  });
+
+  useRealTimeSubHook({
+    channelName: 'edu-sections',
+    table: 'sections',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refetchAllEducationalConfig,
+  });
+
+  useRealTimeSubHook({
+    channelName: 'edu-facilities',
+    table: 'facilities',
+    events: '*',
+    enabled: !!employeeData?.clientId,
+    onPayload: refetchAllEducationalConfig,
+  });
+
 
   return {
     activeTab,

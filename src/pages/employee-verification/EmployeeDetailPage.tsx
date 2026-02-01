@@ -23,6 +23,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast as sonnerToast } from 'sonner';
 import AadharDetailsDialog from '@/components/employee-verification/documents-list/AadharDetailsDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import { employeeTypeName } from '@/services/employeeNameHelpers';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -31,6 +33,7 @@ const EmployeeDetailPage = () => {
   const { fetchDocumentStatuses, fetchEmployees } = useEmployeeVerification();
   const { toast } = useToast();
   const { user, employeeData } = useAuth();
+  const { employeeTypes } = useEmployeeTypes();
   
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [documents, setDocuments] = useState<VerificationDocument[]>([]);
@@ -65,6 +68,10 @@ const EmployeeDetailPage = () => {
     },
     [employeeId]
   );
+
+  const employeeTypeLabel = employee
+  ? employeeTypeName(employee.employeeType, employeeTypes)
+  : 'Employee';  
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -313,11 +320,6 @@ const EmployeeDetailPage = () => {
     }
   }, [initialLoadComplete, documents, handleDigiLockerReturn]);
 
-    const getEmployeeTypeDisplay = (type?: string) => {
-    if (!type) return 'Not Specified';
-    
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  };
 
   // Early return for non-existent employee
   if (!isLoading && !employee && initialLoadComplete) {
@@ -370,7 +372,7 @@ const EmployeeDetailPage = () => {
               >
                 {headerDisplayName}
               </h1>
-              <p className="text-gray-500">{getEmployeeTypeDisplay(employee.employeeType)} • {employee.employeeId}</p>
+              <p className="text-gray-500">{employeeTypeLabel} • {employee.employeeId}</p>
             </div>
           </div>
 
