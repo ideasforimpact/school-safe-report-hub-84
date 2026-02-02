@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
 
 // CORS headers setup
 const corsHeaders = {
@@ -11,6 +12,7 @@ const corsHeaders = {
 // Integration selector
 const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
 const isQuickEKYC = integrationName === 'quickekyc';
+const providerName = isQuickEKYC ? 'quickekyc' : 'surepass';
 
 // Helper function to normalize QuickEKYC response to Surepass format
 function normalizeQuickEKYCResponse(response: any): any {
@@ -155,7 +157,7 @@ serve(async (req) => {
       // Fetch the document to get the license number and DOB from params
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_number, params, employee_docs_log')
+        .select('document_number, params, employee_docs_log,employee_id')
         .eq('id', documentId)
         .single();
       
@@ -170,6 +172,7 @@ serve(async (req) => {
       const licenseNumber = document.document_number;
       const dob = document.params?.DOB;
       const existingLogs = document?.employee_docs_log || [];
+      const employeeId = document.employee_id;
       
       if (!licenseNumber) {
         return new Response(
@@ -292,7 +295,13 @@ serve(async (req) => {
           if (personalInfo) {
             updateData.personal_info = personalInfo;
           }
-          
+          await logVerificationSuccess(supabase, {
+            employeeId,
+            documentId,
+            provider: providerName,
+            statusCode: apiResponse.status_code,
+            response: apiResponse
+          });
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update(updateData)
@@ -316,24 +325,9 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // API Failure: Store response but keep status as pending for manual review
-          // Don't automatically set to failed - let admin review first
-          await supabase
-            .from('employee_documents')
-            .update({
-              api_response_data: apiResponse,
-              api_verification_status: 'failed',
-              api_verification_method: 'api',
-              api_verification_date: null,
-              employee_docs_log: [...existingLogs, logEntry],
-              // verification_status stays 'pending' - admin needs to manually review
-              // document_status_id stays unchanged
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
           
           // Parse specific error types for user-friendly messages
-          let userFriendlyError = "Driving License verification failed";
+          let userFriendlyError = "Driving License verification failed 12";
           let errorCode = "DL_VERIFICATION_FAILED";
           
           // Handle QuickEKYC error messages
@@ -371,7 +365,14 @@ serve(async (req) => {
               }
             }
           }
-          
+          const bothFallback = await logVerificationError(supabase, {
+            employeeId,
+            documentId,
+            provider: providerName,
+            message: userFriendlyError,
+            statusCode: apiResponse.status_code,
+            response: apiResponse
+          });
           // Return response indicating API failed but status remains pending for review
           return new Response(
             JSON.stringify({ 
@@ -381,6 +382,7 @@ serve(async (req) => {
               originalError: isQuickEKYC ? rawApiResponse.message : apiResponse.message,
               message: userFriendlyError,
               requiresReview: true,
+              bothFallback,
               apiResponse: apiResponse // Include API response for review
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

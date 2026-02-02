@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
 
 // CORS headers setup
 const corsHeaders = {
@@ -168,6 +169,7 @@ serve(async (req) => {
     
     // Get existing logs or initialize empty array
     const existingLogs = document?.employee_docs_log || [];
+    const employeeId = document.employee_id;
     
     // Handle API verification using Surepass - NEW BEHAVIOR
     if (action === 'apiVerify') {
@@ -252,6 +254,14 @@ serve(async (req) => {
             );
           }
           
+          await logVerificationSuccess(supabase, {
+            employeeId,
+            documentId,
+            provider: isQuickEKYC ? 'quickekyc' : 'surepass',
+            statusCode: data.status_code,
+            response: data
+          });
+
           return new Response(
             JSON.stringify({ 
               success: true, 
@@ -269,20 +279,6 @@ serve(async (req) => {
             action: "verify_voter_id_api_failed",
             response: data
           };
-          
-          await supabase
-            .from('employee_documents')
-            .update({
-              api_response_data: data,
-              api_verification_status: 'failed',
-              api_verification_method: 'api',
-              api_verification_date: null,
-              employee_docs_log: [...existingLogs, apiLogEntry],
-              // verification_status stays 'pending' - admin needs to manually review
-              // document_status_id stays unchanged
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
           
           // Parse specific error types for user-friendly messages
           let userFriendlyError = "Voter ID verification failed";
@@ -317,7 +313,14 @@ serve(async (req) => {
               }
             }
           }
-          
+          await logVerificationError(supabase, {
+            employeeId,
+            documentId,
+            provider: isQuickEKYC ? 'quickekyc' : 'surepass',
+            statusCode: data.status_code ?? rawApiResponse?.status_code,
+            message: data.message,
+            response: data
+          });
           // Return response indicating API failed but status remains pending for review
           return new Response(
             JSON.stringify({ 
