@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,7 +76,13 @@ serve(async (req) => {
       const fileNumber = document.document_number; // passport file number
       const dob = document.params?.DOB;
       const existingLogs = document.employee_docs_log || [];
+      const { data: doc } = await supabase
+                .from('employee_documents')
+                .select('employee_id')
+                .eq('id', documentId)
+                .single();
 
+      const employeeId = doc?.employee_id;
       if (!fileNumber || !dob) {
         return new Response(JSON.stringify({ error: 'File number and DOB are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -96,9 +103,7 @@ serve(async (req) => {
           body: JSON.stringify({ id_number: fileNumber, dob })
         });
 
-        console.log(response,"response");
-        
-
+          
         // Check if response is OK before parsing JSON
         if (!response.ok) {
           const errorText = await response.text();
@@ -132,6 +137,14 @@ serve(async (req) => {
             userFriendlyError = "Too many verification attempts. Please try again after some time.";
             errorCode = "API_LIMIT_EXCEEDED";
           }
+          await logVerificationError(supabase, {
+            employeeId,
+            documentId,
+            provider: 'surepass',
+            statusCode: response.status,
+            message: response.statusText,
+            response: response
+          });
 
           return new Response(
             JSON.stringify({
@@ -190,6 +203,14 @@ serve(async (req) => {
             api_verification_method: 'api',
             api_verification_date: new Date().toISOString()
           }).eq('id', documentId);
+          
+          await logVerificationSuccess(supabase, {
+            employeeId,
+            documentId,
+            provider: 'surepass',
+            statusCode: apiResponse.status_code,
+            response: apiResponse
+          });
 
           return new Response(
             JSON.stringify({
@@ -200,15 +221,6 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
-          // Failure path: mark API attempt and store response
-          await supabase.from('employee_documents').update({
-            employee_docs_log: [...existingLogs, logEntry],
-            api_response_data: apiResponse,
-            api_verification_status: 'failed',
-            api_verification_method: 'api',
-            api_verification_date: null
-          }).eq('id', documentId);
-
           // Parse specific error types for user-friendly messages
           let userFriendlyError = "Passport verification failed";
           let errorCode = "PASSPORT_VERIFICATION_FAILED";
@@ -228,6 +240,15 @@ serve(async (req) => {
               userFriendlyError = "Passport verification failed. Please check the details and try again.";
             }
           }
+
+          await logVerificationError(supabase, {
+            employeeId,
+            documentId,
+            provider: 'surepass',
+            statusCode: apiResponse?.status_code,
+            message: apiResponse?.message,
+            response: apiResponse
+          });
 
           return new Response(
             JSON.stringify({
@@ -276,6 +297,14 @@ serve(async (req) => {
           userFriendlyError = "Unable to reach verification service. Please check your connection and try again.";
           errorCode = "NETWORK_ERROR";
         }
+
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: "surepass",
+          message: (error as Error).message,
+          response: { error: (error as Error).message },
+        });
 
         return new Response(
           JSON.stringify({

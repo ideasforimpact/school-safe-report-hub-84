@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
 
 // CORS headers setup
 const corsHeaders = {
@@ -231,7 +232,12 @@ async function callSurePareVerifyOtpAPI(otp: string, txnId?: string, client_id?:
  * Request Aadhar OTP with fallback: Try QuickEKYC first, fallback to SurePare if status_code = 500
  * Returns response with 'api' key indicating which integration was used
  */
-async function requestAadharOtpWithFallback(documentNumber: string): Promise<{ response: Response; data: any; api: string }> {
+async function requestAadharOtpWithFallback(
+  supabase: any,
+  documentNumber: string,
+  employeeId: string,
+  documentId: string
+): Promise<{ response: Response; data: any; api: string }> {
   // Primary: Always try QuickEKYC first
   console.log('[Request OTP] Attempting primary: QuickEKYC');
   const quickEKYResponse = await callQuickEKYCRequestOtpAPI(documentNumber);
@@ -242,12 +248,49 @@ async function requestAadharOtpWithFallback(documentNumber: string): Promise<{ r
   
   // Check if QuickEKYC returned status_code 500
   if (quickEKYData?.status_code === 500) {
+    await logVerificationError(supabase, {
+      employeeId,
+      documentId,
+      provider: 'quickekyc',
+      statusCode: 500,
+      message: quickEKYData.message,
+      response: quickEKYData
+    });
     console.log('[Request OTP] QuickEKYC returned status_code 500, falling back to SurePare');
     // Secondary: Fallback to SurePare
     const surePareResponse = await callSurePareRequestOtpAPI(documentNumber);
     const surePareData = await surePareResponse.json();
+    console.log('data for the surepare',surePareData);
+    
+    if (surePareData?.status_code === 200) {
+      await logVerificationSuccess(supabase, {
+          employeeId,
+          documentId,
+          provider:'surepass',
+          statusCode: 200,
+          response: surePareData,
+      });
+    }
+    if (surePareData?.status_code === 500) {
+      await logVerificationError(supabase, {
+        employeeId,
+        documentId,
+        provider: 'surepass',
+        statusCode: 500,
+        message: surePareData.message,
+        response: surePareData,
+        bothFallback : true
+      });
+    }
     return { response: surePareResponse, data: surePareData, api: 'surepare' };
   }
+   await logVerificationSuccess(supabase, {
+          employeeId,
+          documentId,
+          provider:'quickekyc',
+          statusCode: 200,
+          response: quickEKYData
+      });
   
   // QuickEKYC succeeded, return its response with api indicator
   console.log('[Request OTP] QuickEKYC succeeded, using QuickEKYC response');
@@ -405,7 +448,7 @@ serve(async (req) => {
       documentNumber,
       requestBody
     });
-    
+    let currentProvider: 'quickekyc' | 'surepass' | 'unknown' = 'unknown';
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -645,13 +688,14 @@ serve(async (req) => {
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
       // Check if document has had an OTP generated recently
+      const { data: document, error: docError } = await supabase
+        .from('employee_documents')
+        .select('last_otp_generated, employee_id')
+        .eq('id', documentId)
+        .single();
+      const employeeId = document.employee_id;
+      let currentProvider: 'quickekyc' | 'surepass' = 'quickekyc';
       if (documentId) {
-        const { data: document, error: docError } = await supabase
-          .from('employee_documents')
-          .select('last_otp_generated, employee_id')
-          .eq('id', documentId)
-          .single();
-        
         if (docError) {
           console.error("Error fetching document:", docError);
         } else if (document?.last_otp_generated) {
@@ -710,12 +754,21 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        
+        const { data: doc } = await supabase
+          .from('employee_documents')
+          .select('employee_id')
+          .eq('id', documentId)
+          .single();
+
+        const employeeId = doc?.employee_id;
         // Call with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
-        const { response: apiResponse, data: rawData, api: usedApi } = await requestAadharOtpWithFallback(documentNumber);
+        const { response: apiResponse, data: rawData, api: usedApi } =await requestAadharOtpWithFallback(supabase,documentNumber,
+          employeeId,
+          documentId);
         
         console.log(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API response:`, JSON.stringify(rawData));
-        
+        currentProvider = usedApi === 'quickekyc' ? 'quickekyc' : 'surepass';
+
         // Normalize QuickEKYC response to Surepass format
         const isQuickEKYCUsed = usedApi === 'quickekyc';
         const data = isQuickEKYCUsed ? normalizeQuickEKYCResponse(rawData, true) : rawData;
@@ -760,6 +813,19 @@ serve(async (req) => {
           );
         }
       } catch (error) {
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: currentProvider, 
+          statusCode: 500,
+          message:
+            error instanceof Error
+              ? error.message
+              : 'OTP verification failed due to unexpected error',
+          response: {
+            error: String(error)
+          }
+        });
         console.error(`Error calling API:`, error);
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
@@ -770,6 +836,13 @@ serve(async (req) => {
     
     // Handle Aadhar OTP verification
     else if (action === 'verifyAadharOtp') {
+      const { data: document } = await supabase
+          .from('employee_documents')
+          .select('employee_id')
+          .eq('id', documentId)
+          .single();
+
+      const employeeId = document.employee_id;
       // Only require OTP - txnId is now optional
       if (!otp) {
         console.error("Missing required field: OTP");
@@ -805,9 +878,9 @@ serve(async (req) => {
       
       // Get the 'api' key from request body to determine which integration to use
       // This should match the 'api' key returned from requestAadharOtp
-      const requestApi = requestBody.api || integrationName || 'quickekyc';
+      const requestApi = requestBody.api;
       const useApi = requestApi === 'surepare' ? 'surepare' : 'quickekyc';
-      
+      currentProvider = useApi === 'quickekyc' ? 'quickekyc' : 'surepass';
       try {
         // Call verify OTP using the integration specified by the 'api' key from first call
         const { response: apiResponse, data: rawData } = await verifyAadharOtpWithIntegration(otp, useApi, txnId, clientIdForVerification);
@@ -833,7 +906,14 @@ serve(async (req) => {
               action: "verify_aadhar_otp",
               response: data
             };
-            
+            await logVerificationSuccess(supabase, {
+              employeeId: employeeId,
+              documentId,
+              provider: useApi === 'quickekyc' ? 'quickekyc' : 'surepass',
+              statusCode: 200,
+              response: data
+            });
+
             // Extract personal_info from API response data
             const apiData = data?.data || {};
             let personalInfo: { dob?: string; address?: string } | null = null;
@@ -939,17 +1019,6 @@ serve(async (req) => {
               
               // Update only with log entry and API response data, but NOT document_status_id
               // Don't set verification_status to 'failed' or rejectedStatusId
-              await supabase
-                .from('employee_documents')
-                .update({
-                  employee_docs_log: [...existingLogs, logEntry],
-                  api_response_data: data,
-                  api_verification_status: String(data?.status_code ?? rawData?.status_code ?? 'failed'),
-                  api_verification_method: 'api',
-                  api_verification_date: null,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', documentId);
             }
           }
           
@@ -962,6 +1031,14 @@ serve(async (req) => {
           
           // Return user-friendly error message with 200 status to ensure frontend can access it
           const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse.status, isQuickEKYCUsed);
+           await logVerificationError(supabase, {
+              employeeId: employeeId,
+              documentId,
+              provider: useApi === 'quickekyc' ? 'quickekyc' : 'surepass',
+              statusCode: data.status_code ?? apiResponse.status ?? 200,
+              message: data.message || "OTP verification failed",
+              response: data
+            });
           return new Response(
             JSON.stringify({ 
               success: false, 
@@ -972,6 +1049,19 @@ serve(async (req) => {
           );
         }
       } catch (error) {
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: currentProvider, 
+          statusCode: 500,
+          message:
+            error instanceof Error
+              ? error.message
+              : 'OTP verification failed due to unexpected error',
+          response: {
+            error: String(error)
+          }
+        });
         console.error(`Error verifying OTP with ${useApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API:`, error);
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
