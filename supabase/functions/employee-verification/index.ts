@@ -447,7 +447,7 @@ serve(async (req) => {
       documentNumber,
       requestBody
     });
-    
+    let currentProvider: 'quickekyc' | 'surepass' | 'unknown' = 'unknown';
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -864,7 +864,7 @@ serve(async (req) => {
       // This should match the 'api' key returned from requestAadharOtp
       const requestApi = requestBody.api;
       const useApi = requestApi === 'surepare' ? 'surepare' : 'quickekyc';
-      
+      currentProvider = useApi === 'quickekyc' ? 'quickekyc' : 'surepass';
       try {
         // Call verify OTP using the integration specified by the 'api' key from first call
         const { response: apiResponse, data: rawData } = await verifyAadharOtpWithIntegration(otp, useApi, txnId, clientIdForVerification);
@@ -1033,6 +1033,19 @@ serve(async (req) => {
           );
         }
       } catch (error) {
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: currentProvider, 
+          statusCode: 500,
+          message:
+            error instanceof Error
+              ? error.message
+              : 'OTP verification failed due to unexpected error',
+          response: {
+            error: String(error)
+          }
+        });
         console.error(`Error verifying OTP with ${useApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API:`, error);
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
