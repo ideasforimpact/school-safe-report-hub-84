@@ -252,6 +252,22 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   // Get the latest verification data for display
   const latestVerificationData = getLatestVerificationData();
 
+  const latestChallanSnapshot = React.useMemo(() => {
+    return vehicleChallans?.latest_challan_data ?? null;
+  }, [vehicleChallans]);
+  
+  const latestChallanError = React.useMemo(() => {
+    if (!latestChallanSnapshot) return null;
+
+    if (latestChallanSnapshot.success === false) {
+      return (
+        'Unable to fetch challan details. Please contact the administrator for support.'
+      );
+    }
+
+    return null;
+  }, [latestChallanSnapshot]);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -340,15 +356,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 </Button>
               </DialogTrigger>
               <VerificationDetailsDialog
-                 open={showVerificationResults}
-                  onOpenChange={setShowVerificationResults}
-                  verificationData={latestVerificationData}
-                  challanError={challanError}
-                  hasChallanData={hasChallanData}
-                  title="Latest Verification Details"
-                  vehicle={vehicle}
-                  apiResponse={apiResponseData}
-                  vehicleChallans={vehicleChallans}
+                open={showVerificationResults}
+                onOpenChange={setShowVerificationResults}
+                title="Latest Verification Details"
+                vehicle={vehicle}
+                apiResponse={apiResponseData}
+                challanSnapshot={latestChallanSnapshot}
+                challanError={latestChallanError}
+                hasChallanData={!!latestChallanSnapshot}
+                vehicleChallans={vehicleChallans}
               />
             </Dialog>
           </div>

@@ -18,8 +18,8 @@ import { Badge } from '@/components/ui/badge';
 interface VerificationDetailsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    verificationData: any[] | null;
     title?: string;
+    challanSnapshot?: any | null;
     challanError?: string | null;
     hasChallanData?: boolean;
     vehicle?: Vehicle;
@@ -32,8 +32,8 @@ interface VerificationDetailsDialogProps {
 const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     open,
     onOpenChange,
+    challanSnapshot,
     challanError,
-    verificationData,
     title = 'Verification Details',
     vehicle,
     apiResponse,
@@ -65,8 +65,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         // Priority 1: Use API response data directly (from vehicle-verify edge function)
         if (apiResponse) {
             // Use vehicleChallans prop (from database) or fallback to vehicle.vehicleChallans
-            const challansData = vehicleChallans || vehicle?.vehicleChallans;
-            return transformApiResponseData(apiResponse, challansData);
+            return transformApiResponseData(apiResponse, null);
         }
         
         // Priority 2: Use vehicle with current_rc_data and vehicle_challans
@@ -75,21 +74,9 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         }
         
         // Priority 3: Fallback to verificationData array (legacy)
-        if (Array.isArray(verificationData)) {
-            return verificationData.filter((item: any) => {
-                const field = String(item.field || '').toLowerCase();
-                return ![
-                    'verification_log',
-                    'last_response',
-                    'status',
-                    'rc_history_log',
-                    'response_metadata', // Exclude response_metadata
-                ].some(f => field.includes(f));
-            });
-        }
         
         return [];
-    }, [apiResponse, vehicle, verificationData, vehicleChallans]);
+    }, [apiResponse, vehicle]);
 
     // Format data for display (convert to label/value format)
     const rcDataForDisplay = React.useMemo(() => {
@@ -112,81 +99,19 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
     // Get challan details from vehicle_challans.latest_challan_data (priority) or transformed data
     const challanDetails = React.useMemo(() => {
-        // Priority 1: Use vehicle_challans.latest_challan_data from database
-        if (vehicleChallans?.latest_challan_data) {
-            const challanData = vehicleChallans.latest_challan_data;
+        if (!challanSnapshot || challanSnapshot.success === false) return [];
+            console.log(challanSnapshot,'dsfjhgsvdfsdfdsffsg');
             
-            // Debug: Log the structure to help diagnose issues
-            console.log('[VerificationDetailsDialog] Challan data structure:', {
-                hasData: !!challanData?.data,
-                hasChallanDetails: !!challanData?.data?.challan_details,
-                hasChallanData: !!challanData?.data?.challan_data,
-                rootChallanDetails: !!challanData?.challan_details,
-                keys: challanData ? Object.keys(challanData) : [],
-                dataKeys: challanData?.data ? Object.keys(challanData.data) : []
-            });
-            
-            // Handle different challan response structures from API
-            // Structure 1: { data: { challan_details: { challans: [...] } } }
-            if (challanData?.data?.challan_details?.challans) {
-                const challans = challanData.data.challan_details.challans;
-                if (Array.isArray(challans) && challans.length > 0) {
-                    console.log('[VerificationDetailsDialog] Found challans in data.challan_details.challans:', challans.length);
-                    return challans;
-                }
-            }
-            
-            // Structure 2: { data: { challan_data: [...] } }
-            if (challanData?.data?.challan_data) {
-                const challans = challanData.data.challan_data;
-                if (Array.isArray(challans) && challans.length > 0) {
-                    console.log('[VerificationDetailsDialog] Found challans in data.challan_data:', challans.length);
-                    return challans;
-                }
-            }
-            
-            // Structure 3: { challan_details: { challans: [...] } } (root level)
-            if (challanData?.challan_details?.challans) {
-                const challans = challanData.challan_details.challans;
-                if (Array.isArray(challans) && challans.length > 0) {
-                    console.log('[VerificationDetailsDialog] Found challans in challan_details.challans:', challans.length);
-                    return challans;
-                }
-            }
-            
-            // Structure 4: Direct array (unlikely but possible)
-            if (Array.isArray(challanData)) {
-                console.log('[VerificationDetailsDialog] Found challans as direct array:', challanData.length);
-                return challanData;
-            }
-            
-            // Structure 5: { data: [...] } (array directly in data)
-            if (Array.isArray(challanData?.data)) {
-                console.log('[VerificationDetailsDialog] Found challans in data array:', challanData.data.length);
-                return challanData.data;
-            }
-            
-            console.warn('[VerificationDetailsDialog] No challans found in expected structures');
-        }
+        const data = challanSnapshot?.data?.data || challanSnapshot?.data;
+
+        return (
+            data?.challan_details?.challans ||
+            data?.challan_data ||
+            []
+        );
+    }, [challanSnapshot]);
+
         
-        // Priority 2: Fallback to transformed data (from API response)
-        const challanField = transformedData.find((item) => item.field === 'challan_details');
-        if (challanField?.value) {
-            const value = challanField.value;
-            // Check nested structures
-            if (value?.challan_details?.challans && Array.isArray(value.challan_details.challans)) {
-                console.log('[VerificationDetailsDialog] Found challans in transformed data:', value.challan_details.challans.length);
-                return value.challan_details.challans;
-            }
-            if (Array.isArray(value)) {
-                console.log('[VerificationDetailsDialog] Found challans as array in transformed data:', value.length);
-                return value;
-            }
-        }
-        
-        console.log('[VerificationDetailsDialog] No challan data found');
-        return [];
-    }, [vehicleChallans, transformedData]);
 
     const disposedChallans = challanDetails.filter((c: any) =>
         ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
