@@ -6,8 +6,10 @@ interface AuditPayload {
   documentId: string;
   provider: Provider;
   statusCode?: number;
-  message?:string;
+  message?: string;
   response?: any;
+  /** When true, indicates primary provider failed and secondary (fallback) was used. Default false. */
+  bothFallback?: boolean;
 }
 
 function getDateHourKey() {
@@ -117,21 +119,17 @@ export async function logVerificationError(
   };
 
 
-  // Detect both-provider fallback
-const providers = new Set<string>();
-
-Object.values(updatedAuditLog).forEach((entries: any) => {
-  if (Array.isArray(entries)) {
-    entries.forEach((entry) => {
-      if (entry?.provider) providers.add(entry.provider);
-    });
-  }
-});
-
-
+  // Detect both-provider fallback from audit log when not provided in payload (default false)
+  const providers = new Set<string>();
+  Object.values(updatedAuditLog).forEach((entries: any) => {
+    if (Array.isArray(entries)) {
+      entries.forEach((entry) => {
+        if (entry?.provider) providers.add(entry.provider);
+      });
+    }
+  });
   const bothFallback =
-    providers.has('quickekyc') && providers.has('surepass');
-
+    payload.bothFallback === true ? true : false
   await supabase
     .from('employee_verification_audit_log')
     .upsert(

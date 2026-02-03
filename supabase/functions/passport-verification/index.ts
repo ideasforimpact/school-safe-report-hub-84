@@ -103,17 +103,6 @@ serve(async (req) => {
           body: JSON.stringify({ id_number: fileNumber, dob })
         });
 
-        console.log(response,"response");
-        
-        await logVerificationError(supabase, {
-            employeeId,
-            documentId,
-            provider: 'surepass',
-            statusCode: response.status,
-            message: response.statusText,
-            response: response
-          });
-          console.log('is that true',!response.ok);
           
         // Check if response is OK before parsing JSON
         if (!response.ok) {
@@ -148,6 +137,14 @@ serve(async (req) => {
             userFriendlyError = "Too many verification attempts. Please try again after some time.";
             errorCode = "API_LIMIT_EXCEEDED";
           }
+          await logVerificationError(supabase, {
+            employeeId,
+            documentId,
+            provider: 'surepass',
+            statusCode: response.status,
+            message: response.statusText,
+            response: response
+          });
 
           return new Response(
             JSON.stringify({
@@ -300,6 +297,14 @@ serve(async (req) => {
           userFriendlyError = "Unable to reach verification service. Please check your connection and try again.";
           errorCode = "NETWORK_ERROR";
         }
+
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: "surepass",
+          message: (error as Error).message,
+          response: { error: (error as Error).message },
+        });
 
         return new Response(
           JSON.stringify({

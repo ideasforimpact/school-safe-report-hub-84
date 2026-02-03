@@ -9,10 +9,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
-// Integration selector
-const integrationName = (Deno.env.get('ENABLE_API_INTEGRATION_NAME') || '').toLowerCase();
-const isQuickEKYC = integrationName === 'quickekyc';
-const providerName = isQuickEKYC ? 'quickekyc' : 'surepass';
+// Primary provider for apiVerify: always try QuickEKYC first, then Surepass as fallback
+const PRIMARY_PROVIDER = 'quickekyc';
+const FALLBACK_PROVIDER = 'surepass';
 
 // Helper function to normalize QuickEKYC response to Surepass format
 function normalizeQuickEKYCResponse(response: any): any {
@@ -39,6 +38,70 @@ function normalizeQuickEKYCResponse(response: any): any {
       data: response.data || {}
     };
   }
+}
+
+/** Call driving license API for a given provider. Returns normalized data and success flag. */
+async function callDrivingLicenseProvider(
+  provider: 'quickekyc' | 'surepass',
+  licenseNumber: string,
+  dob: string
+): Promise<{ success: boolean; data: any; rawApiResponse: any }> {
+  const drivingLicenseEndpoint = "/api/v1/driving-license/driving-license";
+  let baseUrl: string;
+  let apiKey: string;
+  if (provider === 'quickekyc') {
+    baseUrl = Deno.env.get("QUICKEKYC_BASE_ENDPOINT") || '';
+    apiKey = Deno.env.get("QUICKEKYC_API_KEY_PROD") || '';
+  } else {
+    baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || '';
+    apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || '';
+  }
+  if (!baseUrl || !apiKey) {
+    return { success: false, data: {}, rawApiResponse: { message: 'API configuration not found' } };
+  }
+  const apiUrl = `${baseUrl}${drivingLicenseEndpoint}`;
+  const requestHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (provider === 'surepass') {
+    requestHeaders['Authorization'] = `Bearer ${apiKey}`;
+  }
+  const body = provider === 'quickekyc'
+    ? { id_number: licenseNumber, dob, key: apiKey }
+    : { id_number: licenseNumber, dob };
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: requestHeaders,
+    body: JSON.stringify(body)
+  });
+  const rawApiResponse = await response.json();
+  const data = provider === 'quickekyc' ? normalizeQuickEKYCResponse(rawApiResponse) : rawApiResponse;
+  const success = provider === 'quickekyc'
+    ? (rawApiResponse.status_code === 200 && rawApiResponse.status === 'success')
+    : (data.success && data.status_code === 200);
+  return { success, data, rawApiResponse };
+}
+
+/** Extract personal_info from API response data for employee_documents update. */
+function extractPersonalInfoFromApiResponse(apiData: any): { dob?: string; address?: string } | null {
+  if (!apiData?.dob && !apiData?.permanent_address) return null;
+  const personalInfo: { dob?: string; address?: string } = {};
+  if (apiData.dob) {
+    const dobStr = String(apiData.dob).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dobStr)) {
+      personalInfo.dob = dobStr;
+    } else {
+      const dobDate = new Date(dobStr);
+      if (!isNaN(dobDate.getTime())) {
+        const year = dobDate.getFullYear();
+        const month = String(dobDate.getMonth() + 1).padStart(2, '0');
+        const day = String(dobDate.getDate()).padStart(2, '0');
+        personalInfo.dob = `${year}-${month}-${day}`;
+      }
+    }
+  }
+  if (apiData.permanent_address) {
+    personalInfo.address = String(apiData.permanent_address);
+  }
+  return personalInfo;
 }
 
 serve(async (req) => {
@@ -70,26 +133,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Set up provider configuration for Driving License verification
-    let baseUrl: string | null = null;
-    let apiKey: string | null = null;
-    let drivingLicenseEndpoint = "/api/v1/driving-license/driving-license";
-    
-    // Configure based on integration type
-    if (isQuickEKYC) {
-      // QuickEKYC configuration
-      baseUrl = Deno.env.get("QUICKEKYC_BASE_ENDPOINT") || '';
-      apiKey = Deno.env.get("QUICKEKYC_API_KEY_PROD") || '';
-      drivingLicenseEndpoint = "/api/v1/driving-license/driving-license";
-      console.log(`Using QuickEKYC API for driving license verification: ${baseUrl}`);
-    } else {
-      // Surepass configuration
-      baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || '';
-      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || '';
-      drivingLicenseEndpoint = "/api/v1/driving-license/driving-license";
-      console.log(`Using Surepass API for driving license verification: ${baseUrl}`);
-    }
     
     // First, fetch document status IDs we need
     const { data: governanceStatus, error: governanceError } = await supabase
@@ -144,23 +187,21 @@ serve(async (req) => {
       manualStatusId
     });
     
-    // API Verification for Driving License - NEW BEHAVIOR
+    // API Verification for Driving License: primary = QuickEKYC, fallback = Surepass
     if (action === 'apiVerify') {
-      // Verify we have a document ID
       if (!documentId) {
         return new Response(
           JSON.stringify({ error: "Document ID is required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      // Fetch the document to get the license number and DOB from params
+
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_number, params, employee_docs_log,employee_id')
+        .select('document_number, params, employee_docs_log, employee_id')
         .eq('id', documentId)
         .single();
-      
+
       if (docError || !document) {
         console.error("Error fetching document:", docError);
         return new Response(
@@ -168,119 +209,51 @@ serve(async (req) => {
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       const licenseNumber = document.document_number;
       const dob = document.params?.DOB;
       const existingLogs = document?.employee_docs_log || [];
       const employeeId = document.employee_id;
-      
+
       if (!licenseNumber) {
         return new Response(
           JSON.stringify({ error: "License number is required for verification" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       if (!dob) {
         return new Response(
           JSON.stringify({ error: "Date of birth is required for driving license verification" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      if (!baseUrl || !apiKey) {
+
+      const primaryBaseUrl = Deno.env.get("QUICKEKYC_BASE_ENDPOINT") || '';
+      const primaryApiKey = Deno.env.get("QUICKEKYC_API_KEY_PROD") || '';
+      if (!primaryBaseUrl || !primaryApiKey) {
         return new Response(
-          JSON.stringify({ error: "API configuration not found" }),
+          JSON.stringify({ error: "API configuration not found (primary provider)" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
+      let lastAttemptedProvider: 'quickekyc' | 'surepass' = 'quickekyc';
       try {
-        const apiUrl = `${baseUrl}${drivingLicenseEndpoint}`;
-        console.log(`Making request to ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API to verify driving license with:`, {
-          licenseNumber,
-          dob,
-          apiUrl
-        });
-        
-        // Prepare request headers and body based on provider
-        const requestHeaders: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        // Only add Bearer token for Surepass, not for QuickEKYC
-        if (!isQuickEKYC) {
-          requestHeaders['Authorization'] = `Bearer ${apiKey}`;
-        }
-        
-        const requestBody: any = isQuickEKYC
-          ? { id_number: licenseNumber, dob: dob, key: apiKey }
-          : { id_number: licenseNumber, dob: dob };
-        
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: requestHeaders,
-          body: JSON.stringify(requestBody)
-        });
-        
-        const rawApiResponse = await response.json();
-        console.log(`${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API driving license verification response:`, rawApiResponse);
-        
-        // Normalize QuickEKYC response to Surepass format
-        const apiResponse = isQuickEKYC ? normalizeQuickEKYCResponse(rawApiResponse) : rawApiResponse;
-        
-        // Create log entry with timestamp and API response
-        const logEntry = {
-          timestamp: new Date().toISOString(),
-          action: "verify_driving_license_api",
-          response: apiResponse
-        };
-        
-        // NEW BEHAVIOR: Always store API response and keep status as pending
-        // Only set to failed if API call completely failed
-        // Check success based on provider - use raw response for QuickEKYC, normalized for Surepass
-        const isSuccess = isQuickEKYC
-          ? (rawApiResponse.status_code === 200 && rawApiResponse.status === 'success')
-          : (apiResponse.success && apiResponse.status_code === 200);
-        
-        if (isSuccess) {
-          // Extract personal_info from API response data
+        // 1) Try primary provider (QuickEKYC)
+        console.log("Making request to primary (QuickEKYC) API for driving license verification");
+        const primaryResult = await callDrivingLicenseProvider(PRIMARY_PROVIDER, licenseNumber, dob);
+        console.log("Primary (QuickEKYC) API response:", JSON.stringify(primaryResult.rawApiResponse));
+
+        if (primaryResult.success) {
+          const apiResponse = primaryResult.data;
           const apiData = apiResponse?.data || {};
-          let personalInfo: { dob?: string; address?: string } | null = null;
-          
-          // Extract dob and permanent_address if available
-          if (apiData.dob || apiData.permanent_address) {
-            personalInfo = {};
-            
-            // Format and store dob in YYYY-MM-DD format
-            if (apiData.dob) {
-              const dobStr = String(apiData.dob).trim();
-              
-              // Check if already in YYYY-MM-DD format (most common case)
-              if (/^\d{4}-\d{2}-\d{2}$/.test(dobStr)) {
-                personalInfo.dob = dobStr;
-              } else {
-                // Try to parse and format the date if in different format
-                const dobDate = new Date(dobStr);
-                if (!isNaN(dobDate.getTime())) {
-                  const year = dobDate.getFullYear();
-                  const month = String(dobDate.getMonth() + 1).padStart(2, '0');
-                  const day = String(dobDate.getDate()).padStart(2, '0');
-                  personalInfo.dob = `${year}-${month}-${day}`;
-                } else {
-                  // If parsing fails, log warning but don't store invalid date
-                  console.warn('Invalid date format for dob:', dobStr);
-                }
-              }
-            }
-            
-            // Store permanent_address as address
-            if (apiData.permanent_address) {
-              personalInfo.address = String(apiData.permanent_address);
-            }
-          }
-          
-          // API Success: Store response in api_response_data, keep status pending
+          const personalInfo = extractPersonalInfoFromApiResponse(apiData);
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: "verify_driving_license_api",
+            response: apiResponse
+          };
           const updateData: any = {
             api_response_data: apiResponse,
             api_verification_status: 'completed',
@@ -288,25 +261,12 @@ serve(async (req) => {
             api_verification_date: new Date().toISOString(),
             employee_docs_log: [...existingLogs, logEntry],
             updated_at: new Date().toISOString()
-            // verification_status stays 'pending' - user needs to manually review
           };
-          
-          // Add personal_info if we extracted it
-          if (personalInfo) {
-            updateData.personal_info = personalInfo;
-          }
-          await logVerificationSuccess(supabase, {
-            employeeId,
-            documentId,
-            provider: providerName,
-            statusCode: apiResponse.status_code,
-            response: apiResponse
-          });
+          if (personalInfo) updateData.personal_info = personalInfo;
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update(updateData)
             .eq('id', documentId);
-          
           if (updateError) {
             console.error("Error updating document:", updateError);
             return new Response(
@@ -314,84 +274,165 @@ serve(async (req) => {
               { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: "Driving license API verification completed. Please review the response.",
-              requiresReview: true,
-              ...apiResponse // Include the complete API response data
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        } else {
-          
-          // Parse specific error types for user-friendly messages
-          let userFriendlyError = "Driving License verification failed 12";
-          let errorCode = "DL_VERIFICATION_FAILED";
-          
-          // Handle QuickEKYC error messages
-          if (isQuickEKYC) {
-            const message = rawApiResponse?.message || '';
-            if (message.includes('Verification Failed') || message.includes('verification')) {
-              userFriendlyError = "This Driving License number is not found in RTO records";
-              errorCode = "DL_INVALID";
-            } else if (message.includes('Please Pass Valid Date of Birth') || message.includes('dob')) {
-              userFriendlyError = "Date of birth doesn't match with Driving License records";
-              errorCode = "DL_DOB_MISMATCH";
-            } else if (rawApiResponse?.status_code === 422) {
-              userFriendlyError = message || "Driving License verification failed. Please check the number and try again.";
-            } else {
-              userFriendlyError = message || "Driving License verification failed. Please check the number and try again.";
-            }
-          } else {
-            // Handle Surepass error messages
-            if (apiResponse.message) {
-              const message = apiResponse.message.toLowerCase();
-              if (message.includes('invalid driving') || message.includes('not found in rto')) {
-                userFriendlyError = "This Driving License number is not found in RTO records";
-                errorCode = "DL_INVALID";
-              } else if (message.includes('expired')) {
-                userFriendlyError = "This Driving License has expired";
-                errorCode = "DL_EXPIRED";
-              } else if (message.includes('dob') || message.includes('date of birth')) {
-                userFriendlyError = "Date of birth doesn't match with Driving License records";
-                errorCode = "DL_DOB_MISMATCH";
-              } else if (message.includes('format') || message.includes('pattern')) {
-                userFriendlyError = "Please enter a valid Driving License number";
-                errorCode = "DL_INVALID_FORMAT";
-              } else {
-                userFriendlyError = "Driving License verification failed. Please check the number and try again.";
-              }
-            }
-          }
-          const bothFallback = await logVerificationError(supabase, {
+          await logVerificationSuccess(supabase, {
             employeeId,
             documentId,
-            provider: providerName,
-            message: userFriendlyError,
+            provider: 'quickekyc',
             statusCode: apiResponse.status_code,
             response: apiResponse
           });
-          // Return response indicating API failed but status remains pending for review
           return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: userFriendlyError,
-              errorCode: errorCode,
-              originalError: isQuickEKYC ? rawApiResponse.message : apiResponse.message,
-              message: userFriendlyError,
+            JSON.stringify({
+              success: true,
+              message: "Driving license API verification completed. Please review the response.",
               requiresReview: true,
-              bothFallback,
-              apiResponse: apiResponse // Include API response for review
+              ...apiResponse
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // 2) Primary failed: try fallback (Surepass)
+        const fallbackBaseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || '';
+        const fallbackApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || '';
+        if (!fallbackBaseUrl || !fallbackApiKey) {
+          await logVerificationError(supabase, {
+            employeeId,
+            documentId,
+            provider: 'quickekyc',
+            statusCode: primaryResult.data?.status_code ?? primaryResult.rawApiResponse?.status_code,
+            message: primaryResult.data?.message ?? primaryResult.rawApiResponse?.message,
+            response: primaryResult.data
+          });
+          const userFriendlyError = "Driving License verification failed";
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: userFriendlyError,
+              errorCode: "DL_VERIFICATION_FAILED",
+              requiresReview: true,
+              apiResponse: primaryResult.data
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        const primaryFailureEntry = {
+          timestamp: new Date().toISOString(),
+          action: "verify_driving_license_api_failed",
+          response: primaryResult.data
+        };
+        const logsWithPrimaryFailure = [...existingLogs, primaryFailureEntry];
+
+        lastAttemptedProvider = 'surepass';
+        console.log("Primary failed; calling fallback (Surepass) API for driving license verification");
+        const fallbackResult = await callDrivingLicenseProvider(FALLBACK_PROVIDER, licenseNumber, dob);
+        console.log("Fallback (Surepass) API response:", JSON.stringify(fallbackResult.rawApiResponse));
+
+        if (fallbackResult.success) {
+          const apiResponse = fallbackResult.data;
+          const apiData = apiResponse?.data || {};
+          const personalInfo = extractPersonalInfoFromApiResponse(apiData);
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: "verify_driving_license_api",
+            response: apiResponse
+          };
+          const updateData: any = {
+            api_response_data: apiResponse,
+            api_verification_status: 'completed',
+            api_verification_method: 'api',
+            api_verification_date: new Date().toISOString(),
+            employee_docs_log: [...logsWithPrimaryFailure, logEntry],
+            updated_at: new Date().toISOString()
+          };
+          if (personalInfo) updateData.personal_info = personalInfo;
+          const { error: updateError } = await supabase
+            .from('employee_documents')
+            .update(updateData)
+            .eq('id', documentId);
+          if (updateError) {
+            console.error("Error updating document:", updateError);
+            return new Response(
+              JSON.stringify({ error: "Failed to store API response" }),
+              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          await logVerificationSuccess(supabase, {
+            employeeId,
+            documentId,
+            provider: 'surepass',
+            statusCode: apiResponse.status_code,
+            response: apiResponse
+          });
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: "Driving license API verification completed (fallback). Please review the response.",
+              requiresReview: true,
+              ...apiResponse
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // 3) Both primary and fallback failed: log error with bothFallback true
+        const apiResponse = fallbackResult.data;
+        const rawApiResponse = fallbackResult.rawApiResponse;
+        let userFriendlyError = "Driving License verification failed";
+        let errorCode = "DL_VERIFICATION_FAILED";
+        if (apiResponse?.message) {
+          const message = apiResponse.message.toLowerCase();
+          if (message.includes('invalid driving') || message.includes('not found in rto')) {
+            userFriendlyError = "This Driving License number is not found in RTO records";
+            errorCode = "DL_INVALID";
+          } else if (message.includes('expired')) {
+            userFriendlyError = "This Driving License has expired";
+            errorCode = "DL_EXPIRED";
+          } else if (message.includes('dob') || message.includes('date of birth')) {
+            userFriendlyError = "Date of birth doesn't match with Driving License records";
+            errorCode = "DL_DOB_MISMATCH";
+          } else if (message.includes('format') || message.includes('pattern')) {
+            userFriendlyError = "Please enter a valid Driving License number";
+            errorCode = "DL_INVALID_FORMAT";
+          }
+        }
+        const fallbackFailureEntry = {
+          timestamp: new Date().toISOString(),
+          action: "verify_driving_license_api_failed",
+          response: apiResponse
+        };
+        await supabase
+          .from('employee_documents')
+          .update({
+            employee_docs_log: [...logsWithPrimaryFailure, fallbackFailureEntry],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: 'surepass',
+          statusCode: apiResponse?.status_code ?? rawApiResponse?.status_code,
+          message: apiResponse?.message,
+          response: apiResponse,
+          bothFallback: true
+        });
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: userFriendlyError,
+            errorCode,
+            originalError: apiResponse?.message ?? rawApiResponse?.message,
+            message: userFriendlyError,
+            requiresReview: true,
+            bothFallback: true,
+            apiResponse
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       } catch (error) {
-        console.error(`Error calling ${isQuickEKYC ? 'QuickEKYC' : 'Surepass'} API:`, error);
-        
-        // API call failed completely - set to failed status
+        console.error("Error verifying Driving License (primary/fallback):", error);
         await supabase
           .from('employee_documents')
           .update({
@@ -402,29 +443,34 @@ serve(async (req) => {
             employee_docs_log: [...existingLogs, {
               timestamp: new Date().toISOString(),
               action: "verify_driving_license_api_error",
-              response: { error: error.message }
+              response: { error: (error as Error).message }
             }],
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
-        
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: lastAttemptedProvider,
+          message: (error as Error).message,
+          response: { error: (error as Error).message },
+          bothFallback: lastAttemptedProvider === 'surepass'
+        });
         let userFriendlyError = "Something went wrong during Driving License verification. Please try again.";
         let errorCode = "INTERNAL_ERROR";
-        
-        if (error.message?.includes('timeout') || error.message?.includes('connection')) {
+        if ((error as Error).message?.includes('timeout') || (error as Error).message?.includes('connection')) {
           userFriendlyError = "Verification service is temporarily unavailable. Please try again.";
           errorCode = "CONNECTION_TIMEOUT";
-        } else if (error.message?.includes('429') || error.message?.includes('limit')) {
+        } else if ((error as Error).message?.includes('429') || (error as Error).message?.includes('limit')) {
           userFriendlyError = "Too many verification attempts. Please try again after some time.";
           errorCode = "API_LIMIT_EXCEEDED";
         }
-        
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             success: false,
             error: userFriendlyError,
-            errorCode: errorCode,
-            originalError: error.message
+            errorCode,
+            originalError: (error as Error).message
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

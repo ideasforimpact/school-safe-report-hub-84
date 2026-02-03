@@ -268,7 +268,7 @@ async function requestAadharOtpWithFallback(
           documentId,
           provider:'surepass',
           statusCode: 200,
-          response: surePareData
+          response: surePareData,
       });
     }
     if (surePareData?.status_code === 500) {
@@ -278,7 +278,8 @@ async function requestAadharOtpWithFallback(
         provider: 'surepass',
         statusCode: 500,
         message: surePareData.message,
-        response: surePareData
+        response: surePareData,
+        bothFallback : true
       });
     }
     return { response: surePareResponse, data: surePareData, api: 'surepare' };
