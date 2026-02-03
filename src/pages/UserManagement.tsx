@@ -171,7 +171,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       const { data, error } = await supabase
         .from('employee_departments' as any)
         .select('id, department_name');
-      console.log(data,'uhyghydsatfyfdsayfdfdsf');
       
       if (error) throw error;
       
