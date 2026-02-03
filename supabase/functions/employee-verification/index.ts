@@ -688,13 +688,14 @@ serve(async (req) => {
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
       // Check if document has had an OTP generated recently
+      const { data: document, error: docError } = await supabase
+        .from('employee_documents')
+        .select('last_otp_generated, employee_id')
+        .eq('id', documentId)
+        .single();
+      const employeeId = document.employee_id;
+      let currentProvider: 'quickekyc' | 'surepass' = 'quickekyc';
       if (documentId) {
-        const { data: document, error: docError } = await supabase
-          .from('employee_documents')
-          .select('last_otp_generated, employee_id')
-          .eq('id', documentId)
-          .single();
-        
         if (docError) {
           console.error("Error fetching document:", docError);
         } else if (document?.last_otp_generated) {
@@ -766,7 +767,8 @@ serve(async (req) => {
           documentId);
         
         console.log(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API response:`, JSON.stringify(rawData));
-        
+        currentProvider = usedApi === 'quickekyc' ? 'quickekyc' : 'surepass';
+
         // Normalize QuickEKYC response to Surepass format
         const isQuickEKYCUsed = usedApi === 'quickekyc';
         const data = isQuickEKYCUsed ? normalizeQuickEKYCResponse(rawData, true) : rawData;
@@ -811,6 +813,19 @@ serve(async (req) => {
           );
         }
       } catch (error) {
+        await logVerificationError(supabase, {
+          employeeId,
+          documentId,
+          provider: currentProvider, 
+          statusCode: 500,
+          message:
+            error instanceof Error
+              ? error.message
+              : 'OTP verification failed due to unexpected error',
+          response: {
+            error: String(error)
+          }
+        });
         console.error(`Error calling API:`, error);
         return new Response(
           JSON.stringify({ success: false, error: "Unable to connect to verification service. Please try again later" }),
