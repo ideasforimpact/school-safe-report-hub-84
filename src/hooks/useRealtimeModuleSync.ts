@@ -4,6 +4,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 import { setConfiguredModules } from '@/store/employeeActions';
 import { toast } from 'sonner';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * Hook to sync module access in real-time when changes occur
@@ -17,11 +18,12 @@ export const useRealtimeModuleSync = () => {
   // Toast deduplication: prevent multiple identical toasts within 5 seconds
   const lastToastTimeRef = useRef<number>(0);
   const TOAST_DEBOUNCE_MS = 5000; // 5 seconds
-
+  const navigate = useNavigate();
+  const location = useLocation();
   const refreshModules = useCallback(async () => {
     const employeeId = getEmployeeId();
     const clientId = getClientId();
-    
+    const normalize = (p: string) => p.toLowerCase().replace(/\/+$/, '');
     if (!employeeId || !clientId) {
       return;
     }
@@ -157,7 +159,30 @@ export const useRealtimeModuleSync = () => {
 
       // Update the configured modules in Redux store
       dispatch(setConfiguredModules(configuredModules));
-      
+      const currentPath = normalize(location.pathname);
+
+      if (currentPath.startsWith('/backoffice')) return;
+
+      if (configuredModules.length === 0) return;
+
+      const enabledUrls = configuredModules
+        .filter(m => m.enabled && m.url)
+        .map(m => normalize(m.url));
+
+      if (enabledUrls.length === 0) return;
+
+      const isAllowed = enabledUrls.some(url =>
+        currentPath.startsWith(url)
+      );
+
+      if (!isAllowed) {
+        const redirectTarget = enabledUrls[0];
+        console.warn(
+          'Realtime module disabled → redirecting to:',
+          redirectTarget
+        );
+        navigate(redirectTarget, { replace: true });
+      }
       // Show toast notification with deduplication - only if enough time has passed
       const currentTime = Date.now();
       if (currentTime - lastToastTimeRef.current > TOAST_DEBOUNCE_MS) {
