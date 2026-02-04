@@ -251,22 +251,27 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
 
   // Get the latest verification data for display
   const latestVerificationData = getLatestVerificationData();
+  const latestChallanSuccessLog = React.useMemo(() => {
+    const logs = vehicleChallans?.challan_history_log;
+    if (!logs || typeof logs !== 'object') return null;
 
-  const latestChallanSnapshot = React.useMemo(() => {
-    return vehicleChallans?.latest_challan_data ?? null;
+    const successLogs = Object.entries(logs).filter(
+      ([_, entry]: any) => entry?.data?.status_code === 200
+    );
+
+    if (successLogs.length === 0) return null;
+
+    successLogs.sort(
+      ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    const [timestamp, log]: any = successLogs[0];
+
+    return {
+      timestamp,
+      provider: log.provider,
+    };
   }, [vehicleChallans]);
-  
-  const latestChallanError = React.useMemo(() => {
-    if (!latestChallanSnapshot) return null;
-
-    if (latestChallanSnapshot.success === false) {
-      return (
-        'Unable to fetch challan details. Please contact the administrator for support.'
-      );
-    }
-
-    return null;
-  }, [latestChallanSnapshot]);
 
   return (
     <Card>
@@ -361,10 +366,10 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 title="Latest Verification Details"
                 vehicle={vehicle}
                 apiResponse={apiResponseData}
-                challanSnapshot={latestChallanSnapshot}
-                challanError={latestChallanError}
-                hasChallanData={!!latestChallanSnapshot}
                 vehicleChallans={vehicleChallans}
+                challanError={
+                  latestChallanSuccessLog ? null : 'No successful challan check available.'
+                }
               />
             </Dialog>
           </div>

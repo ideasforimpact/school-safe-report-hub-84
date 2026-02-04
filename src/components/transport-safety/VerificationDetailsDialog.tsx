@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/dateUtils';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Clock } from 'lucide-react';
 import { Vehicle, VehicleChallans } from '@/types/transportSafety';
 import { transformVehicleData, transformApiResponseData } from '@/utils/transport-safety/documentStatusUtils';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +60,30 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         return provider === 'surepass' ? 'Surepass' : provider === 'quickeyc' ? 'QuickEKYC' : provider;
     };
 
+    const latestChallanSuccessLog = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
+
+        const successLogs = Object.entries(logs).filter(
+            ([_, entry]: any) => entry?.data?.status_code === 200
+        );
+
+        if (successLogs.length === 0) return null;
+
+        successLogs.sort(
+            ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+        );
+
+        const [timestamp, log]: any = successLogs[0];
+
+        return {
+            timestamp,
+            provider: log.provider,
+            data: log.data?.data, // real challan payload
+        };
+    }, [vehicleChallans]);
+
+
     // Transform vehicle data using common utility function
     const transformedData = React.useMemo(() => {
         // Priority 1: Use API response data directly (from vehicle-verify edge function)
@@ -99,20 +123,15 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
     // Get challan details from vehicle_challans.latest_challan_data (priority) or transformed data
     const challanDetails = React.useMemo(() => {
-        if (!challanSnapshot || challanSnapshot.success === false) return [];
-            console.log(challanSnapshot,'dsfjhgsvdfsdfdsffsg');
-            
-        const data = challanSnapshot?.data?.data || challanSnapshot?.data;
+        const challanData = latestChallanSuccessLog?.data;
+        if (!challanData) return [];
 
         return (
-            data?.challan_details?.challans ||
-            data?.challan_data ||
+            challanData?.challan_details?.challans ||
+            challanData?.challan_data ||
             []
         );
-    }, [challanSnapshot]);
-
-        
-
+    }, [latestChallanSuccessLog]);
     const disposedChallans = challanDetails.filter((c: any) =>
         ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
     );
@@ -228,6 +247,13 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                         <DialogDescription>
                             Registration details verified through {getProviderName(vehicle?.provider)} API.
                         </DialogDescription>
+                    )}
+                    {latestChallanSuccessLog && (
+                    <div className="mt-1 text-xs text-gray-500 flex items-center">
+                        <Clock className="h-3.5 w-3.5 mr-1.5" />
+                        Latest challan check •{" "}
+                        {formatDateTime(new Date(latestChallanSuccessLog.timestamp))}
+                    </div>
                     )}
                 </DialogHeader>
 

@@ -492,12 +492,40 @@ export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChall
 /**
  * Get pending challans from vehicle_challans table
  */
-export const getPendingChallansFromVehicleChallans = (vehicleChallans: VehicleChallans | null): any[] => {
-  const allChallans = extractChallansFromVehicleChallans(vehicleChallans);
-  return allChallans.filter(
+export const getPendingChallansFromVehicleChallans = (
+  vehicleChallans: VehicleChallans | null
+): any[] => {
+  const logs = vehicleChallans?.challan_history_log;
+  if (!logs || typeof logs !== 'object') return [];
+
+  const successLogs = Object.entries(logs).filter(
+    ([_, entry]: any) => entry?.data?.status_code === 200
+  );
+
+  if (successLogs.length === 0) return [];
+
+  successLogs.sort(
+    ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+  );
+
+  const [, latestLog]: any = successLogs[0];
+
+  const challanData = latestLog?.data?.data;
+  if (!challanData) return [];
+
+  const challans =
+    challanData?.challan_details?.challans ||
+    challanData?.challan_data ||
+    [];
+
+  if (!Array.isArray(challans)) return [];
+
+  return challans.filter(
     (c: any) =>
-      c.challan_status &&
-      !['DISPOSED', 'PAID'].includes(c.challan_status.toUpperCase())
+      c?.challan_status &&
+      !['DISPOSED', 'PAID'].includes(
+        String(c.challan_status).toUpperCase()
+      )
   );
 };
 
