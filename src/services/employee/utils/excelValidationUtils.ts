@@ -10,7 +10,7 @@ const requiredFields: (keyof RawEmployeeData)[] = [
   'employeeId',
   'firstName',
   'lastName',
-  'email',
+  // 'email', // email is optional
   'employeeType',
   'department',
   'designation', 
@@ -140,7 +140,7 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
     'employeeId', 
     'firstName', 
     'lastName', 
-    'email', 
+    // 'email', // email column is optional
     'employeeType',
     'department',
     'joiningDate',
