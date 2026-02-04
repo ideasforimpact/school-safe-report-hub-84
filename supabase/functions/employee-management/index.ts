@@ -265,17 +265,37 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     );
   }
  
-  const emails = employees.map(e => e.email?.toLowerCase());
-  const employeeIds = employees.map(e => e.employeeId);
+  // Collect non-empty emails and employee IDs for duplicate checks
+  const emails = employees
+    .map(e => e.email?.toLowerCase())
+    .filter((email: string | undefined) => !!email);
+  const employeeIds = employees
+    .map(e => e.employeeId)
+    .filter((id: string | undefined) => !!id);
  
-  const { data: existingEmployees, error: fetchError } =
-    await supabaseClient
+  let existingEmployees: any[] | null = null;
+  let fetchError: any = null;
+
+  if (emails.length > 0 || employeeIds.length > 0) {
+    let query = supabaseClient
       .from("employees")
       .select("email, employee_id")
-      .eq("client_id", clientId)
-      .or(
-        `email.in.(${emails.join(",")}),employee_id.in.(${employeeIds.join(",")})`
-      );
+      .eq("client_id", clientId);
+
+    const conditions: string[] = [];
+    if (emails.length > 0) {
+      conditions.push(`email.in.(${emails.join(",")})`);
+    }
+    if (employeeIds.length > 0) {
+      conditions.push(`employee_id.in.(${employeeIds.join(",")})`);
+    }
+
+    if (conditions.length > 0) {
+      const { data, error } = await query.or(conditions.join(","));
+      existingEmployees = data;
+      fetchError = error;
+    }
+  }
  
   if (fetchError) {
     console.error("Duplicate check failed:", fetchError);
@@ -302,8 +322,9 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
   const errors: string[] = [];
  
   for (const emp of employees) {
-    if (!emp.email || !emp.employeeId) {
-      errors.push("Missing email or employeeId");
+    // Employee ID is required; email is optional
+    if (!emp.employeeId) {
+      errors.push("Missing employeeId");
       continue;
     }
  
@@ -315,7 +336,7 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       employee_id: emp.employeeId,
       first_name: emp.firstName,
       last_name: emp.lastName || null,
-      email: emp.email,
+      email: emp.email || null,
      employee_type: employeeTypeId,
       department: departmentId,
       designation: emp.designation || null,
@@ -387,40 +408,42 @@ async function handleCreate(supabaseClient: any, employee: any) {
   
   console.log("Creating employee with clientId:", clientId);
   
-  // Check for duplicate email within the same client
-  console.log("Checking for existing email", employee.email, "for client", clientId);
-  const { data: existingEmailEmployee, error: emailCheckError } = await supabaseClient
-    .from('employees')
-    .select('id')
-    .eq('email', employee.email)
-    .eq('client_id', clientId)
-    .maybeSingle();
- 
-  if (emailCheckError) {
-    console.error("Error checking for existing employee email:", emailCheckError);
-    return new Response(
-      JSON.stringify({ error: "Error checking for existing employee email" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
-  }
- 
-  console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmailEmployee);
- 
-  if (existingEmailEmployee) {
-    const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
-    return new Response(
-      JSON.stringify({
-        error: errorMessage,
-        code: "DUPLICATE_EMAIL"
-      }),
-      {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  // Check for duplicate email within the same client (only if email is provided)
+  if (employee.email) {
+    console.log("Checking for existing email", employee.email, "for client", clientId);
+    const { data: existingEmailEmployee, error: emailCheckError } = await supabaseClient
+      .from('employees')
+      .select('id')
+      .eq('email', employee.email)
+      .eq('client_id', clientId)
+      .maybeSingle();
+
+    if (emailCheckError) {
+      console.error("Error checking for existing employee email:", emailCheckError);
+      return new Response(
+        JSON.stringify({ error: "Error checking for existing employee email" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmailEmployee);
+
+    if (existingEmailEmployee) {
+      const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
+      return new Response(
+        JSON.stringify({
+          error: errorMessage,
+          code: "DUPLICATE_EMAIL"
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
   }
  
   // Check for duplicate Employee ID within the same client
@@ -469,7 +492,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
     employee_id: employee.employeeId,
     first_name: employee.firstName,
     last_name: employee.lastName,
-    email: employee.email,
+    email: employee.email || null,
     phone: employee.phone || null,
     designation: employee.designation || null,
     employee_type: employeeTypeId,
@@ -551,41 +574,43 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   
   console.log("Updating employee with ID:", employee.id, "clientId:", clientId);
  
-  // Check for duplicate email within the same client (excluding current employee)
-  console.log("Checking for existing email", employee.email, "for client", clientId);
-  const { data: existingEmailEmployee, error: emailCheckError } = await supabaseClient
-    .from('employees')
-    .select('id')
-    .eq('email', employee.email)
-    .eq('client_id', clientId)
-    .neq('id', employee.id)
-    .maybeSingle();
- 
-  if (emailCheckError) {
-    console.error("Error checking for existing employee email:", emailCheckError);
-    return new Response(
-      JSON.stringify({ error: "Error checking for existing employee email" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
-  }
- 
-  console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmailEmployee);
- 
-  if (existingEmailEmployee) {
-    const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
-    return new Response(
-      JSON.stringify({
-        error: errorMessage,
-        code: "DUPLICATE_EMAIL"
-      }),
-      {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  // Check for duplicate email within the same client (excluding current employee, only if email is provided)
+  if (employee.email) {
+    console.log("Checking for existing email", employee.email, "for client", clientId);
+    const { data: existingEmailEmployee, error: emailCheckError } = await supabaseClient
+      .from('employees')
+      .select('id')
+      .eq('email', employee.email)
+      .eq('client_id', clientId)
+      .neq('id', employee.id)
+      .maybeSingle();
+
+    if (emailCheckError) {
+      console.error("Error checking for existing employee email:", emailCheckError);
+      return new Response(
+        JSON.stringify({ error: "Error checking for existing employee email" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmailEmployee);
+
+    if (existingEmailEmployee) {
+      const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
+      return new Response(
+        JSON.stringify({
+          error: errorMessage,
+          code: "DUPLICATE_EMAIL"
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
   }
  
   // Check for duplicate Employee ID within the same client (excluding current employee)
@@ -640,7 +665,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   const updateData: any = {
     first_name: employee.firstName,
     last_name: employee.lastName,
-    email: employee.email,
+    email: employee.email || null,
     phone: employee.phone || null,
     designation: employee.designation || null,
     joining_date:employee.joiningDate

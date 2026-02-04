@@ -38,8 +38,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       const row = rawData[i];
       
       try {
-        // Ensure all required fields are present
-        const requiredFields = ['employeeId', 'firstName', 'lastName', 'email', 'employeeType', 'department', 'joiningDate', 'status'];
+        // Ensure all required fields are present (email is optional)
+        const requiredFields = ['employeeId', 'firstName', 'lastName', 'employeeType', 'department', 'joiningDate', 'status'];
         const missingFields = requiredFields.filter(field => {
           const value = row[field];
           return value === undefined || value === null || 

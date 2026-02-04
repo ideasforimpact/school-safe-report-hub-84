@@ -170,7 +170,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     try {
       const { data, error } = await supabase
         .from('employee_departments' as any)
-        .select('id, department_name');
+        .select('id, department_name')
+        .order('department_name', { ascending: true });
       
       if (error) throw error;
       
@@ -866,7 +867,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
                   {departmentOptions.map((dept) => (
                     <SelectItem value={dept.id}>
-                      {dept.department_name}
+                      {dept.department_name
+                        ? dept.department_name.charAt(0).toUpperCase() +
+                          dept.department_name.slice(1)
+                        : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
