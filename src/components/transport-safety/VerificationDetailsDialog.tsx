@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/dateUtils';
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Circle } from 'lucide-react';
 import { Vehicle, VehicleChallans } from '@/types/transportSafety';
 import { transformVehicleData, transformApiResponseData } from '@/utils/transport-safety/documentStatusUtils';
 import { Badge } from '@/components/ui/badge';
@@ -101,6 +101,20 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         
         return [];
     }, [apiResponse, vehicle]);
+    const latestLogTimestamp = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
+
+        return Object.keys(logs)
+            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    }, [vehicleChallans]);
+    const shouldShowLatestChallanCheck = React.useMemo(() => {
+        if (!latestChallanSuccessLog?.timestamp) return false;
+        if (!latestLogTimestamp) return false;
+
+        return latestChallanSuccessLog.timestamp !== latestLogTimestamp;
+    }, [latestChallanSuccessLog, latestLogTimestamp]);
+
 
     // Format data for display (convert to label/value format)
     const rcDataForDisplay = React.useMemo(() => {
@@ -248,10 +262,10 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                             Registration details verified through {getProviderName(vehicle?.provider)} API.
                         </DialogDescription>
                     )}
-                    {latestChallanSuccessLog && (
+                    {shouldShowLatestChallanCheck && (
                     <div className="mt-1 text-xs text-gray-500 flex items-center">
-                        <Clock className="h-3.5 w-3.5 mr-1.5" />
-                        Latest challan check •{" "}
+                        <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
+                        Latest successful check •{" "}
                         {formatDateTime(new Date(latestChallanSuccessLog.timestamp))}
                     </div>
                     )}

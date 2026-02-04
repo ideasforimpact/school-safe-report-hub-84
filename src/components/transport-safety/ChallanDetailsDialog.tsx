@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/utils/dateUtils';
 import { VehicleChallans } from '@/types/transportSafety';
+import { Circle } from 'lucide-react';
 
 interface ChallanDetailsDialogProps {
     open: boolean;
@@ -60,6 +61,21 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
         }
         return [];
     }, [latestSuccessLog]);
+    const latestLogTimestamp = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
+
+        return Object.keys(logs)
+            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    }, [vehicleChallans]);
+
+    const shouldShowLatestSuccessCheck = React.useMemo(() => {
+        if (!latestSuccessLog?.timestamp) return false;
+        if (!latestLogTimestamp) return false;
+
+        // Show ONLY if data is from an older successful log
+        return latestSuccessLog.timestamp !== latestLogTimestamp;
+    }, [latestSuccessLog, latestLogTimestamp]);
 
     const disposedChallans = challanDetails.filter((c: any) =>
         ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
@@ -164,10 +180,11 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
             <DialogContent className="sm:max-w-[100vh] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                     <DialogTitle>Challan Details</DialogTitle>
-                    {latestSuccessLog && (
-                        <div className="mt-1 text-xs text-gray-500">
+                    {shouldShowLatestSuccessCheck && (
+                        <div className="mt-1 text-xs text-gray-500 flex items-center">
+                        <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
                         Latest successful check •{" "}
-                        {formatDateTime(new Date(latestSuccessLog.timestamp))}
+                            {formatDateTime(new Date(latestSuccessLog.timestamp))}
                         </div>
                     )}
                 </DialogHeader>
