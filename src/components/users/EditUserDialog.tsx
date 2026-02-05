@@ -368,11 +368,15 @@ const EditUserDialog = ({
         enabled: module.enabled !== false
       }));
     try {
+      const normalizedEmail =
+        formData.email && formData.email.trim() !== '' ? formData.email.trim() : null;
+
       const updateData = {
         id: currentUser.id,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        email: formData.email || undefined,
+        // Send null when the email field is cleared so the DB value is actually removed
+        email: normalizedEmail,
         employeeId: formData.employeeId,
         phone: formData.phone,
         designation: formData.designation,
