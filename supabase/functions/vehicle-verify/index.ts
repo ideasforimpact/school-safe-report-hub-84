@@ -1283,7 +1283,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          original: mapRcDataForCurrentRc(providerData.data),
+          original: providerData,
           challan: challanData,
           transformed: completeTransformedData,
           status: verificationStatus,

@@ -257,11 +257,6 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             <DialogContent className="sm:max-w-[100vh] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                     <DialogTitle>{title}</DialogTitle>
-                    {!hideMainTabs && (
-                        <DialogDescription>
-                            Registration details verified through {getProviderName(vehicle?.provider)} API.
-                        </DialogDescription>
-                    )}
                     {shouldShowLatestChallanCheck && (
                     <div className="mt-1 text-xs text-gray-500 flex items-center">
                         <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
