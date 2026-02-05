@@ -28,13 +28,6 @@ export const processEmployeeExcel = async (
     const rawData = await parseEmployeeFile(file);
     console.log("File data parsed successfully, records:", rawData.length);
 
-    // Verify that we have email data in the parsed records
-    const missingEmails = rawData.filter(emp => !emp.email || emp.email.trim() === '').length;
-    if (missingEmails > 0) {
-      console.error(`Warning: ${missingEmails} records are missing email addresses`);
-      toast.warning(`${missingEmails} records are missing email addresses. Please check your file.`);
-    }
-
     // Show status message for large imports
     if (rawData.length > 100) {
       toast.info(`Processing ${rawData.length} records. This may take a moment...`);
@@ -79,16 +72,8 @@ export const processEmployeeExcel = async (
         enabled: true,
         employeeId: String(emp.employeeId)
       }));
-      const email =
-        emp.email?.trim() !== ""
-          ? emp.email
-          : `${emp.firstName.toLowerCase().replace(/\s/g, '')}.${emp.lastName
-              .toLowerCase()
-              .replace(/\s/g, '')}@example.com`;
-
-      if (!emp.email?.trim()) {
-        console.warn(`Generated default email for ${emp.firstName} ${emp.lastName}: ${email}`);
-      }
+      // Preserve the email from the uploaded file; do not auto-generate one
+      const email = emp.email?.trim() || '';
       return {
         ...emp,
         email,
