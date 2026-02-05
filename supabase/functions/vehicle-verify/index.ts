@@ -366,7 +366,60 @@ async function saveErrorLog(
     console.log('Error log saved successfully');
   }
 }
+function mapRcDataForCurrentRc(data: any) {
+  if (!data || typeof data !== 'object') return null;
 
+  const registrationYear =
+    data.registration_date
+      ? new Date(data.registration_date).getFullYear()
+      : null;
+     let originaldata:any={};
+     originaldata['data']={
+    display_type: data.maker_model || null,              
+    display_year: registrationYear || null,      
+    rc_number: data.rc_number || data.registration_number || null,
+    fit_up_to: data.fit_up_to || null,
+    registration_date: data.registration_date || null,
+    owner_name: data.owner_name || null,
+    father_name: data.father_name || null,
+    present_address: data.present_address || null,
+    permanent_address: data.permanent_address || null,
+    vehicle_category: data.vehicle_category || null,
+    vehicle_chasi_number: data.vehicle_chasi_number || null,
+    vehicle_engine_number: data.vehicle_engine_number || null,
+    maker_description: data.maker_description || null,
+    maker_model: data.maker_model || null,
+    body_type: data.body_type || null,
+    fuel_type: data.fuel_type || null,
+    color: data.color || null,
+    norms_type: data.norms_type || null,
+    financer: data.financer || null,
+    insurance_company: data.insurance_company || null,
+    insurance_policy_number: data.insurance_policy_number || null,
+    insurance_upto: data.insurance_upto || null,
+    manufacturing_date: data.manufacturing_date || null,
+    manufacturing_date_formatted: data.manufacturing_date_formatted || null,
+    registered_at: data.registered_at || null,
+    latest_by: data.latest_by || null,
+    less_info: data.less_info || null,
+    tax_upto: data.tax_upto || null,
+    tax_paid_upto: data.tax_paid_upto || null,
+    cubic_capacity: data.cubic_capacity || null,
+    vehicle_gross_weight: data.vehicle_gross_weight || null,
+    no_cylinders: data.no_cylinders || null,
+    seat_capacity: data.seat_capacity || null,
+    sleeper_capacity: data.sleeper_capacity || null,
+    standing_capacity: data.standing_capacity || null,
+    wheelbase: data.wheelbase || null,
+    unladen_weight: data.unladen_weight || null,
+    vehicle_category_description: data.vehicle_category_description || null,
+    pucc_number: data.pucc_number || null,
+    pucc_upto: data.pucc_upto || null,
+    owner_number: data.owner_number || null,
+    rc_status: data.rc_status || null,
+  };
+  return originaldata;
+}
 /**
  * Update vehicles table with RC API response data
  */
@@ -1230,7 +1283,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          original: providerData,
+          original: mapRcDataForCurrentRc(providerData.data),
           challan: challanData,
           transformed: completeTransformedData,
           status: verificationStatus,
