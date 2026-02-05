@@ -91,6 +91,7 @@ export const useEmployeeValidation = () => {
         console.warn('No session token available for validation');
         return;
       }
+      console.log(employeeData,"employeeData3232");
       
       // Use fetch directly to get the response body (including for 403 errors)
       const response = await fetch(`${supabaseUrl}/functions/v1/validate-employee`, {

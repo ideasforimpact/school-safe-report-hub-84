@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
@@ -22,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
+import { formatDate } from "@/lib/Dateformat";
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -241,18 +241,9 @@ const UserList = ({
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
             <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
-            <TableCell>{(() => {
-              if (!user.joiningDate) return '-';
-              // Normalize both 'YYYY-MM-DD' and ISO strings to DD-MM-YYYY
-              const s = String(user.joiningDate);
-              const iso = /T/.test(s) ? new Date(s) : new Date(`${s}T00:00:00`);
-              if (isNaN(iso.getTime())) return s;
-              const dd = String(iso.getDate()).padStart(2, '0');
-              const mm = String(iso.getMonth() + 1).padStart(2, '0');
-              const yyyy = iso.getFullYear();
-              return `${dd}-${mm}-${yyyy}`;
-            })()}</TableCell>
-            
+            <TableCell>
+              {user.joiningDate ? formatDate(user.joiningDate) : '-'}
+            </TableCell>            
             <TableCell>
               {user.isActive ? (
                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">

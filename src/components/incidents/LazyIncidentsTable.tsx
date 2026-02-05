@@ -19,7 +19,7 @@ import { useIncidentPermissions } from '@/utils/incidentPermissions';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
-
+import { formatDate } from "@/lib/Dateformat";
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -116,14 +116,6 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const getPriorityIcon = (priority: string) => {
     const iconClass = priority === 'Critical' ? 'text-red-500' : priority === 'High' ? 'text-orange-500' : 'text-gray-500';
     return <AlertTriangle className={`h-4 w-4 ${iconClass}`} />;
-  };
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }).format(date);
   };
 
   const getSimpleId = (ticketId: string) => {

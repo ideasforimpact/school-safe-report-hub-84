@@ -26,7 +26,7 @@ import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-
+import { formatDate } from "@/lib/Dateformat";
 
 const FormsPage = () => {
   const location = useLocation();
@@ -308,16 +308,6 @@ const FormsPage = () => {
     setEditingForm(null);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const buildPreviewUrl = (form: CustomForm) => {
     return `${window.location.origin}/form-preview/${form.id}`;
   };
@@ -506,758 +496,761 @@ const FormsPage = () => {
     onPayload: handleSubmissionUpdated,
   });
 
-  // Shared header and content wrapper depending on mode
-  const Content = (
-    <div className="w-full py-6">
-      <div className="mx-6 space-y-6">
-      <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
-          <div className="flex items-start gap-3">
-            <FileText className="h-8 w-8 mt-3 text-blue-600 shrink-0" />
-            <div>
-              <h1 className="text-2xl font-bold">
-                {isBackoffice ? 'Form Management' : 'Grievances'}
-              </h1>
-              <p className="text-gray-600 mt-1">
-                {isBackoffice
-                  ? 'Configure grievance forms for clients'
-                  : 'Search and manage grievances'}
-              </p>
-            </div>
+// Shared header and content wrapper depending on mode
+const Content = (
+<div className="w-full py-6">
+  <div className="mx-6 space-y-6">
+  <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
+      <div className="flex items-start gap-3">
+        <FileText className="h-8 w-8 mt-3 text-blue-600 shrink-0" />
+        <div>
+          <h1 className="text-2xl font-bold">
+            {isBackoffice ? 'Form Management' : 'Grievances'}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {isBackoffice
+              ? 'Configure grievance forms for clients'
+              : 'Search and manage grievances'}
+          </p>
+        </div>
+      </div>
+      {!isBackoffice && (
+        <div className="mt-4 flex gap-96">
+          <div className='ms-12'>
+            <p className="text-sm text-gray-500">Open Grievances</p>
+            <p className="text-3xl font-semibold text-orange-600">
+              {grievanceStats.open}
+            </p>
           </div>
-          {!isBackoffice && (
-            <div className="mt-4 flex gap-96">
-              <div className='ms-12'>
-                <p className="text-sm text-gray-500">Open Grievances</p>
-                <p className="text-3xl font-semibold text-orange-600">
-                  {grievanceStats.open}
-                </p>
-              </div>
 
-              <div>
-                <p className="text-sm text-gray-500">Acknowledged Grievances</p>
-                <p className="text-3xl font-semibold text-blue-600">
-                  {grievanceStats.acknowledged}
-                </p>
-              </div>
+          <div>
+            <p className="text-sm text-gray-500">Acknowledged Grievances</p>
+            <p className="text-3xl font-semibold text-blue-600">
+              {grievanceStats.acknowledged}
+            </p>
+          </div>
 
-              <div>
-                <p className="text-sm text-gray-500">Closed Grievances</p>
-                <p className="text-3xl font-semibold text-green-600">
-                  {grievanceStats.closed}
-                </p>
-              </div>
+          <div>
+            <p className="text-sm text-gray-500">Closed Grievances</p>
+            <p className="text-3xl font-semibold text-green-600">
+              {grievanceStats.closed}
+            </p>
+          </div>
 
-            </div>
+        </div>
+      )}
+    </div>
+
+  {/* Client Selection (backoffice only) */}
+  {isBackoffice && (
+    <Card>
+      <CardHeader>
+        <CardTitle>Select Client</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Active Client:</span>
+            <Select 
+              value={selectedClientId} 
+              onValueChange={setSelectedClientId}
+              disabled={clientsLoading}
+            >
+              <SelectTrigger className="w-80">
+                <SelectValue placeholder="Select an active client" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients
+                  .filter(c => c.active)
+                  .map((cl) => (
+                    <SelectItem key={cl.id} value={cl.id}>
+                      {cl.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedClientId && (
+            <Button onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Form
+            </Button>
           )}
         </div>
+      </CardContent>
+    </Card>
+  )}
 
-        {/* Client Selection (backoffice only) */}
-        {isBackoffice && (
+  {/* Content based on mode */}
+  {effectiveClientId ? (
+    <div className="space-y-6">
+      {/* Forms Management (backoffice only) */}
+      {isBackoffice && (
+        <>
+        {showFormConfig ? (
           <Card>
             <CardHeader>
-              <CardTitle>Select Client</CardTitle>
+              <CardTitle>{editingForm ? 'Edit Form' : 'Create Form'}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Active Client:</span>
-                  <Select 
-                    value={selectedClientId} 
-                    onValueChange={setSelectedClientId}
-                    disabled={clientsLoading}
-                  >
-                    <SelectTrigger className="w-80">
-                      <SelectValue placeholder="Select an active client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients
-                        .filter(c => c.active)
-                        .map((cl) => (
-                          <SelectItem key={cl.id} value={cl.id}>
-                            {cl.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+              <FormConfiguration 
+                initialForm={editingForm as any}
+                onSave={handleSaveFormConfig}
+                onCancel={handleCancelFormConfig}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Forms</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-gray-500">Loading forms...</p>
                 </div>
-                {selectedClientId && (
-                  <Button onClick={handleOpenCreate}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Form
-                  </Button>
-                )}
-              </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[320px]">Title</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right w-[160px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {forms.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                            No forms configured for this client
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        forms.map((form) => {
+                          const previewUrl = buildPreviewUrl(form);
+                          return (
+                            <TableRow key={form.id}>
+                              <TableCell>
+                                <div className="font-medium">{form.title}</div>
+                                {form.description && (
+                                  <div className="text-sm text-gray-500 truncate max-w-[520px]">
+                                    {form.description}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={form.is_active ? 'default' : 'secondary'}>
+                                  {form.is_active ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{formatDate(form.created_at, { isTiming: true })}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  {/* Edit button */}
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    onClick={() => {
+                                      setEditingForm(form);
+                                      setShowFormConfig(true);
+                                    }}
+                                    title="Edit form"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  {/* Preview (icon-only) */}
+                                  <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')} title="Preview form">
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                    {/* Backoffice extra actions (QR and Edit hidden) */}
+                                      <Button variant="outline" size="icon" onClick={() => handleDeleteForm(form.id)} title="Delete form">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
+        </>
+      )}
 
-        {/* Content based on mode */}
-        {effectiveClientId ? (
-          <div className="space-y-6">
-            {/* Forms Management (backoffice only) */}
-            {isBackoffice && (
-              <>
-              {showFormConfig ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{editingForm ? 'Edit Form' : 'Create Form'}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FormConfiguration 
-                      initialForm={editingForm as any}
-                      onSave={handleSaveFormConfig}
-                      onCancel={handleCancelFormConfig}
-                    />
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Forms</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {loading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Loading forms...</p>
-                      </div>
+  {/* Submissions (normal view) - Show directly without tabs */}
+  {!isBackoffice && (
+      <Card>
+        <CardHeader>
+        <CardTitle>Grievance List</CardTitle>
+        </CardHeader>
+        <CardContent>
+        {/* Filters Section */}
+        <div className="space-y-4 mb-6">
+          {/* Single Row: Search and All Filters */}
+          <div className="flex flex-wrap gap-4 items-center">
+            {/* 1. Search Box */}
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search name and title..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* 2. Status Filter */}
+            <div className="w-48">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="acknowledged">Acknowledged</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 3. Form Type Filter */}
+            {/* <div className="w-48">
+              <Select value={formTypeFilter} onValueChange={setFormTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {forms.map((form) => (
+                    <SelectItem key={form.id} value={form.title}>
+                      {form.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div> */}
+
+            {/* 4. Date Range Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Date Range:</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {dateFrom ? (
+                      dateTo ? (
+                        <>
+                          {format(dateFrom, "LLL dd, y")} - {format(dateTo, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateFrom, "LLL dd, y")
+                      )
                     ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[320px]">Title</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Created</TableHead>
-                              <TableHead className="text-right w-[160px]">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {forms.length === 0 ? (
-                              <TableRow>
-                                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                                  No forms configured for this client
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              forms.map((form) => {
-                                const previewUrl = buildPreviewUrl(form);
-                                return (
-                                  <TableRow key={form.id}>
-                                    <TableCell>
-                                      <div className="font-medium">{form.title}</div>
-                                      {form.description && (
-                                        <div className="text-sm text-gray-500 truncate max-w-[520px]">
-                                          {form.description}
-                                        </div>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant={form.is_active ? 'default' : 'secondary'}>
-                                        {form.is_active ? 'Active' : 'Inactive'}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>{formatDate(form.created_at)}</TableCell>
-                                    <TableCell className="text-right">
-                                      <div className="flex justify-end gap-2">
-                                        {/* Edit button */}
-                                        <Button 
-                                          variant="outline" 
-                                          size="icon" 
-                                          onClick={() => {
-                                            setEditingForm(form);
-                                            setShowFormConfig(true);
-                                          }}
-                                          title="Edit form"
-                                        >
-                                          <Edit className="h-4 w-4" />
-                                        </Button>
-                                        {/* Preview (icon-only) */}
-                                        <Button variant="outline" size="icon" onClick={() => window.open(previewUrl, '_blank')} title="Preview form">
-                                          <ExternalLink className="h-4 w-4" />
-                                        </Button>
-                                          {/* Backoffice extra actions (QR and Edit hidden) */}
-                                            <Button variant="outline" size="icon" onClick={() => handleDeleteForm(form.id)} title="Delete form">
-                                              <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
+                      "Select date range"
                     )}
-                  </CardContent>
-                </Card>
-              )}
-              </>
-            )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="flex p-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">From:</label>
+                      <CalendarIcon
+                        mode="single"
+                        selected={dateFrom}
+                        onSelect={(date) => {
+                          setDateFrom(date);
+                          if (dateTo && date && dateTo < date) {
+                            setDateTo(undefined);
+                          }
+                        }}
+                        className="rounded-md border"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">To:</label>
+                      <CalendarIcon
+                        mode="single"
+                        selected={dateTo}
+                        onSelect={setDateTo}
+                        disabled={(date) =>
+                          dateFrom ? date < dateFrom : false
+                        }
+                        className="rounded-md border"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
 
-            {/* Submissions (normal view) - Show directly without tabs */}
-            {!isBackoffice && (
-                <Card>
-                  <CardHeader>
-                  <CardTitle>Grievance List</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                  {/* Filters Section */}
-                  <div className="space-y-4 mb-6">
-                    {/* Single Row: Search and All Filters */}
-                    <div className="flex flex-wrap gap-4 items-center">
-                      {/* 1. Search Box */}
-                      <div className="relative w-64">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                          placeholder="Search name and title..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={clearAllFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+
+          {/* Results Info */}
+          {hasActiveFilters && (
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredSubmissions.length} of {submissions.length} grievances
+            </div>
+          )}
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading forms...</p>
+            </div>
+          ) : submissionsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading grievances...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Mobile number</TableHead>
+                    <TableHead>Raised by</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Grievance Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSubmissions.length === 0 ? (
+                    <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      {hasActiveFilters ? 'No grievances match your filters' : 'No grievances found'}
+                    </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredSubmissions.map((sub: any) => (
+                      <TableRow key={sub.id}>
+                        <TableCell>
+                          <div className="font-medium">{getName(sub)}</div>
+                        </TableCell>
+                        <TableCell className="max-w-[360px] truncate" title={getFullTitle(sub) || '-'}>{getTitle(sub) || '-'}</TableCell>
+                        <TableCell>{getPhone(sub) || '-'}</TableCell>
+                        <TableCell>{getType(sub) || '-'}</TableCell>
+                        <TableCell>
+                        {getStatusBadge(sub.status)}
+                        </TableCell>
+                        <TableCell>{formatDate(sub.created_at, { isTiming: true })}</TableCell>
+                        <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="outline" size="icon" onClick={() => setViewSubmission(sub)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {sub.status === 'pending' && (
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              onClick={() => setAcknowledgeSubmission(sub)}
+                              title="Acknowledge grievance"
+                            >
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            </Button>
+                          )}
+                        </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+        {viewSubmission && (
+          <Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Grievance Details</DialogTitle>
+              </DialogHeader>
+              <Tabs defaultValue="details" className="mt-4">
+                <TabsList className="w-full justify-start rounded-lg bg-gray-100">
+                  <TabsTrigger value="details" className="flex-1">
+                    Grievance Details
+                  </TabsTrigger>
+                  <TabsTrigger value="acknowledgement" className="flex-1">
+                    Acknowledgement Details
+                  </TabsTrigger>
+                  <TabsTrigger value="attachments" className="flex-1">
+                    Attachments
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="details" className="mt-4 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="text-sm text-gray-600">Name</div>
+                      <div className="mt-1">
+                        {viewSubmission.submitter_name ||
+                          (viewSubmission.responses &&
+                            (viewSubmission.responses.name ||
+                              viewSubmission.responses.full_name ||
+                              viewSubmission.responses.submitter_name)) ||
+                          'Anonymous'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Phone</div>
+                      <div className="mt-1">
+                        {viewSubmission.submitter_phone ||
+                          (viewSubmission.responses &&
+                            (viewSubmission.responses.phone ||
+                              viewSubmission.responses.contact ||
+                              viewSubmission.responses.mobile)) ||
+                          'Not provided'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Subject</div>
+                      <div className="mt-1">
+                        {(viewSubmission.responses &&
+                          (viewSubmission.responses.subject ||
+                            viewSubmission.responses.heading ||
+                            viewSubmission.responses.title)) ||
+                          'Not provided'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Type</div>
+                      <div className="mt-1">
+                        {viewSubmission.submitter_type ||
+                          (viewSubmission.responses &&
+                            (viewSubmission.responses.submitter_type ||
+                              viewSubmission.responses.type)) ||
+                          'Not provided'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600">Submitted</div>
+                      <div className="mt-1">
+                        {formatDate(viewSubmission.created_at, { isTiming: true })}
+                      </div>
+
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="space-y-2 mb-2">
+                      <div className="text-sm text-gray-600">Description</div>
+                      <div className="w-full">
+                        <div className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded-md border">
+                          {(viewSubmission.responses &&
+                            (viewSubmission.responses.description ||
+                              viewSubmission.responses.message ||
+                              viewSubmission.responses.details)) ||
+                            'Not provided'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600 mb-2">Status</div>
+                    {getStatusBadge(viewSubmission.status)}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="acknowledgement" className="mt-4 space-y-4">
+                  {viewSubmission.status === 'acknowledged' ? (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                      <div className="text-sm font-semibold text-blue-800 mb-2">
+                        Acknowledgement
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        <div>
+                        <span className="text-gray-700">Acknowledged by: </span>
+                        <span className="font-semibold text-blue-900 capitalize">
+                          {viewSubmission.acknowledged_by_name || '—'}
+                        </span>
+                        </div>
+                        {viewSubmission.acknowledged_at && (
+                        <div>
+                          <span className="text-gray-700">Acknowledged on: </span>
+                          <span className="font-semibold text-blue-900">
+                            {formatDate(viewSubmission.acknowledged_at, { isTiming: true })}
+                          </span>
+                        </div>
+                        )}
+                        {viewSubmission.comments && (
+                        <div className="mt-1">
+                          <span className="text-gray-700">Comment: </span>
+                          <span className="font-semibold text-blue-900 whitespace-pre-wrap">
+                            {viewSubmission.comments}
+                          </span>
+                        </div>
+                        )}
+
+                        {Array.isArray((viewSubmission as any).comments_attachment) &&
+                        (viewSubmission as any).comments_attachment.length > 0 && (
+                        <div className="mt-3">
+                          <div className="text-gray-700 font-semibold mb-1">
+                            Acknowledgement Evidence
+                          </div>
+                          <ul className="space-y-2">
+                            {(viewSubmission as any).comments_attachment.map(
+                            (f: any, idx: number) => (
+                              <li
+                              key={idx}
+                              className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
+                              >
+                              <span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
+                                {f.filename || `Evidence ${idx + 1}`}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                try {
+                                  let downloadUrl =
+                                  f.url || f.publicUrl;
+
+                                  if (
+                                  downloadUrl &&
+                                  !downloadUrl.startsWith('http')
+                                  ) {
+                                  const storagePath: string =
+                                    downloadUrl;
+                                  const [bucket, ...rest] =
+                                    storagePath.split('/');
+                                  const objectPath =
+                                    rest.join('/');
+                                  const { data } = supabase.storage
+                                    .from(bucket)
+                                    .getPublicUrl(objectPath);
+                                  downloadUrl = data.publicUrl;
+                                  }
+
+                                  if (!downloadUrl) return;
+
+                                  const response =
+                                  await fetch(downloadUrl);
+                                  if (!response.ok)
+                                  throw new Error(
+                                    'Failed to download file'
+                                  );
+                                  const blob = await response.blob();
+                                  const blobUrl =
+                                  window.URL.createObjectURL(
+                                    blob
+                                  );
+                                  const link =
+                                  document.createElement('a');
+                                  link.href = blobUrl;
+                                  link.download =
+                                  f.filename ||
+                                  `evidence-${idx + 1}`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(
+                                    blobUrl
+                                  );
+                                } catch (err) {
+                                  console.error(
+                                  'Error downloading evidence:',
+                                  err
+                                  );
+                                  toast.error(
+                                  'Failed to download evidence. Please try again.'
+                                  );
+                                }
+                                }}
+                                className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
+                              >
+                                Download
+                              </Button>
+                              </li>
+                            )
+                            )}
+                          </ul>
+                        </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600">
+                      This grievance has not been acknowledged yet.
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="attachments" className="mt-4 space-y-3">
+                  <div className="text-lg font-semibold">Attachments</div>
+                  {(() => {
+                    const raw =
+                    (viewSubmission as any).attachments ||
+                    ((viewSubmission as any).responses &&
+                      (viewSubmission as any).responses.attachments);
+                    const list = raw
+                    ? Array.isArray(raw)
+                      ? raw
+                      : (Object.values(raw) as any[]).flat()
+                    : [];
+                    if (!list || list.length === 0) {
+                    return (
+                      <div className="text-sm text-gray-500">
+                      No attachments
+                      </div>
+                    );
+                    }
+
+                    const handleDownloadFile = async (
+                    fileUrl: string,
+                    fileName: string
+                    ) => {
+                    try {
+                      const response = await fetch(fileUrl);
+                      if (!response.ok) {
+                      throw new Error('Failed to download file');
+                      }
+                      const blob = await response.blob();
+                      const blobUrl = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = blobUrl;
+                      link.download = fileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(blobUrl);
+                      toast.success(`Downloading ${fileName}`);
+                    } catch (error) {
+                      console.error('Error downloading file:', error);
+                      toast.error(
+                      'Failed to download the file. Please try again.'
+                      );
+                    }
+                    };
+
+                    return (
+                    <div className="space-y-2">
+                      <ul className="space-y-2">
+                      {list.map((f: any, idx: number) => {
+                        const fileName =
+                        f.filename ||
+                        f.name ||
+                        `Attachment ${idx + 1}`;
+                        const fileUrl = f.url || f.publicUrl;
+                        return (
+                        <li
+                          key={idx}
+                          className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
+                        >
+                          <span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
+                          {fileName}
+                          </span>
+                          <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            fileUrl &&
+                            handleDownloadFile(fileUrl, fileName)
+                          }
+                          className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
+                          >
+                          Download
+                          </Button>
+                        </li>
+                        );
+                      })}
+                      </ul>
+                    </div>
+                    );
+                  })()}
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
+            )}
+            {acknowledgeSubmission && (
+              <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null);setAcknowledgeComment(''); 
+              setAcknowledgementFiles([]); }}>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Acknowledge Grievance</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Are you sure you want to acknowledge this grievance? This action cannot be undone.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          Comment <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+                        </label>
+                        <Textarea
+                          placeholder="Enter comment (optional)"
+                          value={acknowledgeComment}
+                          onChange={(e) => setAcknowledgeComment(e.target.value)}
+                          className="min-h-[100px]"
+                          maxLength={200}
+                        />
+                        <div className="text-xs text-gray-500 text-right">
+                          {acknowledgeComment.length}/200 characters
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          Evidence Upload <span className="text-gray-500 text-xs font-normal">(Optional)</span>
+                        </label>
+                        <ReusableFileUploader
+                          onFilesChange={(files) => setAcknowledgementFiles(files)}
+                          maxFiles={5}
+                          maxSize={10}
+                          maxTotalSize={50}
+                          allowedTypes={[
+                            'application/pdf',
+                            'image/jpeg',
+                            'image/jpg',
+                            'image/png',
+                            'application/msword',
+                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                          ]}
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                         />
                       </div>
-
-                      {/* 2. Status Filter */}
-                      <div className="w-48">
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Filter by status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All status</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="acknowledged">Acknowledged</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* 3. Form Type Filter */}
-                      {/* <div className="w-48">
-                        <Select value={formTypeFilter} onValueChange={setFormTypeFilter}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="All Types" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Types</SelectItem>
-                            {forms.map((form) => (
-                              <SelectItem key={form.id} value={form.title}>
-                                {form.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div> */}
-
-                      {/* 4. Date Range Filter */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Date Range:</span>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
-                              <Calendar className="mr-2 h-4 w-4" />
-                              {dateFrom ? (
-                                dateTo ? (
-                                  <>
-                                    {format(dateFrom, "LLL dd, y")} - {format(dateTo, "LLL dd, y")}
-                                  </>
-                                ) : (
-                                  format(dateFrom, "LLL dd, y")
-                                )
-                              ) : (
-                                "Select date range"
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <div className="flex p-3 gap-4">
-                              <div>
-                                <label className="text-sm font-medium">From:</label>
-                                <CalendarIcon
-                                  mode="single"
-                                  selected={dateFrom}
-                                  onSelect={(date) => {
-                                    setDateFrom(date);
-                                    if (dateTo && date && dateTo < date) {
-                                      setDateTo(undefined);
-                                    }
-                                  }}
-                                  className="rounded-md border"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">To:</label>
-                                <CalendarIcon
-                                  mode="single"
-                                  selected={dateTo}
-                                  onSelect={setDateTo}
-                                  disabled={(date) =>
-                                    dateFrom ? date < dateFrom : false
-                                  }
-                                  className="rounded-md border"
-                                />
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-
-                      {/* Clear Filters Button */}
-                      {hasActiveFilters && (
-                        <Button variant="outline" size="sm" onClick={clearAllFilters}>
-                          <X className="h-4 w-4 mr-1" />
-                          Clear Filters
-                        </Button>
-                      )}
                     </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => {
+                          setAcknowledgeSubmission(null);
+                          setAcknowledgeComment('');
+                          setAcknowledgementFiles([]);
+                        }}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="default"
+                        onClick={handleAcknowledgeSubmission}
+                        disabled={isSubmittingAcknowledgment}
+                      >
+                        {isSubmittingAcknowledgment ? 'Acknowledging...' : 'Acknowledge'}
+                      </Button>
+                </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+  )}
 
-                    {/* Results Info */}
-                    {hasActiveFilters && (
-                      <div className="text-sm text-muted-foreground">
-                        Showing {filteredSubmissions.length} of {submissions.length} grievances
-                      </div>
-                    )}
-                    </div>
-
-                    {loading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Loading forms...</p>
-                      </div>
-                    ) : submissionsLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Loading grievances...</p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Title</TableHead>
-                              <TableHead>Mobile number</TableHead>
-                              <TableHead>Raised by</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Grievance Date</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredSubmissions.length === 0 ? (
-                              <TableRow>
-                              <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                {hasActiveFilters ? 'No grievances match your filters' : 'No grievances found'}
-                              </TableCell>
-                              </TableRow>
-                            ) : (
-                              filteredSubmissions.map((sub: any) => (
-                                <TableRow key={sub.id}>
-                                  <TableCell>
-                                    <div className="font-medium">{getName(sub)}</div>
-                                  </TableCell>
-                                  <TableCell className="max-w-[360px] truncate" title={getFullTitle(sub) || '-'}>{getTitle(sub) || '-'}</TableCell>
-                                  <TableCell>{getPhone(sub) || '-'}</TableCell>
-                                  <TableCell>{getType(sub) || '-'}</TableCell>
-                                  <TableCell>
-                                  {getStatusBadge(sub.status)}
-                                  </TableCell>
-                                  <TableCell>{formatDate(sub.created_at)}</TableCell>
-                                  <TableCell className="text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <Button variant="outline" size="icon" onClick={() => setViewSubmission(sub)}>
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                    {sub.status === 'pending' && (
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        onClick={() => setAcknowledgeSubmission(sub)}
-                                        title="Acknowledge grievance"
-                                      >
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-									{viewSubmission && (
-										<Dialog open={!!viewSubmission} onOpenChange={(open) => { if (!open) setViewSubmission(null); }}>
-											<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-												<DialogHeader>
-													<DialogTitle>Grievance Details</DialogTitle>
-												</DialogHeader>
-												<Tabs defaultValue="details" className="mt-4">
-													<TabsList className="w-full justify-start rounded-lg bg-gray-100">
-														<TabsTrigger value="details" className="flex-1">
-															Grievance Details
-														</TabsTrigger>
-														<TabsTrigger value="acknowledgement" className="flex-1">
-															Acknowledgement Details
-														</TabsTrigger>
-														<TabsTrigger value="attachments" className="flex-1">
-															Attachments
-														</TabsTrigger>
-													</TabsList>
-
-													<TabsContent value="details" className="mt-4 space-y-6">
-														<div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-															<div>
-																<div className="text-sm text-gray-600">Name</div>
-																<div className="mt-1">
-																	{viewSubmission.submitter_name ||
-																		(viewSubmission.responses &&
-																			(viewSubmission.responses.name ||
-																				viewSubmission.responses.full_name ||
-																				viewSubmission.responses.submitter_name)) ||
-																		'Anonymous'}
-																</div>
-															</div>
-															<div>
-																<div className="text-sm text-gray-600">Phone</div>
-																<div className="mt-1">
-																	{viewSubmission.submitter_phone ||
-																		(viewSubmission.responses &&
-																			(viewSubmission.responses.phone ||
-																				viewSubmission.responses.contact ||
-																				viewSubmission.responses.mobile)) ||
-																		'Not provided'}
-																</div>
-															</div>
-															<div>
-																<div className="text-sm text-gray-600">Subject</div>
-																<div className="mt-1">
-																	{(viewSubmission.responses &&
-																		(viewSubmission.responses.subject ||
-																			viewSubmission.responses.heading ||
-																			viewSubmission.responses.title)) ||
-																		'Not provided'}
-																</div>
-															</div>
-															<div>
-																<div className="text-sm text-gray-600">Type</div>
-																<div className="mt-1">
-																	{viewSubmission.submitter_type ||
-																		(viewSubmission.responses &&
-																			(viewSubmission.responses.submitter_type ||
-																				viewSubmission.responses.type)) ||
-																		'Not provided'}
-																</div>
-															</div>
-															<div>
-																<div className="text-sm text-gray-600">Submitted</div>
-																<div className="mt-1">{formatDate(viewSubmission.created_at)}</div>
-															</div>
-														</div>
-
-														<div>
-															<div className="space-y-2 mb-2">
-																<div className="text-sm text-gray-600">Description</div>
-																<div className="w-full">
-																	<div className="whitespace-pre-wrap break-words bg-gray-50 p-4 rounded-md border">
-																		{(viewSubmission.responses &&
-																			(viewSubmission.responses.description ||
-																				viewSubmission.responses.message ||
-																				viewSubmission.responses.details)) ||
-																			'Not provided'}
-																	</div>
-																</div>
-															</div>
-															<div className="text-sm text-gray-600 mb-2">Status</div>
-															{getStatusBadge(viewSubmission.status)}
-														</div>
-													</TabsContent>
-
-													<TabsContent value="acknowledgement" className="mt-4 space-y-4">
-														{viewSubmission.status === 'acknowledged' ? (
-															<div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-																<div className="text-sm font-semibold text-blue-800 mb-2">
-																	Acknowledgement
-																</div>
-																<div className="space-y-1 text-sm">
-																	<div>
-																	<span className="text-gray-700">Acknowledged by: </span>
-																	<span className="font-semibold text-blue-900 capitalize">
-																		{viewSubmission.acknowledged_by_name || '—'}
-																	</span>
-																	</div>
-																	{viewSubmission.acknowledged_at && (
-																	<div>
-																		<span className="text-gray-700">Acknowledged on: </span>
-																		<span className="font-semibold text-blue-900">
-																			{formatDate(viewSubmission.acknowledged_at)}
-																		</span>
-																	</div>
-																	)}
-																	{viewSubmission.comments && (
-																	<div className="mt-1">
-																		<span className="text-gray-700">Comment: </span>
-																		<span className="font-semibold text-blue-900 whitespace-pre-wrap">
-																			{viewSubmission.comments}
-																		</span>
-																	</div>
-																	)}
-
-																	{Array.isArray((viewSubmission as any).comments_attachment) &&
-																	(viewSubmission as any).comments_attachment.length > 0 && (
-																	<div className="mt-3">
-																		<div className="text-gray-700 font-semibold mb-1">
-																			Acknowledgement Evidence
-																		</div>
-																		<ul className="space-y-2">
-																			{(viewSubmission as any).comments_attachment.map(
-																			(f: any, idx: number) => (
-																				<li
-																				key={idx}
-																				className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
-																				>
-																				<span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
-																					{f.filename || `Evidence ${idx + 1}`}
-																				</span>
-																				<Button
-																					variant="ghost"
-																					size="sm"
-																					onClick={async () => {
-																					try {
-																						let downloadUrl =
-																						f.url || f.publicUrl;
-
-																						if (
-																						downloadUrl &&
-																						!downloadUrl.startsWith('http')
-																						) {
-																						const storagePath: string =
-																							downloadUrl;
-																						const [bucket, ...rest] =
-																							storagePath.split('/');
-																						const objectPath =
-																							rest.join('/');
-																						const { data } = supabase.storage
-																							.from(bucket)
-																							.getPublicUrl(objectPath);
-																						downloadUrl = data.publicUrl;
-																						}
-
-																						if (!downloadUrl) return;
-
-																						const response =
-																						await fetch(downloadUrl);
-																						if (!response.ok)
-																						throw new Error(
-																							'Failed to download file'
-																						);
-																						const blob = await response.blob();
-																						const blobUrl =
-																						window.URL.createObjectURL(
-																							blob
-																						);
-																						const link =
-																						document.createElement('a');
-																						link.href = blobUrl;
-																						link.download =
-																						f.filename ||
-																						`evidence-${idx + 1}`;
-																						document.body.appendChild(link);
-																						link.click();
-																						document.body.removeChild(link);
-																						window.URL.revokeObjectURL(
-																							blobUrl
-																						);
-																					} catch (err) {
-																						console.error(
-																						'Error downloading evidence:',
-																						err
-																						);
-																						toast.error(
-																						'Failed to download evidence. Please try again.'
-																						);
-																					}
-																					}}
-																					className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
-																				>
-																					Download
-																				</Button>
-																				</li>
-																			)
-																			)}
-																		</ul>
-																	</div>
-																	)}
-																</div>
-															</div>
-														) : (
-															<div className="text-sm text-gray-600">
-																This grievance has not been acknowledged yet.
-															</div>
-														)}
-													</TabsContent>
-
-													<TabsContent value="attachments" className="mt-4 space-y-3">
-														<div className="text-lg font-semibold">Attachments</div>
-														{(() => {
-															const raw =
-															(viewSubmission as any).attachments ||
-															((viewSubmission as any).responses &&
-																(viewSubmission as any).responses.attachments);
-															const list = raw
-															? Array.isArray(raw)
-																? raw
-																: (Object.values(raw) as any[]).flat()
-															: [];
-															if (!list || list.length === 0) {
-															return (
-																<div className="text-sm text-gray-500">
-																No attachments
-																</div>
-															);
-															}
-
-															const handleDownloadFile = async (
-															fileUrl: string,
-															fileName: string
-															) => {
-															try {
-																const response = await fetch(fileUrl);
-																if (!response.ok) {
-																throw new Error('Failed to download file');
-																}
-																const blob = await response.blob();
-																const blobUrl = window.URL.createObjectURL(blob);
-																const link = document.createElement('a');
-																link.href = blobUrl;
-																link.download = fileName;
-																document.body.appendChild(link);
-																link.click();
-																document.body.removeChild(link);
-																window.URL.revokeObjectURL(blobUrl);
-																toast.success(`Downloading ${fileName}`);
-															} catch (error) {
-																console.error('Error downloading file:', error);
-																toast.error(
-																'Failed to download the file. Please try again.'
-																);
-															}
-															};
-
-															return (
-															<div className="space-y-2">
-																<ul className="space-y-2">
-																{list.map((f: any, idx: number) => {
-																	const fileName =
-																	f.filename ||
-																	f.name ||
-																	`Attachment ${idx + 1}`;
-																	const fileUrl = f.url || f.publicUrl;
-																	return (
-																	<li
-																		key={idx}
-																		className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 gap-2"
-																	>
-																		<span className="text-sm break-words break-all flex-1 min-w-0 mr-3">
-																		{fileName}
-																		</span>
-																		<Button
-																		variant="ghost"
-																		size="sm"
-																		onClick={() =>
-																			fileUrl &&
-																			handleDownloadFile(fileUrl, fileName)
-																		}
-																		className="text-sm text-blue-600 hover:text-blue-700 flex-shrink-0"
-																		>
-																		Download
-																		</Button>
-																	</li>
-																	);
-																})}
-																</ul>
-															</div>
-															);
-														})()}
-													</TabsContent>
-												</Tabs>
-											</DialogContent>
-										</Dialog>
-                      )}
-                      {acknowledgeSubmission && (
-                        <Dialog open={!!acknowledgeSubmission} onOpenChange={(open) => { if (!open) setAcknowledgeSubmission(null);setAcknowledgeComment(''); 
-                        setAcknowledgementFiles([]); }}>
-                          <DialogContent className="max-w-lg">
-                            <DialogHeader>
-                              <DialogTitle>Acknowledge Grievance</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <p className="text-sm text-gray-600">
-                                Are you sure you want to acknowledge this grievance? This action cannot be undone.
-                              </p>
-                              <div className="space-y-3">
-                                <div className="space-y-2">
-                                  <label className="text-sm font-medium">
-                                    Comment <span className="text-gray-500 text-xs font-normal">(Optional)</span>
-                                  </label>
-                                  <Textarea
-                                    placeholder="Enter comment (optional)"
-                                    value={acknowledgeComment}
-                                    onChange={(e) => setAcknowledgeComment(e.target.value)}
-                                    className="min-h-[100px]"
-                                    maxLength={200}
-                                  />
-                                  <div className="text-xs text-gray-500 text-right">
-                                    {acknowledgeComment.length}/200 characters
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-sm font-medium">
-                                    Evidence Upload <span className="text-gray-500 text-xs font-normal">(Optional)</span>
-                                  </label>
-                                  <ReusableFileUploader
-                                    onFilesChange={(files) => setAcknowledgementFiles(files)}
-                                    maxFiles={5}
-                                    maxSize={10}
-                                    maxTotalSize={50}
-                                    allowedTypes={[
-                                      'application/pdf',
-                                      'image/jpeg',
-                                      'image/jpg',
-                                      'image/png',
-                                      'application/msword',
-                                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                    ]}
-                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => {
-                                    setAcknowledgeSubmission(null);
-                                    setAcknowledgeComment('');
-                                    setAcknowledgementFiles([]);
-                                  }}>
-                                  Cancel
-                                </Button>
-                                <Button
-                                  variant="default"
-                                  onClick={handleAcknowledgeSubmission}
-                                  disabled={isSubmittingAcknowledgment}
-                                >
-                                  {isSubmittingAcknowledgment ? 'Acknowledging...' : 'Acknowledge'}
-                                </Button>
-													</div>
-											</div>
-										</DialogContent>
-									</Dialog>
-								)}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-            )}
-
-          </div>
+</div>
         ) : (
           <div className="text-center py-12 text-gray-500">Loading client context...</div>
         )}
