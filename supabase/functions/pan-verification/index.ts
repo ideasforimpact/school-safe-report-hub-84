@@ -112,7 +112,7 @@ serve(async (req) => {
     
     const { data: document, error: documentError } = await supabase
       .from('employee_documents')
-      .select('employee_docs_log, employee_id')
+      .select('employee_docs_log, employee_id, document_type_id')
       .eq('id', documentId)
       .single();
     
@@ -127,6 +127,7 @@ serve(async (req) => {
     // Get existing logs or initialize empty array
     const existingLogs = document?.employee_docs_log || [];
     const employeeId = document.employee_id;
+    const documentTypeId = document?.document_type_id;
     // Handle API verification using Surepass - NEW BEHAVIOR
     if (action === 'apiVerify') {
       if (!documentNumber) {
@@ -196,7 +197,10 @@ serve(async (req) => {
               documentId,
               provider: 'surepass',
               statusCode: data.status_code,
-              response: data
+              response: data,
+              documentTypeId: documentTypeId ?? undefined,
+              documentTypeName: 'PAN',
+              documentNumber: documentNumber
             });
 
             // Always set address field - concatenate if available, otherwise empty string
@@ -303,7 +307,10 @@ serve(async (req) => {
             provider: 'surepass',
             statusCode: data.status_code,
             message: data.message,
-            response: data
+            response: data,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'PAN',
+            documentNumber: documentNumber
           });
           // Return response indicating API failed but status remains pending for review
           return new Response(

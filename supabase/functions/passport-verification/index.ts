@@ -66,7 +66,7 @@ serve(async (req) => {
 
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_number, params, employee_docs_log')
+        .select('document_number, params, employee_docs_log, employee_id, document_type_id')
         .eq('id', documentId)
         .single();
       if (docError || !document) {
@@ -76,13 +76,8 @@ serve(async (req) => {
       const fileNumber = document.document_number; // passport file number
       const dob = document.params?.DOB;
       const existingLogs = document.employee_docs_log || [];
-      const { data: doc } = await supabase
-                .from('employee_documents')
-                .select('employee_id')
-                .eq('id', documentId)
-                .single();
-
-      const employeeId = doc?.employee_id;
+      const employeeId = document.employee_id;
+      const documentTypeId = document.document_type_id;
       if (!fileNumber || !dob) {
         return new Response(JSON.stringify({ error: 'File number and DOB are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -143,7 +138,10 @@ serve(async (req) => {
             provider: 'surepass',
             statusCode: response.status,
             message: response.statusText,
-            response: response
+            response: response,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'PASSPORT',
+            documentNumber: fileNumber
           });
 
           return new Response(
@@ -209,7 +207,10 @@ serve(async (req) => {
             documentId,
             provider: 'surepass',
             statusCode: apiResponse.status_code,
-            response: apiResponse
+            response: apiResponse,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'PASSPORT',
+            documentNumber: fileNumber
           });
 
           return new Response(
@@ -247,7 +248,10 @@ serve(async (req) => {
             provider: 'surepass',
             statusCode: apiResponse?.status_code,
             message: apiResponse?.message,
-            response: apiResponse
+            response: apiResponse,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'PASSPORT',
+            documentNumber: fileNumber
           });
 
           return new Response(
@@ -304,6 +308,9 @@ serve(async (req) => {
           provider: "surepass",
           message: (error as Error).message,
           response: { error: (error as Error).message },
+          documentTypeId: documentTypeId ?? undefined,
+          documentTypeName: 'PASSPORT',
+          documentNumber: fileNumber
         });
 
         return new Response(

@@ -198,7 +198,7 @@ serve(async (req) => {
 
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_number, params, employee_docs_log, employee_id')
+        .select('document_number, params, employee_docs_log, employee_id, document_type_id')
         .eq('id', documentId)
         .single();
 
@@ -214,6 +214,7 @@ serve(async (req) => {
       const dob = document.params?.DOB;
       const existingLogs = document?.employee_docs_log || [];
       const employeeId = document.employee_id;
+      const documentTypeId = document?.document_type_id;
 
       if (!licenseNumber) {
         return new Response(
@@ -279,7 +280,11 @@ serve(async (req) => {
             documentId,
             provider: 'quickekyc',
             statusCode: apiResponse.status_code,
-            response: apiResponse
+            response: apiResponse,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'DRIVING_LICENSE',
+            documentNumber: licenseNumber,
+            documentContext: { dob }
           });
           return new Response(
             JSON.stringify({
@@ -302,7 +307,11 @@ serve(async (req) => {
             provider: 'quickekyc',
             statusCode: primaryResult.data?.status_code ?? primaryResult.rawApiResponse?.status_code,
             message: primaryResult.data?.message ?? primaryResult.rawApiResponse?.message,
-            response: primaryResult.data
+            response: primaryResult.data,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'DRIVING_LICENSE',
+            documentNumber: licenseNumber,
+            documentContext: { dob }
           });
           const userFriendlyError = "Driving License verification failed";
           return new Response(
@@ -363,7 +372,11 @@ serve(async (req) => {
             documentId,
             provider: 'surepass',
             statusCode: apiResponse.status_code,
-            response: apiResponse
+            response: apiResponse,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'DRIVING_LICENSE',
+            documentNumber: licenseNumber,
+            documentContext: { dob }
           });
           return new Response(
             JSON.stringify({
@@ -416,7 +429,11 @@ serve(async (req) => {
           statusCode: apiResponse?.status_code ?? rawApiResponse?.status_code,
           message: apiResponse?.message,
           response: apiResponse,
-          bothFallback: true
+          bothFallback: true,
+          documentTypeId: documentTypeId ?? undefined,
+          documentTypeName: 'DRIVING_LICENSE',
+          documentNumber: licenseNumber,
+          documentContext: { dob }
         });
         return new Response(
           JSON.stringify({
@@ -454,7 +471,11 @@ serve(async (req) => {
           provider: lastAttemptedProvider,
           message: (error as Error).message,
           response: { error: (error as Error).message },
-          bothFallback: lastAttemptedProvider === 'surepass'
+          bothFallback: lastAttemptedProvider === 'surepass',
+          documentTypeId: documentTypeId ?? undefined,
+          documentTypeName: 'DRIVING_LICENSE',
+          documentNumber: licenseNumber,
+          documentContext: { dob }
         });
         let userFriendlyError = "Something went wrong during Driving License verification. Please try again.";
         let errorCode = "INTERNAL_ERROR";

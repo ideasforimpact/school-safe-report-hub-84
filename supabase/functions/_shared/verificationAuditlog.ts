@@ -8,6 +8,23 @@ interface AuditPayload {
   statusCode?: number;
   message?: string;
   response?: any;
+  /** Optional: related document type (employee_document_type.id) */
+  documentTypeId?: string;
+  /** Optional: human-readable document type name (e.g. AADHAAR, PAN, DL, VOTER_ID) */
+  documentTypeName?: string;
+  /**
+   * Optional: primary document number / identifier used for verification
+   *   - Aadhaar: aadhar_no
+   *   - PAN: pan_number
+   *   - Driving License: license_no
+   *   - Voter ID: voter_id
+   */
+  documentNumber?: string;
+  /**
+   * Optional: any extra context required for debugging (e.g. DOB for DL).
+   * This is stored only inside the JSON logs and does not affect existing flows.
+   */
+  documentContext?: Record<string, unknown>;
   /** When true, indicates primary provider failed and secondary (fallback) was used. Default false. */
   bothFallback?: boolean;
 }
@@ -34,7 +51,12 @@ export async function logVerificationSuccess(
   const successPayload = {
     provider: payload.provider,
     status_code: payload.statusCode,
-    response: payload.response
+    response: payload.response,
+    // Optional metadata for richer audit visibility
+    document_type_id: payload.documentTypeId,
+    document_type_name: payload.documentTypeName,
+    document_number: payload.documentNumber,
+    document_context: payload.documentContext
   };
   console.log('payload gave success',payload);
 
@@ -69,6 +91,7 @@ export async function logVerificationSuccess(
         employee_id: payload.employeeId,
         document_id: payload.documentId,
         provider: payload.provider,
+        document_type_id: payload.documentTypeId,
         latest_success_log: successPayload,
         audit_success_log: updatedAuditLog,
         latest_status_code: payload.statusCode,
@@ -91,7 +114,12 @@ export async function logVerificationError(
   const errorPayload = {
     provider: payload.provider,
     status_code: payload.statusCode,
-    message: payload.message
+    message: payload.message,
+    // Optional metadata for richer audit visibility
+    document_type_id: payload.documentTypeId,
+    document_type_name: payload.documentTypeName,
+    document_number: payload.documentNumber,
+    document_context: payload.documentContext
   };
   console.log('error payload for all the verification',errorPayload);
   
@@ -137,6 +165,7 @@ export async function logVerificationError(
         employee_id: payload.employeeId,
         document_id: payload.documentId,
         provider: payload.provider,
+        document_type_id: payload.documentTypeId,
         latest_error_log: errorPayload,
         audit_error_log: updatedAuditLog,
         both_fallback: bothFallback,

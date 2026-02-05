@@ -125,23 +125,22 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     fetchDocuments();
   }, [vehicleId]);
 
-  // Fetch vehicle_challans when component mounts
-  useEffect(() => {
-    const fetchVehicleChallans = async () => {
-      if (vehicleId) {
-        try {
-          const challans = await getVehicleChallans(vehicleId);
-          console.log(challans,"challansApi1214");
-          
-          setVehicleChallans(challans);
-        } catch (error) {
-          console.error('Error fetching vehicle_challans:', error);
-        }
-      }
-    };
-
-    fetchVehicleChallans();
+  // Fetch vehicle_challans (history) for this vehicle
+  const fetchVehicleChallansForHistory = useCallback(async () => {
+    if (!vehicleId) return;
+    try {
+      const challans = await getVehicleChallans(vehicleId);
+      console.log(challans, "challansApi1214");
+      setVehicleChallans(challans);
+    } catch (error) {
+      console.error("Error fetching vehicle_challans:", error);
+    }
   }, [vehicleId]);
+
+  useEffect(() => {
+    fetchVehicleChallansForHistory();
+  }, [fetchVehicleChallansForHistory]);
+
   const handleDocumentUpdate = useCallback(async () => {
     await fetchDocuments();
   }, [fetchDocuments]);
@@ -170,6 +169,16 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   enabled: !!vehicleId,
   onPayload: handleDocumentUpdate,
 });
+
+  // Re-fetch challan history whenever vehicle_challans row changes in Supabase
+  useRealTimeSubHook({
+    channelName: `vehicle-challans-${vehicleId}`,
+    events: "*",
+    table: "vehicle_challans",
+    filter: vehicleId ? `vehicle_id=eq.${vehicleId}` : undefined,
+    enabled: !!vehicleId,
+    onPayload: fetchVehicleChallansForHistory,
+  });
   // Find verification log entry to get history
   // const getVerificationLog = () => {
   //   if (!vehicle?.verificationData) return null;

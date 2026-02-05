@@ -173,7 +173,7 @@ serve(async (req) => {
     
     const { data: document, error: documentError } = await supabase
       .from('employee_documents')
-      .select('employee_docs_log, employee_id')
+      .select('employee_docs_log, employee_id, document_type_id')
       .eq('id', documentId)
       .single();
     
@@ -188,7 +188,8 @@ serve(async (req) => {
     // Get existing logs or initialize empty array
     const existingLogs = document?.employee_docs_log || [];
     const employeeId = document.employee_id;
-    
+    const documentTypeId = document?.document_type_id;
+
     // Handle API verification: primary = QuickEKYC, fallback = Surepass
     if (action === 'apiVerify') {
       if (!documentNumber) {
@@ -244,7 +245,10 @@ serve(async (req) => {
             documentId,
             provider: 'quickekyc',
             statusCode: data.status_code,
-            response: data
+            response: data,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'VOTER_ID',
+            documentNumber: documentNumber
           });
           return new Response(
             JSON.stringify({
@@ -268,7 +272,10 @@ serve(async (req) => {
             provider: 'quickekyc',
             statusCode: primaryResult.data?.status_code ?? primaryResult.rawApiResponse?.status_code,
             message: primaryResult.data?.message ?? primaryResult.rawApiResponse?.message,
-            response: primaryResult.data
+            response: primaryResult.data,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'VOTER_ID',
+            documentNumber: documentNumber
           });
           return new Response(
             JSON.stringify({
@@ -324,7 +331,10 @@ serve(async (req) => {
             documentId,
             provider: 'surepass',
             statusCode: data.status_code,
-            response: data
+            response: data,
+            documentTypeId: documentTypeId ?? undefined,
+            documentTypeName: 'VOTER_ID',
+            documentNumber: documentNumber
           });
           return new Response(
             JSON.stringify({
@@ -374,7 +384,10 @@ serve(async (req) => {
           statusCode: data?.status_code ?? rawApiResponse?.status_code,
           message: data?.message,
           response: data,
-          bothFallback: true
+          bothFallback: true,
+          documentTypeId: documentTypeId ?? undefined,
+          documentTypeName: 'VOTER_ID',
+          documentNumber: documentNumber
         });
         return new Response(
           JSON.stringify({
@@ -410,7 +423,10 @@ serve(async (req) => {
           provider: lastAttemptedProvider,
           message: (error as Error).message,
           response: { error: (error as Error).message },
-          bothFallback: lastAttemptedProvider === 'surepass'
+          bothFallback: lastAttemptedProvider === 'surepass',
+          documentTypeId: documentTypeId ?? undefined,
+          documentTypeName: 'VOTER_ID',
+          documentNumber: documentNumber
         });
         let userFriendlyError = "Something went wrong during Voter ID verification. Please try again.";
         let errorCode = "INTERNAL_ERROR";
