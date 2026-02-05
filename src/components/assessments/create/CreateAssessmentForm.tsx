@@ -20,7 +20,9 @@ interface Employee {
   first_name: string;
   last_name: string;
   email: string;
-  department: string;
+  department: {
+    department_name: string;
+  }| null;
 }
 
 interface CreateAssessmentFormProps { 
@@ -35,7 +37,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const { templates } = useAssessment();
   
   // Employee management state
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -68,11 +70,23 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         console.log('Fetching employees for client:', clientId);
 
         const { data: employeesData, error } = await supabase
-          .from('employees')
-          .select('id, first_name, last_name, email, department')
-          .eq('client_id', clientId)
-          .eq('status', true) // Only active employees
-          .order('first_name');
+  .from('employees')
+  .select(`
+  id,
+  first_name,
+  last_name,
+  email,
+  department (
+      department_name
+    )
+`)
+  .eq('client_id', clientId)
+  .eq('status', true)
+  .order('first_name');
+
+
+        console.log('employeesData:', employeesData);
+        console.log('error:', error);
 
         if (error) {
           console.error('Error fetching employees:', error);
@@ -172,15 +186,20 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   };
 
   // Filter employees based on search query
-  const filteredEmployees = searchQuery
-    ? employees.filter(employee => {
-        const fullName = `${employee.first_name} ${employee.last_name}`;
-        const searchTerm = searchQuery.toLowerCase();
-        return fullName.toLowerCase().includes(searchTerm) || 
-               employee.email.toLowerCase().includes(searchTerm) ||
-               employee.department.toLowerCase().includes(searchTerm);
-      })
-    : employees;
+ const filteredEmployees = searchQuery
+  ? employees.filter(employee => {
+      const fullName = `${employee.first_name} ${employee.last_name}`;
+      const searchTerm = searchQuery.toLowerCase();
+
+      return (
+        fullName.toLowerCase().includes(searchTerm) ||
+        employee.email.toLowerCase().includes(searchTerm) ||
+        employee.department?.department_name
+          ?.toLowerCase()
+          .includes(searchTerm)
+      );
+    })
+  : employees;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,9 +486,9 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                               <span className="text-gray-500 ml-1">
                                 ({employee.email})
                               </span>
-                              <div className="text-xs text-gray-400">
-                                {employee.department}
-                              </div>
+                            <div className="text-xs text-gray-400">
+                            {employee.department?.department_name || 'No department'}
+                          </div>
                             </div>
                           </li>
                         ))}
@@ -509,7 +528,18 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || templates.length === 0 || employees.length === 0 || nameError || !formData.name.trim() || !formData.templateId || !formData.assignedTo || !formData.targetCompletionDate}>
+              <Button
+                type="submit" disabled={
+                  isSubmitting ||
+                  templates.length === 0 ||
+                  employees.length === 0 ||
+                  !!nameError || // ✅ FIX
+                  !formData.name.trim() ||
+                  !formData.templateId ||
+                  !formData.assignedTo ||
+                  !formData.targetCompletionDate
+                }
+              >
                 <Save className="h-4 w-4 mr-2" />
                 {isSubmitting ? 'Creating...' : 'Create Assessment'}
               </Button>
