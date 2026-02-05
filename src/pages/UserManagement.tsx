@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, FileUp, RefreshCw, AlertCircle, Search } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -721,8 +721,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     <div className="space-y-6">
       {!embedded && (
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">User Management</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Users className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold">User Management</h1>
+            </div>
             {hasUserManagementAdminAccess && (
               <div className="flex gap-2">
                 <Button 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Calendar, Clock } from 'lucide-react';
+import { Shield, Calendar, Clock, AlertTriangle, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { employeeTypeName } from '@/services/employeeNameHelpers';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
@@ -119,25 +119,33 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
     <Card className="bg-gradient-to-r from-blue-50 to-primary-50 border-l-4 border-primary shadow-md hover:shadow-lg transition-all duration-200">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="flex items-start gap-4">
+          <LayoutDashboard className="h-6 w-6 text-primary mt-4 shrink-0" />
+          <div className="space-y-2 min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 leading-tight">
               {userClient?.name || 'Your Organization'}'s School Safety Command Center
             </h1>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <div className="flex items-center space-x-1">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>Last updated: {allDataExists ? new Date().toLocaleString() : '-'}</span>
+                <span>
+                  Last updated:{' '}
+                  {allDataExists ? new Date().toLocaleString() : '-'}
+                </span>
               </div>
               {employeeData && (
-                <div className="flex items-center space-x-1">
-                  <span className="font-medium">Welcome, {employeeData.firstName} {employeeData.lastName}</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                   {employeeTypeLabel}
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    Welcome, {employeeData.firstName} {employeeData.lastName}
+                  </span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium whitespace-nowrap">
+                    {employeeTypeLabel}
                   </span>
                 </div>
               )}
             </div>
           </div>
+        </div>
           
           <div className="flex items-center space-x-4">
             {/* Overall Safety Status */}
