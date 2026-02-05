@@ -163,8 +163,8 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
-              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || undefined,
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || undefined,
               designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               joiningDate: normalizeDate(getFieldValue([
                               'Joining Date', 'JoiningDate', 'joiningDate', 'joining_date',
@@ -378,8 +378,8 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
-              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || undefined,
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || undefined,
               designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               // Handle date formats
               joiningDate: normalizeDate(getFieldValue([

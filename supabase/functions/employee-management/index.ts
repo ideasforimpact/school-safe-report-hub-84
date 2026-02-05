@@ -185,14 +185,8 @@ async function getEmployeeTypeId(supabaseClient: any, employeeType: string): Pro
   }
  
   if (!employeeTypeData) {
-    console.warn(`Employee type '${employeeType}' not found, defaulting to 'permanent'`);
-    // Default to permanent if not found
-    const { data: defaultType } = await supabaseClient
-      .from('employee_type')
-      .select('id')
-      .eq('type_name', 'permanent')
-      .maybeSingle();
-    return defaultType?.id || null;
+    console.warn(`Employee type '${employeeType}' not found, returning null`);
+    return null;
   }
  
   return employeeTypeData.id;
@@ -236,14 +230,8 @@ async function getDepartmentId(supabaseClient: any, department: string): Promise
   }
  
   if (!departmentData) {
-    console.warn(`Department '${department}' not found, defaulting to 'admin'`);
-    // Default to admin if not found
-    const { data: defaultDept } = await supabaseClient
-      .from('employee_departments')
-      .select('id')
-      .eq('department_name', 'admin')
-      .maybeSingle();
-    return defaultDept?.id || null;
+    console.warn(`Department '${department}' not found, returning null`);
+    return null;
   }
  
   return departmentData.id;
@@ -328,16 +316,17 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       continue;
     }
  
-    // Map employee_type text to ID if needed
-    const employeeTypeId = await getEmployeeTypeId(supabaseClient, emp.employeeType || 'permanent');
-    // Map department text to ID if needed
-    const departmentId = await getDepartmentId(supabaseClient, emp.department || 'admin');
+    // Map employee_type and department only when explicitly provided (omit or empty = null)
+    const hasEmpType = emp.employeeType !== undefined && emp.employeeType !== null && String(emp.employeeType).trim() !== '';
+    const hasDept = emp.department !== undefined && emp.department !== null && String(emp.department).trim() !== '';
+    const employeeTypeId = hasEmpType ? await getEmployeeTypeId(supabaseClient, emp.employeeType) : null;
+    const departmentId = hasDept ? await getDepartmentId(supabaseClient, emp.department) : null;
     insertPayload.push({
       employee_id: emp.employeeId,
       first_name: emp.firstName,
       last_name: emp.lastName || null,
       email: emp.email || null,
-     employee_type: employeeTypeId,
+      employee_type: employeeTypeId,
       department: departmentId,
       designation: emp.designation || null,
       joining_date: emp.joiningDate,
@@ -482,11 +471,12 @@ async function handleCreate(supabaseClient: any, employee: any) {
     );
   }
  
-  // Map employee_type text to ID if needed
-  const employeeTypeId = await getEmployeeTypeId(supabaseClient, employee.employeeType || 'permanent');
-  // Map department text to ID if needed
-  const departmentId = await getDepartmentId(supabaseClient, employee.department || 'admin');
- 
+  // Map employee_type and department only when explicitly provided (omit or empty = null)
+  const hasEmployeeType = employee.employeeType !== undefined && employee.employeeType !== null && String(employee.employeeType).trim() !== '';
+  const hasDepartment = employee.department !== undefined && employee.department !== null && String(employee.department).trim() !== '';
+  const employeeTypeId = hasEmployeeType ? await getEmployeeTypeId(supabaseClient, employee.employeeType) : null;
+  const departmentId = hasDepartment ? await getDepartmentId(supabaseClient, employee.department) : null;
+
   // Create employee record
   const employeeData = {
     employee_id: employee.employeeId,
@@ -652,35 +642,25 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     }
   }
  
-  // Map employee_type text to ID if needed
-  const employeeTypeId = employee.employeeType
-    ? await getEmployeeTypeId(supabaseClient, employee.employeeType)
-    : undefined;
-  // Map department text to ID if needed
-  const departmentId = employee.department
-    ? await getDepartmentId(supabaseClient, employee.department)
-    : undefined;
- 
-  // Update employee record
+  // Map employee_type and department only when explicitly provided (omit or empty = null)
+  const hasEmployeeType = employee.employeeType !== undefined && employee.employeeType !== null && String(employee.employeeType).trim() !== '';
+  const hasDepartment = employee.department !== undefined && employee.department !== null && String(employee.department).trim() !== '';
+  const employeeTypeId = hasEmployeeType ? await getEmployeeTypeId(supabaseClient, employee.employeeType) : null;
+  const departmentId = hasDepartment ? await getDepartmentId(supabaseClient, employee.department) : null;
+
+  // Update employee record (nullable employee_type and department)
   const updateData: any = {
     first_name: employee.firstName,
     last_name: employee.lastName,
-    email: employee.email || null,
     phone: employee.phone || null,
     designation: employee.designation || null,
-    joining_date:employee.joiningDate
+    joining_date: employee.joiningDate,
+    employee_type: employeeTypeId,
+    department: departmentId
   };
- 
-  // Only include employee_type if provided
-  if (employeeTypeId) {
-    updateData.employee_type = employeeTypeId;
+  if (employee.email !== undefined) {
+    updateData.email = employee.email || null;
   }
-  // Only include department if provided
-  if (departmentId) {
-    updateData.department = departmentId;
-  }
- 
-  // Only include employee_id in update if it's provided
   if (employee.employeeId) {
     updateData.employee_id = employee.employeeId;
   }

@@ -313,8 +313,9 @@ const EditUserDialog = ({
     resetForm();
   };
   const isFormValid = () => {
-    // Email is REQUIRED - must be present and valid
-    const hasValidEmail = formData.email && formData.email.trim() !== '' && isValidEmail(formData.email);
+    // Email is optional; if provided must be valid and unique
+    const hasValidEmail = !formData.email || (formData.email.trim() !== '' && isValidEmail(formData.email));
+    const isEmailUnique = !formData.email || emailValidation === 'available' || emailValidation === 'idle';
 
     // If email is filled, modules are required
     const requiresModules = !!formData.email;
@@ -327,7 +328,8 @@ const EditUserDialog = ({
       formData.lastName &&
       formData.lastName.length <= 25 &&
       isValidName(formData.lastName) &&
-      hasValidEmail && // Email is required and must be valid
+      hasValidEmail &&
+      isEmailUnique &&
       (!formData.phone || isValidPhone(formData.phone)) &&
       (!formData.designation ||(
         formData.designation.length >= EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH &&
@@ -336,8 +338,8 @@ const EditUserDialog = ({
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation !== 'exists' &&
       emailValidation !== 'exists' &&
-      employeeIdValidation !== 'checking' && 
-      emailValidation !== 'checking' && 
+      employeeIdValidation !== 'checking' &&
+      emailValidation !== 'checking' &&
       hasSelectedModules &&
       !isUpdating &&
       !isLoading
@@ -370,15 +372,15 @@ const EditUserDialog = ({
         id: currentUser.id,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        email: formData.email,
+        email: formData.email || undefined,
         employeeId: formData.employeeId,
         phone: formData.phone,
         designation: formData.designation,
-        employeeType: formData.employeeType,
-        department: formData.department,
-        joiningDate: formData.joiningDate, // Include joining date in update
+        employeeType: formData.employeeType ?? undefined,
+        department: formData.department ?? undefined,
+        joiningDate: formData.joiningDate,
         moduleAccessPayload: moduleAccessPayload,
-        clientId: clientId // Ensure clientId is always included
+        clientId: clientId
       };
       
       console.log("Updating user with data:", updateData);
@@ -484,18 +486,14 @@ const EditUserDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                className={!formData.email || (formData.email && !isValidEmail(formData.email)) ? 'border-red-500' : ''}
+                className={formData.email && !isValidEmail(formData.email) ? 'border-red-500' : ''}
               />
-                {!formData.email && (
-                  <p className="text-xs text-red-500">Email is required</p>
-                )}
                 {formData.email && !isValidEmail(formData.email) && (
                   <p className="text-xs text-red-500">Please enter a valid email address</p>
                 )}

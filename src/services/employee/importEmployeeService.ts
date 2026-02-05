@@ -43,7 +43,8 @@ export const processEmployeeExcel = async (
     // Validate the data before processing
     const { errors, warnings } = await validateExcelData(rawData, clientId);
     if (errors.length > 0) {
-      toast.error(`Validation failed with ${errors.length} errors`);
+      console.error('Import validation errors:', errors);
+      toast.error(`Validation failed: ${errors.slice(0, 3).join('; ')}${errors.length > 3 ? ` and ${errors.length - 3} more` : ''}`);
       throw new Error('File data validation failed');
     }
     
@@ -91,8 +92,12 @@ export const processEmployeeExcel = async (
       return {
         ...emp,
         email,
-        employeeType: isValidEmployeeType(String(emp.employeeType)) ? String(emp.employeeType) : 'permanent',
-        department: isValidDepartment(String(emp.department)) ? String(emp.department) : 'admin',
+        employeeType: (emp.employeeType != null && String(emp.employeeType).trim() !== '' && isValidEmployeeType(String(emp.employeeType)))
+          ? String(emp.employeeType)
+          : undefined,
+        department: (emp.department != null && String(emp.department).trim() !== '' && isValidDepartment(String(emp.department)))
+          ? String(emp.department)
+          : undefined,
         status: isValidStatus(String(emp.status)) ? String(emp.status) : 'active',
         modulePermissions: defaultModulePermissions,
         moduleAccessPayload, // Add module access payload

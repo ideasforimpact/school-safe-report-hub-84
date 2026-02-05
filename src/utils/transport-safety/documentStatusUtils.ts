@@ -284,6 +284,7 @@ export const getDocumentStatusColor = (status: string): string => {
   }
 };
 
+
 /**
  * Field order for verification data display
  */

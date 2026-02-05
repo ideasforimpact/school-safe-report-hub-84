@@ -48,11 +48,11 @@ export const getEmployeeFirstnameErrorMessage = (): string => {
 };
 
 export const EMPLOYEE_LAST_NAME_CONSTANTS = {
-  MIN_LENGTH: 2,
+  MIN_LENGTH: 1,
 
   MAX_LENGTH: 25,
 
-  PATTERN: /^[a-zA-Z\s]{3,25}$/,
+  PATTERN: /^[a-zA-Z\s]{1,25}$/,
 } as const;
 
 export const getEmployeeLastnameErrorMessage = (): string => {
