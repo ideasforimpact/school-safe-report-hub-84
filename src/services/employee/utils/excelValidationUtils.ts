@@ -10,8 +10,10 @@ const requiredFields: (keyof RawEmployeeData)[] = [
   'employeeId',
   'firstName',
   'lastName',
-  // email, employeeType, department are optional
-  'designation',
+  'email',
+  'employeeType',
+  'department',
+  'designation', 
   'joiningDate',
   'status'
 ];
@@ -130,15 +132,17 @@ export const validateExcelData = async (data: any[], clientId?: string): Promise
   const warnings: string[] = [];
   if (!Array.isArray(data) || data.length === 0) {
     errors.push("No data found in the Excel file");
-    return { errors, warnings };
+    return errors;
   }
   
   // Check for required headers/columns
   const requiredColumns = [
-    'employeeId',
-    'firstName',
-    'lastName',
-    // email, employeeType, department are optional
+    'employeeId', 
+    'firstName', 
+    'lastName', 
+    'email', 
+    'employeeType',
+    'department',
     'joiningDate',
     'status'
   ];
