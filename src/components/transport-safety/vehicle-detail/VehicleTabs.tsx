@@ -244,23 +244,14 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       });
   };
   
-  const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
-    const challanSnapshot = entry.snapshot;
+const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
+  setSelectedVerificationData({
+    challanSnapshot: entry.snapshot,
+    challanError: null, 
+  });
 
-    const challanError =
-      challanSnapshot?.success === false
-        ? (
-            'Unable to fetch challan details. Please contact the administrator for support.'
-          )
-        : null;
-
-    setSelectedVerificationData({
-      challanSnapshot,
-      challanError,
-    });
-
-    setShowVerificationDetails(true);
-  };
+  setShowVerificationDetails(true);
+};
   
   // Function to open file preview dialog for uploaded documents
   const openUploadedFilePreview = (document: UploadedDocument, fileIndex: number = 0) => {
@@ -726,11 +717,13 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         {!verificationHistory.length && (
           <p className="text-gray-500 text-left">No verification history available for this vehicle.</p>
         )}
-      {verificationHistory.length > 0 && (
-        <div className="space-y-4">
-          {verificationHistory.map((entry, idx) => {
+      {verificationHistory.map((entry, idx) => {
+            const attempts = entry.snapshot?.attempts || [];
+
             const status =
-              entry.snapshot?.success === false ? 'FAILED' : 'SUCCESS';
+              attempts.some((a: any) => a.success === true)
+                ? 'SUCCESS'
+                : 'FAILED';
 
             return (
               <div key={idx} className="border rounded-md p-4">
@@ -766,8 +759,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
               </div>
             );
           })}
-        </div>
-      )}
     </TabsContent>
       
       {/* Verification Details Dialog */}
@@ -778,6 +769,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   challanError={selectedVerificationData?.challanError}
   vehicle={vehicle || undefined}
   vehicleChallans={vehicleChallans}
+   mode="history"  
 />
       
       {/* Upload Document Dialog */}
