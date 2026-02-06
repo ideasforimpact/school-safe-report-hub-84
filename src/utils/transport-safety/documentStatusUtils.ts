@@ -284,14 +284,10 @@ export const getDocumentStatusColor = (status: string): string => {
   }
 };
 
-
 /**
- * Field order for verification data display.
- * This list defines the ONLY verification fields we render in the UI
- * (in this exact order) to keep "Run Safety" results, history, and
- * latest verification views consistent.
+ * Field order for verification data display
  */
-export const VERIFICATION_FIELD_ORDER = [
+const VERIFICATION_FIELD_ORDER = [
   'display_type',
   'display_year',
   'rc_number',
@@ -334,15 +330,7 @@ export const VERIFICATION_FIELD_ORDER = [
   'pucc_upto',
   'owner_number',
   'rc_status',
-] as const;
-
-// Strict TypeScript type for allowed verification field keys
-export type VerificationFieldKey = typeof VERIFICATION_FIELD_ORDER[number];
-
-// Runtime type guard – helps us safely filter dynamic field names
-export const isVerificationFieldKey = (field: string): field is VerificationFieldKey => {
-  return (VERIFICATION_FIELD_ORDER as readonly string[]).includes(field);
-};
+];
 
 /**
  * Transform API response data into ordered format
@@ -353,96 +341,51 @@ export const transformApiResponseData = (
   vehicleChallans?: any
 ): VehicleVerificationData[] => {
   const result: VehicleVerificationData[] = [];
-
-  /**
-   * Priority 1: Use the transformed verification log returned by the
-   * `vehicle-verify` edge function. This already contains the derived
-   * helper fields like `display_type` and `display_year`, and matches
-   * what we persist and show in history.
-   */
-  if (Array.isArray(apiResponse?.transformed)) {
-    const verificationLogEntry = apiResponse.transformed.find(
-      (item: any) => item?.field === 'verification_log' && item?.value
-    );
-
-    if (verificationLogEntry && verificationLogEntry.value && typeof verificationLogEntry.value === 'object') {
-      const timestamps = Object.keys(verificationLogEntry.value);
-
-      if (timestamps.length > 0) {
-        // Use the latest log entry
-        timestamps.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-        const latestLog = verificationLogEntry.value[timestamps[0]] as VehicleVerificationField[] | undefined;
-
-        if (Array.isArray(latestLog)) {
-          const fieldMap = new Map<VerificationFieldKey, any>();
-
-          // Collect only allowed fields from the latest log
-          latestLog.forEach((item) => {
-            if (item?.field && isVerificationFieldKey(item.field)) {
-              fieldMap.set(item.field, item.value);
-            }
-          });
-
-          // Push fields strictly in the configured order
-          VERIFICATION_FIELD_ORDER.forEach((fieldName) => {
-            if (fieldMap.has(fieldName)) {
-              result.push({
-                field: fieldName,
-                value: fieldMap.get(fieldName) ?? '',
-                verified: true,
-              });
-            }
-          });
-        }
-      }
-    }
+  
+  // Get RC data from API response
+  let rcData: any = null;
+  
+  if (apiResponse?.original?.data) {
+    rcData = apiResponse.original.data;
+  } else if (apiResponse?.data) {
+    rcData = apiResponse.data;
   }
-
-  /**
-   * Fallback: If for some reason transformed data is not available,
-   * fall back to the raw provider RC data while still enforcing the
-   * same allowed key set and ordering.
-   */
-  if (result.length === 0) {
-    // Get RC data from API response
-    let rcData: any = null;
-
-    if (apiResponse?.original?.data) {
-      rcData = apiResponse.original.data;
-    } else if (apiResponse?.data) {
-      rcData = apiResponse.data;
-    }
-
-    if (rcData && typeof rcData === 'object') {
-      const fieldMap = new Map<VerificationFieldKey, any>();
-
-      Object.entries(rcData).forEach(([key, value]) => {
-        const fieldLower = key.toLowerCase();
-        // Skip internal / non-UI fields
-        if (
-          ['verification_log', 'last_response', 'status', 'rc_history_log', 'response_metadata', 'challan_details'].some(
-            (f) => fieldLower.includes(f)
-          )
-        ) {
-          return;
-        }
-
-        if (isVerificationFieldKey(key)) {
-          fieldMap.set(key, value);
-        }
-      });
-
-      VERIFICATION_FIELD_ORDER.forEach((fieldName) => {
-        if (fieldMap.has(fieldName)) {
-          result.push({
-            field: fieldName,
-            value: fieldMap.get(fieldName) ?? '',
-            verified: true,
-          });
-        }
-      });
-    }
+  
+  if (!rcData || typeof rcData !== 'object') {
+    return [];
   }
+  
+  // Create a map of all available fields
+  const fieldMap = new Map<string, any>();
+  
+  Object.entries(rcData).forEach(([key, value]) => {
+    const fieldLower = key.toLowerCase();
+    // Skip internal fields
+    if (!['verification_log', 'last_response', 'status', 'rc_history_log', 'response_metadata', 'challan_details'].some(f => fieldLower.includes(f))) {
+      fieldMap.set(key, value);
+    }
+  });
+  
+  // Add fields in specified order
+  VERIFICATION_FIELD_ORDER.forEach(fieldName => {
+    if (fieldMap.has(fieldName)) {
+      result.push({
+        field: fieldName,
+        value: fieldMap.get(fieldName) ?? '',
+        verified: true
+      });
+      fieldMap.delete(fieldName);
+    }
+  });
+  
+  // Add remaining fields that weren't in the order list
+  fieldMap.forEach((value, fieldName) => {
+    result.push({
+      field: fieldName,
+      value: value ?? '',
+      verified: true
+    });
+  });
   
   // Add challan_details from vehicle_challans if available
   if (vehicleChallans?.latest_challan_data) {
@@ -528,7 +471,7 @@ export const transformVehicleData = (
     }
   }
 
-  // Transform RC data fields using the same strict order and allowed keys
+  // Transform RC data fields
   if (rcData && typeof rcData === 'object') {
     // Fields to exclude (internal system fields, not user data)
     const excludedFields = [
@@ -539,13 +482,13 @@ export const transformVehicleData = (
       'response_metadata', // Exclude response_metadata as per user request
     ];
 
-    const fieldMap = new Map<VerificationFieldKey, any>();
-
+    // Process all fields from RC data
+    // Include all fields except excluded ones
     Object.entries(rcData).forEach(([key, value]) => {
       const fieldLower = key.toLowerCase();
-
-      // Skip internal system fields
-      if (excludedFields.some((f) => fieldLower.includes(f))) {
+      
+      // Skip only internal system fields
+      if (excludedFields.some(f => fieldLower.includes(f))) {
         return;
       }
 
@@ -554,33 +497,11 @@ export const transformVehicleData = (
         return;
       }
 
-      if (isVerificationFieldKey(key)) {
-        fieldMap.set(key, value);
-      }
-    });
-
-    // Ensure rc_status is available even if it's stored outside the filtered rcData
-    if (!fieldMap.has('rc_status')) {
-      const possibleRcStatus =
-        (rcData as any).rc_status ??
-        (vehicle as any)?.currentRcData?.rc_status ??
-        (vehicle as any)?.rcStatus ??
-        null;
-
-      if (possibleRcStatus !== null && possibleRcStatus !== undefined && possibleRcStatus !== '') {
-        fieldMap.set('rc_status', possibleRcStatus);
-      }
-    }
-
-    // Push fields in the configured display order
-    VERIFICATION_FIELD_ORDER.forEach((fieldName) => {
-      if (fieldMap.has(fieldName)) {
-        result.push({
-          field: fieldName,
-          value: fieldMap.get(fieldName) ?? '',
-          verified: true,
-        });
-      }
+      result.push({
+        field: key,
+        value: value ?? '',
+        verified: true
+      });
     });
   }
 
