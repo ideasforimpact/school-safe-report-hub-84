@@ -27,7 +27,6 @@ interface VerificationDetailsDialogProps {
     vehicleChallans?: VehicleChallans | null; // vehicle_challans from database
     showChallanTabs?: boolean; // If false, shows all challans without Pending/Disposed tabs (for TransportChallansPage)
     hideMainTabs?: boolean; // If true, hides Verification/Challan Details tabs and shows only challan content (for TransportChallansPage)
-    mode?: 'history' | 'latest';
 }
 
 const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
@@ -39,7 +38,6 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     vehicle,
     apiResponse,
     vehicleChallans,
-    mode,
     showChallanTabs = true, // Default to true to maintain existing behavior
     hideMainTabs = false, // Default to false to maintain existing behavior
 }) => {
@@ -66,43 +64,25 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         const logs = vehicleChallans?.challan_history_log;
         if (!logs || typeof logs !== 'object') return null;
 
-        let latest: {
-            timestamp: string;
-            provider: string;
-            data: any;
-        } | null = null;
+        const successLogs = Object.entries(logs).filter(
+            ([_, entry]: any) => entry?.data?.status_code === 200
+        );
 
-        Object.values(logs).forEach((bucket: any) => {
-            if (!Array.isArray(bucket.attempts)) return;
+        if (successLogs.length === 0) return null;
 
-            bucket.attempts.forEach((attempt: any) => {
-            const statusCode = Number(attempt?.data?.status_code);
-            
-            const challans =
-                attempt?.data?.data?.challan_details?.challans;
+        successLogs.sort(
+            ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+        );
 
-            const isRealSuccess =
-                statusCode === 200 &&
-                attempt.success === true &&
-                Array.isArray(challans) &&
-                challans.length > 0;
-                
-            if (!isRealSuccess) return;
+        const [timestamp, log]: any = successLogs[0];
 
-            const time = new Date(attempt.timestamp).getTime();
-
-            if (!latest || time > new Date(latest.timestamp).getTime()) {
-                latest = {
-                timestamp: attempt.timestamp,
-                provider: attempt.provider,
-                data: attempt.data.data, 
-                };
-            }
-            });
-        });
-
-        return latest;
+        return {
+            timestamp,
+            provider: log.provider,
+            data: log.data?.data, // real challan payload
+        };
     }, [vehicleChallans]);
+
 
     // Transform vehicle data using common utility function
     const transformedData = React.useMemo(() => {
@@ -173,33 +153,15 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
     // Get challan details from vehicle_challans.latest_challan_data (priority) or transformed data
     const challanDetails = React.useMemo(() => {
-    if (mode === 'history') {
-        const attempts = challanSnapshot?.attempts || [];
-        const successAttempt = attempts.find(
-        (a: any) => String(a.status_code) === '200'
-        );
-        const data = successAttempt?.data?.data;
+        const challanData = latestChallanSuccessLog?.data;
+        if (!challanData) return [];
+
         return (
-        data?.challan_details?.challans ||
-        data?.challan_data ||
-        []
+            challanData?.challan_details?.challans ||
+            challanData?.challan_data ||
+            []
         );
-    }else{
-            const data = latestChallanSuccessLog?.data;
-            return (
-            data?.challan_details?.challans || []
-            );
-        }
-    }, [mode, challanSnapshot, latestChallanSuccessLog]);
-
-
-    const isFailed = React.useMemo(() => {
-        if (mode !== 'history') return false;
-        const attempts = challanSnapshot?.attempts || [];
-        return attempts.length > 0 && attempts.every((a: any) => a.success === false);
-    }, [mode, challanSnapshot]);
-
-
+    }, [latestChallanSuccessLog]);
     const disposedChallans = challanDetails.filter((c: any) =>
         ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
     );
@@ -311,13 +273,13 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             <DialogContent className="sm:max-w-[100vh] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                     <DialogTitle>{title}</DialogTitle>
-                {mode === 'latest' && latestChallanSuccessLog?.timestamp && (
+                    {shouldShowLatestChallanCheck && (
                     <div className="mt-1 text-xs text-gray-500 flex items-center">
                         <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
                         Latest successful check •{" "}
                         {formatDateTime(new Date(latestChallanSuccessLog.timestamp))}
                     </div>
-                )}
+                    )}
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 pb-4 no-scrollbar rounded-b-lg">
@@ -358,7 +320,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                 <TabsTrigger value="verification">Verification</TabsTrigger>
                                 <TabsTrigger value="challan" className="flex items-center gap-2 relative">
                                     Challan Details
-                                    {isFailed ? (
+                                    {challanErrorMessage ? (
                                         <AlertTriangle className="h-4 w-4 text-red-500" />
                                     ) : challanDetails.length > 0 ? (
                                         <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-full shadow-sm">
@@ -404,13 +366,13 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
                         {/* Challan */}
                         <TabsContent value="challan">
-                            {mode === 'history' && isFailed && (
+                            {challanErrorMessage && (
                                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                                    The challans could not be fetched at this time. Please contact the administrator.
+                                    {challanErrorMessage}
                                 </div>
                             )}
 
-                            {!isFailed && challanDetails.length === 0 && (
+                            {!challanErrorMessage && challanDetails.length === 0 && (
                                 <div className="text-sm text-gray-500 text-center py-6">
                                     No challans
                                 </div>

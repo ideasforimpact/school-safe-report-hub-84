@@ -498,43 +498,33 @@ export const getPendingChallansFromVehicleChallans = (
   const logs = vehicleChallans?.challan_history_log;
   if (!logs || typeof logs !== 'object') return [];
 
-  let latestSuccessAttempt: any | null = null;
-  Object.values(logs).forEach((bucket: any) => {
-    if (!Array.isArray(bucket.attempts)) return;
+  const successLogs = Object.entries(logs).filter(
+    ([_, entry]: any) => entry?.data?.status_code === 200
+  );
 
-    bucket.attempts.forEach((attempt: any) => {
-      const challans =
-        attempt?.data?.data?.challan_details?.challans ??
-        attempt?.data?.data?.challan_data ??
-        [];
-      const isRealSuccess =
-        attempt.success === true &&
-        Number(attempt?.data?.status_code) === 200 &&
-        Array.isArray(challans);
+  if (successLogs.length === 0) return [];
 
-      if (!isRealSuccess) return;
+  successLogs.sort(
+    ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+  );
 
-      if (
-        !latestSuccessAttempt ||
-        new Date(attempt.timestamp).getTime() >
-          new Date(latestSuccessAttempt.timestamp).getTime()
-      ) {
-        latestSuccessAttempt = attempt;
-      }
-    });
-  });
+  const [, latestLog]: any = successLogs[0];
 
-  if (!latestSuccessAttempt) return [];
+  const challanData = latestLog?.data?.data;
+  if (!challanData) return [];
 
   const challans =
-    latestSuccessAttempt?.data?.data?.challan_details?.challans ??
-    latestSuccessAttempt?.data?.data?.challan_data ??
+    challanData?.challan_details?.challans ||
+    challanData?.challan_data ||
     [];
+
+  if (!Array.isArray(challans)) return [];
 
   return challans.filter(
     (c: any) =>
+      c?.challan_status &&
       !['DISPOSED', 'PAID'].includes(
-        String(c?.challan_status).toUpperCase()
+        String(c.challan_status).toUpperCase()
       )
   );
 };
