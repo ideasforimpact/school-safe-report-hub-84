@@ -28,31 +28,23 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
         const logs = vehicleChallans?.challan_history_log;
         if (!logs || typeof logs !== 'object') return null;
 
-        let latest: {
-            timestamp: string;
-            provider: string;
-            data: any;
-        } | null = null;
+        const successLogs = Object.entries(logs).filter(
+            ([_, entry]: any) => entry?.data?.status_code === 200
+        );
 
-        Object.values(logs).forEach((bucket: any) => {
-            if (!Array.isArray(bucket.attempts)) return;
+        if (successLogs.length === 0) return null;
 
-            bucket.attempts.forEach((attempt: any) => {
-            if (attempt.success === true && attempt.status_code === '200') {
-                const time = new Date(attempt.timestamp).getTime();
+        successLogs.sort(
+            ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+        );
 
-                if (!latest || time > new Date(latest.timestamp).getTime()) {
-                latest = {
-                    timestamp: attempt.timestamp,
-                    provider: attempt.provider,
-                    data: attempt.data?.data
-                };
-                }
-            }
-            });
-        });
+        const [timestamp, log]: any = successLogs[0];
 
-        return latest;
+        return {
+            timestamp,
+            provider: log.provider,
+            data: log.data?.data, 
+        };
     }, [vehicleChallans]);
     // Extract challan details from vehicle_challans.latest_challan_data
    const challanDetails = React.useMemo(() => {

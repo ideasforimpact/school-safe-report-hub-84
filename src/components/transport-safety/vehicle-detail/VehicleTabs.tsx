@@ -244,14 +244,23 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       });
   };
   
-const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
-  setSelectedVerificationData({
-    challanSnapshot: entry.snapshot,
-    challanError: null, 
-  });
+  const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
+    const challanSnapshot = entry.snapshot;
 
-  setShowVerificationDetails(true);
-};
+    const challanError =
+      challanSnapshot?.success === false
+        ? (
+            'Unable to fetch challan details. Please contact the administrator for support.'
+          )
+        : null;
+
+    setSelectedVerificationData({
+      challanSnapshot,
+      challanError,
+    });
+
+    setShowVerificationDetails(true);
+  };
   
   // Function to open file preview dialog for uploaded documents
   const openUploadedFilePreview = (document: UploadedDocument, fileIndex: number = 0) => {
@@ -717,13 +726,11 @@ const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
         {!verificationHistory.length && (
           <p className="text-gray-500 text-left">No verification history available for this vehicle.</p>
         )}
-      {verificationHistory.map((entry, idx) => {
-            const attempts = entry.snapshot?.attempts || [];
-
+      {verificationHistory.length > 0 && (
+        <div className="space-y-4">
+          {verificationHistory.map((entry, idx) => {
             const status =
-              attempts.some((a: any) => a.success === true)
-                ? 'SUCCESS'
-                : 'FAILED';
+              entry.snapshot?.success === false ? 'FAILED' : 'SUCCESS';
 
             return (
               <div key={idx} className="border rounded-md p-4">
@@ -759,6 +766,8 @@ const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
               </div>
             );
           })}
+        </div>
+      )}
     </TabsContent>
       
       {/* Verification Details Dialog */}
@@ -769,7 +778,6 @@ const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
   challanError={selectedVerificationData?.challanError}
   vehicle={vehicle || undefined}
   vehicleChallans={vehicleChallans}
-   mode="history"  
 />
       
       {/* Upload Document Dialog */}
