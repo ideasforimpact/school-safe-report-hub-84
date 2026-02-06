@@ -260,12 +260,24 @@ async function requestAadharOtpWithFallback(
       documentTypeName: 'AADHAAR',
       documentNumber: documentNumber
     });
+
+    // Invalid Aadhaar Number is a validation error: return immediately, do not fallback
+    const message = (quickEKYData?.message ?? '').toString().toLowerCase();
+    const isInvalidAadhaar =
+      message.includes('invalid aadhaar') ||
+      message.includes('invalid aadhar') ||
+      (message.includes('aadhaar number') && message.includes('invalid'));
+    if (isInvalidAadhaar) {
+      console.log('[Request OTP] Primary returned Invalid Aadhaar Number, returning without fallback');
+      return { response: quickEKYResponse, data: quickEKYData, api: 'quickekyc' };
+    }
+
     console.log('[Request OTP] QuickEKYC returned status_code 500, falling back to SurePare');
     // Secondary: Fallback to SurePare
     const surePareResponse = await callSurePareRequestOtpAPI(documentNumber);
     const surePareData = await surePareResponse.json();
     console.log('data for the surepare',surePareData);
-    
+
     if (surePareData?.status_code === 200) {
       await logVerificationSuccess(supabase, {
         employeeId,

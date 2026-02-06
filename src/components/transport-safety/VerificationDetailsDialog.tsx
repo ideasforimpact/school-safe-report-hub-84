@@ -116,6 +116,22 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     }, [latestChallanSuccessLog, latestLogTimestamp]);
 
 
+    // Verification tab: show user-friendly error when API returned status error or 500
+    const hasVerificationError = React.useMemo(() => {
+        const original = apiResponse?.original;
+        if (!original) return false;
+        return original.status_code === 500 || String(original.status).toLowerCase() === 'error';
+    }, [apiResponse]);
+
+    // Challan tab: use server message when type is VALIDATION_ERROR, else use prop
+    const challanErrorMessage = React.useMemo(() => {
+        const challan = apiResponse?.challan;
+        if (challan?.type === 'VALIDATION_ERROR' && challan?.message) {
+            return String(challan.message).trim();
+        }
+        return challanError ?? null;
+    }, [apiResponse?.challan, challanError]);
+
     // Format data for display (convert to label/value format)
     const rcDataForDisplay = React.useMemo(() => {
         return transformedData
@@ -270,19 +286,19 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                     {hideMainTabs ? (
                         // When hideMainTabs is true, show only challan content without main tabs
                         <>
-                            {challanError && (
+                            {challanErrorMessage && (
                                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                                    {challanError}
+                                    {challanErrorMessage}
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length === 0 && (
+                            {!challanErrorMessage && challanDetails.length === 0 && (
                                 <div className="text-sm text-gray-500 text-center py-6">
                                     No challans
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length > 0 && (
+                            {!challanErrorMessage && challanDetails.length > 0 && (
                                 <div className="mt-4">
                                     <div className="flex justify-end mb-3">
                                         <Badge className="border-orange-300 text-orange-700 bg-orange-50 font-semibold px-3 py-1">
@@ -304,7 +320,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                 <TabsTrigger value="verification">Verification</TabsTrigger>
                                 <TabsTrigger value="challan" className="flex items-center gap-2 relative">
                                     Challan Details
-                                    {challanError ? (
+                                    {challanErrorMessage ? (
                                         <AlertTriangle className="h-4 w-4 text-red-500" />
                                     ) : challanDetails.length > 0 ? (
                                         <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-full shadow-sm">
@@ -321,6 +337,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
                         {/* Verification */}
                         <TabsContent value="verification">
+                            {hasVerificationError && (
+                                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center mb-4">
+                                    Something went wrong. Please contact administrator.
+                                </div>
+                            )}
                             <div className="border rounded-md divide-y">
                                 {rcDataForDisplay.length > 0 ? (
                                     rcDataForDisplay.map((field, index) => (
@@ -335,29 +356,29 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                             </div>
                                         </div>
                                     ))
-                                ) : (
+                                ) : !hasVerificationError ? (
                                     <div className="px-4 py-3 text-sm text-gray-500 text-center">
                                         No verification data available
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         </TabsContent>
 
                         {/* Challan */}
                         <TabsContent value="challan">
-                            {challanError && (
+                            {challanErrorMessage && (
                                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                                    {challanError}
+                                    {challanErrorMessage}
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length === 0 && (
+                            {!challanErrorMessage && challanDetails.length === 0 && (
                                 <div className="text-sm text-gray-500 text-center py-6">
                                     No challans
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length > 0 && (
+                            {!challanErrorMessage && challanDetails.length > 0 && (
                                 <>
                                     {showChallanTabs ? (
                                         <div className="mt-4">

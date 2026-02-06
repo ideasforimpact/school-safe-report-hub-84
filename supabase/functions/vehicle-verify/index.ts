@@ -484,6 +484,11 @@ async function updateVehiclesRCFields(
     rc_status: isSuccess ? 'success' : 'error'
   };
 
+  // When both providers fail, set verification_status to 'failed'
+  if (!isSuccess) {
+    updates.verification_status = 'failed';
+  }
+
   // Update counts based on success/error
   if (isSuccess) {
     updates.success_api_count = currentSuccessCount + 1;
@@ -1109,11 +1114,12 @@ serve(async (req) => {
     
     // Generate verification status based on response
     let verificationStatus = 'verified';
-    if (!providerData.data) {
+    const rcFailed = providerData?.status_code !== 200 && providerData?.status_code !== undefined;
+    if (rcFailed || !providerData?.data) {
       verificationStatus = 'failed';
     } else if (providerData.success === false) {
       verificationStatus = 'incomplete';
-    } else if (providerData.data.rc_status) {
+    } else if (providerData.data?.rc_status) {
       // Use RC status from response if available
       verificationStatus = providerData.data.rc_status.toLowerCase();
     }
