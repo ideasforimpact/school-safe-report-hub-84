@@ -297,6 +297,10 @@ function formatDateTime(date: Date): string {
   
   return `${dateStr} ${timeStr}`;
 }
+function getMinuteKey(date = new Date()) {
+  const iso = date.toISOString();
+  return iso.slice(0, 16);
+}
 
 /**
  * Log error to error_log structure
@@ -312,7 +316,6 @@ function createErrorLogEntry(
     provider: provider,
     status_code: statusCode,
     msg: message,
-    date_time: formatDateTime(new Date()),
     api: apiUrl, // Full API URL
     payload: payload
   };
@@ -548,20 +551,30 @@ async function updateVehicleChallans(
   const existingHistoryLog = existingChallan?.challan_history_log || {};
 
   // Create history entry
-  const timestamp = new Date().toISOString();
-  const historyEntry = {
-    provider: provider,
-    status_code: String(statusCode),
-    success: isSuccess,
-    data: challanData,
-    timestamp: timestamp
-  };
+  const minuteKey = getMinuteKey();
+    const updatedHistoryLog = { ...existingHistoryLog };
+    if (!updatedHistoryLog[minuteKey]) {
+      updatedHistoryLog[minuteKey] = {
+        both_fallback: false,
+      };
+    }
 
-  // Update history log
-  const updatedHistoryLog = {
-    ...existingHistoryLog,
-    [timestamp]: historyEntry
-  };
+    updatedHistoryLog[minuteKey].push({
+      provider,
+      status_code: String(statusCode),
+      success: isSuccess,
+      data: challanData,
+      timestamp: new Date().toISOString()
+    });
+
+    const providers = updatedHistoryLog[minuteKey].map(
+      (a: any) => a.provider
+    );
+
+    if (providers.includes('surepass') && providers.includes('quickeyc')) {
+      updatedHistoryLog[minuteKey].both_fallback = true;
+    }
+
 
   // Prepare update/insert object
   const challanRecord: Record<string, any> = {
