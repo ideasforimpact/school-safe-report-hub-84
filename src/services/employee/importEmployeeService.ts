@@ -28,13 +28,6 @@ export const processEmployeeExcel = async (
     const rawData = await parseEmployeeFile(file);
     console.log("File data parsed successfully, records:", rawData.length);
 
-    // Verify that we have email data in the parsed records
-    const missingEmails = rawData.filter(emp => !emp.email || emp.email.trim() === '').length;
-    if (missingEmails > 0) {
-      console.error(`Warning: ${missingEmails} records are missing email addresses`);
-      toast.warning(`${missingEmails} records are missing email addresses. Please check your file.`);
-    }
-
     // Show status message for large imports
     if (rawData.length > 100) {
       toast.info(`Processing ${rawData.length} records. This may take a moment...`);
@@ -43,7 +36,8 @@ export const processEmployeeExcel = async (
     // Validate the data before processing
     const { errors, warnings } = await validateExcelData(rawData, clientId);
     if (errors.length > 0) {
-      toast.error(`Validation failed with ${errors.length} errors`);
+      console.error('Import validation errors:', errors);
+      toast.error(`Validation failed: ${errors.slice(0, 3).join('; ')}${errors.length > 3 ? ` and ${errors.length - 3} more` : ''}`);
       throw new Error('File data validation failed');
     }
     
@@ -78,21 +72,17 @@ export const processEmployeeExcel = async (
         enabled: true,
         employeeId: String(emp.employeeId)
       }));
-      const email =
-        emp.email?.trim() !== ""
-          ? emp.email
-          : `${emp.firstName.toLowerCase().replace(/\s/g, '')}.${emp.lastName
-              .toLowerCase()
-              .replace(/\s/g, '')}@example.com`;
-
-      if (!emp.email?.trim()) {
-        console.warn(`Generated default email for ${emp.firstName} ${emp.lastName}: ${email}`);
-      }
+      // Preserve the email from the uploaded file; do not auto-generate one
+      const email = emp.email?.trim() || '';
       return {
         ...emp,
         email,
-        employeeType: isValidEmployeeType(String(emp.employeeType)) ? String(emp.employeeType) : 'permanent',
-        department: isValidDepartment(String(emp.department)) ? String(emp.department) : 'admin',
+        employeeType: (emp.employeeType != null && String(emp.employeeType).trim() !== '' && isValidEmployeeType(String(emp.employeeType)))
+          ? String(emp.employeeType)
+          : undefined,
+        department: (emp.department != null && String(emp.department).trim() !== '' && isValidDepartment(String(emp.department)))
+          ? String(emp.department)
+          : undefined,
         status: isValidStatus(String(emp.status)) ? String(emp.status) : 'active',
         modulePermissions: defaultModulePermissions,
         moduleAccessPayload, // Add module access payload

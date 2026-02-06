@@ -125,26 +125,41 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     fetchDocuments();
   }, [vehicleId]);
 
-  // Fetch vehicle_challans when component mounts
-  useEffect(() => {
-    const fetchVehicleChallans = async () => {
-      if (vehicleId) {
-        try {
-          const challans = await getVehicleChallans(vehicleId);
-          console.log(challans,"challansApi1214");
-          
-          setVehicleChallans(challans);
-        } catch (error) {
-          console.error('Error fetching vehicle_challans:', error);
-        }
-      }
-    };
-
-    fetchVehicleChallans();
+  // Fetch vehicle_challans (history) for this vehicle
+  const fetchVehicleChallansForHistory = useCallback(async () => {
+    if (!vehicleId) return;
+    try {
+      const challans = await getVehicleChallans(vehicleId);
+      console.log(challans, "challansApi1214");
+      setVehicleChallans(challans);
+    } catch (error) {
+      console.error("Error fetching vehicle_challans:", error);
+    }
   }, [vehicleId]);
+
+  useEffect(() => {
+    fetchVehicleChallansForHistory();
+  }, [fetchVehicleChallansForHistory]);
+
   const handleDocumentUpdate = useCallback(async () => {
     await fetchDocuments();
   }, [fetchDocuments]);
+  const verificationHistory = React.useMemo(() => {
+  const log = vehicleChallans?.challan_history_log;
+
+  if (!log || typeof log !== 'object') return [];
+
+    return Object.entries(log)
+      .map(([date, snapshot]) => ({
+        date,
+        snapshot,        // full challan snapshot from DB
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+  }, [vehicleChallans]);
+
 
   useRealTimeSubHook({
   channelName: `vehicle-documents-${vehicleId}`,
@@ -154,29 +169,39 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   enabled: !!vehicleId,
   onPayload: handleDocumentUpdate,
 });
+
+  // Re-fetch challan history whenever vehicle_challans row changes in Supabase
+  useRealTimeSubHook({
+    channelName: `vehicle-challans-${vehicleId}`,
+    events: "*",
+    table: "vehicle_challans",
+    filter: vehicleId ? `vehicle_id=eq.${vehicleId}` : undefined,
+    enabled: !!vehicleId,
+    onPayload: fetchVehicleChallansForHistory,
+  });
   // Find verification log entry to get history
-  const getVerificationLog = () => {
-    if (!vehicle?.verificationData) return null;
+  // const getVerificationLog = () => {
+  //   if (!vehicle?.verificationData) return null;
     
-    const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
-    return logEntry?.value || null;
-  };
+  //   const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
+  //   return logEntry?.value || null;
+  // };
   
-  const verificationLog = getVerificationLog();
+  // const verificationLog = getVerificationLog();
   
-  // Get verification history entries sorted by date (newest first)
-  const getVerificationHistory = () => {
-    if (!verificationLog) return [];
+  // // Get verification history entries sorted by date (newest first)
+  // const getVerificationHistory = () => {
+  //   if (!verificationLog) return [];
     
-    return Object.entries(verificationLog)
-      .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
-      .map(([date, data]) => ({
-        date,
-        data
-      }));
-  };
+  //   return Object.entries(verificationLog)
+  //     .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+  //     .map(([date, data]) => ({
+  //       date,
+  //       data
+  //     }));
+  // };
   
-  const verificationHistory = getVerificationHistory();
+  // const verificationHistory = getVerificationHistory();
   
   // Format verification data - remove internal/noisy fields
   const formatVerificationData = (data: any) => {
@@ -219,10 +244,14 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       });
   };
   
-  const viewVerificationDetails = (data: any) => {
-    setSelectedVerificationData(data);
-    setShowVerificationDetails(true);
-  };
+const viewVerificationDetails = (entry: { date: string; snapshot: any }) => {
+  setSelectedVerificationData({
+    challanSnapshot: entry.snapshot,
+    challanError: null, 
+  });
+
+  setShowVerificationDetails(true);
+};
   
   // Function to open file preview dialog for uploaded documents
   const openUploadedFilePreview = (document: UploadedDocument, fileIndex: number = 0) => {
@@ -688,48 +717,59 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         {!verificationHistory.length && (
           <p className="text-gray-500 text-left">No verification history available for this vehicle.</p>
         )}
-        
-        {verificationHistory.length > 0 && (
-          <div className="space-y-4">
-            {verificationHistory.map((entry, idx) => (
+      {verificationHistory.map((entry, idx) => {
+            const attempts = entry.snapshot?.attempts || [];
+
+            const status =
+              attempts.some((a: any) => a.success === true)
+                ? 'SUCCESS'
+                : 'FAILED';
+
+            return (
               <div key={idx} className="border rounded-md p-4">
                 <h4 className="font-medium mb-2">
                   {new Date(entry.date).toLocaleString()}
                 </h4>
                 <div className="text-xs text-gray-500 mb-2">
-                  Verification status: <span className={
-                    Array.isArray(entry.data) && 
-                    entry.data.find((i: any) => i.field === 'status')?.value === 'active' ? 
-                    'text-green-600' : 'text-amber-600'
-                  }>
-                    {Array.isArray(entry.data) ? 
-                      String(entry.data.find((i: any) => i.field === 'status')?.value || 'Unknown').toUpperCase() : 
-                      'Unknown'
+                  Verification status:{' '}
+                  <span
+                    className={
+                      status === 'SUCCESS'
+                        ? 'text-green-600'
+                        : 'text-red-600'
                     }
+                  >
+                    {status}
                   </span>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="w-full mt-2"
-                  onClick={() => viewVerificationDetails(entry.data)}
+                  onClick={() =>
+                    viewVerificationDetails({
+                      date: entry.date,
+                      snapshot: entry.snapshot,
+                    })
+                  }
                 >
                   <History className="h-4 w-4 mr-2" />
                   View Details
                 </Button>
               </div>
-            ))}
-          </div>
-        )}
-      </TabsContent>
+            );
+          })}
+    </TabsContent>
       
       {/* Verification Details Dialog */}
-     <VerificationDetailsDialog
+   <VerificationDetailsDialog
   open={showVerificationDetails}
   onOpenChange={setShowVerificationDetails}
-  verificationData={selectedVerificationData}
+  challanSnapshot={selectedVerificationData?.challanSnapshot}
+  challanError={selectedVerificationData?.challanError}
   vehicle={vehicle || undefined}
   vehicleChallans={vehicleChallans}
+   mode="history"  
 />
       
       {/* Upload Document Dialog */}

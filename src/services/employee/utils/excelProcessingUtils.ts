@@ -3,6 +3,52 @@ import * as XLSX from 'xlsx';
 import { RawEmployeeData } from '../types/importTypes';
 
 /**
+ * Safely detect CSV delimiter (comma / semicolon / tab)
+ */
+const detectDelimiter = (headerLine: string): string => {
+  const commaCount = (headerLine.match(/,/g) || []).length;
+  const semicolonCount = (headerLine.match(/;/g) || []).length;
+  const tabCount = (headerLine.match(/\t/g) || []).length;
+
+  if (semicolonCount > commaCount && semicolonCount >= tabCount) return ';';
+  if (tabCount > commaCount && tabCount >= semicolonCount) return '\t';
+  return ','; // default
+};
+
+/**
+ * Parse a single CSV line into values, honoring quotes and a dynamic delimiter.
+ * This is more robust than a simple split and avoids column-shift issues.
+ */
+const parseCsvLine = (line: string, delimiter: string): string[] => {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      // Handle escaped quotes ("")
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === delimiter && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else if (char !== '\r') {
+      current += char;
+    }
+  }
+
+  values.push(current.trim());
+
+  return values.map(v => v.replace(/^"|"$/g, '').trim());
+};
+
+/**
  * Parse a CSV file into structured employee data
  */
 export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
@@ -24,19 +70,28 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
             reject(new Error('CSV file must contain at least a header row and one data row'));
             return;
           }
+
+          // Detect delimiter from the first line so semicolon- or tab-separated CSVs work too
+          const rawHeaderLine = lines[0].replace(/^\uFEFF/, ''); // strip BOM if present
+          const delimiter = detectDelimiter(rawHeaderLine);
           
           // Parse header row
-          const headers = lines[0].split(',').map(header => header.trim().replace(/"/g, ''));
+          const headers = parseCsvLine(rawHeaderLine, delimiter).map(header =>
+            header.trim().replace(/"/g, '')
+          );
+          console.log("CSV delimiter detected:", JSON.stringify(delimiter));
           console.log("CSV headers:", headers);
           
           // Parse data rows
           const jsonData = lines.slice(1).map((line) => {
-            const values = (line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [])
-              .map(v => v.replace(/^"|"$/g, '').trim());
+            const values = parseCsvLine(line, delimiter);
             const row: any = {};
             
             headers.forEach((header, i) => {
-              row[header] = values[i] || '';
+              const key = header.trim();
+              // Skip completely empty header cells to avoid weird composite keys
+              if (!key) return;
+              row[key] = values[i] ?? '';
             });
             
             return row;
@@ -163,8 +218,8 @@ export const parseCSVFile = async (file: File): Promise<RawEmployeeData[]> => {
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
-              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || undefined,
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || undefined,
               designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               joiningDate: normalizeDate(getFieldValue([
                               'Joining Date', 'JoiningDate', 'joiningDate', 'joining_date',
@@ -378,8 +433,8 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
               email: findEmailField(),
               phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
-              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || undefined,
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || undefined,
               designation: getFieldValue(['Designation', 'designation', 'DESIGNATION', 'Title', 'Job Title', 'JobTitle', 'Role Name']),
               // Handle date formats
               joiningDate: normalizeDate(getFieldValue([
