@@ -297,6 +297,10 @@ function formatDateTime(date: Date): string {
   
   return `${dateStr} ${timeStr}`;
 }
+function getMinuteKey(date = new Date()) {
+  const iso = date.toISOString();
+  return iso.slice(0, 16);
+}
 
 /**
  * Log error to error_log structure
@@ -312,18 +316,9 @@ function createErrorLogEntry(
     provider: provider,
     status_code: statusCode,
     msg: message,
-    date_time: formatDateTime(new Date()),
     api: apiUrl, // Full API URL
     payload: payload
   };
-}
-
-/**
- * Generate a short 5-digit process id for linking
- * related challan attempts (primary + fallback).
- */
-function generateProcessId(): string {
-  return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
 /**
@@ -527,10 +522,7 @@ async function updateVehicleChallans(
   provider: 'surepass' | 'quickeyc',
   statusCode: number | string,
   challanData: any,
-  isSuccess: boolean,
-  processId?: string,
-  parentProcessId?: string | null,
-  bothFallback?: boolean
+  isSuccess: boolean
 ): Promise<void> {
   if (!vehicleId) {
     // If no vehicleId, try to find by registration_number
@@ -559,33 +551,30 @@ async function updateVehicleChallans(
   const existingHistoryLog = existingChallan?.challan_history_log || {};
 
   // Create history entry
-  const timestamp = new Date().toISOString();
-  const finalProcessId = processId || generateProcessId();
-  const historyEntry: any = {
-    provider: provider,
-    status_code: String(statusCode),
-    success: isSuccess,
-    data: challanData,
-    timestamp: timestamp,
-    process_id: finalProcessId
-  };
+  const minuteKey = getMinuteKey();
+    const updatedHistoryLog = { ...existingHistoryLog };
+    if (!updatedHistoryLog[minuteKey]) {
+      updatedHistoryLog[minuteKey] = {
+        both_fallback: false,
+      };
+    }
 
-  // When both providers fail in a single flow, link the
-  // fallback attempt to the primary via parent_process_id
-  // and mark it with bothFallback = true so the UI can
-  // safely hide the duplicate entry in history.
-  if (parentProcessId) {
-    historyEntry.parent_process_id = parentProcessId;
-  }
-  if (bothFallback !== undefined) {
-    historyEntry.bothFallback = bothFallback;
-  }
+    updatedHistoryLog[minuteKey].push({
+      provider,
+      status_code: String(statusCode),
+      success: isSuccess,
+      data: challanData,
+      timestamp: new Date().toISOString()
+    });
 
-  // Update history log
-  const updatedHistoryLog = {
-    ...existingHistoryLog,
-    [timestamp]: historyEntry
-  };
+    const providers = updatedHistoryLog[minuteKey].map(
+      (a: any) => a.provider
+    );
+
+    if (providers.includes('surepass') && providers.includes('quickeyc')) {
+      updatedHistoryLog[minuteKey].both_fallback = true;
+    }
+
 
   // Prepare update/insert object
   const challanRecord: Record<string, any> = {
@@ -874,9 +863,6 @@ async function callChallanAPI(
 ): Promise<{ response: Response; data: any; provider?: 'surepass' | 'quickeyc'; statusCode?: number; errorLog?: any }> {
   // Primary: Always try SurePass first
   console.log('[Challan API] Attempting primary: SurePass');
-  // Generate a short process id to link this SurePass + QuickEKYC
-  // challan attempt together in history when both fail.
-  const challanProcessId = generateProcessId();
   
   // SurePass requires chassis and engine numbers
   if (!chassisNumber || !engineNumber) {
@@ -917,8 +903,7 @@ async function callChallanAPI(
         'surepass',
         surePassResponse.status,
         surePassData,
-        true,
-        challanProcessId
+        true
       );
       return {
         response: surePassResponse,
@@ -951,8 +936,7 @@ async function callChallanAPI(
       'surepass',
       surePassResponse.status,
       surePassData,
-      false,
-      challanProcessId
+      false
     );
     console.log('[Challan API] SurePass failed — falling back to QuickEKYC');
   } catch (error) {
@@ -976,8 +960,7 @@ async function callChallanAPI(
       'surepass',
       0,
       { error: errorMessage },
-      false,
-      challanProcessId
+      false
     );
 
     console.log('[Challan API] SurePass exception — falling back to QuickEKYC');
@@ -1015,7 +998,6 @@ async function callChallanAPI(
         await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
       }
 
-      const isBothFallbackFailure = !quickEKYSuccess;
       await updateVehicleChallans(
         supabase,
         vehicleId,
@@ -1023,10 +1005,7 @@ async function callChallanAPI(
         'quickeyc',
         quickEKYStatusCode,
         quickEKYData,
-        quickEKYSuccess,
-        challanProcessId,
-        isBothFallbackFailure ? challanProcessId : null,
-        isBothFallbackFailure
+        quickEKYSuccess
       );
 
       return {
