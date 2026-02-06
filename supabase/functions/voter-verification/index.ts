@@ -377,6 +377,7 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
+        const bothFallback = data?.success === false;
         await logVerificationError(supabase, {
           employeeId,
           documentId,
@@ -384,7 +385,7 @@ serve(async (req) => {
           statusCode: data?.status_code ?? rawApiResponse?.status_code,
           message: data?.message,
           response: data,
-          bothFallback: true,
+          bothFallback,
           documentTypeId: documentTypeId ?? undefined,
           documentTypeName: 'VOTER_ID',
           documentNumber: documentNumber
@@ -397,7 +398,7 @@ serve(async (req) => {
             originalError: data?.message ?? rawApiResponse?.message,
             message: userFriendlyError,
             requiresReview: true,
-            bothFallback: true,
+            bothFallback,
             apiResponse: data
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

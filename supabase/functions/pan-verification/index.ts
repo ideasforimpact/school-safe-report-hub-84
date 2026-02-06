@@ -301,17 +301,20 @@ serve(async (req) => {
             }
           }
           
-          await logVerificationError(supabase, {
-            employeeId,
-            documentId,
-            provider: 'surepass',
-            statusCode: data.status_code,
-            message: data.message,
-            response: data,
-            documentTypeId: documentTypeId ?? undefined,
-            documentTypeName: 'PAN',
-            documentNumber: documentNumber
-          });
+          if (data?.success === false) {
+            await logVerificationError(supabase, {
+              employeeId,
+              documentId,
+              provider: 'surepass',
+              statusCode: data.status_code,
+              message: data.message,
+              response: data,
+              bothFallback: false,
+              documentTypeId: documentTypeId ?? undefined,
+              documentTypeName: 'PAN',
+              documentNumber: documentNumber
+            });
+          }
           // Return response indicating API failed but status remains pending for review
           return new Response(
             JSON.stringify({ 

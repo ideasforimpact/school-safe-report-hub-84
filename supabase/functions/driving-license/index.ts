@@ -422,6 +422,7 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
+        const bothFallback = apiResponse?.success === false;
         await logVerificationError(supabase, {
           employeeId,
           documentId,
@@ -429,7 +430,7 @@ serve(async (req) => {
           statusCode: apiResponse?.status_code ?? rawApiResponse?.status_code,
           message: apiResponse?.message,
           response: apiResponse,
-          bothFallback: true,
+          bothFallback,
           documentTypeId: documentTypeId ?? undefined,
           documentTypeName: 'DRIVING_LICENSE',
           documentNumber: licenseNumber,
@@ -443,7 +444,7 @@ serve(async (req) => {
             originalError: apiResponse?.message ?? rawApiResponse?.message,
             message: userFriendlyError,
             requiresReview: true,
-            bothFallback: true,
+            bothFallback,
             apiResponse
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
