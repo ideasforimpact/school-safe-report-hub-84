@@ -139,6 +139,7 @@ serve(async (req) => {
             statusCode: response.status,
             message: response.statusText,
             response: response,
+            bothFallback: false,
             documentTypeId: documentTypeId ?? undefined,
             documentTypeName: 'PASSPORT',
             documentNumber: fileNumber
@@ -242,17 +243,20 @@ serve(async (req) => {
             }
           }
 
-          await logVerificationError(supabase, {
-            employeeId,
-            documentId,
-            provider: 'surepass',
-            statusCode: apiResponse?.status_code,
-            message: apiResponse?.message,
-            response: apiResponse,
-            documentTypeId: documentTypeId ?? undefined,
-            documentTypeName: 'PASSPORT',
-            documentNumber: fileNumber
-          });
+          if (apiResponse?.success === false) {
+            await logVerificationError(supabase, {
+              employeeId,
+              documentId,
+              provider: 'surepass',
+              statusCode: apiResponse?.status_code,
+              message: apiResponse?.message,
+              response: apiResponse,
+              bothFallback: false,
+              documentTypeId: documentTypeId ?? undefined,
+              documentTypeName: 'PASSPORT',
+              documentNumber: fileNumber
+            });
+          }
 
           return new Response(
             JSON.stringify({
@@ -308,6 +312,7 @@ serve(async (req) => {
           provider: "surepass",
           message: (error as Error).message,
           response: { error: (error as Error).message },
+          bothFallback: false,
           documentTypeId: documentTypeId ?? undefined,
           documentTypeName: 'PASSPORT',
           documentNumber: fileNumber

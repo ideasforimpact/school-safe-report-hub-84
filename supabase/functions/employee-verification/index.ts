@@ -290,15 +290,15 @@ async function requestAadharOtpWithFallback(
         documentNumber: documentNumber
       });
     }
-    if (surePareData?.status_code === 500) {
+    if (surePareData?.status_code === 500 || surePareData?.success === false) {
       await logVerificationError(supabase, {
         employeeId,
         documentId,
         provider: 'surepass',
-        statusCode: 500,
+        statusCode: surePareData?.status_code,
         message: surePareData.message,
         response: surePareData,
-        bothFallback: true,
+        bothFallback: surePareData?.success === false,
         documentTypeId: documentTypeId ?? undefined,
         documentTypeName: 'AADHAAR',
         documentNumber: documentNumber
