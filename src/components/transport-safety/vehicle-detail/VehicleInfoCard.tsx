@@ -251,46 +251,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
 
   // Get the latest verification data for display
   const latestVerificationData = getLatestVerificationData();
-  const latestChallanSuccessLog = React.useMemo(() => {
-    const logs = vehicleChallans?.challan_history_log;
-    if (!logs || typeof logs !== 'object') return null;
- 
-   let latest: {
-     timestamp: string;
-     provider: string;
-     data: any;
-   } | null = null;
- 
-   Object.values(logs).forEach((bucket: any) => {
-     if (!Array.isArray(bucket.attempts)) return;
- 
-     bucket.attempts.forEach((attempt: any) => {
-       const statusCode = Number(attempt?.data?.status_code);       
-       const challans =
-         attempt?.data?.data?.challan_details?.challans;
- 
-       const isRealSuccess =
-         statusCode === 200 &&
-         attempt.success === true &&
-         Array.isArray(challans) &&
-         challans.length > 0;
-         
-       if (!isRealSuccess) return;
- 
-       const time = new Date(attempt.timestamp).getTime();
- 
-       if (!latest || time > new Date(latest.timestamp).getTime()) {
-         latest = {
-           timestamp: attempt.timestamp,
-           provider: attempt.provider,
-           data: attempt.data.data, 
-         };
-       }
-     });
-   });
- 
-   return latest;
- }, [vehicleChallans]);
 
   return (
     <Card>
@@ -380,16 +340,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 </Button>
               </DialogTrigger>
               <VerificationDetailsDialog
-                open={showVerificationResults}
-                onOpenChange={setShowVerificationResults}
-                title="Latest Verification Details"
-                vehicle={vehicle}
-                apiResponse={apiResponseData}
-                vehicleChallans={vehicleChallans}
-                challanError={
-                  latestChallanSuccessLog ? null : 'No successful challan check available.'
-                }
-                mode='latest'
+                 open={showVerificationResults}
+                  onOpenChange={setShowVerificationResults}
+                  verificationData={latestVerificationData}
+                  challanError={challanError}
+                  hasChallanData={hasChallanData}
+                  title="Latest Verification Details"
+                  vehicle={vehicle}
+                  apiResponse={apiResponseData}
+                  vehicleChallans={vehicleChallans}
               />
             </Dialog>
           </div>
