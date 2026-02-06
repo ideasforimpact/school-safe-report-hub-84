@@ -145,19 +145,39 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     await fetchDocuments();
   }, [fetchDocuments]);
   const verificationHistory = React.useMemo(() => {
-  const log = vehicleChallans?.challan_history_log;
+    const log = vehicleChallans?.challan_history_log;
 
-  if (!log || typeof log !== 'object') return [];
+    if (!log || typeof log !== 'object') return [];
 
-    return Object.entries(log)
-      .map(([date, snapshot]) => ({
-        date,
-        snapshot,        // full challan snapshot from DB
-      }))
-      .sort(
-        (a, b) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
+    const entries = Object.entries(log).map(([date, snapshot]: [string, any]) => ({
+      date,
+      snapshot, // full challan snapshot from DB
+    }));
+
+    // To avoid duplicate history rows when both providers fail in a single
+    // challan attempt, we hide the fallback entry that is explicitly marked
+    // as bothFallback with a parent_process_id pointing to the primary attempt.
+    const hasPrimaryByProcessId = new Set(
+      entries
+        .map(e => e.snapshot?.process_id)
+        .filter((id: string | undefined | null) => !!id) as string[]
+    );
+
+    const filtered = entries.filter(({ snapshot }) => {
+      const bothFallback = snapshot?.bothFallback === true;
+      const parentId = snapshot?.parent_process_id as string | undefined;
+
+      if (bothFallback && parentId && hasPrimaryByProcessId.has(parentId)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return filtered.sort(
+      (a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
   }, [vehicleChallans]);
 
 
