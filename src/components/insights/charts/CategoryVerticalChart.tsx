@@ -68,7 +68,7 @@ const CategoryVerticalChart: React.FC<CategoryVerticalChartProps> = ({ title, de
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
+        <div className="h-[340px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
@@ -76,41 +76,35 @@ const CategoryVerticalChart: React.FC<CategoryVerticalChartProps> = ({ title, de
                 top: 20,
                 right: 30,
                 left: 20,
-                bottom: 60,
+                bottom: 90,
               }}
               barCategoryGap="20%"
             >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="name" 
+
+              <XAxis
+                dataKey="name"
                 tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                angle={-45}
+                angle={-55}
                 textAnchor="end"
-                height={80}
+                height={90}
                 interval={0}
               />
-              <YAxis 
+
+              <YAxis
                 tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                 allowDecimals={false}
                 tickCount={5}
                 interval="preserveStartEnd"
-                tickFormatter={(value) => Number.isInteger(value) ? value.toString() : ''}
+                tickFormatter={(value) =>
+                  Number.isInteger(value) ? value.toString() : ''
+                }
               />
-              <Tooltip 
-                content={<CategoryTooltip />}
-              />
-              <Bar 
-                dataKey="count" 
-                fill="#3B82F6"
-                radius={[4, 4, 0, 0]}
-                name="Total"
-              />
-              <Bar 
-                dataKey="closedCount" 
-                fill="#14B8A6"
-                radius={[4, 4, 0, 0]}
-                name="Closed"
-              />
+
+              <Tooltip content={<CategoryTooltip />} />
+
+              <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="closedCount" fill="#14B8A6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
