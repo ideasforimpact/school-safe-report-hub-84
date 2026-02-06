@@ -108,12 +108,22 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         return Object.keys(logs)
             .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
     }, [vehicleChallans]);
+
     const shouldShowLatestChallanCheck = React.useMemo(() => {
+        // If we don't have a known "latest successful" entry or any history, do nothing.
         if (!latestChallanSuccessLog?.timestamp) return false;
         if (!latestLogTimestamp) return false;
 
+        // When opening from History, a successful card already represents live data.
+        // In that case, we should NOT show the cached indicator.
+        if (challanSnapshot?.success === true) {
+            return false;
+        }
+
+        // Otherwise, only show the indicator when the latest log is not a successful challan,
+        // meaning we're displaying cached success data from a previous run.
         return latestChallanSuccessLog.timestamp !== latestLogTimestamp;
-    }, [latestChallanSuccessLog, latestLogTimestamp]);
+    }, [latestChallanSuccessLog, latestLogTimestamp, challanSnapshot]);
 
 
     // Verification tab: show user-friendly error when API returned status error or 500
