@@ -10,9 +10,10 @@ import {
 export const validateEmployeeData = (employeeData: Partial<Employee>): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
-  // Required fields (email is optional)
+  // Required fields
   if (!employeeData.firstName) errors.push('First name is required');
   if (!employeeData.lastName) errors.push('Last name is required');
+  if (!employeeData.email) errors.push('Email is required');
   if (!employeeData.employeeId) errors.push('Employee ID is required');
   
   // Email validation

@@ -72,53 +72,45 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
       return 'Invalid Date';
     }
   };
-  const latestSuccessLog = React.useMemo(() => {
-    const logs = vehicleChallans?.challan_history_log;
-    if (!logs || typeof logs !== 'object') return null;
 
-    let latest: {
-      timestamp: string;
-      provider: string;
-      data: any;
-    } | null = null;
-
-    Object.values(logs).forEach((bucket: any) => {
-      if (!Array.isArray(bucket.attempts)) return;
-
-      bucket.attempts.forEach((attempt: any) => {
-        if (attempt.success === true && attempt.status_code === '200') {
-          const time = new Date(attempt.timestamp).getTime();
-
-          if (!latest || time > new Date(latest.timestamp).getTime()) {
-            latest = {
-              timestamp: attempt.timestamp,
-              provider: attempt.provider,
-              data: attempt.data?.data
-            };
-          }
-        }
-      });
-    });
-
-    return latest;
-  }, [vehicleChallans]);
-  
-
- const challanCount = React.useMemo(() => {
-    const challanData = latestSuccessLog?.data;
-    if (!challanData) return 0;
-
-    if (Array.isArray(challanData.challan_data)) {
-      return challanData.challan_data.length;
+  // Get challan count from vehicle_challans
+  const getChallanCount = (): number => {
+    if (!vehicleChallans?.latest_challan_data) {
+      return 0;
     }
 
+    const challanData = vehicleChallans.latest_challan_data;
+    
+    // Handle different challan response structures
+    if (challanData?.data?.challan_details?.challans) {
+      const challans = challanData.data.challan_details.challans;
+      if (Array.isArray(challans)) {
+        return challans.length;
+      }
+    }
+    if (challanData?.data?.challan_data) {
+      const challans = challanData.data.challan_data;
+      if (Array.isArray(challans)) {
+        return challans.length;
+      }
+    }
     if (challanData?.challan_details?.challans) {
-      return challanData.challan_details.challans.length;
+      const challans = challanData.challan_details.challans;
+      if (Array.isArray(challans)) {
+        return challans.length;
+      }
     }
-
+    if (Array.isArray(challanData)) {
+      return challanData.length;
+    }
+    if (Array.isArray(challanData?.data)) {
+      return challanData.data.length;
+    }
+    
     return 0;
-  }, [latestSuccessLog]);
+  };
 
+  const challanCount = getChallanCount();
 
   return (
     <Card>

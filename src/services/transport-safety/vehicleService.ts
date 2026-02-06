@@ -492,50 +492,12 @@ export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChall
 /**
  * Get pending challans from vehicle_challans table
  */
-export const getPendingChallansFromVehicleChallans = (
-  vehicleChallans: VehicleChallans | null
-): any[] => {
-  const logs = vehicleChallans?.challan_history_log;
-  if (!logs || typeof logs !== 'object') return [];
-
-  let latestSuccessAttempt: any | null = null;
-  Object.values(logs).forEach((bucket: any) => {
-    if (!Array.isArray(bucket.attempts)) return;
-
-    bucket.attempts.forEach((attempt: any) => {
-      const challans =
-        attempt?.data?.data?.challan_details?.challans ??
-        attempt?.data?.data?.challan_data ??
-        [];
-      const isRealSuccess =
-        attempt.success === true &&
-        Number(attempt?.data?.status_code) === 200 &&
-        Array.isArray(challans);
-
-      if (!isRealSuccess) return;
-
-      if (
-        !latestSuccessAttempt ||
-        new Date(attempt.timestamp).getTime() >
-          new Date(latestSuccessAttempt.timestamp).getTime()
-      ) {
-        latestSuccessAttempt = attempt;
-      }
-    });
-  });
-
-  if (!latestSuccessAttempt) return [];
-
-  const challans =
-    latestSuccessAttempt?.data?.data?.challan_details?.challans ??
-    latestSuccessAttempt?.data?.data?.challan_data ??
-    [];
-
-  return challans.filter(
+export const getPendingChallansFromVehicleChallans = (vehicleChallans: VehicleChallans | null): any[] => {
+  const allChallans = extractChallansFromVehicleChallans(vehicleChallans);
+  return allChallans.filter(
     (c: any) =>
-      !['DISPOSED', 'PAID'].includes(
-        String(c?.challan_status).toUpperCase()
-      )
+      c.challan_status &&
+      !['DISPOSED', 'PAID'].includes(c.challan_status.toUpperCase())
   );
 };
 
