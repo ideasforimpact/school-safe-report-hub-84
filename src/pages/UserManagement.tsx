@@ -90,10 +90,6 @@ export interface iModule {
 interface UserManagementProps {
   embedded?: boolean;
 }
-type DepartmentRow = {
-  id: string;
-  department_name: string;
-};
 
 // Main UserManagement component
 const UserManagement = ({ embedded = false }: UserManagementProps) => {
@@ -155,8 +151,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   
   // Get clientId from employee data or user context
   const clientId = state.employeeData?.clientId || user?.clientId;
-  const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [departmentOptions, setDepartmentOptions] = useState<DepartmentRow[]>([]);
 
   // Log the clientId for debugging
   useEffect(() => {
@@ -164,29 +158,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     console.log("UserManagement - Current user data:", user);
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
-  const fetchDepartments = async () => {
-    if (!clientId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('employee_departments' as any)
-        .select('id, department_name')
-        .order('department_name', { ascending: true });
-      
-      if (error) throw error;
-      
-      setDepartmentOptions(data as any);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-      toast.error('Failed to load departments');
-    }
-  };
-
-  useEffect(() => {
-    if (clientId) {
-      fetchDepartments();
-    }
-  }, [clientId]);
+  
   // Default form data for the user forms - Using only moduleAccessPayload
   const [formData, setFormData] = useState<{
     firstName: string;
@@ -253,21 +225,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           (statusFilter === 'active' && user.isActive) ||
           (statusFilter === 'inactive' && !user.isActive);
 
-        const selectedDept = departmentOptions.find(
-          d => d.id === departmentFilter
-        );
-        
-        const matchesDepartment =
-          departmentFilter === 'all' ||
-          user.department === selectedDept?.department_name;
-
-        return matchesSearch && matchesStatus && matchesDepartment;
+        return matchesSearch && matchesStatus;
       });
     } catch (error) {
       console.error('Error filtering users:', error);
       return employeeUsers; // Return all users if filtering fails
     }
-  }, [employeeUsers, searchQuery, statusFilter,departmentFilter]);
+  }, [employeeUsers, searchQuery, statusFilter]);
 
   const fetchEmployeesList = async () => {
     // Add clientId restriction check
@@ -402,11 +366,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               employeeId: currentFormData.employeeId,
               firstName: currentFormData.firstName,
               lastName: currentFormData.lastName,
-              email: currentFormData.email || undefined,
+              email: currentFormData.email,
               phone: currentFormData.phone || '',
               designation: currentFormData.designation || '',
-              employeeType: currentFormData.employeeType ?? undefined,
-              department: currentFormData.department ?? undefined,
+              employeeType: (currentFormData.employeeType || 'permanent') as any,
+              department: (currentFormData.department || 'admin') as any,
               joiningDate: currentFormData.joiningDate || new Date().toISOString().split('T')[0],
               status: 'active' as EmploymentStatus,
               clientId: currentFormData.clientId || clientId,
@@ -718,14 +682,12 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const clearAllFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
-    setDepartmentFilter('all');
   };
 
   // Get active filters count
   const activeFiltersCount = [
     searchQuery ? 1 : 0,
     statusFilter !== 'all' ? 1 : 0,
-    departmentFilter !== 'all' ? 1 : 0,
   ].reduce((sum, count) => sum + count, 0);
 
   // If no clientId is available, show a warning message
@@ -854,27 +816,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                 </SelectContent>
               </Select>
 
-              <Select
-                value={departmentFilter}
-                onValueChange={setDepartmentFilter}
-                >
-                <SelectTrigger className="w-[180px] h-10">
-                  <SelectValue placeholder="All Departments" />
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-
-                  {departmentOptions.map((dept) => (
-                    <SelectItem value={dept.id}>
-                      {dept.department_name
-                        ? dept.department_name.charAt(0).toUpperCase() +
-                          dept.department_name.slice(1)
-                        : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
 
               {/* Clear Filters Button */}

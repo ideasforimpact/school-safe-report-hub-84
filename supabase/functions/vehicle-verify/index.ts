@@ -319,6 +319,14 @@ function createErrorLogEntry(
 }
 
 /**
+ * Generate a short 5-digit process id for linking
+ * related challan attempts (primary + fallback).
+ */
+function generateProcessId(): string {
+  return Math.floor(10000 + Math.random() * 90000).toString();
+}
+
+/**
  * Save error log to database
  */
 async function saveErrorLog(
@@ -484,6 +492,11 @@ async function updateVehiclesRCFields(
     rc_status: isSuccess ? 'success' : 'error'
   };
 
+  // When both providers fail, set verification_status to 'failed'
+  if (!isSuccess) {
+    updates.verification_status = 'failed';
+  }
+
   // Update counts based on success/error
   if (isSuccess) {
     updates.success_api_count = currentSuccessCount + 1;
@@ -514,7 +527,10 @@ async function updateVehicleChallans(
   provider: 'surepass' | 'quickeyc',
   statusCode: number | string,
   challanData: any,
-  isSuccess: boolean
+  isSuccess: boolean,
+  processId?: string,
+  parentProcessId?: string | null,
+  bothFallback?: boolean
 ): Promise<void> {
   if (!vehicleId) {
     // If no vehicleId, try to find by registration_number
@@ -544,13 +560,26 @@ async function updateVehicleChallans(
 
   // Create history entry
   const timestamp = new Date().toISOString();
-  const historyEntry = {
+  const finalProcessId = processId || generateProcessId();
+  const historyEntry: any = {
     provider: provider,
     status_code: String(statusCode),
     success: isSuccess,
     data: challanData,
-    timestamp: timestamp
+    timestamp: timestamp,
+    process_id: finalProcessId
   };
+
+  // When both providers fail in a single flow, link the
+  // fallback attempt to the primary via parent_process_id
+  // and mark it with bothFallback = true so the UI can
+  // safely hide the duplicate entry in history.
+  if (parentProcessId) {
+    historyEntry.parent_process_id = parentProcessId;
+  }
+  if (bothFallback !== undefined) {
+    historyEntry.bothFallback = bothFallback;
+  }
 
   // Update history log
   const updatedHistoryLog = {
@@ -845,6 +874,9 @@ async function callChallanAPI(
 ): Promise<{ response: Response; data: any; provider?: 'surepass' | 'quickeyc'; statusCode?: number; errorLog?: any }> {
   // Primary: Always try SurePass first
   console.log('[Challan API] Attempting primary: SurePass');
+  // Generate a short process id to link this SurePass + QuickEKYC
+  // challan attempt together in history when both fail.
+  const challanProcessId = generateProcessId();
   
   // SurePass requires chassis and engine numbers
   if (!chassisNumber || !engineNumber) {
@@ -885,7 +917,8 @@ async function callChallanAPI(
         'surepass',
         surePassResponse.status,
         surePassData,
-        true
+        true,
+        challanProcessId
       );
       return {
         response: surePassResponse,
@@ -918,7 +951,8 @@ async function callChallanAPI(
       'surepass',
       surePassResponse.status,
       surePassData,
-      false
+      false,
+      challanProcessId
     );
     console.log('[Challan API] SurePass failed — falling back to QuickEKYC');
   } catch (error) {
@@ -942,7 +976,8 @@ async function callChallanAPI(
       'surepass',
       0,
       { error: errorMessage },
-      false
+      false,
+      challanProcessId
     );
 
     console.log('[Challan API] SurePass exception — falling back to QuickEKYC');
@@ -980,6 +1015,7 @@ async function callChallanAPI(
         await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
       }
 
+      const isBothFallbackFailure = !quickEKYSuccess;
       await updateVehicleChallans(
         supabase,
         vehicleId,
@@ -987,7 +1023,10 @@ async function callChallanAPI(
         'quickeyc',
         quickEKYStatusCode,
         quickEKYData,
-        quickEKYSuccess
+        quickEKYSuccess,
+        challanProcessId,
+        isBothFallbackFailure ? challanProcessId : null,
+        isBothFallbackFailure
       );
 
       return {
@@ -1109,11 +1148,12 @@ serve(async (req) => {
     
     // Generate verification status based on response
     let verificationStatus = 'verified';
-    if (!providerData.data) {
+    const rcFailed = providerData?.status_code !== 200 && providerData?.status_code !== undefined;
+    if (rcFailed || !providerData?.data) {
       verificationStatus = 'failed';
     } else if (providerData.success === false) {
       verificationStatus = 'incomplete';
-    } else if (providerData.data.rc_status) {
+    } else if (providerData.data?.rc_status) {
       // Use RC status from response if available
       verificationStatus = providerData.data.rc_status.toLowerCase();
     }
