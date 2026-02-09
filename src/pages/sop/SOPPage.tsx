@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Edit, Eye, UserPlus, Search, Users, User, CheckCircle, Clock, Clock3, Trash2 } from 'lucide-react';
+import { Edit, Eye, UserPlus, Search, Users, User, CheckCircle, Clock, Clock3, Trash2, X } from 'lucide-react';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import {
   Tooltip,
@@ -372,6 +372,12 @@ const SOPPage = () => {
       fetchSOPs();
     },
   });
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+  };
+
 
   return (
     <Layout>
@@ -432,6 +438,18 @@ const SOPPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            {/* Clear Filters */}
+            {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-10"
+              >
+                <X className="h-4 w-4" />
+                Clear Filter
+              </Button>
+            )}
           </div>
 
           {/* Results Count */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Users, FolderOpen, Plus, Search, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar } from 'lucide-react';
+import { Heart, Users, FolderOpen, Plus, Search, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar, X } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -171,6 +171,12 @@ const StudentWellBeingPage = () => {
     );
   });
 
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+  };
+
+
   return (
     <Layout>
       <div className="w-full py-6">
@@ -248,6 +254,17 @@ const StudentWellBeingPage = () => {
                 ))}
               </SelectContent>
             </Select>
+             {(searchQuery || statusFilter !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10"
+                  onClick={handleClearFilters}
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filter
+                </Button>
+              )}
           </div>
 
           {loading ? (
