@@ -287,7 +287,7 @@ const GroupConfigurationContent = () => {
         {(searchTerm || statusFilter !== 'all' || groupTypeFilter !== 'all') && (
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={() => {
               setSearchTerm('');
               setStatusFilter('all');
@@ -295,6 +295,7 @@ const GroupConfigurationContent = () => {
             }}
           >
             <X className="h-4 w-4" />
+            Clear Filter
           </Button>
         )}
         </div>
