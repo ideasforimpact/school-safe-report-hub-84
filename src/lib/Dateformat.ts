@@ -2,16 +2,17 @@ interface DateFormatOptions {
   isTiming?: boolean;
 }
 
-const SHOW_TIME = false; 
+const SHOW_TIME = false;
 
 export const formatDate = (
-  date: string | Date | null | undefined,
+  date: string | Date,
   options?: DateFormatOptions
 ): string => {
-  if (!date) return "-";
-
   const d = new Date(date);
-  if (isNaN(d.getTime())) return "-";
+
+  if (isNaN(d.getTime())) {
+    throw new Error("formatDate: Invalid date value");
+  }
 
   // DATE
   const day = d.getDate().toString().padStart(2, "0");
@@ -20,7 +21,7 @@ export const formatDate = (
 
   let result = `${day}/${month}/${year}`;
 
-  // ✅ TIME CONTROLLED FROM ONE PLACE
+  // TIME (controlled from one place)
   if (SHOW_TIME && options?.isTiming === true) {
     let hours = d.getHours();
     const minutes = d.getMinutes().toString().padStart(2, "0");
