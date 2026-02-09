@@ -84,10 +84,6 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   .eq('status', true)
   .order('first_name');
 
-
-        console.log('employeesData:', employeesData);
-        console.log('error:', error);
-
         if (error) {
           console.error('Error fetching employees:', error);
           toast.error('Failed to load employees');
@@ -533,7 +529,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                   isSubmitting ||
                   templates.length === 0 ||
                   employees.length === 0 ||
-                  !!nameError || // ✅ FIX
+                  !!nameError ||
                   !formData.name.trim() ||
                   !formData.templateId ||
                   !formData.assignedTo ||
