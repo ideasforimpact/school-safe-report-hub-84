@@ -222,16 +222,14 @@ const FormsPage = () => {
     }
   };
   const grievanceStats = useMemo(() => {
-    if (!submissions) {
+      if (!submissions) {
       return {
         open: 0,
-        closed: 0,
         acknowledged: 0,
       };
     }
 
     let open = 0;
-    let closed = 0;
     let acknowledged = 0;
 
     submissions.forEach((sub: any) => {
@@ -241,14 +239,13 @@ const FormsPage = () => {
         open += 1;
       } else if (status === 'acknowledged') {
         acknowledged += 1;
-      } else if (status === 'resolved' || status === 'closed') {
-        closed += 1;
       }
     });
 
-    return { open, closed, acknowledged };
+    return { open, acknowledged };
   }, [submissions]);
 
+  const total = grievanceStats.open + grievanceStats.acknowledged;
   const handleDeleteForm = async (formId: string) => {
     if (!confirm('Are you sure you want to delete this form?')) return;
 
@@ -526,7 +523,13 @@ const FormsPage = () => {
           </div>
           {!isBackoffice && (
             <div className="mt-4 flex gap-96">
-              <div className='ms-12'>
+               <div className='ms-12'>
+                <p className="text-sm text-gray-500">Total Grievances</p>
+                <p className="text-3xl font-semibold text-green-600">
+                  {total}
+                </p>
+              </div>
+              <div>
                 <p className="text-sm text-gray-500">Open Grievances</p>
                 <p className="text-3xl font-semibold text-orange-600">
                   {grievanceStats.open}
@@ -540,13 +543,7 @@ const FormsPage = () => {
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500">Closed Grievances</p>
-                <p className="text-3xl font-semibold text-green-600">
-                  {grievanceStats.closed}
-                </p>
-              </div>
-
+             
             </div>
           )}
         </div>
