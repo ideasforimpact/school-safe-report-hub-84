@@ -72,45 +72,45 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
       return 'Invalid Date';
     }
   };
+  const latestSuccessLog = React.useMemo(() => {
+    const logs = vehicleChallans?.challan_history_log;
+    if (!logs || typeof logs !== 'object') return null;
 
-  // Get challan count from vehicle_challans
-  const getChallanCount = (): number => {
-    if (!vehicleChallans?.latest_challan_data) {
-      return 0;
+    const successLogs = Object.entries(logs).filter(
+      ([_, entry]: any) => entry?.data?.status_code === 200
+    );
+
+    if (successLogs.length === 0) return null;
+
+    successLogs.sort(
+      ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    const [timestamp, log]: any = successLogs[0];
+
+    return {
+      timestamp,
+      provider: log.provider,
+      data: log.data?.data,
+    };
+  }, [vehicleChallans]);
+  
+
+ const challanCount = React.useMemo(() => {
+    const challanData = latestSuccessLog?.data;
+    if (!challanData) return 0;
+
+    if (Array.isArray(challanData.challan_data)) {
+      return challanData.challan_data.length;
     }
 
-    const challanData = vehicleChallans.latest_challan_data;
-    
-    // Handle different challan response structures
-    if (challanData?.data?.challan_details?.challans) {
-      const challans = challanData.data.challan_details.challans;
-      if (Array.isArray(challans)) {
-        return challans.length;
-      }
-    }
-    if (challanData?.data?.challan_data) {
-      const challans = challanData.data.challan_data;
-      if (Array.isArray(challans)) {
-        return challans.length;
-      }
-    }
     if (challanData?.challan_details?.challans) {
-      const challans = challanData.challan_details.challans;
-      if (Array.isArray(challans)) {
-        return challans.length;
-      }
+      return challanData.challan_details.challans.length;
     }
-    if (Array.isArray(challanData)) {
-      return challanData.length;
-    }
-    if (Array.isArray(challanData?.data)) {
-      return challanData.data.length;
-    }
-    
-    return 0;
-  };
 
-  const challanCount = getChallanCount();
+    return 0;
+  }, [latestSuccessLog]);
+
 
   return (
     <Card>

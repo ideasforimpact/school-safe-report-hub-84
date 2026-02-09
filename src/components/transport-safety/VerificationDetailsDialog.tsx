@@ -10,7 +10,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/utils/dateUtils';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Circle } from 'lucide-react';
 import { Vehicle, VehicleChallans } from '@/types/transportSafety';
 import { transformVehicleData, transformApiResponseData } from '@/utils/transport-safety/documentStatusUtils';
 import { Badge } from '@/components/ui/badge';
@@ -18,8 +18,8 @@ import { Badge } from '@/components/ui/badge';
 interface VerificationDetailsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    verificationData: any[] | null;
     title?: string;
+    challanSnapshot?: any | null;
     challanError?: string | null;
     hasChallanData?: boolean;
     vehicle?: Vehicle;
@@ -32,8 +32,8 @@ interface VerificationDetailsDialogProps {
 const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
     open,
     onOpenChange,
+    challanSnapshot,
     challanError,
-    verificationData,
     title = 'Verification Details',
     vehicle,
     apiResponse,
@@ -60,13 +60,36 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         return provider === 'surepass' ? 'Surepass' : provider === 'quickeyc' ? 'QuickEKYC' : provider;
     };
 
+    const latestChallanSuccessLog = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
+
+        const successLogs = Object.entries(logs).filter(
+            ([_, entry]: any) => entry?.data?.status_code === 200
+        );
+
+        if (successLogs.length === 0) return null;
+
+        successLogs.sort(
+            ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+        );
+
+        const [timestamp, log]: any = successLogs[0];
+
+        return {
+            timestamp,
+            provider: log.provider,
+            data: log.data?.data, // real challan payload
+        };
+    }, [vehicleChallans]);
+
+
     // Transform vehicle data using common utility function
     const transformedData = React.useMemo(() => {
         // Priority 1: Use API response data directly (from vehicle-verify edge function)
         if (apiResponse) {
             // Use vehicleChallans prop (from database) or fallback to vehicle.vehicleChallans
-            const challansData = vehicleChallans || vehicle?.vehicleChallans;
-            return transformApiResponseData(apiResponse, challansData);
+            return transformApiResponseData(apiResponse, null);
         }
         
         // Priority 2: Use vehicle with current_rc_data and vehicle_challans
@@ -75,21 +98,49 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         }
         
         // Priority 3: Fallback to verificationData array (legacy)
-        if (Array.isArray(verificationData)) {
-            return verificationData.filter((item: any) => {
-                const field = String(item.field || '').toLowerCase();
-                return ![
-                    'verification_log',
-                    'last_response',
-                    'status',
-                    'rc_history_log',
-                    'response_metadata', // Exclude response_metadata
-                ].some(f => field.includes(f));
-            });
-        }
         
         return [];
-    }, [apiResponse, vehicle, verificationData, vehicleChallans]);
+    }, [apiResponse, vehicle]);
+    const latestLogTimestamp = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
+
+        return Object.keys(logs)
+            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    }, [vehicleChallans]);
+
+    const shouldShowLatestChallanCheck = React.useMemo(() => {
+        // If we don't have a known "latest successful" entry or any history, do nothing.
+        if (!latestChallanSuccessLog?.timestamp) return false;
+        if (!latestLogTimestamp) return false;
+
+        // When opening from History, a successful card already represents live data.
+        // In that case, we should NOT show the cached indicator.
+        if (challanSnapshot?.success === true) {
+            return false;
+        }
+
+        // Otherwise, only show the indicator when the latest log is not a successful challan,
+        // meaning we're displaying cached success data from a previous run.
+        return latestChallanSuccessLog.timestamp !== latestLogTimestamp;
+    }, [latestChallanSuccessLog, latestLogTimestamp, challanSnapshot]);
+
+
+    // Verification tab: show user-friendly error when API returned status error or 500
+    const hasVerificationError = React.useMemo(() => {
+        const original = apiResponse?.original;
+        if (!original) return false;
+        return original.status_code === 500 || String(original.status).toLowerCase() === 'error';
+    }, [apiResponse]);
+
+    // Challan tab: use server message when type is VALIDATION_ERROR, else use prop
+    const challanErrorMessage = React.useMemo(() => {
+        const challan = apiResponse?.challan;
+        if (challan?.type === 'VALIDATION_ERROR' && challan?.message) {
+            return String(challan.message).trim();
+        }
+        return challanError ?? null;
+    }, [apiResponse?.challan, challanError]);
 
     // Format data for display (convert to label/value format)
     const rcDataForDisplay = React.useMemo(() => {
@@ -112,82 +163,15 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
     // Get challan details from vehicle_challans.latest_challan_data (priority) or transformed data
     const challanDetails = React.useMemo(() => {
-        // Priority 1: Use vehicle_challans.latest_challan_data from database
-        if (vehicleChallans?.latest_challan_data) {
-            const challanData = vehicleChallans.latest_challan_data;
-            
-            // Debug: Log the structure to help diagnose issues
-            console.log('[VerificationDetailsDialog] Challan data structure:', {
-                hasData: !!challanData?.data,
-                hasChallanDetails: !!challanData?.data?.challan_details,
-                hasChallanData: !!challanData?.data?.challan_data,
-                rootChallanDetails: !!challanData?.challan_details,
-                keys: challanData ? Object.keys(challanData) : [],
-                dataKeys: challanData?.data ? Object.keys(challanData.data) : []
-            });
-            
-            // Handle different challan response structures from API
-            // Structure 1: { data: { challan_details: { challans: [...] } } }
-            if (challanData?.data?.challan_details?.challans) {
-                const challans = challanData.data.challan_details.challans;
-                if (Array.isArray(challans) && challans.length > 0) {
-                    console.log('[VerificationDetailsDialog] Found challans in data.challan_details.challans:', challans.length);
-                    return challans;
-                }
-            }
-            
-            // Structure 2: { data: { challan_data: [...] } }
-            if (challanData?.data?.challan_data) {
-                const challans = challanData.data.challan_data;
-                if (Array.isArray(challans) && challans.length > 0) {
-                    console.log('[VerificationDetailsDialog] Found challans in data.challan_data:', challans.length);
-                    return challans;
-                }
-            }
-            
-            // Structure 3: { challan_details: { challans: [...] } } (root level)
-            if (challanData?.challan_details?.challans) {
-                const challans = challanData.challan_details.challans;
-                if (Array.isArray(challans) && challans.length > 0) {
-                    console.log('[VerificationDetailsDialog] Found challans in challan_details.challans:', challans.length);
-                    return challans;
-                }
-            }
-            
-            // Structure 4: Direct array (unlikely but possible)
-            if (Array.isArray(challanData)) {
-                console.log('[VerificationDetailsDialog] Found challans as direct array:', challanData.length);
-                return challanData;
-            }
-            
-            // Structure 5: { data: [...] } (array directly in data)
-            if (Array.isArray(challanData?.data)) {
-                console.log('[VerificationDetailsDialog] Found challans in data array:', challanData.data.length);
-                return challanData.data;
-            }
-            
-            console.warn('[VerificationDetailsDialog] No challans found in expected structures');
-        }
-        
-        // Priority 2: Fallback to transformed data (from API response)
-        const challanField = transformedData.find((item) => item.field === 'challan_details');
-        if (challanField?.value) {
-            const value = challanField.value;
-            // Check nested structures
-            if (value?.challan_details?.challans && Array.isArray(value.challan_details.challans)) {
-                console.log('[VerificationDetailsDialog] Found challans in transformed data:', value.challan_details.challans.length);
-                return value.challan_details.challans;
-            }
-            if (Array.isArray(value)) {
-                console.log('[VerificationDetailsDialog] Found challans as array in transformed data:', value.length);
-                return value;
-            }
-        }
-        
-        console.log('[VerificationDetailsDialog] No challan data found');
-        return [];
-    }, [vehicleChallans, transformedData]);
+        const challanData = latestChallanSuccessLog?.data;
+        if (!challanData) return [];
 
+        return (
+            challanData?.challan_details?.challans ||
+            challanData?.challan_data ||
+            []
+        );
+    }, [latestChallanSuccessLog]);
     const disposedChallans = challanDetails.filter((c: any) =>
         ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
     );
@@ -299,10 +283,12 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
             <DialogContent className="sm:max-w-[100vh] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                     <DialogTitle>{title}</DialogTitle>
-                    {!hideMainTabs && (
-                        <DialogDescription>
-                            Registration details verified through {getProviderName(vehicle?.provider)} API.
-                        </DialogDescription>
+                    {shouldShowLatestChallanCheck && (
+                    <div className="mt-1 text-xs text-gray-500 flex items-center">
+                        <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
+                        Latest successful check •{" "}
+                        {formatDateTime(new Date(latestChallanSuccessLog.timestamp))}
+                    </div>
                     )}
                 </DialogHeader>
 
@@ -310,19 +296,19 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                     {hideMainTabs ? (
                         // When hideMainTabs is true, show only challan content without main tabs
                         <>
-                            {challanError && (
+                            {challanErrorMessage && (
                                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                                    {challanError}
+                                    {challanErrorMessage}
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length === 0 && (
+                            {!challanErrorMessage && challanDetails.length === 0 && (
                                 <div className="text-sm text-gray-500 text-center py-6">
                                     No challans
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length > 0 && (
+                            {!challanErrorMessage && challanDetails.length > 0 && (
                                 <div className="mt-4">
                                     <div className="flex justify-end mb-3">
                                         <Badge className="border-orange-300 text-orange-700 bg-orange-50 font-semibold px-3 py-1">
@@ -344,7 +330,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                 <TabsTrigger value="verification">Verification</TabsTrigger>
                                 <TabsTrigger value="challan" className="flex items-center gap-2 relative">
                                     Challan Details
-                                    {challanError ? (
+                                    {challanErrorMessage ? (
                                         <AlertTriangle className="h-4 w-4 text-red-500" />
                                     ) : challanDetails.length > 0 ? (
                                         <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-full shadow-sm">
@@ -361,6 +347,11 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
 
                         {/* Verification */}
                         <TabsContent value="verification">
+                            {hasVerificationError && (
+                                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center mb-4">
+                                    Something went wrong. Please contact administrator.
+                                </div>
+                            )}
                             <div className="border rounded-md divide-y">
                                 {rcDataForDisplay.length > 0 ? (
                                     rcDataForDisplay.map((field, index) => (
@@ -375,29 +366,29 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                             </div>
                                         </div>
                                     ))
-                                ) : (
+                                ) : !hasVerificationError ? (
                                     <div className="px-4 py-3 text-sm text-gray-500 text-center">
                                         No verification data available
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         </TabsContent>
 
                         {/* Challan */}
                         <TabsContent value="challan">
-                            {challanError && (
+                            {challanErrorMessage && (
                                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-4 text-center">
-                                    {challanError}
+                                    {challanErrorMessage}
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length === 0 && (
+                            {!challanErrorMessage && challanDetails.length === 0 && (
                                 <div className="text-sm text-gray-500 text-center py-6">
                                     No challans
                                 </div>
                             )}
 
-                            {!challanError && challanDetails.length > 0 && (
+                            {!challanErrorMessage && challanDetails.length > 0 && (
                                 <>
                                     {showChallanTabs ? (
                                         <div className="mt-4">

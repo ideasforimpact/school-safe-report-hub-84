@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatDateTime } from '@/utils/dateUtils';
 import { VehicleChallans } from '@/types/transportSafety';
+import { Circle } from 'lucide-react';
 
 interface ChallanDetailsDialogProps {
     open: boolean;
@@ -23,51 +24,58 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
     onOpenChange,
     vehicleChallans,
 }) => {
-    // Extract challan details from vehicle_challans.latest_challan_data
-    const challanDetails = React.useMemo(() => {
-        if (!vehicleChallans?.latest_challan_data) {
-            return [];
-        }
+    const latestSuccessLog = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
 
-        const challanData = vehicleChallans.latest_challan_data;
-        
-        // Handle different challan response structures from API
-        // Structure 1: { data: { challan_details: { challans: [...] } } }
-        if (challanData?.data?.challan_details?.challans) {
-            const challans = challanData.data.challan_details.challans;
-            if (Array.isArray(challans) && challans.length > 0) {
-                return challans;
-            }
-        }
-        
-        // Structure 2: { data: { challan_data: [...] } }
-        if (challanData?.data?.challan_data) {
-            const challans = challanData.data.challan_data;
-            if (Array.isArray(challans) && challans.length > 0) {
-                return challans;
-            }
-        }
-        
-        // Structure 3: { challan_details: { challans: [...] } } (root level)
+        const successLogs = Object.entries(logs).filter(
+            ([_, entry]: any) => entry?.data?.status_code === 200
+        );
+
+        if (successLogs.length === 0) return null;
+
+        successLogs.sort(
+            ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+        );
+
+        const [timestamp, log]: any = successLogs[0];
+
+        return {
+            timestamp,
+            provider: log.provider,
+            data: log.data?.data, 
+        };
+    }, [vehicleChallans]);
+    // Extract challan details from vehicle_challans.latest_challan_data
+   const challanDetails = React.useMemo(() => {
+        const challanData = latestSuccessLog?.data;
+        if (!challanData) return [];
         if (challanData?.challan_details?.challans) {
-            const challans = challanData.challan_details.challans;
-            if (Array.isArray(challans) && challans.length > 0) {
-                return challans;
-            }
+            return challanData.challan_details.challans;
         }
-        
-        // Structure 4: Direct array (unlikely but possible)
+        if (Array.isArray(challanData?.challan_data)) {
+            return challanData.challan_data;
+        }
         if (Array.isArray(challanData)) {
             return challanData;
         }
-        
-        // Structure 5: { data: [...] } (array directly in data)
-        if (Array.isArray(challanData?.data)) {
-            return challanData.data;
-        }
-        
         return [];
+    }, [latestSuccessLog]);
+    const latestLogTimestamp = React.useMemo(() => {
+        const logs = vehicleChallans?.challan_history_log;
+        if (!logs || typeof logs !== 'object') return null;
+
+        return Object.keys(logs)
+            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
     }, [vehicleChallans]);
+
+    const shouldShowLatestSuccessCheck = React.useMemo(() => {
+        if (!latestSuccessLog?.timestamp) return false;
+        if (!latestLogTimestamp) return false;
+
+        // Show ONLY if data is from an older successful log
+        return latestSuccessLog.timestamp !== latestLogTimestamp;
+    }, [latestSuccessLog, latestLogTimestamp]);
 
     const disposedChallans = challanDetails.filter((c: any) =>
         ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
@@ -172,6 +180,13 @@ const ChallanDetailsDialog: React.FC<ChallanDetailsDialogProps> = ({
             <DialogContent className="sm:max-w-[100vh] max-h-[80vh] flex flex-col p-0 rounded-lg overflow-hidden">
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                     <DialogTitle>Challan Details</DialogTitle>
+                    {shouldShowLatestSuccessCheck && (
+                        <div className="mt-1 text-xs text-gray-500 flex items-center">
+                        <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
+                        Latest successful check •{" "}
+                            {formatDateTime(new Date(latestSuccessLog.timestamp))}
+                        </div>
+                    )}
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 pb-4 no-scrollbar rounded-b-lg">

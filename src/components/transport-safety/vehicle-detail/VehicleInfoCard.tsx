@@ -251,6 +251,27 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
 
   // Get the latest verification data for display
   const latestVerificationData = getLatestVerificationData();
+  const latestChallanSuccessLog = React.useMemo(() => {
+    const logs = vehicleChallans?.challan_history_log;
+    if (!logs || typeof logs !== 'object') return null;
+
+    const successLogs = Object.entries(logs).filter(
+      ([_, entry]: any) => entry?.data?.status_code === 200
+    );
+
+    if (successLogs.length === 0) return null;
+
+    successLogs.sort(
+      ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    const [timestamp, log]: any = successLogs[0];
+
+    return {
+      timestamp,
+      provider: log.provider,
+    };
+  }, [vehicleChallans]);
 
   return (
     <Card>
@@ -340,15 +361,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 </Button>
               </DialogTrigger>
               <VerificationDetailsDialog
-                 open={showVerificationResults}
-                  onOpenChange={setShowVerificationResults}
-                  verificationData={latestVerificationData}
-                  challanError={challanError}
-                  hasChallanData={hasChallanData}
-                  title="Latest Verification Details"
-                  vehicle={vehicle}
-                  apiResponse={apiResponseData}
-                  vehicleChallans={vehicleChallans}
+                open={showVerificationResults}
+                onOpenChange={setShowVerificationResults}
+                title="Latest Verification Details"
+                vehicle={vehicle}
+                apiResponse={apiResponseData}
+                vehicleChallans={vehicleChallans}
+                challanError={
+                  latestChallanSuccessLog ? null : 'No successful challan check available.'
+                }
               />
             </Dialog>
           </div>

@@ -319,6 +319,14 @@ function createErrorLogEntry(
 }
 
 /**
+ * Generate a short 5-digit process id for linking
+ * related challan attempts (primary + fallback).
+ */
+function generateProcessId(): string {
+  return Math.floor(10000 + Math.random() * 90000).toString();
+}
+
+/**
  * Save error log to database
  */
 async function saveErrorLog(
@@ -366,7 +374,60 @@ async function saveErrorLog(
     console.log('Error log saved successfully');
   }
 }
+function mapRcDataForCurrentRc(data: any) {
+  if (!data || typeof data !== 'object') return null;
 
+  const registrationYear =
+    data.registration_date
+      ? new Date(data.registration_date).getFullYear()
+      : null;
+     let originaldata:any={};
+     originaldata['data']={
+    display_type: data.maker_model || null,              
+    display_year: registrationYear || null,      
+    rc_number: data.rc_number || data.registration_number || null,
+    fit_up_to: data.fit_up_to || null,
+    registration_date: data.registration_date || null,
+    owner_name: data.owner_name || null,
+    father_name: data.father_name || null,
+    present_address: data.present_address || null,
+    permanent_address: data.permanent_address || null,
+    vehicle_category: data.vehicle_category || null,
+    vehicle_chasi_number: data.vehicle_chasi_number || null,
+    vehicle_engine_number: data.vehicle_engine_number || null,
+    maker_description: data.maker_description || null,
+    maker_model: data.maker_model || null,
+    body_type: data.body_type || null,
+    fuel_type: data.fuel_type || null,
+    color: data.color || null,
+    norms_type: data.norms_type || null,
+    financer: data.financer || null,
+    insurance_company: data.insurance_company || null,
+    insurance_policy_number: data.insurance_policy_number || null,
+    insurance_upto: data.insurance_upto || null,
+    manufacturing_date: data.manufacturing_date || null,
+    manufacturing_date_formatted: data.manufacturing_date_formatted || null,
+    registered_at: data.registered_at || null,
+    latest_by: data.latest_by || null,
+    less_info: data.less_info || null,
+    tax_upto: data.tax_upto || null,
+    tax_paid_upto: data.tax_paid_upto || null,
+    cubic_capacity: data.cubic_capacity || null,
+    vehicle_gross_weight: data.vehicle_gross_weight || null,
+    no_cylinders: data.no_cylinders || null,
+    seat_capacity: data.seat_capacity || null,
+    sleeper_capacity: data.sleeper_capacity || null,
+    standing_capacity: data.standing_capacity || null,
+    wheelbase: data.wheelbase || null,
+    unladen_weight: data.unladen_weight || null,
+    vehicle_category_description: data.vehicle_category_description || null,
+    pucc_number: data.pucc_number || null,
+    pucc_upto: data.pucc_upto || null,
+    owner_number: data.owner_number || null,
+    rc_status: data.rc_status || null,
+  };
+  return originaldata;
+}
 /**
  * Update vehicles table with RC API response data
  */
@@ -431,6 +492,11 @@ async function updateVehiclesRCFields(
     rc_status: isSuccess ? 'success' : 'error'
   };
 
+  // When both providers fail, set verification_status to 'failed'
+  if (!isSuccess) {
+    updates.verification_status = 'failed';
+  }
+
   // Update counts based on success/error
   if (isSuccess) {
     updates.success_api_count = currentSuccessCount + 1;
@@ -461,7 +527,10 @@ async function updateVehicleChallans(
   provider: 'surepass' | 'quickeyc',
   statusCode: number | string,
   challanData: any,
-  isSuccess: boolean
+  isSuccess: boolean,
+  processId?: string,
+  parentProcessId?: string | null,
+  bothFallback?: boolean
 ): Promise<void> {
   if (!vehicleId) {
     // If no vehicleId, try to find by registration_number
@@ -491,13 +560,26 @@ async function updateVehicleChallans(
 
   // Create history entry
   const timestamp = new Date().toISOString();
-  const historyEntry = {
+  const finalProcessId = processId || generateProcessId();
+  const historyEntry: any = {
     provider: provider,
     status_code: String(statusCode),
     success: isSuccess,
     data: challanData,
-    timestamp: timestamp
+    timestamp: timestamp,
+    process_id: finalProcessId
   };
+
+  // When both providers fail in a single flow, link the
+  // fallback attempt to the primary via parent_process_id
+  // and mark it with bothFallback = true so the UI can
+  // safely hide the duplicate entry in history.
+  if (parentProcessId) {
+    historyEntry.parent_process_id = parentProcessId;
+  }
+  if (bothFallback !== undefined) {
+    historyEntry.bothFallback = bothFallback;
+  }
 
   // Update history log
   const updatedHistoryLog = {
@@ -770,6 +852,13 @@ async function callRCAPI(
     }
   }
 }
+function createValidationError(message: string) {
+  return {
+    success: false,
+    type: 'VALIDATION_ERROR',
+    message
+  };
+}
 
 /**
  * Call Challan API with fallback: Try SurePass first, fallback to QuickEKYC if error
@@ -785,78 +874,42 @@ async function callChallanAPI(
 ): Promise<{ response: Response; data: any; provider?: 'surepass' | 'quickeyc'; statusCode?: number; errorLog?: any }> {
   // Primary: Always try SurePass first
   console.log('[Challan API] Attempting primary: SurePass');
+  // Generate a short process id to link this SurePass + QuickEKYC
+  // challan attempt together in history when both fail.
+  const challanProcessId = generateProcessId();
   
   // SurePass requires chassis and engine numbers
   if (!chassisNumber || !engineNumber) {
-    console.warn('[Challan API] Cannot use SurePass: missing chassis or engine number, trying QuickEKYC');
-    // Fallback directly to QuickEKYC if we don't have required params
-    const quickEKYConfig = getQuickEKYCConfig();
-    const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
-    const quickEKYPayload = prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey);
-    const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
-    const quickEKYData = await quickEKYResponse.json();
-    
-    // Determine if QuickEKYC succeeded or failed
-    const quickEKYSuccess = validateQuickEKYCChallanResponse(quickEKYData) && quickEKYResponse.ok;
-    const quickEKYStatusCode = quickEKYResponse.status || (quickEKYData?.status_code || 500);
-    
-    if (!quickEKYSuccess) {
-      const errorEntry = createErrorLogEntry(
-        'quickeyc',
-        quickEKYStatusCode,
-        quickEKYData?.message || 'QuickEKYC API error',
-        quickEKYApiUrl,
-        quickEKYPayload
-      );
-      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
-    }
-    
-    // Update vehicle_challans table
-    await updateVehicleChallans(
-      supabase,
-      vehicleId,
-      registrationNumber,
-      'quickeyc',
-      quickEKYStatusCode,
-      quickEKYData,
-      quickEKYSuccess
-    );
-    
-    return { 
-      response: quickEKYResponse, 
-      data: quickEKYData,
-      provider: 'quickeyc',
-      statusCode: quickEKYStatusCode
+    console.warn('[Challan API] missing chassis or engine number — aborting challan lookup');
+
+    return {
+      data: createValidationError(
+        'Chassis number and engine number are required to fetch challan details.'
+      ),
+      statusCode: 400
     };
   }
 
   const surePassConfig = getSurePareConfig();
   const surePassApiUrl = `${surePassConfig.baseUrl}${surePassConfig.challanEndpoint}`;
-  const surePassPayload = prepareSurePareChallanPayload(rcNumber, chassisNumber, engineNumber);
-  let surePassResponse: Response;
-  let surePassData: any;
+  const surePassPayload = prepareSurePareChallanPayload(
+    rcNumber,
+    chassisNumber,
+    engineNumber
+  );
 
   try {
-    surePassResponse = await callSurePareChallanAPI(rcNumber, chassisNumber, engineNumber);
-    surePassData = await surePassResponse.json();
-    
-    // Check if SurePass failed
-    if (!surePassResponse.ok || surePassData?.success === false) {
-      const errorMessage = surePassData?.message || surePassData?.error || 'SurePass API error';
-      console.log('[Challan API] SurePass failed, falling back to QuickEKYC');
-      
-      // Log SurePass error
-      const errorEntry = createErrorLogEntry(
-        'surepass',
-        surePassResponse.status,
-        errorMessage,
-        surePassApiUrl,
-        surePassPayload
-      );
-      
-      await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
-      
-      // Update vehicle_challans table with SurePass error
+    console.log('[Challan API] Calling SurePass');
+
+    const surePassResponse = await callSurePareChallanAPI(
+      rcNumber,
+      chassisNumber,
+      engineNumber
+    );
+    const surePassData = await surePassResponse.json();
+
+    if (surePassResponse.ok && surePassData?.success !== false) {
+      console.log('[Challan API] SurePass succeeded');
       await updateVehicleChallans(
         supabase,
         vehicleId,
@@ -864,55 +917,33 @@ async function callChallanAPI(
         'surepass',
         surePassResponse.status,
         surePassData,
-        false
+        true,
+        challanProcessId
       );
-      
-      // Secondary: Fallback to QuickEKYC
-      const quickEKYConfig = getQuickEKYCConfig();
-      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
-      const quickEKYPayload = prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey);
-      const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
-      const quickEKYData = await quickEKYResponse.json();
-      
-      // Determine if QuickEKYC succeeded or failed
-      const quickEKYSuccess = validateQuickEKYCChallanResponse(quickEKYData) && quickEKYResponse.ok;
-      const quickEKYStatusCode = quickEKYResponse.status || (quickEKYData?.status_code || 500);
-      
-      if (!quickEKYSuccess) {
-        const quickEKYErrorEntry = createErrorLogEntry(
-          'quickeyc',
-          quickEKYStatusCode,
-          quickEKYData?.message || 'QuickEKYC API error',
-          quickEKYApiUrl,
-          quickEKYPayload
-        );
-        await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
-      }
-      
-      // Update vehicle_challans table with QuickEKYC result
-      await updateVehicleChallans(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'quickeyc',
-        quickEKYStatusCode,
-        quickEKYData,
-        quickEKYSuccess
-      );
-      
-      return { 
-        response: quickEKYResponse, 
-        data: quickEKYData,
-        provider: 'quickeyc',
-        statusCode: quickEKYStatusCode,
-        errorLog: errorEntry 
+      return {
+        response: surePassResponse,
+        data: surePassData,
+        provider: 'surepass',
+        statusCode: surePassResponse.status
       };
     }
-    
-    // SurePass succeeded, update vehicle_challans table and return its response
-    console.log('[Challan API] SurePass succeeded, using SurePass response');
-    
-    // Update vehicle_challans table with success
+
+    // ❌ SurePass FAILED → log and fallback
+    const errorMessage =
+      surePassData?.message ||
+      surePassData?.error ||
+      'SurePass API error';
+
+    const errorEntry = createErrorLogEntry(
+      'surepass',
+      surePassResponse.status,
+      errorMessage,
+      surePassApiUrl,
+      surePassPayload
+    );
+
+    await saveErrorLog(supabase, vehicleId, registrationNumber, errorEntry);
+
     await updateVehicleChallans(
       supabase,
       vehicleId,
@@ -920,21 +951,13 @@ async function callChallanAPI(
       'surepass',
       surePassResponse.status,
       surePassData,
-      true
+      false,
+      challanProcessId
     );
-    
-    return { 
-      response: surePassResponse, 
-      data: surePassData,
-      provider: 'surepass',
-      statusCode: surePassResponse.status
-    };
-    
+    console.log('[Challan API] SurePass failed — falling back to QuickEKYC');
   } catch (error) {
-    // Network or other error with SurePass
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Challan API] SurePass exception:', errorMessage);
-    
+    const errorMessage =
+      error instanceof Error ? error.message : 'SurePass exception';
     const errorEntry = createErrorLogEntry(
       'surepass',
       0, // 0 indicates network/exception error
@@ -953,22 +976,33 @@ async function callChallanAPI(
       'surepass',
       0,
       { error: errorMessage },
-      false
+      false,
+      challanProcessId
     );
-    
-    // Fallback to QuickEKYC
-    console.log('[Challan API] SurePass exception, falling back to QuickEKYC');
-    try {
+
+    console.log('[Challan API] SurePass exception — falling back to QuickEKYC');
+  }
+
+      // FALLBACK — QUICKEKYC (ONLY AFTER SUREPASS FAILS)
       const quickEKYConfig = getQuickEKYCConfig();
       const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
-      const quickEKYPayload = prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey);
+      const quickEKYPayload = prepareQuickEKYCChallanPayload(
+        rcNumber,
+        quickEKYConfig.apiKey
+      );
+
       const quickEKYResponse = await callQuickEKYCChallanAPI(rcNumber);
       const quickEKYData = await quickEKYResponse.json();
-      
-      // Determine if QuickEKYC succeeded or failed
-      const quickEKYSuccess = validateQuickEKYCChallanResponse(quickEKYData) && quickEKYResponse.ok;
-      const quickEKYStatusCode = quickEKYResponse.status || (quickEKYData?.status_code || 500);
-      
+
+      const quickEKYSuccess =
+        validateQuickEKYCChallanResponse(quickEKYData) &&
+        quickEKYResponse.ok;
+
+      const quickEKYStatusCode =
+        quickEKYResponse.status ||
+        quickEKYData?.status_code ||
+        500;
+
       if (!quickEKYSuccess) {
         const quickEKYErrorEntry = createErrorLogEntry(
           'quickeyc',
@@ -977,10 +1011,11 @@ async function callChallanAPI(
           quickEKYApiUrl,
           quickEKYPayload
         );
+
         await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
       }
-      
-      // Update vehicle_challans table with QuickEKYC result
+
+      const isBothFallbackFailure = !quickEKYSuccess;
       await updateVehicleChallans(
         supabase,
         vehicleId,
@@ -988,44 +1023,20 @@ async function callChallanAPI(
         'quickeyc',
         quickEKYStatusCode,
         quickEKYData,
-        quickEKYSuccess
+        quickEKYSuccess,
+        challanProcessId,
+        isBothFallbackFailure ? challanProcessId : null,
+        isBothFallbackFailure
       );
-      
-      return { 
-        response: quickEKYResponse, 
+
+      return {
+        response: quickEKYResponse,
         data: quickEKYData,
         provider: 'quickeyc',
-        statusCode: quickEKYStatusCode,
-        errorLog: errorEntry 
+        statusCode: quickEKYStatusCode
       };
-    } catch (quickEKYError) {
-      const quickEKYConfig = getQuickEKYCConfig();
-      const quickEKYApiUrl = `${quickEKYConfig.baseUrl}${quickEKYConfig.challanEndpoint}`;
-      const quickEKYErrorMessage = quickEKYError instanceof Error ? quickEKYError.message : 'Unknown error';
-      const quickEKYErrorEntry = createErrorLogEntry(
-        'quickeyc',
-        0,
-        quickEKYErrorMessage,
-        quickEKYApiUrl,
-        prepareQuickEKYCChallanPayload(rcNumber, quickEKYConfig.apiKey)
-      );
-      await saveErrorLog(supabase, vehicleId, registrationNumber, quickEKYErrorEntry);
-      
-      // Update vehicle_challans table with QuickEKYC error
-      await updateVehicleChallans(
-        supabase,
-        vehicleId,
-        registrationNumber,
-        'quickeyc',
-        0,
-        { error: quickEKYErrorMessage },
-        false
-      );
-      
-      throw error; // Re-throw the original SurePass error
     }
-  }
-}
+
 
 /**
  * Validate Challan response - detects which integration was used based on response structure
@@ -1137,11 +1148,12 @@ serve(async (req) => {
     
     // Generate verification status based on response
     let verificationStatus = 'verified';
-    if (!providerData.data) {
+    const rcFailed = providerData?.status_code !== 200 && providerData?.status_code !== undefined;
+    if (rcFailed || !providerData?.data) {
       verificationStatus = 'failed';
     } else if (providerData.success === false) {
       verificationStatus = 'incomplete';
-    } else if (providerData.data.rc_status) {
+    } else if (providerData.data?.rc_status) {
       // Use RC status from response if available
       verificationStatus = providerData.data.rc_status.toLowerCase();
     }
