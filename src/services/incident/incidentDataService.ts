@@ -595,7 +595,7 @@ class IncidentDataService {
     if (clientId && employeeId) {
       // Clear all cache entries for this client and employee
       const keysToDelete = Array.from(this.incidentCache.keys()).filter(key => 
-        key.includes(`${clientId}_${employeeId}`)
+        key.startsWith(`${clientId}_${employeeId}_`)
       );
       keysToDelete.forEach(key => this.incidentCache.delete(key));
       console.log(`🗑️ Cleared cache for client ${clientId} and employee ${employeeId} (${keysToDelete.length} entries)`);

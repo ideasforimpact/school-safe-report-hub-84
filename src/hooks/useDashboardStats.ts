@@ -35,6 +35,7 @@ interface DashboardStats {
   vehiclesToBeVerified?: number;
   vehiclesFailedVerification?: number;
   vehiclesWithDocuments?: number;
+  totalPendingChallanAmount?: number;
   monthlyIncidentsData: Array<{
     month: string;
     open: number;
@@ -76,6 +77,7 @@ export const useDashboardStats = () => {
     vehiclesToBeVerified: 0,
     vehiclesFailedVerification: 0,
     vehiclesWithDocuments: 0,
+    totalPendingChallanAmount: 0,
     monthlyIncidentsData: []
   });
   const [loading, setLoading] = useState(false);

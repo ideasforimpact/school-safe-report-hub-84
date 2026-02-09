@@ -127,16 +127,6 @@ const IncidentsList = () => {
     setOriginalIncidents(response.data);
   }, [employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
-  useEffect(() => {
-    if (employeeState.employeeData?.clientId || authEmployeeData?.clientId) {
-      fetchOriginalIncidents(); 
-      fetchIncidents(filters, true);
-    }
-  }, [
-    employeeState.employeeData?.clientId,
-    authEmployeeData?.clientId,
-    hasIncidentAdmin
-  ]);
 
   // Main fetch function with server-side filtering (eager loading)
   const fetchIncidents = useCallback(async (
@@ -242,88 +232,28 @@ const IncidentsList = () => {
     fetchIncidents(newFilters, false);
   }, [filters, fetchIncidents]);
 
-  // Parse URL parameters and set initial filters
-  useEffect(() => {
-    const filterParam = searchParams.get('filter');
-    if (filterParam) {
-      console.log('🔍 URL filter parameter found:', filterParam);
-      
-      // Map filter parameter to status filter
-      let initialStatus = '';
-      switch (filterParam) {
-        case 'open':
-          initialStatus = 'Open';
-          break;
-        case 'closed':
-          initialStatus = 'Closed';
-          break;
-        case 'reopen':
-          initialStatus = 'Reopen';
-          break;
-        case 'students_involved':
-          // For students involved, we'll keep status empty but could add additional logic
-          initialStatus = '';
-          break;
-        default:
-          initialStatus = '';
-      }
-      
-      if (initialStatus) {
-        console.log('🎯 Setting initial status filter to:', initialStatus);
-        const newFilters = {
-          search: '',
-          category: '',
-          subcategory: '',
-          status: initialStatus,
-          priority: '',
-          location: '',
-          facility: '',
-          dateFrom: '',
-          dateTo: ''
-        };
-        setFilters(newFilters);
-        
-        // Trigger data fetch with the new filter
-        if (employeeState.employeeData?.clientId || authEmployeeData?.clientId) {
-          fetchIncidents(newFilters, true);
-        }
-      }
-    } else {
-      // If URL has no filter param, reset filters to defaults and refresh data
-      const resetFilters = {
-        search: '',
-        category: '',
-        subcategory: '',
-        status: '',
-        priority: '',
-        location: '',
-        facility: '',
-        dateFrom: '',
-        dateTo: ''
-      };
-      // Only reset if current filters are not already default
-      const isDefault = Object.entries(resetFilters).every(([k, v]) => (filters as any)[k] === v);
-      if (!isDefault) {
-        console.log('🔄 URL filter cleared; resetting incident filters to default');
-        setFilters(resetFilters);
-        if (employeeState.employeeData?.clientId || authEmployeeData?.clientId) {
-          fetchIncidents(resetFilters, true);
-        }
-      }
-    }
-  }, [searchParams, employeeState.employeeData?.clientId, authEmployeeData?.clientId, fetchIncidents]);
-
   // Handle query parameter removal - restore original incidents
   useEffect(() => {
-    const filterParam = searchParams.get('filter');
-    
-    // If no filter param and we have original incidents, restore them
-    if (!filterParam && originalIncidents.length > 0) {
-      console.log('🔄 Query filter removed; restoring original incidents');
-      setAllIncidents(originalIncidents);
-      applyClientSidePagination(originalIncidents, 1, pagination.pageSize);
-    }
-  }, [searchParams, originalIncidents, pagination.pageSize, applyClientSidePagination]);
+  const filterParam = searchParams.get('filter');
+  if (!filterParam) return;
+
+  let tableFilters: ServerFilters = {};
+
+  if (filterParam === 'open') {
+    tableFilters.status = 'Open';
+  }
+
+  if (filterParam === 'closed') {
+    tableFilters.status = 'Closed';
+  }
+
+  if (filterParam === 'students_involved') {
+    tableFilters = {};
+  }
+
+  fetchIncidents(tableFilters, false);
+
+}, [searchParams]);
 
   // Clear all filters (triggers server request)
   const clearFilters = useCallback(() => {
@@ -357,33 +287,33 @@ const IncidentsList = () => {
   }, [allIncidents, applyClientSidePagination]);
 
   // Initial fetch and navigation handling with improved logic
-  useEffect(() => {
-    const shouldFetch = (employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.email) && 
-                       employeeState.configuredModules;
+ useEffect(() => {
+  const ready =
+    (employeeState.employeeData?.clientId ||
+      authEmployeeData?.clientId ||
+      user?.email) &&
+    employeeState.configuredModules;
 
-    if (shouldFetch) {
-      console.log('🚀 Initial fetch triggered (EAGER LOADING)');
-      console.log('📍 Current location:', location.pathname);
-      console.log('🔑 Has admin access:', hasIncidentAdmin);
-      
-      // Always force refresh when coming to incidents page
-      // This ensures fresh data especially after incident creation
-      const forceRefresh = true;
-      
-      // Use current filters (which may include URL-based filters)
-      fetchIncidents(filters, forceRefresh);
-    } else {
-      console.log('⏳ Waiting for employee data or configured modules...');
-    }
-  }, [
-    employeeState.employeeData?.clientId,
-    authEmployeeData?.clientId,
-    user?.email,
-    employeeState.configuredModules,
-    hasIncidentAdmin,
-    location.pathname, // Re-run when location changes
-    filters // Re-run when filters change (including URL-based filters)
-  ]);
+  if (!ready) return;
+
+  fetchOriginalIncidents();
+
+  const filterParam = searchParams.get('filter');
+  let tableFilters: ServerFilters = {};
+
+  if (filterParam === 'open') tableFilters.status = 'Open';
+  if (filterParam === 'closed') tableFilters.status = 'Closed';
+
+  fetchIncidents(tableFilters, false);
+
+}, [
+  employeeState.employeeData?.clientId,
+  authEmployeeData?.clientId,
+  user?.email,
+  employeeState.configuredModules,
+  hasIncidentAdmin,
+  location.pathname
+]);
 
   console.log('📋 IncidentsList render (EAGER LOADING) - Current page:', pagination.currentPage, 'Total pages:', pagination.totalPages);
   console.log('📊 Total incidents cached:', allIncidents.length, 'Currently displayed:', displayedIncidents.length);

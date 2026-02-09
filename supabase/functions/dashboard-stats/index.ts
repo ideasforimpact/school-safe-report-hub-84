@@ -464,7 +464,35 @@ serve(async (req) => {
     }
 
     const vehicleIds = await vehicleIdsQuery.then(res => res.data?.map(vehicle => vehicle.id) || [])
+    let totalPendingChallanAmount = 0;
 
+    if (vehicleIds.length > 0) {
+      const { data: challans, error: challanError } = await supabase
+        .from('vehicle_challans')
+        .select('latest_challan_data')
+        .in('vehicle_id', vehicleIds);
+
+      if (challanError) {
+        console.error('Error fetching vehicle challans:', challanError);
+      }
+
+      challans?.forEach(row => {
+        const challanList =
+          row.latest_challan_data?.challans ||
+          row.latest_challan_data?.data?.challan_details?.challans ||
+          [];
+
+        challanList.forEach((c: any) => {
+          if (c.challan_status === 'Pending') {
+            const amount = Number(c.amount || 0);
+
+            if (!isNaN(amount)) {
+              totalPendingChallanAmount += amount;
+            }
+          }
+        });
+      });
+    }
     const { data: vehiclesWithDocs, error: vehiclesWithDocsError } = await supabase
       .from('vehicle_documents')
       .select('vehicle_id')
@@ -855,6 +883,7 @@ serve(async (req) => {
       totalVehicles: allVehicles?.length || 0,
       vehiclesToBeVerified,
       vehiclesFailedVerification,
+      totalPendingChallanAmount,
       vehiclesVerified,
       totalEmployees: employeeIds.length,
       employeesVerified: employeesVerified, 
