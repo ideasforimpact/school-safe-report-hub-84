@@ -8,7 +8,7 @@ import { useClient } from '@/contexts/ClientContext';
 import { backofficeFormService } from '@/services/forms/backofficeFormService';
 import { FormConfiguration } from '@/components/backoffice/forms/FormConfiguration';
 import { CustomForm } from '@/types/formTypes';
-import { Edit, Trash2, ExternalLink, FileText, Plus, QrCode, Search, Eye, Filter, X, Calendar, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, ExternalLink, FileText, Plus, QrCode, Search, Eye, Filter, X, Calendar, CheckCircle, MessageSquareWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -509,7 +509,7 @@ const FormsPage = () => {
       <div className="mx-6 space-y-6">
       <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
           <div className="flex items-start gap-3">
-            <FileText className="h-8 w-8 mt-3 text-blue-600 shrink-0" />
+            <MessageSquareWarning className="h-8 w-8 mt-3 text-primary" />
             <div>
               <h1 className="text-2xl font-bold">
                 {isBackoffice ? 'Form Management' : 'Grievances'}

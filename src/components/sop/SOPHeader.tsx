@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, UserCheck, FileText, ExternalLink } from 'lucide-react';
+import { PlusCircle, UserCheck, FileText, ExternalLink, BookOpen } from 'lucide-react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin, getEmployeeData } from '@/store/employeeSelectors';
 import { useNavigate } from 'react-router-dom';
@@ -327,7 +327,7 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4 flex-1">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
-            <FileText className="h-6 w-6 text-primary" />
+            <BookOpen className="h-6 w-6 text-primary" />
           </div>
 
           <div className="flex-1">

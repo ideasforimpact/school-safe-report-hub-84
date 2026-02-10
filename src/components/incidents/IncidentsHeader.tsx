@@ -36,6 +36,9 @@ const IncidentsHeader = ({ hasIncidentAdmin }: IncidentsHeaderProps) => {
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="p-3 bg-blue-50 rounded-xl">
+        <AlertTriangle className="h-6 w-6 text-primary" />
+      </div>
       <div className="text-left w-full">
         <h1 className="text-2xl font-bold">All Incidents</h1>
         <p className="text-gray-600 mt-1">

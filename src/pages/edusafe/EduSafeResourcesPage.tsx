@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FilePlus, Search } from 'lucide-react';
+import { FilePlus, FileText, Search } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,16 +124,26 @@ const EduSafeResourcesContent = () => {
   
   return (
     <div className="w-full py-6">
-      <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-left">EduSafe Resources</h1>
-            <p className="text-gray-600 mt-1 text-left">Browse and download safety resources</p>
+      <div className="mx-6 mb-8 rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-transparent px-6 py-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-6 w-6 items-center justify-center rounded-xl ">
+              <FileText className="h-6 w-6 text-primary" />
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-bold leading-tight">
+                EduSafe Resources
+              </h1>
+              <p className="text-sm text-gray-600">
+                Browse and download safety resources
+              </p>
+            </div>
           </div>
           {hasEduResourcesAdmin && (
-            <Button asChild>
+            <Button asChild className="self-start md:self-center">
               <Link to="/edusafe/upload">
-                <FilePlus className="h-4 w-4 mr-2" />
+                <FilePlus className="mr-2 h-4 w-4" />
                 Upload Resource
               </Link>
             </Button>
