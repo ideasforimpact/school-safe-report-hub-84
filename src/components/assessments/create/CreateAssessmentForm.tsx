@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-
+import { useRef } from 'react';
 interface Employee {
   id: string;
   first_name: string;
@@ -35,13 +35,13 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
   const { templates } = useAssessment();
-  
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // Employee management state
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -70,19 +70,19 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         console.log('Fetching employees for client:', clientId);
 
         const { data: employeesData, error } = await supabase
-  .from('employees')
-  .select(`
-  id,
-  first_name,
-  last_name,
-  email,
-  department (
-      department_name
-    )
-`)
-  .eq('client_id', clientId)
-  .eq('status', true)
-  .order('first_name');
+          .from('employees')
+          .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          department (
+              department_name
+            )
+        `)
+          .eq('client_id', clientId)
+          .eq('status', true)
+          .order('first_name');
 
         if (error) {
           console.error('Error fetching employees:', error);
@@ -101,9 +101,9 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   }, [clientId]);
 
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    useEffect(() => {
+      fetchEmployees();
+    }, [fetchEmployees]);
 
   // Fetch existing assessment names for duplicate validation
   const fetchExistingAssessments = useCallback(async () => {
@@ -136,14 +136,32 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     }
 
   }, [clientId]);
-  useEffect(() => {
-    fetchExistingAssessments();
-  }, [fetchExistingAssessments]);
-  // Find the selected employee
-  const selectedEmployee = employees.find(emp => emp.id === formData.assignedTo);
-  const selectedEmployeeDisplay = selectedEmployee 
-    ? `${selectedEmployee.first_name} ${selectedEmployee.last_name} (${selectedEmployee.email})` 
-    : '';
+
+    useEffect(() => {
+      fetchExistingAssessments();
+    }, [fetchExistingAssessments]);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          dropdownRef.current &&
+          !dropdownRef.current.contains(event.target as Node)
+        ) {
+          setIsDropdownOpen(false);
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
+
+    // Find the selected employee
+    const selectedEmployee = employees.find(emp => emp.id === formData.assignedTo);
+    const selectedEmployeeDisplay = selectedEmployee 
+      ? `${selectedEmployee.first_name} ${selectedEmployee.last_name} (${selectedEmployee.email})` 
+      : '';
 
   // Validation function for assessment name (no special characters allowed)
   const isValidAssessmentName = (value: string) => {
@@ -170,16 +188,14 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     }
   };
 
-  const handleEmployeeSearch = (value: string) => {
-    setSearchQuery(value);
-    setIsSearching(true);
-  };
-
   const handleSelectEmployee = (employee: Employee) => {
-    handleInputChange('assignedTo', employee.id);
-    setIsSearching(false);
-    setSearchQuery('');
-  };
+  handleInputChange('assignedTo', employee.id);
+  setSearchQuery(
+    `${employee.first_name} ${employee.last_name} (${employee.email})`
+  );
+  setIsDropdownOpen(false);
+};
+
 
   // Filter employees based on search query
  const filteredEmployees = searchQuery
@@ -196,6 +212,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       );
     })
   : employees;
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,46 +462,40 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               {/* Assigned To with Search */}
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Assign To <span className="text-red-500">*</span></Label>
-                <div className="relative">
+                <div className="relative" ref={dropdownRef}>
                   <div className="relative">
                     <Input
-                      value={searchQuery || (isSearching ? '' : selectedEmployeeDisplay)}
-                      onChange={(e) => handleEmployeeSearch(e.target.value)}
-                      onFocus={() => setIsSearching(true)}
-                      onBlur={() => {
-                        setTimeout(() => {
-                          if (!searchQuery) {
-                            setIsSearching(false);
-                          }
-                        }, 200);
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setIsDropdownOpen(true);
                       }}
+                      onFocus={() => setIsDropdownOpen(true)}
                       placeholder="Search by name, email, or department..."
                       className="w-full pr-8"
                       required
                     />
                     <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
-                  
-                  {isSearching && filteredEmployees.length > 0 && (
+
+                  {isDropdownOpen && filteredEmployees.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                       <ul className="py-1 text-sm">
                         {filteredEmployees.map((employee) => (
                           <li
                             key={employee.id}
                             className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => handleSelectEmployee(employee)}
                             onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleSelectEmployee(employee)}
                           >
-                            <div>
-                              <span className="font-medium">
-                                {employee.first_name} {employee.last_name}
-                              </span>
-                              <span className="text-gray-500 ml-1">
-                                ({employee.email})
-                              </span>
+                            <div className="font-medium">
+                              {employee.first_name} {employee.last_name}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {employee.email}
+                            </div>
                             <div className="text-xs text-gray-400">
-                            {employee.department?.department_name || 'No department'}
-                          </div>
+                              {employee.department?.department_name || 'No department'}
                             </div>
                           </li>
                         ))}
@@ -492,12 +503,13 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                     </div>
                   )}
 
-                  {isSearching && searchQuery && filteredEmployees.length === 0 && (
+                  {isDropdownOpen && searchQuery && filteredEmployees.length === 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
                       <p className="p-3 text-sm text-gray-500">No employees found</p>
                     </div>
                   )}
                 </div>
+
                 {employees.length === 0 && (
                   <p className="text-sm text-gray-500">
                     No staff members available for this client.
