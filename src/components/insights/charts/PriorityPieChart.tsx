@@ -1,7 +1,17 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { PriorityDistribution } from '@/hooks/useNewInsightsData';
 
 interface PriorityPieChartProps {
@@ -10,11 +20,8 @@ interface PriorityPieChartProps {
   data: PriorityDistribution;
 }
 
-/**
- * Custom label renderer to prevent text clipping.
- * Ensures labels like "Informational: 2.9%" always show fully.
- */
-const renderFullLabel = ({
+/* ---------- Label Text ---------- */
+const renderLabel = ({
   cx,
   cy,
   midAngle,
@@ -24,22 +31,47 @@ const renderFullLabel = ({
 }: any) => {
   const RADIAN = Math.PI / 180;
 
-  // Slightly inside the safe drawing area
-  const radius = outerRadius + 10;
-
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const r = outerRadius + 22;
+  const x = cx + r * Math.cos(-midAngle * RADIAN);
+  const y = cy + r * Math.sin(-midAngle * RADIAN);
 
   return (
     <text
       x={x}
       y={y}
       textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-      className="text-xs fill-foreground"
+      dominantBaseline="middle"
+      className="text-xs font-medium"
     >
-      {`${name}: ${percent}%`}
+      {`${name}: ${(percent * 100).toFixed(1)}%`}
     </text>
+  );
+};
+
+/* ---------- Label Line (NO DOT, NO OVERLAP) ---------- */
+const renderLabelLine = ({
+  cx,
+  cy,
+  midAngle,
+  outerRadius,
+}: any) => {
+  const RADIAN = Math.PI / 180;
+
+  const r1 = outerRadius - 2;   // start slightly inside pie
+  const r2 = outerRadius + 14;  // end near label
+
+  const x1 = cx + r1 * Math.cos(-midAngle * RADIAN);
+  const y1 = cy + r1 * Math.sin(-midAngle * RADIAN);
+  const x2 = cx + r2 * Math.cos(-midAngle * RADIAN);
+  const y2 = cy + r2 * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <path
+      d={`M${x1},${y1} L${x2},${y2}`}
+      stroke="#9CA3AF"
+      fill="none"
+      strokeWidth={1}
+    />
   );
 };
 
@@ -48,25 +80,12 @@ const PriorityPieChart: React.FC<PriorityPieChartProps> = ({
   description,
   data,
 }) => {
-  const total = data.priorities.reduce((sum, p) => sum + p.count, 0);
-
-  let accumulated = 0;
-
-  const chartData = data.priorities.map((priority, index) => {
-    const percent =
-      index === data.priorities.length - 1
-        ? +(100 - accumulated).toFixed(1) // force exact 100%
-        : +((priority.count / total) * 100).toFixed(1);
-
-    accumulated += percent;
-
-    return {
-      name: priority.name,
-      value: priority.count, // raw value for pie geometry
-      percent,
-      fill: priority.color,
-    };
-  });
+  const chartData =
+    data?.priorities?.map((p) => ({
+      name: p.name,
+      value: p.count,
+      fill: p.color,
+    })) || [];
 
   if (chartData.length === 0) {
     return (
@@ -90,17 +109,18 @@ const PriorityPieChart: React.FC<PriorityPieChartProps> = ({
       </CardHeader>
 
       <CardContent>
-        <ChartContainer config={{}} className="h-[320px] w-full">
+        <ChartContainer config={{}} className="h-[360px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart margin={{ top: 24, bottom: 24, left: 24, right: 24 }}>
               <Pie
                 data={chartData}
                 cx="50%"
-                cy="50%"
-                outerRadius={90}
+                cy="47%"          // ⬅ slightly higher = centered labels
+                outerRadius={100}
+                paddingAngle={1}
                 dataKey="value"
-                label={renderFullLabel}
-                labelLine
+                label={renderLabel}
+                labelLine={renderLabelLine}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
