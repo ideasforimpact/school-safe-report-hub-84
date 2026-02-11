@@ -1,5 +1,6 @@
 interface DateFormatOptions {
   isTiming?: boolean;
+  source?: string; // optional: page/component name
 }
 
 const SHOW_TIME = false;
@@ -14,15 +15,15 @@ export const formatDate = (
     throw new Error("formatDate: Invalid date value");
   }
 
-  // DATE
   const day = d.getDate().toString().padStart(2, "0");
   const month = (d.getMonth() + 1).toString().padStart(2, "0");
   const year = d.getFullYear();
 
   let result = `${day}/${month}/${year}`;
 
-  // TIME (controlled from one place)
-  if (SHOW_TIME && options?.isTiming === true) {
+  const includeTime = SHOW_TIME && options?.isTiming === true;
+
+  if (includeTime) {
     let hours = d.getHours();
     const minutes = d.getMinutes().toString().padStart(2, "0");
     const ampm = hours >= 12 ? "pm" : "am";
@@ -30,6 +31,14 @@ export const formatDate = (
     hours = hours % 12 || 12;
     result += ` ${hours}:${minutes} ${ampm}`;
   }
+
+  // 🔎 Debug Log
+  console.log(
+    `[formatDate] Source: ${options?.source ?? "unknown"} | ` +
+    `Include Time: ${includeTime} | ` +
+    `Input: ${date} | ` +
+    `Output: ${result}`
+  );
 
   return result;
 };
