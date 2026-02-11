@@ -12,13 +12,13 @@ import { useIncidentPermissions } from '@/utils/incidentPermissions';
 import ReopenIncidentDialog from '@/features/incident/ReopenIncidentDialog';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDate } from '@/lib/Dateformat';
 
 interface IncidentHeaderProps {
   incident: Incident;
   statusUpdate: IncidentStatus | string;
   setStatusUpdate: (status: IncidentStatus) => void;
   onStatusChange: () => void;
-  formatDate: (date: Date) => string;
   getStatusColor: (status: IncidentStatus) => string;
   onCloseButtonClick?: () => void;
   onIncidentUpdate?: () => void;
@@ -26,10 +26,6 @@ interface IncidentHeaderProps {
 
 const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   incident,
-  statusUpdate,
-  setStatusUpdate,
-  onStatusChange,
-  formatDate,
   getStatusColor,
   onCloseButtonClick,
   onIncidentUpdate

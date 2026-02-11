@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/Dateformat';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
@@ -597,34 +597,6 @@ const VisitorsPage = () => {
 
   const hasActiveFilters = searchTerm || vehicleTypeFilter !== 'all' || dateRange;
 
-  const formatEntryDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  // Helper function to format time from date string (with AM/PM) - time only
-  const formatTime = (dateString: string | null | undefined) => {
-    if (!dateString) return '-';
-    try {
-      // Use 12-hour format with AM/PM (time only, no seconds)
-      return format(new Date(dateString), 'hh:mm a');
-    } catch (error) {
-      return '-';
-    }
-  };
-
-  // Helper function to format date only (without time)
-  const formatDateOnly = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch (error) {
-      return dateString;
-    }
-  };
-
   // Helper function to get vehicle type name
   const getVehicleTypeName = (vehicleType: string | null | undefined): string => {
     if (!vehicleType) return '-';
@@ -719,9 +691,9 @@ const VisitorsPage = () => {
         }
 
         // Format entry date and times
-        const entryDate = formatDateOnly(item.created_at);
-        const inTime = formatTime(item.in_time);
-        const exitTime = formatTime(item.exit_time);
+        const entryDate = formatDate(item.created_at);
+        const inTime = item.in_time ? formatDate(item.in_time, { isTiming: true }) : '-';
+        const exitTime = item.exit_time ? formatDate(item.exit_time, { isTiming: true }) : '-';
 
         // Base data with only required columns
         const row: any = {
@@ -766,7 +738,7 @@ const VisitorsPage = () => {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Visitors');
 
       // Generate filename with current date
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = formatDate(new Date()).replace(/\//g, '-');
       const filename = `visitors_export_${today}.xlsx`;
 
       // Download file
@@ -969,9 +941,13 @@ const VisitorsPage = () => {
                           '-'
                         )}
                       </TableCell>
-                      <TableCell>{formatEntryDate(item.created_at)}</TableCell>
-                      <TableCell>{formatTime(item.in_time)}</TableCell>
-                      <TableCell>{formatTime(item.exit_time)}</TableCell>
+                      <TableCell>{formatDate(item.created_at)}</TableCell>
+                      <TableCell>
+                        {item.in_time ? formatDate(item.in_time, { isTiming: true }) : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {item.exit_time ? formatDate(item.exit_time, { isTiming: true }) : '-'}
+                      </TableCell>
                       <TableCell className="text-right">
                         {item.is_trusted_vehicle ? (
                           // Trusted vehicles don't have detail view (or can be disabled)
