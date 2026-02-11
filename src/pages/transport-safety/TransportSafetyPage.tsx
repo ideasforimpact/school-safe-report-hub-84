@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Bus, Plus, ExternalLink } from 'lucide-react';
+import { Plus, ExternalLink, Car } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -52,7 +52,7 @@ const handleVehiclesChanged = useCallback(({ vehicles }) => {
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50">
-                <Bus className="h-6 w-6 text-primary" />
+                <Car className="h-6 w-6 text-primary" />
               </div>
 
               <div>
