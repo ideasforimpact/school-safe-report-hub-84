@@ -375,12 +375,13 @@ const FormConfigurationContent = () => {
               {(search || statusFilter !== 'all' || formTypeFilter !== 'all') && (
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
                   className="text-sm text-blue-600"
                   disabled={isPageLoading}
                 >
                   <X className="h-4 w-4" />
+                  Clear Filter
                 </Button>
               )}
             </div>

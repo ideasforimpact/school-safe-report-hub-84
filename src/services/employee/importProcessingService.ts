@@ -38,8 +38,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       const row = rawData[i];
       
       try {
-        // Ensure all required fields are present
-        const requiredFields = ['employeeId', 'firstName', 'lastName', 'email', 'employeeType', 'department', 'joiningDate', 'status'];
+        // Required fields (email, employeeType, department are optional)
+        const requiredFields = ['employeeId', 'firstName', 'lastName', 'joiningDate', 'status'];
         const missingFields = requiredFields.filter(field => {
           const value = row[field];
           return value === undefined || value === null || 
@@ -113,21 +113,21 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       // Add default module permissions to each employee record
       // and normalize/validate employee data fields
       return {
-        employeeId: String(row.employeeId).trim(),  // Ensure trimmed values for comparison
+        employeeId: String(row.employeeId).trim(),
         firstName: String(row.firstName),
         lastName: String(row.lastName),
-        email: String(row.email),
+        email: row.email != null && String(row.email).trim() !== '' ? String(row.email).trim() : undefined,
         phone: row.phone ? String(row.phone) : undefined,
-        employeeType: String(row.employeeType),
-        department: String(row.department),
-        designation:String(row.designation),
+        employeeType: row.employeeType != null && String(row.employeeType).trim() !== '' ? String(row.employeeType).trim() : undefined,
+        department: row.department != null && String(row.department).trim() !== '' ? String(row.department).trim() : undefined,
+        designation: row.designation != null ? String(row.designation) : undefined,
         joiningDate: String(row.joiningDate),
         status: String(row.status),
-        clientId: clientId, // Ensure clientId is passed through
+        clientId: clientId,
         modulePermissions: modulePermissions,
         moduleAccessPayload: Array.isArray(row.moduleAccessPayload)
           ? row.moduleAccessPayload
-          : []      
+          : []
       };
     });
     

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
@@ -16,6 +16,7 @@ import AssignmentsList from '@/components/assessments/assignments/AssignmentsLis
 import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics';
 import { summaryData, assessmentTypes, recentAssessments } from '@/components/assessments/data/mockData';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
+import AssessmentsTable from '@/components/assessments/AssessmentsTable';
 
 const AssessmentsPage = () => {
   const location = useLocation();
@@ -24,7 +25,7 @@ const AssessmentsPage = () => {
   
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
-  
+  const [assessments, setAssessments] = useState<any[]>([]);
   console.log("Current location:", location.pathname);
   console.log("Has assessment admin access:", hasAssessmentAdmin);
   
@@ -73,6 +74,28 @@ const AssessmentsPage = () => {
       return <TemplatesList onCreateTemplate={handleCreateTemplate} />;
     }
   };
+   const assessmentAnalyticsStats = useMemo(() => {
+    const total = assessments.length;
+
+    const open = assessments.filter(a =>
+      ['New', 'Draft', 'In Progress'].includes(a.status)
+    ).length;
+
+    const submitted = assessments.filter(
+      a => a.status === 'Submitted'
+    ).length;
+
+    const closed = assessments.filter(
+      a => a.status === 'Completed'
+    ).length;
+
+    return {
+      total,
+      open,
+      submitted,
+      closed,
+    };
+  }, [assessments]);
 
   // Determine main content based on state
   const renderMainContent = () => {
@@ -112,14 +135,26 @@ const AssessmentsPage = () => {
   return (
     <Layout>
       <div className="w-full py-6">
-        {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
-          <AssessmentsHeader onCreateTemplate={handleCreateAssessment} />
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-50 to-transparent p-6 mx-6 mb-8 rounded-xl border border-gray-200">
+          <AssessmentsHeader
+            onCreateAssessment={() => setShowCreateAssessment(true)}
+            totalCount={assessmentAnalyticsStats.total}
+            openCount={assessmentAnalyticsStats.open}
+            submittedCount={assessmentAnalyticsStats.submitted}
+            closedCount={assessmentAnalyticsStats.closed}
+          />
         </div>
 
         {/* Main Content Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mx-6">
-          {renderMainContent()}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mx-6 p-6">
+          {showCreateAssessment ? (
+            <CreateAssessmentForm
+              onCancel={() => setShowCreateAssessment(false)}
+            />
+          ) : (
+            <AssessmentsTable onDataLoaded={setAssessments} />
+          )}
         </div>
       </div>
     </Layout>

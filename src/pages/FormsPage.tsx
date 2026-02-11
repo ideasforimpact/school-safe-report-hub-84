@@ -8,7 +8,7 @@ import { useClient } from '@/contexts/ClientContext';
 import { backofficeFormService } from '@/services/forms/backofficeFormService';
 import { FormConfiguration } from '@/components/backoffice/forms/FormConfiguration';
 import { CustomForm } from '@/types/formTypes';
-import { Edit, Trash2, ExternalLink, FileText, Plus, QrCode, Search, Eye, Filter, X, Calendar, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, ExternalLink, FileText, Plus, QrCode, Search, Eye, Filter, X, Calendar, CheckCircle, MessageSquareWarning } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -222,16 +222,14 @@ const FormsPage = () => {
     }
   };
   const grievanceStats = useMemo(() => {
-    if (!submissions) {
+      if (!submissions) {
       return {
         open: 0,
-        closed: 0,
         acknowledged: 0,
       };
     }
 
     let open = 0;
-    let closed = 0;
     let acknowledged = 0;
 
     submissions.forEach((sub: any) => {
@@ -241,14 +239,13 @@ const FormsPage = () => {
         open += 1;
       } else if (status === 'acknowledged') {
         acknowledged += 1;
-      } else if (status === 'resolved' || status === 'closed') {
-        closed += 1;
       }
     });
 
-    return { open, closed, acknowledged };
+    return { open, acknowledged };
   }, [submissions]);
 
+  const total = grievanceStats.open + grievanceStats.acknowledged;
   const handleDeleteForm = async (formId: string) => {
     if (!confirm('Are you sure you want to delete this form?')) return;
 

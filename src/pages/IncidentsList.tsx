@@ -418,7 +418,7 @@ const incidentAnalyticsStats = useMemo(() => {
           <div className="w-full">
             <IncidentsHeader hasIncidentAdmin={hasIncidentAdmin} />
             <div className="mt-4 flex gap-96">
-              <div>
+              <div className='ms-16'>
                 <p className="text-sm text-gray-500">Total Incidents</p>
                 <p className="text-3xl font-semibold text-gray-900">
                   {incidentAnalyticsStats.total}

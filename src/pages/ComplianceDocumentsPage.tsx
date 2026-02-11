@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -1039,9 +1039,17 @@ const ComplianceDocumentsPage: React.FC = () => {
       <div className="p-3 sm:p-4 md:p-6">
         <div className="enterprise-card p-3 sm:p-4 md:p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-lg sm:text-xl font-semibold">Compliance Documents</h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">Upload and manage compliance files for your organization.</p>
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <ShieldCheck className="h-6 w-6 text-primary mt-1 shrink-0" />
+
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-semibold">
+                  Compliance Documents
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  Upload and manage compliance files for your organization.
+                </p>
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <div className="hidden sm:flex items-center text-sm text-gray-600 flex-wrap">
