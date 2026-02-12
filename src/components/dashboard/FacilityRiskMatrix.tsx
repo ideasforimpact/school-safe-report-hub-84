@@ -127,7 +127,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
                     className={`h-8 rounded flex items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-110 cursor-pointer ${getRiskColor(facility[priority], priority)}`}
                     title={`${facility.name} - ${priority}: ${facility[priority]} incidents`}
                   >
-                    {facility[priority] > 0 ? facility[priority] : ''}
+                    {facility[priority] > 0 ? facility[priority] : '0'}
                   </div>
                 ))}
                   </div>

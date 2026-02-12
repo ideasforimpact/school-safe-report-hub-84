@@ -47,6 +47,7 @@ interface EnhancedStatsCardsProps {
     vehiclesToBeVerified?: number;
     vehiclesFailedVerification?: number;
     vehiclesWithDocuments?: number;
+    totalPendingChallanAmount: number;
     monthlyIncidentsData: Array<{
       month: string;
       open: number;
@@ -78,13 +79,13 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
         targetUrl = `${baseUrl}/employee-verification?filter=verified`;
         break;
       case 'active_assessments':
-        targetUrl = `${baseUrl}/assessments?filter=active`;
+        targetUrl = `${baseUrl}/assessments?filter=new`;
         break;
       case 'open_grievances':
         targetUrl = `${baseUrl}/forms?filter=open`;
         break;
       case 'safety_vehicles':
-        targetUrl = `${baseUrl}/transport-safety?filter=verified`;
+        targetUrl = `${baseUrl}/transport-safety?filter=expired`;
         break;
       case 'students_involved':
         targetUrl = `${baseUrl}/incidents?filter=students_involved`;
@@ -210,13 +211,14 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       totalVehicles: stats.VehicleRecordsExist ? (stats.totalVehicles || 0) : 0,
       vehiclesToBeVerified: stats.VehicleRecordsExist ? (stats.vehiclesToBeVerified || 0) : 0,
       vehiclesFailedVerification: stats.VehicleRecordsExist ? (stats.vehiclesFailedVerification || 0) : 0,
+      totalPendingChallanAmount: stats.VehicleRecordsExist ? (stats.totalPendingChallanAmount || 0): 0,
       vehiclesVerified: stats.VehicleRecordsExist ? (stats.vehiclesVerified || 0) : 0,
       cardType: 'safety_vehicles'
     },
     {
       title: 'Number of Students Involved',
       value: stats.IncidentRecordsExist ? (stats.studentsInvolved || 0) : 'N/A',
-      description: stats.IncidentRecordsExist ? 'Students involved in open incidents' : 'No incident data available',
+      description: stats.IncidentRecordsExist ? 'Students involved in incidents' : 'No incident data available',
       icon: Users,
       color: stats.IncidentRecordsExist ? 'text-orange-600' : 'text-gray-500',
       bgColor: stats.IncidentRecordsExist ? 'bg-orange-50' : 'bg-gray-50',
@@ -344,6 +346,10 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                           <span className="text-red-600 font-medium">Vehicles with issues:</span>
                           <span className="font-semibold text-red-600">{(card as any).vehiclesFailedVerification}</span>
                         </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-orange-600 font-medium">Total Pending Challan:</span>
+                          <span className="font-medium text-orange-600">    ₹{(card as any).totalPendingChallanAmount.toLocaleString()}</span>
+                        </div>
                       </div>
                     )}
 
@@ -357,6 +363,10 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-500 font-medium">Vehicles with issues:</span>
                           <span className="font-semibold text-gray-500">—</span>
+                        </div>
+                         <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500 font-medium">Total Pending Challan:</span>
+                          <span className="font-medium text-orange-500">—</span>
                         </div>
                       </div>
                     )}
