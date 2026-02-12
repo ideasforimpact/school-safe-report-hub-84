@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, LogIn, Car, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
+import { Search, Eye, RefreshCw, Car, ArrowLeft, Download, ShieldCheck, DoorOpen } from 'lucide-react';
 import {
   Pagination,
   PaginationContent,
@@ -756,7 +756,7 @@ const VisitorsPage = () => {
       <div className="w-full py-6">
         <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
           <div className="flex items-center space-x-4">
-            <LogIn className="h-8 w-8 text-primary" />
+            <DoorOpen className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-2xl font-bold text-left">Visitors</h1>
               <p className="text-gray-500 text-sm text-left">Manage and track visitor entries</p>
