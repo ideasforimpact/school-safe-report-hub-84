@@ -8,6 +8,7 @@ interface AssessmentsHeaderProps {
   openCount: number;
   submittedCount: number;
   closedCount: number;
+  draftCount: number;
 }
 
 const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
@@ -16,6 +17,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
   openCount,
   submittedCount,
   closedCount,
+  draftCount,
 }) => {
   return (
     <div className="flex flex-col gap-6">
@@ -46,33 +48,30 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
       </div>
 
       {/* Stats row (same spacing as Employee page) */}
-      <div className="flex gap-80">
-        <div className="ms-16">
+      <div className="flex justify-between px-16">
+        <div className="text-left">
           <p className="text-sm text-gray-500">Total Assessments</p>
-          <p className="text-3xl font-semibold text-gray-900">
-            {totalCount}
-          </p>
+          <p className="text-3xl font-semibold text-gray-900">{totalCount}</p>
         </div>
 
-        <div>
-          <p className="text-sm text-gray-500">Open</p>
-          <p className="text-3xl font-semibold text-orange-500">
-            {openCount}
-          </p>
+        <div className="text-left">
+          <p className="text-sm text-gray-500">Open Assessments</p>
+          <p className="text-3xl font-semibold text-orange-500">{openCount}</p>
         </div>
 
-        <div>
-          <p className="text-sm text-gray-500">Submitted</p>
-          <p className="text-3xl font-semibold text-purple-600">
-            {submittedCount}
-          </p>
+        <div className="text-left">
+          <p className="text-sm text-gray-500">Draft Assessments</p>
+          <p className="text-3xl font-semibold text-yellow-500">{draftCount}</p>
         </div>
 
-        <div>
-          <p className="text-sm text-gray-500">Closed</p>
-          <p className="text-3xl font-semibold text-green-600">
-            {closedCount}
-          </p>
+        <div className="text-left">
+          <p className="text-sm text-gray-500">Submitted Assessments</p>
+          <p className="text-3xl font-semibold text-purple-600">{submittedCount}</p>
+        </div>
+
+        <div className="text-left">
+          <p className="text-sm text-gray-500">Closed Assessments</p>
+          <p className="text-3xl font-semibold text-green-600">{closedCount}</p>
         </div>
       </div>
     </div>
