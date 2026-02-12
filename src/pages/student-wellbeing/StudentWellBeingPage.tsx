@@ -50,6 +50,7 @@ import { ConsultationDetailsDialog } from '@/components/student-wellbeing/Consul
 import { NewActionDialog } from '@/components/student-wellbeing/NewActionDialog';
 import { ActionDetailsDialog } from '@/components/student-wellbeing/ActionDetailsDialog';
 import { NewFollowUpEntryDialog } from '@/components/student-wellbeing/NewFollowUpEntryDialog';
+import { formatDate } from '@/lib/Dateformat';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -58,15 +59,7 @@ const STATUS_OPTIONS = [
   { value: 'closed', label: 'Closed' },
 ] as const;
 
-function formatDate(value: string | null): string {
-  if (!value) return 'Not set';
-  try {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? 'Not set' : d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return 'Not set';
-  }
-}
+
 
 function formatStatus(status: string): string {
   return status
@@ -336,18 +329,19 @@ const StudentWellBeingPage = () => {
                       <TableCell>
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(row.status)}`}
-                        >
+               AssessmentViewDialog         >
                           {formatStatus(row.status)}
                         </span>
                       </TableCell>
                       <TableCell>
-                        {formatDate(
-                          row.follow_up_entries?.length
-                            ? row.follow_up_entries[0].date
-                            : row.next_follow_up
-                        )}
+                        {row.follow_up_entries?.length
+                          ? formatDate(row.follow_up_entries[0].date)
+                          : row.next_follow_up && formatDate(row.next_follow_up)}
                       </TableCell>
-                      <TableCell>{formatDate(row.date_of_observation)}</TableCell>
+
+                      <TableCell>{formatDate(row.date_of_observation) 
+}
+                                </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

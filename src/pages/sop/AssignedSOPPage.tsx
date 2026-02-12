@@ -36,6 +36,7 @@ import GroupDetailsDialog from '@/components/sop/GroupDetailsDialog';
 import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useCallback } from 'react';
+import { formatDate } from '@/lib/Dateformat';
 
 interface SOP {
   id: string;
@@ -251,29 +252,6 @@ const AssignedSOPPage = () => {
     }
 
     return <span>{displayText}</span>;
-  };
-
-  // Format date in 12-hour format with AM/PM
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return '';
-    try {
-      const date = new Date(dateString);
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
-      const year = date.getFullYear();
-      
-      let hours = date.getHours();
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      const hoursStr = hours.toString().padStart(2, '0');
-      
-      return `${month}/${day}/${year} ${hoursStr}:${minutes} ${ampm}`;
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return '';
-    }
   };
 
   // Real-time updates for employee statistics
