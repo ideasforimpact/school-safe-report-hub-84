@@ -1,6 +1,5 @@
 interface DateFormatOptions {
-  isTiming?: boolean;
-  source?: string; // optional: page/component name
+  isTiming?: boolean; // optional: page/component name
 }
 
 const SHOW_TIME = false;
@@ -31,14 +30,5 @@ export const formatDate = (
     hours = hours % 12 || 12;
     result += ` ${hours}:${minutes} ${ampm}`;
   }
-
-  // 🔎 Debug Log
-  console.log(
-    `[formatDate] Source: ${options?.source ?? "unknown"} | ` +
-    `Include Time: ${includeTime} | ` +
-    `Input: ${date} | ` +
-    `Output: ${result}`
-  );
-
   return result;
 };

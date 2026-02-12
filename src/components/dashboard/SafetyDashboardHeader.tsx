@@ -4,6 +4,7 @@ import { Shield, Calendar, Clock, AlertTriangle, LayoutDashboard } from 'lucide-
 import { useAuth } from '@/contexts/AuthContext';
 import { employeeTypeName } from '@/services/employeeNameHelpers';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import { formatDate } from '@/lib/Dateformat';
 
 interface SafetyDashboardHeaderProps {
   stats: {
@@ -130,8 +131,9 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
                 <Calendar className="h-4 w-4" />
                 <span>
                   Last updated:{' '}
-                  {allDataExists ? new Date().toLocaleString() : '-'}
+                  {allDataExists && formatDate(new Date())}
                 </span>
+
               </div>
               {employeeData && (
                 <div className="flex items-center gap-2">
