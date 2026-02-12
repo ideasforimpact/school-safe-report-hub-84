@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
@@ -17,12 +17,14 @@ import {
 
 interface Props {
   clientId: string;
+  autoDownload?: boolean;
+  hideButton?: boolean;
 }
 
-const MonthlyReportDownload = ({ clientId }: Props) => {
+const MonthlyReportDownload = ({ clientId, autoDownload = false, hideButton = false }: Props) => {
   const [loading, setLoading] = useState(false);
 
-  const generateReport = async () => {
+  const generateReport = useCallback(async () => {
     if (!clientId) return;
 
     try {
@@ -96,7 +98,19 @@ const MonthlyReportDownload = ({ clientId }: Props) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
+
+  // Auto-trigger generation when requested (for email-link route)
+  useEffect(() => {
+    if (autoDownload) {
+      generateReport();
+    }
+  }, [autoDownload, generateReport]);
+
+  // For routes that only need side-effect download and no button
+  if (hideButton) {
+    return null;
+  }
 
   return (
     <Button
