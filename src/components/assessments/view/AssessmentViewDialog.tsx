@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/auth';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentAuditTimeline from '../audit/AssessmentAuditTimeline';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
+import { formatDate } from '@/lib/Dateformat';
 
 interface AssessmentViewDialogProps {
   open: boolean;
@@ -403,15 +404,6 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
     );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   const getAnswerForQuestion = (questionId: string | undefined, questionIndex?: number) => {
     if (!assessment?.answers) return undefined;
@@ -744,7 +736,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                               {assessment.target_completion_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-4 w-4" />
-                                  Due: {new Date(assessment.target_completion_date).toLocaleDateString()}
+                                  Due: {formatDate(assessment.target_completion_date)}
                                 </span>
                               )}
                             </div>
