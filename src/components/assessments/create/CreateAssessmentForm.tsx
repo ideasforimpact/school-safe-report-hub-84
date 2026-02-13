@@ -75,7 +75,17 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
       const { data: employeesData, error } = await supabase
         .from('employees')
-        .select('id, first_name, last_name, email, department')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          department,
+          employee_departments:department (
+            id,
+            department_name
+          )
+        `)
         .eq('client_id', clientId)
         .eq('status', true)
         .order('first_name');
@@ -579,7 +589,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                                   ({employee.email})
                                 </span>
                                 <div className="text-xs text-gray-400">
-                                  {employee.department}
+                                  {employee.employee_departments.department_name}
                                 </div>
                               </div>
                             </li>
