@@ -20,17 +20,26 @@ import { useAuth } from '@/contexts/auth';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 
+interface EmployeeDepartment {
+  id: string;
+  department_name: string;
+}
+
 interface Employee {
   id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  department: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  department: string | null;
+  employee_departments?: EmployeeDepartment | null;
 }
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
 }
+
+const capitalizeFirst = (str: string) =>
+  str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
 
 const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   onCancel,
@@ -97,7 +106,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       }
 
       console.log('Fetched employees:', employeesData);
-      setEmployees(employeesData || []);
+      setEmployees((employeesData || []) as unknown as Employee[]);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
@@ -155,7 +164,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   );
 
   const selectedEmployeeDisplay = selectedEmployee
-    ? `${selectedEmployee.first_name} ${selectedEmployee.last_name} (${selectedEmployee.email})`
+    ? `${selectedEmployee.first_name ?? ''} ${selectedEmployee.last_name ?? ''} (${selectedEmployee.email ?? ''})`.trim()
     : '';
 
   // Validation function
@@ -203,13 +212,18 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   const filteredEmployees = searchQuery
     ? employees.filter(employee => {
-        const fullName = `${employee.first_name} ${employee.last_name}`;
+        const fullName = `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
+        const email = employee.email ?? '';
         const searchTerm = searchQuery.toLowerCase();
+        const departmentName =
+          employee.employee_departments?.department_name ||
+          employee.department ||
+          '';
 
         return (
           fullName.toLowerCase().includes(searchTerm) ||
-          employee.email.toLowerCase().includes(searchTerm) ||
-          employee.department.toLowerCase().includes(searchTerm)
+          email.toLowerCase().includes(searchTerm) ||
+          departmentName.toLowerCase().includes(searchTerm)
         );
       })
     : employees;
@@ -582,14 +596,18 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                             >
                               <div>
                                 <span className="font-medium">
-                                  {employee.first_name}{' '}
-                                  {employee.last_name}
+                                  {employee.first_name ?? ''}{' '}
+                                  {employee.last_name ?? ''}
                                 </span>
                                 <span className="text-gray-500 ml-1">
-                                  ({employee.email})
+                                  ({employee.email ?? ''})
                                 </span>
                                 <div className="text-xs text-gray-400">
-                                  {employee.employee_departments.department_name}
+                                  {capitalizeFirst(
+                                    employee.employee_departments?.department_name ||
+                                     
+                                      '-'
+                                  )}
                                 </div>
                               </div>
                             </li>
