@@ -736,7 +736,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                               {assessment.target_completion_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-4 w-4" />
-                                  Due: {new Date(assessment.target_completion_date).toLocaleDateString()}
+                                  Due: {formatDate(assessment.target_completion_date)}
                                 </span>
                               )}
                             </div>

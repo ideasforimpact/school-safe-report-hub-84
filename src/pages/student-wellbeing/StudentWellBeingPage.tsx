@@ -329,7 +329,7 @@ const StudentWellBeingPage = () => {
                       <TableCell>
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(row.status)}`}
-               AssessmentViewDialog         >
+                          >
                           {formatStatus(row.status)}
                         </span>
                       </TableCell>
