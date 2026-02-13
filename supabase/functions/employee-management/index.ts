@@ -335,6 +335,7 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       client_id: clientId,
       user_id: emp.user_id || null,
       is_super_admin: emp.is_super_admin || false,
+      is_cpd_involved: emp.is_cpd_involved === true,
     });
   }
   
@@ -491,7 +492,8 @@ async function handleCreate(supabaseClient: any, employee: any) {
     status: true,
     client_id: clientId,
     user_id: employee.user_id || null,
-    is_super_admin: employee.is_super_admin || false
+    is_super_admin: employee.is_super_admin || false,
+    is_cpd_involved: employee.is_cpd_involved === true
   };
  
   console.log("Creating employee with data:", employeeData);
@@ -663,6 +665,9 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   }
   if (employee.employeeId) {
     updateData.employee_id = employee.employeeId;
+  }
+  if (employee.is_cpd_involved !== undefined) {
+    updateData.is_cpd_involved = employee.is_cpd_involved === true;
   }
  
   console.log("Update data:", updateData);
