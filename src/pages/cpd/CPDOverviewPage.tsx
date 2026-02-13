@@ -426,7 +426,7 @@ const CPDOverviewPage: React.FC = () => {
     }
     const employees = data?.employees ?? [];
     if (employees.length === 0) {
-      toast.error('No staff data to export.');
+      toast.error('No employee data to export.');
       return;
     }
     try {
@@ -453,10 +453,10 @@ const CPDOverviewPage: React.FC = () => {
       }
       const worksheet = XLSX.utils.json_to_sheet(exportRows);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Staff CPD');
-      const filename = `staff_cpd_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Employee CPD');
+      const filename = `employee_cpd_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
       XLSX.writeFile(workbook, filename);
-      toast.success(`Exported ${employees.length} staff to ${filename}`);
+      toast.success(`Exported ${employees.length} employees to ${filename}`);
       setExportDialogOpen(false);
     } catch (err: unknown) {
       console.error('CPD export error:', err);
@@ -475,13 +475,13 @@ const CPDOverviewPage: React.FC = () => {
                 <BookOpen className="h-6 w-6 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold">Staff CPD Overview</h1>
+                <h1 className="text-2xl font-bold">Employee CPD Overview</h1>
                 <p className="text-gray-500 text-sm mt-1">
-                  Track Continuing Professional Development hours and compliance across staff.
+                  Track Continuing Professional Development hours and compliance across employees.
                 </p>
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-6">
                   <div>
-                    <p className="text-sm text-gray-500">Total Staff</p>
+                    <p className="text-sm text-gray-500">Total Employees</p>
                     <p className="text-3xl font-semibold text-gray-900 tabular-nums">
                       {data?.total_staff ?? 0}
                     </p>
@@ -517,14 +517,14 @@ const CPDOverviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Staff CPD table - layout inspired by provided screenshot */}
+        {/* Employee CPD table - layout inspired by provided screenshot */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Staff CPD Status</h2>
+            <h2 className="text-lg font-semibold">Employee CPD Status</h2>
             <div className="relative w-full max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search staff name or department..."
+                placeholder="Search employee name or department..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-9"
@@ -534,12 +534,12 @@ const CPDOverviewPage: React.FC = () => {
 
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">
-              Loading CPD overview...
+              <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <p className="text-gray-500 text-sm">
-                No CPD records found.
+                No employee CPD records found.
               </p>
             </div>
           ) : (
@@ -547,7 +547,7 @@ const CPDOverviewPage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/80">
-                    <TableHead className="text-left font-medium w-[220px]">Staff Name</TableHead>
+                    <TableHead className="text-left font-medium w-[220px]">Employee Name</TableHead>
                     <TableHead className="text-left font-medium w-[160px]">Department</TableHead>
                     <TableHead className="text-left font-medium w-[120px]">Total CPD</TableHead>
                     <TableHead className="text-left font-medium w-[160px]">Core Values</TableHead>
