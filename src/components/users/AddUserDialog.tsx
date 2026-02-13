@@ -35,6 +35,7 @@ interface AddUserDialogProps {
     joiningDate?: string;
     moduleAccessPayload?: ModuleAccessItem[];
     clientId?: string;
+    is_cpd_involved?: boolean;
   };
   setFormData: (data: any) => void;
   onSubmit: (formData?: any) => void;
@@ -643,6 +644,34 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 )}
               </div>
             )}
+
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <Label htmlFor="cpd-toggle">CPD Involved</Label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="cpd-toggle"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      is_cpd_involved: !formData.is_cpd_involved,
+                    })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-gray-600">
+                  {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
+                </span>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>

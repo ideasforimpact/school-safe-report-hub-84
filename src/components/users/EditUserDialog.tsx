@@ -34,23 +34,27 @@ interface EditUserDialogProps {
     department?: DepartmentType;
     joiningDate?: string;
     moduleAccessPayload?: ModuleAccessItem[];
+    is_cpd_involved?: boolean;
   };
   setFormData: (data: any) => void;
   onSubmit: () => void;
   resetForm: () => void;
   isLoading: boolean;
   currentUser?: any;
+  /** Latest list of employees so dialog can show fresh data when reopened after save */
+  employeeUsers?: any[];
 }
 
-const EditUserDialog = ({ 
-  isOpen, 
-  setIsOpen, 
-  formData, 
-  setFormData, 
-  onSubmit, 
-  resetForm, 
+const EditUserDialog = ({
+  isOpen,
+  setIsOpen,
+  formData,
+  setFormData,
+  onSubmit,
+  resetForm,
   isLoading,
-  currentUser 
+  currentUser,
+  employeeUsers = [],
 }: EditUserDialogProps) => {
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -68,12 +72,28 @@ const EditUserDialog = ({
   // Determine super admin flag based on the TARGET user being edited, not the current operator
   const targetIsSuperAdmin = currentUser?.isSuperAdmin === true;
   
-  // Initialize selected modules from formData when dialog opens
+  // Resolve latest user from list so we always show fresh data (e.g. after save + reopen)
+  const latestUser = (isOpen && currentUser && employeeUsers?.length)
+    ? (employeeUsers.find((u: any) => u.id === currentUser.id) ?? currentUser)
+    : currentUser;
+
+  // Log what the popup is showing when it opens (for debugging CPD / edit values)
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      const fromLatest = (latestUser as any).isCpdInvolved ?? (latestUser as any).is_cpd_involved ?? false;
+    }
+  }, [isOpen, currentUser?.id]);
+
+  // Initialize selected modules and form from latest user when dialog opens
   useEffect(() => {
     if (isOpen && formData.moduleAccessPayload) {
       setSelectedModules(formData.moduleAccessPayload);
     }
-    
+    // Sync from latest user so toggle shows saved value
+    if (isOpen && latestUser) {
+      const cpdValue = (latestUser as any).isCpdInvolved ?? (latestUser as any).is_cpd_involved ?? false;
+      setFormData(prev => (prev.is_cpd_involved === cpdValue ? prev : { ...prev, is_cpd_involved: cpdValue }));
+    }
     // Ensure joiningDate is properly formatted when dialog opens (only once when dialog opens)
     if (isOpen && formData.joiningDate && currentUser) {
       try {
@@ -93,7 +113,7 @@ const EditUserDialog = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, currentUser?.id]);
+  }, [isOpen, currentUser?.id, employeeUsers]);
 
   // Map employee_type name to ID when employee types are loaded and formData has a name
   useEffect(() => {
@@ -371,12 +391,13 @@ const EditUserDialog = ({
       const normalizedEmail =
         formData.email && formData.email.trim() !== '' ? formData.email.trim() : null;
 
-      const updateData = {
+      const originalEmail = (currentUser.email as string | null) ?? null;
+      const emailChanged = normalizedEmail !== originalEmail;
+
+      const updateData: any = {
         id: currentUser.id,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        // Send null when the email field is cleared so the DB value is actually removed
-        email: normalizedEmail,
         employeeId: formData.employeeId,
         phone: formData.phone,
         designation: formData.designation,
@@ -384,8 +405,15 @@ const EditUserDialog = ({
         department: formData.department ?? undefined,
         joiningDate: formData.joiningDate,
         moduleAccessPayload: moduleAccessPayload,
-        clientId: clientId
+        clientId: clientId,
+        is_cpd_involved: formData.is_cpd_involved === true,
       };
+
+      // Only send email through when it actually changed (including clearing it)
+      if (emailChanged) {
+        // When cleared, normalizedEmail will be null - backend treats this as "no duplicate check"
+        updateData.email = normalizedEmail;
+      }
       
       console.log("Updating user with data:", updateData);
       
@@ -410,10 +438,11 @@ const EditUserDialog = ({
       }
       
       toast.success("User updated successfully");
+      // Refresh list first so when dialog closes, list has latest data (e.g. is_cpd_involved)
+      if (typeof onSubmit === 'function') {
+        await Promise.resolve(onSubmit());
+      }
       handleClose();
-      
-      // Call the parent's onSubmit for any additional cleanup/refresh
-      onSubmit();
     } catch (error) {
       console.error("Error updating user:", error);
       toast.error("Failed to update user");
@@ -680,6 +709,34 @@ const EditUserDialog = ({
                   )}
               </div>
             )}
+
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <Label htmlFor="cpd-toggle-edit">CPD Involved</Label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="cpd-toggle-edit"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      is_cpd_involved: !formData.is_cpd_involved,
+                    })
+                  }
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-gray-600">
+                  {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
+                </span>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose} disabled={isUpdating || isLoading}>
