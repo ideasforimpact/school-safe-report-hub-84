@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useIncidentAuditTrail } from '@/hooks/useIncidentAuditTrail';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import {formatDate} from '@/lib/Dateformat';
 interface AuditTrailProps {
   incidentId?: string;
   maxHeight?: string;
@@ -37,16 +37,6 @@ const AuditTrail = ({ incidentId, maxHeight = "400px" }: AuditTrailProps) => {
   console.log('Hook state - error:', error);
   console.log('=== END AUDIT TRAIL COMPONENT DEBUG ===');
 
-  // Format date to readable format
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   // Get icon based on activity type and action
   const getActivityIcon = (activity: any) => {
