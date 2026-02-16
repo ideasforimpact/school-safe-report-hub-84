@@ -55,46 +55,222 @@ export const EmployeePage = ({
         Verification status for {totalEmployees} employees
       </Text>
 
-      <View style={styles.employeeSummaryRow}>
-        <View style={styles.employeeCard}>
-          <Text style={styles.employeeCardTitle}>TOTAL EMPLOYEES</Text>
-          <Text style={styles.employeeCardNumber}>{totalEmployees}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginTop: 8,
+          marginBottom: 12,
+        }}
+      >
+        {/* TOTAL EMPLOYEES */}
+        <View
+          style={{
+            width: "24%",
+            backgroundColor: "#ffffff",
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 10,
+            padding: 10,
+            minHeight: 70,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 4 }}>
+            TOTAL EMPLOYEES
+          </Text>
+
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+            {totalEmployees}
+          </Text>
         </View>
 
-        <View style={styles.employeeCard}>
-          <Text style={styles.employeeCardTitle}>VERIFIED</Text>
-          <Text style={styles.employeeCardNumber}>{verifiedEmployees}</Text>
-          <Text style={styles.employeeBadge}>
+        {/* VERIFIED */}
+        <View
+          style={{
+            width: "24%",
+            backgroundColor: "#ffffff",
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 10,
+            padding: 10,
+            minHeight: 70,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 4 }}>
+            VERIFIED
+          </Text>
+
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+            {verifiedEmployees}
+          </Text>
+
+          <Text
+            style={{
+              marginTop: 4,
+              backgroundColor: "#d1fae5",
+              color: "#065f46",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+              alignSelf: "flex-start",
+            }}
+          >
             {verifiedEmployees} Verified
           </Text>
         </View>
 
-        <View style={styles.employeeCard}>
-          <Text style={styles.employeeCardTitle}>VERIFICATION RATE</Text>
-          <Text style={styles.employeeCardNumber}>
+        {/* VERIFICATION RATE */}
+        <View
+          style={{
+            width: "24%",
+            backgroundColor: "#ffffff",
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 10,
+            padding: 10,
+            minHeight: 70,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 4 }}>
+            VERIFICATION RATE
+          </Text>
+
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
             {verificationRate}%
           </Text>
-          <Text style={styles.employeeBadge}>
+
+          <Text
+            style={{
+              marginTop: 4,
+              backgroundColor: "#d1fae5",
+              color: "#065f46",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+              alignSelf: "flex-start",
+            }}
+          >
             {verificationRate >= 90
               ? "High Compliance"
               : verificationRate >= 70
-              ? "Needs Attention"
-              : "Critical"}
+                ? "Needs Attention"
+                : "Critical"}
+          </Text>
+        </View>
+
+        {/* NO DOCUMENTS */}
+        <View
+          style={{
+            width: "24%",
+            backgroundColor: "#ffffff",
+            borderWidth: 1,
+            borderColor: "#fca5a5",
+            borderRadius: 10,
+            padding: 10,
+            minHeight: 70,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 4 }}>
+            NO DOCUMENTS
+          </Text>
+
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+            {noDocumentEmployees.length}
+          </Text>
+
+          <Text
+            style={{
+              marginTop: 4,
+              backgroundColor: "#fee2e2",
+              color: "#b91c1c",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+              alignSelf: "flex-start",
+            }}
+          >
+            No submissions
           </Text>
         </View>
       </View>
 
-      <Text style={{ marginTop: 6, fontSize: 10 }}>
-        Verification Summary
-      </Text>
 
-      <View style={styles.employeeTable}>
-        <View style={styles.employeeTableHeader}>
-          <Text style={styles.employeeColType}>TYPE</Text>
-          <Text style={styles.employeeColCompliant}>COMPLIANT</Text>
-          <Text style={styles.employeeColPending}>PENDING</Text>
+      <View
+        style={{
+          marginTop: 8,
+          borderWidth: 1,
+          borderColor: "#e5e7eb",
+          borderRadius: 8,
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        {/* Title Bar */}
+        <View
+          style={{
+            backgroundColor: "#f3f4f6",
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
+            Verification Summary
+          </Text>
         </View>
 
+        {/* Column Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+          }}
+        >
+          <Text style={{ width: "50%", fontSize: 8, color: "#6b7280" }}>
+            TYPE
+          </Text>
+
+          <Text
+            style={{
+              width: "25%",
+              fontSize: 8,
+              color: "#059669",
+              fontWeight: 600,
+            }}
+          >
+            COMPLIANT
+          </Text>
+
+          <Text
+            style={{
+              width: "25%",
+              fontSize: 8,
+              color: "#dc2626",
+              fontWeight: 600,
+            }}
+          >
+            PENDING
+          </Text>
+        </View>
+
+        {/* Rows */}
         {documentTypes.map((type: any, i: number) => {
           const compliant = employeeDocuments.filter(
             (d: any) =>
@@ -109,14 +285,39 @@ export const EmployeePage = ({
           ).length;
 
           return (
-            <View key={i} style={styles.employeeTableRow}>
-              <Text style={styles.employeeColType}>
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                paddingVertical: 8,
+                paddingHorizontal: 8,
+                borderBottomWidth: 1,
+                borderBottomColor: "#e5e7eb",
+              }}
+            >
+              <Text style={{ width: "50%", fontSize: 8, color: "#111827" }}>
                 {type.description}
               </Text>
-              <Text style={styles.employeeColCompliant}>
+
+              <Text
+                style={{
+                  width: "25%",
+                  fontSize: 8,
+                  color: "#059669",
+                  fontWeight: 600,
+                }}
+              >
                 {compliant}
               </Text>
-              <Text style={styles.employeeColPending}>
+
+              <Text
+                style={{
+                  width: "25%",
+                  fontSize: 8,
+                  color: "#dc2626",
+                  fontWeight: 600,
+                }}
+              >
                 {pending}
               </Text>
             </View>
@@ -124,35 +325,78 @@ export const EmployeePage = ({
         })}
       </View>
 
+
       {pendingEmployees > 0 && (
-        <View style={styles.pendingBox}>
-          <Text style={styles.pendingTitle}>
-            Pending Verifications
-          </Text>
+        <View
+          style={{
+            marginTop: 12,
+            backgroundColor: "#fffbeb",
+            borderWidth: 1,
+            borderColor: "#fde68a",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          {/* Title Section */}
+          <View
+            style={{
+              backgroundColor: "#fef3c7",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fde68a",
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 600, color: "#92400e" }}>
+              Pending Verifications
+            </Text>
+          </View>
 
-          <Text style={styles.pendingSub}>
-            {pendingEmployees} employees require verification action
-          </Text>
+          {/* Sub text */}
+          <View style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              {pendingEmployees} employees require verification action
+            </Text>
+          </View>
 
-          <View style={styles.tableHeaderLight}>
-            <Text style={{ width: "30%", fontSize: 8 }}>
+          {/* Column Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderTopWidth: 1,
+              borderTopColor: "#fffbeb",
+            }}
+          >
+            <Text style={{ width: "30%", fontSize: 8, color: "#6b7280" }}>
               EMPLOYEE NAME
             </Text>
-            <Text style={{ width: "20%", fontSize: 8 }}>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
               EMPLOYEE ID
             </Text>
-            <Text style={{ width: "50%", fontSize: 8 }}>
+            <Text style={{ width: "50%", fontSize: 8, color: "#6b7280" }}>
               REASON(S)
             </Text>
           </View>
 
+          {/* Rows */}
           {pendingList.slice(0, 8).map((emp: any, i: number) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={{ width: "30%", fontSize: 8 }}>
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                paddingVertical: 8,
+                paddingHorizontal: 8,
+                borderTopWidth: 1,
+                borderTopColor: "#fde68a",
+              }}
+            >
+              <Text style={{ width: "30%", fontSize: 8, color: "#111827" }}>
                 {emp.name}
               </Text>
 
-              <Text style={{ width: "20%", fontSize: 8 }}>
+              <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
                 {emp.id}
               </Text>
 
@@ -164,7 +408,19 @@ export const EmployeePage = ({
                 }}
               >
                 {emp.reasons.map((r: string, idx: number) => (
-                  <Text key={idx} style={styles.pendingPill}>
+                  <Text
+                    key={idx}
+                    style={{
+                      backgroundColor: "#fee2e2",
+                      color: "#b91c1c",
+                      fontSize: 7,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      marginRight: 4,
+                      marginBottom: 4,
+                    }}
+                  >
                     {r}
                   </Text>
                 ))}
@@ -174,55 +430,118 @@ export const EmployeePage = ({
         </View>
       )}
 
+
       {noDocumentEmployees.length > 0 && (
-        <View style={styles.noDocBox}>
-          <Text style={styles.noDocTitle}>
-            Employees with No Documents Submitted
-          </Text>
+        <View
+          style={{
+            marginTop: 12,
+            backgroundColor: "#fef2f2",
+            borderWidth: 1,
+            borderColor: "#fca5a5",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          {/* Header strip */}
+          <View
+            style={{
+              backgroundColor: "#fee2e2",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+              Employees with No Documents Submitted
+            </Text>
+          </View>
 
-          <Text style={styles.noDocSub}>
-            {noDocumentEmployees.length} employees have not submitted any
-            documents since being added
-          </Text>
+          {/* Sub text */}
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              {noDocumentEmployees.length} employees have not submitted any documents since being added
+            </Text>
+          </View>
 
-          <View style={styles.tableHeaderLight}>
-            <Text style={{ width: "35%", fontSize: 8 }}>
+          {/* Table header */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: "#ffffff80",
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fdf0f0",
+            }}
+          >
+            <Text style={{ width: "35%", fontSize: 8, color: "#6b7280" }}>
               EMPLOYEE NAME
             </Text>
-            <Text style={{ width: "25%", fontSize: 8 }}>
+            <Text style={{ width: "25%", fontSize: 8, color: "#6b7280" }}>
               EMPLOYEE ID
             </Text>
-            <Text style={{ width: "20%", fontSize: 8 }}>
-              JOINING DATE
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              DATE ADDED
             </Text>
-            <Text style={{ width: "20%", fontSize: 8 }}>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
               STATUS
             </Text>
           </View>
 
+          {/* Rows */}
           {noDocumentEmployees.slice(0, 8).map((emp: any, i: number) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={{ width: "35%", fontSize: 8 }}>
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                paddingVertical: 8,
+                paddingHorizontal: 8,
+                borderBottomWidth: 1,
+                borderBottomColor: "#fdf0f0",
+                backgroundColor: "#ffffff80",
+              }}
+            >
+              <Text style={{ width: "35%", fontSize: 8, color: "#111827" }}>
                 {emp.first_name} {emp.last_name}
               </Text>
 
-              <Text style={{ width: "25%", fontSize: 8 }}>
+              <Text style={{ width: "25%", fontSize: 8, color: "#374151" }}>
                 {emp.employee_id}
               </Text>
 
-              <Text style={{ width: "20%", fontSize: 8 }}>
+              <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
                 {emp.joining_date
                   ? new Date(emp.joining_date).toLocaleDateString()
                   : "-"}
               </Text>
 
-              <View style={{ width: "20%" }}>
-                <Text style={styles.noDocPill}>No Documents</Text>
+              <View style={{ width: "20%", alignItems: "flex-start" }}>
+                <Text
+                  style={{
+                    backgroundColor: "#fee2e2",
+                    color: "#b91c1c",
+                    fontSize: 7,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                  }}
+                >
+                  No Documents
+                </Text>
               </View>
             </View>
           ))}
         </View>
       )}
+
 
       <ReportFooter month={month} />
     </Page>

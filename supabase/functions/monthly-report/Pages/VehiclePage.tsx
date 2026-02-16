@@ -1,6 +1,5 @@
 import React from "npm:react@18.2.0";
 import { Page, View, Text } from "npm:@react-pdf/renderer@3.4.4";
-import { styles } from "../PdfCss.tsx";
 import { ReportFooter } from "./ReportFooter.tsx";
 import {
   getVehicleSummary,
@@ -22,171 +21,253 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
   const actionVehicles = getVehiclesRequiringAction(vehicles);
   const challanTotal = getChallanSummary(challans);
 
+  const cardBase = {
+    flex: 1,
+    borderRadius: 6,
+    padding: 12,
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+  };
+
+  const tableHeader = {
+    flexDirection: "row",
+    backgroundColor: "#F3F4F6",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  };
+
+  const tableRow = {
+    flexDirection: "row",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    alignItems: "center",
+  };
+
+  const cell = {
+    fontSize: 8,
+    flex: 1,
+  };
+
   return (
-    <Page size="A4" style={styles.page}>
-      <Text style={styles.vehicleHeader}>Vehicle Compliance</Text>
-      <Text style={styles.vehicleSub}>
+    <Page
+      size="A4"
+      style={{
+        padding: 30,
+        fontFamily: "Helvetica",
+        backgroundColor: "#FFFFFF",
+      }}
+    >
+      {/* Header */}
+      <Text style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 ,borderLeftColor: "#2563EB",borderLeftWidth: 4,paddingLeft: 8}}>
+        Vehicle Compliance
+      </Text>
+      <Text style={{ fontSize: 9, color: "#6B7280", marginBottom: 12 }}>
         Tracking {vehicles.length} vehicles across 3 document types
       </Text>
 
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Total Vehicles</Text>
-          <Text style={styles.summaryNumber}>{summary.total}</Text>
+      {/* Summary Cards */}
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+        <View style={[cardBase, { borderColor: "#E5E7EB" }]}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Total Vehicles</Text>
+          <Text style={{ fontSize: 18, fontWeight: 700 }}>{summary.total}</Text>
         </View>
 
-        <View style={[styles.summaryCard, { borderColor: "#10b981" }]}>
-          <Text style={styles.summaryTitle}>Fully Compliant</Text>
-          <Text style={[styles.summaryNumber, { color: "#10b981" }]}>
+        <View style={[cardBase, { borderColor: "#10B981" }]}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Fully Compliant</Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#10B981" }}>
             {summary.compliant}
           </Text>
-          <Text style={styles.summaryNote}>All certificates valid</Text>
+          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+            All certificates valid
+          </Text>
         </View>
 
-        <View style={[styles.summaryCard, { borderColor: "#ef4444" }]}>
-          <Text style={styles.summaryTitle}>Non-Compliant</Text>
-          <Text style={[styles.summaryNumber, { color: "#ef4444" }]}>
+        <View style={[cardBase, { borderColor: "#EF4444" }]}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Non-Compliant</Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#EF4444" }}>
             {summary.nonCompliant}
           </Text>
-          <Text style={styles.summaryNote}>One or more expired</Text>
+          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+            One or more expired
+          </Text>
         </View>
 
-        <View style={[styles.summaryCard, { borderColor: "#facc15" }]}>
-          <Text style={styles.summaryTitle}>Expiring Soon</Text>
-          <Text style={[styles.summaryNumber, { color: "#ca8a04" }]}>
+        <View style={[cardBase, { borderColor: "#F59E0B" }]}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Expiring Soon</Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#F59E0B" }}>
             {summary.expiringSoon}
           </Text>
-          <Text style={styles.summaryNote}>Action needed (30 days)</Text>
+          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+            Action needed (30 days)
+          </Text>
         </View>
 
-        <View style={[styles.summaryCard, { borderColor: "#f59e0b" }]}>
-          <Text style={styles.summaryTitle}>Pending Challans</Text>
-          <Text style={[styles.summaryNumber, { color: "#f59e0b" }]}>
+        <View style={[cardBase, { borderColor: "#FB923C" }]}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Pending Challans</Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#F97316" }}>
             {challans.length}
           </Text>
-          <Text style={styles.summaryNote}>
-            Total fine amount Rs.{challanTotal.toLocaleString()}
+          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+            Rs.{challanTotal.toLocaleString()}
           </Text>
         </View>
       </View>
 
-      <View style={styles.sectionBox}>
-        <Text style={styles.sectionHeader}>Compliance by Document Type</Text>
+      {/* Compliance by Document */}
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          borderRadius: 6,
+          marginBottom: 14,
+          overflow: "hidden",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 9,
+            fontWeight: 600,
+            padding: 8,
+            backgroundColor: "#F9FAFB",
+          }}
+        >
+          Compliance by Document Type
+        </Text>
 
-        <View style={styles.tableHeaderLight}>
-          <Text style={styles.tableCell}>DOCUMENT TYPE</Text>
-          <Text style={styles.tableCell}>VALID</Text>
-          <Text style={styles.tableCell}>EXPIRED</Text>
-          <Text style={styles.tableCell}>EXPIRING</Text>
+        <View style={tableHeader}>
+          <Text style={[cell, { flex: 2 }]}>DOCUMENT TYPE</Text>
+          <Text style={[cell, { color: "#16A34A" }]}>VALID</Text>
+          <Text style={[cell, { color: "#DC2626" }]}>EXPIRED</Text>
+          <Text style={[cell, { color: "#D97706" }]}>EXPIRING</Text>
         </View>
 
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Fitness Certificate</Text>
-          <Text style={[styles.tableCell, { color: "#16a34a" }]}>
-            {docStats.fitness.valid}
-          </Text>
-          <Text style={[styles.tableCell, { color: "#dc2626" }]}>
-            {docStats.fitness.expired}
-          </Text>
-          <Text style={[styles.tableCell, { color: "#d97706" }]}>
-            {docStats.fitness.expiring}
-          </Text>
-        </View>
-
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Insurance</Text>
-          <Text style={[styles.tableCell, { color: "#16a34a" }]}>
-            {docStats.insurance.valid}
-          </Text>
-          <Text style={[styles.tableCell, { color: "#dc2626" }]}>
-            {docStats.insurance.expired}
-          </Text>
-          <Text style={[styles.tableCell, { color: "#d97706" }]}>
-            {docStats.insurance.expiring}
-          </Text>
-        </View>
-
-        <View style={styles.tableRow}>
-          <Text style={styles.tableCell}>Pollution Certificate (PUC)</Text>
-          <Text style={[styles.tableCell, { color: "#16a34a" }]}>
-            {docStats.puc.valid}
-          </Text>
-          <Text style={[styles.tableCell, { color: "#dc2626" }]}>
-            {docStats.puc.expired}
-          </Text>
-          <Text style={[styles.tableCell, { color: "#d97706" }]}>
-            {docStats.puc.expiring}
-          </Text>
-        </View>
+        {[
+          { name: "Fitness Certificate (FC)", data: docStats.fitness },
+          { name: "Insurance Coverage", data: docStats.insurance },
+          { name: "Pollution Certificate (PUC)", data: docStats.puc },
+        ].map((row, i) => (
+          <View key={i} style={tableRow}>
+            <Text style={[cell, { flex: 2 }]}>{row.name}</Text>
+            <Text style={[cell, { color: "#16A34A" }]}>{row.data.valid}</Text>
+            <Text style={[cell, { color: "#DC2626" }]}>{row.data.expired}</Text>
+            <Text style={[cell, { color: "#D97706" }]}>{row.data.expiring}</Text>
+          </View>
+        ))}
       </View>
 
-      <View style={styles.challanBox}>
-        <Text style={{ fontSize: 10, marginBottom: 4 }}>
+      {/* Challan Box */}
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: "#FDBA74",
+          backgroundColor: "#FFF7ED",
+          borderRadius: 6,
+          marginBottom: 14,
+          overflow: "hidden",
+        }}
+      >
+        <Text style={{ fontSize: 9, fontWeight: 600, padding: 8 }}>
           Pending Traffic Challans
         </Text>
-        <Text style={{ fontSize: 8, marginBottom: 6 }}>
-          {challans.length} pending challans across vehicles • Total fine amount Rs.
-          {challanTotal.toLocaleString()}
-        </Text>
 
-        <View style={styles.tableHeaderLight}>
-          <Text style={styles.tableCell}>VEHICLE NO</Text>
-          <Text style={styles.tableCell}>OWNER</Text>
-          <Text style={styles.tableCell}>CHALLAN TYPE</Text>
-          <Text style={styles.tableCell}>FINE AMOUNT</Text>
-          <Text style={styles.tableCell}>CHALLAN DATE</Text>
-          <Text style={styles.tableCell}>STATUS</Text>
+        <View style={tableHeader}>
+          <Text style={{ width: "20%", fontSize: 8 }}>VEHICLE</Text>
+          <Text style={{ width: "25%", fontSize: 8 }}>OWNER</Text>
+          <Text style={{ width: "15%", fontSize: 8 }}>AMOUNT</Text>
+          <Text style={{ width: "20%", fontSize: 8 }}>DATE</Text>
+          <Text style={{ width: "20%", fontSize: 8 }}>STATUS</Text>
         </View>
 
-        {challans.slice(0, 8).map((c, i) => (
-          <View key={i} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{c.registration_number}</Text>
-            <Text style={styles.tableCell}>{c.name}</Text>
-            <Text style={styles.tableCell}>{c.challan_number}</Text>
-            <Text style={[styles.tableCell, styles.amountRed]}>
+        {challans.slice(0, 10).map((c, i) => (
+          <View key={i} style={tableRow}>
+            <Text style={{ width: "20%", fontSize: 8 }}>
+              {c.registration_number}
+            </Text>
+
+            <Text style={{ width: "25%", fontSize: 8 }}>
+              {c.name}
+            </Text>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#DC2626" }}>
               Rs.{Number(c.amount).toLocaleString()}
             </Text>
-            <Text style={styles.tableCell}>{c.date}</Text>
-            <Text style={[styles.tableCell, styles.statusPill]}>Pending</Text>
+
+            <Text style={{ width: "20%", fontSize: 8 }}>
+              {c.date}
+            </Text>
+
+            <View style={{ width: "20%", alignItems: "flex-start" }}>
+              <View
+                style={{
+                  backgroundColor: "#FFE7CC",
+                  borderRadius: 10,
+                  paddingVertical: 2,
+                  paddingHorizontal: 6,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 7,
+                    color: "#EA580C",
+                    fontWeight: 600,
+                  }}
+                >
+                  Pending
+                </Text>
+              </View>
+            </View>
           </View>
+
+
         ))}
       </View>
 
-      <View style={styles.actionBox}>
-        <Text style={{ fontSize: 10, marginBottom: 4 }}>
-          Vehicles Requiring Immediate Action
-        </Text>
-        <Text style={{ fontSize: 8, marginBottom: 6 }}>
-          {actionVehicles.length} vehicles with expired or soon-to-expire documents
-        </Text>
+      {/* Action Box */}
+      {actionVehicles.length > 0 && (
+        <View
+          style={{
+            borderWidth: 1,
+            borderColor: "#FACC15",
+            backgroundColor: "#FEFCE8",
+            borderRadius: 6,
+            overflow: "hidden",
+          }}
+        >
+          <Text style={{ fontSize: 9, fontWeight: 600, padding: 8 }}>
+            Vehicles Requiring Immediate Action
+          </Text>
 
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableCell}>VEHICLE NO.</Text>
-          <Text style={styles.tableCell}>OWNER</Text>
-          <Text style={styles.tableCell}>FC EXPIRY</Text>
-          <Text style={styles.tableCell}>INSURANCE EXPIRY</Text>
-          <Text style={styles.tableCell}>PUC EXPIRY</Text>
+          <View style={tableHeader}>
+            <Text style={cell}>VEHICLE</Text>
+            <Text style={cell}>OWNER</Text>
+            <Text style={cell}>FC</Text>
+            <Text style={cell}>INSURANCE</Text>
+            <Text style={cell}>PUC</Text>
+          </View>
+
+          {actionVehicles.slice(0, 10).map((v, i) => (
+            <View key={i} style={tableRow}>
+              <Text style={cell}>{v.vehicleNo}</Text>
+              <Text style={cell}>{v.owner}</Text>
+              <View style={[cell, getDateCellStyle(v.fc)]}>
+                <Text style={{ fontSize: 8 }}>{v.fc || "--"}</Text>
+              </View>
+              <View style={[cell, getDateCellStyle(v.insurance)]}>
+                <Text style={{ fontSize: 8 }}>{v.insurance || "--"}</Text>
+              </View>
+              <View style={[cell, getDateCellStyle(v.puc)]}>
+                <Text style={{ fontSize: 8 }}>{v.puc || "--"}</Text>
+              </View>
+            </View>
+          ))}
         </View>
-
-        {actionVehicles.slice(0, 10).map((v, i) => (
-          <View key={i} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{v.vehicleNo}</Text>
-            <Text style={styles.tableCell}>{v.owner}</Text>
-            <View style={[styles.tableCellBox, getDateCellStyle(v.fc)]}>
-              <Text style={{ fontSize: 8 }}>{v.fc || "--"}</Text>
-            </View>
-            <View style={[styles.tableCellBox, getDateCellStyle(v.insurance)]}>
-              <Text style={{ fontSize: 8 }}>{v.insurance || "--"}</Text>
-            </View>
-            <View style={[styles.tableCellBox, getDateCellStyle(v.puc)]}>
-              <Text style={{ fontSize: 8 }}>{v.puc || "--"}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
+      )}
 
       <ReportFooter month={month} />
     </Page>
   );
 };
-

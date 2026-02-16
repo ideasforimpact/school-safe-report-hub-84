@@ -1,7 +1,5 @@
 import React from "npm:react@18.2.0";
-import { Page, View, Text, Image } from "npm:@react-pdf/renderer@3.4.4";
-import { styles } from "../PdfCss.tsx";
-import { PDF_ICONS } from "../iconAssets.ts";
+import { Page, View, Text } from "npm:@react-pdf/renderer@3.4.4";
 import {
   getAssessmentCompliance,
   getEmployeeCompliance,
@@ -63,150 +61,312 @@ export const ExecutiveSummaryPage = ({
     pendingGrievances;
 
   const modules = [
-    { name: "Vehicle Compliance", percent: vehicleStats.percent, sub: `${vehicleStats.compliant} of ${vehicleStats.total} vehicles`, icon: PDF_ICONS.vehicle, color: styles.iconBlue },
-    { name: "Employee Compliance", percent: employeeStats.percent, sub: `${employeeStats.pending} of ${employeeStats.totalEmployeesdocs} employees`, icon: PDF_ICONS.user, color: styles.iconGreen },
-    { name: "Assessment Compliance", percent: assessmentStats.percent, sub: `${assessmentStats.overdue} of ${assessmentStats.total} assessments`, icon: PDF_ICONS.check, color: styles.iconPurple },
-    { name: "Incident Management", percent: incidentStats.percent, sub: `${incidentStats.open} of ${incidentStats.total} incidents`, icon: PDF_ICONS.shield, color: styles.iconRed },
-    { name: "Grievance Management", percent: grievanceStats.percent, sub: `${grievanceStats.pending} of ${grievanceStats.total} grievances`, icon: PDF_ICONS.message, color: styles.iconYellow },
+    {
+      name: "Vehicle Compliance",
+      percent: vehicleStats.percent,
+      sub: `${vehicleStats.compliant} of ${vehicleStats.total} vehicles`,
+    },
+    {
+      name: "Employee Compliance",
+      percent: employeeStats.percent,
+      sub: `${employeeStats.compliant} of ${employeeStats.totalEmployeesdocs} employees`,
+    },
+    {
+      name: "Assessment Compliance",
+      percent: assessmentStats.percent,
+      sub: `${assessmentStats.overdue} of ${assessmentStats.total} assessments`,
+    },
+    {
+      name: "Incident Management",
+      percent: incidentStats.percent,
+      sub: `${incidentStats.open} of ${incidentStats.total} incidents`,
+    },
+    {
+      name: "Grievance Management",
+      percent: grievanceStats.percent,
+      sub: `${grievanceStats.pending} of ${grievanceStats.total} grievances`,
+    },
   ];
 
   return (
-    <Page size="A4" style={styles.page}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.title}>Monthly Compliance Report</Text>
-          <Text style={styles.subtitle}>{getReportingPeriodText(month)}</Text>
-        </View>
-        <View style={styles.rightInfo}>
-          <Text>REPORT GENERATED</Text>
-          <Text>{new Date().toLocaleDateString()}</Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
-      <Text style={styles.sectionTitle}>Executive Summary</Text>
-      <Text style={styles.sectionSub}>
-        Overall compliance status across all modules
+    <Page
+      size="A4"
+      style={{
+        padding: 30,
+        backgroundColor: "#FFFFFF",
+        fontFamily: "Helvetica",
+      }}
+    >
+      {/* Header */}
+      <Text style={{ fontSize: 30, fontWeight: 600 }}>
+        Executive Summary
+      </Text>
+      <Text style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
+        {getReportingPeriodText(month)}
       </Text>
 
-      <View style={styles.criticalBanner}>
+      <View
+        style={{
+          height: 1,
+          backgroundColor: "#E5E7EB",
+          marginBottom: 20,
+        }}
+      />
+
+      {/* Critical Banner */}
+      <View
+        style={{
+          backgroundColor: "#FEF2F2",
+          borderRadius: 6,
+          padding: 24,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 20,
+          borderWidth: 1,
+          borderColor: "#FEE2E2",
+        }}
+      >
         <View style={{ flex: 1 }}>
-          <Text style={styles.criticalTitle}>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#881337",
+              marginBottom: 4,
+            }}
+          >
             CRITICAL ITEMS REQUIRING IMMEDIATE ACTION
           </Text>
-          <Text style={styles.criticalSub}>
+          <Text style={{ fontSize: 9, color: "#991B1B" }}>
             Items below require urgent attention to maintain compliance
           </Text>
         </View>
-        <View style={styles.criticalCountBox}>
-          <Text style={styles.criticalCount}>{totalCritical}</Text>
-          <Text style={styles.criticalCountLabel}>TOTAL CRITICAL</Text>
-        </View>
-      </View>
 
-      <View style={styles.dashboardRow}>
-        <View style={styles.dashboardCardLarge}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, styles.iconBlue]}>
-              <Image src={PDF_ICONS.vehicle} style={styles.dashboardIcon} />
-            </View>
-            <Text style={styles.dashboardTitle}>Vehicle Documents</Text>
-          </View>
-          <Text style={styles.dashboardNumber}>{expiredVehicleCount}</Text>
-          <Text style={styles.dashboardSub}>Expired certificates</Text>
-          <Text style={[styles.pill, styles.statusCritical]}>Critical</Text>
-        </View>
-
-        <View style={styles.dashboardCardLarge}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, styles.iconOrange]}>
-              <Image src={PDF_ICONS.challan} style={styles.dashboardIcon} />
-            </View>
-            <Text style={styles.dashboardTitle}>Pending Challans</Text>
-          </View>
-          <Text style={styles.dashboardNumber}>{challans.length}</Text>
-          <Text style={styles.dashboardSub}>Vehicles with fines</Text>
-          <Text style={[styles.pill, styles.statusWarn]}>
-            Rs.{(challanTotal || 0).toLocaleString()} Total
+        <View
+          style={{
+            backgroundColor: "#FFFFFF",
+            borderRadius: 6,
+            paddingVertical: 14,
+            paddingHorizontal: 24,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: "#FEE2E2",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 32,
+              fontWeight: 700,
+              color: "#DC2626",
+            }}
+          >
+            {totalCritical}
+          </Text>
+          <Text
+            style={{
+              fontSize: 8,
+              fontWeight: 600,
+              color: "#6B7280",
+            }}
+          >
+            TOTAL CRITICAL
           </Text>
         </View>
-
-        <View style={styles.dashboardCardLarge}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, styles.iconGreen]}>
-              <Image src={PDF_ICONS.user} style={styles.dashboardIcon} />
-            </View>
-            <Text style={styles.dashboardTitle}>Employee Verification</Text>
-          </View>
-          <Text style={styles.dashboardNumber}>{pendingEmployees}</Text>
-          <Text style={styles.dashboardSub}>Pending verifications</Text>
-          <Text style={[styles.pill, styles.statusWarn]}>Pending</Text>
-        </View>
       </View>
 
-      <View style={styles.dashboardRow}>
-        <View style={styles.dashboardCardSmall}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, styles.iconPurple]}>
-              <Image src={PDF_ICONS.check} style={styles.dashboardIcon} />
-            </View>
-            <Text style={styles.dashboardTitle}>Assessments</Text>
-          </View>
-          <Text style={styles.dashboardNumber}>{newAssessmentCount}</Text>
-          <Text style={styles.dashboardSub}>overdue</Text>
-        </View>
+      {/* Large Cards Row */}
+      <View style={{ flexDirection: "row", gap: 14, marginBottom: 14 }}>
+        {[
+          {
+            title: "Vehicle Documents",
+            value: expiredVehicleCount,
+            sub: "Expired certificates",
+            badge: { text: "Critical", bg: "#FFE4E6", color: "#9F1239" },
+          },
+          {
+            title: "Pending Challans",
+            value: challans.length,
+            sub: "Vehicles with fines",
+            badge: {
+              text: `Rs.${(challanTotal || 0).toLocaleString()} Total`,
+              bg: "#FEF3C7",
+              color: "#92400E",
+            },
+          },
+          {
+            title: "Employee Verification",
+            value: pendingEmployees,
+            sub: "Pending verifications",
+            badge: {
+              text: "Pending",
+              bg: "#FFE4E6",
+              color: "#9F1239",
+            },
+          },
+        ].map((card, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+              borderRadius: 6,
+              padding: 16,
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
+              {card.title}
+            </Text>
 
-        <View style={styles.dashboardCardSmall}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, styles.iconRed]}>
-              <Image src={PDF_ICONS.shield} style={styles.dashboardIcon} />
-            </View>
-            <Text style={styles.dashboardTitle}>Open Incidents</Text>
-          </View>
-          <Text style={styles.dashboardNumber}>{openIncidentCount}</Text>
-          <Text style={styles.dashboardSub}>high priority</Text>
-        </View>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: 700,
+                marginBottom: 4,
+              }}
+            >
+              {card.value}
+            </Text>
 
-        <View style={styles.dashboardCardSmall}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, styles.iconYellow]}>
-              <Image src={PDF_ICONS.message} style={styles.dashboardIcon} />
+            <Text
+              style={{
+                fontSize: 9,
+                color: "#6B7280",
+                marginBottom: 6,
+              }}
+            >
+              {card.sub}
+            </Text>
+
+            {/* Divider */}
+            <View
+              style={{
+                borderBottomWidth: 1,
+                borderBottomColor: "#E5E7EB",
+                marginBottom: 8,
+                width: "100%",
+              }}
+            />
+
+            <View
+              style={{
+                backgroundColor: card.badge.bg,
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                borderRadius: 4,
+                alignSelf: "flex-start",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 8,
+                  color: card.badge.color,
+                  fontWeight: 600,
+                }}
+              >
+                {card.badge.text}
+              </Text>
             </View>
-            <Text style={styles.dashboardTitle}>Grievances</Text>
           </View>
-          <Text style={styles.dashboardNumber}>{pendingGrievances}</Text>
-          <Text style={styles.dashboardSub}>overdue</Text>
-        </View>
+        ))}
       </View>
 
-      <Text style={{ marginTop: 10, fontSize: 12 }}>Module Compliance Status</Text>
+      {/* Small Cards Row */}
+      <View style={{ flexDirection: "row", gap: 14, marginBottom: 20 }}>
+        {[
+          { title: "Assessments", value: newAssessmentCount, sub: "overdue" },
+          { title: "Open Incidents", value: openIncidentCount, sub: "high priority" },
+          { title: "Grievances", value: pendingGrievances, sub: "overdue" },
+        ].map((card, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+              borderRadius: 6,
+              padding: 14,
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
+              {card.title}
+            </Text>
+            <Text style={{ fontSize: 24, fontWeight: 700 }}>
+              {card.value}
+            </Text>
+            <Text style={{ fontSize: 9, color: "#6B7280" }}>
+              {card.sub}
+            </Text>
+          </View>
+        ))}
+      </View>
 
-      <View style={styles.moduleSectionBox}>
-        <View style={styles.moduleHeaderRow}>
-          <Text style={{ width: "55%" }}>MODULE</Text>
-          <Text style={{ width: "20%", textAlign: "center" }}>
-            COMPLIANCE RATE
-          </Text>
-          <Text style={{ width: "25%", textAlign: "right" }}>STATUS</Text>
-        </View>
+      {/* Module Compliance */}
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: 700,
+          marginBottom: 10,
+        }}
+      >
+        Module Compliance Status
+      </Text>
 
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          borderRadius: 6,
+        }}
+      >
         {modules.map((m, i) => {
           const status = getStatusStyle(m.percent);
           return (
-            <View key={i} style={styles.moduleDataRow}>
-              <View style={styles.moduleLeft}>
-                <View style={[styles.moduleIconSmall, m.color]}>
-                  <Image src={m.icon} style={styles.dashboardIcon} />
-                </View>
-                <View>
-                  <Text style={styles.moduleName}>{m.name}</Text>
-                  <Text style={styles.moduleSubText}>{m.sub}</Text>
-                </View>
+            <View
+              key={i}
+              style={{
+                flexDirection: "row",
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderBottomWidth: i === modules.length - 1 ? 0 : 1,
+                borderBottomColor: "#F3F4F6",
+                alignItems: "center",
+              }}
+            >
+              <View style={{ width: "55%" }}>
+                <Text style={{ fontSize: 10, fontWeight: 600 }}>
+                  {m.name}
+                </Text>
+                <Text style={{ fontSize: 8, color: "#6B7280" }}>
+                  {m.sub}
+                </Text>
               </View>
-              <Text style={styles.moduleMiddle}>{m.percent}%</Text>
-              <View style={styles.moduleRight}>
-                <Text style={status.style}>{status.label}</Text>
+
+              <Text
+                style={{
+                  width: "20%",
+                  textAlign: "center",
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {m.percent}%
+              </Text>
+
+              <View style={{ width: "25%", alignItems: "flex-end" }}>
+                <View
+                  style={{
+                    ...status.style,
+                    paddingVertical: 4,
+                    paddingHorizontal: 10,
+                    borderRadius: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 8, fontWeight: 600 }}>
+                    {status.label}
+                  </Text>
+                </View>
               </View>
             </View>
           );
@@ -217,4 +377,3 @@ export const ExecutiveSummaryPage = ({
     </Page>
   );
 };
-

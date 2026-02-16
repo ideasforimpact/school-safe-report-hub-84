@@ -88,153 +88,389 @@ export const IncidentPage = ({ month, incidents }: Props) => {
         </View>
       </View>
 
-      <Text style={{ fontSize: 10, marginTop: 6 }}>
-        Incidents by Category
-      </Text>
-
-      <View style={styles.incidentTable}>
-        <View style={styles.incidentTableHeader}>
-          <Text style={styles.incidentCol1}>CATEGORY</Text>
-          <Text style={styles.incidentCol}>TOTAL</Text>
-          <Text style={styles.incidentCol}>CLOSED</Text>
-          <Text style={styles.incidentCol}>IN PROGRESS</Text>
-          <Text style={styles.incidentCol}>OPEN</Text>
+      <View
+        style={{
+          marginTop: 10,
+          borderWidth: 1,
+          borderColor: "#e5e7eb",
+          borderRadius: 8,
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        {/* Header strip */}
+        <View
+          style={{
+            backgroundColor: "#f3f4f6",
+            paddingVertical: 8,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+          }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+            Incidents by Category
+          </Text>
         </View>
 
+        {/* Column header */}
+        <View
+          style={{
+            flexDirection: "row",
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          <Text style={{ width: "40%", fontSize: 8, color: "#6b7280" }}>
+            CATEGORY
+          </Text>
+          <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+            TOTAL
+          </Text>
+          <Text style={{ width: "15%", fontSize: 8, color: "#059669" }}>
+            CLOSED
+          </Text>
+          <Text style={{ width: "15%", fontSize: 8, color: "#d97706" }}>
+            IN PROGRESS
+          </Text>
+          <Text style={{ width: "15%", fontSize: 8, color: "#dc2626" }}>
+            OPEN
+          </Text>
+        </View>
+
+        {/* Rows */}
         {categories.map((c: any, i: number) => (
-          <View key={i} style={styles.incidentTableRow}>
-            <Text style={styles.incidentCol1}>{c.name}</Text>
-            <Text style={styles.incidentCol}>{c.total}</Text>
-            <Text style={[styles.incidentCol, { color: "#16a34a" }]}>
+          <View
+            key={i}
+            style={{
+              flexDirection: "row",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#e5e7eb",
+            }}
+          >
+            <Text style={{ width: "40%", fontSize: 8, color: "#111827" }}>
+              {c.name}
+            </Text>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+              {c.total}
+            </Text>
+
+            <Text
+              style={{
+                width: "15%",
+                fontSize: 8,
+                color: "#059669",
+                fontWeight: 600,
+              }}
+            >
               {c.closed}
             </Text>
-            <Text style={[styles.incidentCol, { color: "#d97706" }]}>
+
+            <Text
+              style={{
+                width: "15%",
+                fontSize: 8,
+                color: "#d97706",
+                fontWeight: 600,
+              }}
+            >
               {c.progress}
             </Text>
-            <Text style={[styles.incidentCol, { color: "#dc2626" }]}>
+
+            <Text
+              style={{
+                width: "15%",
+                fontSize: 8,
+                color: "#dc2626",
+                fontWeight: 600,
+              }}
+            >
               {c.open}
             </Text>
           </View>
         ))}
       </View>
 
+
       {individuals.length > 0 && (
-        <View style={styles.studentSectionBox}>
-          <Text style={styles.studentSectionTitle}>
-            Individuals Involved in{" "}
-            {getReportingPeriodText(month)} Incidents
-          </Text>
-
-          <Text style={styles.studentSectionSub}>
-            Students and staff members involved in reported incidents this month
-          </Text>
-
-          <View style={styles.studentTableHeader}>
-            <Text style={styles.colStudentName}>NAME</Text>
-            <Text style={styles.colStudentGrade}>
-              GRADE/ROLE
+        <View
+          style={{
+            marginTop: 12,
+            backgroundColor: "#f8fafc",
+            borderWidth: 1,
+            borderColor: "#93c5fd",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          {/* Header strip */}
+          <View
+            style={{
+              backgroundColor: "#e0f2fe",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#bfdbfe",
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 600, color: "#1e40af" }}>
+              Individuals Involved in {getReportingPeriodText(month)} Incidents
             </Text>
-            <Text style={styles.colStudentTitle}>
-              INCIDENT TYPE
-            </Text>
-            <Text style={styles.colStudentCategory}>
-              CATEGORY
-            </Text>
-            <Text style={styles.colStudentDate}>DATE</Text>
           </View>
 
-          {individuals.slice(0, 10).map((p: any, i: number) => (
-            <View key={i} style={styles.studentRow}>
-              <Text style={styles.colStudentName}>{p.name}</Text>
-              <Text style={styles.colStudentGrade}>{p.grade}</Text>
-              <Text style={styles.colStudentTitle}>{p.title}</Text>
-              <Text style={styles.colStudentCategory}>{p.category}</Text>
-              <Text style={styles.colStudentDate}>
-                {p.date
-                  ? new Date(p.date).toLocaleDateString()
-                  : "-"}
-              </Text>
-            </View>
-          ))}
+          {/* Sub text */}
+          <View
+            style={{
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#bfdbfe",
+            }}
+          >
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              Students and staff members involved in reported incidents this month
+            </Text>
+          </View>
+
+          {/* Table header */}
+          <View
+            style={{
+              flexDirection: "row",
+              backgroundColor: "#f1f5f9",
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#e5e7eb",
+            }}
+          >
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              NAME
+            </Text>
+            <Text style={{ width: "18%", fontSize: 8, color: "#6b7280" }}>
+              GRADE/ROLE
+            </Text>
+            <Text style={{ width: "27%", fontSize: 8, color: "#6b7280" }}>
+              INCIDENT TITLE
+            </Text>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              CATEGORY
+            </Text>
+            <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+              DATE
+            </Text>
+          </View>
+
+          {/* Rows */}
+          {individuals.slice(0, 15).map((p: any, i: number) => {
+            const isStudent =
+              p.grade && p.grade.toLowerCase().includes("grade");
+
+            return (
+              <View
+                key={i}
+                style={{
+                  flexDirection: "row",
+                  paddingVertical: 8,
+                  paddingHorizontal: 8,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#e5e7eb",
+                }}
+              >
+                <Text style={{ width: "20%", fontSize: 8, color: "#111827" }}>
+                  {p.name}
+                </Text>
+
+                {/* Grade / Role pill */}
+                <View style={{ width: "18%", alignItems: "flex-start" }}>
+                  <Text
+                    style={{
+                      backgroundColor: isStudent ? "#dbeafe" : "#e5e7eb",
+                      color: isStudent ? "#1d4ed8" : "#374151",
+                      fontSize: 7,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
+                    {p.grade}
+                  </Text>
+                </View>
+
+                <Text style={{ width: "27%", fontSize: 8, color: "#374151" }}>
+                  {p.title}
+                </Text>
+
+                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                  {p.category}
+                </Text>
+
+                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                  {p.date
+                    ? new Date(p.date).toLocaleDateString()
+                    : "-"}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       )}
 
       {critical.length > 0 && (
-        <View style={styles.criticalIncidentBox}>
-          <Text style={styles.incidentHeader}>
-            Critical & Overdue Incidents
-          </Text>
-
-          <Text style={styles.incidentSub}>
-            {overdueCount} overdue, {inProgressCount} in progress
-          </Text>
-
-          <View style={styles.incidentTableHeader}>
-            <Text style={styles.colIncidentTitle}>
-              INCIDENT TYPE
+        <View
+          style={{
+            marginTop: 12,
+            backgroundColor: "#fef2f2",
+            borderWidth: 1,
+            borderColor: "#fca5a5",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          {/* Header strip */}
+          <View
+            style={{
+              backgroundColor: "#fee2e2",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+              Critical & Overdue Incidents
             </Text>
-            <Text style={styles.colIncidentCategory}>
+          </View>
+
+          {/* Sub text */}
+          <View
+            style={{
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              {overdueCount} overdue, {inProgressCount} in progress
+            </Text>
+          </View>
+
+          {/* Table header */}
+          <View
+            style={{
+              flexDirection: "row",
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ width: "28%", fontSize: 8, color: "#6b7280" }}>
+              INCIDENT TITLE
+            </Text>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
               CATEGORY
             </Text>
-            <Text style={styles.colIncidentDate}>
+            <Text style={{ width: "18%", fontSize: 8, color: "#6b7280" }}>
               REPORTED DATE
             </Text>
-            <Text style={styles.colIncidentStatus}>
+            <Text style={{ width: "17%", fontSize: 8, color: "#6b7280" }}>
               STATUS
             </Text>
-            <Text style={styles.colIncidentSeverity}>
+            <Text style={{ width: "17%", fontSize: 8, color: "#6b7280" }}>
               SEVERITY
             </Text>
           </View>
 
+          {/* Rows */}
           {critical.slice(0, 6).map((inc: any, idx: number) => {
             const status =
               inc.incident_status?.name?.toLowerCase() || "";
             const severity =
               inc.incident_priorities?.name?.toLowerCase() || "";
 
-            const statusStyle =
-              status === "overdue"
-                ? styles.statusOverdueIncident
-                : status === "in progress"
-                ? styles.statusInProgress
-                : styles.statusOpen;
+            // Status colors
+            let statusBg = "#e5e7eb";
+            let statusColor = "#374151";
 
-            const severityStyle =
-              severity === "high"
-                ? styles.severityHigh
-                : styles.severityMedium;
+            if (status === "overdue") {
+              statusBg = "#fee2e2";
+              statusColor = "#b91c1c";
+            } else if (status === "in progress") {
+              statusBg = "#fef3c7";
+              statusColor = "#92400e";
+            }
+
+            // Severity colors
+            let severityBg = "#fef3c7";
+            let severityColor = "#92400e";
+
+            if (severity === "high") {
+              severityBg = "#fee2e2";
+              severityColor = "#b91c1c";
+            }
 
             return (
-              <View key={idx} style={styles.incidentRow}>
-                <Text style={styles.colIncidentTitle}>
+              <View
+                key={idx}
+                style={{
+                  flexDirection: "row",
+                  paddingVertical: 8,
+                  paddingHorizontal: 8,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#fecaca",
+                }}
+              >
+                <Text style={{ width: "28%", fontSize: 8, color: "#111827" }}>
                   {inc.incident_report_types?.name || "-"}
                 </Text>
 
-                <Text style={styles.colIncidentCategory}>
+                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
                   {inc.incident_categories?.name || "-"}
                 </Text>
 
-                <Text style={styles.colIncidentDate}>
+                <Text style={{ width: "18%", fontSize: 8, color: "#374151" }}>
                   {inc.reported_date
-                    ? new Date(
-                        inc.reported_date
-                      ).toLocaleDateString()
+                    ? new Date(inc.reported_date).toLocaleDateString()
                     : inc.created_at
-                    ? new Date(
-                        inc.created_at
-                      ).toLocaleDateString()
-                    : "-"}
+                      ? new Date(inc.created_at).toLocaleDateString()
+                      : "-"}
                 </Text>
 
-                <View style={styles.colIncidentStatus}>
-                  <Text style={statusStyle}>
+                {/* Status pill */}
+                <View style={{ width: "17%", alignItems: "flex-start" }}>
+                  <Text
+                    style={{
+                      backgroundColor: statusBg,
+                      color: statusColor,
+                      fontSize: 7,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
                     {inc.incident_status?.name || "-"}
                   </Text>
                 </View>
 
-                <View style={styles.colIncidentSeverity}>
-                  <Text style={severityStyle}>
+                {/* Severity pill */}
+                <View style={{ width: "17%", alignItems: "flex-start" }}>
+                  <Text
+                    style={{
+                      backgroundColor: severityBg,
+                      color: severityColor,
+                      fontSize: 7,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
                     {inc.incident_priorities?.name || "-"}
                   </Text>
                 </View>
@@ -243,6 +479,8 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           })}
         </View>
       )}
+
+
 
       <ReportFooter month={month} />
     </Page>

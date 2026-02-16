@@ -14,8 +14,8 @@ export const getStatusStyle = (percent: number) => {
         return {
             label: "Good",
             style: {
-                backgroundColor: "#d1fae5",
-                color: "#065f46",
+                backgroundColor: "#D1FAE5",
+                color: "#065F46",
                 padding: 3,
                 borderRadius: 4,
                 fontSize: 7,
@@ -27,8 +27,8 @@ export const getStatusStyle = (percent: number) => {
         return {
             label: "Needs Attention",
             style: {
-                backgroundColor: "#fef3c7",
-                color: "#92400e",
+                backgroundColor: "#FEF3C7",
+                color: "#92400E",
                 padding: 3,
                 borderRadius: 4,
                 fontSize: 7,
@@ -39,8 +39,8 @@ export const getStatusStyle = (percent: number) => {
     return {
         label: "Critical",
         style: {
-            backgroundColor: "#fee2e2",
-            color: "#b91c1c",
+            backgroundColor: "#FFE4E6",
+            color: "#9F1239",
             padding: 3,
             borderRadius: 4,
             fontSize: 7,
@@ -193,7 +193,7 @@ export const getEmployeeCompliance = (
 
     const percent = Math.round((compliant / totalEmployeesdocs) * 100);
 
-    return { percent, pending: pendingDocs, totalEmployeesdocs };
+    return { percent, pending: pendingDocs, compliant, totalEmployeesdocs };
 };
 
 export const getIncidentCompliance = (incidents: any[]) => {

@@ -33,126 +33,318 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
         Progress on {stats.total} scheduled assessments
       </Text>
 
-      <View style={styles.assessmentSummaryRow}>
-        <View style={styles.assessmentCard}>
-          <Text style={styles.assessmentCardTitle}>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
+      >
+        {/* TOTAL ASSESSMENTS */}
+        <View
+          style={{
+            width: "32%",
+            backgroundColor: "#f9fafb",
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 12,
+            padding: 14,
+            minHeight: 80,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 6 }}>
             TOTAL ASSESSMENTS
           </Text>
-          <Text style={styles.assessmentCardNumber}>
+
+          <Text style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>
             {stats.total}
           </Text>
         </View>
 
-        <View style={styles.assessmentCard}>
-          <Text style={styles.assessmentCardTitle}>
+        {/* COMPLETED */}
+        <View
+          style={{
+            width: "32%",
+            backgroundColor: "#f9fafb",
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 12,
+            padding: 14,
+            minHeight: 80,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 6 }}>
             COMPLETED
           </Text>
-          <Text style={styles.assessmentCardNumber}>
+
+          <Text style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>
             {stats.completed}
           </Text>
-          <Text style={styles.assessmentBadgeGreen}>
+
+          <Text
+            style={{
+              marginTop: 6,
+              backgroundColor: "#d1fae5",
+              color: "#065f46",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+              alignSelf: "flex-start",
+            }}
+          >
             On Track
           </Text>
         </View>
 
-        <View style={styles.assessmentCard}>
-          <Text style={styles.assessmentCardTitle}>
+        {/* COMPLETION RATE */}
+        <View
+          style={{
+            width: "32%",
+            backgroundColor: "#f9fafb",
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 12,
+            padding: 14,
+            minHeight: 80,
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 7, color: "#6b7280", marginBottom: 6 }}>
             COMPLETION RATE
           </Text>
-          <Text style={styles.assessmentCardNumber}>
+
+          <Text style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>
             {stats.rate}%
           </Text>
-          <Text style={styles.assessmentBadgePurple}>
+
+          <Text
+            style={{
+              marginTop: 6,
+              backgroundColor: "#ede9fe",
+              color: "#6d28d9",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+              alignSelf: "flex-start",
+            }}
+          >
             {stats.rate}% Rate
           </Text>
         </View>
       </View>
 
-      <Text style={{ fontSize: 10, marginBottom: 4 }}>
-        Assessment Summary by Type
-      </Text>
+      <View
+        style={{
+          marginTop: 10,
+          borderWidth: 1,
+          borderColor: "#e5e7eb",
+          borderRadius: 8,
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        {/* Header strip */}
+        <View
+          style={{
+            backgroundColor: "#f3f4f6",
+            paddingVertical: 8,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+          }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+            Assessment Summary by Type
+          </Text>
+        </View>
 
-      <View style={styles.assessmentTable}>
-        <View style={styles.tableHeaderLight}>
-          <Text style={styles.assessmentColCat}>CATEGORY</Text>
-          <Text style={styles.assessmentCol}>TOTAL</Text>
-          <Text style={[styles.assessmentCol, { color: "#16a34a" }]}>
+        {/* Column header */}
+        <View
+          style={{
+            flexDirection: "row",
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          <Text style={{ width: "40%", fontSize: 8, color: "#6b7280" }}>
+            CATEGORY
+          </Text>
+          <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+            TOTAL
+          </Text>
+          <Text style={{ width: "15%", fontSize: 8, color: "#059669" }}>
             COMPLETED
           </Text>
-          <Text style={[styles.assessmentCol, { color: "#d97706" }]}>
+          <Text style={{ width: "15%", fontSize: 8, color: "#d97706" }}>
             IN PROGRESS
           </Text>
-          <Text style={[styles.assessmentCol, { color: "#dc2626" }]}>
+          <Text style={{ width: "15%", fontSize: 8, color: "#dc2626" }}>
             OVERDUE
           </Text>
         </View>
 
+        {/* Rows */}
         {categories.map((c: any, i: number) => (
-          <View key={i} style={styles.tableRow}>
-            <Text style={styles.assessmentColCat}>{c.name}</Text>
-            <Text style={styles.assessmentCol}>{c.total}</Text>
-            <Text style={[styles.assessmentCol, { color: "#16a34a" }]}>
+          <View
+            key={i}
+            style={{
+              flexDirection: "row",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#e5e7eb",
+            }}
+          >
+            <Text style={{ width: "40%", fontSize: 8, color: "#111827" }}>
+              {c.name}
+            </Text>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+              {c.total}
+            </Text>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#059669", fontWeight: 600 }}>
               {c.completed}
             </Text>
-            <Text style={[styles.assessmentCol, { color: "#d97706" }]}>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#d97706", fontWeight: 600 }}>
               {c.inProgress}
             </Text>
-            <Text style={[styles.assessmentCol, { color: "#dc2626" }]}>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#dc2626", fontWeight: 600 }}>
               {c.overdue}
             </Text>
           </View>
         ))}
       </View>
 
+
       {pendingList.length > 0 && (
-        <View style={styles.assessmentPendingBox}>
-          <Text style={{ fontSize: 10, marginBottom: 4 }}>
-            Pending & Overdue Assessments
-          </Text>
-
-          <Text style={{ fontSize: 8, marginBottom: 6 }}>
-            {stats.overdue} overdue, {stats.inProgress} in progress
-          </Text>
-
-          <View style={styles.tableHeaderLight}>
-            <Text style={{ width: "30%" }}>ASSESSMENT</Text>
-            <Text style={{ width: "15%" }}>TYPE</Text>
-            <Text style={{ width: "20%" }}>ASSIGNED TO</Text>
-            <Text style={{ width: "15%" }}>DUE DATE</Text>
-            <Text style={{ width: "20%" }}>STATUS</Text>
+        <View
+          style={{
+            marginTop: 12,
+            backgroundColor: "#fef2f2",
+            borderWidth: 1,
+            borderColor: "#fca5a5",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          {/* Header strip */}
+          <View
+            style={{
+              backgroundColor: "#fee2e2",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+              Pending & Overdue Assessments
+            </Text>
           </View>
 
-          {pendingList.slice(0, 8).map((a: any, i: number) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={{ width: "30%", fontSize: 8 }}>
-                {a.name}
-              </Text>
+          {/* Sub text */}
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              {stats.overdue} overdue, {stats.inProgress} in progress
+            </Text>
+          </View>
 
-              <Text style={{ width: "15%", fontSize: 8 }}>
-                {a.assessment_templates?.title}
-              </Text>
+          {/* Column header */}
+          <View
+            style={{
+              flexDirection: "row",
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ width: "30%", fontSize: 8, color: "#6b7280" }}>
+              ASSESSMENT NAME
+            </Text>
+            <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+              TYPE
+            </Text>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              ASSIGNED TO
+            </Text>
+            <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+              DUE DATE
+            </Text>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              STATUS
+            </Text>
+          </View>
 
-              <Text style={{ width: "20%", fontSize: 8 }}>
-                {a.employees?.first_name}
-              </Text>
+          {/* Rows */}
+          {pendingList.slice(0, 8).map((a: any, i: number) => {
+            const isOverdue = a.status !== "New"; // adjust if needed
 
-              <Text style={{ width: "15%", fontSize: 8 }}>
-                {a.target_completion_date}
-              </Text>
-
-              <Text
-                style={
-                  a.status === "New"
-                    ? styles.statusOverdue
-                    : styles.statusProgress
-                }
+            return (
+              <View
+                key={i}
+                style={{
+                  flexDirection: "row",
+                  paddingVertical: 8,
+                  paddingHorizontal: 8,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#fecaca",
+                }}
               >
-                {a.status === "New" ? "In Progress" : "Overdue"}
-              </Text>
-            </View>
-          ))}
+                <Text style={{ width: "30%", fontSize: 8, color: "#111827" }}>
+                  {a.name}
+                </Text>
+
+                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                  {a.assessment_templates?.title}
+                </Text>
+
+                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                  {a.employees?.first_name}
+                </Text>
+
+                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                  {a.target_completion_date}
+                </Text>
+
+                <View style={{ width: "20%", alignItems: "flex-start" }}>
+                  <Text
+                    style={{
+                      backgroundColor: isOverdue ? "#fee2e2" : "#e5e7eb",
+                      color: isOverdue ? "#b91c1c" : "#374151",
+                      fontSize: 7,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
+                    {isOverdue ? "Overdue" : "In Progress"}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
+
+
 
       <ReportFooter month={month} />
     </Page>

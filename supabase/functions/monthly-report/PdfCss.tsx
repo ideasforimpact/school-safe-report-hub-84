@@ -10,101 +10,142 @@ export const styles = StyleSheet.create({
     // ===== Dashboard Cards =====
     criticalBanner: {
         flexDirection: "row",
-        borderWidth: 1,
-        borderColor: "#f5c2c7",
-        backgroundColor: "#fdeaea",
-        padding: 12,
-        borderRadius: 6,
-        marginBottom: 12,
         alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: "#FEF2F2",
+        borderWidth: 1,
+        borderColor: "#FECACA",
+        borderRadius: 12,
+        padding: 32,
+        marginBottom: 24,
     },
 
     criticalTitle: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: "#b02a37",
+        fontSize: 14,
+        fontWeight: 600,
+        color: "#881337",
+        marginBottom: 4,
     },
 
     criticalSub: {
-        fontSize: 8,
-        color: "#b02a37",
-        marginTop: 2,
+        fontSize: 12,
+        lineHeight: 16,
+        color: "#6B7280",
     },
 
     criticalCountBox: {
         borderWidth: 1,
-        borderColor: "#f5c2c7",
-        borderRadius: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 14,
+        borderColor: "#E5E7EB",
+        backgroundColor: "#FFFFFF",
+        borderRadius: 12,
+        paddingVertical: 20,
+        paddingHorizontal: 28,
         alignItems: "center",
         justifyContent: "center",
-        minWidth: 70,
+        minWidth: 120,
     },
+    
 
     criticalCount: {
-        fontSize: 18,
+        fontSize: 48,
         fontWeight: 700,
-        color: "#dc3545",
+        color: "#881337",
     },
 
     criticalCountLabel: {
-        fontSize: 7,
-        color: "#555",
+        fontSize: 12,
+        fontWeight: 600,
+        color: "#6B7280",
+        marginTop: 4,
     },
 
     dashboardRow: {
         flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 12,
+        marginBottom: 24,
     },
 
     dashboardCardLarge: {
-        width: "32%",
+        flex: 1,
+        marginRight: 24,
         backgroundColor: "#ffffff",
         borderWidth: 1,
         borderColor: "#e5e7eb",
-        borderRadius: 10,
-        padding: 12,
-        minHeight: 110,
+        borderRadius: 12,
+        padding: 24,
+        minHeight: 160,
     },
 
     dashboardCardSmall: {
-        width: "32%",
+        flex: 1,
+        marginRight: 24,
         backgroundColor: "#ffffff",
         borderWidth: 1,
         borderColor: "#e5e7eb",
-        borderRadius: 10,
-        padding: 10,
-        minHeight: 80,
+        borderRadius: 12,
+        padding: 20,
+        minHeight: 100,
     },
 
     dashboardTitle: {
-        fontSize: 9,
-        color: "#374151",
-        marginBottom: 6,
-        marginLeft: 2
-    },
-
-    dashboardNumber: {
-        fontSize: 20,
-        fontWeight: "bold",
+        fontSize: 14,
+        fontWeight: 600,
         color: "#111827",
     },
 
+    dashboardNumber: {
+        fontSize: 36,
+        lineHeight: 20,
+        fontWeight: 700,
+        color: "#111827",
+        marginTop: 16,
+        marginBottom: 8,
+    },
+
     dashboardSub: {
-        fontSize: 8,
-        color: "#6b7280",
-        marginTop: 2,
+        fontSize: 14,
+        color: "#4B5563",
+        marginBottom: 12,
+    },
+
+
+    dashboardCardTitleRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 16,
+    },
+
+    dashboardSmallTitle: {
+        fontSize: 20,
+        fontWeight: 600,
+        color: "#111827",
+    },
+
+    dashboardSmallNumber: {
+        fontSize: 30,
+        lineHeight: 20,
+        fontWeight: 700,
+        color: "#111827",
+        marginTop: 16,
+    },
+
+    dashboardSmallSub: {
+        fontSize: 14,
+        lineHeight: 20,
+        color: "#4B5563",
+        marginTop: 4,
     },
 
     pill: {
-        marginTop: 6,
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: "#E5E7EB",
         alignSelf: "flex-start",
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
         borderRadius: 6,
-        fontSize: 7,
+        fontSize: 12,
+        fontWeight: 600,
     },
 
     // ===== Module Table =====
@@ -144,21 +185,33 @@ export const styles = StyleSheet.create({
     },
 
     statusWarn: {
-        backgroundColor: "#fef3c7",
-        color: "#92400e",
+        backgroundColor: "#FEF3C7",
+        color: "#92400E",
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 8,
-        fontSize: 7,
+        fontSize: 12,
+        fontWeight: 600,
     },
 
     statusCritical: {
-        backgroundColor: "#fee2e2",
-        color: "#991b1b",
+        backgroundColor: "#FFE4E6",
+        color: "#9F1239",
         paddingHorizontal: 8,
         paddingVertical: 3,
         borderRadius: 8,
-        fontSize: 7,
+        fontSize: 12,
+        fontWeight: 600,
+    },
+
+    statusPendingBadge: {
+        backgroundColor: "#FCE7F3",
+        color: "#9D174D",
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 600,
     },
 
     // Header
@@ -182,23 +235,33 @@ export const styles = StyleSheet.create({
         fontSize: 9,
         color: "#6b7280",
     },
-    divider: {
-        borderBottomWidth: 1,
-        borderBottomColor: "#d1d5db",
-        marginVertical: 10,
+  divider: {
+    borderBottomWidth: 2,      
+    borderBottomColor: "#111827", 
+    paddingBottom: 12,        
     },
 
-    // Section
+    // ===== Section =====
     sectionTitle: {
-        fontSize: 16,
-        marginTop: 10,
+        fontSize: 30,
+        lineHeight: 20,
+        fontWeight: 600,
+        color: "#111827",
+        marginTop: 12,
         marginBottom: 4,
-        color: "#374151",
     },
+
     sectionSub: {
-        fontSize: 9,
-        color: "#6b7280",
-        marginBottom: 10,
+        fontSize: 14,
+        color: "#6B7280",
+        marginBottom: 12,
+    },
+
+    sectionDivider: {
+        borderBottomWidth: 1,
+        borderBottomColor: "#111827",
+        marginTop: 6,
+        marginBottom: 20,
     },
 
     // Critical Box
@@ -358,8 +421,8 @@ export const styles = StyleSheet.create({
         padding: 4,
         borderWidth: 1,
         borderColor: "#e5e7eb",
-        borderRadius: 10,
-        backgroundColor: "#ffffff",
+        borderRadius: 6,
+        backgroundColor: "#f0fdf4",
         minHeight: 70,
         justifyContent: "center",
     },
@@ -368,17 +431,20 @@ export const styles = StyleSheet.create({
         fontSize: 8,
         color: "#6b7280",
         marginBottom: 4,
+        marginLeft: 6,
     },
 
     summaryNumber: {
         fontSize: 16,
         fontWeight: "bold",
         marginBottom: 2,
+        marginLeft: 6,
     },
 
     summaryNote: {
         fontSize: 7,
         color: "#6b7280",
+        marginLeft: 6,
     },
 
     tableContainer: {
@@ -400,7 +466,7 @@ export const styles = StyleSheet.create({
         flexDirection: "row",
         padding: 6,
         borderTopWidth: 1,
-        borderTopColor: "#e5e7eb",
+        borderTopColor: "#f3f4f6",
     },
 
     tableCell: {
@@ -418,16 +484,22 @@ export const styles = StyleSheet.create({
     iconRow: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 6,
+        marginBottom: 8,
     },
 
     iconBox: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
+        width: 22,
+        height: 22,
+        borderRadius: 6,
         justifyContent: "center",
         alignItems: "center",
         marginBottom: 6,
+        marginRight: 12,
+    },
+
+    iconBoxInRow: {
+        marginBottom: 0,
+        marginRight: 12,
     },
 
     iconBlue: { backgroundColor: "#dbeafe" },     // Vehicle
@@ -438,8 +510,8 @@ export const styles = StyleSheet.create({
     iconYellow: { backgroundColor: "#fef3c7" },   // Grievance
 
     dashboardIcon: {
-        width: 10,
-        height: 10,
+        width: 12,
+        height: 12,
     },
 
     // vehicle and challan 
@@ -459,12 +531,13 @@ export const styles = StyleSheet.create({
     },
 
     challanBox: {
-        backgroundColor: "#f7f3e9",
+        backgroundColor: "#ffffff",
         borderWidth: 1,
-        borderColor: "#f59e0b",
+        borderColor: "#FED7AA",
         borderRadius: 8,
         padding: 10,
         marginBottom: 12,
+        
     },
 
     actionBox: {
@@ -484,12 +557,14 @@ export const styles = StyleSheet.create({
 
     amountRed: { color: "#dc2626" },
     statusPill: {
-        backgroundColor: "#e4ca9b",
-        color: "#c58000",
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 6,
-        fontSize: 7,
+        backgroundColor: "#FFEDD5",
+        color: "#C2410C",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        fontSize: 8,
+        fontWeight: 500,
+        alignSelf: "center",
     },
     //employee
     // ===== Employee Page =====
@@ -501,7 +576,8 @@ export const styles = StyleSheet.create({
     },
 
     employeeHeader: {
-        fontSize: 16,
+        fontWeight: 700,
+        fontSize: 20,
         color: "#374151",
     },
 
@@ -522,8 +598,8 @@ export const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
         borderWidth: 1,
         borderColor: "#e5e7eb",
-        borderRadius: 10,
-        padding: 12,
+        borderRadius: 6,
+        paddingVertical: 18,
         minHeight: 70,
     },
 
@@ -531,12 +607,14 @@ export const styles = StyleSheet.create({
         fontSize: 8,
         color: "#6b7280",
         marginBottom: 4,
+        marginLeft: 10,
     },
 
     employeeCardNumber: {
-        fontSize: 18,
+        fontSize: 26,
         fontWeight: "bold",
         color: "#111827",
+        marginLeft: 8,
     },
 
     employeeBadge: {
@@ -548,13 +626,14 @@ export const styles = StyleSheet.create({
         paddingVertical: 2,
         borderRadius: 6,
         alignSelf: "flex-start",
+        marginLeft: 10,
     },
 
     noDocBox: {
         marginTop: 10,
         borderWidth: 1,
-        borderColor: "#f5c2c7",
-        backgroundColor: "#fdeaea",
+        borderColor: "#fecaca",
+        backgroundColor: "#ffffff",
         borderRadius: 6,
         padding: 8,
     },
@@ -611,11 +690,11 @@ export const styles = StyleSheet.create({
     // ===== Pending Box =====
     pendingBox: {
         marginTop: 12,
-        backgroundColor: "#fff7cc",
+        backgroundColor: "#FFEDD5",
         borderWidth: 1,
-        borderColor: "#f59e0b",
-        borderRadius: 10,
-        padding: 10,
+        borderColor: "#FFEDD5",
+        borderRadius: 12,
+        padding: 14,
     },
 
     pendingTitle: {
@@ -624,8 +703,8 @@ export const styles = StyleSheet.create({
     },
 
     pendingSub: {
-        fontSize: 8,
-        color: "#6b7280",
+        fontSize: 9,
+        color: "#4b5563",
         marginBottom: 6,
     },
 
@@ -648,7 +727,8 @@ export const styles = StyleSheet.create({
     },
 
     assessmentHeader: {
-        fontSize: 16,
+        fontWeight:700,
+        fontSize: 20,
         color: "#374151",
     },
 
@@ -669,21 +749,23 @@ export const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
         borderWidth: 1,
         borderColor: "#e5e7eb",
-        borderRadius: 10,
+        borderRadius: 6,
         padding: 12,
-        minHeight: 70,
+        minHeight: 120,
     },
 
     assessmentCardTitle: {
         fontSize: 8,
         color: "#6b7280",
         marginBottom: 4,
+        marginLeft: 6,
     },
 
     assessmentCardNumber: {
-        fontSize: 18,
+        fontSize: 22,
         fontWeight: "bold",
         color: "#111827",
+        marginLeft: 6,
     },
 
     assessmentBadgeGreen: {
@@ -722,9 +804,9 @@ export const styles = StyleSheet.create({
     // Pending box
     assessmentPendingBox: {
         marginTop: 12,
-        backgroundColor: "#fee2e2",
+        backgroundColor: "#ffffff",
         borderWidth: 1,
-        borderColor: "#ef4444",
+        borderColor: "#ffe4e6",
         borderRadius: 10,
         padding: 10,
     },
@@ -758,8 +840,9 @@ export const styles = StyleSheet.create({
     },
 
     incidentHeader: {
-        fontSize: 10,
+        fontSize: 20,
         marginBottom: 4,
+        fontWeight:700
     },
 
     incidentSub: {
@@ -965,7 +1048,8 @@ export const styles = StyleSheet.create({
     },
 
     grievanceHeader: {
-        fontSize: 16,
+        fontSize: 20,
+        fontWeight:700,
         color: "#374151",
     },
 
@@ -1098,28 +1182,46 @@ export const styles = StyleSheet.create({
     titleRow: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 6,
+        marginBottom: 8,
     },
 
     moduleSectionBox: {
         backgroundColor: "#ffffff",
         borderWidth: 1,
         borderColor: "#e5e7eb",
-        borderRadius: 10,
+        borderRadius: 12,
         marginTop: 6,
+        overflow: "hidden",
+    },
+
+    moduleSectionTitle: {
+        paddingTop: 24,
+        marginBottom: 16,
+        fontSize: 18,
+        fontWeight: 700,
+        lineHeight: 20,
+        color: "#111827",
     },
 
     moduleHeaderRow: {
         flexDirection: "row",
-        backgroundColor: "#f3f4f6",
-        padding: 8,
+        backgroundColor: "#F9FAFB",
+        paddingVertical: 12,
+        paddingHorizontal: 24,
         borderTopLeftRadius: 10,
         borderTopRightRadius: 10,
+    },
+    moduleHeaderText: {
+        fontSize: 12,
+        fontWeight: 600,
+        lineHeight: 16,
+        color: "#6B7280",
     },
 
     moduleDataRow: {
         flexDirection: "row",
-        padding: 10,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
         borderTopWidth: 1,
         borderTopColor: "#e5e7eb",
         alignItems: "center",
@@ -1133,9 +1235,13 @@ export const styles = StyleSheet.create({
 
     moduleMiddle: {
         width: "20%",
-        fontSize: 14,
-        fontWeight: "bold",
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        fontSize: 24,
+        lineHeight: 20,
+        fontWeight: 700,
         textAlign: "center",
+        color: "#111827",
     },
 
     moduleRight: {
@@ -1149,19 +1255,21 @@ export const styles = StyleSheet.create({
         borderRadius: 4,
         justifyContent: "center",
         alignItems: "center",
-        marginRight: 6,
+        marginRight: 12,
     },
 
     moduleName: {
-        fontSize: 9,
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: 600,
         color: "#111827",
     },
 
     moduleSubText: {
-        fontSize: 7,
+        fontSize: 12,
+        lineHeight: 16,
         color: "#6b7280",
-    },
+        marginTop: 2
+    }
 
 });
-
-

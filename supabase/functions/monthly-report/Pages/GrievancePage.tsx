@@ -80,93 +80,235 @@ export const GrievancePage = ({
         </View>
       </View>
 
-      <Text style={{ fontSize: 10, marginTop: 6 }}>
-        Grievances by Source
-      </Text>
+      <View
+        style={{
+          marginTop: 10,
+          borderWidth: 1,
+          borderColor: "#e5e7eb",
+          borderRadius: 8,
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        {/* Header strip */}
+        <View
+          style={{
+            backgroundColor: "#f3f4f6",
+            paddingVertical: 8,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+          }}
+        >
+          <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+            Grievances by Source
+          </Text>
+        </View>
 
-      <View style={styles.grievanceTable}>
-        <View style={styles.grievanceTableHeader}>
-          <Text style={styles.grievanceColSource}>SOURCE</Text>
-          <Text style={styles.grievanceCol}>TOTAL</Text>
-          <Text style={[styles.grievanceCol, { color: "#16a34a" }]}>
+        {/* Column header */}
+        <View
+          style={{
+            flexDirection: "row",
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: "#e5e7eb",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          <Text style={{ width: "40%", fontSize: 8, color: "#6b7280" }}>
+            SOURCE
+          </Text>
+
+          <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+            TOTAL
+          </Text>
+
+          <Text style={{ width: "15%", fontSize: 8, color: "#059669" }}>
             ADDRESSED
           </Text>
-          <Text style={[styles.grievanceCol, { color: "#d97706" }]}>
+
+          <Text style={{ width: "15%", fontSize: 8, color: "#d97706" }}>
             PENDING
           </Text>
-          <Text style={[styles.grievanceCol, { color: "#dc2626" }]}>
+
+          <Text style={{ width: "15%", fontSize: 8, color: "#dc2626" }}>
             OVERDUE
           </Text>
         </View>
 
+        {/* Rows */}
         {sources.map((s: any, i: number) => (
-          <View key={i} style={styles.grievanceTableRow}>
-            <Text style={styles.grievanceColSource}>{s.name}</Text>
-            <Text style={styles.grievanceCol}>{s.total}</Text>
-            <Text style={[styles.grievanceCol, { color: "#16a34a" }]}>
+          <View
+            key={i}
+            style={{
+              flexDirection: "row",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#e5e7eb",
+            }}
+          >
+            <Text style={{ width: "40%", fontSize: 8, color: "#111827" }}>
+              {s.name}
+            </Text>
+
+            <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+              {s.total}
+            </Text>
+
+            <Text
+              style={{
+                width: "15%",
+                fontSize: 8,
+                color: "#059669",
+                fontWeight: 600,
+              }}
+            >
               {s.addressed}
             </Text>
-            <Text style={[styles.grievanceCol, { color: "#d97706" }]}>
+
+            <Text
+              style={{
+                width: "15%",
+                fontSize: 8,
+                color: "#d97706",
+                fontWeight: 600,
+              }}
+            >
               {s.pending}
             </Text>
-            <Text style={[styles.grievanceCol, { color: "#dc2626" }]}>
+
+            <Text
+              style={{
+                width: "15%",
+                fontSize: 8,
+                color: "#dc2626",
+                fontWeight: 600,
+              }}
+            >
               {s.overdue}
             </Text>
           </View>
         ))}
       </View>
 
+
       {critical.length > 0 && (
-        <View style={styles.criticalGrievanceBox}>
-          <Text style={styles.criticalHeader}>
-            Pending & Overdue Grievances
-          </Text>
-
-          <Text style={styles.criticalSub}>
-            {stats.overdue} overdue, {stats.pending} pending
-          </Text>
-
-          <View style={styles.criticalTableHeader}>
-            <Text style={styles.colTitle}>SUBMITTED BY</Text>
-            <Text style={styles.colRaised}>TITLE</Text>
-            <Text style={styles.colType}>RAISED BY</Text>
-            <Text style={styles.colDate}>DATE RAISED</Text>
-            <Text style={styles.colStatus}>STATUS</Text>
+        <View
+          style={{
+            marginTop: 12,
+            backgroundColor: "#fef2f2",
+            borderWidth: 1,
+            borderColor: "#fecaca",
+            borderRadius: 8,
+            overflow: "hidden",
+          }}
+        >
+          {/* Header strip */}
+          <View
+            style={{
+              backgroundColor: "#fee2e2",
+              paddingVertical: 8,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 10, fontWeight: 600, color: "#7f1d1d" }}>
+              Pending & Overdue Grievances
+            </Text>
           </View>
 
+          {/* Sub text */}
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ fontSize: 8, color: "#6b7280" }}>
+              {stats.overdue} overdue, {stats.pending} pending
+            </Text>
+          </View>
+
+          {/* Column header */}
+          <View
+            style={{
+              flexDirection: "row",
+              paddingVertical: 6,
+              paddingHorizontal: 8,
+              borderBottomWidth: 1,
+              borderBottomColor: "#fecaca",
+            }}
+          >
+            <Text style={{ width: "30%", fontSize: 8, color: "#6b7280" }}>
+              SUBMITTED BY
+            </Text>
+            <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+              TITLE
+            </Text>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              RAISED BY
+            </Text>
+            <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+              DATE RAISED
+            </Text>
+            <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
+              STATUS
+            </Text>
+          </View>
+
+          {/* Rows */}
           {critical.slice(0, 8).map((g: any, i: number) => {
             const isOverdue =
               g.status?.toLowerCase() === "pending" &&
               g.due_date &&
               new Date(g.due_date) < new Date();
-
+            console.log(g,'djhfhdsafdsfsfs');
+            
             return (
-              <View key={i} style={styles.criticalRow}>
-                <Text style={styles.colTitle}>
-                  {g.submitter_name || "Anonymous"}
-                </Text>
-
-                <Text style={styles.colRaised}>
+              <View
+                key={i}
+                style={{
+                  flexDirection: "row",
+                  paddingVertical: 8,
+                  paddingHorizontal: 8,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#fecaca",
+                }}
+              >
+                <Text style={{ width: "30%", fontSize: 8, color: "#111827" }}>
                   {g.responses?.subject || "Not provided"}
                 </Text>
 
-                <Text style={styles.colType}>
-                  {g.submitter_type || "-"}
+                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                  {g.submitter_type}
                 </Text>
 
-                <Text style={styles.colDate}>
+                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                  {g.submitter_name || "-"}
+                </Text>
+
+                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
                   {g.created_at
                     ? new Date(g.created_at).toLocaleDateString()
                     : "-"}
                 </Text>
 
-                <View style={styles.colStatus}>
+                <View style={{ width: "20%", alignItems: "flex-start" }}>
                   <Text
-                    style={
-                      isOverdue
-                        ? styles.statusOverdue
-                        : styles.statusPending
-                    }
+                    style={{
+                      fontSize: 7,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      backgroundColor: isOverdue ? "#fee2e2" : "#e5e7eb",
+                      color: isOverdue ? "#b91c1c" : "#374151",
+                      fontWeight: 600,
+                    }}
                   >
                     {isOverdue ? "Overdue" : "Pending"}
                   </Text>
@@ -176,6 +318,7 @@ export const GrievancePage = ({
           })}
         </View>
       )}
+
 
       <ReportFooter month={month} />
     </Page>
