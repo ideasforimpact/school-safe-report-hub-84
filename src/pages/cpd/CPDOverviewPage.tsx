@@ -32,6 +32,9 @@ import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { Search, BookOpen, PlusCircle, Eye, Loader2, Download } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import type { FileItem } from '@/types/fileTypes';
 import {
   Pagination,
   PaginationContent,
@@ -40,11 +43,17 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 
+type CpdLearningCategory = { id: string; name: string };
+
 type CpdEntry = {
   id: string;
   title: string;
   domain_name: string;
   hours: number | null;
+  category?: string | null;
+  cpd_learning?: string | null;
+  document_urls?: { path: string; name: string }[];
+  captured_date?: string | null;
 };
 
 type CpdDomain = {
@@ -103,23 +112,43 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
   const [title, setTitle] = useState('');
   const [domainId, setDomainId] = useState<string | undefined>(undefined);
   const [category, setCategory] = useState('');
+  const [cpdLearning, setCpdLearning] = useState('');
   const [hours, setHours] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturedDate, setCapturedDate] = useState<string>('');
+  const [attachmentFiles, setAttachmentFiles] = useState<FileItem[]>([]);
+  const [learningCategories, setLearningCategories] = useState<CpdLearningCategory[]>([]);
 
   useEffect(() => {
     if (open) {
       setTitle('');
       setCategory('');
+      setCpdLearning('');
       setHours('');
       setError(null);
       setCapturedDate('');
-      // default domain = Core Values & Ethics
+      setAttachmentFiles([]);
       const coreDomain = domains.find((d) => d.name === 'Core Values & Ethics') ?? domains[0];
       setDomainId(coreDomain?.id);
     }
   }, [open, domains]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error: err } = await (supabase as any)
+        .from('cpd_learning_category')
+        .select('id, name')
+        .eq('active', true)
+        .order('display_order');
+      if (cancelled) return;
+      if (err) return;
+      setLearningCategories((data ?? []) as CpdLearningCategory[]);
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   if (!employee) return null;
 
@@ -155,9 +184,9 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
       return false;
     }
 
-    if (category.trim()) {
-      if (category.trim().length < 2 || category.trim().length > 100) {
-        setError('Learning category must be between 2 and 100 characters.');
+    if (cpdLearning.trim()) {
+      if (cpdLearning.trim().length < 2 || cpdLearning.trim().length > 2000) {
+        setError('What did you learn must be between 2 and 2000 characters.');
         return false;
       }
     }
@@ -188,6 +217,11 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
       setSubmitting(true);
       const employeeId = employee.employee_id;
 
+      const attachmentsPayload = attachmentFiles.map((f) => ({
+        name: f.name,
+        type: f.type,
+        base64: (f.base64 ?? '').replace(/^data:[^;]+;base64,/, ''),
+      }));
       const { data, error } = await supabase.functions.invoke('cpd_learning', {
         method: 'POST',
         body: {
@@ -197,8 +231,10 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
           title: title.trim(),
           domain_id: domainId,
           category: category.trim(),
+          cpd_learning: cpdLearning.trim() || null,
           hours: Number(hours),
           captured_date: capturedDate,
+          attachments: attachmentsPayload,
         },
       });
 
@@ -236,11 +272,11 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Add CPD Learning</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-2">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto no-scrollbar space-y-4 mt-2 px-1">
           <div className="space-y-1">
             <Label htmlFor="cpd-title">
               Learning / Activity Title <span className="text-red-500">*</span>
@@ -284,51 +320,91 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
 
           <div className="space-y-1">
             <Label htmlFor="cpd-category">Learning Category (optional)</Label>
-            <Input
-              id="cpd-category"
+            <Select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g., Workshop, Course, Seminar"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="cpd-date">
-              Date <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="cpd-date"
-              type="date"
-              value={capturedDate}
-              onChange={(e) => setCapturedDate(e.target.value)}
+              onValueChange={setCategory}
               disabled={submitting}
-            />
+            >
+              <SelectTrigger id="cpd-category">
+                <SelectValue placeholder="Select the Learning Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {learningCategories.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="cpd-hours">
-              Hours <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="cpd-hours"
-              type="number"
-              min={1}
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              disabled={remainingForDomain <= 0}
-              placeholder="e.g., 6"
+            <Label htmlFor="cpd-what-learned">What did you learn? (optional)</Label>
+            <Textarea
+              id="cpd-what-learned"
+              value={cpdLearning}
+              onChange={(e) => setCpdLearning(e.target.value)}
+              placeholder="e.g., Key takeaways, skills gained (2-2000 characters)"
+              rows={3}
+              disabled={submitting}
+              className="resize-none"
             />
-            {exceedsRemaining && (
-              <p className="text-xs text-red-600">
-                You can only add up to {remainingForDomain}h for this domain based on the
-                threshold.
+            {cpdLearning.trim().length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {cpdLearning.trim().length} / 2000
               </p>
             )}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="cpd-date">
+                Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="cpd-date"
+                type="date"
+                value={capturedDate}
+                onChange={(e) => setCapturedDate(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cpd-hours">
+                Hours <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="cpd-hours"
+                type="number"
+                min={1}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                disabled={remainingForDomain <= 0}
+                placeholder="e.g., 6"
+              />
+              {exceedsRemaining && (
+                <p className="text-xs text-red-600">
+                  You can only add up to {remainingForDomain}h for this domain based on the
+                  threshold.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Attachments (optional)</Label>
+            <ReusableFileUploader
+              onFilesChange={setAttachmentFiles}
+              initialFiles={[]}
+              maxFiles={5}
+              maxSize={10}
+              maxTotalSize={50}
+            />
+          </div>
+
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
-        <DialogFooter className="mt-4">
+        <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>

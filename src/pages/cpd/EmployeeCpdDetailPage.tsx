@@ -38,7 +38,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BookOpen, Edit2, Trash2, Loader2, ArrowLeft, PlusCircle } from 'lucide-react';
+import { BookOpen, Edit2, Trash2, Loader2, ArrowLeft, PlusCircle, Paperclip, FileText, Download, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import type { FileItem } from '@/types/fileTypes';
+import { buildPublicStorageUrl } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   Pagination,
   PaginationContent,
@@ -53,12 +58,17 @@ type CpdDomain = {
   threshold: number;
 };
 
+type CpdLearningCategory = { id: string; name: string };
+
 type CpdEntry = {
   id: string;
   title: string;
   domain_name: string;
   hours: number | null;
   captured_date?: string | null;
+  category?: string | null;
+  cpd_learning?: string | null;
+  document_urls?: { path: string; name: string }[];
 };
 
 type EmployeeCpdRow = {
@@ -110,23 +120,44 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
   const [title, setTitle] = useState('');
   const [domainId, setDomainId] = useState<string | undefined>(undefined);
   const [category, setCategory] = useState('');
+  const [cpdLearning, setCpdLearning] = useState('');
   const [hours, setHours] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturedDate, setCapturedDate] = useState<string>('');
+  const [attachmentFiles, setAttachmentFiles] = useState<FileItem[]>([]);
+  const [learningCategories, setLearningCategories] = useState<CpdLearningCategory[]>([]);
 
   useEffect(() => {
     if (open) {
       setTitle('');
       setCategory('');
+      setCpdLearning('');
       setHours('');
       setError(null);
       setCapturedDate('');
+      setAttachmentFiles([]);
       const coreDomain =
         domains.find((d) => d.name === 'Core Values & Ethics') ?? domains[0];
       setDomainId(coreDomain?.id);
     }
   }, [open, domains]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error: err } = await (supabase as any)
+        .from('cpd_learning_category')
+        .select('id, name')
+        .eq('active', true)
+        .order('display_order');
+      if (cancelled) return;
+      if (err) return;
+      setLearningCategories((data ?? []) as CpdLearningCategory[]);
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   const currentDomain = domains.find((d) => d.id === domainId);
   const usedForDomain =
@@ -176,9 +207,9 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
       return false;
     }
 
-    if (category.trim()) {
-      if (category.trim().length < 2 || category.trim().length > 100) {
-        setError('Learning category must be between 2 and 100 characters.');
+    if (cpdLearning.trim()) {
+      if (cpdLearning.trim().length < 2 || cpdLearning.trim().length > 2000) {
+        setError('What did you learn must be between 2 and 2000 characters.');
         return false;
       }
     }
@@ -208,7 +239,11 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
     try {
       setSubmitting(true);
       const employeeId = employee.employee_id;
-
+      const attachmentsPayload = attachmentFiles.map((f) => ({
+        name: f.name,
+        type: f.type,
+        base64: (f.base64 ?? '').replace(/^data:[^;]+;base64,/, ''),
+      }));
       const { data, error } = await supabase.functions.invoke('cpd_learning', {
         method: 'POST',
         body: {
@@ -218,8 +253,10 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
           title: title.trim(),
           domain_id: domainId,
           category: category.trim(),
+          cpd_learning: cpdLearning.trim() || null,
           hours: Number(hours),
           captured_date: capturedDate,
+          attachments: attachmentsPayload,
         },
       });
 
@@ -243,11 +280,11 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Add CPD Learning</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-2">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto no-scrollbar space-y-4 mt-2 px-1">
           <div className="space-y-1">
             <Label htmlFor="cpd-title-detail">
               Learning / Activity Title <span className="text-red-500">*</span>
@@ -293,46 +330,88 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
             <Label htmlFor="cpd-category-detail">
               Learning Category (optional)
             </Label>
-            <Input
-              id="cpd-category-detail"
+            <Select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g., Workshop, Course, Seminar"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="cpd-date-detail">
-              Date <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="cpd-date-detail"
-              type="date"
-              value={capturedDate}
-              onChange={(e) => setCapturedDate(e.target.value)}
+              onValueChange={setCategory}
               disabled={submitting}
-            />
+            >
+              <SelectTrigger id="cpd-category-detail">
+                <SelectValue placeholder="e.g., Workshop, Course, Seminar" />
+              </SelectTrigger>
+              <SelectContent>
+                {learningCategories.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="cpd-hours-detail">
-              Hours <span className="text-red-500">*</span>
+            <Label htmlFor="cpd-what-learned-detail">
+              What did you learn? (optional)
             </Label>
-            <Input
-              id="cpd-hours-detail"
-              type="number"
-              min={1}
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              disabled={domainRemaining <= 0}
-              placeholder="e.g., 6"
+            <Textarea
+              id="cpd-what-learned-detail"
+              value={cpdLearning}
+              onChange={(e) => setCpdLearning(e.target.value)}
+              placeholder="e.g., Key takeaways, skills gained (2-2000 characters)"
+              rows={3}
+              disabled={submitting}
+              className="resize-none"
             />
-            {exceedsRemaining && (
-              <p className="text-xs text-red-600">
-                You can only add up to {domainRemaining}h for this domain based
-                on the threshold.
+            {cpdLearning.trim().length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {cpdLearning.trim().length} / 2000
               </p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="cpd-date-detail">
+                Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="cpd-date-detail"
+                type="date"
+                value={capturedDate}
+                onChange={(e) => setCapturedDate(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cpd-hours-detail">
+                Hours <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="cpd-hours-detail"
+                type="number"
+                min={1}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                disabled={domainRemaining <= 0}
+                placeholder="e.g., 6"
+              />
+              {exceedsRemaining && (
+                <p className="text-xs text-red-600">
+                  You can only add up to {domainRemaining}h for this domain based
+                  on the threshold.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Attachments (optional)</Label>
+            <ReusableFileUploader
+              onFilesChange={setAttachmentFiles}
+              initialFiles={[]}
+              maxFiles={5}
+              maxSize={10}
+              maxTotalSize={50}
+            />
           </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
@@ -372,17 +451,24 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
   const [title, setTitle] = useState('');
   const [domainId, setDomainId] = useState<string | undefined>(undefined);
   const [category, setCategory] = useState('');
+  const [cpdLearning, setCpdLearning] = useState('');
   const [hours, setHours] = useState<string>('');
   const [capturedDate, setCapturedDate] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<FileItem[]>([]);
+  const [existingKept, setExistingKept] = useState<{ path: string; name: string }[]>([]);
+  const [learningCategories, setLearningCategories] = useState<CpdLearningCategory[]>([]);
 
   useEffect(() => {
     if (open && entry) {
       setTitle(entry.title || '');
-      setCategory('');
+      setCategory(entry.category ?? '');
+      setCpdLearning(entry.cpd_learning ?? '');
       setHours(entry.hours?.toString() ?? '');
       setCapturedDate(entry.captured_date ?? '');
+      setAttachmentFiles([]);
+      setExistingKept(entry.document_urls ?? []);
       setError(null);
       const matchingDomain = domains.find(
         (d) => d.name.toLowerCase() === entry.domain_name.toLowerCase(),
@@ -390,6 +476,22 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
       setDomainId(matchingDomain?.id);
     }
   }, [open, entry, domains]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error: err } = await (supabase as any)
+        .from('cpd_learning_category')
+        .select('id, name')
+        .eq('active', true)
+        .order('display_order');
+      if (cancelled) return;
+      if (err) return;
+      setLearningCategories((data ?? []) as CpdLearningCategory[]);
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   if (!entry) return null;
 
@@ -428,6 +530,13 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
       return false;
     }
 
+    if (cpdLearning.trim()) {
+      if (cpdLearning.trim().length < 2 || cpdLearning.trim().length > 2000) {
+        setError('What did you learn must be between 2 and 2000 characters.');
+        return false;
+      }
+    }
+
     const h = Number(hours);
     if (!hours || Number.isNaN(h) || h <= 0) {
       setError('Hours must be a positive number.');
@@ -453,6 +562,11 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
     try {
       setSubmitting(true);
       const employeeId = employee.employee_id;
+      const attachmentsPayload = attachmentFiles.map((f) => ({
+        name: f.name,
+        type: f.type,
+        base64: (f.base64 ?? '').replace(/^data:[^;]+;base64,/, ''),
+      }));
       const { data, error } = await supabase.functions.invoke('cpd_learning', {
         method: 'POST',
         body: {
@@ -463,8 +577,11 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
           title: title.trim(),
           domain_id: domainId,
           category: category.trim(),
+          cpd_learning: cpdLearning.trim() || null,
           hours: Number(hours),
           captured_date: capturedDate,
+          document_urls_existing: existingKept,
+          attachments: attachmentsPayload,
         },
       });
 
@@ -495,11 +612,11 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit CPD Entry</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-2">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto no-scrollbar space-y-4 mt-2 px-1">
           <div className="space-y-1">
             <Label htmlFor="edit-title">
               Learning / Activity Title <span className="text-red-500">*</span>
@@ -542,55 +659,122 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
 
           <div className="space-y-1">
             <Label htmlFor="edit-category">Learning Category (optional)</Label>
-            <Input
-              id="edit-category"
+            <Select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g., Workshop, Course, Seminar"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="edit-date">
-              Date <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit-date"
-              type="date"
-              value={capturedDate}
-              onChange={(e) => setCapturedDate(e.target.value)}
+              onValueChange={setCategory}
               disabled={submitting}
-            />
+            >
+              <SelectTrigger id="edit-category">
+                <SelectValue placeholder="e.g., Workshop, Course, Seminar" />
+              </SelectTrigger>
+              <SelectContent>
+                {learningCategories.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="edit-hours">
-              Hours <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit-hours"
-              type="number"
-              min={1}
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              disabled={entryMaxHours <= 0}
+            <Label htmlFor="edit-what-learned">What did you learn? (optional)</Label>
+            <Textarea
+              id="edit-what-learned"
+              value={cpdLearning}
+              onChange={(e) => setCpdLearning(e.target.value)}
+              placeholder="e.g., Key takeaways, skills gained (2-2000 characters)"
+              rows={3}
+              disabled={submitting}
+              className="resize-none"
             />
-            {domainRemaining > 0 && !exceedsRemaining && (
-              <p className="mt-1 text-xs text-gray-500">
-                Remaining for selected domain: {domainRemaining}h
+            {cpdLearning.trim().length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {cpdLearning.trim().length} / 2000
               </p>
             )}
-            {exceedsRemaining && (
-              <p className="mt-1 text-xs text-red-600">
-                You can only set up to {entryMaxHours}h for this entry based on the
-                domain threshold.
-              </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="edit-date">
+                Date <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="edit-date"
+                type="date"
+                value={capturedDate}
+                onChange={(e) => setCapturedDate(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-hours">
+                Hours <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="edit-hours"
+                type="number"
+                min={1}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                disabled={entryMaxHours <= 0}
+              />
+              {domainRemaining > 0 && !exceedsRemaining && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Remaining for selected domain: {domainRemaining}h
+                </p>
+              )}
+              {exceedsRemaining && (
+                <p className="mt-1 text-xs text-red-600">
+                  You can only set up to {entryMaxHours}h for this entry based on the
+                  domain threshold.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Attachments (optional)</Label>
+            {existingKept.length > 0 && (
+              <div className="space-y-2 mb-3">
+                <p className="text-xs text-muted-foreground">Existing attachments</p>
+                <ul className="space-y-1.5">
+                  {existingKept.map((doc, i) => (
+                    <li
+                      key={`${doc.path}-${i}`}
+                      className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                    >
+                      <span className="flex items-center gap-2 truncate min-w-0">
+                        <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        {doc.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setExistingKept((prev) => prev.filter((_, idx) => idx !== i))}
+                        disabled={submitting}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                        aria-label="Remove attachment"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
+            <ReusableFileUploader
+              onFilesChange={setAttachmentFiles}
+              initialFiles={[]}
+              maxFiles={5}
+              maxSize={10}
+              maxTotalSize={50}
+            />
           </div>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
-        <DialogFooter className="mt-4">
+        <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
@@ -598,6 +782,98 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
             {submitting ? 'Saving...' : 'Save'}
           </Button>
         </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const CPD_ATTACHMENTS_BUCKET = 'cpd_learning_attachments';
+
+type CpdAttachmentsDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  entry: CpdEntry | null;
+};
+
+const CpdAttachmentsDialog: React.FC<CpdAttachmentsDialogProps> = ({ open, onClose, entry }) => {
+  const [downloadingPath, setDownloadingPath] = useState<string | null>(null);
+
+  const getPublicUrl = (path: string): string | null => {
+    try {
+      return buildPublicStorageUrl(path, CPD_ATTACHMENTS_BUCKET) || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleDownload = async (path: string, name: string) => {
+    const url = getPublicUrl(path);
+    if (!url) return;
+    setDownloadingPath(path);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch file');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = name;
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error('Could not download file. It may be missing or the link may have expired.');
+    } finally {
+      setDownloadingPath(null);
+    }
+  };
+
+  const attachments = entry?.document_urls ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Attachments</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[50vh] overflow-y-auto no-scrollbar space-y-2 py-2">
+          {attachments.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-4 text-center">No attachments.</p>
+          ) : (
+            attachments.map((doc, i) => (
+              <div
+                key={`${doc.path}-${i}`}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5"
+              >
+                <span className="flex items-center gap-2 text-sm truncate min-w-0">
+                  <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  {doc.name}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  disabled={downloadingPath === doc.path}
+                  onClick={() => handleDownload(doc.path, doc.name)}
+                  aria-label="Download file"
+                >
+                  {downloadingPath === doc.path ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="flex justify-end pt-2 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -616,6 +892,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<CpdEntry | null>(null);
+  const [attachmentsDialogEntry, setAttachmentsDialogEntry] = useState<CpdEntry | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<CpdEntry | null>(null);
@@ -881,6 +1158,16 @@ const EmployeeCpdDetailPage: React.FC = () => {
                       <TableCell>{entry.hours ?? 0}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center gap-2">
+                          {entry.document_urls && entry.document_urls.length > 0 && (
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors"
+                              title="View attachments"
+                              onClick={() => setAttachmentsDialogEntry(entry)}
+                            >
+                              <Paperclip className="h-4 w-4" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -967,6 +1254,12 @@ const EmployeeCpdDetailPage: React.FC = () => {
         clientId={clientId!}
         domains={data?.domains ?? []}
         onUpdated={loadData}
+      />
+
+      <CpdAttachmentsDialog
+        open={attachmentsDialogEntry != null}
+        onClose={() => setAttachmentsDialogEntry(null)}
+        entry={attachmentsDialogEntry}
       />
 
       <AlertDialog

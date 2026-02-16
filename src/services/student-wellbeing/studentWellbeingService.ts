@@ -41,6 +41,7 @@ export interface StudentWellbeingRecord {
   concern_notes: string | null;
   created_at: string;
   updated_at: string;
+  document_url?: { path: string; name: string }[];
   consultations?: StudentWellbeingConsultation[];
   actions?: ConsultationActionTaken[];
   follow_up_entries?: StudentFollowUpEntry[];
@@ -94,6 +95,7 @@ export async function fetchStudentWellbeingRecords(
 export interface UpdateStudentWellbeingRecordPayload {
   id: string;
   client_id: string;
+  employee_id: string;
   student_id: string;
   section_id?: string | null;
   grade_id?: string | null;
@@ -102,6 +104,8 @@ export interface UpdateStudentWellbeingRecordPayload {
   concern?: string | null;
   status?: StudentWellbeingStatus;
   next_follow_up?: string | null;
+  /** New attachment files (base64) to add; merged with existing document_url on server */
+  attachments?: { name: string; type: string; base64: string }[];
 }
 
 export async function updateStudentWellbeingRecord(
@@ -112,6 +116,7 @@ export async function updateStudentWellbeingRecord(
     body: {
       id: payload.id,
       client_id: payload.client_id,
+      employee_id: payload.employee_id,
       student_id: payload.student_id,
       section_id: payload.section_id ?? null,
       grade_id: payload.grade_id ?? null,
@@ -120,15 +125,24 @@ export async function updateStudentWellbeingRecord(
       concern: payload.concern ?? null,
       status: payload.status ?? undefined,
       next_follow_up: payload.next_follow_up ?? null,
+      attachments: payload.attachments ?? [],
     },
   });
 
-  if (error) {
-    throw new Error(error.message || 'Failed to update student well-being record');
+  let friendlyMessage: string | null = typeof data?.error === 'string' ? data.error : null;
+  if (error && !friendlyMessage && typeof (error as { context?: { json?: () => Promise<unknown> } })?.context?.json === 'function') {
+    try {
+      const body = await (error as { context: { json: () => Promise<{ error?: string }> } }).context.json();
+      if (typeof body?.error === 'string') friendlyMessage = body.error;
+    } catch {
+      // ignore
+    }
   }
-
-  if (data?.success === false) {
-    throw new Error(typeof data.error === 'string' ? data.error : 'Failed to update record');
+  if (data?.success === false && friendlyMessage) {
+    throw new Error(friendlyMessage);
+  }
+  if (error) {
+    throw new Error(friendlyMessage || error.message || 'Failed to update student well-being record');
   }
 
   return {
@@ -139,13 +153,15 @@ export async function updateStudentWellbeingRecord(
 
 export async function deleteStudentWellbeingRecord(
   recordId: string,
-  clientId: string
+  clientId: string,
+  employeeId: string
 ): Promise<{ success: boolean; id: string }> {
   const { data, error } = await supabase.functions.invoke('delete-student-wellbeing-record', {
     method: 'POST',
     body: {
       id: recordId,
       client_id: clientId,
+      employee_id: employeeId,
     },
   });
 
