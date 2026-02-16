@@ -9,7 +9,7 @@ import { MonthlyReportPDF } from "./MonthlyReportPDF.tsx";
 
 const supabaseUrl = getSupabaseUrl();
 const supabaseServiceKey = getSupabaseServiceRoleKey();
-const BUCKET_NAME = "montly_export";
+const BUCKET_NAME = "monthly_export";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -308,8 +308,9 @@ async function generateAndStoreReportForClient(
 
   const pdfBuffer = await renderToBuffer(element);
 
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, "0");
+  // Folder uses target month's last day (DD-MM-YYYY)
+  const lastDay = new Date(year, month, 0).getDate();
+  const day = String(lastDay).padStart(2, "0");
   const mm = String(month).padStart(2, "0");
   const yyyy = String(year);
 
@@ -338,10 +339,20 @@ serve(async (req) => {
   try {
     const supabase = createServiceClient();
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const clientId = body.clientId as string | undefined;
     const inputYear = body.year as number | undefined;
     const inputMonth = body.month as number | undefined;
 
-    // Always derive clientIds from active clients in DB
+    // Single-job mode: consumer calls with one client + target month (returns path for queue complete)
+    if (clientId && inputYear != null && inputMonth != null) {
+      const result = await generateAndStoreReportForClient(supabase, clientId, inputYear, inputMonth);
+      return new Response(
+        JSON.stringify({ success: true, path: result.path }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Cron mode: enqueue one row per active client (super admin as target_employee), then invoke consumer
     const { data: clients, error: clientsError } = await supabase
       .from("clients")
       .select("id, active")
@@ -356,7 +367,6 @@ serve(async (req) => {
     }
 
     const clientIds = (clients ?? []).map((c: any) => c.id);
-
     if (!clientIds.length) {
       return new Response(
         JSON.stringify({ success: false, error: "No active clients found" }),
@@ -365,18 +375,50 @@ serve(async (req) => {
     }
 
     const now = new Date();
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const year = inputYear ?? prev.getFullYear();
-    const month = inputMonth ?? prev.getMonth() + 1;
+    const reportYear = now.getFullYear();
+    const reportMonth = now.getMonth() + 1; // 1-based
+    const lastDay = new Date(reportYear, reportMonth, 0).getDate();
+    const prepareDate = now.getDate();
+    const prepareMonth = now.getMonth() + 1;
+    const prepareYear = now.getFullYear();
 
-    const reports: any[] = [];
     for (const cid of clientIds) {
-      reports.push(await generateAndStoreReportForClient(supabase, cid, year, month));
+      const { data: superAdmin } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("client_id", cid)
+        .eq("is_super_admin", true)
+        .limit(1)
+        .single();
+
+      if (!superAdmin?.id) continue; // skip client with no super admin
+
+      await supabase.from("monthly_export_queue").insert({
+        client_id: cid,
+        target_employee_id: superAdmin.id,
+        target_month: reportMonth,
+        target_date: lastDay,
+        target_year: reportYear,
+        prepare_month: prepareMonth,
+        prepare_date: prepareDate,
+        prepare_year: prepareYear,
+        is_queued: true,
+        error_queue_msg: null,
+        retry_count: 0,
+        max_retries: 2,
+        active: true,
+        status: null,
+      });
     }
 
-    console.log("MONTHLY EXOPRT DONE SUCCESSFULLY")
+    try {
+      await (supabase as any).functions.invoke("monthly-report-consumer", { body: {} });
+    } catch (invokeErr) {
+      console.error("Failed to trigger monthly-report-consumer:", invokeErr);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, year, month, reports }),
+      JSON.stringify({ success: true, message: "Enqueued and consumer invoked", year: reportYear, month: reportMonth }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e: any) {

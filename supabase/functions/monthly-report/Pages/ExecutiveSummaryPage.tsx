@@ -1,6 +1,7 @@
 import React from "npm:react@18.2.0";
 import { Page, View, Text, Image } from "npm:@react-pdf/renderer@3.4.4";
 import { styles } from "../PdfCss.tsx";
+import { PDF_ICONS } from "../iconAssets.ts";
 import {
   getAssessmentCompliance,
   getEmployeeCompliance,
@@ -62,41 +63,11 @@ export const ExecutiveSummaryPage = ({
     pendingGrievances;
 
   const modules = [
-    {
-      name: "Vehicle Compliance",
-      percent: vehicleStats.percent,
-      sub: `${vehicleStats.compliant} of ${vehicleStats.total} vehicles`,
-      icon: "/sedanimg.png",
-      color: styles.iconBlue,
-    },
-    {
-      name: "Employee Compliance",
-      percent: employeeStats.percent,
-      sub: `${employeeStats.pending} of ${employeeStats.totalEmployeesdocs} employees`,
-      icon: "/userimg.png",
-      color: styles.iconGreen,
-    },
-    {
-      name: "Assessment Compliance",
-      percent: assessmentStats.percent,
-      sub: `${assessmentStats.overdue} of ${assessmentStats.total} assessments`,
-      icon: "/checkimg.png",
-      color: styles.iconPurple,
-    },
-    {
-      name: "Incident Management",
-      percent: incidentStats.percent,
-      sub: `${incidentStats.open} of ${incidentStats.total} incidents`,
-      icon: "/shieldimg.png",
-      color: styles.iconRed,
-    },
-    {
-      name: "Grievance Management",
-      percent: grievanceStats.percent,
-      sub: `${grievanceStats.pending} of ${grievanceStats.total} grievances`,
-      icon: "/messageimg.png",
-      color: styles.iconYellow,
-    },
+    { name: "Vehicle Compliance", percent: vehicleStats.percent, sub: `${vehicleStats.compliant} of ${vehicleStats.total} vehicles`, icon: PDF_ICONS.vehicle, color: styles.iconBlue },
+    { name: "Employee Compliance", percent: employeeStats.percent, sub: `${employeeStats.pending} of ${employeeStats.totalEmployeesdocs} employees`, icon: PDF_ICONS.user, color: styles.iconGreen },
+    { name: "Assessment Compliance", percent: assessmentStats.percent, sub: `${assessmentStats.overdue} of ${assessmentStats.total} assessments`, icon: PDF_ICONS.check, color: styles.iconPurple },
+    { name: "Incident Management", percent: incidentStats.percent, sub: `${incidentStats.open} of ${incidentStats.total} incidents`, icon: PDF_ICONS.shield, color: styles.iconRed },
+    { name: "Grievance Management", percent: grievanceStats.percent, sub: `${grievanceStats.pending} of ${grievanceStats.total} grievances`, icon: PDF_ICONS.message, color: styles.iconYellow },
   ];
 
   return (
@@ -138,7 +109,7 @@ export const ExecutiveSummaryPage = ({
         <View style={styles.dashboardCardLarge}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, styles.iconBlue]}>
-              <Image src="/sedanimg.png" style={styles.dashboardIcon} />
+              <Image src={PDF_ICONS.vehicle} style={styles.dashboardIcon} />
             </View>
             <Text style={styles.dashboardTitle}>Vehicle Documents</Text>
           </View>
@@ -150,7 +121,7 @@ export const ExecutiveSummaryPage = ({
         <View style={styles.dashboardCardLarge}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, styles.iconOrange]}>
-              <Image src="/circleimg.png" style={styles.dashboardIcon} />
+              <Image src={PDF_ICONS.challan} style={styles.dashboardIcon} />
             </View>
             <Text style={styles.dashboardTitle}>Pending Challans</Text>
           </View>
@@ -164,7 +135,7 @@ export const ExecutiveSummaryPage = ({
         <View style={styles.dashboardCardLarge}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, styles.iconGreen]}>
-              <Image src="/userimg.png" style={styles.dashboardIcon} />
+              <Image src={PDF_ICONS.user} style={styles.dashboardIcon} />
             </View>
             <Text style={styles.dashboardTitle}>Employee Verification</Text>
           </View>
@@ -178,7 +149,7 @@ export const ExecutiveSummaryPage = ({
         <View style={styles.dashboardCardSmall}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, styles.iconPurple]}>
-              <Image src="/checkimg.png" style={styles.dashboardIcon} />
+              <Image src={PDF_ICONS.check} style={styles.dashboardIcon} />
             </View>
             <Text style={styles.dashboardTitle}>Assessments</Text>
           </View>
@@ -189,7 +160,7 @@ export const ExecutiveSummaryPage = ({
         <View style={styles.dashboardCardSmall}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, styles.iconRed]}>
-              <Image src="/shieldimg.png" style={styles.dashboardIcon} />
+              <Image src={PDF_ICONS.shield} style={styles.dashboardIcon} />
             </View>
             <Text style={styles.dashboardTitle}>Open Incidents</Text>
           </View>
@@ -200,7 +171,7 @@ export const ExecutiveSummaryPage = ({
         <View style={styles.dashboardCardSmall}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, styles.iconYellow]}>
-              <Image src="/messageimg.png" style={styles.dashboardIcon} />
+              <Image src={PDF_ICONS.message} style={styles.dashboardIcon} />
             </View>
             <Text style={styles.dashboardTitle}>Grievances</Text>
           </View>
