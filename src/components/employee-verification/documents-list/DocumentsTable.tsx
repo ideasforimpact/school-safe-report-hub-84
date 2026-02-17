@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { formatDistanceToNow, format } from 'date-fns';
 import {
   Table,
   TableBody,
@@ -20,11 +21,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { VerificationDocument } from '@/types/employeeVerification';
+import { Badge } from '@/components/ui/badge';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName, getManualVerificationDisplayName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
-import {formatDate} from '@/lib/Dateformat';
 import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 import AadharDetailsDialog from './AadharDetailsDialog';
 import PanDetailsDialog from '../document-card/PanDetailsDialog';
@@ -620,16 +621,14 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           const ts = latest?.timestamp || doc.updatedAt;
                           return (
                             <span className="text-sm text-gray-900">
-                              SafeSchool{ts ? ` - ${formatDate(ts, { isTiming: true })}` : ''}
+                              SafeSchool{ts ? ` - ${format(new Date(ts), 'MMM dd, h:mm a')}` : ''}
                             </span>
                           );
                         }
                         // Fallback to updatedAt if no history
                         if (doc.updatedAt) {
                           return (
-                            <span className="text-sm text-gray-900">
-                              SafeSchool - {formatDate(doc.updatedAt, { isTiming: true })}
-                            </span>
+                            <span className="text-sm text-gray-900">SafeSchool - {format(new Date(doc.updatedAt), 'MMM dd, h:mm a')}</span>
                           );
                         }
                         return <span className="text-muted-foreground">—</span>;
@@ -639,7 +638,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       
                       return name ? (
                         <span className="text-sm text-gray-900">
-                          {name}{updatedAt && ` on ${formatDate(updatedAt, { isTiming: true })}`}
+                          {name}{updatedAt && ` on ${format(new Date(updatedAt), 'MMM dd, h:mm a')}`}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>

@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import {formatDate} from '@/lib/Dateformat';  
 
 interface SOPAssignment {
   group_id: string | null;
@@ -80,6 +79,18 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
     .map((a) => a.group_id)
     .filter((id): id is string => Boolean(id));
 
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
 
   const handleDownloadPDF = () => {
     toast.info('PDF download functionality coming soon');
@@ -168,7 +179,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
                 {sop.completed_date && (
                   <span className="text-sm text-gray-500 flex items-center gap-1">
                     <Clock3 className="h-4 w-4 flex-shrink-0" />
-                    Signed off on {formatDate(sop.completed_date, { isTiming: true })}
+                    Signed off on {formatDate(sop.completed_date)}
                   </span>
                 )}
 

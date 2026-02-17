@@ -16,7 +16,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/auth/useAuth';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { formatDate } from '@/lib/Dateformat';
 
 interface StudentsListProps {
   students: Student[];
@@ -130,10 +129,7 @@ const StudentsList = ({
             <TableCell>{student.grade_name || student.grade || '-'}</TableCell>
             <TableCell>{student.section_name || student.section || '-'}</TableCell>
             <TableCell>{student.campus}</TableCell>
-            <TableCell>
-              {formatDate(student.createdAt)}
-            </TableCell>
-
+            <TableCell>{formatDistanceToNow(new Date(student.createdAt), { addSuffix: true })}</TableCell>
             <TableCell>
               <div className="flex space-x-2">
                 <Button 
