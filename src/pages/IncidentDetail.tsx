@@ -13,7 +13,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
 import { FileItem, ContributingFactor, Action } from '@/types/incident';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
-import { formatDate } from '@/lib/Dateformat';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -100,8 +99,7 @@ const IncidentDetail = () => {
   }, [id, fetchedIncident, isFetchingIncident, incidents, getIncident]);
 
   const incidentDetailProps = useIncidentDetailPage(id);
-  const { useStatusUpdate, formatDateTime, getStatusColor, getCommentStatusColor } = useIncidentDetail();
-
+  const { useStatusUpdate, formatDate, formatDateTime, getStatusColor, getCommentStatusColor } = useIncidentDetail();
   
   // Initialize status update state
   const { statusUpdate, setStatusUpdate } = useStatusUpdate(
@@ -255,6 +253,7 @@ const IncidentDetail = () => {
           statusUpdate={statusUpdate}
           setStatusUpdate={setStatusUpdate}
           onStatusChange={handleStatusChangeWrapper}
+          formatDate={formatDate}
           getStatusColor={getStatusColor}
           onCloseButtonClick={handleCloseButtonClick}
           onIncidentUpdate={handleRefreshIncident}

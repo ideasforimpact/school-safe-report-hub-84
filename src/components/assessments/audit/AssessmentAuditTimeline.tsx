@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Clock, User, FileText, CheckCircle, AlertCircle, RefreshCw, Edit, Calendar } from 'lucide-react';
 import { AssessmentAuditLogEntryWithUser } from '@/types/assessmentAudit';
 import { assessmentAuditLogService } from '@/services/assessment/auditLogService';
-import { formatDate } from '@/lib/Dateformat';
+import { formatDistanceToNow } from 'date-fns';
 
 interface AssessmentAuditTimelineProps {
   assessmentId: string;
@@ -151,9 +151,8 @@ const AssessmentAuditTimeline = ({ assessmentId }: AssessmentAuditTimelineProps)
                     <div className="flex items-center gap-2 mb-1">
                       {getChangeTypeBadge(log.change_type)}
                       <span className="text-sm text-muted-foreground">
-                        {formatDate(log.changed_at, { isTiming: true })}
+                        {formatDistanceToNow(new Date(log.changed_at), { addSuffix: true })}
                       </span>
-
                     </div>
 
                     <div className="space-y-1">
