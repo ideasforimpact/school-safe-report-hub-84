@@ -144,7 +144,6 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
       </View>
 
       <View
-        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -235,7 +234,6 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
       {pendingList.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -302,7 +300,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
           </View>
 
           {/* Rows */}
-          {pendingList.slice(0, 8).map((a: any, i: number) => {
+          {pendingList.map((a: any, i: number) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 

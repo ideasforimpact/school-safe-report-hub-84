@@ -272,7 +272,6 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
       {/* Compliance by Document */}
       <View
-        wrap={false}
         style={{
           borderWidth: 1,
           borderColor: "#E5E7EB",
@@ -315,7 +314,6 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
       {/* Challan Box */}
       <View
-        wrap={false}
         style={{
           borderWidth: 1,
           borderColor: "#FDBA74",
@@ -346,7 +344,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
           <Text style={{ width: "20%", fontSize: 8 }}>STATUS</Text>
         </View>
 
-        {challans.slice(0, 10).map((c, i) => (
+        {challans.map((c, i) => (
           <View key={i} style={tableRow}>
             <Text style={{ width: "20%", fontSize: 9 }}>
               {c.registration_number}
@@ -393,7 +391,6 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       {/* Action Box */}
       {actionVehicles.length > 0 && (
         <View
-          wrap={false}
           style={{
             borderWidth: 1,
             borderColor: "#FACC15",
@@ -423,7 +420,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
               <Text style={[cell, { fontSize: 9 }]}>PUC</Text>
           </View>
 
-          {actionVehicles.slice(0, 10).map((v, i) => (
+          {actionVehicles.map((v, i) => (
             <View key={i} style={tableRow}>
               <Text style={[cell, { fontSize: 9 }]}>{v.vehicleNo}</Text>
               <Text style={[cell, { fontSize: 9 }]}>{v.owner}</Text>

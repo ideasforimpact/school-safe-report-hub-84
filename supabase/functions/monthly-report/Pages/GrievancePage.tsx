@@ -87,7 +87,6 @@ export const GrievancePage = ({
       </View>
 
       <View
-        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -203,7 +202,6 @@ export const GrievancePage = ({
 
       {critical.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -270,7 +268,7 @@ export const GrievancePage = ({
           </View>
 
           {/* Rows */}
-          {critical.slice(0, 8).map((g: any, i: number) => {
+          {critical.map((g: any, i: number) => {
             const isOverdue =
               g.status?.toLowerCase() === "pending" &&
               g.due_date &&
@@ -278,7 +276,6 @@ export const GrievancePage = ({
             
             return (
               <View
-                wrap={false}
                 key={i}
                 style={{
                   flexDirection: "row",

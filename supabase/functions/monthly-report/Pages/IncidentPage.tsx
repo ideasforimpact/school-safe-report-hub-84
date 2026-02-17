@@ -90,7 +90,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
       </View>
 
       <View
-        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -202,7 +201,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {individuals.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#f8fafc",
@@ -270,7 +268,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           </View>
 
           {/* Rows */}
-          {individuals.slice(0, 15).map((p: any, i: number) => {
+          {individuals.map((p: any, i: number) => {
             const isStudent =
               !(p.grade && p.grade.toLowerCase().includes("staff"));
 
@@ -326,7 +324,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {critical.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -393,7 +390,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           </View>
 
           {/* Rows */}
-          {critical.slice(0, 6).map((inc: any, idx: number) => {
+          {critical.map((inc: any, idx: number) => {
             const status =
               inc.incident_status?.name?.toLowerCase() || "";
             const severity =

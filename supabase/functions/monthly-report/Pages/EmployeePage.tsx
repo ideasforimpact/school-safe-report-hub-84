@@ -369,7 +369,6 @@ export const EmployeePage = ({
 
       {pendingEmployees > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fffbeb",
@@ -426,7 +425,7 @@ export const EmployeePage = ({
           </View>
 
           {/* Rows */}
-          {pendingList.slice(0, 8).map((emp: any, i: number) => (
+          {pendingList.map((emp: any, i: number) => (
             <View
               key={i}
               style={{
@@ -478,7 +477,6 @@ export const EmployeePage = ({
 
       {noDocumentEmployees.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -552,7 +550,7 @@ export const EmployeePage = ({
           </View>
 
           {/* Rows */}
-          {noDocumentEmployees.slice(0, 8).map((emp: any, i: number) => (
+          {noDocumentEmployees.map((emp: any, i: number) => (
             <View
               key={i}
               style={{
