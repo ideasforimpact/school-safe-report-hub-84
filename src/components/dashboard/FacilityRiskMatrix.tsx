@@ -61,7 +61,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
   const maxRiskScore = Math.max(...facilityRiskData.map(f => f.riskScore || 0), 1);
 
   const getRiskColor = (count: number, priority: string) => {
-    if (count === 0) return '';
+    if (count === 0) return 'bg-muted/20';
     const intensity = Math.min(count / 5, 1);
     
     switch (priority) {
@@ -74,7 +74,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
       case 'Low':
         return `bg-green-500/${Math.round(intensity * 100) || 20}`;
       default:
-        return '';
+        return 'bg-muted/20';
     }
   };
 
