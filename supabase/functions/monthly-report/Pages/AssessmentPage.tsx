@@ -303,8 +303,13 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
           {/* Rows */}
           {pendingList.slice(0, 8).map((a: any, i: number) => {
-            const currentDate = new Date();
-            const isOverdue =new Date(a.target_completion_date) < currentDate;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const targetDate = new Date(a.target_completion_date);
+            targetDate.setHours(0, 0, 0, 0);
+
+            const isOverdue = targetDate < today;
 
             return (
               <View
