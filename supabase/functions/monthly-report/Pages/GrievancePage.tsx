@@ -100,7 +100,7 @@ export const GrievancePage = ({
             borderBottomColor: "#e5e7eb",
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+          <Text style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
             Grievances by Source
           </Text>
         </View>
@@ -149,18 +149,18 @@ export const GrievancePage = ({
               borderBottomColor: "#e5e7eb",
             }}
           >
-            <Text style={{ width: "40%", fontSize: 8, color: "#111827" }}>
+            <Text style={{ width: "40%", fontSize: 9, color: "#111827" }}>
               {s.name}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
               {s.total}
             </Text>
 
             <Text
               style={{
                 width: "15%",
-                fontSize: 8,
+                fontSize: 9,
                 color: "#059669",
                 fontWeight: 600,
               }}
@@ -171,7 +171,7 @@ export const GrievancePage = ({
             <Text
               style={{
                 width: "15%",
-                fontSize: 8,
+                fontSize: 9,
                 color: "#d97706",
                 fontWeight: 600,
               }}
@@ -182,7 +182,7 @@ export const GrievancePage = ({
             <Text
               style={{
                 width: "15%",
-                fontSize: 8,
+                fontSize: 9,
                 color: "#dc2626",
                 fontWeight: 600,
               }}
@@ -215,7 +215,7 @@ export const GrievancePage = ({
               borderBottomColor: "#fecaca",
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: 600, color: "#7f1d1d" }}>
+            <Text style={{ fontSize: 12, fontWeight: 700, color: "#7f1d1d" }}>
               Pending & Overdue Grievances
             </Text>
           </View>
@@ -279,19 +279,19 @@ export const GrievancePage = ({
                   borderBottomColor: "#fecaca",
                 }}
               >
-                <Text style={{ width: "30%", fontSize: 8, color: "#111827" }}>
+                <Text style={{ width: "30%", fontSize: 9, color: "#111827" }}>
                   {g.responses?.subject || "Not provided"}
                 </Text>
 
-                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {g.submitter_type}
                 </Text>
 
-                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                   {g.submitter_name || "-"}
                 </Text>
 
-                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {g.created_at
                     ? new Date(g.created_at).toLocaleDateString()
                     : "-"}
@@ -300,7 +300,7 @@ export const GrievancePage = ({
                 <View style={{ width: "20%", alignItems: "flex-start" }}>
                   <Text
                     style={{
-                      fontSize: 7,
+                      fontSize: 8,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 6,

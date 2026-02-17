@@ -1,5 +1,5 @@
 import React from "npm:react@18.2.0";
-import { Page, View, Text } from "npm:@react-pdf/renderer@3.4.4";
+import { Page, View, Text, Svg, Path, Circle } from "npm:@react-pdf/renderer@3.4.4";
 import { styles } from "../PdfCss.tsx";
 import { ReportFooter } from "./ReportFooter.tsx";
 import { getPendingEmployeesGrouped } from "../utils.ts";
@@ -10,6 +10,41 @@ interface Props {
   employeeDocuments: any[];
   documentTypes: any[];
 }
+
+const SECTION_ICON_SIZE = 10;
+
+const sectionIconStyle = {
+  width: SECTION_ICON_SIZE,
+  height: SECTION_ICON_SIZE,
+  marginRight: 6,
+};
+
+const InfoIcon = ({ color }: { color: string }) => (
+  <Svg viewBox="0 0 24 24" style={sectionIconStyle}>
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.5} fill="none" />
+    <Path d="M12 10v6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path d="M12 8h.01" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+  </Svg>
+);
+
+const UserAlertIcon = ({ color }: { color: string }) => (
+  <Svg viewBox="0 0 24 24" style={sectionIconStyle}>
+    <Circle cx="9" cy="8" r="3.5" stroke={color} strokeWidth={1.5} fill="none" />
+    <Path
+      d="M4 19c.5-3 2.5-4.5 5-4.5s4.5 1.5 5 4.5"
+      stroke={color}
+      strokeWidth={1.5}
+      fill="none"
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 8.5l1.5 1.5M18 8.5L16.5 7M18 8.5l1.5-1.5M18 8.5L16.5 10"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
 
 export const EmployeePage = ({
   month,
@@ -111,10 +146,10 @@ export const EmployeePage = ({
               marginTop: 4,
               backgroundColor: "#d1fae5",
               color: "#065f46",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              fontSize: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 9999,
               alignSelf: "flex-start",
             }}
           >
@@ -148,10 +183,10 @@ export const EmployeePage = ({
               marginTop: 4,
               backgroundColor: "#d1fae5",
               color: "#065f46",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              fontSize: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 9999,
               alignSelf: "flex-start",
             }}
           >
@@ -189,10 +224,10 @@ export const EmployeePage = ({
               marginTop: 4,
               backgroundColor: "#fee2e2",
               color: "#b91c1c",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              fontSize: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 9999,
               alignSelf: "flex-start",
             }}
           >
@@ -224,8 +259,8 @@ export const EmployeePage = ({
         >
           <Text
             style={{
-              fontSize: 10,
-              fontWeight: 600,
+              fontSize: 12,
+              fontWeight: 700,
               color: "#111827",
             }}
           >
@@ -295,14 +330,14 @@ export const EmployeePage = ({
                 borderBottomColor: "#e5e7eb",
               }}
             >
-              <Text style={{ width: "50%", fontSize: 8, color: "#111827" }}>
+              <Text style={{ width: "50%", fontSize: 9, color: "#111827" }}>
                 {type.description}
               </Text>
 
               <Text
                 style={{
                   width: "25%",
-                  fontSize: 8,
+                  fontSize: 9,
                   color: "#059669",
                   fontWeight: 600,
                 }}
@@ -313,7 +348,7 @@ export const EmployeePage = ({
               <Text
                 style={{
                   width: "25%",
-                  fontSize: 8,
+                  fontSize: 9,
                   color: "#dc2626",
                   fontWeight: 600,
                 }}
@@ -345,9 +380,12 @@ export const EmployeePage = ({
               paddingHorizontal: 8,
               borderBottomWidth: 1,
               borderBottomColor: "#fde68a",
+              flexDirection: "row",
+              alignItems: "center",
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: 600, color: "#92400e" }}>
+            <InfoIcon color="#f59e0b" />
+            <Text style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>
               Pending Verifications
             </Text>
           </View>
@@ -392,11 +430,11 @@ export const EmployeePage = ({
                 borderTopColor: "#fde68a",
               }}
             >
-              <Text style={{ width: "30%", fontSize: 8, color: "#111827" }}>
+              <Text style={{ width: "30%", fontSize: 9, color: "#111827" }}>
                 {emp.name}
               </Text>
 
-              <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+              <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                 {emp.id}
               </Text>
 
@@ -413,7 +451,7 @@ export const EmployeePage = ({
                     style={{
                       backgroundColor: "#fee2e2",
                       color: "#b91c1c",
-                      fontSize: 7,
+                      fontSize: 8,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 6,
@@ -450,9 +488,18 @@ export const EmployeePage = ({
               paddingHorizontal: 8,
               borderBottomWidth: 1,
               borderBottomColor: "#fecaca",
+              flexDirection: "row",
+              alignItems: "center",
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+            <UserAlertIcon color="#f97373" />
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#374151",
+              }}
+            >
               Employees with No Documents Submitted
             </Text>
           </View>
@@ -509,15 +556,15 @@ export const EmployeePage = ({
                 backgroundColor: "#ffffff80",
               }}
             >
-              <Text style={{ width: "35%", fontSize: 8, color: "#111827" }}>
+              <Text style={{ width: "35%", fontSize: 9, color: "#111827" }}>
                 {emp.first_name} {emp.last_name}
               </Text>
 
-              <Text style={{ width: "25%", fontSize: 8, color: "#374151" }}>
+              <Text style={{ width: "25%", fontSize: 9, color: "#374151" }}>
                 {emp.employee_id}
               </Text>
 
-              <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+              <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                 {emp.joining_date
                   ? new Date(emp.joining_date).toLocaleDateString()
                   : "-"}
@@ -528,7 +575,7 @@ export const EmployeePage = ({
                   style={{
                     backgroundColor: "#fee2e2",
                     color: "#b91c1c",
-                    fontSize: 7,
+                    fontSize: 8,
                     paddingHorizontal: 6,
                     paddingVertical: 2,
                     borderRadius: 6,

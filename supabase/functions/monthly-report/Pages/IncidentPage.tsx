@@ -108,7 +108,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             borderBottomColor: "#e5e7eb",
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+          <Text style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
             Incidents by Category
           </Text>
         </View>
@@ -153,18 +153,18 @@ export const IncidentPage = ({ month, incidents }: Props) => {
               borderBottomColor: "#e5e7eb",
             }}
           >
-            <Text style={{ width: "40%", fontSize: 8, color: "#111827" }}>
+            <Text style={{ width: "40%", fontSize: 9, color: "#111827" }}>
               {c.name}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
               {c.total}
             </Text>
 
             <Text
               style={{
                 width: "15%",
-                fontSize: 8,
+                fontSize: 9,
                 color: "#059669",
                 fontWeight: 600,
               }}
@@ -175,7 +175,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             <Text
               style={{
                 width: "15%",
-                fontSize: 8,
+                fontSize: 9,
                 color: "#d97706",
                 fontWeight: 600,
               }}
@@ -186,7 +186,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             <Text
               style={{
                 width: "15%",
-                fontSize: 8,
+                fontSize: 9,
                 color: "#dc2626",
                 fontWeight: 600,
               }}
@@ -219,7 +219,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
               borderBottomColor: "#bfdbfe",
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: 600, color: "#1e40af" }}>
+            <Text style={{ fontSize: 12, fontWeight: 700, color: "#1e40af" }}>
               Individuals Involved in {getReportingPeriodText(month)} Incidents
             </Text>
           </View>
@@ -282,7 +282,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                   borderBottomColor: "#e5e7eb",
                 }}
               >
-                <Text style={{ width: "20%", fontSize: 8, color: "#111827" }}>
+            <Text style={{ width: "20%", fontSize: 9, color: "#111827" }}>
                   {p.name}
                 </Text>
 
@@ -292,7 +292,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                     style={{
                       backgroundColor: isStudent ? "#dbeafe" : "#e5e7eb",
                       color: isStudent ? "#1d4ed8" : "#374151",
-                      fontSize: 7,
+                      fontSize: 8,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 6,
@@ -302,15 +302,15 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                   </Text>
                 </View>
 
-                <Text style={{ width: "27%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "27%", fontSize: 9, color: "#374151" }}>
                   {p.title}
                 </Text>
 
-                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                   {p.category}
                 </Text>
 
-                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {p.date
                     ? new Date(p.date).toLocaleDateString()
                     : "-"}
@@ -342,7 +342,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
               borderBottomColor: "#fecaca",
             }}
           >
-            <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+            <Text style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
               Critical & Overdue Incidents
             </Text>
           </View>
@@ -427,15 +427,15 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                   borderBottomColor: "#fecaca",
                 }}
               >
-                <Text style={{ width: "28%", fontSize: 8, color: "#111827" }}>
+                <Text style={{ width: "28%", fontSize: 9, color: "#111827" }}>
                   {inc.incident_report_types?.name || "-"}
                 </Text>
 
-                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                   {inc.incident_categories?.name || "-"}
                 </Text>
 
-                <Text style={{ width: "18%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "18%", fontSize: 9, color: "#374151" }}>
                   {inc.reported_date
                     ? new Date(inc.reported_date).toLocaleDateString()
                     : inc.created_at
@@ -449,7 +449,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                     style={{
                       backgroundColor: statusBg,
                       color: statusColor,
-                      fontSize: 7,
+                      fontSize: 8,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 6,
@@ -465,7 +465,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                     style={{
                       backgroundColor: severityBg,
                       color: severityColor,
-                      fontSize: 7,
+                      fontSize: 8,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 6,

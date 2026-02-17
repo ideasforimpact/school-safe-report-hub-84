@@ -572,7 +572,7 @@ export const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderLeftColor: "#10b981",
         paddingLeft: 8,
-        marginBottom: 6,
+        marginBottom: 10,
     },
 
     employeeHeader: {
@@ -584,7 +584,7 @@ export const styles = StyleSheet.create({
     employeeSub: {
         fontSize: 9,
         color: "#6b7280",
-        marginBottom: 10,
+        marginBottom: 15,
     },
 
     employeeSummaryRow: {
@@ -723,7 +723,7 @@ export const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderLeftColor: "#8b5cf6",
         paddingLeft: 8,
-        marginBottom: 6,
+        marginBottom: 10,
     },
 
     assessmentHeader: {
@@ -965,7 +965,7 @@ export const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderLeftColor: "#ef4444",
         paddingLeft: 8,
-        marginBottom: 6,
+        marginBottom: 10,
     },
 
     incidentSummaryRow: {
@@ -997,27 +997,30 @@ export const styles = StyleSheet.create({
     incidentBadgeGreen: {
         backgroundColor: "#d1fae5",
         color: "#065f46",
-        padding: 3,
-        borderRadius: 6,
-        fontSize: 7,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 9999,
+        fontSize: 9,
         marginTop: 4,
     },
 
     incidentBadgeYellow: {
         backgroundColor: "#fef3c7",
         color: "#92400e",
-        padding: 3,
-        borderRadius: 6,
-        fontSize: 7,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 9999,
+        fontSize: 9,
         marginTop: 4,
     },
 
     incidentBadgePurple: {
         backgroundColor: "#ede9fe",
         color: "#5b21b6",
-        padding: 3,
-        borderRadius: 6,
-        fontSize: 7,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 9999,
+        fontSize: 9,
         marginTop: 4,
     },
 
@@ -1044,7 +1047,7 @@ export const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderLeftColor: "#2563eb",
         paddingLeft: 8,
-        marginBottom: 6,
+        marginBottom: 10,
     },
 
     grievanceHeader: {
@@ -1088,27 +1091,30 @@ export const styles = StyleSheet.create({
     grievanceBadgeGreen: {
         backgroundColor: "#d1fae5",
         color: "#065f46",
-        padding: 3,
-        borderRadius: 6,
-        fontSize: 7,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 9999,
+        fontSize: 9,
         marginTop: 4,
     },
 
     grievanceBadgeYellow: {
         backgroundColor: "#fef3c7",
         color: "#92400e",
-        padding: 3,
-        borderRadius: 6,
-        fontSize: 7,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 9999,
+        fontSize: 9,
         marginTop: 4,
     },
 
     grievanceBadgePurple: {
         backgroundColor: "#ede9fe",
         color: "#5b21b6",
-        padding: 3,
-        borderRadius: 6,
-        fontSize: 7,
+        paddingVertical: 3,
+        paddingHorizontal: 8,
+        borderRadius: 9999,
+        fontSize: 9,
         marginTop: 4,
     },
 

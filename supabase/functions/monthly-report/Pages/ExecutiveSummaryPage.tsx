@@ -1,5 +1,5 @@
 import React from "npm:react@18.2.0";
-import { Page, View, Text } from "npm:@react-pdf/renderer@3.4.4";
+import { Page, View, Text, StyleSheet, Svg, Path, Circle } from "npm:@react-pdf/renderer@3.4.4";
 import {
   getAssessmentCompliance,
   getEmployeeCompliance,
@@ -14,6 +14,73 @@ import {
   getVehicleCompliance,
 } from "../utils.ts";
 import { ReportFooter } from "./ReportFooter.tsx";
+
+// Use built-in Helvetica everywhere – closest default to Inter, no external loading.
+const HEADER_FONT = "Helvetica";
+
+const ICON_SIZE = 20;
+const SMALL_ICON_SIZE = 16;
+const iconStyle = (size: number) => ({
+  width: size,
+  height: size,
+  marginRight: 8,
+});
+
+// Six SVG icons for summary cards (outline style, 24x24 viewBox).
+const CardIcons = {
+  vehicle: (color: string, size: number = ICON_SIZE) => (
+    <Svg viewBox="0 0 24 24" style={iconStyle(size)}>
+      <Path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke={color} strokeWidth={1.5} fill="none" />
+    </Svg>
+  ),
+  challan: (color: string, size: number = ICON_SIZE) => (
+    <Svg viewBox="0 0 24 24" style={iconStyle(size)}>
+      <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M12 8v4M12 16h.01" stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+    </Svg>
+  ),
+  user: (color: string, size: number = ICON_SIZE) => (
+    <Svg viewBox="0 0 24 24" style={iconStyle(size)}>
+      <Path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke={color} strokeWidth={1.5} fill="none" />
+      <Circle cx="9" cy="7" r="4" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke={color} strokeWidth={1.5} fill="none" />
+    </Svg>
+  ),
+  assessment: (color: string, size: number = ICON_SIZE) => (
+    <Svg viewBox="0 0 24 24" style={iconStyle(size)}>
+      <Path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2L9 5z" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  ),
+  incident: (color: string, size: number = ICON_SIZE) => (
+    <Svg viewBox="0 0 24 24" style={iconStyle(size)}>
+      <Circle cx="12" cy="12" r="10" stroke={color} strokeWidth={1.5} fill="none" />
+      <Path d="M12 6v6l4 2" stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+      <Path d="M12 17h.01" stroke={color} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+    </Svg>
+  ),
+  grievance: (color: string, size: number = ICON_SIZE) => (
+    <Svg viewBox="0 0 24 24" style={iconStyle(size)}>
+      <Path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke={color} strokeWidth={1.5} fill="none" />
+    </Svg>
+  ),
+};
+
+const headerStyles = StyleSheet.create({
+  title: {
+    fontFamily: HEADER_FONT,
+    fontSize: 32,
+    fontWeight: 700,
+  },
+  subtitle: {
+    fontFamily: HEADER_FONT,
+    fontSize: 14,
+    fontWeight: 400,
+    color: "#6B7280",
+    marginBottom: 10,
+  },
+});
 
 interface Props {
   month: string;
@@ -65,26 +132,36 @@ export const ExecutiveSummaryPage = ({
       name: "Vehicle Compliance",
       percent: vehicleStats.percent,
       sub: `${vehicleStats.compliant} of ${vehicleStats.total} vehicles`,
+      icon: "vehicle" as const,
+      iconColor: "#2563EB",
     },
     {
       name: "Employee Compliance",
       percent: employeeStats.percent,
       sub: `${employeeStats.compliant} of ${employeeStats.totalEmployeesdocs} employees`,
+      icon: "user" as const,
+      iconColor: "#10B981",
     },
     {
       name: "Assessment Compliance",
       percent: assessmentStats.percent,
       sub: `${assessmentStats.overdue} of ${assessmentStats.total} assessments`,
+      icon: "assessment" as const,
+      iconColor: "#7C3AED",
     },
     {
       name: "Incident Management",
       percent: incidentStats.percent,
       sub: `${incidentStats.open} of ${incidentStats.total} incidents`,
+      icon: "incident" as const,
+      iconColor: "#DC2626",
     },
     {
       name: "Grievance Management",
       percent: grievanceStats.percent,
       sub: `${grievanceStats.pending} of ${grievanceStats.total} grievances`,
+      icon: "grievance" as const,
+      iconColor: "#F97316",
     },
   ];
 
@@ -97,13 +174,9 @@ export const ExecutiveSummaryPage = ({
         fontFamily: "Helvetica",
       }}
     >
-      {/* Header */}
-      <Text style={{ fontSize: 30, fontWeight: 600 }}>
-        Executive Summary
-      </Text>
-      <Text style={{ fontSize: 10, color: "#6B7280", marginBottom: 10 }}>
-        {getReportingPeriodText(month)}
-      </Text>
+      {/* Header — edit headerStyles above to match original */}
+      <Text style={headerStyles.title}>Executive Summary</Text>
+      <Text style={headerStyles.subtitle}>{getReportingPeriodText(month)}</Text>
 
       <View
         style={{
@@ -183,6 +256,8 @@ export const ExecutiveSummaryPage = ({
             value: expiredVehicleCount,
             sub: "Expired certificates",
             badge: { text: "Critical", bg: "#FFE4E6", color: "#9F1239" },
+            icon: "vehicle" as const,
+            iconColor: "#2563EB",
           },
           {
             title: "Pending Challans",
@@ -193,6 +268,8 @@ export const ExecutiveSummaryPage = ({
               bg: "#FEF3C7",
               color: "#92400E",
             },
+            icon: "challan" as const,
+            iconColor: "#F97316",
           },
           {
             title: "Employee Verification",
@@ -203,6 +280,8 @@ export const ExecutiveSummaryPage = ({
               bg: "#FFE4E6",
               color: "#9F1239",
             },
+            icon: "user" as const,
+            iconColor: "#10B981",
           },
         ].map((card, i) => (
           <View
@@ -215,9 +294,12 @@ export const ExecutiveSummaryPage = ({
               padding: 16,
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
-              {card.title}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+              {CardIcons[card.icon](card.iconColor)}
+              <Text style={{ fontSize: 11, fontWeight: 400 }}>
+                {card.title}
+              </Text>
+            </View>
 
             <Text
               style={{
@@ -254,7 +336,7 @@ export const ExecutiveSummaryPage = ({
                 backgroundColor: card.badge.bg,
                 paddingVertical: 4,
                 paddingHorizontal: 8,
-                borderRadius: 4,
+                borderRadius: 12,
                 alignSelf: "flex-start",
               }}
             >
@@ -275,9 +357,9 @@ export const ExecutiveSummaryPage = ({
       {/* Small Cards Row */}
       <View style={{ flexDirection: "row", gap: 14, marginBottom: 20 }}>
         {[
-          { title: "Assessments", value: newAssessmentCount, sub: "overdue" },
-          { title: "Open Incidents", value: openIncidentCount, sub: "high priority" },
-          { title: "Grievances", value: pendingGrievances, sub: "overdue" },
+          { title: "Assessments", value: newAssessmentCount, sub: "overdue", icon: "assessment" as const, iconColor: "#7C3AED" },
+          { title: "Open Incidents", value: openIncidentCount, sub: "high priority", icon: "incident" as const, iconColor: "#DC2626" },
+          { title: "Grievances", value: pendingGrievances, sub: "overdue", icon: "grievance" as const, iconColor: "#F97316" },
         ].map((card, i) => (
           <View
             key={i}
@@ -289,9 +371,12 @@ export const ExecutiveSummaryPage = ({
               padding: 14,
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
-              {card.title}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+              {CardIcons[card.icon](card.iconColor)}
+              <Text style={{ fontSize: 11, fontWeight: 400 }}>
+                {card.title}
+              </Text>
+            </View>
             <Text style={{ fontSize: 24, fontWeight: 700 }}>
               {card.value}
             </Text>
@@ -334,13 +419,16 @@ export const ExecutiveSummaryPage = ({
                 alignItems: "center",
               }}
             >
-              <View style={{ width: "55%" }}>
-                <Text style={{ fontSize: 10, fontWeight: 600 }}>
-                  {m.name}
-                </Text>
-                <Text style={{ fontSize: 8, color: "#6B7280" }}>
-                  {m.sub}
-                </Text>
+              <View style={{ width: "55%", flexDirection: "row", alignItems: "center" }}>
+                {CardIcons[m.icon](m.iconColor, SMALL_ICON_SIZE)}
+                <View>
+                  <Text style={{ fontSize: 10, fontWeight: 700 }}>
+                    {m.name}
+                  </Text>
+                  <Text style={{ fontSize: 8, color: "#6B7280" }}>
+                    {m.sub}
+                  </Text>
+                </View>
               </View>
 
               <Text
@@ -360,10 +448,10 @@ export const ExecutiveSummaryPage = ({
                     ...status.style,
                     paddingVertical: 4,
                     paddingHorizontal: 10,
-                    borderRadius: 4,
+                    borderRadius: 12,
                   }}
                 >
-                  <Text style={{ fontSize: 8, fontWeight: 600 }}>
+                  <Text style={{ fontSize: 8, fontWeight: 400 }}>
                     {status.label}
                   </Text>
                 </View>

@@ -1,5 +1,5 @@
 import React from "npm:react@18.2.0";
-import { Page, View, Text } from "npm:@react-pdf/renderer@3.4.4";
+import { Page, View, Text, Svg, Path, Circle } from "npm:@react-pdf/renderer@3.4.4";
 import { ReportFooter } from "./ReportFooter.tsx";
 import {
   getVehicleSummary,
@@ -14,6 +14,36 @@ interface Props {
   vehicles: any[];
   challans: any[];
 }
+
+const SECTION_ICON_SIZE = 10;
+
+const sectionIconStyle = {
+  width: SECTION_ICON_SIZE,
+  height: SECTION_ICON_SIZE,
+  marginRight: 6,
+};
+
+const InfoIcon = ({ color }: { color: string }) => (
+  <Svg viewBox="0 0 24 24" style={sectionIconStyle}>
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.5} fill="none" />
+    <Path d="M12 10v6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path d="M12 8h.01" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+  </Svg>
+);
+
+const WarningIcon = ({ color }: { color: string }) => (
+  <Svg viewBox="0 0 24 24" style={sectionIconStyle}>
+    <Path
+      d="M12 3L3 19h18L12 3z"
+      stroke={color}
+      strokeWidth={1.5}
+      fill="none"
+      strokeLinejoin="round"
+    />
+    <Path d="M12 9v5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path d="M12 16h.01" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+  </Svg>
+);
 
 export const VehiclePage = ({ month, vehicles, challans }: Props) => {
   const summary = getVehicleSummary(vehicles);
@@ -63,127 +93,178 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       }}
     >
       {/* Header */}
-      <Text style={{ fontSize: 20, fontWeight: 700, marginBottom: 2, borderLeftColor: "#2563EB", borderLeftWidth: 4, paddingLeft: 8 }}>
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: 700,
+          borderLeftColor: "#2563EB",
+          borderLeftWidth: 4,
+          paddingLeft: 8,
+          marginBottom: 10,
+        }}
+      >
         Vehicle Compliance
       </Text>
-      <Text style={{ fontSize: 9, color: "#6B7280", marginBottom: 12 }}>
+      <Text style={{ fontSize: 9, color: "#6B7280", marginBottom: 15 }}>
         Tracking {vehicles.length} vehicles across 3 document types
       </Text>
 
       {/* Summary Cards */}
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 14 }}>
-        <View style={[cardBase, { borderColor: "#E5E7EB", backgroundColor: "#ffffff" }]}>
-          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
-            TOTAL VEHICLES
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+      <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+        {/* Total vehicles (no badge in reference) */}
+        <View style={[cardBase, { borderColor: "#E5E7EB" }]}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Total Vehicles</Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, marginVertical: 6 }}>
             {summary.total}
           </Text>
         </View>
 
+        {/* Fully compliant */}
         <View style={[cardBase, { borderColor: "#BBF7D0", backgroundColor: "#F0FDF4" }]}>
-          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
-            FULLY COMPLIANT
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#059669",marginBottom: 4 }}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Fully Compliant</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#16A34A",
+              marginVertical: 4,
+            }}
+          >
             {summary.compliant}
           </Text>
           <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             All certificates valid
           </Text>
-
-          <Text
+          <View
             style={{
               alignSelf: "flex-start",
-              backgroundColor: "#DCFCE7",
-              color: "#059669",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              backgroundColor: "#BBF7D0",
+              paddingVertical: 3,
+              paddingHorizontal: 8,
+              borderRadius: 9999,
             }}
           >
-            {summary.compliant} Vehicles
-          </Text>
+            <Text
+              style={{
+                fontSize: 7,
+                fontWeight: 600,
+                color: "#166534",
+              }}
+            >
+              {summary.compliant} Vehicles
+            </Text>
+          </View>
         </View>
 
+        {/* Non-compliant */}
         <View style={[cardBase, { borderColor: "#FECACA", backgroundColor: "#FEF2F2" }]}>
-          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
-            NON-COMPLIANT
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#DC2626",marginBottom: 4 }}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Non-Compliant</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#EF4444",
+              marginVertical: 4,
+            }}
+          >
             {summary.nonCompliant}
           </Text>
           <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             One or more expired
           </Text>
-
-          <Text
+          <View
             style={{
               alignSelf: "flex-start",
-              backgroundColor: "#FEE2E2",
-              color: "#DC2626",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              backgroundColor: "#FECACA",
+              paddingVertical: 3,
+              paddingHorizontal: 8,
+              borderRadius: 9999,
             }}
           >
-            {summary.nonCompliant} Vehicles
-          </Text>
+            <Text
+              style={{
+                fontSize: 7,
+                fontWeight: 600,
+                color: "#B91C1C",
+              }}
+            >
+              {summary.nonCompliant} Vehicles
+            </Text>
+          </View>
         </View>
 
+        {/* Expiring soon */}
         <View style={[cardBase, { borderColor: "#FDE68A", backgroundColor: "#FFFBEB" }]}>
-          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
-            EXPIRING SOON
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#D97706",marginBottom: 4 }}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Expiring Soon</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#F59E0B",
+              marginVertical: 4,
+            }}
+          >
             {summary.expiringSoon}
           </Text>
           <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             Action needed (30 days)
           </Text>
-
-          <Text
+          <View
             style={{
               alignSelf: "flex-start",
-              backgroundColor: "#FEF3C7",
-              color: "#D97706",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              backgroundColor: "#FDE68A",
+              paddingVertical: 3,
+              paddingHorizontal: 8,
+              borderRadius: 9999,
             }}
           >
-            {summary.expiringSoon} Vehicles
-          </Text>
+            <Text
+              style={{
+                fontSize: 7,
+                fontWeight: 600,
+                color: "#92400E",
+              }}
+            >
+              {summary.expiringSoon} Vehicles
+            </Text>
+          </View>
         </View>
 
-        {/* Pending Challans */}
+        {/* Pending challans */}
         <View style={[cardBase, { borderColor: "#FED7AA", backgroundColor: "#FFF7ED" }]}>
-          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
-            PENDING CHALLANS
-          </Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#EA580C",marginBottom: 4 }}>
+          <Text style={{ fontSize: 8, color: "#6B7280" }}>Pending Challans</Text>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#F97316",
+              marginVertical: 4,
+            }}
+          >
             {challans.length}
           </Text>
           <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             Total fine amount
           </Text>
-
-          <Text
+          <View
             style={{
               alignSelf: "flex-start",
-              backgroundColor: "#FFEDD5",
-              color: "#EA580C",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              backgroundColor: "#FED7AA",
+              paddingVertical: 3,
+              paddingHorizontal: 8,
+              borderRadius: 9999,
             }}
           >
-            Rs.{challanTotal.toLocaleString()}
-          </Text>
+            <Text
+              style={{
+                fontSize: 7,
+                fontWeight: 600,
+                color: "#EA580C",
+              }}
+            >
+              ₹{challanTotal.toLocaleString()}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -199,8 +280,8 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       >
         <Text
           style={{
-            fontSize: 9,
-            fontWeight: 600,
+          fontSize: 12,
+            fontWeight: 700,
             padding: 8,
             backgroundColor: "#F9FAFB",
           }}
@@ -221,10 +302,10 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
           { name: "Pollution Certificate (PUC)", data: docStats.puc },
         ].map((row, i) => (
           <View key={i} style={tableRow}>
-            <Text style={[cell, { flex: 2 }]}>{row.name}</Text>
-            <Text style={[cell, { color: "#16A34A" }]}>{row.data.valid}</Text>
-            <Text style={[cell, { color: "#DC2626" }]}>{row.data.expired}</Text>
-            <Text style={[cell, { color: "#D97706" }]}>{row.data.expiring}</Text>
+            <Text style={[cell, { flex: 2, fontSize: 9 }]}>{row.name}</Text>
+            <Text style={[cell, { color: "#16A34A", fontSize: 9 }]}>{row.data.valid}</Text>
+            <Text style={[cell, { color: "#DC2626", fontSize: 9 }]}>{row.data.expired}</Text>
+            <Text style={[cell, { color: "#D97706", fontSize: 9 }]}>{row.data.expiring}</Text>
           </View>
         ))}
       </View>
@@ -240,9 +321,18 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
           overflow: "hidden",
         }}
       >
-        <Text style={{ fontSize: 9, fontWeight: 600, padding: 8 }}>
-          Pending Traffic Challans
-        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            padding: 8,
+          }}
+        >
+          <InfoIcon color="#F97316" />
+          <Text style={{ fontSize: 12, fontWeight: 700, color: "#92400E" }}>
+            Pending Traffic Challans
+          </Text>
+        </View>
 
         <View style={tableHeader}>
           <Text style={{ width: "20%", fontSize: 8 }}>VEHICLE</Text>
@@ -254,19 +344,19 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
         {challans.slice(0, 10).map((c, i) => (
           <View key={i} style={tableRow}>
-            <Text style={{ width: "20%", fontSize: 8 }}>
+            <Text style={{ width: "20%", fontSize: 9 }}>
               {c.registration_number}
             </Text>
 
-            <Text style={{ width: "25%", fontSize: 8 }}>
+            <Text style={{ width: "25%", fontSize: 9 }}>
               {c.name}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#DC2626" }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#DC2626" }}>
               Rs.{Number(c.amount).toLocaleString()}
             </Text>
 
-            <Text style={{ width: "20%", fontSize: 8 }}>
+            <Text style={{ width: "20%", fontSize: 9 }}>
               {c.date}
             </Text>
 
@@ -274,14 +364,14 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
               <View
                 style={{
                   backgroundColor: "#FFE7CC",
-                  borderRadius: 10,
-                  paddingVertical: 2,
-                  paddingHorizontal: 6,
+                  borderRadius: 12,
+                  paddingVertical: 3,
+                  paddingHorizontal: 8,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 7,
+                    fontSize: 8,
                     color: "#EA580C",
                     fontWeight: 600,
                   }}
@@ -307,30 +397,39 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
             overflow: "hidden",
           }}
         >
-          <Text style={{ fontSize: 9, fontWeight: 600, padding: 8 }}>
-            Vehicles Requiring Immediate Action
-          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 8,
+            }}
+          >
+            <WarningIcon color="#EAB308" />
+            <Text style={{ fontSize: 12, fontWeight: 700, color: "#854D0E" }}>
+              Vehicles Requiring Immediate Action
+            </Text>
+          </View>
 
           <View style={tableHeader}>
-            <Text style={cell}>VEHICLE</Text>
-            <Text style={cell}>OWNER</Text>
-            <Text style={cell}>FC</Text>
-            <Text style={cell}>INSURANCE</Text>
-            <Text style={cell}>PUC</Text>
+              <Text style={[cell, { fontSize: 9 }]}>VEHICLE</Text>
+              <Text style={[cell, { fontSize: 9 }]}>OWNER</Text>
+              <Text style={[cell, { fontSize: 9 }]}>FC</Text>
+              <Text style={[cell, { fontSize: 9 }]}>INSURANCE</Text>
+              <Text style={[cell, { fontSize: 9 }]}>PUC</Text>
           </View>
 
           {actionVehicles.slice(0, 10).map((v, i) => (
             <View key={i} style={tableRow}>
-              <Text style={cell}>{v.vehicleNo}</Text>
-              <Text style={cell}>{v.owner}</Text>
+              <Text style={[cell, { fontSize: 9 }]}>{v.vehicleNo}</Text>
+              <Text style={[cell, { fontSize: 9 }]}>{v.owner}</Text>
               <View style={[cell, getDateCellStyle(v.fc)]}>
-                <Text style={{ fontSize: 8 }}>{v.fc || "--"}</Text>
+                <Text style={{ fontSize: 9 }}>{v.fc || "--"}</Text>
               </View>
               <View style={[cell, getDateCellStyle(v.insurance)]}>
-                <Text style={{ fontSize: 8 }}>{v.insurance || "--"}</Text>
+                <Text style={{ fontSize: 9 }}>{v.insurance || "--"}</Text>
               </View>
               <View style={[cell, getDateCellStyle(v.puc)]}>
-                <Text style={{ fontSize: 8 }}>{v.puc || "--"}</Text>
+                <Text style={{ fontSize: 9 }}>{v.puc || "--"}</Text>
               </View>
             </View>
           ))}

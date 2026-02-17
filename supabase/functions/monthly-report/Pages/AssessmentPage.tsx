@@ -88,10 +88,10 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
               marginTop: 6,
               backgroundColor: "#d1fae5",
               color: "#065f46",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              fontSize: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 9999,
               alignSelf: "flex-start",
             }}
           >
@@ -125,10 +125,10 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
               marginTop: 6,
               backgroundColor: "#ede9fe",
               color: "#6d28d9",
-              fontSize: 7,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 6,
+              fontSize: 9,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 9999,
               alignSelf: "flex-start",
             }}
           >
@@ -157,7 +157,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
             borderBottomColor: "#e5e7eb",
           }}
         >
-          <Text style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>
+          <Text style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
             Assessment Summary by Type
           </Text>
         </View>
@@ -202,23 +202,23 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
               borderBottomColor: "#e5e7eb",
             }}
           >
-            <Text style={{ width: "40%", fontSize: 8, color: "#111827" }}>
+            <Text style={{ width: "40%", fontSize: 9, color: "#111827" }}>
               {c.name}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
               {c.total}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#059669", fontWeight: 600 }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#059669", fontWeight: 600 }}>
               {c.completed}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#d97706", fontWeight: 600 }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#d97706", fontWeight: 600 }}>
               {c.inProgress}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 8, color: "#dc2626", fontWeight: 600 }}>
+            <Text style={{ width: "15%", fontSize: 9, color: "#dc2626", fontWeight: 600 }}>
               {c.overdue}
             </Text>
           </View>
@@ -308,19 +308,19 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
                   borderBottomColor: "#fecaca",
                 }}
               >
-                <Text style={{ width: "30%", fontSize: 8, color: "#111827" }}>
+                <Text style={{ width: "30%", fontSize: 9, color: "#111827" }}>
                   {a.name}
                 </Text>
 
-                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {a.assessment_templates?.title}
                 </Text>
 
-                <Text style={{ width: "20%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                   {a.employees?.first_name}
                 </Text>
 
-                <Text style={{ width: "15%", fontSize: 8, color: "#374151" }}>
+                <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {a.target_completion_date}
                 </Text>
 
@@ -329,7 +329,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
                     style={{
                       backgroundColor: isOverdue ? "#fee2e2" : "#e5e7eb",
                       color: isOverdue ? "#b91c1c" : "#374151",
-                      fontSize: 7,
+                      fontSize: 8,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
                       borderRadius: 6,
