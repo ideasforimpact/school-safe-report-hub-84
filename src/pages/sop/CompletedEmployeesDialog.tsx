@@ -87,10 +87,14 @@ const CompletedEmployeesDialog = ({
                   Employees
                 </h2>
 
-                {sopTitle && (
-                  <p className="text-xs mt-0.5" style={{ color: "#6b8f7a" }}>
+              {sopTitle && (
+                <p
+                    className="text-xs mt-0.5 truncate max-w-[200px]"
+                    style={{ color: "#6b8f7a" }}
+                    title={sopTitle}
+                >
                     {sopTitle}
-                  </p>
+                </p>
                 )}
               </div>
             </div>
