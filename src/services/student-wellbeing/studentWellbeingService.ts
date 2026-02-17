@@ -41,7 +41,6 @@ export interface StudentWellbeingRecord {
   concern_notes: string | null;
   created_at: string;
   updated_at: string;
-  document_url?: { path: string; name: string }[];
   consultations?: StudentWellbeingConsultation[];
   actions?: ConsultationActionTaken[];
   follow_up_entries?: StudentFollowUpEntry[];
@@ -104,8 +103,6 @@ export interface UpdateStudentWellbeingRecordPayload {
   concern?: string | null;
   status?: StudentWellbeingStatus;
   next_follow_up?: string | null;
-  /** New attachment files (base64) to add; merged with existing document_url on server */
-  attachments?: { name: string; type: string; base64: string }[];
 }
 
 export async function updateStudentWellbeingRecord(
@@ -125,24 +122,15 @@ export async function updateStudentWellbeingRecord(
       concern: payload.concern ?? null,
       status: payload.status ?? undefined,
       next_follow_up: payload.next_follow_up ?? null,
-      attachments: payload.attachments ?? [],
     },
   });
 
-  let friendlyMessage: string | null = typeof data?.error === 'string' ? data.error : null;
-  if (error && !friendlyMessage && typeof (error as { context?: { json?: () => Promise<unknown> } })?.context?.json === 'function') {
-    try {
-      const body = await (error as { context: { json: () => Promise<{ error?: string }> } }).context.json();
-      if (typeof body?.error === 'string') friendlyMessage = body.error;
-    } catch {
-      // ignore
-    }
-  }
-  if (data?.success === false && friendlyMessage) {
-    throw new Error(friendlyMessage);
-  }
   if (error) {
-    throw new Error(friendlyMessage || error.message || 'Failed to update student well-being record');
+    throw new Error(error.message || 'Failed to update student well-being record');
+  }
+
+  if (data?.success === false) {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Failed to update record');
   }
 
   return {
@@ -153,15 +141,13 @@ export async function updateStudentWellbeingRecord(
 
 export async function deleteStudentWellbeingRecord(
   recordId: string,
-  clientId: string,
-  employeeId: string
+  clientId: string
 ): Promise<{ success: boolean; id: string }> {
   const { data, error } = await supabase.functions.invoke('delete-student-wellbeing-record', {
     method: 'POST',
     body: {
       id: recordId,
       client_id: clientId,
-      employee_id: employeeId,
     },
   });
 

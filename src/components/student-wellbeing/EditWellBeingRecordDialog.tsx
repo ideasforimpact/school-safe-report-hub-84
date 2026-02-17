@@ -17,21 +17,14 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { StudentSearchSelect, type StudentOption } from './StudentSearchSelect';
-import ReusableFileUploader from '@/components/common/ReusableFileUploader';
-import type { FileItem } from '@/types/fileTypes';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
-import { Loader2, FileText, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   updateStudentWellbeingRecord,
   type StudentWellbeingRecord,
 } from '@/services/student-wellbeing/studentWellbeingService';
-
-const ATTACHMENTS_MAX_FILES = 5;
-const ATTACHMENTS_MAX_SIZE_MB = 10;
-const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
 
 const CONCERN_MIN = 2;
 const CONCERN_MAX = 2000;
@@ -65,12 +58,10 @@ export function EditWellBeingRecordDialog({
   const [concern, setConcern] = useState('');
   const [status, setStatus] = useState<string>('open');
   const [nextFollowUp, setNextFollowUp] = useState<Date | undefined>(undefined);
-  const [newAttachmentFiles, setNewAttachmentFiles] = useState<FileItem[]>([]);
   const [generalConcernOptions, setGeneralConcernOptions] = useState<{ id: string; name: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -92,8 +83,6 @@ export function EditWellBeingRecordDialog({
       setNextFollowUp(
         record.next_follow_up ? new Date(record.next_follow_up) : undefined
       );
-      setNewAttachmentFiles([]);
-      setApiError(null);
     }
   }, [open, record]);
 
@@ -145,14 +134,7 @@ export function EditWellBeingRecordDialog({
     if (!validate()) return;
 
     setSaving(true);
-    setApiError(null);
     try {
-      const attachmentsPayload = newAttachmentFiles.map((f) => ({
-        name: f.name,
-        type: f.type,
-        base64: f.base64?.replace(/^data:[^;]+;base64,/, '') ?? '',
-      }));
-
       await updateStudentWellbeingRecord({
         id: record.id,
         client_id: clientId,
@@ -165,19 +147,14 @@ export function EditWellBeingRecordDialog({
         concern: concern.trim() || null,
         status: status as 'open' | 'under_observation' | 'closed',
         next_follow_up: nextFollowUp ? nextFollowUp.toISOString().slice(0, 10) : null,
-        attachments: attachmentsPayload,
       });
 
       toast.success('Record updated');
-      setNewAttachmentFiles([]);
       setErrors({});
-      setApiError(null);
       onSuccess();
       onClose();
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to update record';
-      setApiError(message);
-      toast.error(message);
+      toast.error(e instanceof Error ? e.message : 'Failed to update record');
     } finally {
       setSaving(false);
     }
@@ -185,29 +162,19 @@ export function EditWellBeingRecordDialog({
 
   const handleClose = () => {
     if (!saving) {
-      setApiError(null);
       onClose();
     }
   };
 
   if (!record) return null;
 
-  const existingDocs = record?.document_url ?? [];
-  const maxNewFiles = Math.max(0, ATTACHMENTS_MAX_FILES - existingDocs.length);
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
           <DialogTitle>Edit Well-Being Record</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
-          {apiError && (
-            <Alert variant="destructive" className="flex-shrink-0">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{apiError}</AlertDescription>
-            </Alert>
-          )}
+        <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="student">Student</Label>
             <StudentSearchSelect
@@ -278,38 +245,6 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Attachments</Label>
-            {existingDocs.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                <span className="text-xs text-muted-foreground">Existing:</span>
-                {existingDocs.map((d, i) => (
-                  <span
-                    key={`${d.path}-${i}`}
-                    className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    {d.name}
-                  </span>
-                ))}
-              </div>
-            )}
-            {maxNewFiles > 0 && (
-              <ReusableFileUploader
-                onFilesChange={setNewAttachmentFiles}
-                initialFiles={[]}
-                maxFiles={maxNewFiles}
-                maxSize={ATTACHMENTS_MAX_SIZE_MB}
-                maxTotalSize={ATTACHMENTS_MAX_TOTAL_MB}
-                showFileList={true}
-                disabled={saving}
-              />
-            )}
-            {existingDocs.length >= ATTACHMENTS_MAX_FILES && (
-              <p className="text-xs text-muted-foreground">Maximum {ATTACHMENTS_MAX_FILES} files reached.</p>
-            )}
-          </div>
-
-          <div className="grid gap-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={setStatus} disabled={saving}>
               <SelectTrigger>
@@ -343,7 +278,7 @@ export function EditWellBeingRecordDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2 flex-shrink-0 border-t pt-4 mt-2">
+        <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={handleClose} disabled={saving}>
             Cancel
           </Button>

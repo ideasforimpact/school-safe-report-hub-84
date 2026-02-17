@@ -38,7 +38,8 @@ export interface FormattedStudentWellbeingAuditEntry {
 export const fetchStudentWellbeingAuditLog = async (
   wellbeingId: string
 ): Promise<StudentWellbeingAuditEntry[]> => {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
+    // Cast to any because this table is not yet in the generated Supabase types
     .from('student_wellbeing_audit_log')
     .select(
       `
@@ -64,7 +65,7 @@ export const fetchStudentWellbeingAuditLog = async (
     throw new Error(error.message || 'Failed to fetch audit trail');
   }
 
-  return (data ?? []) as StudentWellbeingAuditEntry[];
+  return (data ?? []) as unknown as StudentWellbeingAuditEntry[];
 };
 
 const getEmployeeName = async (employeeId: string | null): Promise<string> => {
@@ -104,6 +105,27 @@ const formatFieldLabel = (field: string): string => {
   return map[field] ?? field;
 };
 
+// Cache for type of concern names to avoid repeated lookups
+const typeOfConcernNameCache = new Map<string, string>();
+
+const resolveTypeOfConcernName = async (id: string | null): Promise<string | null> => {
+  if (!id) return null;
+  const cached = typeOfConcernNameCache.get(id);
+  if (cached) return cached;
+  try {
+    const { data, error } = await (supabase as any)
+      .from('general_concern')
+      .select('name')
+      .eq('id', id)
+      .single();
+    if (error || !data?.name) return id;
+    typeOfConcernNameCache.set(id, data.name);
+    return data.name as string;
+  } catch {
+    return id;
+  }
+};
+
 const formatRelativeTime = (date: Date): string => {
   const now = new Date().getTime();
   const diffMs = now - date.getTime();
@@ -140,7 +162,9 @@ export const formatStudentWellbeingAuditEntries = async (
 
     // Defaults – will be refined below
     let title = 'Record updated';
-    let details = entry.description ?? '';
+    // For field updates we intentionally ignore entry.description and build a human sentence,
+    // similar to AssessmentAuditTimeline behaviour.
+    let details = entry.change_type === 'field_update' ? '' : (entry.description ?? '');
     let fromLabel: string | undefined;
     let toLabel: string | undefined;
 
@@ -180,8 +204,17 @@ export const formatStudentWellbeingAuditEntries = async (
         const fieldNames = changesArray.map((c: any) => formatFieldLabel(c.field));
         const primary = changesArray[0];
         const fieldLabel = formatFieldLabel(primary.field);
-        const oldVal = primary.old_value ?? '';
-        const newVal = primary.new_value ?? '';
+        let oldVal = primary.old_value ?? '';
+        let newVal = primary.new_value ?? '';
+
+        // Resolve concern type ids to names for readability
+        if (primary.field === 'type_of_concern_id') {
+          const resolvedOld = await resolveTypeOfConcernName(oldVal);
+          const resolvedNew = await resolveTypeOfConcernName(newVal);
+          oldVal = resolvedOld ?? oldVal;
+          newVal = resolvedNew ?? newVal;
+        }
+
         title = 'Record updated';
         fromLabel = oldVal || undefined;
         toLabel = newVal || undefined;
@@ -199,17 +232,25 @@ export const formatStudentWellbeingAuditEntries = async (
       } else if (!details) {
         // Fallback when we don't have a structured changes array
         const fieldLabel = formatFieldLabel(entry.field_changed);
-        if (entry.old_value && entry.new_value) {
-          details = `${fieldLabel} changed from "${entry.old_value}" to "${entry.new_value}".`;
-          fromLabel = entry.old_value;
-          toLabel = entry.new_value;
-        } else if (entry.new_value) {
-          details = `${fieldLabel} set to "${entry.new_value}".`;
-          fromLabel = entry.old_value ?? undefined;
-          toLabel = entry.new_value;
-        } else if (entry.old_value) {
-          details = `${fieldLabel} cleared (was "${entry.old_value}").`;
-          fromLabel = entry.old_value;
+        let oldVal = entry.old_value ?? null;
+        let newVal = entry.new_value ?? null;
+
+        if (entry.field_changed === 'type_of_concern_id') {
+          oldVal = await resolveTypeOfConcernName(oldVal);
+          newVal = await resolveTypeOfConcernName(newVal);
+        }
+
+        if (oldVal && newVal) {
+          details = `${fieldLabel} changed from "${oldVal}" to "${newVal}".`;
+          fromLabel = oldVal;
+          toLabel = newVal;
+        } else if (newVal) {
+          details = `${fieldLabel} set to "${newVal}".`;
+          fromLabel = oldVal ?? undefined;
+          toLabel = newVal;
+        } else if (oldVal) {
+          details = `${fieldLabel} cleared (was "${oldVal}").`;
+          fromLabel = oldVal;
         } else {
           details = `${fieldLabel} updated.`;
         }

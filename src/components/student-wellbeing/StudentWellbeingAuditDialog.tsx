@@ -68,7 +68,7 @@ export const StudentWellbeingAuditDialog: React.FC<StudentWellbeingAuditDialogPr
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-xl max-h-[80vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
@@ -113,19 +113,35 @@ export const StudentWellbeingAuditDialog: React.FC<StudentWellbeingAuditDialogPr
                     <p className="text-sm font-medium text-gray-800 mb-0.5">
                       {entry.title}
                     </p>
-                    <p className="text-xs text-gray-600 mb-1.5">{entry.details}</p>
-                    <p className="text-[11px] text-gray-400 mb-1">
+                    <p className="text-sm text-gray-700 mb-1.5">
+                      {entry.details}
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-1">
                       by {entry.userName}
                     </p>
                     {entry.fromLabel && entry.toLabel && (
-                      <div className="mt-1 grid grid-cols-2 gap-3 text-[11px] text-gray-500">
+                      <div className="mt-1 grid grid-cols-2 gap-3 text-xs text-muted-foreground">
                         <div>
                           <span className="font-medium text-gray-600">From:</span>{' '}
-                          <span>{entry.fromLabel}</span>
+                          <span
+                            title={entry.fromLabel}
+                            className="inline-block max-w-[200px] truncate align-bottom"
+                          >
+                            {entry.fromLabel.length > 20
+                              ? `${entry.fromLabel.slice(0, 20)}...`
+                              : entry.fromLabel}
+                          </span>
                         </div>
                         <div>
                           <span className="font-medium text-gray-600">To:</span>{' '}
-                          <span>{entry.toLabel}</span>
+                          <span
+                            title={entry.toLabel}
+                            className="inline-block max-w-[200px] truncate align-bottom"
+                          >
+                            {entry.toLabel.length > 20
+                              ? `${entry.toLabel.slice(0, 20)}...`
+                              : entry.toLabel}
+                          </span>
                         </div>
                       </div>
                     )}
