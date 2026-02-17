@@ -47,6 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import CompletedEmployeesDialog from './CompletedEmployeesDialog';
 
 interface SOP {
   id: string;
@@ -114,6 +115,11 @@ const SOPPage = () => {
   const employeeData = getEmployeeData(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   const { client } = useClient();
+  const [completedEmployeesDialogOpen, setCompletedEmployeesDialogOpen] = useState(false);
+  const [completedEmployees, setCompletedEmployees] = useState<any[]>([]);
+  const [selectedSopForCompleted, setSelectedSopForCompleted] = useState<string>('');
+  const [completedEmployeeIds, setCompletedEmployeeIds] = useState<string[]>([]);
+
 
   // Resolve clientId similarly to AddSOPDialog to avoid null client from context
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
@@ -378,6 +384,62 @@ const SOPPage = () => {
     setCategoryFilter('all');
   };
 
+  const handleViewCompletedEmployees = async (sop: SOP) => {
+    if ((sop.completed_count || 0) < 1) {
+      return; 
+    }
+
+    if (!resolvedClientId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('sop_signoff_request' as any)
+        .select(`
+          employee_id,
+          employees (
+            id,
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('sop_id', sop.id)
+        .eq('client_id', resolvedClientId)
+        .eq('is_completed', true);
+
+      if (error) {
+        toast.error('Failed to load completed employees');
+        return;
+      }
+
+      const employees =
+        data?.map((item: any) => ({
+          id: item.employees?.id,
+          full_name: `${item.employees?.first_name || ''} ${item.employees?.last_name || ''}`,
+          email: item.employees?.email
+        })) || [];
+        
+      setCompletedEmployees(employees);
+      setSelectedSopForCompleted(sop.title);
+      setCompletedEmployeesDialogOpen(true);
+    } catch (err) {
+      toast.error('Error loading employees');
+    }
+  };
+
+  const handleViewSOP = async (sop: SOP) => {
+    setViewingSOP(sop);
+    setViewDialogOpen(true);
+
+    const { data } = await supabase
+      .from('sop_signoff_request' as any)
+      .select('employee_id')
+      .eq('sop_id', sop.id)
+      .eq('client_id', resolvedClientId)
+      .eq('is_completed', true);
+
+    setCompletedEmployeeIds(data?.map((d) => d.employee_id) || []);
+  };
 
   return (
     <Layout>
@@ -555,7 +617,12 @@ const SOPPage = () => {
                           <TableCell>
                             <Badge 
                               variant="outline" 
-                              className="bg-green-50 border-green-300 text-green-700 flex items-center gap-1.5 w-fit"
+                              onClick={() => handleViewCompletedEmployees(sop)}
+                              className={`bg-green-50 border-green-300 text-green-700 flex items-center gap-1.5 w-fit
+                                ${ (sop.completed_count || 0) >= 1
+                                    ? 'cursor-pointer hover:bg-green-100' 
+                                    : 'cursor-default opacity-70'
+                                }`}
                             >
                               <CheckCircle className="h-3 w-3" />
                               <span>Done</span>
@@ -671,12 +738,8 @@ const SOPPage = () => {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => {
-                                        setViewingSOP(sop);
-                                        setViewDialogOpen(true);
-                                      }}
+                                      onClick={() => handleViewSOP(sop)}
                                       className="h-8 w-8 p-0"
-                                      title="View"
                                     >
                                       <Eye className="h-4 w-4 text-green-600" />
                                     </Button>
@@ -753,6 +816,7 @@ const SOPPage = () => {
             setViewDialogOpen(open);
           }}
           sop={viewingSOP}
+          completedEmployeeIds={completedEmployeeIds}
         />
 
         {/* Group Details Dialog */}
@@ -780,6 +844,12 @@ const SOPPage = () => {
           onSuccess={() => {
             fetchSOPs();
           }}
+        />
+        <CompletedEmployeesDialog
+          open={completedEmployeesDialogOpen}
+          onOpenChange={setCompletedEmployeesDialogOpen}
+          employees={completedEmployees}
+          sopTitle={selectedSopForCompleted}
         />
 
         {/* Delete Confirmation Dialog */}
