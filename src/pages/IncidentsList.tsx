@@ -110,7 +110,7 @@ const IncidentsList = () => {
 
   const fetchOriginalIncidents = useCallback(async () => {
     let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-    if (!clientId) return [];
+    if (!clientId) return;
 
     const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
 
@@ -125,7 +125,6 @@ const IncidentsList = () => {
     );
     
     setOriginalIncidents(response.data);
-    return response.data;
   }, [employeeState.employeeData, authEmployeeData, hasIncidentAdmin]);
 
 
@@ -234,6 +233,27 @@ const IncidentsList = () => {
   }, [filters, fetchIncidents]);
 
   // Handle query parameter removal - restore original incidents
+  useEffect(() => {
+  const filterParam = searchParams.get('filter');
+  if (!filterParam) return;
+
+  let tableFilters: ServerFilters = {};
+
+  if (filterParam === 'open') {
+    tableFilters.status = 'Open';
+  }
+
+  if (filterParam === 'closed') {
+    tableFilters.status = 'Closed';
+  }
+
+  if (filterParam === 'students_involved') {
+    tableFilters = {};
+  }
+
+  fetchIncidents(tableFilters, false);
+
+}, [searchParams]);
 
   // Clear all filters (triggers server request)
   const clearFilters = useCallback(() => {
@@ -268,39 +288,24 @@ const IncidentsList = () => {
 
   // Initial fetch and navigation handling with improved logic
  useEffect(() => {
-  const init = async () => {
-    const ready =
-      (employeeState.employeeData?.clientId ||
-        authEmployeeData?.clientId ||
-        user?.email) &&
-      employeeState.configuredModules;
+  const ready =
+    (employeeState.employeeData?.clientId ||
+      authEmployeeData?.clientId ||
+      user?.email) &&
+    employeeState.configuredModules;
 
-    if (!ready) return;
+  if (!ready) return;
 
-    await fetchOriginalIncidents();
+  fetchOriginalIncidents();
 
-    const filterParam = searchParams.get('filter');
-    let tableFilters: ServerFilters = {};
+  const filterParam = searchParams.get('filter');
+  let tableFilters: ServerFilters = {};
 
-    if (filterParam === 'open') tableFilters.status = 'Open';
-    if (filterParam === 'closed') tableFilters.status = 'Closed';
+  if (filterParam === 'open') tableFilters.status = 'Open';
+  if (filterParam === 'closed') tableFilters.status = 'Closed';
 
-      setFilters({
-        search: '',
-        category: '',
-        subcategory: '',
-        status: tableFilters.status || '',
-        priority: '',
-        location: '',
-        facility: '',
-        dateFrom: '',
-        dateTo: ''
-      });
+  fetchIncidents(tableFilters, false);
 
-    fetchIncidents(tableFilters, false);
-  };
-
-  init();
 }, [
   employeeState.employeeData?.clientId,
   authEmployeeData?.clientId,

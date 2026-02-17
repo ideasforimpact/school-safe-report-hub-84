@@ -139,49 +139,26 @@ serve(async (req) => {
 
     // Calculate number of students involved in open incidents by category
     let studentsInvolvedCount = 0
-    const uniqueStudents = new Set()
-    const categoryStudentSets = {}
-
+    const categoryCounts: { [key: string]: number } = {}
+    
     if (openIncidents && openIncidents.length > 0) {
       openIncidents.forEach(incident => {
         if (incident.people_involved && Array.isArray(incident.people_involved)) {
+          let incidentStudentCount = 0
           incident.people_involved.forEach(person => {
             if (person.role === 'Student') {
-
-              // Use student_id if available, else fallback to name
-              let studentKey = person.student_id || person.name
-
-              if (!studentKey) return
-
-              // Normalize (important)
-              studentKey = studentKey.toString().trim().toLowerCase()
-
-              // Add to global unique set
-              uniqueStudents.add(studentKey)
-
-              // Category-wise tracking
-              const categoryName = incident.incident_categories?.name
-              if (categoryName) {
-                if (!categoryStudentSets[categoryName]) {
-                  categoryStudentSets[categoryName] = new Set()
-                }
-                categoryStudentSets[categoryName].add(studentKey)
-              }
+              studentsInvolvedCount++
+              incidentStudentCount++
             }
           })
+          
+          // If this incident has students involved, count it for the category
+          if (incidentStudentCount > 0 && incident.incident_categories?.name) {
+            categoryCounts[incident.incident_categories.name] = (categoryCounts[incident.incident_categories.name] || 0) + incidentStudentCount
+          }
         }
       })
     }
-
-    // Total unique students
-    studentsInvolvedCount = uniqueStudents.size
-
-    // Category counts (unique per category)
-    const categoryCounts = {}
-    Object.keys(categoryStudentSets).forEach(category => {
-      categoryCounts[category] = categoryStudentSets[category].size
-    })
-
 
     // Get top 3 categories by student count
     const topCategories = Object.entries(categoryCounts)
@@ -213,7 +190,6 @@ serve(async (req) => {
     const newAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'New').length || 0
     const draftAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Draft').length || 0
     const submittedAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Submitted').length || 0
-    const totalAssessmentsDashboard = newAssessmentsCount+draftAssessmentsCount;
 
     console.log('Assessment stats:', {
       totalActive: activeAssessments?.length || 0,
@@ -492,40 +468,24 @@ serve(async (req) => {
 
     if (vehicleIds.length > 0) {
       const { data: challans, error: challanError } = await supabase
-        .from("vehicle_challans")
-        .select("challan_history_log")
-        .in("vehicle_id", vehicleIds);
+        .from('vehicle_challans')
+        .select('latest_challan_data')
+        .in('vehicle_id', vehicleIds);
 
       if (challanError) {
-        console.error("Error fetching vehicle challans:", challanError);
+        console.error('Error fetching vehicle challans:', challanError);
       }
 
       challans?.forEach(row => {
-        const history = row.challan_history_log;
-        if (!history) return;
-
-        const logs = Object.entries(history)
-          .map(([timestamp, value]: any) => ({
-            timestamp,
-            ...value,
-          }))
-          .sort(
-            (a, b) =>
-              new Date(b.timestamp).getTime() -
-              new Date(a.timestamp).getTime()
-          );
-        const latestSuccess = logs.find(
-          log => log.status_code === "200"
-        );
-
-        if (!latestSuccess) return;
-
         const challanList =
-          latestSuccess?.data?.data?.challan_details?.challans || [];
+          row.latest_challan_data?.challans ||
+          row.latest_challan_data?.data?.challan_details?.challans ||
+          [];
 
         challanList.forEach((c: any) => {
-          if (c.challan_status === "Pending") {
+          if (c.challan_status === 'Pending') {
             const amount = Number(c.amount || 0);
+
             if (!isNaN(amount)) {
               totalPendingChallanAmount += amount;
             }
@@ -789,8 +749,8 @@ serve(async (req) => {
         .from('incidents')
         .select('status_id')
         .eq('client_id', client_id)
-        .gte('date', monthStart.toISOString())
-        .lte('date', monthEnd.toISOString())
+        .gte('created_at', monthStart.toISOString())
+        .lte('created_at', monthEnd.toISOString())
 
       if (shouldFilterByEmployee) {
         monthIncidentsQuery = monthIncidentsQuery.eq('created_by', employee_id)
@@ -911,7 +871,7 @@ serve(async (req) => {
       openIncidentOlder7days:openIncidentOlder7days?.length || 0,
       studentsInvolved: studentsInvolvedCount,
       studentsInvolvedByCategory: topCategories,
-      activeAssessments:totalAssessmentsDashboard || 0,
+      activeAssessments: activeAssessments?.length || 0,
       newAssessments: newAssessmentsCount,
       draftAssessments: draftAssessmentsCount,
       submittedAssessments: submittedAssessmentsCount,
