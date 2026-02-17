@@ -139,7 +139,8 @@ async function fetchEmployeeDocumentsForClient(supabase: any, clientId: string, 
       created_at,
       employee_document_type:document_type_id (
         id,
-        name
+        name,
+        description
       )
     `)
     .in("employee_id", employeeIds)
@@ -162,7 +163,7 @@ async function fetchEmployeeDocumentsForClient(supabase: any, clientId: string, 
     employee_name: employeeMap[doc.employee_id]?.name || "Employee",
     employee_code: employeeMap[doc.employee_id]?.employee_code || "-",
     document_type_id: doc.employee_document_type?.id,
-    document_type: doc.employee_document_type?.name,
+    document_type: doc.employee_document_type?.description,
     joining_date: employeeMap[doc.employee_id]?.joining_date || "-",
     verification_status: doc.verification_status,
   }));

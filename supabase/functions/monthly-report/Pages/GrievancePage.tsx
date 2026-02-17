@@ -267,7 +267,6 @@ export const GrievancePage = ({
               g.status?.toLowerCase() === "pending" &&
               g.due_date &&
               new Date(g.due_date) < new Date();
-            console.log(g,'djhfhdsafdsfsfs');
             
             return (
               <View

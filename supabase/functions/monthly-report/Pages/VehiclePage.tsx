@@ -21,13 +21,6 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
   const actionVehicles = getVehiclesRequiringAction(vehicles);
   const challanTotal = getChallanSummary(challans);
 
-  const cardBase = {
-    flex: 1,
-    borderRadius: 6,
-    padding: 12,
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-  };
 
   const tableHeader = {
     flexDirection: "row",
@@ -51,6 +44,14 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
     fontSize: 8,
     flex: 1,
   };
+  const cardBase = {
+    width: "19%",
+    padding: 10,
+    borderWidth: 1,
+    borderRadius: 8,
+    backgroundColor: "#ffffff",
+  };
+
 
   return (
     <Page
@@ -62,7 +63,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       }}
     >
       {/* Header */}
-      <Text style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 ,borderLeftColor: "#2563EB",borderLeftWidth: 4,paddingLeft: 8}}>
+      <Text style={{ fontSize: 20, fontWeight: 700, marginBottom: 2, borderLeftColor: "#2563EB", borderLeftWidth: 4, paddingLeft: 8 }}>
         Vehicle Compliance
       </Text>
       <Text style={{ fontSize: 9, color: "#6B7280", marginBottom: 12 }}>
@@ -70,48 +71,117 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       </Text>
 
       {/* Summary Cards */}
-      <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
-        <View style={[cardBase, { borderColor: "#E5E7EB" }]}>
-          <Text style={{ fontSize: 8, color: "#6B7280" }}>Total Vehicles</Text>
-          <Text style={{ fontSize: 18, fontWeight: 700 }}>{summary.total}</Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 14 }}>
+        <View style={[cardBase, { borderColor: "#E5E7EB", backgroundColor: "#ffffff" }]}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
+            TOTAL VEHICLES
+          </Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+            {summary.total}
+          </Text>
         </View>
 
-        <View style={[cardBase, { borderColor: "#10B981" }]}>
-          <Text style={{ fontSize: 8, color: "#6B7280" }}>Fully Compliant</Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#10B981" }}>
+        <View style={[cardBase, { borderColor: "#BBF7D0", backgroundColor: "#F0FDF4" }]}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
+            FULLY COMPLIANT
+          </Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#059669",marginBottom: 4 }}>
             {summary.compliant}
           </Text>
-          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             All certificates valid
           </Text>
+
+          <Text
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: "#DCFCE7",
+              color: "#059669",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+            }}
+          >
+            {summary.compliant} Vehicles
+          </Text>
         </View>
 
-        <View style={[cardBase, { borderColor: "#EF4444" }]}>
-          <Text style={{ fontSize: 8, color: "#6B7280" }}>Non-Compliant</Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#EF4444" }}>
+        <View style={[cardBase, { borderColor: "#FECACA", backgroundColor: "#FEF2F2" }]}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
+            NON-COMPLIANT
+          </Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#DC2626",marginBottom: 4 }}>
             {summary.nonCompliant}
           </Text>
-          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             One or more expired
           </Text>
+
+          <Text
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: "#FEE2E2",
+              color: "#DC2626",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+            }}
+          >
+            {summary.nonCompliant} Vehicles
+          </Text>
         </View>
 
-        <View style={[cardBase, { borderColor: "#F59E0B" }]}>
-          <Text style={{ fontSize: 8, color: "#6B7280" }}>Expiring Soon</Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#F59E0B" }}>
+        <View style={[cardBase, { borderColor: "#FDE68A", backgroundColor: "#FFFBEB" }]}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
+            EXPIRING SOON
+          </Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#D97706",marginBottom: 4 }}>
             {summary.expiringSoon}
           </Text>
-          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
             Action needed (30 days)
+          </Text>
+
+          <Text
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: "#FEF3C7",
+              color: "#D97706",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+            }}
+          >
+            {summary.expiringSoon} Vehicles
           </Text>
         </View>
 
-        <View style={[cardBase, { borderColor: "#FB923C" }]}>
-          <Text style={{ fontSize: 8, color: "#6B7280" }}>Pending Challans</Text>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#F97316" }}>
+        {/* Pending Challans */}
+        <View style={[cardBase, { borderColor: "#FED7AA", backgroundColor: "#FFF7ED" }]}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
+            PENDING CHALLANS
+          </Text>
+          <Text style={{ fontSize: 18, fontWeight: 700, color: "#EA580C",marginBottom: 4 }}>
             {challans.length}
           </Text>
-          <Text style={{ fontSize: 7, color: "#6B7280" }}>
+          <Text style={{ fontSize: 7, color: "#6B7280", marginBottom: 4 }}>
+            Total fine amount
+          </Text>
+
+          <Text
+            style={{
+              alignSelf: "flex-start",
+              backgroundColor: "#FFEDD5",
+              color: "#EA580C",
+              fontSize: 7,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 6,
+            }}
+          >
             Rs.{challanTotal.toLocaleString()}
           </Text>
         </View>
