@@ -31,22 +31,39 @@ const renderLabel = ({
 }: any) => {
   const RADIAN = Math.PI / 180;
 
-  const r = outerRadius + 22;
-  const x = cx + r * Math.cos(-midAngle * RADIAN);
+  const r = outerRadius + 18;
+  let x = cx + r * Math.cos(-midAngle * RADIAN);
   const y = cy + r * Math.sin(-midAngle * RADIAN);
+
+  const isRightSide = x > cx;
+
+  
+  if (!isRightSide) {
+    x = x - 25; // adjust spacing if needed (30–50)
+  }
+
+  const percentage = `${(percent * 100).toFixed(1)}%`;
 
   return (
     <text
       x={x}
       y={y}
-      textAnchor={x > cx ? 'start' : 'end'}
+      textAnchor="start"   // ✅ always start from first letter
       dominantBaseline="middle"
-      className="text-xs font-medium"
+      fontSize={10}
+      fill="#374151"
     >
-      {`${name}: ${(percent * 100).toFixed(1)}%`}
+      <tspan x={x} dy="0">
+        {name}
+      </tspan>
+
+      <tspan x={x} dy="12">
+        {percentage}
+      </tspan>
     </text>
   );
 };
+
 
 /* ---------- Label Line (NO DOT, NO OVERLAP) ---------- */
 const renderLabelLine = ({
@@ -58,7 +75,7 @@ const renderLabelLine = ({
   const RADIAN = Math.PI / 180;
 
   const r1 = outerRadius - 2;   // start slightly inside pie
-  const r2 = outerRadius + 14;  // end near label
+  const r2 = outerRadius + 10;  // end near label
 
   const x1 = cx + r1 * Math.cos(-midAngle * RADIAN);
   const y1 = cy + r1 * Math.sin(-midAngle * RADIAN);
@@ -116,7 +133,7 @@ const PriorityPieChart: React.FC<PriorityPieChartProps> = ({
                 data={chartData}
                 cx="50%"
                 cy="47%"          // ⬅ slightly higher = centered labels
-                outerRadius={100}
+                outerRadius={90}
                 paddingAngle={1}
                 dataKey="value"
                 label={renderLabel}
