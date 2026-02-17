@@ -81,7 +81,13 @@ export const EmployeePage = ({
       : [];
 
   return (
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={{
+      paddingTop: 30,
+      paddingHorizontal: 30,
+      paddingBottom: 70,
+      fontFamily: "Helvetica",
+      backgroundColor: "#FFFFFF"
+    }}>
       <View style={styles.employeeHeaderRow}>
         <Text style={styles.employeeHeader}>Employee Compliance</Text>
       </View>
@@ -363,6 +369,7 @@ export const EmployeePage = ({
 
       {pendingEmployees > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fffbeb",
@@ -471,6 +478,7 @@ export const EmployeePage = ({
 
       {noDocumentEmployees.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",

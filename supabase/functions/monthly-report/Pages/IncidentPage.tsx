@@ -21,18 +21,19 @@ export const IncidentPage = ({ month, incidents }: Props) => {
   const critical = getCriticalIncidents(incidents);
   const individuals = getIndividualsFromIncidents(incidents);
 
-  const overdueCount = critical.filter(
-    (i: any) =>
-      i.incident_status?.name?.toLowerCase() === "overdue"
-  ).length;
-
   const inProgressCount = critical.filter(
     (i: any) =>
       i.incident_status?.name?.toLowerCase() === "in progress"
   ).length;
 
   return (
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={{
+      paddingTop: 30,
+      paddingHorizontal: 30,
+      paddingBottom: 70,
+      fontFamily: "Helvetica",
+      backgroundColor: "#FFFFFF"
+    }}>
       <View style={styles.incidentHeaderRow}>
         <Text style={styles.incidentHeader}>
           Incident Management
@@ -89,6 +90,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -200,6 +202,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {individuals.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#f8fafc",
@@ -269,7 +272,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           {/* Rows */}
           {individuals.slice(0, 15).map((p: any, i: number) => {
             const isStudent =
-              p.grade && p.grade.toLowerCase().includes("grade");
+              !(p.grade && p.grade.toLowerCase().includes("staff"));
 
             return (
               <View
@@ -282,7 +285,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                   borderBottomColor: "#e5e7eb",
                 }}
               >
-            <Text style={{ width: "20%", fontSize: 9, color: "#111827" }}>
+                <Text style={{ width: "20%", fontSize: 9, color: "#111827" }}>
                   {p.name}
                 </Text>
 
@@ -323,6 +326,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {critical.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -357,7 +361,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             }}
           >
             <Text style={{ fontSize: 8, color: "#6b7280" }}>
-              {overdueCount} overdue, {inProgressCount} in progress
+              {critical.length} in progress
             </Text>
           </View>
 

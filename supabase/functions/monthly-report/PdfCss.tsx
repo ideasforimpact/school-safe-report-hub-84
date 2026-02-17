@@ -383,16 +383,16 @@ export const styles = StyleSheet.create({
     //footer
     footer: {
         position: "absolute",
-        bottom: 15,
+        bottom: 20,
         left: 30,
         right: 30,
         flexDirection: "row",
         justifyContent: "space-between",
-        fontSize: 8,
-        color: "#6b7280",
         borderTopWidth: 1,
-        borderTopColor: "#e5e7eb",
-        paddingTop: 5,
+        borderTopColor: "#E5E7EB",
+        paddingTop: 6,
+        fontSize: 8,
+        color: "#6B7280",
     },
 
     //vehile page 
@@ -997,31 +997,34 @@ export const styles = StyleSheet.create({
     incidentBadgeGreen: {
         backgroundColor: "#d1fae5",
         color: "#065f46",
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 9999,
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         fontSize: 9,
         marginTop: 4,
+        alignSelf: "flex-start",
     },
 
     incidentBadgeYellow: {
         backgroundColor: "#fef3c7",
         color: "#92400e",
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 9999,
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         fontSize: 9,
         marginTop: 4,
+        alignSelf: "flex-start",
     },
 
     incidentBadgePurple: {
         backgroundColor: "#ede9fe",
         color: "#5b21b6",
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 9999,
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         fontSize: 9,
         marginTop: 4,
+        alignSelf: "flex-start",
     },
 
     incidentTable: {
@@ -1091,31 +1094,36 @@ export const styles = StyleSheet.create({
     grievanceBadgeGreen: {
         backgroundColor: "#d1fae5",
         color: "#065f46",
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 9999,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
         fontSize: 9,
         marginTop: 4,
+        alignSelf: "flex-start",
+
     },
 
     grievanceBadgeYellow: {
         backgroundColor: "#fef3c7",
         color: "#92400e",
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 9999,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
         fontSize: 9,
         marginTop: 4,
+        alignSelf: "flex-start",
+
     },
 
     grievanceBadgePurple: {
         backgroundColor: "#ede9fe",
         color: "#5b21b6",
-        paddingVertical: 3,
-        paddingHorizontal: 8,
-        borderRadius: 9999,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
         fontSize: 9,
         marginTop: 4,
+        alignSelf: "flex-start",
     },
 
     grievanceTable: {

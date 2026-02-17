@@ -22,7 +22,13 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
   );
 
   return (
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={{
+      paddingTop: 30,
+      paddingHorizontal: 30,
+      paddingBottom: 70,
+      fontFamily: "Helvetica",
+      backgroundColor: "#FFFFFF"
+    }}>
       <View style={styles.assessmentHeaderRow}>
         <Text style={styles.assessmentHeader}>
           Assessment Compliance
@@ -138,6 +144,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -228,6 +235,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
       {pendingList.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -295,7 +303,8 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
           {/* Rows */}
           {pendingList.slice(0, 8).map((a: any, i: number) => {
-            const isOverdue = a.status !== "New"; // adjust if needed
+            const currentDate = new Date();
+            const isOverdue =new Date(a.target_completion_date) < currentDate;
 
             return (
               <View

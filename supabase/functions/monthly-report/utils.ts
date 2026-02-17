@@ -438,21 +438,56 @@ export const getPendingEmployeesGrouped = (employeeDocuments: any[]) => {
 };
 
 export const getAssessmentStats = (assessments: any[]) => {
-    const total = assessments.length;
-    const completed = assessments.filter(a => a.status === "Submitted").length;
-    const inProgress = assessments.filter(a => a.status === "New").length;
-    const overdue = assessments.filter(a => a.status === "overdue").length;
+  if (!assessments || !assessments.length) {
+    return { total: 0, completed: 0, inProgress: 0, overdue: 0, rate: 0 };
+  }
 
-    const rate = total ? Math.round((completed / total) * 100) : 100;
+  const total = assessments.length;
 
-    return { total, completed, inProgress, overdue, rate };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let completed = 0;
+  let inProgress = 0;
+  let overdue = 0;
+
+  assessments.forEach(a => {
+    const isCompleted =
+      a.status === "Submitted" || a.status === "Completed";
+
+    let isOverdue = false;
+
+    if (a.target_completion_date) {
+      const target = new Date(a.target_completion_date);
+      target.setHours(0, 0, 0, 0);
+
+      if (target < today && !isCompleted) {
+        isOverdue = true;
+      }
+    }
+
+    if (isCompleted) {
+      completed++;
+    } else if (isOverdue) {
+      overdue++;
+    } else {
+      inProgress++;
+    }
+  });
+
+  const rate = total ? Math.round((completed / total) * 100) : 0;
+
+  return { total, completed, inProgress, overdue, rate };
 };
 
 export const getAssessmentByCategory = (assessments: any[]) => {
     const map: any = {};
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     assessments.forEach(a => {
-        const cat = a.assessment_templates.title || "Other";
+        const cat = a.assessment_templates?.title?.trim() || "Other";
 
         if (!map[cat]) {
             map[cat] = { total: 0, completed: 0, inProgress: 0, overdue: 0 };
@@ -460,12 +495,35 @@ export const getAssessmentByCategory = (assessments: any[]) => {
 
         map[cat].total++;
 
-        if (a.status === "Submitted") map[cat].completed++;
-        else if (a.status === "New") map[cat].inProgress++;
-        else if (a.status === "overdue") map[cat].overdue++;
+        const isCompleted =
+            a.status === "Submitted" || a.status === "Completed";
+
+        let isOverdue = false;
+
+        if (a.target_completion_date) {
+            const target = new Date(a.target_completion_date);
+            target.setHours(0, 0, 0, 0);
+
+            if (target < today && !isCompleted) {
+                isOverdue = true;
+            }
+        }
+
+        if (isCompleted) {
+            map[cat].completed++;
+        }
+        else if (isOverdue) {
+            map[cat].overdue++;
+        }
+        else {
+            map[cat].inProgress++;
+        }
     });
 
-    return Object.entries(map).map(([name, v]: any) => ({ name, ...v }));
+    return Object.entries(map).map(([name, v]: any) => ({
+        name,
+        ...v
+    }));
 };
 
 export const getIncidentStats = (incidents: any[]) => {

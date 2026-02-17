@@ -22,7 +22,13 @@ export const GrievancePage = ({
   const critical = getCriticalGrievances(grievancesSummary);
 
   return (
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={{
+      paddingTop: 30,
+      paddingHorizontal: 30,
+      paddingBottom: 70,
+      fontFamily: "Helvetica",
+      backgroundColor: "#FFFFFF"
+    }}>
       <View style={styles.grievanceHeaderRow}>
         <Text style={styles.grievanceHeader}>
           Grievance Management
@@ -81,6 +87,7 @@ export const GrievancePage = ({
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -196,6 +203,7 @@ export const GrievancePage = ({
 
       {critical.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -230,7 +238,7 @@ export const GrievancePage = ({
             }}
           >
             <Text style={{ fontSize: 8, color: "#6b7280" }}>
-              {stats.overdue} overdue, {stats.pending} pending
+              {stats.pending} pending
             </Text>
           </View>
 
@@ -270,6 +278,7 @@ export const GrievancePage = ({
             
             return (
               <View
+                wrap={false}
                 key={i}
                 style={{
                   flexDirection: "row",

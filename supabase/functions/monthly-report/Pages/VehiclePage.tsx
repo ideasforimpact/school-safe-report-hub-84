@@ -87,7 +87,9 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
     <Page
       size="A4"
       style={{
-        padding: 30,
+        paddingTop: 30,
+        paddingHorizontal: 30,
+        paddingBottom: 70,
         fontFamily: "Helvetica",
         backgroundColor: "#FFFFFF",
       }}
@@ -262,7 +264,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
                 color: "#EA580C",
               }}
             >
-              ₹{challanTotal.toLocaleString()}
+              Rs.{challanTotal.toLocaleString()}
             </Text>
           </View>
         </View>
@@ -270,6 +272,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
       {/* Compliance by Document */}
       <View
+        wrap={false}
         style={{
           borderWidth: 1,
           borderColor: "#E5E7EB",
@@ -312,6 +315,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
       {/* Challan Box */}
       <View
+        wrap={false}
         style={{
           borderWidth: 1,
           borderColor: "#FDBA74",
@@ -389,6 +393,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       {/* Action Box */}
       {actionVehicles.length > 0 && (
         <View
+          wrap={false}
           style={{
             borderWidth: 1,
             borderColor: "#FACC15",
