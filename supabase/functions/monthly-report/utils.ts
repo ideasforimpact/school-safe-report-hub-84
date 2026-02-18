@@ -6,7 +6,7 @@ export const getReportingPeriodText = (monthLabel: string) => {
 
     const lastDay = new Date(year, monthIndex + 1, 0).getDate();
 
-    return `${monthName} ${year} • Reporting Period: ${monthName.slice(0, 3)} 1–${lastDay}, ${year}`;
+    return `${monthName} ${year}`;
 };
 
 export const getStatusStyle = (percent: number) => {
@@ -163,18 +163,19 @@ export const getVehicleCompliance = (vehicles: any[]) => {
 
 export const getAssessmentCompliance = (assessments: any[]) => {
     const total = assessments.length;
-
-    const overdue = assessments.filter(
-        (a) => a.status?.toLowerCase() === "new"
-    ).length;
-
+    
+    const overdue = assessments.filter(a =>
+        a.status?.toLowerCase() === "new" ||
+        a.status?.toLowerCase() === "draft" ||
+        a.status?.toLowerCase() === "submitted"
+        ).length;
     const compliant = total - overdue;
 
     if (total === 0) return { percent: 100, overdue: 0 };
 
     const percent = Math.round((compliant / total) * 100);
 
-    return { percent, overdue, total };
+    return { percent, overdue, total,compliant };
 };
 
 export const getEmployeeCompliance = (
@@ -193,7 +194,7 @@ export const getEmployeeCompliance = (
 
     const percent = Math.round((compliant / totalEmployeesdocs) * 100);
 
-    return { percent, pending: pendingDocs, compliant, totalEmployeesdocs };
+    return { percent, pending: pendingDocs, compliant, totalEmployeesdocs,totalEmployees };
 };
 
 export const getIncidentCompliance = (incidents: any[]) => {
@@ -206,7 +207,7 @@ export const getIncidentCompliance = (incidents: any[]) => {
 
     const percent = Math.round((compliant / total) * 100);
 
-    return { percent, open, total };
+    return { percent, open, total,compliant };
 };
 
 export const getGrievanceCompliance = (grievances: any[]) => {
@@ -219,7 +220,7 @@ export const getGrievanceCompliance = (grievances: any[]) => {
 
     const percent = Math.round((compliant / total) * 100);
 
-    return { percent, pending, total };
+    return { percent, pending, total,compliant };
 };
 
 export const getVehicleSummary = (vehicles: any[]) => {
@@ -450,25 +451,29 @@ export const getAssessmentStats = (assessments: any[]) => {
   let completed = 0;
   let inProgress = 0;
   let overdue = 0;
+  let submitted = 0;
 
   assessments.forEach(a => {
-    const isCompleted =
-      a.status === "Submitted" || a.status === "Completed";
-
+    const isCompleted = a.status === "Completed";
+    const isSubmitted = a.status === "Submitted";
     let isOverdue = false;
 
     if (a.target_completion_date) {
       const target = new Date(a.target_completion_date);
       target.setHours(0, 0, 0, 0);
 
-      if (target < today && !isCompleted) {
+      if (target < today && !isCompleted && !isSubmitted) {
         isOverdue = true;
       }
     }
 
     if (isCompleted) {
       completed++;
-    } else if (isOverdue) {
+    } 
+    else if(isSubmitted){
+      submitted++;
+    }
+    else if (isOverdue) {
       overdue++;
     } else {
       inProgress++;
@@ -490,27 +495,29 @@ export const getAssessmentByCategory = (assessments: any[]) => {
         const cat = a.assessment_templates?.title?.trim() || "Other";
 
         if (!map[cat]) {
-            map[cat] = { total: 0, completed: 0, inProgress: 0, overdue: 0 };
+            map[cat] = { total: 0, completed: 0, inProgress: 0, overdue: 0 , submitted: 0 };
         }
 
         map[cat].total++;
 
-        const isCompleted =
-            a.status === "Submitted" || a.status === "Completed";
-
+        const isCompleted = a.status === "Completed";
+        const isSubmitted = a.status === "Submitted";
         let isOverdue = false;
 
         if (a.target_completion_date) {
             const target = new Date(a.target_completion_date);
             target.setHours(0, 0, 0, 0);
 
-            if (target < today && !isCompleted) {
+            if (target < today && !isCompleted && !isSubmitted) {
                 isOverdue = true;
             }
         }
 
         if (isCompleted) {
             map[cat].completed++;
+        }
+        else if(isSubmitted){
+            map[cat].submitted++;
         }
         else if (isOverdue) {
             map[cat].overdue++;
@@ -532,11 +539,6 @@ export const getIncidentStats = (incidents: any[]) => {
     const closed = incidents.filter(
         (i) => i.incident_status?.name?.toLowerCase() === "closed"
     ).length;
-
-    const inProgress = incidents.filter(
-        (i) => i.incident_status?.name?.toLowerCase() === "in progress"
-    ).length;
-
     const open = incidents.filter(
         (i) => i.incident_status?.name?.toLowerCase() === "open"
     ).length;
@@ -544,7 +546,7 @@ export const getIncidentStats = (incidents: any[]) => {
     const resolutionRate =
         total === 0 ? 100 : Math.round((closed / total) * 100);
 
-    return { total, closed, inProgress, open, resolutionRate };
+    return { total, closed, open, resolutionRate };
 };
 
 export const getIncidentCategorySummary = (incidents: any[]) => {
@@ -577,7 +579,7 @@ export const getCriticalIncidents = (incidents: any[]) => {
 
         const status = i.incident_status?.name?.toLowerCase();
         const priority = i.incident_priorities.name?.toLowerCase();
-        return status !== "closed" && (priority === "high" || priority === "critical");
+        return status !== "closed" && (priority === "high" || priority === "critical" || priority === "medium" );
     });
 };
 
@@ -595,7 +597,7 @@ export const getIndividualsFromIncidents = (incidents: any[]) => {
                             : p.grades?.name || p.role || "-",
                     title: inc.incident_report_types?.name || "-",
                     category: inc.incident_categories?.name || "-",
-                    date: inc.date || inc.created_at,
+                    date: inc.date || '-',
                 });
             });
         }
@@ -641,7 +643,7 @@ export const getGrievanceSourceSummary = (grievances: any[]) => {
 
         map[source].total++;
 
-        if (status === "resolved" || status === "closed") {
+        if (status === "acknowledged") {
             map[source].addressed++;
         } else if (status === "pending") {
             map[source].pending++;

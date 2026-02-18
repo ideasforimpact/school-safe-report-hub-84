@@ -572,7 +572,11 @@ export const EmployeePage = ({
 
               <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
                 {emp.joining_date
-                  ? new Date(emp.joining_date).toLocaleDateString()
+                  ? new Date(emp.joining_date).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                   : "-"}
               </Text>
 

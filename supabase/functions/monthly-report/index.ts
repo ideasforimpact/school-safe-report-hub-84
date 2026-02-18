@@ -22,8 +22,8 @@ function createServiceClient() {
 }
 
 function getMonthRange(year: number, month: number) {
-  const start = new Date(year, month - 1, 1).toISOString();
-  const end = new Date(year, month, 0, 23, 59, 59).toISOString();
+  const start = '';
+  const end = '';
   return { start, end };
 }
 
@@ -39,9 +39,7 @@ async function fetchVehiclesForReport(supabase: any, clientId: string, start: st
       verification_status,
       created_at
     `)
-    .eq("client_id", clientId)
-    .gte("created_at", start)
-    .lte("created_at", end);
+    .eq("client_id", clientId);
   if (error) throw error;
   return data ?? [];
 }
@@ -62,8 +60,6 @@ async function fetchVehicleChallansForReport(supabase: any, clientId: string, st
       )
     `)
     .eq("vehicles.client_id", clientId)
-    .gte("created_at", start)
-    .lte("created_at", end)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -117,9 +113,7 @@ async function fetchEmployeesForReport(supabase: any, clientId: string, start: s
       joining_date,
       created_at
     `)
-    .eq("client_id", clientId)
-    .gte("created_at", start)
-    .lte("created_at", end);
+    .eq("client_id", clientId);
   if (error) throw error;
   return data ?? [];
 }
@@ -144,9 +138,7 @@ async function fetchEmployeeDocumentsForClient(supabase: any, clientId: string, 
       )
     `)
     .in("employee_id", employeeIds)
-    .eq("is_delete", 0)
-    .gte("created_at", start)
-    .lte("created_at", end);
+    .eq("is_delete", 0);
   if (error) throw error;
 
   const employeeMap: any = {};
@@ -198,9 +190,7 @@ async function fetchAssessmentsForReport(supabase: any, clientId: string, start:
         title
       )
     `)
-    .eq("client_id", clientId)
-    .gte("created_at", start)
-    .lte("created_at", end);
+    .eq("client_id", clientId);
   if (error) throw error;
   return data ?? [];
 }
@@ -223,9 +213,7 @@ async function fetchIncidentsForReport(supabase: any, clientId: string, start: s
       incident_priorities:priority_id( id, name ),
       incident_report_types:type_id( id, name )
     `)
-    .eq("client_id", clientId)
-    .gte("created_at", start)
-    .lte("created_at", end);
+    .eq("client_id", clientId);
   if (error) throw error;
   return data ?? [];
 }
@@ -242,8 +230,6 @@ async function fetchGrievancesForReport(supabase: any, clientId: string, start: 
       responses
     `)
     .eq("client_id", clientId)
-    .gte("created_at", start)
-    .lte("created_at", end)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
