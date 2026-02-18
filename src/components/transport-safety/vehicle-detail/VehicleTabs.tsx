@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
-import { formatDate } from '@/utils/dateUtils';
+import { formatDate } from '@/lib/Dateformat';
 import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar } from 'lucide-react';
 import {
   Dialog,
@@ -626,7 +626,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                           <div className="min-w-0 flex-1">
                             <p className="font-medium truncate">{file.name}</p>
                             <p className="text-xs text-gray-500">
-                              Uploaded: {formatDate(new Date(file.uploadedAt || doc.uploadedAt))}
+                              Uploaded: {formatDate(file.uploadedAt || doc.uploadedAt)}
                             </p>
                           </div>
                         </div>
@@ -698,7 +698,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate">{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</p>
                       <p className="text-xs text-gray-500">
-                        {doc.number} • Expires: {formatDate(new Date(doc.expiryDate))}
+                        {doc.number} •Expires: {formatDate(doc.expiryDate)}
                         {doc.fileUrls && doc.fileUrls.length > 0 && (
                           <span className="ml-2">
                             • {doc.fileUrls.length} file{doc.fileUrls.length > 1 ? 's' : ''}
@@ -755,8 +755,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             return (
               <div key={idx} className="border rounded-md p-4">
                 <h4 className="font-medium mb-2">
-                  {new Date(entry.date).toLocaleString()}
+                  {formatDate(entry.date)}
                 </h4>
+
                 <div className="text-xs text-gray-500 mb-2">
                   Verification status:{' '}
                   <span
@@ -860,7 +861,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             </DialogTitle>
             <DialogDescription>
               {selectedUploadedDocument 
-                ? `Uploaded on: ${formatDate(new Date(selectedUploadedDocument.uploadedAt))}`
+                ? `Uploaded on: ${formatDate(selectedUploadedDocument.uploadedAt)}`
                 : selectedDocument && `${selectedDocument.number} • Issued by ${selectedDocument.issuedBy}`}
             </DialogDescription>
           </DialogHeader>

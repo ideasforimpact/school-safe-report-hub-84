@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { formatDateTime } from '@/utils/dateUtils';
+import { formatDate} from '@/lib/Dateformat';
 import { AlertTriangle, Circle } from 'lucide-react';
 import { Vehicle, VehicleChallans } from '@/types/transportSafety';
 import { transformVehicleData, transformApiResponseData } from '@/utils/transport-safety/documentStatusUtils';
@@ -240,7 +240,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                             <div>
                                 <div className="text-xs font-semibold text-gray-500 mb-1">Date</div>
                                 <div className="text-sm text-gray-900">
-                                    {formatDateTime(new Date(challan.challan_date_time))}
+                                    {formatDate(challan.challan_date_time)}
                                 </div>
                             </div>
                         )}
@@ -287,7 +287,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                     <div className="mt-1 text-xs text-gray-500 flex items-center">
                         <Circle className="h-3.5 w-3.5 mr-1.5 fill-yellow-500 stroke-yellow-500" />
                         Latest successful check •{" "}
-                        {formatDateTime(new Date(latestChallanSuccessLog.timestamp))}
+                        {formatDate(latestChallanSuccessLog.timestamp)}
                     </div>
                     )}
                 </DialogHeader>

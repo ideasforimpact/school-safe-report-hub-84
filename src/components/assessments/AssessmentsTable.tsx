@@ -515,7 +515,6 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="in progress">In Progress</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>

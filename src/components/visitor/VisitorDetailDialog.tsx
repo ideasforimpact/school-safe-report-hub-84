@@ -8,7 +8,7 @@ import { FileText, Eye, Download, User } from 'lucide-react';
 import { visitorService, Visitor, VisitorKYC } from '@/services/visitor/visitorService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/Dateformat';
 import { formatSupabaseUrl } from '@/types/fileTypes';
 
 interface VisitorDetailDialogProps {
@@ -122,14 +122,6 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
       toast.success(`Downloading ${fileName}`);
     } catch (error: any) {
       toast.error(error?.message || 'Failed to download file');
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy hh:mm a');
-    } catch (error) {
-      return dateString;
     }
   };
 

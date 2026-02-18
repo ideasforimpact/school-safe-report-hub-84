@@ -14,6 +14,7 @@ import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { formatDate } from '@/lib/Dateformat';
 
 interface ResourceCardProps {
   resource: EduSafeResource;
@@ -205,8 +206,10 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource }) => {
       <CardFooter className="p-4 pt-0 border-t bg-gray-50/50">
         <div className="w-full">
           <div className="text-xs text-gray-500 text-left mb-2">
-            By {resource.uploaderName} • {new Date(resource.uploadDate).toLocaleDateString()}
+            By {resource.uploaderName} •{" "}
+            {resource.uploadDate && formatDate(resource.uploadDate)}
           </div>
+
           
           <div className="flex justify-between items-center">
             <div className="flex space-x-1">

@@ -200,6 +200,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     joiningDate?: string;
     clientId?: string;
     moduleAccessPayload?: ModuleAccessItem[];
+    is_cpd_involved?: boolean;
   }>({
     firstName: '',
     lastName: '',
@@ -207,7 +208,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     phone: '',
     designation: '',
     clientId: clientId,
-    moduleAccessPayload: []
+    moduleAccessPayload: [],
+    is_cpd_involved: false,
   });
   
   // Use a ref to store the latest formData for reliable access in async operations
@@ -309,6 +311,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
+            is_cpd_involved: employee.isCpdInvolved ?? false,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -520,8 +523,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
-            phone:employee.phone,
-            designation:employee.designation,
+            phone: employee.phone,
+            designation: employee.designation,
+            is_cpd_involved: employee.isCpdInvolved ?? false,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -912,10 +916,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                 <UserList 
                   users={filteredUsers}
                   onEditClick={(user) => {
-                    setCurrentUser(user);
-                    
+                    // Use latest user from list by id so we always show fresh data (e.g. after a save)
+                    const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;
+                    const cpdValue = (latestUser as any).is_cpd_involved ?? (latestUser as any).isCpdInvolved ?? false;
+                    setCurrentUser(latestUser);
+
                     // Format joiningDate to YYYY-MM-DD format for date input
-                    let formattedJoiningDate = user.joiningDate || '';
+                    let formattedJoiningDate = latestUser.joiningDate || '';
                     if (formattedJoiningDate) {
                       try {
                         // If it's an ISO string or other format, convert to YYYY-MM-DD
@@ -928,19 +935,20 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                         // If already in YYYY-MM-DD format, keep it as is
                       }
                     }
-                    
+
                     setFormData({
-                      firstName: user.firstName,
-                      lastName: user.lastName,
-                      email: user.email,
-                    phone: (user as any).phone,
-                    designation: (user as any).designation,
-                      employeeId: user.employeeId,
-                      employeeType: user.employeeType,
-                      department: user.department,
+                      firstName: latestUser.firstName,
+                      lastName: latestUser.lastName,
+                      email: latestUser.email,
+                      phone: (latestUser as any).phone,
+                      designation: (latestUser as any).designation,
+                      employeeId: latestUser.employeeId,
+                      employeeType: latestUser.employeeType,
+                      department: latestUser.department,
                       joiningDate: formattedJoiningDate,
-                      clientId: user.clientId || clientId,
-                      moduleAccessPayload: user.moduleAccessPayload || []
+                      clientId: latestUser.clientId || clientId,
+                      moduleAccessPayload: latestUser.moduleAccessPayload || [],
+                      is_cpd_involved: cpdValue,
                     });
                     setIsEditDialogOpen(true);
                   }}
@@ -1002,6 +1010,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         resetForm={resetForm}
         isLoading={isLoading}
         currentUser={currentUser}
+        employeeUsers={employeeUsers}
       />
 
       {/* Import Employees Dialog - Only render if user has admin access */}

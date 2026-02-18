@@ -22,6 +22,7 @@ export interface Employee {
   firstName?: string;
   lastName?: string;
   isSuperAdmin?: boolean; // Added this property to fix the error
+  isCpdInvolved?: boolean;
   
   // SOP Statistics
   sopStatistics?: {

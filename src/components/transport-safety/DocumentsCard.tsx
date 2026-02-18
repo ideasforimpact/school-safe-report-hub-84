@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, FileText } from 'lucide-react';
+import { formatDate } from '@/lib/Dateformat'; // adjust path if needed
 
 interface Document {
   id: string;
@@ -47,7 +48,10 @@ export const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({
                   <FileText className="h-4 w-4 text-blue-500 mr-2" />
                   <span>{doc.name}</span>
                 </div>
-                <span className="text-sm text-gray-600">{doc.date}</span>
+                <span className="text-sm text-gray-600">
+                  {formatDate(doc.date)}
+                </span>
+
               </li>
             ))}
           </ul>

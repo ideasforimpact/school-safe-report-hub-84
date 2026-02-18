@@ -93,6 +93,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
         isSuperAdmin: record?.is_super_admin,
+        isCpdInvolved: (record as any).is_cpd_involved === true,
         documents: documents,
         clientId: record.client_id
       };
@@ -207,6 +208,7 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
         isSuperAdmin: record?.is_super_admin,
+        isCpdInvolved: (record as any).is_cpd_involved === true,
         documents: documents,
         clientId: record.client_id,
         sopStatistics: sopStatisticsMap.get(record.id) || {

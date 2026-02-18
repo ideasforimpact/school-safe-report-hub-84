@@ -78,7 +78,11 @@ const AssessmentsPage = () => {
     const total = assessments.length;
 
     const open = assessments.filter(a =>
-      ['New', 'Draft', 'In Progress'].includes(a.status)
+      ['New'].includes(a.status)
+    ).length;
+
+    const draft = assessments.filter(a =>
+      ['Draft'].includes(a.status)
     ).length;
 
     const submitted = assessments.filter(
@@ -92,6 +96,7 @@ const AssessmentsPage = () => {
     return {
       total,
       open,
+      draft,
       submitted,
       closed,
     };
@@ -141,6 +146,7 @@ const AssessmentsPage = () => {
             onCreateAssessment={() => setShowCreateAssessment(true)}
             totalCount={assessmentAnalyticsStats.total}
             openCount={assessmentAnalyticsStats.open}
+            draftCount={assessmentAnalyticsStats.draft}
             submittedCount={assessmentAnalyticsStats.submitted}
             closedCount={assessmentAnalyticsStats.closed}
           />

@@ -111,6 +111,8 @@ import AssignedSOPPage from './pages/sop/AssignedSOPPage';
 import StudentWellBeingPage from './pages/student-wellbeing/StudentWellBeingPage';
 import ModuleRouteGuard from './components/ModuleRouteGuard';
 import MonthlyReportAutoDownloadPage from './pages/MonthlyReportAutoDownloadPage';
+import CPDOverviewPage from './pages/cpd/CPDOverviewPage';
+import EmployeeCpdDetailPage from './pages/cpd/EmployeeCpdDetailPage';
 
 
 function App() {
@@ -243,6 +245,24 @@ function App() {
 
                   {/* Student Well-Being Management */}
                   <Route path="/student-well-begin-management" element={<RouteGuard requireAuth={true}><StudentWellBeingPage /></RouteGuard>} />
+
+                  {/* CPD Overview */}
+                  <Route
+                    path="/cpd_overview"
+                    element={
+                      <RouteGuard requireAuth={true}>
+                        <CPDOverviewPage />
+                      </RouteGuard>
+                    }
+                  />
+                  <Route
+                    path="/cpd_overview/:employeeId"
+                    element={
+                      <RouteGuard requireAuth={true}>
+                        <EmployeeCpdDetailPage />
+                      </RouteGuard>
+                    }
+                  />
 
                   {/* Backoffice routes - protected with RouteGuard and wrapped with BackofficeClientProvider */}
                   <Route path="/backoffice/dashboard" element={

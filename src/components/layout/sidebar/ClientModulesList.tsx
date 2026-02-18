@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getConfiguredModules, getEmployeeLoadingState } from '@/store/employeeSelectors';
@@ -53,6 +53,7 @@ interface ModuleItem {
   accessLevel?: any;
 }
 
+let sidebarScrollPosition = 0;
 const ClientModulesList = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -71,6 +72,26 @@ const ClientModulesList = () => {
       return persistedState.configuredModules;
     }
     return null;
+  };
+  
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = sidebarScrollPosition;
+        }
+      });
+    }
+  }, [sidebarModules]);
+
+
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      sidebarScrollPosition = scrollRef.current.scrollTop;
+    }
   };
 
   // Transform Redux store modules into sidebar menu items
@@ -164,7 +185,12 @@ const ClientModulesList = () => {
   }
 
   return (
-    <div className="flex-1 py-6">
+    <div
+      ref={scrollRef}
+      data-sidebar
+      onScroll={handleScroll}
+      className="flex-1 py-6 overflow-y-auto h-full no-scrollbar"
+    >
       <nav className="px-2">
         <ul className="space-y-5">
           {sidebarModules.map((item) => (

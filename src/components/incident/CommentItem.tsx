@@ -10,14 +10,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit, FileText, Paperclip, Download, Eye, Loader2 } from 'lucide-react';
-import FilePreview from './FilePreview';
 import { documentManager } from '@/utils/documentManager';
 import { toast } from 'sonner';
+import { formatDate } from '@/lib/Dateformat';
+
+
 
 interface CommentItemProps {
   comment: IncidentComment;
-  formatDate: (date: Date) => string;
-  formatDateTime: (date: Date) => string;
   getCommentStatusColor: (status: IncidentComment['status']) => string;
   canEdit: boolean;
   onEdit: (comment: IncidentComment) => void;
@@ -26,8 +26,6 @@ interface CommentItemProps {
 
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
-  formatDate,
-  formatDateTime,
   getCommentStatusColor,
   canEdit,
   onEdit,
@@ -167,7 +165,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
       <div className="flex flex-wrap gap-2 items-center text-sm text-gray-600 mb-2">
         <span className="font-medium">Created By: {comment.createdBy.name}</span>
         <span>•</span>
-        <span>{formatDateTime(new Date(comment.createdAt))}</span>
+        <span>{formatDate(comment.createdAt)}</span>
       </div>
 
       {/* Comment description - truncated if long */}
