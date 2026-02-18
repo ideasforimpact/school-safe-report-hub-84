@@ -1,27 +1,61 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getSupabaseUrl, getSupabaseServiceRoleKey, getFrontendUrl } from "../_shared/env.ts";
+import { getSupabaseUrl, getSupabaseServiceRoleKey, getEnv } from "../_shared/env.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function buildMonthlyReportEmailBody(recipientName: string, downloadUrl: string): string {
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatMonthYear(month: number, year: number): string {
+  const name = MONTH_NAMES[Math.max(0, month - 1)] ?? "Jan";
+  return `${name}'${String(year).slice(-2)}`;
+}
+
+function formatMonthYearFull(month: number, year: number): string {
+  const name = MONTH_NAMES[Math.max(0, month - 1)] ?? "Jan";
+  return `${name} ${year}`;
+}
+
+function buildReportDownloadUrl(storagePath: string): string {
+  const base = `${getSupabaseUrl().replace(/\/$/, "")}/storage/v1/object/public/monthly_export`;
+  const path = storagePath.replace(/^\//, "");
+  return `${base}/${path}`;
+}
+
+function buildMonthlyReportEmailBody(opts: {
+  clientName: string;
+  monthLabel: string;
+  reportUrl: string;
+}): string {
+  const { clientName, monthLabel, reportUrl } = opts;
+  const downloadButton = reportUrl
+    ? `<div style="text-align:center;margin:28px 0 32px 0;"><a href="${reportUrl}" style="display:inline-block;background-color:#3b82f6;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-size:16px;font-weight:600;">&#8595; Download Report</a></div>`
+    : "";
   return `<div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
 <div style="text-align:center;background-color:#f9fafb;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">
 <h2 style="margin:0;color:#1f2937;font-size:24px;">Monthly Compliance Report</h2>
 </div>
 <div style="text-align:left;">
-<p style="margin:0 0 20px;font-size:16px;">Hello <strong>${recipientName || "there"}</strong>,</p>
-<p style="margin:0 0 20px;font-size:16px;">Please find your monthly compliance report ready for download.</p>
-<div style="background-color:#dbeafe;padding:16px;border-radius:6px;border-left:4px solid #3b82f6;margin:20px 0;">
-<p style="margin:6px 0;"><a href="${downloadUrl}" style="display:inline-block;background-color:#3b82f6;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;">Download Report</a></p>
-</div>
-<p style="margin:20px 0;font-size:16px;color:#6b7280;">If the button does not work, copy and paste this link into your browser:<br/><a href="${downloadUrl}" style="color:#3b82f6;word-break:break-all;">${downloadUrl}</a></p>
+<p style="margin:0 0 20px;font-size:16px;">Hi Team <strong>${clientName || "there"}</strong>,</p>
+<p style="margin:0 0 20px;font-size:16px;">Greetings from <strong>Safe School</strong>.</p>
+<p style="margin:0 0 20px;font-size:16px;">Please find attached the Monthly Compliance Report, covering key safety, compliance, and operational metrics for the month - <strong>${monthLabel}</strong></p>
+<p style="margin:0 0 20px;font-size:16px;">This report provides an overview of:</p>
+<ul style="margin:0 0 20px;padding-left:24px;font-size:16px;">
+<li><strong>Vehicle Safety</strong></li>
+<li><strong>Employee Verification</strong></li>
+<li><strong>Assessments</strong></li>
+<li><strong>Incidents</strong></li>
+<li><strong>Grievances</strong></li>
+</ul>
+<p style="margin:0 0 20px;font-size:16px;">This report provides a clear view of the overall compliance status and key safety activities for the month.</p>
+<p style="margin:0 0 20px;font-size:16px;">If you have any questions or require clarification on any section of the report, please feel free to reach out to us.</p>
+${downloadButton}
 </div>
 <div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;color:#6b7280;">
-<p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>
+<p style="margin:0;font-size:14px;">Warm regards,<br/><strong>Safe School Team</strong></p>
 </div>
 </div>`;
 }
@@ -30,7 +64,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey());
-  const siteUrl = getFrontendUrl();
 
   try {
     const now = new Date();
@@ -41,7 +74,7 @@ serve(async (req) => {
     // Select pending rows only (status IS NULL). Completed => is_queued true; error => is_queued false.
     const { data: rows, error: fetchError } = await supabase
       .from("monthly_export_queue")
-      .select("id, client_id, target_employee_id, target_year, target_month")
+      .select("id, client_id, target_employee_id, target_date, target_month, target_year")
       .is("status", null)
       .eq("active", true)
       .eq("prepare_year", prepareYear)
@@ -60,12 +93,12 @@ serve(async (req) => {
     let failed = 0;
 
     for (const row of rows) {
-      const { data: employee, error: empErr } = await supabase
-        .from("employees")
-        .select("email, first_name, last_name")
-        .eq("id", row.target_employee_id)
-        .single();
+      const [{ data: client }, { data: employee, error: empErr }] = await Promise.all([
+        supabase.from("clients").select("name").eq("id", row.client_id).single(),
+        supabase.from("employees").select("email, first_name, last_name").eq("id", row.target_employee_id).single(),
+      ]);
 
+      const clientName = client?.name ?? "Team";
       const recipientEmail = employee?.email ?? "";
       const recipientName = [employee?.first_name, employee?.last_name].filter(Boolean).join(" ").trim() || "there";
 
@@ -73,6 +106,9 @@ serve(async (req) => {
         await supabase.rpc("monthly_export_queue_fail", {
           p_queue_id: row.id,
           p_reason: "Super admin employee has no email",
+          p_target_date: row.target_date,
+          p_target_month: row.target_month,
+          p_target_year: row.target_year,
         });
         failed++;
         continue;
@@ -89,9 +125,13 @@ serve(async (req) => {
           throw new Error(reportRes?.error ?? "No path returned");
         }
 
-        const downloadUrl = `${siteUrl}/monthly-report/auto-download?clientId=${row.client_id}`;
-        const subject = "Monthly Compliance Report – Ready for Download";
-        const body = buildMonthlyReportEmailBody(recipientName, downloadUrl);
+        const reportUrl = buildReportDownloadUrl(path);
+        const subject = `Monthly Compliance Report – ${clientName} | ${formatMonthYearFull(row.target_month, row.target_year)}`;
+        const body = buildMonthlyReportEmailBody({
+          clientName,
+          monthLabel: formatMonthYear(row.target_month, row.target_year),
+          reportUrl,
+        });
 
         await supabase.rpc("monthly_export_queue_complete", {
           p_queue_id: row.id,
@@ -100,6 +140,9 @@ serve(async (req) => {
           p_recipient_name: recipientName,
           p_subject: subject,
           p_body: body,
+          p_target_date: row.target_date,
+          p_target_month: row.target_month,
+          p_target_year: row.target_year,
         });
         processed++;
       } catch (err: any) {
@@ -107,6 +150,9 @@ serve(async (req) => {
         await supabase.rpc("monthly_export_queue_fail", {
           p_queue_id: row.id,
           p_reason: reason,
+          p_target_date: row.target_date,
+          p_target_month: row.target_month,
+          p_target_year: row.target_year,
         });
         failed++;
       }

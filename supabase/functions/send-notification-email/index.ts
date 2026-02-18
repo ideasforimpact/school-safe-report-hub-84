@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import nodemailer from "npm:nodemailer@6";
-import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { getSupabaseUrl, getSupabaseServiceRoleKey, getEnv } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -208,12 +208,13 @@ async function sendEmail(emailData: EmailRequest): Promise<boolean> {
     bodyLength: emailData.body?.length || 0
   });
 
-  const smtpHost = Deno.env.get('SMTP_HOST') || '';
-  const smtpPort = Number(Deno.env.get('SMTP_PORT') || '587');
-  const smtpUser = Deno.env.get('SMTP_USER') || '';
-  const smtpPass = (Deno.env.get('SMTP_PASSWORD') || '').replace(/\s+/g, '');
-  const fromEmail = Deno.env.get('FROM_EMAIL') || smtpUser || '';
-  const fromName = Deno.env.get('FROM_NAME') || 'Safe School Team';
+  // Use getEnv so Supabase cloud can set SUPABASE_SMTP_HOST etc. in Edge Function secrets
+  const smtpHost = getEnv('SMTP_HOST');
+  const smtpPort = Number(getEnv('SMTP_PORT', '587'));
+  const smtpUser = getEnv('SMTP_USER');
+  const smtpPass = getEnv('SMTP_PASSWORD').replace(/\s+/g, '');
+  const fromEmail = getEnv('FROM_EMAIL') || smtpUser || '';
+  const fromName = getEnv('FROM_NAME', 'Safe School Team');
 
   console.log('[sendEmail] SMTP Configuration check:', {
     smtpHost: smtpHost ? `${smtpHost.substring(0, 10)}...` : 'MISSING',
@@ -252,10 +253,16 @@ async function sendEmail(emailData: EmailRequest): Promise<boolean> {
       tls: { servername: smtpHost, rejectUnauthorized: true },
     });
 
-    console.log('[sendEmail] Verifying SMTP connection...');
-    // Optional quick capability check
-    await transporter.verify();
-    console.log('[sendEmail] SMTP connection verified successfully');
+    // Optional verify; skip so we don't fail before send (some envs block verify but send works)
+    try {
+      await transporter.verify();
+      console.log('[sendEmail] SMTP connection verified successfully');
+    } catch (verifyErr: any) {
+      if (verifyErr?.code === 'EAUTH') {
+        console.error('[sendEmail] SMTP login rejected (EAUTH). For Gmail: use an App Password (Google Account → Security → 2-Step Verification → App passwords). In Supabase cloud set Edge Function secrets: SMTP_USER, SMTP_PASSWORD (and optionally SUPABASE_* prefixed).');
+      }
+      throw verifyErr;
+    }
 
     const fromHeader = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
     console.log('[sendEmail] Sending email from:', fromHeader, 'to:', emailData.to);
@@ -271,15 +278,16 @@ async function sendEmail(emailData: EmailRequest): Promise<boolean> {
     console.log('[sendEmail] Nodemailer response info:', JSON.stringify(info, null, 2));
     return true;
   } catch (err: any) {
+    const isAuth = err?.code === 'EAUTH';
     console.error('[sendEmail] ERROR: Nodemailer SMTP error:', {
       message: err?.message,
       code: err?.code,
-      command: err?.command,
-      response: err?.response,
-      responseCode: err?.responseCode,
-      stack: err?.stack
+      ...(isAuth && { hint: 'Use Gmail App Password and set SMTP_* secrets in Supabase Dashboard → Edge Functions → Secrets' }),
+      responseCode: err?.responseCode
     });
-    console.error('[sendEmail] Full error object:', err);
+    if (isAuth) {
+      console.error('[sendEmail] Fix: Google Account → Security → 2-Step Verification → App passwords. Then set SMTP_USER and SMTP_PASSWORD (or SUPABASE_SMTP_USER, SUPABASE_SMTP_PASSWORD) in your deployment environment.');
+    }
     return false;
   }
 } 
