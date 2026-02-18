@@ -39,6 +39,7 @@ const EXCLUDED_ROUTE_PATTERNS = [
 const CRON_TRIGGERED_FUNCTIONS = [
   // Process functions called by cron jobs
   'process-email-queue',
+  'process-monthly-export-email',
   'process-assessment-notifications',
   'process-grievance-notifications',
   // Cron functions (those with "-cron" suffix are also caught by pattern matching)

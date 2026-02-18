@@ -109,6 +109,8 @@ import TransportChallansPage from './pages/transport-safety/TransportChallansPag
 import SOPPage from './pages/sop/SOPPage';
 import AssignedSOPPage from './pages/sop/AssignedSOPPage';
 import StudentWellBeingPage from './pages/student-wellbeing/StudentWellBeingPage';
+import ModuleRouteGuard from './components/ModuleRouteGuard';
+import MonthlyReportAutoDownloadPage from './pages/MonthlyReportAutoDownloadPage';
 import CPDOverviewPage from './pages/cpd/CPDOverviewPage';
 import EmployeeCpdDetailPage from './pages/cpd/EmployeeCpdDetailPage';
 
@@ -133,6 +135,8 @@ function App() {
                   {/* CAPTCHA Verification routes - public */}
                   <Route path="/captcha-verification" element={<CaptchaVerificationPage />} />
                   <Route path="/captcha-verification/:formId" element={<CaptchaVerificationPage />} />
+                  {/* Public auto-download monthly report route (for email links) */}
+                  <Route path="/monthly-report/auto-download" element={<MonthlyReportAutoDownloadPage />} />
                   
                   {/* Public form routes */}
                   <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
