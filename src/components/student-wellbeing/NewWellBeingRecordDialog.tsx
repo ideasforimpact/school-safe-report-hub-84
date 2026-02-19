@@ -184,7 +184,7 @@ export function NewWellBeingRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>New Well-Being Record</DialogTitle>
         </DialogHeader>
@@ -265,7 +265,7 @@ export function NewWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Attachments</Label>
+            <Label>Attachments (optional)</Label>
             <ReusableFileUploader
               onFilesChange={setAttachmentFiles}
               initialFiles={[]}
@@ -288,7 +288,7 @@ export function NewWellBeingRecordDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2 flex-shrink-0 border-t pt-4 mt-2">
+        <div className="flex justify-end gap-2 pt-2 flex-shrink-0 border-t pt-4 mt-4">
           <Button variant="outline" onClick={handleClose} disabled={saving}>
             Cancel
           </Button>

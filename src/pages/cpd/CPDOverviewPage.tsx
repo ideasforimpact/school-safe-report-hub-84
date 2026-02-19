@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
-import { Search, BookOpen, PlusCircle, Eye, Loader2, Download } from 'lucide-react';
+import { Search, BookOpen, PlusCircle, Eye, Loader2, Download, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
@@ -196,16 +196,17 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
       setError('Hours must be a positive number.');
       return false;
     }
-    if (remainingForDomain <= 0) {
-      setError('You have already reached the required hours for this domain.');
-      return false;
-    }
-    if (h > remainingForDomain) {
-      setError(
-        `You can only add up to ${remainingForDomain}h for this domain based on the threshold.`,
-      );
-      return false;
-    }
+    // Blocking logic commented out: allow adding beyond domain threshold; warning still shown below CPD Domain
+    // if (remainingForDomain <= 0) {
+    //   setError('You have already reached the required hours for this domain.');
+    //   return false;
+    // }
+    // if (h > remainingForDomain) {
+    //   setError(
+    //     `You can only add up to ${remainingForDomain}h for this domain based on the threshold.`,
+    //   );
+    //   return false;
+    // }
 
     setError(null);
     return true;
@@ -267,8 +268,8 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
     !Number.isNaN(numericHours) &&
     numericHours > 0;
 
-  const disableAdd =
-    submitting || remainingForDomain <= 0 || !isFormBasicValid || exceedsRemaining;
+  // Blocking disabled: allow add even when domain threshold exceeded; warning still shown below CPD Domain
+  const disableAdd = submitting || !isFormBasicValid;
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
@@ -309,13 +310,6 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            {currentDomain && (
-              <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded px-2 py-1">
-                {remainingForDomain > 0
-                  ? `You still need ${remainingForDomain}h in ${currentDomain.name}.`
-                  : `You have completed required hours for ${currentDomain.name}.`}
-              </p>
-            )}
           </div>
 
           <div className="space-y-1">
@@ -379,15 +373,8 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
                 min={1}
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                disabled={remainingForDomain <= 0}
                 placeholder="e.g., 6"
               />
-              {exceedsRemaining && (
-                <p className="text-xs text-red-600">
-                  You can only add up to {remainingForDomain}h for this domain based on the
-                  threshold.
-                </p>
-              )}
             </div>
           </div>
 
@@ -635,9 +622,15 @@ const CPDOverviewPage: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {paginatedEmployees.map((row) => {
-                    const total = row.total_cpd || data?.total_cpd || 0;
                     const obtained = row.obtained_cpd || 0;
-                    const totalLabel = `${obtained} / ${total}`;
+                    const totalLabel = (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-semibold text-gray-900">{obtained}</span>
+                        {obtained >= 50 && (
+                          <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden />
+                        )}
+                      </span>
+                    );
 
                     const renderBar = (
                       obtainedValue: number,
@@ -685,7 +678,7 @@ const CPDOverviewPage: React.FC = () => {
                           {row.department_name ?? '—'}
                         </TableCell>
                         <TableCell className="w-[120px] whitespace-nowrap">
-                          <span className="font-semibold text-gray-900">{totalLabel}</span>
+                          {totalLabel}
                         </TableCell>
                         <TableCell className="w-[160px]">
                           {renderBar(

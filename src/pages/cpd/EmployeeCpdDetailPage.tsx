@@ -219,16 +219,17 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
       setError('Hours must be a positive number.');
       return false;
     }
-    if (domainRemaining <= 0) {
-      setError('You have already reached the required hours for this domain.');
-      return false;
-    }
-    if (h > domainRemaining) {
-      setError(
-        `You can only add up to ${domainRemaining}h for this domain based on the threshold.`,
-      );
-      return false;
-    }
+    // Blocking logic commented out: allow adding beyond domain threshold; warning still shown below CPD Domain
+    // if (domainRemaining <= 0) {
+    //   setError('You have already reached the required hours for this domain.');
+    //   return false;
+    // }
+    // if (h > domainRemaining) {
+    //   setError(
+    //     `You can only add up to ${domainRemaining}h for this domain based on the threshold.`,
+    //   );
+    //   return false;
+    // }
 
     setError(null);
     return true;
@@ -275,8 +276,8 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
     }
   };
 
-  const disableAdd =
-    submitting || domainRemaining <= 0 || !isFormBasicValid || exceedsRemaining;
+  // Blocking disabled: allow add even when domain threshold exceeded; warning still shown below CPD Domain
+  const disableAdd = submitting || !isFormBasicValid;
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
@@ -317,13 +318,6 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            {currentDomain && (
-              <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded px-2 py-1">
-                {domainRemaining > 0
-                  ? `You still need ${domainRemaining}h in ${currentDomain.name}.`
-                  : `You have completed required hours for ${currentDomain.name}.`}
-              </p>
-            )}
           </div>
 
           <div className="space-y-1">
@@ -391,15 +385,8 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
                 min={1}
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                disabled={domainRemaining <= 0}
                 placeholder="e.g., 6"
               />
-              {exceedsRemaining && (
-                <p className="text-xs text-red-600">
-                  You can only add up to {domainRemaining}h for this domain based
-                  on the threshold.
-                </p>
-              )}
             </div>
           </div>
 
@@ -542,16 +529,17 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
       setError('Hours must be a positive number.');
       return false;
     }
-    if (domainRemaining <= 0 && h > previousHours) {
-      setError('You have already reached the required hours for this domain.');
-      return false;
-    }
-    if (h > entryMaxHours) {
-      setError(
-        `You can only set this entry up to ${entryMaxHours}h based on the threshold for this domain.`,
-      );
-      return false;
-    }
+    // Blocking logic commented out: allow editing beyond domain threshold; warning still shown below CPD Domain
+    // if (domainRemaining <= 0 && h > previousHours) {
+    //   setError('You have already reached the required hours for this domain.');
+    //   return false;
+    // }
+    // if (h > entryMaxHours) {
+    //   setError(
+    //     `You can only set this entry up to ${entryMaxHours}h based on the threshold for this domain.`,
+    //   );
+    //   return false;
+    // }
 
     setError(null);
     return true;
@@ -607,8 +595,8 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
     !Number.isNaN(numericHours) &&
     numericHours > 0;
 
-  const disableSave =
-    submitting || !isFormBasicValid || exceedsRemaining;
+  // Blocking disabled: allow save even when domain threshold exceeded; warning still shown below CPD Domain
+  const disableSave = submitting || !isFormBasicValid;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -648,13 +636,6 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            {currentDomain && (
-              <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded px-2 py-1">
-                {domainRemaining > 0
-                  ? `You still need ${domainRemaining}h in ${currentDomain.name}.`
-                  : `You have completed required hours for ${currentDomain.name}.`}
-              </p>
-            )}
           </div>
 
           <div className="space-y-1">
@@ -718,19 +699,7 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
                 min={1}
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                disabled={entryMaxHours <= 0}
               />
-              {domainRemaining > 0 && !exceedsRemaining && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Remaining for selected domain: {domainRemaining}h
-                </p>
-              )}
-              {exceedsRemaining && (
-                <p className="mt-1 text-xs text-red-600">
-                  You can only set up to {entryMaxHours}h for this entry based on the
-                  domain threshold.
-                </p>
-              )}
             </div>
           </div>
 
@@ -1050,7 +1019,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-700 tabular-nums shrink-0">
-                        {obtained}/{totalThreshold}h
+                        {obtained}h
                       </span>
                     </div>
                   </div>
@@ -1066,7 +1035,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-700 tabular-nums shrink-0">
-                        {employeeRow.core_values_hours}/{employeeRow.core_values_threshold}h
+                        {employeeRow.core_values_hours}h
                       </span>
                     </div>
                   </div>
@@ -1082,7 +1051,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-700 tabular-nums shrink-0">
-                        {employeeRow.knowledge_hours}/{employeeRow.knowledge_threshold}h
+                        {employeeRow.knowledge_hours}h
                       </span>
                     </div>
                   </div>
@@ -1098,7 +1067,7 @@ const EmployeeCpdDetailPage: React.FC = () => {
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-700 tabular-nums shrink-0">
-                        {employeeRow.growth_hours}/{employeeRow.growth_threshold}h
+                        {employeeRow.growth_hours}h
                       </span>
                     </div>
                   </div>
