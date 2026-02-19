@@ -176,7 +176,11 @@ const ClientModulesList = () => {
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  if (isLoading) {
+  // Only block the sidebar with a full-screen "Loading..." state
+  // while modules are being fetched for the first time and we have
+  // nothing to show yet. Once modules are loaded, keep showing them
+  // even if other flows briefly toggle the global loading flag.
+  if (isLoading && sidebarModules.length === 0) {
     return (
       <div className="flex-1 py-6 text-white flex justify-center items-center">
         <span className="text-sm">Loading...</span>

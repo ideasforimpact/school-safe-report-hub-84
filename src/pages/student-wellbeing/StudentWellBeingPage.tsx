@@ -275,6 +275,13 @@ const StudentWellBeingPage = () => {
         return '';
       }
     };
+    const formatExportDateForFilename = (d?: Date) => {
+      if (!d) return 'all';
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
     const headers = [
       'Academic Year',
       'Student Name',
@@ -325,8 +332,8 @@ const StudentWellBeingPage = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const fromStr = dateRange?.from ? dateRange.from.toISOString().slice(0, 10) : 'all';
-    const toStr = dateRange?.to ? dateRange.to.toISOString().slice(0, 10) : 'all';
+    const fromStr = formatExportDateForFilename(dateRange?.from);
+    const toStr = formatExportDateForFilename(dateRange?.to);
     a.download = `student-wellbeing-records-${fromStr}-${toStr}.csv`;
     a.click();
     URL.revokeObjectURL(url);
