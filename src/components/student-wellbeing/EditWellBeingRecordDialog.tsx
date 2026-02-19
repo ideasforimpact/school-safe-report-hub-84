@@ -138,6 +138,7 @@ export function EditWellBeingRecordDialog({
       await updateStudentWellbeingRecord({
         id: record.id,
         client_id: clientId,
+        employee_id: employeeData?.id ?? '',
         student_id: student!.id,
         section_id: student!.section_id ?? null,
         grade_id: student!.grade_id ?? null,

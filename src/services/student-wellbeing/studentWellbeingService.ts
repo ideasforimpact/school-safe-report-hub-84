@@ -94,6 +94,7 @@ export async function fetchStudentWellbeingRecords(
 export interface UpdateStudentWellbeingRecordPayload {
   id: string;
   client_id: string;
+  employee_id: string;
   student_id: string;
   section_id?: string | null;
   grade_id?: string | null;
@@ -112,6 +113,7 @@ export async function updateStudentWellbeingRecord(
     body: {
       id: payload.id,
       client_id: payload.client_id,
+      employee_id: payload.employee_id,
       student_id: payload.student_id,
       section_id: payload.section_id ?? null,
       grade_id: payload.grade_id ?? null,

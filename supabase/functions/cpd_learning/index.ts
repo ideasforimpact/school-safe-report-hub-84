@@ -31,9 +31,16 @@ serve(async (req) => {
     const rawTitle: string = (body.title ?? "").trim();
     const rawDomainId: string | null = body.domain_id ?? null;
     const category: string = (body.category ?? "").trim();
+    const cpdLearningRaw: string = (body.cpd_learning ?? "").trim();
     const rawHours: number | null =
       typeof body.hours === "number" ? body.hours : Number(body.hours ?? null);
     const capturedDateRaw: string | null = body.captured_date ?? null;
+    const attachments: { name: string; type: string; base64: string }[] = Array.isArray(body.attachments)
+      ? body.attachments
+      : [];
+    const documentUrlsExisting: { path: string; name: string }[] | null = Array.isArray(body.document_urls_existing)
+      ? body.document_urls_existing.filter((d: any) => d && typeof d.path === "string" && typeof d.name === "string")
+      : null;
 
     if (!clientId || !employeeId) {
       return new Response(
@@ -144,6 +151,25 @@ serve(async (req) => {
       );
     }
 
+    // cpd_learning optional, min 2 max 2000 if provided
+    const cpdLearning = cpdLearningRaw.length > 0 ? cpdLearningRaw : null;
+    if (cpdLearning !== null && (cpdLearning.length < 2 || cpdLearning.length > 2000)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "What did you learn must be between 2 and 2000 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const BUCKET = "cpd_learning_attachments";
+    const maxSizeBytes = 10 * 1024 * 1024; // 10MB per file
+    const maxFiles = 5;
+    if (attachments.length > maxFiles) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Maximum ${maxFiles} files allowed` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // Ensure domain exists and get threshold
     const { data: domain, error: domainError } = await supabase
       .from("cpd_domain")
@@ -162,13 +188,14 @@ serve(async (req) => {
 
     const threshold = (domain as any).threshold ?? 0;
 
-    // For edit, fetch existing entry to adjust domain/hours calculations
+    // For edit, fetch existing entry to adjust domain/hours calculations and document_urls
     let currentEntryHour = 0;
     let currentEntryDomainId: string | null = null;
+    let existingDocumentUrls: { path: string; name: string }[] = [];
     if (action === "edit" && entryId) {
       const { data: existingEntry, error: existingEntryError } = await supabase
         .from("cpd_entries")
-        .select("id, domain_id, hour")
+        .select("id, domain_id, hour, document_urls")
         .eq("id", entryId)
         .eq("client_id", clientId)
         .eq("employee_id", employeeId)
@@ -184,6 +211,12 @@ serve(async (req) => {
 
       currentEntryHour = existingEntry.hour ?? 0;
       currentEntryDomainId = existingEntry.domain_id ?? null;
+      if (documentUrlsExisting !== null) {
+        existingDocumentUrls = documentUrlsExisting;
+      } else {
+        const urls = (existingEntry as any).document_urls;
+        existingDocumentUrls = Array.isArray(urls) ? urls : [];
+      }
     }
 
     // Compute existing hours for this employee + (new) domain
@@ -225,14 +258,54 @@ serve(async (req) => {
     }
 
     if (action === "edit" && entryId) {
+      const entryIdForUpload = entryId;
+      const documentUrlList = [...existingDocumentUrls];
+      const seenNames = new Set(documentUrlList.map((d) => d.name.toLowerCase()));
+
+      for (const att of attachments) {
+        const name = att?.name ?? "";
+        const type = att?.type ?? "application/octet-stream";
+        const base64 = att?.base64 ?? "";
+        if (!name || !base64) continue;
+        if (seenNames.has(name.toLowerCase())) {
+          return new Response(
+            JSON.stringify({ success: false, error: `Duplicate file name: ${name}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        seenNames.add(name.toLowerCase());
+        const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        if (buf.length > maxSizeBytes) {
+          return new Response(
+            JSON.stringify({ success: false, error: `File "${name}" exceeds 10MB` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = `${clientId}/${entryIdForUpload}/${safeName}`;
+        const { error: uploadErr } = await supabase.storage
+          .from(BUCKET)
+          .upload(filePath, buf, { contentType: type, upsert: true });
+        if (uploadErr) {
+          console.error("cpd_learning upload error:", uploadErr);
+          return new Response(
+            JSON.stringify({ success: false, error: `Upload failed: ${uploadErr.message}` }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        documentUrlList.push({ path: filePath, name });
+      }
+
       const { error: updateError } = await supabase
         .from("cpd_entries")
         .update({
           title,
           domain_id: domainId,
           category: category || "General",
+          cpd_learning: cpdLearning,
           hour: hours,
           captured_date: capturedDate.toISOString().slice(0, 10),
+          document_urls: documentUrlList,
           active: true,
         })
         .eq("id", entryId)
@@ -262,8 +335,10 @@ serve(async (req) => {
         title,
         domain_id: domainId,
         category: category || "General",
+        cpd_learning: cpdLearning,
         hour: hours,
         captured_date: capturedDate.toISOString().slice(0, 10),
+        document_urls: [],
         active: true,
       })
       .select("id")
@@ -277,8 +352,58 @@ serve(async (req) => {
       );
     }
 
+    const newEntryId = insertData?.id;
+    const documentUrlList: { path: string; name: string }[] = [];
+    const seenNames = new Set<string>();
+
+    for (const att of attachments) {
+      const name = att?.name ?? "";
+      const type = att?.type ?? "application/octet-stream";
+      const base64 = att?.base64 ?? "";
+      if (!name || !base64) continue;
+      if (seenNames.has(name.toLowerCase())) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Duplicate file name: ${name}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      seenNames.add(name.toLowerCase());
+      const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      if (buf.length > maxSizeBytes) {
+        return new Response(
+          JSON.stringify({ success: false, error: `File "${name}" exceeds 10MB` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `${clientId}/${newEntryId}/${safeName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(filePath, buf, { contentType: type, upsert: true });
+      if (uploadErr) {
+        console.error("cpd_learning upload error:", uploadErr);
+        return new Response(
+          JSON.stringify({ success: false, error: `Upload failed: ${uploadErr.message}` }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      documentUrlList.push({ path: filePath, name });
+    }
+
+    if (documentUrlList.length > 0) {
+      const { error: updateDocErr } = await supabase
+        .from("cpd_entries")
+        .update({ document_urls: documentUrlList })
+        .eq("id", newEntryId)
+        .eq("client_id", clientId)
+        .eq("employee_id", employeeId);
+      if (updateDocErr) {
+        console.error("cpd_learning document_urls update error:", updateDocErr);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, id: insertData?.id }),
+      JSON.stringify({ success: true, id: newEntryId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err: any) {

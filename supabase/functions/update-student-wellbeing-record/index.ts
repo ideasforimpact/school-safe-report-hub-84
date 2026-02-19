@@ -24,6 +24,8 @@ serve(async (req) => {
       id,
       client_id,
       clientId,
+      employee_id,
+      employeeId,
       student_id,
       studentId,
       section_id,
@@ -62,6 +64,8 @@ serve(async (req) => {
       );
     }
 
+    const employeeIdResolved = employee_id ?? employeeId ?? null;
+
     const url = new URL(req.url);
     const ipValidation = await validateIPWhitelist(
       supabase,
@@ -94,6 +98,22 @@ serve(async (req) => {
       );
     }
 
+    // Load existing row so we can compute field-by-field changes for audit trail
+    const { data: existingRow, error: existingError } = await supabase
+      .from('student_well_begin_management')
+      .select('student_id, section_id, grade_id, type_of_concern_id, date_of_observation, concern, status, next_follow_up')
+      .eq('id', recordId)
+      .eq('client_id', clientIdResolved)
+      .single();
+
+    if (existingError || !existingRow) {
+      console.error('update-student-wellbeing-record existing row error:', existingError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Record not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const updatePayload: Record<string, unknown> = {
       student_id: studentIdResolved,
       section_id: section_id ?? sectionId ?? null,
@@ -122,6 +142,54 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Build per-field audit entries similar to assessment audit log
+    const changes: { field: string; old_value: string | null; new_value: string | null; change_type: string }[] = [];
+    const current = existingRow as any;
+
+    const pushChange = (field: string, oldVal: unknown, newVal: unknown, changeType = 'field_update') => {
+      const oldStr = oldVal === null || oldVal === undefined ? null : String(oldVal);
+      const newStr = newVal === null || newVal === undefined ? null : String(newVal);
+      if (oldStr === newStr) return;
+      changes.push({ field, old_value: oldStr, new_value: newStr, change_type: changeType });
+    };
+
+    pushChange('student_id', current.student_id, studentIdResolved);
+    pushChange('section_id', current.section_id ?? null, section_id ?? sectionId ?? null);
+    pushChange('grade_id', current.grade_id ?? null, grade_id ?? gradeId ?? null);
+    pushChange('type_of_concern_id', current.type_of_concern_id, typeOfConcernResolved);
+    pushChange('date_of_observation', current.date_of_observation, dateObsResolved);
+    pushChange('concern', current.concern ?? null, concern ?? null);
+
+    const newStatus = status !== undefined && status !== null ? status : current.status;
+    pushChange('status', current.status ?? null, newStatus ?? null, 'status_change');
+
+    const newNextFollow =
+      next_follow_up !== undefined || nextFollowUp !== undefined
+        ? next_follow_up ?? nextFollowUp ?? null
+        : current.next_follow_up ?? null;
+    pushChange('next_follow_up', current.next_follow_up ?? null, newNextFollow);
+
+    if (changes.length > 0) {
+      const auditRows = changes.map((c) => ({
+        wellbeing_id: recordId,
+        client_id: clientIdResolved,
+        field_changed: c.field,
+        old_value: c.old_value,
+        new_value: c.new_value,
+        changed_by: employeeIdResolved,
+        change_type: c.change_type,
+        description: null,
+        changes: null,
+      }));
+
+      try {
+        await supabase.from('student_wellbeing_audit_log' as any).insert(auditRows as any);
+      } catch (auditErr) {
+        console.error('update-student-wellbeing-record audit log error:', auditErr);
+        // do not fail main update if audit logging fails
+      }
     }
 
     return new Response(

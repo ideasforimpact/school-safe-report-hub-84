@@ -196,6 +196,9 @@ serve(async (req) => {
         employee_id,
         client_id,
         title,
+        category,
+        cpd_learning,
+        document_urls,
         captured_date,
         hour,
         cpd_domain:domain_id(id, name, threshold)
@@ -282,6 +285,9 @@ serve(async (req) => {
           domain_name: domainName,
           hours,
           captured_date: (e as any).captured_date ?? null,
+          category: (e as any).category ?? null,
+          cpd_learning: (e as any).cpd_learning ?? null,
+          document_urls: (e as any).document_urls ?? [],
         };
       });
 

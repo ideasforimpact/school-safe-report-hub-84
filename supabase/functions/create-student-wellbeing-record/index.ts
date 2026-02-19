@@ -36,6 +36,7 @@ serve(async (req) => {
       sectionId,
       grade_id,
       gradeId,
+      attachments,
     } = body;
 
     const clientIdResolved = client_id ?? clientId;
@@ -83,6 +84,20 @@ serve(async (req) => {
       );
     }
 
+    // All file uploads happen here (edge function). Client sends one request with attachments[] (base64);
+    // we upload each file to storage server-side so there is only 1 client network call.
+    const BUCKET = 'student_well_begin_attachements';
+    const attachmentList = Array.isArray(attachments) ? attachments : [];
+    const maxSizeBytes = 10 * 1024 * 1024; // 10MB per file
+    const maxFiles = 5;
+
+    if (attachmentList.length > maxFiles) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Maximum ${maxFiles} files allowed` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: row, error } = await supabase
       .from('student_well_begin_management')
       .insert({
@@ -95,6 +110,7 @@ serve(async (req) => {
         date_of_observation: dateObsResolved,
         concern: concern ?? null,
         status: 'open',
+        document_url: [],
       })
       .select('id')
       .single();
@@ -107,10 +123,78 @@ serve(async (req) => {
       );
     }
 
+    const recordId = row?.id;
+    const documentUrl: { path: string; name: string }[] = [];
+    const seenNames = new Set<string>();
+
+    for (const att of attachmentList) {
+      const name = att?.name ?? '';
+      const type = att?.type ?? 'application/octet-stream';
+      const base64 = att?.base64 ?? '';
+      if (!name || !base64) continue;
+      const nameLower = name.toLowerCase();
+      if (seenNames.has(nameLower)) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Duplicate file name: ${name}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      seenNames.add(nameLower);
+      const buf = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      if (buf.length > maxSizeBytes) {
+        return new Response(
+          JSON.stringify({ success: false, error: `File "${name}" exceeds 10MB` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `${clientIdResolved}/${recordId}/${safeName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(filePath, buf, { contentType: type, upsert: true });
+      if (uploadErr) {
+        console.error('create-student-wellbeing-record upload error:', uploadErr);
+        return new Response(
+          JSON.stringify({ success: false, error: `Upload failed: ${uploadErr.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      documentUrl.push({ path: filePath, name });
+    }
+
+    if (documentUrl.length > 0) {
+      const { error: updateErr } = await supabase
+        .from('student_well_begin_management')
+        .update({ document_url: documentUrl })
+        .eq('id', recordId)
+        .eq('client_id', clientIdResolved);
+      if (updateErr) {
+        console.error('create-student-wellbeing-record document_url update error:', updateErr);
+      }
+    }
+
+    // Audit trail: log record creation
+    try {
+      await supabase.from('student_wellbeing_audit_log').insert({
+        wellbeing_id: recordId,
+        client_id: clientIdResolved,
+        field_changed: 'record',
+        old_value: null,
+        new_value: 'created',
+        changed_by: employeeIdResolved,
+        change_type: 'create',
+        description: 'Student well-being record created',
+        changes: null,
+      });
+    } catch (auditErr) {
+      console.error('create-student-wellbeing-record audit log error:', auditErr);
+      // Do not fail the main operation if audit logging fails
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        id: row?.id,
+        id: recordId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

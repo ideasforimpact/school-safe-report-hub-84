@@ -20,7 +20,7 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { id, client_id, clientId } = body;
+    const { id, client_id, clientId, employee_id, employeeId } = body;
 
     const recordId = id;
     if (!recordId) {
@@ -34,6 +34,7 @@ serve(async (req) => {
     }
 
     const clientIdResolved = client_id ?? clientId;
+    const employeeIdResolved = employee_id ?? employeeId ?? null;
     if (!clientIdResolved) {
       return new Response(
         JSON.stringify({
@@ -78,6 +79,24 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Audit trail: log soft delete
+    try {
+      await supabase.from('student_wellbeing_audit_log').insert({
+        wellbeing_id: recordId,
+        client_id: clientIdResolved,
+        field_changed: 'record',
+        old_value: 'active',
+        new_value: 'deleted',
+        changed_by: employeeIdResolved,
+        change_type: 'delete',
+        description: 'Student well-being record marked as deleted',
+        changes: null,
+      });
+    } catch (auditErr) {
+      console.error('delete-student-wellbeing-record audit log error:', auditErr);
+      // Do not fail the main operation if audit logging fails
     }
 
     return new Response(

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Users, FolderOpen, Plus, Search, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar, X } from 'lucide-react';
+import { Heart, Users, FolderOpen, Plus, Search, MessageSquare, Pencil, Trash2, MoreVertical, Zap, Calendar, X, Eye, Download, History } from 'lucide-react';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
+import { DateRange } from 'react-day-picker';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +52,8 @@ import { ConsultationDetailsDialog } from '@/components/student-wellbeing/Consul
 import { NewActionDialog } from '@/components/student-wellbeing/NewActionDialog';
 import { ActionDetailsDialog } from '@/components/student-wellbeing/ActionDetailsDialog';
 import { NewFollowUpEntryDialog } from '@/components/student-wellbeing/NewFollowUpEntryDialog';
-import { formatDate } from '@/lib/Dateformat';
+import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialog';
+import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -59,7 +62,15 @@ const STATUS_OPTIONS = [
   { value: 'closed', label: 'Closed' },
 ] as const;
 
-
+function formatDate(value: string | null): string {
+  if (!value) return 'Not set';
+  try {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? 'Not set' : d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return 'Not set';
+  }
+}
 
 function formatStatus(status: string): string {
   return status
@@ -95,9 +106,12 @@ const StudentWellBeingPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [newRecordDialogOpen, setNewRecordDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState<StudentWellbeingRecord | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [recordToView, setRecordToView] = useState<StudentWellbeingRecord | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<StudentWellbeingRecord | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -111,6 +125,8 @@ const StudentWellBeingPage = () => {
   const [recordForActionDetails, setRecordForActionDetails] = useState<StudentWellbeingRecord | null>(null);
   const [newFollowUpDialogOpen, setNewFollowUpDialogOpen] = useState(false);
   const [recordForFollowUp, setRecordForFollowUp] = useState<StudentWellbeingRecord | null>(null);
+  const [auditDialogOpen, setAuditDialogOpen] = useState(false);
+  const [recordForAudit, setRecordForAudit] = useState<StudentWellbeingRecord | null>(null);
 
   const loadRecords = useCallback(async () => {
     if (!clientId) {
@@ -137,10 +153,10 @@ const StudentWellBeingPage = () => {
   }, [loadRecords]);
 
   const handleDeleteConfirm = async () => {
-    if (!recordToDelete || !clientId) return;
+    if (!recordToDelete || !clientId || !employeeData?.id) return;
     setDeleting(true);
     try {
-      await deleteStudentWellbeingRecord(recordToDelete.id, clientId);
+      await deleteStudentWellbeingRecord(recordToDelete.id, clientId, employeeData.id);
       toast.success('Record deleted');
       setDeleteDialogOpen(false);
       setRecordToDelete(null);
@@ -155,6 +171,19 @@ const StudentWellBeingPage = () => {
   const filteredRecords = records.filter((r) => {
     const matchStatus = statusFilter === 'all' || r.status === statusFilter;
     if (!matchStatus) return false;
+    if (dateRange?.from || dateRange?.to) {
+      const obs = r.date_of_observation ? new Date(r.date_of_observation) : null;
+      if (!obs || isNaN(obs.getTime())) return false;
+      const obsDay = new Date(obs.getFullYear(), obs.getMonth(), obs.getDate());
+      if (dateRange.from) {
+        const fromDay = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate());
+        if (obsDay < fromDay) return false;
+      }
+      if (dateRange.to) {
+        const toDay = new Date(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate());
+        if (obsDay > toDay) return false;
+      }
+    }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -167,6 +196,81 @@ const StudentWellBeingPage = () => {
   const handleClearFilters = () => {
     setSearchQuery('');
     setStatusFilter('all');
+    setDateRange(undefined);
+  };
+
+  const exportToCsv = () => {
+    const maxConsultations = 5;
+    const maxActions = 5;
+    const escape = (v: string) => {
+      const s = String(v ?? '');
+      if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+    const fmtDate = (value: string | null) => {
+      if (!value) return '';
+      try {
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch {
+        return '';
+      }
+    };
+    const headers = [
+      'Student Name',
+      'Grade/Section',
+      'Concern',
+      'Date of Observation',
+      'Status',
+      ...Array.from({ length: maxConsultations }, (_, i) => [
+        `Consultation ${i + 1} - Provided By`,
+        `Consultation ${i + 1} - Date`,
+        `Consultation ${i + 1} - Mode`,
+        `Consultation ${i + 1} - Notes`,
+      ]).flat(),
+      ...Array.from({ length: maxActions }, (_, i) => [
+        `Action ${i + 1} - Date`,
+        `Action ${i + 1} - Description`,
+      ]).flat(),
+    ];
+    const rows = filteredRecords.map((r) => {
+      const consultations = r.consultations ?? [];
+      const actions = r.actions ?? [];
+      const base = [
+        r.student_name ?? '',
+        (r.class ?? '').replace(/^Class\s+/i, ''),
+        r.concern ?? '',
+        fmtDate(r.date_of_observation),
+        formatStatus(r.status ?? ''),
+      ];
+      for (let i = 0; i < maxConsultations; i++) {
+        const c = consultations[i];
+        base.push(
+          c?.consultation_provided_by ?? '',
+          c ? fmtDate(c.consultation_date) : '',
+          c?.mode_name ?? '',
+          c?.support_notes ?? ''
+        );
+      }
+      for (let i = 0; i < maxActions; i++) {
+        const a = actions[i];
+        base.push(a ? fmtDate(a.taken_date) : '', a?.description ?? '');
+      }
+      return base.map(escape).join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const fromStr = dateRange?.from ? dateRange.from.toISOString().slice(0, 10) : 'all';
+    const toStr = dateRange?.to ? dateRange.to.toISOString().slice(0, 10) : 'all';
+    a.download = `student-wellbeing-records-${fromStr}-${toStr}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredRecords.length} record(s)`);
   };
 
 
@@ -212,17 +316,28 @@ const StudentWellBeingPage = () => {
                 </div>
               </div>
             </div>
-            <Button
-              className="flex items-center gap-2 shrink-0"
-              onClick={() => setNewRecordDialogOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Record</span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={exportToCsv}
+                disabled={filteredRecords.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                <span>Export</span>
+              </Button>
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => setNewRecordDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                <span>New Record</span>
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Records list – search box and status filter only (no date range) */}
+        {/* Records list – search, status and date range filter */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 mx-6">
           <h2 className="text-lg font-semibold mb-4">Records</h2>
           <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -247,7 +362,14 @@ const StudentWellBeingPage = () => {
                 ))}
               </SelectContent>
             </Select>
-             {(searchQuery || statusFilter !== 'all') && (
+            <div className="w-[300px]">
+              <DatePickerWithRange
+                date={dateRange}
+                onChange={setDateRange}
+                className="w-full"
+              />
+            </div>
+             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -283,7 +405,6 @@ const StudentWellBeingPage = () => {
                     <TableHead className="text-left font-medium">Consultation</TableHead>
                     <TableHead className="text-left font-medium">Action Taken</TableHead>
                     <TableHead className="text-left font-medium">Status</TableHead>
-                    <TableHead className="text-left font-medium">Next Follow-up</TableHead>
                     <TableHead className="text-left font-medium">Date</TableHead>
                     <TableHead className="text-right font-medium">Actions</TableHead>
                   </TableRow>
@@ -329,27 +450,32 @@ const StudentWellBeingPage = () => {
                       <TableCell>
                         <span
                           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeClass(row.status)}`}
-                          >
+                        >
                           {formatStatus(row.status)}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        {row.follow_up_entries?.length
-                          ? formatDate(row.follow_up_entries[0].date)
-                          : row.next_follow_up && formatDate(row.next_follow_up)}
-                      </TableCell>
-
-                      <TableCell>{formatDate(row.date_of_observation) 
-}
-                                </TableCell>
+                      <TableCell>{formatDate(row.date_of_observation)}</TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Actions">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
+                        <div className="inline-flex items-center gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="View audit trail"
+                            onClick={() => {
+                              setRecordForAudit(row);
+                              setAuditDialogOpen(true);
+                            }}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Actions">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
                               onSelect={(e) => {
                                 e.preventDefault();
@@ -359,6 +485,16 @@ const StudentWellBeingPage = () => {
                             >
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setRecordToView(row);
+                                setViewDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
@@ -403,6 +539,7 @@ const StudentWellBeingPage = () => {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -427,6 +564,14 @@ const StudentWellBeingPage = () => {
         }}
         onSuccess={loadRecords}
         record={recordToEdit}
+      />
+      <ViewRecordDialog
+        open={viewDialogOpen}
+        onClose={() => {
+          setViewDialogOpen(false);
+          setRecordToView(null);
+        }}
+        record={recordToView}
       />
       <NewConsultationDialog
         open={newConsultationDialogOpen}
@@ -471,39 +616,47 @@ const StudentWellBeingPage = () => {
         onSuccess={loadRecords}
         record={recordForFollowUp}
       />
-        <AlertDialog
-          open={deleteDialogOpen}
-          onOpenChange={(open) => {
-            setDeleteDialogOpen(open);
-            if (!open) setRecordToDelete(null);
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete well-being record</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete this record for {recordToDelete?.student_name}? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteConfirm}
-                disabled={deleting}
-                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-              >
-                {deleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Delete'
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+      <StudentWellbeingAuditDialog
+        open={auditDialogOpen}
+        onClose={() => {
+          setAuditDialogOpen(false);
+          setRecordForAudit(null);
+        }}
+        record={recordForAudit}
+      />
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setRecordToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete well-being record</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this record for {recordToDelete?.student_name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

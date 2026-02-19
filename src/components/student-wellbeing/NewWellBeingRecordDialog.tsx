@@ -17,10 +17,17 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { StudentSearchSelect, type StudentOption } from './StudentSearchSelect';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import type { FileItem } from '@/types/fileTypes';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+
+const ATTACHMENTS_MAX_FILES = 5;
+const ATTACHMENTS_MAX_SIZE_MB = 10;
+const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
 
 const CONCERN_MIN = 2;
 const CONCERN_MAX = 2000;
@@ -45,10 +52,12 @@ export function NewWellBeingRecordDialog({
   const [typeOfConcernId, setTypeOfConcernId] = useState<string>('');
   const [dateOfObservation, setDateOfObservation] = useState<Date | undefined>(new Date());
   const [concern, setConcern] = useState('');
+  const [attachmentFiles, setAttachmentFiles] = useState<FileItem[]>([]);
   const [generalConcernOptions, setGeneralConcernOptions] = useState<{ id: string; name: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -106,7 +115,14 @@ export function NewWellBeingRecordDialog({
     if (!validate()) return;
 
     setSaving(true);
+    setApiError(null);
     try {
+      const attachmentsPayload = attachmentFiles.map((f) => ({
+        name: f.name,
+        type: f.type,
+        base64: f.base64?.replace(/^data:[^;]+;base64,/, '') ?? '',
+      }));
+
       const { data, error } = await supabase.functions.invoke('create-student-wellbeing-record', {
         method: 'POST',
         body: {
@@ -118,16 +134,18 @@ export function NewWellBeingRecordDialog({
           type_of_concern_id: typeOfConcernId,
           date_of_observation: dateOfObservation!.toISOString(),
           concern: concern.trim() || null,
+          attachments: attachmentsPayload,
         },
       });
 
-      if (error) {
-        toast.error(error.message || 'Failed to save record');
-        setSaving(false);
-        return;
-      }
-      if (data?.success === false) {
-        toast.error(data?.error || 'Failed to save record');
+      const friendlyMessage =
+        (typeof data?.error === 'string' ? data.error : null) ||
+        error?.message ||
+        'Failed to save record';
+
+      if (error || data?.success === false) {
+        setApiError(friendlyMessage);
+        toast.error(friendlyMessage);
         setSaving(false);
         return;
       }
@@ -137,11 +155,15 @@ export function NewWellBeingRecordDialog({
       setTypeOfConcernId('');
       setDateOfObservation(new Date());
       setConcern('');
+      setAttachmentFiles([]);
       setErrors({});
+      setApiError(null);
       onSuccess();
       onClose();
     } catch (e) {
-      toast.error('Failed to save record');
+      const message = e instanceof Error ? e.message : 'Failed to save record';
+      setApiError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -153,18 +175,26 @@ export function NewWellBeingRecordDialog({
       setTypeOfConcernId('');
       setDateOfObservation(new Date());
       setConcern('');
+      setAttachmentFiles([]);
       setErrors({});
+      setApiError(null);
       onClose();
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>New Well-Being Record</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
+          {apiError && (
+            <Alert variant="destructive" className="flex-shrink-0">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{apiError}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="student">Student <span className="text-red-500">*</span></Label>
             <StudentSearchSelect
@@ -233,6 +263,23 @@ export function NewWellBeingRecordDialog({
               <p className="text-sm text-red-500">{errors.concern}</p>
             )}
           </div>
+
+          <div className="grid gap-2">
+            <Label>Attachments</Label>
+            <ReusableFileUploader
+              onFilesChange={setAttachmentFiles}
+              initialFiles={[]}
+              maxFiles={ATTACHMENTS_MAX_FILES}
+              maxSize={ATTACHMENTS_MAX_SIZE_MB}
+              maxTotalSize={ATTACHMENTS_MAX_TOTAL_MB}
+              showFileList={true}
+              disabled={saving}
+              className={errors.attachments ? 'border-red-500' : ''}
+            />
+            {errors.attachments && (
+              <p className="text-sm text-red-500">{errors.attachments}</p>
+            )}
+          </div>
         </div>
 
         {saving && (
@@ -241,7 +288,7 @@ export function NewWellBeingRecordDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-2 flex-shrink-0 border-t pt-4 mt-2">
           <Button variant="outline" onClick={handleClose} disabled={saving}>
             Cancel
           </Button>
