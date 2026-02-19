@@ -238,6 +238,17 @@ serve(async (req) => {
     if (allSubmissionsError) {
       console.error('Error fetching all unacknowledged submissions:', allSubmissionsError)
     }
+    const { count: acknowledgedCount, error: acknowledgedError } = await supabase
+      .from('form_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', client_id)
+      .not('acknowledged_at', 'is', null)
+    
+    if (acknowledgedError) {
+      console.error('Error fetching acknowledged submissions:', acknowledgedError)
+    }
+    
+    const formSumitcount = acknowledgedCount || 0;
 
     // Filter submissions by time windows
     const submissions30Days = allUnacknowledgedSubmissions?.filter(sub => 
@@ -743,6 +754,9 @@ serve(async (req) => {
     }
 
     const { data: closedIncidents, error: closedIncidentsError } = await closedIncidentsQuery
+    const openCount = openIncidents?.length || 0;
+    const closedCount = closedIncidents?.length || 0;
+    const totalIncidentsCount = openCount + closedCount;
 
     if (closedIncidentsError) {
       console.error('Error fetching closed incidents:', closedIncidentsError)
@@ -907,6 +921,7 @@ serve(async (req) => {
     })
 
     const dashboardResponse = {
+      totalIncidents: totalIncidentsCount,
       openIncidents: openIncidents?.length || 0,
       openIncidentOlder7days:openIncidentOlder7days?.length || 0,
       studentsInvolved: studentsInvolvedCount,
@@ -920,6 +935,7 @@ serve(async (req) => {
       formSubmissions30Days: submissions30Days?.length || 0,
       formSubmissions60Days: submissions60Days?.length || 0,
       formSubmissions90Days: submissions90Days?.length || 0,
+      formAknowledged:formSumitcount || 0,
       totalVehicles: allVehicles?.length || 0,
       vehiclesToBeVerified,
       vehiclesFailedVerification,
