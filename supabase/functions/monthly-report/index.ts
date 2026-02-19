@@ -380,6 +380,22 @@ serve(async (req) => {
 
       if (!superAdmin?.id) continue; // skip client with no super admin
 
+      const { data: existing } = await supabase
+        .from("monthly_export_queue")
+        .select("id")
+        .eq("client_id", cid)
+        .eq("target_employee_id", superAdmin.id)
+        .eq("target_month", reportMonth)
+        .eq("target_date", lastDay)
+        .eq("target_year", reportYear)
+        .eq("prepare_month", prepareMonth)
+        .eq("prepare_date", prepareDate)
+        .eq("prepare_year", prepareYear)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) continue; // already queued for this client/employee/target/prepare combo, skip
+
       await supabase.from("monthly_export_queue").insert({
         client_id: cid,
         target_employee_id: superAdmin.id,
