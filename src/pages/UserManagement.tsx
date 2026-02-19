@@ -66,6 +66,18 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return department as DepartmentType;
 };
 
+// CPD entry shape for users list (from cpd_entries + domain name)
+export type CpdEntryForUser = {
+  id: string;
+  title: string;
+  domain_id: string;
+  domain_name: string;
+  hour: number | null;
+  captured_date: string | null;
+  category: string | null;
+  cpd_learning: string | null;
+};
+
 // Export the EmployeeUser interface so it can be used by other components
 export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
@@ -73,6 +85,7 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   employeeType?: EmployeeType; 
   department?: DepartmentType;
   joiningDate?: string;
+  cpd_entries?: CpdEntryForUser[];
   // No need to explicitly define role here since we're extending from User
 }
 
@@ -148,6 +161,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // Initialize loading to true - will be set to false after data is loaded
   const [isLoading, setIsLoading] = useState(true);
   const [employeeUsers, setEmployeeUsers] = useState<EmployeeUser[]>([]);
+  const [cpdDomains, setCpdDomains] = useState<{ id: string; name: string }[]>([]);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -282,20 +296,54 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      // Pass clientId to filter employees by client
-      const employeeData = await getAllEmployeesFromApi(clientId);
-      console.log(employeeData, "employeeData124")
-      
+      // Fetch CPD domains for tabs and cpd_entries for attaching to users
+      const [employeeData, domainsRes, entriesRes] = await Promise.all([
+        getAllEmployeesFromApi(clientId),
+        supabase.from('cpd_domain').select('id, name').eq('active', true).order('name'),
+        supabase
+          .from('cpd_entries')
+          .select('id, employee_id, title, domain_id, hour, captured_date, category, cpd_learning')
+          .eq('client_id', clientId)
+          .eq('active', true),
+      ]);
+
+      const domainsList = (domainsRes.data ?? []) as { id: string; name: string }[];
+      if (domainsList.length) {
+        setCpdDomains(domainsList);
+      } else {
+        setCpdDomains([]);
+      }
+
+      const domainNameById: Record<string, string> = {};
+      domainsList.forEach((d) => {
+        domainNameById[d.id] = d.name;
+      });
+
+      const allCpdEntries = (entriesRes.data ?? []).map((row: any) => ({
+        id: row.id,
+        title: row.title ?? '',
+        domain_id: row.domain_id ?? '',
+        domain_name: domainNameById[row.domain_id] ?? '',
+        hour: row.hour ?? null,
+        captured_date: row.captured_date ?? null,
+        category: row.category ?? null,
+        cpd_learning: row.cpd_learning ?? null,
+        employee_id: row.employee_id,
+      }));
+
+      console.log(employeeData, "employeeData124");
+
       if (employeeData && employeeData.length > 0) {
-        // Process each employee to get their module access items
+        // Process each employee to get their module access items and CPD entries
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Get module access items (handles both super admin and regular employees)
           const moduleAccessItems = await getModuleAccessForUser({
             id: employee.id,
             isSuperAdmin: employee.isSuperAdmin,
             clientId: employee.clientId
           });
-          
+          const cpd_entries = allCpdEntries
+            .filter((e: any) => e.employee_id === employee.id)
+            .map(({ employee_id: _, ...rest }: any) => rest);
           return {
             id: employee.id,
             firstName: employee.firstName,
@@ -312,9 +360,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
             is_cpd_involved: employee.isCpdInvolved ?? false,
-            // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
-            // Add default role property to satisfy User interface
+            cpd_entries,
             role: 'user' as const
           };
         }));
@@ -915,6 +962,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               {filteredUsers && filteredUsers.length > 0 ? (
                 <UserList 
                   users={filteredUsers}
+                  cpdDomains={cpdDomains}
                   onEditClick={(user) => {
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
                     const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;

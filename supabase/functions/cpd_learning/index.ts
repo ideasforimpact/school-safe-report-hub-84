@@ -246,16 +246,17 @@ serve(async (req) => {
       usedHours -= currentEntryHour;
     }
 
-    const remaining = threshold > 0 ? Math.max(0, threshold - usedHours) : Infinity;
-    if (threshold > 0 && hours > remaining) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `You can only add up to ${remaining}h for this domain based on the threshold`,
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    // Blocking logic commented out: allow create/edit beyond domain threshold; client still shows warning below CPD Domain
+    // const remaining = threshold > 0 ? Math.max(0, threshold - usedHours) : Infinity;
+    // if (threshold > 0 && hours > remaining) {
+    //   return new Response(
+    //     JSON.stringify({
+    //       success: false,
+    //       error: `You can only add up to ${remaining}h for this domain based on the threshold`,
+    //     }),
+    //     { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    //   );
+    // }
 
     if (action === "edit" && entryId) {
       const entryIdForUpload = entryId;

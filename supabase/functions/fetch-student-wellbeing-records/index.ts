@@ -22,6 +22,7 @@ serve(async (req) => {
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const clientId = body.clientId ?? body.client_id;
     const employeeId = body.employeeId ?? body.employee_id;
+    const academicYear = body.academicYear ?? body.academic_year ?? null;
 
     if (!clientId) {
       return new Response(
@@ -47,7 +48,22 @@ serve(async (req) => {
       );
     }
 
-    const { data: records, error } = await supabase
+    // Academic year: e.g. "2025-2026" => Apr 1, 2025 00:00 to Mar 31, 2026 23:59 (filter by created_at)
+    let createdFrom: string | null = null;
+    let createdTo: string | null = null;
+    if (academicYear && typeof academicYear === 'string') {
+      const match = academicYear.match(/^(\d{4})-(\d{4})$/);
+      if (match) {
+        const startYear = parseInt(match[1], 10);
+        const endYear = parseInt(match[2], 10);
+        if (endYear === startYear + 1) {
+          createdFrom = `${startYear}-04-01T00:00:00.000Z`;
+          createdTo = `${endYear}-03-31T23:59:59.999Z`;
+        }
+      }
+    }
+
+    let query = supabase
       .from('student_well_begin_management')
       .select(`
         id,
@@ -62,15 +78,19 @@ serve(async (req) => {
         document_url,
         created_at,
         updated_at,
-        students:student_id(id, name, grade, section),
+        students:student_id(id, student_id, name, grade, section),
         sections:section_id(id, name),
         grades:grade_id(id, name),
         general_concern:type_of_concern_id(id, name)
       `)
       .eq('client_id', clientId)
       .eq('is_deleted', false)
-      .is('deleted_at', null)
-      .order('date_of_observation', { ascending: false });
+      .is('deleted_at', null);
+
+    if (createdFrom) query = query.gte('created_at', createdFrom);
+    if (createdTo) query = query.lte('created_at', createdTo);
+
+    const { data: records, error } = await query.order('date_of_observation', { ascending: false });
 
     if (error) {
       console.error('Error fetching student wellbeing records:', error);
@@ -171,6 +191,7 @@ serve(async (req) => {
       return {
         id: r.id,
         student_id: r.student_id,
+        student_display_id: student?.student_id ?? null,
         student_name: student?.name ?? '—',
         section_id: r.section_id ?? null,
         grade_id: r.grade_id ?? null,

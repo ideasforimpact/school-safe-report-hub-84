@@ -17,6 +17,9 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { StudentSearchSelect, type StudentOption } from './StudentSearchSelect';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import type { FileItem } from '@/types/fileTypes';
+import { FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
@@ -29,6 +32,9 @@ import {
 const CONCERN_MIN = 2;
 const CONCERN_MAX = 2000;
 const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
+const ATTACHMENTS_MAX_FILES = 5;
+const ATTACHMENTS_MAX_SIZE_MB = 10;
+const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
@@ -58,6 +64,8 @@ export function EditWellBeingRecordDialog({
   const [concern, setConcern] = useState('');
   const [status, setStatus] = useState<string>('open');
   const [nextFollowUp, setNextFollowUp] = useState<Date | undefined>(undefined);
+  const [existingKept, setExistingKept] = useState<{ path: string; name: string }[]>([]);
+  const [attachmentFiles, setAttachmentFiles] = useState<FileItem[]>([]);
   const [generalConcernOptions, setGeneralConcernOptions] = useState<{ id: string; name: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,6 +91,9 @@ export function EditWellBeingRecordDialog({
       setNextFollowUp(
         record.next_follow_up ? new Date(record.next_follow_up) : undefined
       );
+      const docs = record.document_url ?? [];
+      setExistingKept(Array.isArray(docs) ? docs.map((d) => ({ path: d.path, name: d.name })) : []);
+      setAttachmentFiles([]);
     }
   }, [open, record]);
 
@@ -135,6 +146,11 @@ export function EditWellBeingRecordDialog({
 
     setSaving(true);
     try {
+      const attachmentsPayload = attachmentFiles.map((f) => ({
+        name: f.name,
+        type: f.type,
+        base64: (f.base64 ?? '').replace(/^data:[^;]+;base64,/, ''),
+      }));
       await updateStudentWellbeingRecord({
         id: record.id,
         client_id: clientId,
@@ -147,6 +163,8 @@ export function EditWellBeingRecordDialog({
         concern: concern.trim() || null,
         status: status as 'open' | 'under_observation' | 'closed',
         next_follow_up: nextFollowUp ? nextFollowUp.toISOString().slice(0, 10) : null,
+        document_url: existingKept,
+        attachments: attachmentsPayload,
       });
 
       toast.success('Record updated');
@@ -170,11 +188,11 @@ export function EditWellBeingRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Well-Being Record</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
           <div className="grid gap-2">
             <Label htmlFor="student">Student</Label>
             <StudentSearchSelect
@@ -245,6 +263,46 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
+            <Label>Attachments (optional)</Label>
+            {existingKept.length > 0 && (
+              <div className="space-y-2 mb-3">
+                <p className="text-xs text-muted-foreground">Existing attachments</p>
+                <ul className="space-y-1.5">
+                  {existingKept.map((doc, i) => (
+                    <li
+                      key={`${doc.path}-${i}`}
+                      className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                    >
+                      <span className="flex items-center gap-2 truncate min-w-0">
+                        <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        {doc.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setExistingKept((prev) => prev.filter((_, idx) => idx !== i))}
+                        disabled={saving}
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                        aria-label="Remove attachment"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <ReusableFileUploader
+              onFilesChange={setAttachmentFiles}
+              initialFiles={[]}
+              maxFiles={ATTACHMENTS_MAX_FILES}
+              maxSize={ATTACHMENTS_MAX_SIZE_MB}
+              maxTotalSize={ATTACHMENTS_MAX_TOTAL_MB}
+              showFileList={true}
+              disabled={saving}
+            />
+          </div>
+
+          <div className="grid gap-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={setStatus} disabled={saving}>
               <SelectTrigger>
@@ -278,7 +336,7 @@ export function EditWellBeingRecordDialog({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-2 flex-shrink-0 border-t pt-4 mt-4">
           <Button variant="outline" onClick={handleClose} disabled={saving}>
             Cancel
           </Button>

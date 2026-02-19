@@ -40,6 +40,8 @@ serve(async (req) => {
       status,
       next_follow_up,
       nextFollowUp,
+      document_url,
+      attachments,
     } = body;
 
     const recordId = id;
@@ -130,6 +132,63 @@ serve(async (req) => {
       updatePayload.next_follow_up = next_follow_up ?? nextFollowUp ?? null;
     }
 
+    // Handle attachments when client sends document_url and/or attachments (edit dialog)
+    const hasAttachmentsPayload = document_url !== undefined || (Array.isArray(attachments) && attachments.length > 0);
+    if (hasAttachmentsPayload) {
+      const existingToKeep = Array.isArray(document_url) ? document_url : [];
+      const attachmentList = Array.isArray(attachments) ? attachments : [];
+      const BUCKET = 'student_well_begin_attachements';
+      const maxSizeBytes = 10 * 1024 * 1024;
+      const maxFiles = 5;
+
+      if (existingToKeep.length + attachmentList.length > maxFiles) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Maximum ${maxFiles} files allowed` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const documentUrl: { path: string; name: string }[] = [...existingToKeep];
+      const seenNames = new Set<string>(existingToKeep.map((d: { name: string }) => d.name.toLowerCase()));
+
+      for (const att of attachmentList) {
+        const name = att?.name ?? '';
+        const type = att?.type ?? 'application/octet-stream';
+        const base64 = att?.base64 ?? '';
+        if (!name || !base64) continue;
+        const nameLower = name.toLowerCase();
+        if (seenNames.has(nameLower)) {
+          return new Response(
+            JSON.stringify({ success: false, error: `Duplicate file name: ${name}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        seenNames.add(nameLower);
+        const buf = Uint8Array.from(atob(base64), (c: string) => c.charCodeAt(0));
+        if (buf.length > maxSizeBytes) {
+          return new Response(
+            JSON.stringify({ success: false, error: `File "${name}" exceeds 10MB` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const filePath = `${clientIdResolved}/${recordId}/${safeName}`;
+        const { error: uploadErr } = await supabase.storage
+          .from(BUCKET)
+          .upload(filePath, buf, { contentType: type, upsert: true });
+        if (uploadErr) {
+          console.error('update-student-wellbeing-record upload error:', uploadErr);
+          return new Response(
+            JSON.stringify({ success: false, error: `Upload failed: ${uploadErr.message}` }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        documentUrl.push({ path: filePath, name });
+      }
+
+      updatePayload.document_url = documentUrl;
+    }
+
     const { error } = await supabase
       .from('student_well_begin_management')
       .update(updatePayload)
@@ -155,11 +214,22 @@ serve(async (req) => {
       changes.push({ field, old_value: oldStr, new_value: newStr, change_type: changeType });
     };
 
+    const sameDate = (a: string | null, b: string | null): boolean => {
+      if (a == null && b == null) return true;
+      if (a == null || b == null) return false;
+      const t1 = new Date(a).getTime();
+      const t2 = new Date(b).getTime();
+      if (Number.isNaN(t1) || Number.isNaN(t2)) return a === b;
+      return t1 === t2;
+    };
+
     pushChange('student_id', current.student_id, studentIdResolved);
     pushChange('section_id', current.section_id ?? null, section_id ?? sectionId ?? null);
     pushChange('grade_id', current.grade_id ?? null, grade_id ?? gradeId ?? null);
     pushChange('type_of_concern_id', current.type_of_concern_id, typeOfConcernResolved);
-    pushChange('date_of_observation', current.date_of_observation, dateObsResolved);
+    if (!sameDate(current.date_of_observation ?? null, dateObsResolved ?? null)) {
+      pushChange('date_of_observation', current.date_of_observation, dateObsResolved);
+    }
     pushChange('concern', current.concern ?? null, concern ?? null);
 
     const newStatus = status !== undefined && status !== null ? status : current.status;

@@ -126,6 +126,30 @@ const resolveTypeOfConcernName = async (id: string | null): Promise<string | nul
   }
 };
 
+const formatAuditDate = (isoOrNull: string | null | undefined): string => {
+  if (isoOrNull == null || isoOrNull === '') return '';
+  try {
+    const d = new Date(isoOrNull);
+    if (Number.isNaN(d.getTime())) return isoOrNull;
+    const day = d.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  } catch {
+    return isoOrNull;
+  }
+};
+
+const formatStatusForAudit = (v: string): string => {
+  if (!v || v === '') return 'Not set';
+  return v
+    .toString()
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+};
+
 const formatRelativeTime = (date: Date): string => {
   const now = new Date().getTime();
   const diffMs = now - date.getTime();
@@ -177,24 +201,22 @@ export const formatStudentWellbeingAuditEntries = async (
     } else if (entry.change_type === 'delete') {
       title = 'Record deleted';
       details = 'Student well-being record deleted.';
+    } else if (entry.change_type === 'status_change' || entry.field_changed === 'status') {
+      badgeLabel = 'Status Changed';
+      badgeClass = 'bg-blue-100 text-blue-800 border border-blue-200';
+      const fromPretty = formatStatusForAudit(entry.old_value ?? '');
+      const toPretty = formatStatusForAudit(entry.new_value ?? '');
+      title = 'Status updated';
+      details = `Status changed from ${fromPretty} to ${toPretty}.`;
+      fromLabel = fromPretty;
+      toLabel = toPretty;
     } else if (entry.change_type === 'field_update') {
-      // Status change gets special treatment
       const statusChange = changesArray?.find((c: any) => c.field === 'status');
       if (statusChange) {
         badgeLabel = 'Status Changed';
         badgeClass = 'bg-blue-100 text-blue-800 border border-blue-200';
-        const from = statusChange.old_value ?? '';
-        const to = statusChange.new_value ?? '';
-        const pretty = (v: string) =>
-          !v
-            ? 'Not set'
-            : v
-                .toString()
-                .split('_')
-                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(' ');
-        const fromPretty = pretty(from);
-        const toPretty = pretty(to);
+        const fromPretty = formatStatusForAudit(statusChange.old_value ?? '');
+        const toPretty = formatStatusForAudit(statusChange.new_value ?? '');
         title = 'Status updated';
         details = `Status changed from ${fromPretty} to ${toPretty}.`;
         fromLabel = fromPretty;
@@ -230,14 +252,17 @@ export const formatStudentWellbeingAuditEntries = async (
           }
         }
       } else if (!details) {
-        // Fallback when we don't have a structured changes array
+        // Fallback: single field row (field_changed, old_value, new_value)
         const fieldLabel = formatFieldLabel(entry.field_changed);
-        let oldVal = entry.old_value ?? null;
-        let newVal = entry.new_value ?? null;
+        let oldVal: string | null = entry.old_value ?? null;
+        let newVal: string | null = entry.new_value ?? null;
 
         if (entry.field_changed === 'type_of_concern_id') {
           oldVal = await resolveTypeOfConcernName(oldVal);
           newVal = await resolveTypeOfConcernName(newVal);
+        } else if (entry.field_changed === 'date_of_observation') {
+          oldVal = formatAuditDate(oldVal) || oldVal;
+          newVal = formatAuditDate(newVal) || newVal;
         }
 
         if (oldVal && newVal) {

@@ -62,6 +62,55 @@ const STATUS_OPTIONS = [
   { value: 'closed', label: 'Closed' },
 ] as const;
 
+/** Academic year runs Apr 1 (start year) to Mar 31 (end year). e.g. 2025-2026 = 1 Apr 2025 – 31 Mar 2026 */
+function getCurrentAcademicYear(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth(); // 0-indexed: Jan=0, Apr=3
+  if (m >= 3) return `${y}-${y + 1}`;
+  return `${y - 1}-${y}`;
+}
+
+/** Past and current academic years only (no future). Default 10 years back. */
+function getAcademicYearOptions(pastYears = 10): { value: string; label: string }[] {
+  const current = getCurrentAcademicYear();
+  const match = current.match(/^(\d{4})-(\d{4})$/);
+  const currentStartYear = match ? parseInt(match[1], 10) : new Date().getFullYear();
+  const minStartYear = currentStartYear - pastYears;
+  const options: { value: string; label: string }[] = [{ value: 'all', label: 'All years' }];
+  for (let startY = currentStartYear; startY >= minStartYear; startY--) {
+    options.push({ value: `${startY}-${startY + 1}`, label: `${startY}-${startY + 1}` });
+  }
+  return options;
+}
+
+function getAcademicYearRange(value: string): { start: Date; end: Date } | null {
+  if (!value || value === 'all') return null;
+  const match = value.match(/^(\d{4})-(\d{4})$/);
+  if (!match) return null;
+  const startYear = parseInt(match[1], 10);
+  const endYear = parseInt(match[2], 10);
+  if (endYear !== startYear + 1) return null;
+  const start = new Date(startYear, 3, 1); // April 1
+  const end = new Date(endYear, 2, 31); // March 31
+  return { start, end };
+}
+
+/** Get academic year string for a given date (e.g. "2025-2026"). */
+function getAcademicYearForDate(dateInput: string | Date | null | undefined): string {
+  if (dateInput == null) return '';
+  try {
+    const d = new Date(dateInput);
+    if (Number.isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    if (m >= 3) return `${y}-${y + 1}`;
+    return `${y - 1}-${y}`;
+  } catch {
+    return '';
+  }
+}
+
 function formatDate(value: string | null): string {
   if (!value) return 'Not set';
   try {
@@ -107,6 +156,7 @@ const StudentWellBeingPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [academicYearFilter, setAcademicYearFilter] = useState<string>(() => getCurrentAcademicYear());
   const [newRecordDialogOpen, setNewRecordDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState<StudentWellbeingRecord | null>(null);
@@ -137,7 +187,8 @@ const StudentWellBeingPage = () => {
     }
     try {
       setLoading(true);
-      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id);
+      const academicYear = academicYearFilter && academicYearFilter !== 'all' ? academicYearFilter : undefined;
+      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id, academicYear);
       setRecords(result.records);
       setSummary(result.summary);
     } catch (err) {
@@ -146,7 +197,7 @@ const StudentWellBeingPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [clientId, employeeData?.id]);
+  }, [clientId, employeeData?.id, academicYearFilter]);
 
   useEffect(() => {
     loadRecords();
@@ -171,10 +222,13 @@ const StudentWellBeingPage = () => {
   const filteredRecords = records.filter((r) => {
     const matchStatus = statusFilter === 'all' || r.status === statusFilter;
     if (!matchStatus) return false;
+    const obs = r.date_of_observation ? new Date(r.date_of_observation) : null;
+    const obsDay = obs && !isNaN(obs.getTime())
+      ? new Date(obs.getFullYear(), obs.getMonth(), obs.getDate())
+      : null;
+
     if (dateRange?.from || dateRange?.to) {
-      const obs = r.date_of_observation ? new Date(r.date_of_observation) : null;
-      if (!obs || isNaN(obs.getTime())) return false;
-      const obsDay = new Date(obs.getFullYear(), obs.getMonth(), obs.getDate());
+      if (!obsDay) return false;
       if (dateRange.from) {
         const fromDay = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate());
         if (obsDay < fromDay) return false;
@@ -186,7 +240,9 @@ const StudentWellBeingPage = () => {
     }
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
+    const studentId = (r.student_display_id ?? r.student_id ?? '').toLowerCase();
     return (
+      studentId.includes(q) ||
       r.student_name?.toLowerCase().includes(q) ||
       r.class?.toLowerCase().includes(q) ||
       r.concern?.toLowerCase().includes(q)
@@ -197,6 +253,7 @@ const StudentWellBeingPage = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setDateRange(undefined);
+    setAcademicYearFilter(getCurrentAcademicYear());
   };
 
   const exportToCsv = () => {
@@ -219,6 +276,7 @@ const StudentWellBeingPage = () => {
       }
     };
     const headers = [
+      'Academic Year',
       'Student Name',
       'Grade/Section',
       'Concern',
@@ -238,7 +296,9 @@ const StudentWellBeingPage = () => {
     const rows = filteredRecords.map((r) => {
       const consultations = r.consultations ?? [];
       const actions = r.actions ?? [];
+      const rowAcademicYear = getAcademicYearForDate(r.date_of_observation ?? r.created_at);
       const base = [
+        rowAcademicYear,
         r.student_name ?? '',
         (r.class ?? '').replace(/^Class\s+/i, ''),
         r.concern ?? '',
@@ -344,7 +404,7 @@ const StudentWellBeingPage = () => {
             <div className="relative flex-1 min-w-[200px] max-w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search name and title..."
+                placeholder="Search by student id, name or concern..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-10 border border-input rounded-md bg-background"
@@ -369,7 +429,19 @@ const StudentWellBeingPage = () => {
                 className="w-full"
               />
             </div>
-             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to) && (
+            <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+              <SelectTrigger className="w-[140px] h-10 border border-input rounded-md bg-background">
+                <SelectValue placeholder="Academic Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {getAcademicYearOptions().map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -399,6 +471,7 @@ const StudentWellBeingPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50/80">
+                    <TableHead className="text-left font-medium">Student Id</TableHead>
                     <TableHead className="text-left font-medium">Student</TableHead>
                     <TableHead className="text-left font-medium">Grade/Section</TableHead>
                     <TableHead className="text-left font-medium">Concern</TableHead>
@@ -412,8 +485,22 @@ const StudentWellBeingPage = () => {
                 <TableBody>
                   {filteredRecords.map((row) => (
                     <TableRow key={row.id}>
+                      <TableCell className="font-medium">{row.student_display_id ?? row.student_id ?? '—'}</TableCell>
                       <TableCell className="font-medium">{row.student_name}</TableCell>
-                      <TableCell>{(row.class ?? '').replace(/^Class\s+/i, '')}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          const text = (row.class ?? '').replace(/^Class\s+/i, '');
+                          const display = text.length > 10 ? `${text.slice(0, 10)}...` : text;
+                          return (
+                            <span
+                              className="block truncate max-w-[180px]"
+                              title={text || undefined}
+                            >
+                              {display || '—'}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>{row.concern}</TableCell>
                       <TableCell>
                         <button

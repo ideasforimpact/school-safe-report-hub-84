@@ -29,6 +29,8 @@ export interface StudentFollowUpEntry {
 export interface StudentWellbeingRecord {
   id: string;
   student_id: string;
+  /** Human-readable student id from students table (e.g. STUD001). Use for display when present. */
+  student_display_id?: string | null;
   student_name: string;
   section_id: string | null;
   grade_id: string | null;
@@ -39,6 +41,7 @@ export interface StudentWellbeingRecord {
   status: StudentWellbeingStatus;
   next_follow_up: string | null;
   concern_notes: string | null;
+  document_url?: { path: string; name: string }[];
   created_at: string;
   updated_at: string;
   consultations?: StudentWellbeingConsultation[];
@@ -61,13 +64,15 @@ export interface FetchStudentWellbeingResult {
 
 export async function fetchStudentWellbeingRecords(
   clientId: string,
-  employeeId?: string
+  employeeId?: string,
+  academicYear?: string
 ): Promise<FetchStudentWellbeingResult> {
   const { data, error } = await supabase.functions.invoke('fetch-student-wellbeing-records', {
     method: 'POST',
     body: {
       clientId,
       employeeId: employeeId ?? null,
+      academicYear: academicYear ?? null,
     },
   });
 
@@ -103,6 +108,10 @@ export interface UpdateStudentWellbeingRecordPayload {
   concern?: string | null;
   status?: StudentWellbeingStatus;
   next_follow_up?: string | null;
+  /** Existing attachment paths to keep (merge with new uploads). */
+  document_url?: { path: string; name: string }[];
+  /** New files to upload (base64). */
+  attachments?: { name: string; type: string; base64: string }[];
 }
 
 export async function updateStudentWellbeingRecord(
@@ -122,6 +131,8 @@ export async function updateStudentWellbeingRecord(
       concern: payload.concern ?? null,
       status: payload.status ?? undefined,
       next_follow_up: payload.next_follow_up ?? null,
+      document_url: payload.document_url ?? undefined,
+      attachments: payload.attachments ?? undefined,
     },
   });
 
