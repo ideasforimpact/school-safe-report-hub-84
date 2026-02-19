@@ -51,7 +51,7 @@ export const GrievancePage = ({
 
         <View style={styles.grievanceCard}>
           <Text style={styles.grievanceCardTitle}>
-            ADDRESSED
+            ACKNOWLEDGED
           </Text>
           <Text style={styles.grievanceCardNumber}>
             {stats.addressed}
@@ -87,6 +87,7 @@ export const GrievancePage = ({
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -126,20 +127,16 @@ export const GrievancePage = ({
             SOURCE
           </Text>
 
-          <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+          <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
             TOTAL
           </Text>
 
-          <Text style={{ width: "15%", fontSize: 8, color: "#059669" }}>
-            ADDRESSED
+          <Text style={{ width: "20%", fontSize: 8, color: "#059669" }}>
+            ACKNOWLEDGED
           </Text>
 
-          <Text style={{ width: "15%", fontSize: 8, color: "#d97706" }}>
+          <Text style={{ width: "20%", fontSize: 8, color: "#d97706" }}>
             PENDING
-          </Text>
-
-          <Text style={{ width: "15%", fontSize: 8, color: "#dc2626" }}>
-            OVERDUE
           </Text>
         </View>
 
@@ -159,13 +156,13 @@ export const GrievancePage = ({
               {s.name}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
+            <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
               {s.total}
             </Text>
 
             <Text
               style={{
-                width: "15%",
+                width: "20%",
                 fontSize: 9,
                 color: "#059669",
                 fontWeight: 600,
@@ -176,7 +173,7 @@ export const GrievancePage = ({
 
             <Text
               style={{
-                width: "15%",
+                width: "20%",
                 fontSize: 9,
                 color: "#d97706",
                 fontWeight: 600,
@@ -185,16 +182,6 @@ export const GrievancePage = ({
               {s.pending}
             </Text>
 
-            <Text
-              style={{
-                width: "15%",
-                fontSize: 9,
-                color: "#dc2626",
-                fontWeight: 600,
-              }}
-            >
-              {s.overdue}
-            </Text>
           </View>
         ))}
       </View>
@@ -202,6 +189,7 @@ export const GrievancePage = ({
 
       {critical.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -222,7 +210,7 @@ export const GrievancePage = ({
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: 700, color: "#7f1d1d" }}>
-              Pending & Overdue Grievances
+              Pending Grievances
             </Text>
           </View>
 
@@ -251,10 +239,10 @@ export const GrievancePage = ({
             }}
           >
             <Text style={{ width: "30%", fontSize: 8, color: "#6b7280" }}>
-              SUBMITTED BY
+              TITLE
             </Text>
             <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
-              TITLE
+              SUBMITTED BY
             </Text>
             <Text style={{ width: "20%", fontSize: 8, color: "#6b7280" }}>
               RAISED BY
@@ -286,20 +274,24 @@ export const GrievancePage = ({
                 }}
               >
                 <Text style={{ width: "30%", fontSize: 9, color: "#111827" }}>
-                  {g.responses?.subject || "Not provided"}
+                  {g.responses?.subject || "-"}
                 </Text>
 
                 <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
-                  {g.submitter_type}
+                  {g.submitter_name || 'Anonymous'}
                 </Text>
 
                 <Text style={{ width: "20%", fontSize: 9, color: "#374151" }}>
-                  {g.submitter_name || "-"}
+                  {g.submitter_type || "Not provided"}
                 </Text>
 
                 <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {g.created_at
-                    ? new Date(g.created_at).toLocaleDateString()
+                    ? new Date(g.created_at).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
                     : "-"}
                 </Text>
 

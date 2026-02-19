@@ -131,35 +131,35 @@ export const ExecutiveSummaryPage = ({
     {
       name: "Vehicle Compliance",
       percent: vehicleStats.percent,
-      sub: `${vehicleStats.compliant} of ${vehicleStats.total} vehicles`,
+      sub: `${vehicleStats.nonCompliant} of ${vehicleStats.total} vehicles`,
       icon: "vehicle" as const,
       iconColor: "#2563EB",
     },
     {
       name: "Employee Compliance",
       percent: employeeStats.percent,
-      sub: `${employeeStats.compliant} of ${employeeStats.totalEmployeesdocs} employees`,
+      sub: `${employeeStats.compliant} of ${employeeStats.totalEmployeesdocs} employees documents`,
       icon: "user" as const,
       iconColor: "#10B981",
     },
     {
       name: "Assessment Compliance",
       percent: assessmentStats.percent,
-      sub: `${assessmentStats.overdue} of ${assessmentStats.total} assessments`,
+      sub: `${assessmentStats.compliant} of ${assessmentStats.total} assessments`,
       icon: "assessment" as const,
       iconColor: "#7C3AED",
     },
     {
       name: "Incident Management",
       percent: incidentStats.percent,
-      sub: `${incidentStats.open} of ${incidentStats.total} incidents`,
+      sub: `${incidentStats.compliant} of ${incidentStats.total} incidents`,
       icon: "incident" as const,
       iconColor: "#DC2626",
     },
     {
       name: "Grievance Management",
       percent: grievanceStats.percent,
-      sub: `${grievanceStats.pending} of ${grievanceStats.total} grievances`,
+      sub: `${grievanceStats.compliant} of ${grievanceStats.total} grievances`,
       icon: "grievance" as const,
       iconColor: "#F97316",
     },
@@ -176,7 +176,7 @@ export const ExecutiveSummaryPage = ({
     >
       {/* Header — edit headerStyles above to match original */}
       <Text style={headerStyles.title}>Executive Summary</Text>
-      <Text style={headerStyles.subtitle}>{getReportingPeriodText(month)}</Text>
+      <Text style={headerStyles.subtitle}>{getReportingPeriodText(month)}  Compliance Overview</Text>
 
       <View
         style={{
@@ -187,7 +187,7 @@ export const ExecutiveSummaryPage = ({
       />
 
       {/* Critical Banner */}
-      <View
+      {/* <View
         style={{
           backgroundColor: "#FEF2F2",
           borderRadius: 6,
@@ -246,7 +246,7 @@ export const ExecutiveSummaryPage = ({
             TOTAL CRITICAL
           </Text>
         </View>
-      </View>
+      </View> */}
 
       {/* Large Cards Row */}
       <View style={{ flexDirection: "row", gap: 14, marginBottom: 14 }}>
@@ -357,9 +357,9 @@ export const ExecutiveSummaryPage = ({
       {/* Small Cards Row */}
       <View style={{ flexDirection: "row", gap: 14, marginBottom: 20 }}>
         {[
-          { title: "Assessments", value: newAssessmentCount, sub: "overdue", icon: "assessment" as const, iconColor: "#7C3AED" },
-          { title: "Open Incidents", value: openIncidentCount, sub: "high priority", icon: "incident" as const, iconColor: "#DC2626" },
-          { title: "Grievances", value: pendingGrievances, sub: "overdue", icon: "grievance" as const, iconColor: "#F97316" },
+          { title: "Assessments", value: newAssessmentCount, sub: "Pending & Overdue", icon: "assessment" as const, iconColor: "#7C3AED" },
+          { title: "Open Incidents", value: openIncidentCount, sub: "All Priority", icon: "incident" as const, iconColor: "#DC2626" },
+          { title: "Grievances", value: pendingGrievances, sub: "pending", icon: "grievance" as const, iconColor: "#F97316" },
         ].map((card, i) => (
           <View
             key={i}

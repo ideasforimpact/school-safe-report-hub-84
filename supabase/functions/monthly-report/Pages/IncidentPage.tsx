@@ -66,10 +66,10 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
         <View style={styles.incidentCard}>
           <Text style={styles.incidentCardTitle}>
-            IN PROGRESS
+            Open
           </Text>
           <Text style={styles.incidentCardNumber}>
-            {stats.inProgress}
+            {stats.open}
           </Text>
           <Text style={styles.incidentBadgeYellow}>
             Active
@@ -90,6 +90,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -134,9 +135,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           <Text style={{ width: "15%", fontSize: 8, color: "#059669" }}>
             CLOSED
           </Text>
-          <Text style={{ width: "15%", fontSize: 8, color: "#d97706" }}>
-            IN PROGRESS
-          </Text>
           <Text style={{ width: "15%", fontSize: 8, color: "#dc2626" }}>
             OPEN
           </Text>
@@ -177,17 +175,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
               style={{
                 width: "15%",
                 fontSize: 9,
-                color: "#d97706",
-                fontWeight: 600,
-              }}
-            >
-              {c.progress}
-            </Text>
-
-            <Text
-              style={{
-                width: "15%",
-                fontSize: 9,
                 color: "#dc2626",
                 fontWeight: 600,
               }}
@@ -201,6 +188,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {individuals.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#f8fafc",
@@ -221,7 +209,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: 700, color: "#1e40af" }}>
-              Individuals Involved in {getReportingPeriodText(month)} Incidents
+              Individuals Involved in Incidents
             </Text>
           </View>
 
@@ -235,7 +223,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             }}
           >
             <Text style={{ fontSize: 8, color: "#6b7280" }}>
-              Students and staff members involved in reported incidents this month
+              Students and staff members involved in reported incidents
             </Text>
           </View>
 
@@ -271,6 +259,10 @@ export const IncidentPage = ({ month, incidents }: Props) => {
           {individuals.map((p: any, i: number) => {
             const isStudent =
               !(p.grade && p.grade.toLowerCase().includes("staff"));
+            const breakText = (text?: string | null, length: number = 12): string => {
+              if (!text) return "";
+              return text.match(new RegExp(`.{1,${length}}`, "g"))?.join("\n") || "";
+            };
 
             return (
               <View
@@ -288,19 +280,30 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                 </Text>
 
                 {/* Grade / Role pill */}
-                <View style={{ width: "18%", alignItems: "flex-start" }}>
-                  <Text
+                <View
+                  style={{
+                    width: "18%",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <View
                     style={{
                       backgroundColor: isStudent ? "#dbeafe" : "#e5e7eb",
-                      color: isStudent ? "#1d4ed8" : "#374151",
-                      fontSize: 8,
+                      borderRadius: 6,
                       paddingHorizontal: 6,
                       paddingVertical: 2,
-                      borderRadius: 6,
+                      maxWidth: "100%",
                     }}
                   >
-                    {p.grade}
-                  </Text>
+                    <Text
+                      style={{
+                        color: isStudent ? "#1d4ed8" : "#374151",
+                        fontSize: 8,
+                      }}
+                    >
+                      {breakText(p.grade)}
+                    </Text>
+                  </View>
                 </View>
 
                 <Text style={{ width: "27%", fontSize: 9, color: "#374151" }}>
@@ -313,7 +316,11 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
                 <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
                   {p.date
-                    ? new Date(p.date).toLocaleDateString()
+                    ? new Date(p.date).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
                     : "-"}
                 </Text>
               </View>
@@ -324,6 +331,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {critical.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -344,7 +352,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
-              Critical & Overdue Incidents
+              Critical Incidents
             </Text>
           </View>
 
@@ -358,7 +366,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             }}
           >
             <Text style={{ fontSize: 8, color: "#6b7280" }}>
-              {critical.length} in progress
+              {critical.length} open incidents
             </Text>
           </View>
 
@@ -437,11 +445,13 @@ export const IncidentPage = ({ month, incidents }: Props) => {
                 </Text>
 
                 <Text style={{ width: "18%", fontSize: 9, color: "#374151" }}>
-                  {inc.reported_date
-                    ? new Date(inc.reported_date).toLocaleDateString()
-                    : inc.created_at
-                      ? new Date(inc.created_at).toLocaleDateString()
-                      : "-"}
+                  {inc.date
+                    ? new Date(inc.date).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    : "-"}
                 </Text>
 
                 {/* Status pill */}

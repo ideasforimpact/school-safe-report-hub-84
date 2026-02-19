@@ -144,6 +144,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -179,19 +180,22 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
             backgroundColor: "#ffffff",
           }}
         >
-          <Text style={{ width: "40%", fontSize: 8, color: "#6b7280" }}>
+          <Text style={{ width: "35%", fontSize: 8, color: "#6b7280" }}>
             CATEGORY
           </Text>
-          <Text style={{ width: "15%", fontSize: 8, color: "#6b7280" }}>
+          <Text style={{ width: "13%", fontSize: 8, color: "#6b7280" }}>
             TOTAL
           </Text>
-          <Text style={{ width: "15%", fontSize: 8, color: "#059669" }}>
+          <Text style={{ width: "13%", fontSize: 8, color: "#059669" }}>
             COMPLETED
           </Text>
-          <Text style={{ width: "15%", fontSize: 8, color: "#d97706" }}>
-            IN PROGRESS
+          <Text style={{ width: "13%", fontSize: 8, color: "#2563eb" }}>
+            SUBMITTED
           </Text>
-          <Text style={{ width: "15%", fontSize: 8, color: "#dc2626" }}>
+          <Text style={{ width: "13%", fontSize: 8, color: "#d97706" }}>
+            PENDING
+          </Text>
+          <Text style={{ width: "13%", fontSize: 8, color: "#dc2626" }}>
             OVERDUE
           </Text>
         </View>
@@ -208,23 +212,26 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
               borderBottomColor: "#e5e7eb",
             }}
           >
-            <Text style={{ width: "40%", fontSize: 9, color: "#111827" }}>
+            <Text style={{ width: "35%", fontSize: 9, color: "#111827" }}>
               {c.name}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
+            <Text style={{ width: "13%", fontSize: 9, color: "#374151" }}>
               {c.total}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 9, color: "#059669", fontWeight: 600 }}>
+            <Text style={{ width: "13%", fontSize: 9, color: "#059669", fontWeight: 600 }}>
               {c.completed}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 9, color: "#d97706", fontWeight: 600 }}>
+            <Text style={{ width: "13%", fontSize: 9, color: "#2563eb", fontWeight: 600 }}>
+              {c.submitted}
+            </Text>
+            <Text style={{ width: "13%", fontSize: 9, color: "#d97706", fontWeight: 600 }}>
               {c.inProgress}
             </Text>
 
-            <Text style={{ width: "15%", fontSize: 9, color: "#dc2626", fontWeight: 600 }}>
+            <Text style={{ width: "13%", fontSize: 9, color: "#dc2626", fontWeight: 600 }}>
               {c.overdue}
             </Text>
           </View>
@@ -234,6 +241,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
       {pendingList.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -268,7 +276,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
             }}
           >
             <Text style={{ fontSize: 8, color: "#6b7280" }}>
-              {stats.overdue} overdue, {stats.inProgress} in progress
+             {stats.inProgress} pending, {stats.overdue} overdue
             </Text>
           </View>
 
@@ -333,7 +341,13 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
                 </Text>
 
                 <Text style={{ width: "15%", fontSize: 9, color: "#374151" }}>
-                  {a.target_completion_date}
+                  {a.target_completion_date
+                    ? new Date(a.target_completion_date).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                    : "-"}
                 </Text>
 
                 <View style={{ width: "20%", alignItems: "flex-start" }}>
@@ -347,7 +361,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
                       borderRadius: 6,
                     }}
                   >
-                    {isOverdue ? "Overdue" : "In Progress"}
+                    {isOverdue ? "Overdue" : a.status}
                   </Text>
                 </View>
               </View>

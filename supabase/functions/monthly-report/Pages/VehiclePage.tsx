@@ -82,6 +82,17 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
     backgroundColor: "#ffffff",
   };
 
+  const formatDate = (date?: string | Date | null): string => {
+    if (!date) return "--";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "--";
+
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   return (
     <Page
@@ -272,6 +283,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
       {/* Compliance by Document */}
       <View
+      wrap={false}
         style={{
           borderWidth: 1,
           borderColor: "#E5E7EB",
@@ -282,7 +294,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       >
         <Text
           style={{
-          fontSize: 12,
+            fontSize: 12,
             fontWeight: 700,
             padding: 8,
             backgroundColor: "#F9FAFB",
@@ -314,6 +326,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
 
       {/* Challan Box */}
       <View
+      wrap={false}
         style={{
           borderWidth: 1,
           borderColor: "#FDBA74",
@@ -359,7 +372,13 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
             </Text>
 
             <Text style={{ width: "20%", fontSize: 9 }}>
-              {c.date}
+              {c.date
+                ? new Date(c.date).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+                : "-"}
             </Text>
 
             <View style={{ width: "20%", alignItems: "flex-start" }}>
@@ -391,6 +410,7 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
       {/* Action Box */}
       {actionVehicles.length > 0 && (
         <View
+        wrap={false}
           style={{
             borderWidth: 1,
             borderColor: "#FACC15",
@@ -413,11 +433,11 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
           </View>
 
           <View style={tableHeader}>
-              <Text style={[cell, { fontSize: 9 }]}>VEHICLE</Text>
-              <Text style={[cell, { fontSize: 9 }]}>OWNER</Text>
-              <Text style={[cell, { fontSize: 9 }]}>FC</Text>
-              <Text style={[cell, { fontSize: 9 }]}>INSURANCE</Text>
-              <Text style={[cell, { fontSize: 9 }]}>PUC</Text>
+            <Text style={[cell, { fontSize: 9 }]}>VEHICLE</Text>
+            <Text style={[cell, { fontSize: 9 }]}>OWNER</Text>
+            <Text style={[cell, { fontSize: 9 }]}>FC</Text>
+            <Text style={[cell, { fontSize: 9 }]}>INSURANCE</Text>
+            <Text style={[cell, { fontSize: 9 }]}>PUC</Text>
           </View>
 
           {actionVehicles.map((v, i) => (
@@ -425,13 +445,13 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
               <Text style={[cell, { fontSize: 9 }]}>{v.vehicleNo}</Text>
               <Text style={[cell, { fontSize: 9 }]}>{v.owner}</Text>
               <View style={[cell, getDateCellStyle(v.fc)]}>
-                <Text style={{ fontSize: 9 }}>{v.fc || "--"}</Text>
+                <Text style={{ fontSize: 9 }}>{formatDate(v.fc)}</Text>
               </View>
               <View style={[cell, getDateCellStyle(v.insurance)]}>
-                <Text style={{ fontSize: 9 }}>{v.insurance || "--"}</Text>
+                <Text style={{ fontSize: 9 }}>{formatDate(v.insurance)}</Text>
               </View>
               <View style={[cell, getDateCellStyle(v.puc)]}>
-                <Text style={{ fontSize: 9 }}>{v.puc || "--"}</Text>
+                <Text style={{ fontSize: 9 }}>{formatDate(v.puc)}</Text>
               </View>
             </View>
           ))}
