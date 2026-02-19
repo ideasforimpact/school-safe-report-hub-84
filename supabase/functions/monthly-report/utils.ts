@@ -105,7 +105,7 @@ export const getNewAssessmentCount = (assessments: any[]) => {
     if (!Array.isArray(assessments)) return 0;
 
     return assessments.filter(
-        (a: any) => a.status?.toLowerCase() === "new"
+        (a: any) => a.status?.toLowerCase() === "new" || a.status?.toLowerCase() === "draft"
     ).length;
 };
 
@@ -155,10 +155,10 @@ export const getVehicleCompliance = (vehicles: any[]) => {
 
         if (!expired) compliant++;
     });
+    const nonCompliant =total - compliant;
+    const percent = total === 0 ? 100 : Math.round((nonCompliant / total) * 100);
 
-    const percent = total === 0 ? 100 : Math.round((compliant / total) * 100);
-
-    return { percent, compliant, total };
+    return { percent, compliant, total,nonCompliant };
 };
 
 export const getAssessmentCompliance = (assessments: any[]) => {

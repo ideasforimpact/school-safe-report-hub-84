@@ -369,6 +369,7 @@ export const EmployeePage = ({
 
       {pendingEmployees > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fffbeb",
@@ -477,6 +478,7 @@ export const EmployeePage = ({
 
       {noDocumentEmployees.length > 0 && (
         <View
+          wrap={false}  
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -552,6 +554,7 @@ export const EmployeePage = ({
           {/* Rows */}
           {noDocumentEmployees.map((emp: any, i: number) => (
             <View
+              wrap={false}
               key={i}
               style={{
                 flexDirection: "row",

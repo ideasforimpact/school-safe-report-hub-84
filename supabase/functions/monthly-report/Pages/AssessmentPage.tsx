@@ -144,6 +144,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
       </View>
 
       <View
+        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -192,7 +193,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
             SUBMITTED
           </Text>
           <Text style={{ width: "13%", fontSize: 8, color: "#d97706" }}>
-            IN PROGRESS
+            PENDING
           </Text>
           <Text style={{ width: "13%", fontSize: 8, color: "#dc2626" }}>
             OVERDUE
@@ -240,6 +241,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
       {pendingList.length > 0 && (
         <View
+          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
@@ -274,7 +276,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
             }}
           >
             <Text style={{ fontSize: 8, color: "#6b7280" }}>
-              {stats.overdue} overdue, {stats.inProgress} in progress
+             {stats.inProgress} pending, {stats.overdue} overdue
             </Text>
           </View>
 

@@ -154,9 +154,9 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
        <div className="flex items-center space-x-4">
  
   {/* Test Download Button */}
-  {userClient?.id && (
+  {/* {userClient?.id && (
   <MonthlyReportDownload clientId={userClient.id} />
-)}
+)} */}
  
  
   {/* Overall Safety Status */}
