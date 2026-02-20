@@ -87,7 +87,6 @@ export const GrievancePage = ({
       </View>
 
       <View
-        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -189,7 +188,6 @@ export const GrievancePage = ({
 
       {critical.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
