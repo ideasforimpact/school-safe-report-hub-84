@@ -10,7 +10,7 @@
   const supabaseUrl = getSupabaseUrl();
   const supabaseServiceKey = getSupabaseServiceRoleKey();
   const BUCKET_NAME = "monthly_export";
-  const FETCH_LIMIT = 170;
+  const FETCH_LIMIT = 130;
 
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
