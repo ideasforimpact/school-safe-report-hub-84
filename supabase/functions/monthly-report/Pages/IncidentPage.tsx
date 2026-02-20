@@ -13,13 +13,16 @@ import {
 interface Props {
   month: string;
   incidents: any[];
+  incidentsTotalCount?: number;
 }
 
-export const IncidentPage = ({ month, incidents }: Props) => {
+export const IncidentPage = ({ month, incidents, incidentsTotalCount }: Props) => {
   const stats = getIncidentStats(incidents);
   const categories = getIncidentCategorySummary(incidents);
   const critical = getCriticalIncidents(incidents);
   const individuals = getIndividualsFromIncidents(incidents);
+  const totalI = incidentsTotalCount ?? stats.total;
+  const showCapNote = totalI > incidents.length;
 
   const inProgressCount = critical.filter(
     (i: any) =>
@@ -41,7 +44,8 @@ export const IncidentPage = ({ month, incidents }: Props) => {
       </View>
 
       <Text style={styles.incidentSub}>
-        Tracking {stats.total} reported incidents
+        Tracking {totalI} reported incidents
+        {showCapNote ? ` (showing latest ${incidents.length} in this report)` : ""}
       </Text>
 
       <View style={styles.incidentSummaryRow}>
@@ -50,7 +54,7 @@ export const IncidentPage = ({ month, incidents }: Props) => {
             TOTAL INCIDENTS
           </Text>
           <Text style={styles.incidentCardNumber}>
-            {stats.total}
+            {totalI}
           </Text>
         </View>
 

@@ -11,15 +11,19 @@ import {
 interface Props {
   month: string;
   grievancesSummary: any[];
+  grievancesTotalCount?: number;
 }
 
 export const GrievancePage = ({
   month,
   grievancesSummary,
+  grievancesTotalCount,
 }: Props) => {
   const stats = getGrievanceStats(grievancesSummary);
   const sources = getGrievanceSourceSummary(grievancesSummary);
   const critical = getCriticalGrievances(grievancesSummary);
+  const totalG = grievancesTotalCount ?? stats.total;
+  const showCapNote = totalG > grievancesSummary.length;
 
   return (
     <Page size="A4" style={{
@@ -36,7 +40,8 @@ export const GrievancePage = ({
       </View>
 
       <Text style={styles.grievanceSub}>
-        Tracking and resolution of {stats.total} grievances
+        Tracking and resolution of {totalG} grievances
+        {showCapNote ? ` (showing latest ${grievancesSummary.length} in this report)` : ""}
       </Text>
 
       <View style={styles.grievanceSummaryRow}>
@@ -45,7 +50,7 @@ export const GrievancePage = ({
             TOTAL GRIEVANCES
           </Text>
           <Text style={styles.grievanceCardNumber}>
-            {stats.total}
+            {totalG}
           </Text>
         </View>
 

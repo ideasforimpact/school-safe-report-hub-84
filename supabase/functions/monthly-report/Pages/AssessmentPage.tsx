@@ -10,11 +10,14 @@ import {
 interface Props {
   month: string;
   assessments: any[];
+  assessmentsTotalCount?: number;
 }
 
-export const AssessmentPage = ({ month, assessments }: Props) => {
+export const AssessmentPage = ({ month, assessments, assessmentsTotalCount }: Props) => {
   const stats = getAssessmentStats(assessments);
   const categories = getAssessmentByCategory(assessments);
+  const totalA = assessmentsTotalCount ?? stats.total;
+  const showCapNote = totalA > assessments.length;
 
   const pendingStatuses = ["New", "Draft"];
   const pendingList = assessments.filter((a: any) =>
@@ -36,7 +39,8 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
       </View>
 
       <Text style={styles.assessmentSub}>
-        Progress on {stats.total} scheduled assessments
+        Progress on {totalA} scheduled assessments
+        {showCapNote ? ` (showing latest ${assessments.length} in this report)` : ""}
       </Text>
 
       <View
@@ -64,7 +68,7 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
           </Text>
 
           <Text style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>
-            {stats.total}
+            {totalA}
           </Text>
         </View>
 

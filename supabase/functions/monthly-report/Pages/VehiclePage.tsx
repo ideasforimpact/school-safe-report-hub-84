@@ -12,6 +12,7 @@ import {
 interface Props {
   month: string;
   vehicles: any[];
+  vehiclesTotalCount?: number;
   challans: any[];
 }
 
@@ -45,11 +46,13 @@ const WarningIcon = ({ color }: { color: string }) => (
   </Svg>
 );
 
-export const VehiclePage = ({ month, vehicles, challans }: Props) => {
+export const VehiclePage = ({ month, vehicles, vehiclesTotalCount, challans }: Props) => {
   const summary = getVehicleSummary(vehicles);
   const docStats = getDocumentComplianceStats(vehicles);
   const actionVehicles = getVehiclesRequiringAction(vehicles);
   const challanTotal = getChallanSummary(challans);
+  const totalV = vehiclesTotalCount ?? vehicles.length;
+  const showCapNote = totalV > vehicles.length;
 
 
   const tableHeader = {
@@ -119,7 +122,8 @@ export const VehiclePage = ({ month, vehicles, challans }: Props) => {
         Vehicle Compliance
       </Text>
       <Text style={{ fontSize: 9, color: "#6B7280", marginBottom: 15 }}>
-        Tracking {vehicles.length} vehicles across 3 document types
+        Tracking {totalV} vehicles across 3 document types
+        {showCapNote ? ` (showing latest ${vehicles.length} in this report)` : ""}
       </Text>
 
       {/* Summary Cards */}
