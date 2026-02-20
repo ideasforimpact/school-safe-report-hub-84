@@ -7,7 +7,9 @@ import { getPendingEmployeesGrouped } from "../utils.ts";
 interface Props {
   month: string;
   employees: any[];
+  employeesTotalCount?: number;
   employeeDocuments: any[];
+  employeeDocumentsTotalCount?: number;
   documentTypes: any[];
 }
 
@@ -49,10 +51,13 @@ const UserAlertIcon = ({ color }: { color: string }) => (
 export const EmployeePage = ({
   month,
   employees,
+  employeesTotalCount,
   employeeDocuments,
+  employeeDocumentsTotalCount,
   documentTypes,
 }: Props) => {
-  const totalEmployees = employees.length;
+  const totalEmployees = employeesTotalCount ?? employees.length;
+  const showCapNote = totalEmployees > employees.length;
 
   const verifiedEmployees = employeeDocuments.filter(
     (d: any) => d.verification_status === "verified"
@@ -63,9 +68,9 @@ export const EmployeePage = ({
   ).length;
 
   const verificationRate =
-    totalEmployees === 0
+    employees.length === 0
       ? 100
-      : Math.round((verifiedEmployees / totalEmployees) * 100);
+      : Math.round((verifiedEmployees / employees.length) * 100);
 
   const submittedEmployeeIds = new Set(
     employeeDocuments.map((d: any) => d.employee_id)
@@ -94,6 +99,7 @@ export const EmployeePage = ({
 
       <Text style={styles.employeeSub}>
         Verification status for {totalEmployees} employees
+        {showCapNote ? ` (showing latest ${employees.length} in this report)` : ""}
       </Text>
 
       <View

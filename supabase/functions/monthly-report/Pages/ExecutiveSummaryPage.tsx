@@ -85,24 +85,36 @@ const headerStyles = StyleSheet.create({
 interface Props {
   month: string;
   vehicles: any[];
+  vehiclesTotalCount?: number;
   employees: any[];
+  employeesTotalCount?: number;
   employeeDocuments: any[];
+  employeeDocumentsTotalCount?: number;
   challans: any[];
   assessments: any[];
+  assessmentsTotalCount?: number;
   incidents: any[];
+  incidentsTotalCount?: number;
   grievancesSummary: any[];
+  grievancesTotalCount?: number;
   challanTotal: number;
 }
 
 export const ExecutiveSummaryPage = ({
   month,
   vehicles,
+  vehiclesTotalCount,
   employees,
+  employeesTotalCount,
   employeeDocuments,
+  employeeDocumentsTotalCount,
   challans,
   assessments,
+  assessmentsTotalCount,
   incidents,
+  incidentsTotalCount,
   grievancesSummary,
+  grievancesTotalCount,
   challanTotal,
 }: Props) => {
   const expiredVehicleCount = getExpiredVehicleDocsCount(vehicles);
@@ -127,39 +139,44 @@ export const ExecutiveSummaryPage = ({
     openIncidentCount +
     pendingGrievances;
 
+  const totalV = vehiclesTotalCount ?? vehicleStats.total;
+  const totalEmp = employeesTotalCount ?? employeeStats.totalEmployeesdocs;
+  const totalA = assessmentsTotalCount ?? assessmentStats.total;
+  const totalI = incidentsTotalCount ?? incidentStats.total;
+  const totalG = grievancesTotalCount ?? grievanceStats.total;
   const modules = [
     {
       name: "Vehicle Compliance",
       percent: vehicleStats.percent,
-      sub: `${vehicleStats.nonCompliant} of ${vehicleStats.total} vehicles`,
+      sub: `${vehicleStats.nonCompliant} of ${totalV} vehicles`,
       icon: "vehicle" as const,
       iconColor: "#2563EB",
     },
     {
       name: "Employee Compliance",
       percent: employeeStats.percent,
-      sub: `${employeeStats.compliant} of ${employeeStats.totalEmployeesdocs} employees documents`,
+      sub: `${employeeStats.compliant} of ${totalEmp} employees documents`,
       icon: "user" as const,
       iconColor: "#10B981",
     },
     {
       name: "Assessment Compliance",
       percent: assessmentStats.percent,
-      sub: `${assessmentStats.compliant} of ${assessmentStats.total} assessments`,
+      sub: `${assessmentStats.compliant} of ${totalA} assessments`,
       icon: "assessment" as const,
       iconColor: "#7C3AED",
     },
     {
       name: "Incident Management",
       percent: incidentStats.percent,
-      sub: `${incidentStats.compliant} of ${incidentStats.total} incidents`,
+      sub: `${incidentStats.compliant} of ${totalI} incidents`,
       icon: "incident" as const,
       iconColor: "#DC2626",
     },
     {
       name: "Grievance Management",
       percent: grievanceStats.percent,
-      sub: `${grievanceStats.compliant} of ${grievanceStats.total} grievances`,
+      sub: `${grievanceStats.compliant} of ${totalG} grievances`,
       icon: "grievance" as const,
       iconColor: "#F97316",
     },
