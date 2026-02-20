@@ -93,7 +93,19 @@ serve(async (req) => {
     let processed = 0;
     let failed = 0;
 
+    console.log("[monthly-report-consumer] start", {
+      totalRows: rows.length,
+      prepareDate: `${prepareYear}-${String(prepareMonth).padStart(2, "0")}-${String(prepareDate).padStart(2, "0")}`,
+    });
+
     for (const row of rows) {
+      console.log("[monthly-report-consumer] processing queue row", {
+        queueId: row.id,
+        clientId: row.client_id,
+        targetYear: row.target_year,
+        targetMonth: row.target_month,
+      });
+
       const [{ data: client }, { data: employee, error: empErr }] = await Promise.all([
         supabase.from("clients").select("name").eq("id", row.client_id).single(),
         supabase.from("employees").select("email, first_name, last_name").eq("id", row.target_employee_id).single(),
@@ -104,6 +116,10 @@ serve(async (req) => {
       const recipientName = [employee?.first_name, employee?.last_name].filter(Boolean).join(" ").trim() || "there";
 
       if (!recipientEmail) {
+        console.log("[monthly-report-consumer] skip client – no recipient email", {
+          clientId: row.client_id,
+          queueId: row.id,
+        });
         await supabase.rpc("monthly_export_queue_fail", {
           p_queue_id: row.id,
           p_reason: "Super admin employee has no email",
@@ -118,6 +134,15 @@ serve(async (req) => {
       try {
         const { data: reportRes, error: invokeErr } = await (supabase as any).functions.invoke("monthly-report", {
           body: { clientId: row.client_id, year: row.target_year, month: row.target_month },
+        });
+
+        console.log("[monthly-report-consumer] reportRes per client", {
+          clientId: row.client_id,
+          queueId: row.id,
+          success: reportRes?.success ?? false,
+          path: reportRes?.path ?? null,
+          error: reportRes?.error ?? null,
+          invokeError: invokeErr ? String(invokeErr) : null,
         });
 
         if (invokeErr) throw invokeErr;
@@ -146,8 +171,18 @@ serve(async (req) => {
           p_target_year: row.target_year,
         });
         processed++;
+        console.log("[monthly-report-consumer] completed client", {
+          clientId: row.client_id,
+          queueId: row.id,
+          path,
+        });
       } catch (err: any) {
         const reason = err?.message ?? String(err);
+        console.log("[monthly-report-consumer] failed client", {
+          clientId: row.client_id,
+          queueId: row.id,
+          reason,
+        });
         await supabase.rpc("monthly_export_queue_fail", {
           p_queue_id: row.id,
           p_reason: reason,
@@ -159,6 +194,7 @@ serve(async (req) => {
       }
     }
 
+    console.log("[monthly-report-consumer] end", { processed, failed, total: rows.length });
     return new Response(
       JSON.stringify({ success: true, processed, failed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

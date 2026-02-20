@@ -250,7 +250,15 @@
     year: number,
     month: number,
   ) {
+    const startedAt = Date.now();
     const { start, end } = getMonthRange(year, month);
+
+    console.log("[monthly-report] start client", {
+      clientId,
+      year,
+      month,
+      period: `${start || "n/a"} to ${end || "n/a"}`,
+    });
 
     const [
       vehicles,
@@ -271,6 +279,18 @@
       fetchIncidentsForReport(supabase, clientId, start, end),
       fetchGrievancesForReport(supabase, clientId, start, end),
     ]);
+
+    const counts = {
+      vehicles: (vehicles ?? []).length,
+      employees: (employees ?? []).length,
+      employeeDocuments: (employeeDocuments ?? []).length,
+      assessments: (assessments ?? []).length,
+      documentTypes: (documentTypes ?? []).length,
+      challans: (challanData?.challans ?? []).length,
+      incidents: (incidents ?? []).length,
+      grievances: (grievances ?? []).length,
+    };
+    console.log("[monthly-report] fetch counts per client", { clientId, year, month, ...counts });
 
     const report = {
       vehicles: vehicles ?? [],
@@ -324,6 +344,14 @@
 
     if (uploadError) throw uploadError;
 
+    const durationMs = Date.now() - startedAt;
+    console.log("[monthly-report] end client success", {
+      clientId,
+      year,
+      month,
+      path: filePath,
+      durationMs,
+    });
     return { clientId, path: filePath };
   }
 
@@ -339,14 +367,24 @@
       const inputYear = body.year as number | undefined;
       const inputMonth = body.month as number | undefined;
 
-      // Single-job mode: consumer calls with one client + target month (returns path for queue complete)
-      if (clientId && inputYear != null && inputMonth != null) {
+    // Single-job mode: consumer calls with one client + target month (returns path for queue complete)
+    if (clientId && inputYear != null && inputMonth != null) {
+      try {
         const result = await generateAndStoreReportForClient(supabase, clientId, inputYear, inputMonth);
         return new Response(
           JSON.stringify({ success: true, path: result.path }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
+      } catch (err: any) {
+        console.log("[monthly-report] end client error", {
+          clientId,
+          year: inputYear,
+          month: inputMonth,
+          error: err?.message ?? String(err),
+        });
+        throw err;
       }
+    }
 
       // Cron mode: enqueue one row per active client (super admin as target_employee), then invoke consumer
       const { data: clients, error: clientsError } = await supabase
