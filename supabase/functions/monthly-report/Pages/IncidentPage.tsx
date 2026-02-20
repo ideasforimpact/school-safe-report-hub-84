@@ -90,7 +90,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
       </View>
 
       <View
-        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -188,7 +187,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {individuals.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#f8fafc",
@@ -331,7 +329,6 @@ export const IncidentPage = ({ month, incidents }: Props) => {
 
       {critical.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",

@@ -388,9 +388,6 @@ serve(async (req) => {
         .eq("target_month", reportMonth)
         .eq("target_date", lastDay)
         .eq("target_year", reportYear)
-        .eq("prepare_month", prepareMonth)
-        .eq("prepare_date", prepareDate)
-        .eq("prepare_year", prepareYear)
         .limit(1)
         .maybeSingle();
 

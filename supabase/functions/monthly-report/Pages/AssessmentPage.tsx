@@ -144,7 +144,6 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
       </View>
 
       <View
-        wrap={false}
         style={{
           marginTop: 10,
           borderWidth: 1,
@@ -241,7 +240,6 @@ export const AssessmentPage = ({ month, assessments }: Props) => {
 
       {pendingList.length > 0 && (
         <View
-          wrap={false}
           style={{
             marginTop: 12,
             backgroundColor: "#fef2f2",
