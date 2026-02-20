@@ -75,6 +75,7 @@ serve(async (req) => {
     const { data: rows, error: fetchError } = await supabase
       .from("monthly_export_queue")
       .select("id, client_id, target_employee_id, target_date, target_month, target_year")
+      .eq("is_queued", true)
       .is("status", null)
       .eq("active", true)
       .eq("prepare_year", prepareYear)
