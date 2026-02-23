@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck, FileText, UsersRound } from "lucide-react";
+import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck, FileText, UsersRound, Settings } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
@@ -77,8 +77,13 @@ const SettingsPage = () => {
       <div className="w-full py-6">
         <div className="space-y-8">
           <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
-            <h1 className="text-2xl font-bold">Settings</h1>
-            <p className="text-gray-600 mt-1">Configure system settings</p>
+            <div className="flex items-start gap-4">
+              <Settings className="h-8 w-8 text-primary mt-1" />
+              <div>
+                <h1 className="text-2xl font-bold">Settings</h1>
+                <p className="text-gray-600 mt-1">Configure system settings</p>
+              </div>
+            </div>
           </div>
           
           <Tabs defaultValue={defaultTab} className="w-full pl-5 pr-[25px]">

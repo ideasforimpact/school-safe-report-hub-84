@@ -1,9 +1,12 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Calendar, Clock } from 'lucide-react';
+import { Shield, Calendar, Clock, AlertTriangle, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { employeeTypeName } from '@/services/employeeNameHelpers';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
+import MonthlyReportDownload from '../reports/MonthlyReportDownload';
+ 
+import { formatDate } from '@/lib/Dateformat';
 
 interface SafetyDashboardHeaderProps {
   stats: {
@@ -25,34 +28,34 @@ interface SafetyDashboardHeaderProps {
   };
   loading: boolean;
 }
-
+ 
 const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) => {
   const { employeeData } = useAuth();
   const { employeeTypes } = useEmployeeTypes();
   // Use direct client object from employeeData
   const userClient = employeeData?.client || null;
-
+ 
   // Check if all required data exists
-  const allDataExists = stats.IncidentRecordsExist && 
-                       stats.AssessmentRecordsExist && 
-                       stats.VehicleRecordsExist && 
-                       stats.EmployeeRecordsExist 
-
+  const allDataExists = stats.IncidentRecordsExist &&
+                       stats.AssessmentRecordsExist &&
+                       stats.VehicleRecordsExist &&
+                       stats.EmployeeRecordsExist
+ 
   // Calculate Employee Compliance score = 100 * (number of verified employees / number of active employees)
-  const employeeComplianceScore = stats.EmployeeRecordsExist && stats.totalEmployees > 0 
-    ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees)) 
+  const employeeComplianceScore = stats.EmployeeRecordsExist && stats.totalEmployees > 0
+    ? Math.round(100 * (stats.employeesVerified / stats.totalEmployees))
     : 0;
-
+ 
   // Calculate Vehicle Compliance score = 100 * (number of verified vehicles / number of vehicles)
-  const vehicleComplianceScore = stats.VehicleRecordsExist && stats.totalVehicles > 0 
-    ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles)) 
+  const vehicleComplianceScore = stats.VehicleRecordsExist && stats.totalVehicles > 0
+    ? Math.round(100 * ((stats.vehiclesVerified || 0) / stats.totalVehicles))
     : 0;
-
+ 
   // Calculate Incidents Score = max(100 - 20 * Open Incidents, 0)
-  const incidentsScore = stats.IncidentRecordsExist 
+  const incidentsScore = stats.IncidentRecordsExist
     ? Math.max(100 - 20 * stats.openIncidentOlder7days, 0)
     : 0;
-
+ 
   console.log(stats.openIncidentOlder7days,'openIncidentOlder7days');
   
   // Calculate Assessment Activity Score (new formula)
@@ -68,18 +71,18 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
   const employeeTypeLabel = employeeData?.isSuperAdmin
     ? 'Super Admin'
     : employeeTypeName(employeeData?.employeeType, employeeTypes);
-
-
+ 
+ 
   // Overall Safety Score - only calculate if all data exists
-  const overallSafetyScore = allDataExists 
+  const overallSafetyScore = allDataExists
     ? Math.round(
-        (0.3 * employeeComplianceScore) + 
-        (0.2 * vehicleComplianceScore) + 
-        (0.25 * assessmentActivityScore) + 
+        (0.3 * employeeComplianceScore) +
+        (0.2 * vehicleComplianceScore) +
+        (0.25 * assessmentActivityScore) +
         (0.25 * incidentsScore)
       )
     : null;
-
+ 
   const getScoreInfo = (score: number | null) => {
     if (score === null) {
       return { color: '#9ca3af', status: 'SETUP REQUIRED', textColor: 'text-gray-500', bgColor: 'bg-gray-100', textBgColor: 'text-gray-600' };
@@ -96,9 +99,9 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
       return { color: '#10b981', status: 'EXCELLENT', textColor: 'text-green-600', bgColor: 'bg-green-100', textBgColor: 'text-green-800' };
     }
   };
-
+ 
   const safetyInfo = getScoreInfo(overallSafetyScore);
-
+ 
   if (loading) {
     return (
       <Card className="animate-pulse">
@@ -114,54 +117,72 @@ const SafetyDashboardHeader = ({ stats, loading }: SafetyDashboardHeaderProps) =
       </Card>
     );
   }
-
+ 
   return (
     <Card className="bg-gradient-to-r from-blue-50 to-primary-50 border-l-4 border-primary shadow-md hover:shadow-lg transition-all duration-200">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="flex items-start gap-4">
+          <LayoutDashboard className="h-6 w-6 text-primary mt-4 shrink-0" />
+          <div className="space-y-2 min-w-0">
+            <h1 className="text-2xl font-bold text-gray-900 leading-tight">
               {userClient?.name || 'Your Organization'}'s School Safety Command Center
             </h1>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <div className="flex items-center space-x-1">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>Last updated: {allDataExists ? new Date().toLocaleString() : '-'}</span>
+                <span>
+                  Last updated:{' '}
+                  {allDataExists && formatDate(new Date())}
+                </span>
+
               </div>
               {employeeData && (
-                <div className="flex items-center space-x-1">
-                  <span className="font-medium">Welcome, {employeeData.firstName} {employeeData.lastName}</span>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                   {employeeTypeLabel}
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">
+                    Welcome, {employeeData.firstName} {employeeData.lastName}
+                  </span>
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium whitespace-nowrap">
+                    {employeeTypeLabel}
                   </span>
                 </div>
               )}
             </div>
           </div>
+        </div>
           
-          <div className="flex items-center space-x-4">
-            {/* Overall Safety Status */}
-            <div className={`flex items-center justify-center px-4 py-2 rounded-lg ${safetyInfo.bgColor}`}>
-              <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
-                {safetyInfo.status}
-              </div>
-            </div>
-            
-            {/* Overall Safety Score */}
-            <div className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-50">
-              <Shield className="h-6 w-6 text-gray-600" />
-              <div className="text-right">
-                <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
-                  {overallSafetyScore !== null ? `${overallSafetyScore}%` : 'N/A'}
-                </div>
-                <div className="text-xs text-gray-600">Overall Safety Score</div>
-              </div>
-            </div>
-          </div>
+       <div className="flex items-center space-x-4">
+ 
+  {/* Test Download Button */}
+  {/* {userClient?.id && (
+  <MonthlyReportDownload clientId={userClient.id} />
+)} */}
+ 
+ 
+  {/* Overall Safety Status */}
+  <div className={`flex items-center justify-center px-4 py-2 rounded-lg ${safetyInfo.bgColor}`}>
+    <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
+      {safetyInfo.status}
+    </div>
+  </div>
+ 
+  {/* Overall Safety Score */}
+  <div className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-50">
+    <Shield className="h-6 w-6 text-gray-600" />
+    <div className="text-right">
+      <div className={`text-lg font-bold ${safetyInfo.textColor}`}>
+        {overallSafetyScore !== null ? `${overallSafetyScore}%` : 'N/A'}
+      </div>
+      <div className="text-xs text-gray-600">Overall Safety Score</div>
+    </div>
+  </div>
+ 
+</div>
+ 
         </div>
       </CardContent>
     </Card>
   );
 };
-
+ 
 export default SafetyDashboardHeader;

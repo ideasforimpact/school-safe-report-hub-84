@@ -24,6 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { formatDate } from '@/lib/Dateformat';
 
 interface FormField {
   id: string;
@@ -375,12 +376,13 @@ const FormConfigurationContent = () => {
               {(search || statusFilter !== 'all' || formTypeFilter !== 'all') && (
                 <Button
                   variant="outline"
-                  size="icon"
+                  size="sm"
                   onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
                   className="text-sm text-blue-600"
                   disabled={isPageLoading}
                 >
                   <X className="h-4 w-4" />
+                  Clear Filter
                 </Button>
               )}
             </div>
@@ -414,7 +416,11 @@ const FormConfigurationContent = () => {
                             <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Inactive</Badge>
                           )}
                     </TableCell>
-                    <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
+
+                    <TableCell>
+                      {formatDate(form.created_at)}
+                    </TableCell>
+
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                             {form.is_active && (

@@ -139,26 +139,49 @@ serve(async (req) => {
 
     // Calculate number of students involved in open incidents by category
     let studentsInvolvedCount = 0
-    const categoryCounts: { [key: string]: number } = {}
-    
+    const uniqueStudents = new Set()
+    const categoryStudentSets = {}
+
     if (openIncidents && openIncidents.length > 0) {
       openIncidents.forEach(incident => {
         if (incident.people_involved && Array.isArray(incident.people_involved)) {
-          let incidentStudentCount = 0
           incident.people_involved.forEach(person => {
             if (person.role === 'Student') {
-              studentsInvolvedCount++
-              incidentStudentCount++
+
+              // Use student_id if available, else fallback to name
+              let studentKey = person.student_id || person.name
+
+              if (!studentKey) return
+
+              // Normalize (important)
+              studentKey = studentKey.toString().trim().toLowerCase()
+
+              // Add to global unique set
+              uniqueStudents.add(studentKey)
+
+              // Category-wise tracking
+              const categoryName = incident.incident_categories?.name
+              if (categoryName) {
+                if (!categoryStudentSets[categoryName]) {
+                  categoryStudentSets[categoryName] = new Set()
+                }
+                categoryStudentSets[categoryName].add(studentKey)
+              }
             }
           })
-          
-          // If this incident has students involved, count it for the category
-          if (incidentStudentCount > 0 && incident.incident_categories?.name) {
-            categoryCounts[incident.incident_categories.name] = (categoryCounts[incident.incident_categories.name] || 0) + incidentStudentCount
-          }
         }
       })
     }
+
+    // Total unique students
+    studentsInvolvedCount = uniqueStudents.size
+
+    // Category counts (unique per category)
+    const categoryCounts = {}
+    Object.keys(categoryStudentSets).forEach(category => {
+      categoryCounts[category] = categoryStudentSets[category].size
+    })
+
 
     // Get top 3 categories by student count
     const topCategories = Object.entries(categoryCounts)
@@ -185,11 +208,41 @@ serve(async (req) => {
     if (activeAssessmentsError) {
       console.error('Error fetching active assessments:', activeAssessmentsError)
     }
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 
-    // Get breakdown of active assessment statuses
-    const newAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'New').length || 0
-    const draftAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Draft').length || 0
-    const submittedAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Submitted').length || 0
+  let newAssessmentsCount = 0;
+  let draftAssessmentsCount = 0;
+  let submittedAssessmentsCount = 0;
+  let overdueAssessmentsCount = 0;
+
+  activeAssessments?.forEach((assessment) => {
+    const status = assessment.status;
+    const dueDateStr = assessment.target_completion_date;
+    console.log(status,'assessentstatus');
+    
+    if (status === 'Submitted') {
+      submittedAssessmentsCount++;
+      return;
+    }
+
+    if (
+      dueDateStr &&
+      dueDateStr < todayStr &&
+      (status !== 'Submitted')
+    ) {
+      overdueAssessmentsCount++;
+      return;
+    }
+
+    if (status === 'New') {
+      newAssessmentsCount++;
+    } else if (status === 'Draft') {
+      draftAssessmentsCount++;
+    }
+  });
+
+  const totalAssessmentsDashboard =
+    newAssessmentsCount + draftAssessmentsCount + submittedAssessmentsCount;
 
     console.log('Assessment stats:', {
       totalActive: activeAssessments?.length || 0,
@@ -214,6 +267,17 @@ serve(async (req) => {
     if (allSubmissionsError) {
       console.error('Error fetching all unacknowledged submissions:', allSubmissionsError)
     }
+    const { count: acknowledgedCount, error: acknowledgedError } = await supabase
+      .from('form_submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', client_id)
+      .not('acknowledged_at', 'is', null)
+    
+    if (acknowledgedError) {
+      console.error('Error fetching acknowledged submissions:', acknowledgedError)
+    }
+    
+    const formSumitcount = acknowledgedCount || 0;
 
     // Filter submissions by time windows
     const submissions30Days = allUnacknowledgedSubmissions?.filter(sub => 
@@ -464,7 +528,54 @@ serve(async (req) => {
     }
 
     const vehicleIds = await vehicleIdsQuery.then(res => res.data?.map(vehicle => vehicle.id) || [])
+    let totalPendingChallanAmount = 0;
 
+    if (vehicleIds.length > 0) {
+      const { data: challans, error: challanError } = await supabase
+        .from("vehicle_challans")
+        .select("challan_history_log")
+        .in("vehicle_id", vehicleIds);
+
+      if (challanError) {
+        console.error("Error fetching vehicle challans:", challanError);
+      }
+
+      challans?.forEach(row => {
+        const history = row.challan_history_log;
+        if (!history) return;
+
+        const logs = Object.entries(history)
+          .map(([timestamp, value]: any) => ({
+            timestamp,
+            ...value,
+          }))
+          .sort(
+            (a, b) =>
+              new Date(b.timestamp).getTime() -
+              new Date(a.timestamp).getTime()
+          );
+        const latestSuccess = logs.find(
+          (log: any) =>
+            log.status_code === "200" &&         
+            log.success === true &&               
+            Number(log?.data?.status_code) === 200 
+        );
+
+        if (!latestSuccess) return;
+
+        const challanList =
+          latestSuccess?.data?.data?.challan_details?.challans || [];
+
+        challanList.forEach((c: any) => {
+          if (c.challan_status === "Pending") {
+            const amount = Number(c.amount || 0);
+            if (!isNaN(amount)) {
+              totalPendingChallanAmount += amount;
+            }
+          }
+        });
+      });
+    }
     const { data: vehiclesWithDocs, error: vehiclesWithDocsError } = await supabase
       .from('vehicle_documents')
       .select('vehicle_id')
@@ -675,6 +786,9 @@ serve(async (req) => {
     }
 
     const { data: closedIncidents, error: closedIncidentsError } = await closedIncidentsQuery
+    const openCount = openIncidents?.length || 0;
+    const closedCount = closedIncidents?.length || 0;
+    const totalIncidentsCount = openCount + closedCount;
 
     if (closedIncidentsError) {
       console.error('Error fetching closed incidents:', closedIncidentsError)
@@ -721,8 +835,8 @@ serve(async (req) => {
         .from('incidents')
         .select('status_id')
         .eq('client_id', client_id)
-        .gte('created_at', monthStart.toISOString())
-        .lte('created_at', monthEnd.toISOString())
+        .gte('date', monthStart.toISOString())
+        .lte('date', monthEnd.toISOString())
 
       if (shouldFilterByEmployee) {
         monthIncidentsQuery = monthIncidentsQuery.eq('created_by', employee_id)
@@ -839,11 +953,12 @@ serve(async (req) => {
     })
 
     const dashboardResponse = {
+      totalIncidents: totalIncidentsCount,
       openIncidents: openIncidents?.length || 0,
       openIncidentOlder7days:openIncidentOlder7days?.length || 0,
       studentsInvolved: studentsInvolvedCount,
       studentsInvolvedByCategory: topCategories,
-      activeAssessments: activeAssessments?.length || 0,
+      activeAssessments:totalAssessmentsDashboard || 0,
       newAssessments: newAssessmentsCount,
       draftAssessments: draftAssessmentsCount,
       submittedAssessments: submittedAssessmentsCount,
@@ -852,9 +967,11 @@ serve(async (req) => {
       formSubmissions30Days: submissions30Days?.length || 0,
       formSubmissions60Days: submissions60Days?.length || 0,
       formSubmissions90Days: submissions90Days?.length || 0,
+      formAknowledged:formSumitcount || 0,
       totalVehicles: allVehicles?.length || 0,
       vehiclesToBeVerified,
       vehiclesFailedVerification,
+      totalPendingChallanAmount,
       vehiclesVerified,
       totalEmployees: employeeIds.length,
       employeesVerified: employeesVerified, 
@@ -870,7 +987,7 @@ serve(async (req) => {
       completedAssessments: completedAssessments?.length || 0,
       closedIncidents: closedIncidents?.length || 0,
       reopenedIncidents: reopenedIncidents?.length || 0,
-      overdueAssessments: overdueAssessments?.length || 0,
+      overdueAssessments:overdueAssessmentsCount || 0,
       monthlyIncidentsData,
       // Add existence checks
       IncidentRecordsExist,

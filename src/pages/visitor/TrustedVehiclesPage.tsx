@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { formatDate } from '@/lib/Dateformat';
 
 interface TrustedVehicle {
   id: string;
@@ -437,15 +438,10 @@ const TrustedVehiclesPage = () => {
                           )}
                         </TableCell>
                         <TableCell>
-                          {vehicle.validity_from && vehicle.validity_to ? (
-                            `${format(new Date(vehicle.validity_from), 'MMM dd yyyy')} - ${format(
-                              new Date(vehicle.validity_to),
-                              'MMM dd yyyy'
-                            )}`
-                          ) : (
-                            '-'
-                          )}
+                          {vehicle.validity_from && vehicle.validity_to &&
+                            `${formatDate(vehicle.validity_from)} - ${formatDate(vehicle.validity_to)}`}
                         </TableCell>
+
                         <TableCell>
                           {getValidityStatus(vehicle) ? (
                             <div className="flex items-center space-x-1 text-green-600">
@@ -636,12 +632,8 @@ const TrustedVehiclesPage = () => {
                           Validity Period
                         </p>
                         <p className="text-sm font-medium text-gray-900 break-words leading-relaxed">
-                          {vehicleToView.validity_from && vehicleToView.validity_to
-                            ? `${format(new Date(vehicleToView.validity_from), 'MMM dd, yyyy')} - ${format(
-                                new Date(vehicleToView.validity_to),
-                                'MMM dd, yyyy'
-                              )}`
-                            : '-'}
+                          {vehicleToView.validity_from && vehicleToView.validity_to &&
+                            `${formatDate(vehicleToView.validity_from)} - ${formatDate(vehicleToView.validity_to)}`}
                         </p>
                       </div>
 

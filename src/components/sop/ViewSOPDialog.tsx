@@ -37,9 +37,10 @@ interface ViewSOPDialogProps {
     important_notes?: string | null;
     assignments?: SOPAssignment[];
   } | null;
+  completedEmployeeIds?: string[];
 }
 
-const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }) => {
+const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop, completedEmployeeIds = [] }) => {
   if (!open || !sop) return null;
 
   const isActive = sop.status;
@@ -199,13 +200,9 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                               </Badge>
                             )}
                             <Badge
-                              className={
-                                assignment.group_status
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
-                              }
+                              className='bg-green-100 text-green-800 hover:bg-green-100'
                             >
-                              {assignment.group_status ? 'Active' : 'Inactive'}
+                             {completedEmployeeIds.length} Signed Off
                             </Badge>
                           </div>
                         </div>
@@ -236,19 +233,22 @@ const ViewSOPDialog: React.FC<ViewSOPDialogProps> = ({ open, onOpenChange, sop }
                         <div className="grid grid-cols-[120px_1fr] gap-4 items-start">
                           <p className="text-xs font-medium text-gray-500">Employees</p>
                           <div className="flex flex-wrap gap-2">
-                            {assignment.employees && assignment.employees.length > 0 ? (
-                              assignment.employees.map((emp) => (
+                            {assignment.employees.map((emp) => {
+                              const isCompleted = completedEmployeeIds.includes(emp.id);
+                              return (
                                 <Badge
                                   key={emp.id}
                                   variant="outline"
-                                  className="bg-blue-50 border-blue-300 text-blue-700"
+                                  className={
+                                    isCompleted
+                                      ? "bg-green-50 border-green-300 text-green-700"
+                                      : "bg-blue-50 border-blue-300 text-blue-700"
+                                  }
                                 >
                                   {emp.full_name}
                                 </Badge>
-                              ))
-                            ) : (
-                              <span className="text-sm text-gray-500">-</span>
-                            )}
+                              );
+                            })}
                           </div>
                         </div>
                       </CardContent>

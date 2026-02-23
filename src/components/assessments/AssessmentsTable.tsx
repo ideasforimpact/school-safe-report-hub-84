@@ -39,9 +39,10 @@ interface Assessment {
 }
 
 interface AssessmentsTableProps {
+  onDataLoaded?: (data: Assessment[]) => void;
 }
 
-const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
+const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { hasAssessmentAdmin, currentUserEmployeeId, clientId } = useAssessmentAccess();
@@ -200,7 +201,21 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
           console.log('✅ Security check passed: All records are properly filtered for non-admin user');
         }
       }
+      const calculateCounts = (data: Assessment[]) => {
+        const total = data.length;
 
+        const open = data.filter(a =>
+          ['New', 'Draft', 'In Progress'].includes(a.status)
+        ).length;
+
+        const closed = data.filter(a => a.status === 'Completed').length;
+
+        const submitted = data.filter(a => a.status === 'Submitted').length;
+
+        return { total, open, closed, submitted };
+      };
+      const counts = calculateCounts(formattedAssessments);
+      onDataLoaded?.(formattedAssessments);
       setAssessments(formattedAssessments);
       setFilteredAssessments(formattedAssessments);
     } catch (error) {
@@ -500,7 +515,6 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = () => {
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="in progress">In Progress</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>

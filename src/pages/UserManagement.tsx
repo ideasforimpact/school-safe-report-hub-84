@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, FileUp, RefreshCw, AlertCircle, Search } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -66,6 +66,18 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return department as DepartmentType;
 };
 
+// CPD entry shape for users list (from cpd_entries + domain name)
+export type CpdEntryForUser = {
+  id: string;
+  title: string;
+  domain_id: string;
+  domain_name: string;
+  hour: number | null;
+  captured_date: string | null;
+  category: string | null;
+  cpd_learning: string | null;
+};
+
 // Export the EmployeeUser interface so it can be used by other components
 export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
@@ -73,6 +85,7 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   employeeType?: EmployeeType; 
   department?: DepartmentType;
   joiningDate?: string;
+  cpd_entries?: CpdEntryForUser[];
   // No need to explicitly define role here since we're extending from User
 }
 
@@ -148,6 +161,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // Initialize loading to true - will be set to false after data is loaded
   const [isLoading, setIsLoading] = useState(true);
   const [employeeUsers, setEmployeeUsers] = useState<EmployeeUser[]>([]);
+  const [cpdDomains, setCpdDomains] = useState<{ id: string; name: string }[]>([]);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,6 +214,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     joiningDate?: string;
     clientId?: string;
     moduleAccessPayload?: ModuleAccessItem[];
+    is_cpd_involved?: boolean;
   }>({
     firstName: '',
     lastName: '',
@@ -207,7 +222,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     phone: '',
     designation: '',
     clientId: clientId,
-    moduleAccessPayload: []
+    moduleAccessPayload: [],
+    is_cpd_involved: false,
   });
   
   // Use a ref to store the latest formData for reliable access in async operations
@@ -280,20 +296,54 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      // Pass clientId to filter employees by client
-      const employeeData = await getAllEmployeesFromApi(clientId);
-      console.log(employeeData, "employeeData124")
-      
+      // Fetch CPD domains for tabs and cpd_entries for attaching to users
+      const [employeeData, domainsRes, entriesRes] = await Promise.all([
+        getAllEmployeesFromApi(clientId),
+        supabase.from('cpd_domain').select('id, name').eq('active', true).order('name'),
+        supabase
+          .from('cpd_entries')
+          .select('id, employee_id, title, domain_id, hour, captured_date, category, cpd_learning')
+          .eq('client_id', clientId)
+          .eq('active', true),
+      ]);
+
+      const domainsList = (domainsRes.data ?? []) as { id: string; name: string }[];
+      if (domainsList.length) {
+        setCpdDomains(domainsList);
+      } else {
+        setCpdDomains([]);
+      }
+
+      const domainNameById: Record<string, string> = {};
+      domainsList.forEach((d) => {
+        domainNameById[d.id] = d.name;
+      });
+
+      const allCpdEntries = (entriesRes.data ?? []).map((row: any) => ({
+        id: row.id,
+        title: row.title ?? '',
+        domain_id: row.domain_id ?? '',
+        domain_name: domainNameById[row.domain_id] ?? '',
+        hour: row.hour ?? null,
+        captured_date: row.captured_date ?? null,
+        category: row.category ?? null,
+        cpd_learning: row.cpd_learning ?? null,
+        employee_id: row.employee_id,
+      }));
+
+      console.log(employeeData, "employeeData124");
+
       if (employeeData && employeeData.length > 0) {
-        // Process each employee to get their module access items
+        // Process each employee to get their module access items and CPD entries
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Get module access items (handles both super admin and regular employees)
           const moduleAccessItems = await getModuleAccessForUser({
             id: employee.id,
             isSuperAdmin: employee.isSuperAdmin,
             clientId: employee.clientId
           });
-          
+          const cpd_entries = allCpdEntries
+            .filter((e: any) => e.employee_id === employee.id)
+            .map(({ employee_id: _, ...rest }: any) => rest);
           return {
             id: employee.id,
             firstName: employee.firstName,
@@ -309,9 +359,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
-            // Store module access items directly
+            is_cpd_involved: employee.isCpdInvolved ?? false,
             moduleAccessPayload: moduleAccessItems,
-            // Add default role property to satisfy User interface
+            cpd_entries,
             role: 'user' as const
           };
         }));
@@ -520,8 +570,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             isSuperAdmin: employee.isSuperAdmin,
-            phone:employee.phone,
-            designation:employee.designation,
+            phone: employee.phone,
+            designation: employee.designation,
+            is_cpd_involved: employee.isCpdInvolved ?? false,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -759,8 +810,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     <div className="space-y-6">
       {!embedded && (
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">User Management</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Users className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold">User Management</h1>
+            </div>
             {hasUserManagementAdminAccess && (
               <div className="flex gap-2">
                 <Button 
@@ -908,11 +962,15 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               {filteredUsers && filteredUsers.length > 0 ? (
                 <UserList 
                   users={filteredUsers}
+                  cpdDomains={cpdDomains}
                   onEditClick={(user) => {
-                    setCurrentUser(user);
-                    
+                    // Use latest user from list by id so we always show fresh data (e.g. after a save)
+                    const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;
+                    const cpdValue = (latestUser as any).is_cpd_involved ?? (latestUser as any).isCpdInvolved ?? false;
+                    setCurrentUser(latestUser);
+
                     // Format joiningDate to YYYY-MM-DD format for date input
-                    let formattedJoiningDate = user.joiningDate || '';
+                    let formattedJoiningDate = latestUser.joiningDate || '';
                     if (formattedJoiningDate) {
                       try {
                         // If it's an ISO string or other format, convert to YYYY-MM-DD
@@ -925,19 +983,20 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                         // If already in YYYY-MM-DD format, keep it as is
                       }
                     }
-                    
+
                     setFormData({
-                      firstName: user.firstName,
-                      lastName: user.lastName,
-                      email: user.email,
-                    phone: (user as any).phone,
-                    designation: (user as any).designation,
-                      employeeId: user.employeeId,
-                      employeeType: user.employeeType,
-                      department: user.department,
+                      firstName: latestUser.firstName,
+                      lastName: latestUser.lastName,
+                      email: latestUser.email,
+                      phone: (latestUser as any).phone,
+                      designation: (latestUser as any).designation,
+                      employeeId: latestUser.employeeId,
+                      employeeType: latestUser.employeeType,
+                      department: latestUser.department,
                       joiningDate: formattedJoiningDate,
-                      clientId: user.clientId || clientId,
-                      moduleAccessPayload: user.moduleAccessPayload || []
+                      clientId: latestUser.clientId || clientId,
+                      moduleAccessPayload: latestUser.moduleAccessPayload || [],
+                      is_cpd_involved: cpdValue,
                     });
                     setIsEditDialogOpen(true);
                   }}
@@ -999,6 +1058,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         resetForm={resetForm}
         isLoading={isLoading}
         currentUser={currentUser}
+        employeeUsers={employeeUsers}
       />
 
       {/* Import Employees Dialog - Only render if user has admin access */}

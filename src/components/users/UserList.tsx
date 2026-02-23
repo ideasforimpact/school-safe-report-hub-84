@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
@@ -22,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
+import { formatDate } from "@/lib/Dateformat";
+import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -31,6 +32,7 @@ interface UserListProps {
   onReactivateUser: (id: string) => void;
   hasAdminAccess?: boolean;
   onRefresh?: () => void;
+  cpdDomains?: { id: string; name: string }[];
 }
 
 const UserList = ({ 
@@ -40,13 +42,15 @@ const UserList = ({
   onDeactivateUser, 
   onReactivateUser, 
   hasAdminAccess = false,
-  onRefresh
+  onRefresh,
+  cpdDomains = [],
 }: UserListProps) => {
   const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
   const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
+  const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -230,6 +234,7 @@ const UserList = ({
           <TableHead>Type</TableHead>
           <TableHead>Joining Date</TableHead>
           <TableHead>Status</TableHead>
+          <TableHead className="w-[120px]">CPD Details</TableHead>
           <TableHead className="w-[150px]">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -241,18 +246,9 @@ const UserList = ({
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
             <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
-            <TableCell>{(() => {
-              if (!user.joiningDate) return '-';
-              // Normalize both 'YYYY-MM-DD' and ISO strings to DD-MM-YYYY
-              const s = String(user.joiningDate);
-              const iso = /T/.test(s) ? new Date(s) : new Date(`${s}T00:00:00`);
-              if (isNaN(iso.getTime())) return s;
-              const dd = String(iso.getDate()).padStart(2, '0');
-              const mm = String(iso.getMonth() + 1).padStart(2, '0');
-              const yyyy = iso.getFullYear();
-              return `${dd}-${mm}-${yyyy}`;
-            })()}</TableCell>
-            
+            <TableCell>
+              {user.joiningDate ? formatDate(user.joiningDate) : '-'}
+            </TableCell>            
             <TableCell>
               {user.isActive ? (
                 <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
@@ -262,6 +258,19 @@ const UserList = ({
                 <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
                   Inactive
                 </Badge>
+              )}
+            </TableCell>
+            <TableCell className="whitespace-nowrap">
+              {(user as any).cpd_entries?.length ? (
+                <button
+                  type="button"
+                  onClick={() => setCpdDialogUser(user)}
+                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer bg-transparent border-none p-0 text-sm"
+                >
+                  CPD Details
+                </button>
+              ) : (
+                <span className="text-muted-foreground">—</span>
               )}
             </TableCell>
             <TableCell>
@@ -517,6 +526,13 @@ const UserList = ({
           </div>
         </div>
       )}
+
+      <CpdDetailsDialog
+        open={cpdDialogUser !== null}
+        onClose={() => setCpdDialogUser(null)}
+        user={cpdDialogUser}
+        domains={cpdDomains}
+      />
     </div>
   );
 };

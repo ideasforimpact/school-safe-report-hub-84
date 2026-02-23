@@ -1,8 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
 import EditEmployeeDialog from './EditEmployeeDialog';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusSummary from './VerificationStatusSummary';
@@ -14,7 +12,7 @@ import {
   employeeDepartmentName
 } from '@/services/employeeNameHelpers';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
-
+import { formatDate } from "@/lib/Dateformat";
 interface EmployeeDetailsProps {
   employee: Employee;
   documents?: VerificationDocument[];
@@ -24,14 +22,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
   const { getEmployeeDocuments } = useEmployeeVerification();
   const { employeeDepartments } = useEmployeeDepartments();
   const { employeeTypes } = useEmployeeTypes();
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM d, yyyy');
-    } catch (error) {
-      return dateString;
-    }
-  };
 
   // Pull Aadhaar-derived values (profile image) from API response if present
   const getAadhaarDerived = (): { profileImage?: string } => {
@@ -124,7 +114,9 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee, documents }
               <VerificationStatusSummary summary={getVerificationSummary()} />
               {/* Show danger icon if there are different dates of birth */}
               {aggregatedPersonalInfo.dob.differentValues.length > 0 && (
-                <AlertTriangle className="h-5 w-5 text-red-600" title="Different dates of birth found across documents" />
+                <span title="Different dates of birth found across documents">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </span>
               )}
             </div>
             <p className="text-gray-500 text-left">

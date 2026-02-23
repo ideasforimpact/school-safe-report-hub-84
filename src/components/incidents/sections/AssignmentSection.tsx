@@ -54,7 +54,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
             id: emp.id,
             firstName: emp.first_name,
             lastName: emp.last_name,
-            email: emp.email,
+            email: emp.email || '',
           }))
         );
       } catch (err) {
@@ -84,8 +84,10 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
     });
 
   const selectedEmployee = employees.find(emp => emp.id === owner);
-  const selectedEmployeeDisplay = selectedEmployee 
-    ? `${selectedEmployee.firstName} ${selectedEmployee.lastName} (${selectedEmployee.email})` 
+  const selectedEmployeeDisplay = selectedEmployee
+    ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}${
+        selectedEmployee.email ? ` (${selectedEmployee.email})` : ''
+      }`
     : '';
 
   const handleEmployeeSearch = (value: string) => {
@@ -102,10 +104,14 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   // Filter employees based on search query
   const filteredEmployees = searchQuery
     ? employees.filter(employee => {
-        const fullName = `${employee.firstName} ${employee.lastName}`;
+        const fullName = `${employee.firstName || ''} ${employee.lastName || ''}`;
+        const email = employee.email || '';
         const searchTerm = searchQuery.toLowerCase();
-        return fullName.toLowerCase().includes(searchTerm) || 
-               employee.email.toLowerCase().includes(searchTerm);
+
+        return (
+          fullName.toLowerCase().includes(searchTerm) ||
+          email.toLowerCase().includes(searchTerm)
+        );
       })
     : employees;
 

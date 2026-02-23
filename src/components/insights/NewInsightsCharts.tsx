@@ -65,7 +65,7 @@ const NewInsightsCharts: React.FC<NewInsightsChartsProps> = ({
 
       {/* Row 2: Category Chart (1 col) + High-Risk Facilities (1 col) - Equal space */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-[400px]">
+        <div className="min-h-[450px]">
           <CategoryVerticalChart
             title="Incidents by Category"
             description="Breakdown of incidents by category"

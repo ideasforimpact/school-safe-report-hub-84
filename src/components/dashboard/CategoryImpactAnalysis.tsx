@@ -73,14 +73,14 @@ const CategoryImpactAnalysis = ({ loading = false }: CategoryImpactAnalysisProps
 
   // Colors for categories
   const COLORS = [
-    'hsl(var(--chart-1))',
-    'hsl(var(--chart-2))',
-    'hsl(var(--chart-3))',
-    'hsl(var(--chart-4))',
-    'hsl(var(--chart-5))',
-    'hsl(var(--primary))',
-    'hsl(var(--secondary))',
-    'hsl(var(--accent))'
+    '#1E40AF', // Royal Blue
+    '#065F46', // Emerald Green
+    '#7C2D12', // Burgundy
+    '#4C1D95', // Royal Purple
+    '#92400E', // Antique Gold
+    '#0F172A', // Midnight Navy
+    '#9F1239', // Wine Red
+    '#1F2937', // Charcoal Slate
   ];
 
   const CustomTooltip = ({ active, payload }: any) => {

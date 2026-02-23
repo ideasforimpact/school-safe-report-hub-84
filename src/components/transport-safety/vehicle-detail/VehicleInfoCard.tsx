@@ -7,7 +7,7 @@ import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
 import VehicleStatusBadge from '@/components/transport-safety/VehicleStatusBadge';
 import { toast } from 'sonner';
 import { Vehicle } from '@/types/transportSafety';
-import { formatDate } from '@/utils/dateUtils';
+import { formatDate } from '@/lib/Dateformat';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -333,8 +333,8 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         <div className="mt-3 flex items-center text-sm text-gray-500 text-left">
           <Calendar className="h-3.5 w-3.5 mr-1.5" />
           <span>
-            {lastCheckTime 
-              ? `Last verified: ${formatDate(lastCheckTime)} at ${lastCheckTime.toLocaleTimeString()}`
+            {lastCheckTime
+              ? `Last verified: ${formatDate(lastCheckTime, { isTiming: true })}`
               : "No safety checks have been run yet"}
           </span>
         </div>

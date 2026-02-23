@@ -61,7 +61,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
   const maxRiskScore = Math.max(...facilityRiskData.map(f => f.riskScore || 0), 1);
 
   const getRiskColor = (count: number, priority: string) => {
-    if (count === 0) return 'bg-muted/20';
+    if (count === 0) return '';
     const intensity = Math.min(count / 5, 1);
     
     switch (priority) {
@@ -74,7 +74,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
       case 'Low':
         return `bg-green-500/${Math.round(intensity * 100) || 20}`;
       default:
-        return 'bg-muted/20';
+        return '';
     }
   };
 
@@ -127,7 +127,7 @@ const FacilityRiskMatrix = ({ loading = false }: FacilityRiskMatrixProps) => {
                     className={`h-8 rounded flex items-center justify-center text-xs font-bold transition-all duration-200 hover:scale-110 cursor-pointer ${getRiskColor(facility[priority], priority)}`}
                     title={`${facility.name} - ${priority}: ${facility[priority]} incidents`}
                   >
-                    {facility[priority] > 0 ? facility[priority] : ''}
+                    {facility[priority] > 0 ? facility[priority] : '0'}
                   </div>
                 ))}
                   </div>

@@ -1,0 +1,29 @@
+{
+  "name": "monthly-report-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "@react-pdf/renderer": "^3.4.4",
+    "@supabase/supabase-js": "^2.49.4",
+    "express": "^4.21.0",
+    "inngest": "^3.28.0",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.5.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
