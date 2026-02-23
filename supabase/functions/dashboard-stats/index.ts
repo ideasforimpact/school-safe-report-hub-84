@@ -208,12 +208,41 @@ serve(async (req) => {
     if (activeAssessmentsError) {
       console.error('Error fetching active assessments:', activeAssessmentsError)
     }
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 
-    // Get breakdown of active assessment statuses
-    const newAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'New').length || 0
-    const draftAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Draft').length || 0
-    const submittedAssessmentsCount = activeAssessments?.filter(assessment => assessment.status === 'Submitted').length || 0
-    const totalAssessmentsDashboard = newAssessmentsCount+draftAssessmentsCount;
+  let newAssessmentsCount = 0;
+  let draftAssessmentsCount = 0;
+  let submittedAssessmentsCount = 0;
+  let overdueAssessmentsCount = 0;
+
+  activeAssessments?.forEach((assessment) => {
+    const status = assessment.status;
+    const dueDateStr = assessment.target_completion_date;
+    console.log(status,'assessentstatus');
+    
+    if (status === 'Submitted') {
+      submittedAssessmentsCount++;
+      return;
+    }
+
+    if (
+      dueDateStr &&
+      dueDateStr < todayStr &&
+      (status !== 'Submitted')
+    ) {
+      overdueAssessmentsCount++;
+      return;
+    }
+
+    if (status === 'New') {
+      newAssessmentsCount++;
+    } else if (status === 'Draft') {
+      draftAssessmentsCount++;
+    }
+  });
+
+  const totalAssessmentsDashboard =
+    newAssessmentsCount + draftAssessmentsCount + submittedAssessmentsCount;
 
     console.log('Assessment stats:', {
       totalActive: activeAssessments?.length || 0,
@@ -526,7 +555,10 @@ serve(async (req) => {
               new Date(a.timestamp).getTime()
           );
         const latestSuccess = logs.find(
-          log => log.status_code === "200"
+          (log: any) =>
+            log.status_code === "200" &&         
+            log.success === true &&               
+            Number(log?.data?.status_code) === 200 
         );
 
         if (!latestSuccess) return;
@@ -955,7 +987,7 @@ serve(async (req) => {
       completedAssessments: completedAssessments?.length || 0,
       closedIncidents: closedIncidents?.length || 0,
       reopenedIncidents: reopenedIncidents?.length || 0,
-      overdueAssessments: overdueAssessments?.length || 0,
+      overdueAssessments:overdueAssessmentsCount || 0,
       monthlyIncidentsData,
       // Add existence checks
       IncidentRecordsExist,
