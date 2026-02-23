@@ -62,6 +62,9 @@ export function NewConsultationDialog({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Control future date selection from here
+  const allowFutureDate = false; 
+  
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -134,7 +137,7 @@ export function NewConsultationDialog({
         support_notes: notes.trim() || null,
       });
 
-      toast.success('Consultation added');
+      toast.success('Consultation was added successfully');
       onSuccess();
       onClose();
     } catch (e) {
@@ -211,7 +214,8 @@ export function NewConsultationDialog({
               <DatePicker
                 date={consultationDate}
                 onChange={setConsultationDate}
-                placeholderText="Pick a date"
+                disableFuture={!allowFutureDate}
+                placeholderText="select date"
               />
               {errors.date && (
                 <p className="text-sm text-red-500">{errors.date}</p>
@@ -254,10 +258,10 @@ export function NewConsultationDialog({
               rows={5}
               disabled={saving}
               className={cn('resize-y min-h-[120px] bg-muted/30', errors.notes ? 'border-red-500' : '')}
-              maxLength={NOTES_MAX + 100}
+              maxLength={NOTES_MAX}
             />
             <p className="text-xs text-muted-foreground">
-              {notes.trim().length > 0 ? `${notes.trim().length} / ${NOTES_MAX}. ` : ''}
+              {notes.trim().length > 0 ? `${notes.length} / ${NOTES_MAX}. ` : ''}
               No medical terms, plain text only. Max {NOTES_MAX} characters.
             </p>
             {errors.notes && (
