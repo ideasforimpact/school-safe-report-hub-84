@@ -17,7 +17,9 @@ export interface DatePickerProps {
   date: Date | undefined;
   onChange: (date: Date | undefined) => void;
   className?: string;
+  maxDate?: Date;
   placeholderText?: string;
+  disableFuture?: boolean;
   disabledDates?: (date: Date) => boolean
 }
 
@@ -26,8 +28,20 @@ export function DatePicker({
   onChange,
   className,
   placeholderText = "Select date of joining",
-  disabledDates
+  disabledDates,
+  disableFuture,
 }: DatePickerProps) {
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Combine custom disabled dates + future disable
+  const combinedDisabled = (d: Date) => {
+    if (disableFuture && d > today) return true;
+    if (disabledDates && disabledDates(d)) return true;
+    return false;
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -43,12 +57,13 @@ export function DatePicker({
           {date ? format(date, "PPP") : <span>{placeholderText}</span>}
         </Button>
       </PopoverTrigger>
+
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
           selected={date}
           onSelect={onChange}
-          disabled={disabledDates}
+          disabled={combinedDisabled}  
           initialFocus
           className={cn("p-3 pointer-events-auto")}
         />

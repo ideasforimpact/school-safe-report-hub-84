@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent,AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,7 +23,8 @@ import {
   updateStudentWellbeingRecord,
   type StudentWellbeingRecord,
 } from '@/services/student-wellbeing/studentWellbeingService';
-
+//  Control future date selection from here
+const allowFutureDate = false;
 const CONCERN_MIN = 2;
 const CONCERN_MAX = 2000;
 const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
@@ -167,7 +163,7 @@ export function EditWellBeingRecordDialog({
         attachments: attachmentsPayload,
       });
 
-      toast.success('Record updated');
+      toast.success('Record was updated successfully');
       setErrors({});
       onSuccess();
       onClose();
@@ -187,14 +183,14 @@ export function EditWellBeingRecordDialog({
   if (!record) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Edit Well-Being Record</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
+    <AlertDialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <AlertDialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar">
+        <AlertDialogHeader className="flex-shrink-0">
+          <AlertDialogTitle>Edit Well-Being Record</AlertDialogTitle>
+        </AlertDialogHeader>
+        <div className="flex-1 overflow grid gap-4 py-4 pr-2 ">
           <div className="grid gap-2">
-            <Label htmlFor="student">Student</Label>
+            <Label htmlFor="student">Student <span className="text-red-500">*</span></Label>
             <StudentSearchSelect
               value={student}
               onChange={setStudent}
@@ -208,7 +204,7 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="typeOfConcern">Type of Concern</Label>
+            <Label htmlFor="typeOfConcern">Type of Concern <span className="text-red-500">*</span></Label>            
             <Select
               value={typeOfConcernId}
               onValueChange={setTypeOfConcernId}
@@ -231,11 +227,12 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Date of Observation</Label>
+            <Label>Date of Observation <span className="text-red-500">*</span></Label>
             <DatePicker
               date={dateOfObservation}
               onChange={setDateOfObservation}
-              placeholderText="Select date"
+              disableFuture={!allowFutureDate}
+              placeholderText="Select date"              
             />
             {errors.date && (
               <p className="text-sm text-red-500">{errors.date}</p>
@@ -243,7 +240,7 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="concern">Brief Concern Description</Label>
+            <Label htmlFor="concern">Brief Concern Description <span className="text-red-500">*</span></Label>
             <Textarea
               id="concern"
               value={concern}
@@ -252,10 +249,10 @@ export function EditWellBeingRecordDialog({
               rows={4}
               disabled={saving}
               className={`resize-y min-h-[80px] ${errors.concern ? 'border-red-500' : ''}`}
-              maxLength={CONCERN_MAX + 100}
+              maxLength={CONCERN_MAX}
             />
             <p className="text-xs text-gray-500">
-              {concern.trim().length} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
+              {concern.length} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
             </p>
             {errors.concern && (
               <p className="text-sm text-red-500">{errors.concern}</p>
@@ -344,7 +341,7 @@ export function EditWellBeingRecordDialog({
             Update Record
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
