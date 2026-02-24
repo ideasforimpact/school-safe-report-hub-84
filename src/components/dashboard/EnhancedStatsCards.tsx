@@ -26,6 +26,7 @@ interface EnhancedStatsCardsProps {
     totalEmployees: number;
     employeesVerified: number;
     employeesFailed?: number;
+    employeesPending?:number;
     totalVehicles: number;
     vehiclesVerified?: number;
     activeVehicles: number;
@@ -178,6 +179,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       totalEmployees: stats.EmployeeRecordsExist ? (stats.totalEmployees || 0) : 0,
       verifiedEmployees: stats.EmployeeRecordsExist ? (stats.employeesVerified || 0) : 0,
       failedEmployees: stats.EmployeeRecordsExist ? (stats.employeesFailed || 0) : 0,
+      pendingEmployees: stats.EmployeeRecordsExist ? (stats.employeesPending || 0) : 0,
       toBeVerified: stats.EmployeeRecordsExist ? (stats.employeesVerified || 0) : 0,
       cardType: 'safe_employees'
     },
@@ -358,8 +360,8 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     <span className="font-semibold text-blue-600">{(card as any).totalEmployees}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-green-600 font-medium">Employees verified:</span>
-                    <span className="font-semibold text-green-600">{(card as any).verifiedEmployees}</span>
+                    <span className="text-orange-600 font-medium">Pending verifications:</span>
+                    <span className="font-semibold text-orange-600">{(card as any).pendingEmployees}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-red-600 font-medium">Employees failed verification:</span>
@@ -467,6 +469,10 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
 
                     {(card as any).showAssessmentBreakdown && (
                       <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-red-600 font-medium">New:</span>
+                          <span className="font-semibold text-red-600">{(card as any).newAssessments}</span>
+                        </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-red-600 font-medium">Overdue:</span>
                           <span className="font-semibold text-red-600">{(card as any).overdueAssessments}</span>

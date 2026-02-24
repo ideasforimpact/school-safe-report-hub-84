@@ -976,7 +976,7 @@ serve(async (req) => {
       totalEmployees: employeeIds.length,
       employeesVerified: employeesVerified, 
       employeesFailed: employeesFailed,
-
+      employeesPending: employeesPending,
       vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
       activeVehicles: activeVehicles?.length || 0,
       maintenanceVehicles: maintenanceVehicles?.length || 0,
