@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, Car, ArrowLeft, Download, ShieldCheck, DoorOpen } from 'lucide-react';
+import { Search, Eye, RefreshCw, Car, ArrowLeft, Download, ShieldCheck, DoorOpen, X } from 'lucide-react';
 import {
   Pagination,
   PaginationContent,
@@ -595,7 +595,19 @@ const VisitorsPage = () => {
     setCurrentPage(1); // Reset to first page when clearing filters
   };
 
-  const hasActiveFilters = searchTerm || vehicleTypeFilter !== 'all' || dateRange;
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    vehicleTypeFilter !== 'all' ? vehicleTypeFilter : '',
+    dateRange?.from,
+    dateRange?.to
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   // Helper function to get vehicle type name
   const getVehicleTypeName = (vehicleType: string | null | undefined): string => {
@@ -841,7 +853,8 @@ const VisitorsPage = () => {
                   onClick={handleClearFilters}
                   className="flex items-center gap-1"
                 >
-                  Clear Filters
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>

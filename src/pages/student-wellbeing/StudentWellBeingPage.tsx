@@ -248,6 +248,17 @@ const StudentWellBeingPage = () => {
       r.concern?.toLowerCase().includes(q)
     );
   });
+  // Active filter count
+  const activeFilterCount = [
+    searchQuery,
+    statusFilter !== 'all' ? statusFilter : '',
+    dateRange?.from || dateRange?.to ? 'date' : '',
+    academicYearFilter !== getCurrentAcademicYear() ? academicYearFilter : '',
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -456,7 +467,7 @@ const StudentWellBeingPage = () => {
                   onClick={handleClearFilters}
                 >
                   <X className="h-4 w-4" />
-                  Clear Filter
+                  Clear Filter ({activeFilterCount})
                 </Button>
               )}
           </div>

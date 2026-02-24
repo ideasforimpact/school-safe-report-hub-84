@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Search, Calendar, ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { Search, Calendar, ChevronDown, ChevronUp, Filter, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -132,7 +132,13 @@ const IncidentFilters = ({
                 onClick={onClearFilters} 
                 className="whitespace-nowrap"
               >
+                <X className="h-4 w-4" />
                 Clear Filters
+                {activeFilterCount > 0 && (
+                  <span>
+                    ({activeFilterCount})
+                  </span>
+                )}
               </Button>
             </div>
           </CollapsibleContent>
