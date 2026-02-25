@@ -168,7 +168,7 @@ const AssignedSOPPage = () => {
 
     // Apply status filter
     if (statusFilter !== 'all') {
-      if (statusFilter === 'completed') {
+      if (statusFilter === 'signed-off') {
         filtered = filtered.filter((sop) => sop.signoff_request_status === 'Completed');
       } else if (statusFilter === 'in-progress') {
         filtered = filtered.filter((sop) => sop.signoff_request_status !== 'Completed');
@@ -393,7 +393,7 @@ const AssignedSOPPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="signed-off">Signed Off</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
                 </SelectContent>
               </Select>
