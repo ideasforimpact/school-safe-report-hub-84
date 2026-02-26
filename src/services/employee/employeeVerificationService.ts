@@ -151,6 +151,31 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       return { employee, documents: [] };
     }
 
+    const documentIds = ((documentsData as any[]) || [])
+      .map((doc) => doc.id)
+      .filter(Boolean);
+
+    let latestAuditLogByDocumentId: Record<string, any> = {};
+    if (documentIds.length > 0) {
+      const { data: auditLogsData, error: auditLogsError } = await (supabase as any)
+        .from('employee_verification_audit_log')
+        .select('document_id, latest_success_log')
+        .eq('employee_id', employeeId)
+        .in('document_id', documentIds);
+
+      if (auditLogsError) {
+        console.error('Error fetching verification audit logs:', auditLogsError);
+      } else {
+        latestAuditLogByDocumentId = ((auditLogsData as any[]) || []).reduce(
+          (acc: Record<string, any>, row: any) => {
+            if (row?.document_id) acc[row.document_id] = row.latest_success_log;
+            return acc;
+          },
+          {}
+        );
+      }
+    }
+    
     // Map documents to the expected format with proper URL handling and new cron fields
     const documents: VerificationDocument[] = ((documentsData as any[]) || []).map(doc => {
       let documentUrl = doc.document_url;
@@ -206,6 +231,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         apiVerificationMethod: doc.api_verification_method || undefined,
         rejectReason: (doc as any).reject_reason || undefined,
         personalInfo: (doc as any).personal_info || undefined,
+        audit: latestAuditLogByDocumentId[doc.id] || undefined,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

@@ -14,11 +14,17 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, X, CheckCircle } from 'lucide-react';
+import { Loader2, X, CheckCircle, XCircle } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider
+} from "@/components/ui/tooltip";
 
 interface DrivingLicenseDetailsDialogProps {
   open: boolean;
@@ -47,7 +53,9 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   // Extract relevant information from the driving license response
   const data = licenseDetails?.data || {};
   const isSuccessful = licenseDetails?.success && licenseDetails?.status_code === 200;
-  
+  const isValid = new Date(data.doe) > new Date();
+  const statusText = isValid ? "Valid" : "Expired";
+
   // Prepare profile image source supporting URL or raw base64 string
   const profileImageSrc = (() => {
     const value = (data as any)?.profile_image || (data as any)?.photo || (data as any)?.image || (data as any)?.image_url;
@@ -252,7 +260,25 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <span>Driving License Details</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              Driving License Details ({data?.doe})
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      {isValid ? (
+                        <CheckCircle size={16} color="green" />
+                      ) : (
+                        <XCircle size={16} color="red" />
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isValid ? "Valid Driving License" : "Driving License Expired"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
           </DialogTitle>
           <DialogDescription>
             Details retrieved from government database for driving license {data?.license_number || licenseDetails?.license_number || 'verification'}
