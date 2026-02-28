@@ -2,7 +2,7 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { UseFormReturn } from 'react-hook-form';
 import { EnhancedGrievanceFormValues } from '../hooks/useEnhancedGrievanceForm';
 
@@ -23,7 +23,7 @@ const EnhancedResolutionSection: React.FC<EnhancedResolutionSectionProps> = ({ f
               <FormLabel className="text-sm font-medium">What action or resolution do you expect?</FormLabel>
             </div>
             <FormControl>
-              <Textarea
+              <TextareaWithVoice
                 placeholder="Please describe the resolution you are seeking"
                 className="min-h-[100px] bg-gray-50 transition-colors focus:bg-white"
                 {...field}

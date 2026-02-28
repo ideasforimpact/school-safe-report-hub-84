@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import Layout from '@/components/layout/Layout';
@@ -584,7 +584,7 @@ useRealTimeSubHook({
               
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
+                <TextareaWithVoice
                   id="description"
                   value={formData.description}
                   onChange={(e) => {
@@ -782,7 +782,7 @@ useRealTimeSubHook({
               
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description</Label>
-                <Textarea
+                <TextareaWithVoice
                   id="edit-description"
                   value={formData.description}
                   onChange={(e) => {

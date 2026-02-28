@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Zap, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -121,7 +121,7 @@ export function NewActionDialog({
             <Label htmlFor="action-desc" className="text-sm font-medium">
               Action Description <span className="text-red-500">*</span>
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id="action-desc"
               value={description}
               onChange={(e) => {

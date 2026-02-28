@@ -3,7 +3,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -67,7 +67,7 @@ const FormPreviewDialog: React.FC<FormPreviewDialogProps> = ({ form, open, onOpe
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Textarea id={field.id} placeholder={`Enter ${field.label.toLowerCase()}`} rows={3} {...baseProps} />
+            <TextareaWithVoice id={field.id} placeholder={`Enter ${field.label.toLowerCase()}`} rows={3} {...baseProps} />
           </div>
         );
 

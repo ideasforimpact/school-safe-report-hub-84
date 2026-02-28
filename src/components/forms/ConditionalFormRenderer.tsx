@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -168,7 +168,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id={field.id}
               value={value}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}

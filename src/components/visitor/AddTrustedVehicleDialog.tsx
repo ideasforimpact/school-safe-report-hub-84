@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { DatePickerWithRange } from '@/components/ui/date-picker';
 import { DateRange } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
@@ -775,7 +775,7 @@ const AddTrustedVehicleDialog: React.FC<AddTrustedVehicleDialogProps> = ({
                   <Label htmlFor={`comments-${index}`}>
                     Comments <span className="text-gray-400 text-xs">(Optional)</span>
                   </Label>
-                  <Textarea
+                  <TextareaWithVoice
                     id={`comments-${index}`}
                     value={form.comments}
                     onChange={(e) => updateForm(index, 'comments', e.target.value)}
