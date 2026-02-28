@@ -112,22 +112,23 @@ async function fetchEmployeesByClient(clientId: string) {
     throw new Error('Client ID is required')
   }
 
-  console.log('🔍 Fetching employees with manual documents for client:', clientId)
+  console.log('🔍 Fetching employees with manual documents and failed passports for client:', clientId)
 
-  // First, get the manual document type ID
-  const { data: manualDocType, error: docTypeError } = await supabase
+  // Get document type IDs for manual and passport
+  const { data: documentTypes, error: docTypeError } = await supabase
     .from('employee_document_type')
-    .select('id')
-    .eq('name', 'manual')
-    .single()
+    .select('id, name')
 
   if (docTypeError) {
-    console.error('Error fetching manual document type:', docTypeError)
+    console.error('Error fetching document types:', docTypeError)
     throw docTypeError
   }
 
-  if (!manualDocType) {
-    console.log('⚠️ Manual document type not found, returning empty result')
+  const manualDocTypeId = documentTypes?.find(type => (type.name || '').toLowerCase() === 'manual')?.id
+  const passportDocTypeId = documentTypes?.find(type => (type.name || '').toLowerCase() === 'passport')?.id
+
+  if (!manualDocTypeId && !passportDocTypeId) {
+    console.log('⚠️ Manual/Passport document types not found, returning empty result')
     return new Response(
       JSON.stringify({ success: true, data: [] }),
       { 
@@ -136,15 +137,17 @@ async function fetchEmployeesByClient(clientId: string) {
     )
   }
 
-  // Fetch all manual documents for this client
-  const { data: manualDocuments, error: documentsError } = await supabase
+  // Fetch manual documents and passport documents (passport later filtered to failed only)
+  const typeIdsToFetch = [manualDocTypeId, passportDocTypeId].filter(Boolean)
+  const { data: documents, error: documentsError } = await supabase
     .from('employee_documents')
     .select(`
       employee_id,
       verification_status,
+      api_verification_status,
       document_type_id
     `)
-    .eq('document_type_id', manualDocType.id)
+    .in('document_type_id', typeIdsToFetch as string[])
     .eq('is_delete', 0)
 
   if (documentsError) {
@@ -152,14 +155,19 @@ async function fetchEmployeesByClient(clientId: string) {
     throw documentsError
   }
 
-  console.log('📊 Found manual documents:', manualDocuments?.length || 0)
+  const relevantDocuments = (documents || []).filter(doc => {
+    if (doc.document_type_id === manualDocTypeId) return true
+    return doc.document_type_id === passportDocTypeId && (doc.verification_status === 'failed' || doc.api_verification_status === 'failed')
+  })
 
-  // Get unique employee IDs from manual documents
-  const employeeIdsWithManualDocs = [...new Set(manualDocuments?.map(doc => doc.employee_id) || [])]
-  console.log('👥 Employee IDs with manual docs:', employeeIdsWithManualDocs)
+  console.log('📊 Found relevant documents (manual + failed passport):', relevantDocuments.length)
 
-  if (employeeIdsWithManualDocs.length === 0) {
-    console.log('⚠️ No employees found with manual documents')
+  // Get unique employee IDs from relevant documents
+  const employeeIdsWithRelevantDocs = [...new Set(relevantDocuments.map(doc => doc.employee_id))]
+  console.log('👥 Employee IDs with relevant docs:', employeeIdsWithRelevantDocs)
+
+  if (employeeIdsWithRelevantDocs.length === 0) {
+    console.log('⚠️ No employees found with relevant documents')
     return new Response(
       JSON.stringify({ success: true, data: [] }),
       { 
@@ -168,11 +176,11 @@ async function fetchEmployeesByClient(clientId: string) {
     )
   }
 
-  // Fetch employees who have manual documents
+  // Fetch employees who have relevant documents
   const { data: employees, error: employeesError } = await supabase
     .from('employees')
     .select('id, employee_id, first_name, last_name, email, department, employee_type, client_id, created_at')
-    .in('id', employeeIdsWithManualDocs)
+    .in('id', employeeIdsWithRelevantDocs)
     .eq('client_id', clientId)
     .eq('status', true)
     .order('first_name')
@@ -182,9 +190,9 @@ async function fetchEmployeesByClient(clientId: string) {
     throw employeesError
   }
 
-  console.log('👥 Found employees with manual docs:', employees?.length || 0)
+  console.log('👥 Found employees with relevant docs:', employees?.length || 0)
 
-  // Group manual documents by employee and create summaries
+  // Group relevant documents by employee and create summaries
   const employeeMap = new Map()
   
   // Initialize employee map with employee data
@@ -198,12 +206,12 @@ async function fetchEmployeesByClient(clientId: string) {
       position: emp.employee_type || '',
       clientId: emp.client_id,
       createdAt: emp.created_at || null,
-      documentsSummary: { total: 0, verified: 0, pending: 0, failed: 0 }
+      documentsSummary: { total: 0, verified: 0, pending: 0, inProgress: 0, failed: 0 }
     })
   })
   
   // Add document summaries
-  manualDocuments?.forEach(doc => {
+  relevantDocuments.forEach(doc => {
     const employeeId = doc.employee_id
     const employee = employeeMap.get(employeeId)
     
@@ -217,8 +225,10 @@ async function fetchEmployeesByClient(clientId: string) {
           summary.verified++
           break
         case 'pending':
-        case 'in-progress':
           summary.pending++
+          break
+        case 'in-progress':
+          summary.inProgress++
           break
         case 'failed':
         case 'rejected':
@@ -230,7 +240,7 @@ async function fetchEmployeesByClient(clientId: string) {
 
   const result = Array.from(employeeMap.values())
 
-  console.log('✅ Successfully fetched employees with manual documents:', result.length)
+  console.log('✅ Successfully fetched employees with manual documents and failed passports:', result.length)
   return new Response(
     JSON.stringify({ success: true, data: result }),
     { 
@@ -241,22 +251,23 @@ async function fetchEmployeesByClient(clientId: string) {
 
 async function fetchAllEmployees() {
   try {
-    console.log('🔍 Fetching all employees with manual documents across all clients')
+    console.log('🔍 Fetching all employees with manual documents and failed passports across all clients')
 
-    // First, get the manual document type ID
-    const { data: manualDocType, error: docTypeError } = await supabase
+    // Get document type IDs for manual and passport
+    const { data: documentTypes, error: docTypeError } = await supabase
       .from('employee_document_type')
-      .select('id')
-      .eq('name', 'manual')
-      .single()
+      .select('id, name')
 
     if (docTypeError) {
-      console.error('Error fetching manual document type:', docTypeError)
-      throw new Error(`Failed to fetch manual document type: ${docTypeError.message}`)
+      console.error('Error fetching document types:', docTypeError)
+      throw new Error(`Failed to fetch document types: ${docTypeError.message}`)
     }
 
-    if (!manualDocType || !manualDocType.id) {
-      console.log('⚠️ Manual document type not found, returning empty result')
+    const manualDocTypeId = documentTypes?.find(type => (type.name || '').toLowerCase() === 'manual')?.id
+    const passportDocTypeId = documentTypes?.find(type => (type.name || '').toLowerCase() === 'passport')?.id
+
+    if (!manualDocTypeId && !passportDocTypeId) {
+      console.log('⚠️ Manual/Passport document types not found, returning empty result')
       return new Response(
         JSON.stringify({ success: true, data: [] }),
         { 
@@ -265,28 +276,35 @@ async function fetchAllEmployees() {
       )
     }
 
-    console.log('✅ Found manual document type ID:', manualDocType.id)
+    console.log('✅ Found manual/passport document type IDs:', { manualDocTypeId, passportDocTypeId })
 
-    // Fetch all manual documents across all clients
-    const { data: manualDocuments, error: documentsError } = await supabase
+    // Fetch manual documents and passport documents (passport later filtered to failed only)
+    const typeIdsToFetch = [manualDocTypeId, passportDocTypeId].filter(Boolean)
+    const { data: documents, error: documentsError } = await supabase
       .from('employee_documents')
       .select(`
         employee_id,
         verification_status,
+        api_verification_status,
         document_type_id
       `)
-      .eq('document_type_id', manualDocType.id)
+      .in('document_type_id', typeIdsToFetch as string[])
       .eq('is_delete', 0)
 
     if (documentsError) {
-      console.error('Error fetching manual documents:', documentsError)
-      throw new Error(`Failed to fetch manual documents: ${documentsError.message}`)
+      console.error('Error fetching relevant documents:', documentsError)
+      throw new Error(`Failed to fetch relevant documents: ${documentsError.message}`)
     }
 
-    console.log('📊 Found manual documents:', manualDocuments?.length || 0)
+    const relevantDocuments = (documents || []).filter(doc => {
+      if (doc.document_type_id === manualDocTypeId) return true
+      return doc.document_type_id === passportDocTypeId && (doc.verification_status === 'failed' || doc.api_verification_status === 'failed')
+    })
 
-    if (!manualDocuments || manualDocuments.length === 0) {
-      console.log('⚠️ No manual documents found')
+    console.log('📊 Found relevant documents (manual + failed passport):', relevantDocuments.length)
+
+    if (!relevantDocuments || relevantDocuments.length === 0) {
+      console.log('⚠️ No relevant documents found')
       return new Response(
         JSON.stringify({ success: true, data: [] }),
         { 
@@ -295,12 +313,12 @@ async function fetchAllEmployees() {
       )
     }
 
-    // Get unique employee IDs from manual documents
-    const employeeIdsWithManualDocs = [...new Set(manualDocuments.map(doc => doc.employee_id).filter(Boolean))]
-    console.log('👥 Employee IDs with manual docs:', employeeIdsWithManualDocs.length)
+    // Get unique employee IDs from relevant documents
+    const employeeIdsWithRelevantDocs = [...new Set(relevantDocuments.map(doc => doc.employee_id).filter(Boolean))]
+    console.log('👥 Employee IDs with relevant docs:', employeeIdsWithRelevantDocs.length)
 
-    if (employeeIdsWithManualDocs.length === 0) {
-      console.log('⚠️ No employees found with manual documents')
+    if (employeeIdsWithRelevantDocs.length === 0) {
+      console.log('⚠️ No employees found with relevant documents')
       return new Response(
         JSON.stringify({ success: true, data: [] }),
         { 
@@ -309,13 +327,13 @@ async function fetchAllEmployees() {
       )
     }
 
-    // Fetch employees who have manual documents (across all clients)
+    // Fetch employees who have relevant documents (across all clients)
     // Split into chunks if too many IDs to avoid query size limits
     const chunkSize = 1000
     const allEmployees: any[] = []
     
-    for (let i = 0; i < employeeIdsWithManualDocs.length; i += chunkSize) {
-      const chunk = employeeIdsWithManualDocs.slice(i, i + chunkSize)
+    for (let i = 0; i < employeeIdsWithRelevantDocs.length; i += chunkSize) {
+      const chunk = employeeIdsWithRelevantDocs.slice(i, i + chunkSize)
       const { data: employees, error: employeesError } = await supabase
         .from('employees')
         .select('id, employee_id, first_name, last_name, email, department, employee_type, client_id, created_at')
@@ -333,9 +351,9 @@ async function fetchAllEmployees() {
       }
     }
 
-    console.log('👥 Found employees with manual docs:', allEmployees.length)
+    console.log('👥 Found employees with relevant docs:', allEmployees.length)
 
-    // Group manual documents by employee and create summaries
+    // Group relevant documents by employee and create summaries
     const employeeMap = new Map()
     
     // Initialize employee map with employee data
@@ -349,12 +367,12 @@ async function fetchAllEmployees() {
         position: emp.employee_type || '',
         clientId: emp.client_id,
         createdAt: emp.created_at || null,
-        documentsSummary: { total: 0, verified: 0, pending: 0, failed: 0 }
+        documentsSummary: { total: 0, verified: 0, pending: 0, inProgress: 0, failed: 0 }
       })
     })
     
     // Add document summaries
-    manualDocuments.forEach(doc => {
+    relevantDocuments.forEach(doc => {
       const employeeId = doc.employee_id
       const employee = employeeMap.get(employeeId)
       
@@ -368,8 +386,10 @@ async function fetchAllEmployees() {
             summary.verified++
             break
           case 'pending':
-          case 'in-progress':
             summary.pending++
+            break
+          case 'in-progress':
+            summary.inProgress++
             break
           case 'failed':
           case 'rejected':
@@ -381,7 +401,7 @@ async function fetchAllEmployees() {
 
     const result = Array.from(employeeMap.values())
 
-    console.log('✅ Successfully fetched all employees with manual documents:', result.length)
+    console.log('✅ Successfully fetched all employees with manual documents and failed passports:', result.length)
     return new Response(
       JSON.stringify({ success: true, data: result }),
       { 

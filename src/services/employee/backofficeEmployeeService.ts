@@ -23,6 +23,7 @@ export interface EmployeeWithDocumentsSummary {
     total: number;
     verified: number;
     pending: number;
+    inProgress?: number;
     failed: number;
   };
 }
@@ -161,6 +162,7 @@ export const backofficeEmployeeService = {
           comments,
           document_number,
           verification_status,
+          api_verification_status,
           params,
           employee_docs_log,
           last_otp_generated,
@@ -223,6 +225,7 @@ export const backofficeEmployeeService = {
             documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
             comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
             verificationStatus: doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected' || 'pending',
+            apiVerificationStatus: (doc as any).api_verification_status as 'pending' | 'completed' | 'failed' | null,
             documentStatusId: doc.document_status_id,
             documentStatusName: doc.document_status?.name,
             verificationDate: undefined,

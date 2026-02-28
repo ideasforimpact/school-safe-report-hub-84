@@ -118,6 +118,7 @@ serve(async (req) => {
           await supabase.from('employee_documents').update({
             employee_docs_log: [...existingLogs, logEntry],
             api_verification_status: 'failed',
+             verification_status:'in-progress',
             api_verification_method: 'api',
             api_verification_date: null
           }).eq('id', documentId);
@@ -172,6 +173,7 @@ serve(async (req) => {
           await supabase.from('employee_documents').update({
             employee_docs_log: [...existingLogs, logEntry],
             api_verification_status: 'failed',
+            verification_status:'in-progress',
             api_verification_method: 'api',
             api_verification_date: null
           }).eq('id', documentId);
