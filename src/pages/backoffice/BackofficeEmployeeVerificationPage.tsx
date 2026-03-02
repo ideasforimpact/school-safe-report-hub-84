@@ -272,7 +272,7 @@ const BackofficeEmployeeVerificationPage = () => {
             <UserCheck className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold">Employee Verification Management</h1>
-              <p className="text-gray-500 mt-1">Manage manual document verification for employees across active clients</p>
+              <p className="text-gray-500 mt-1">Manage document verification for employees across active clients</p>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload, MessageCircle, Loader2 } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, User, Hash, Shield, Upload, MessageCircle } from 'lucide-react';
 import { VerificationDocument, Employee } from '@/types/employeeVerification';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +10,7 @@ import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
 import DocumentCommentsDialog from '../../employee-verification/DocumentCommentsDialog';
 import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
-import { supabase } from '@/integrations/supabase/client';
+import BackofficeVerificationDialog from './BackofficeVerificationDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -18,7 +18,6 @@ interface BackofficeDocumentCardProps {
   employee: Employee;
   onRefresh: () => void;
   onOpenFiles?: (document: VerificationDocument) => void;
-  onPassportVerificationResult?: (result: { documentId: string; details: any }) => void;
 }
 
 const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
@@ -26,14 +25,14 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   documentTypeName,
   employee,
   onRefresh,
-  onOpenFiles,
-  onPassportVerificationResult
+  onOpenFiles
 }) => {
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
-  const [isPassportApiVerifying, setIsPassportApiVerifying] = useState(false);
+  const [backofficeVerificationDialogOpen, setBackofficeVerificationDialogOpen] = useState(false);
+  const [isBackofficeVerifying, setIsBackofficeVerifying] = useState(false);
   const { toast } = useToast();
 
   // Get the client ID - try both field names for compatibility
@@ -107,78 +106,10 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     }
   };
 
-  const handlePassportApiVerify = async () => {
-    setIsPassportApiVerifying(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('passport-verification', {
-        body: { action: 'apiVerify', documentId: document.id }
-      });
-
-      if (error) {
-        onPassportVerificationResult?.({
-          documentId: document.id,
-          details: {
-            success: false,
-            status_code: 500,
-            data: null,
-            message: error.message || "Unable to call passport verification API."
-          }
-        });
-        return;
-      }
-
-      const apiResponse = data?.data;
-      const isApiSuccess = apiResponse?.success === true && apiResponse?.status_code === 200;
-
-      if (data?.success && isApiSuccess) {
-        // Keep the same data shape used on employee-side VerificationDialog
-        onPassportVerificationResult?.({
-          documentId: document.id,
-          details: {
-            success: true,
-            status_code: apiResponse.status_code,
-            data: apiResponse.data,
-            message: apiResponse.message
-          }
-        });
-      } else {
-        const errorMessage =
-          data?.error ||
-          data?.message ||
-          apiResponse?.message ||
-          "Passport verification request completed, but verification failed.";
-
-        // Open dialog and display failure message there
-        onPassportVerificationResult?.({
-          documentId: document.id,
-          details: {
-            success: false,
-            status_code: apiResponse?.status_code || 422,
-            data: null,
-            message: errorMessage
-          }
-        });
-      }
-    } catch (error: any) {
-      // Always open popup for unexpected runtime errors too
-      onPassportVerificationResult?.({
-        documentId: document.id,
-        details: {
-          success: false,
-          status_code: 500,
-          data: null,
-          message: error?.message || "Something went wrong while verifying passport."
-        }
-      });
-    } finally {
-      setIsPassportApiVerifying(false);
-    }
-  };
-
   const handleVerify = () => {
     console.log('BackofficeDocumentCard - Verify button clicked for document:', document.id);
-    if (isPassportDocument) {
-      void handlePassportApiVerify();
+    if (isBackofficeEligibleType) {
+      setBackofficeVerificationDialogOpen(true);
       return;
     }
     setVerificationDialogOpen(true);
@@ -234,11 +165,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const showCommentsIcon = document.documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
   const normalizedDocumentTypeName = (document.documentTypeName || documentTypeName || '').toLowerCase();
   const isManualDocument = normalizedDocumentTypeName === 'manual';
-  const isPassportDocument = normalizedDocumentTypeName === 'passport';
-
-  // For passport, API failure should be worked as in-progress in backoffice even when verification_status is still pending
+  const backofficeEligibleTypes = new Set(['passport', 'pan', 'pan_card', 'aadhar', 'aadhaar', 'driving_license', 'voter_id']);
+  const isBackofficeEligibleType = backofficeEligibleTypes.has(normalizedDocumentTypeName);
+  
+  // For backoffice-eligible docs, API failure should be treated as in-progress even when verification_status is pending
   const effectiveVerificationStatus: VerificationDocument['verificationStatus'] =
-    isPassportDocument &&
+    isBackofficeEligibleType &&
     document.apiVerificationStatus === 'failed' &&
     document.verificationStatus === 'pending'
       ? 'in-progress'
@@ -254,10 +186,12 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     });
   };
 
-  // Verify action is available for manual/passport when currently in-progress
+  // Verify action:
+  // - Manual: only when in-progress (existing behavior)
+  // - Backoffice-eligible docs: allow verify when not already finalized
   const canVerifyDocument =
-    (isManualDocument || isPassportDocument) &&
-    effectiveVerificationStatus === 'in-progress';
+    (isManualDocument && effectiveVerificationStatus === 'in-progress') ||
+    (isBackofficeEligibleType && !['verified', 'completed'].includes(effectiveVerificationStatus));
   
   console.log('BackofficeDocumentCard - Button conditions:', {
     canVerifyDocument,
@@ -394,14 +328,9 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={handleVerify}
-                  disabled={isPassportApiVerifying}
                   className="flex items-center gap-2"
                 >
-                  {isPassportApiVerifying ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Shield className="h-4 w-4" />
-                  )}
+                  <Shield className="h-4 w-4" />
                   Verify
                 </Button>
               )}
@@ -505,6 +434,52 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         employee={employee}
         mode="backoffice"
         onCommentsUpdated={onRefresh}
+      />
+
+      {/* Backoffice verify dialog for audit-rule documents */}
+      <BackofficeVerificationDialog
+        open={backofficeVerificationDialogOpen}
+        onOpenChange={setBackofficeVerificationDialogOpen}
+        title={`${formatDocumentTypeName(documentTypeName)} Verification`}
+        description="Review the details and proceed with your backoffice verification action."
+        verifyLabel="Verify"
+        isVerifying={isBackofficeVerifying}
+        onVerify={async () => {
+          if (!clientId) {
+            toast({
+              title: 'Verification Failed',
+              description: 'Client ID is missing.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          try {
+            setIsBackofficeVerifying(true);
+
+            await backofficeDocumentService.verifyByBackoffice({
+              documentId: document.id,
+              clientId,
+              employeeId: employee.id
+            });
+
+            toast({
+              title: 'Document Verified',
+              description: `${formatDocumentTypeName(documentTypeName)} verified successfully.`,
+            });
+
+            setBackofficeVerificationDialogOpen(false);
+            onRefresh();
+          } catch (error: any) {
+            toast({
+              title: 'Verification Failed',
+              description: error?.message || 'Failed to verify from backoffice.',
+              variant: 'destructive',
+            });
+          } finally {
+            setIsBackofficeVerifying(false);
+          }
+        }}
       />
     </>
   );

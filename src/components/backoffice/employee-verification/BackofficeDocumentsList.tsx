@@ -6,7 +6,6 @@ import { FileText, Calendar, Search, X } from 'lucide-react';
 import { Employee } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import BackofficeDocumentCard from './BackofficeDocumentCard';
-import BackofficePassportResultDialog from './BackofficePassportResultDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { File, Download } from 'lucide-react';
@@ -30,9 +29,6 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   const { toast } = useToast();
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
-  const [passportDetailsDialogOpen, setPassportDetailsDialogOpen] = useState(false);
-  const [passportVerificationDetails, setPassportVerificationDetails] = useState<any>(null);
-  const [passportDialogDocumentId, setPassportDialogDocumentId] = useState<string>('');
 
   // Get the "Manual" document type ID
   const manualDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'manual');
@@ -108,11 +104,14 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
     const isManual =
       (manualDocumentTypeId ? doc.documentTypeId === manualDocumentTypeId : resolvedDocTypeName === 'manual');
-    const isFailedPassport =
-      (passportDocumentTypeId ? doc.documentTypeId === passportDocumentTypeId : resolvedDocTypeName === 'passport') &&
-      (doc.verificationStatus === 'failed' || doc.apiVerificationStatus === 'failed');
-
-    return isManual || isFailedPassport;
+    const isFinalized = doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed';
+    if (!isManual && isFinalized) return false;
+    
+    if(doc?.verificationStatus == "in-progress"){
+      const StatusTypes = new Set(['pan', 'passport', 'aadhar', 'driving_license', 'voter_id']);
+      const isStatusEligible = StatusTypes.has(resolvedDocTypeName);
+      return  isStatusEligible || isManual;
+    }
   };
 
   const filterDocuments = () => {
@@ -121,9 +120,21 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     if (verificationFilter !== 'all') {
       filtered = filtered.filter(doc => {
         const params: any = doc.params || {};
-        const typeValue =
-          params.otherType || params.document_name || params.selected;
-        return typeValue === verificationFilter;
+        const manualType =
+          params.otherType ||
+          params.document_name ||
+          params.selected;
+
+        const standardType = (doc.documentTypeName || '').toLowerCase();
+
+        const docType = documentTypes.find(t => t.id === doc.documentTypeId);
+        const mappedType = (docType?.name || '').toLowerCase();
+
+        return (
+          manualType === verificationFilter ||
+          standardType === verificationFilter ||
+          mappedType === verificationFilter
+        );
       });
     }
 
@@ -150,6 +161,9 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
       filtered = filtered.filter(doc => {
         const displayName = getDisplayDocumentTypeName(doc).toLowerCase();
+        const standardType = (doc.documentTypeName || '').toLowerCase();
+        const docType = documentTypes.find(t => t.id === doc.documentTypeId);
+        const mappedType = (docType?.name || '').toLowerCase();
         const id = String(doc.id ?? '').toLowerCase();
         const params: any = doc.params || {};
         const custom = (
@@ -161,9 +175,11 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           .toString()
           .toLowerCase();
         return (
-          displayName.includes(term) ||
-          id.includes(term) ||
-          custom.includes(term)
+            displayName.includes(term) ||
+            id.includes(term) ||
+            custom.includes(term) ||
+            standardType.includes(term) ||
+            mappedType.includes(term)
         );
       });
     }
@@ -211,12 +227,6 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     setFilesDialogOpen(true);
   };
 
-  const onPassportVerificationResult = (result: { documentId: string; details: any }) => {
-    setPassportDialogDocumentId(result.documentId);
-    setPassportVerificationDetails(result.details);
-    setPassportDetailsDialogOpen(true);
-  };
-
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return 'Unknown size';
     if (bytes < 1024) return bytes + ' B';
@@ -242,6 +252,11 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     { value: "digital_credibility_check", label: "Digital Credibility Check" },
     { value: "social_personal_check", label: "Social Personal Check" },
     { value: "drug_check", label: "Drug Check" },
+    { value: "aadhar", label: "Aadhar Card" },
+    { value: "voter_id", label: "Voter ID" },
+    { value: "pan", label: "PAN Card" },
+    { value: "driving_license", label: "Driving License" },
+    { value: "passport", label: "Passport" },
   ];
 
   
@@ -333,7 +348,6 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
                 employee={employee}
                 onRefresh={onRefresh}
                 onOpenFiles={handleOpenFiles}
-                onPassportVerificationResult={onPassportVerificationResult}
               />
             ))}
           </div>
@@ -373,11 +387,6 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
         </DialogContent>
       </Dialog>
 
-      <BackofficePassportResultDialog
-        open={passportDetailsDialogOpen}
-        onOpenChange={setPassportDetailsDialogOpen}
-        details={passportVerificationDetails}
-      />
     </Card>
   );
 };

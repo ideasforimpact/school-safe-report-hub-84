@@ -101,6 +101,8 @@ export interface VerificationDocument {
   apiVerificationStatus?: 'pending' | 'completed' | 'failed' | null;
   apiVerificationDate?: string;
   apiVerificationMethod?: string;
+  bothFallback?: boolean;
+  latestStatusCode?: number | null;
   verifiedByEmployeeId?: string; // Track which employee verified this document
   documents_files?: Array<{
     fileName: string;
