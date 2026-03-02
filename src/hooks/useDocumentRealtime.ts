@@ -34,7 +34,7 @@ export const useDocumentRealtime = (
               documentImage: payload.new.document_url ? 
                 (() => {
                   if (payload.new.document_url) {
-                    const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+                    const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
                     const normalizedBase = base.replace(/\/$/, '');
                     return `${normalizedBase}/employee-documents/${payload.new.document_url}`;
                   }

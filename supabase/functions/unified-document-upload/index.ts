@@ -51,7 +51,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = getSupabaseUrl();
     const supabaseServiceKey = getSupabaseServiceRoleKey();
-    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL');
     const normalizedBase = storageBase.replace(/\/$/, '');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

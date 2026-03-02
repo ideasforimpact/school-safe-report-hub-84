@@ -301,7 +301,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       // Check if it's a relative storage path (starts with edusafe-resources/ or /edusafe-resources/)
       if (documentUrl.startsWith('edusafe-resources/') || documentUrl.startsWith('/edusafe-resources/')) {
         // Prepend the Supabase storage base URL
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
         const normalizedBase = base.replace(/\/$/, '');
         const normalizedPath = documentUrl.startsWith('/') ? documentUrl : `/${documentUrl}`;
         urlToOpen = `${normalizedBase}${normalizedPath}`;
