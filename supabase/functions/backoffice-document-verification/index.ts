@@ -112,18 +112,15 @@ serve(async (req) => {
 
       // 5) Upsert audit log
       const { error: auditErr } = await supabase
-        .from('employee_verification_audit_log')
-        .upsert(
-          {
-            employee_id: employeeId,
-            document_id: documentId,
-            provider: 'surepass',
-            latest_status_code: 200,
-            is_verified_by_backoffice: 1,
-            updated_at: new Date().toISOString()
-          },
-          { onConflict: 'employee_id,document_id' }
-        );
+      .from('employee_verification_audit_log')
+      .update({
+        provider: 'backoffice',
+        // latest_status_code: 200,
+        is_verified_by_backoffice: 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('employee_id', employeeId)
+      .eq('document_id', documentId);
 
       if (auditErr) {
         return new Response(JSON.stringify({ error: `Failed to update audit log: ${auditErr.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });

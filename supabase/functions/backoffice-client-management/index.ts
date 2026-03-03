@@ -33,7 +33,6 @@ function isRelevantBackofficeDocument(
   const audit = auditByDocumentId.get(doc.id)
 
   if (doc.document_type_id && auditStatusTypeIds.includes(doc.document_type_id)) {
-    console.log(doc,'doci=uemtjrgnkfjdbfkdj');
     
     return typeof audit?.latest_status_code === 'number' && doc?.api_verification_status =='failed'
     // && audit.latest_status_code !== 422
