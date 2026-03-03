@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Action } from '@/types/incident';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 interface ActionsTakenFormProps {
   actions: Action[];
@@ -23,7 +23,7 @@ const ActionsTakenForm: React.FC<ActionsTakenFormProps> = ({
         List all actions taken to resolve this incident
       </p>
       <div className="space-y-2">
-        <Textarea
+        <TextareaWithVoice
           placeholder="Describe what was done to address the incident"
           value={currentAction.description}
           onChange={(e) => setCurrentAction(prev => ({ ...prev, description: e.target.value }))}

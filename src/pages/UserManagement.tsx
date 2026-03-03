@@ -962,7 +962,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               {filteredUsers && filteredUsers.length > 0 ? (
                 <UserList 
                   users={filteredUsers}
-                  cpdDomains={cpdDomains}
                   onEditClick={(user) => {
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
                     const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;

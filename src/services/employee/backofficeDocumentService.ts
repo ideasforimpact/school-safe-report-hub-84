@@ -342,7 +342,7 @@ export const backofficeDocumentService = {
       console.log('File uploaded successfully to storage:', data.path);
       
       // Construct the full public URL
-      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
       const normalizedBase = base.replace(/\/$/, '');
       const publicUrl = `${normalizedBase}/employee_other_type_statement/${data.path}`;
       console.log('Generated public URL:', publicUrl);

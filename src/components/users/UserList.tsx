@@ -22,8 +22,6 @@ import { incidentReferenceService, IncidentReferenceCheck } from '@/services/inc
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { formatDate } from "@/lib/Dateformat";
-import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
-
 interface UserListProps {
   users: EmployeeUser[];
   onEditClick: (user: EmployeeUser) => void;
@@ -32,7 +30,6 @@ interface UserListProps {
   onReactivateUser: (id: string) => void;
   hasAdminAccess?: boolean;
   onRefresh?: () => void;
-  cpdDomains?: { id: string; name: string }[];
 }
 
 const UserList = ({ 
@@ -43,14 +40,12 @@ const UserList = ({
   onReactivateUser, 
   hasAdminAccess = false,
   onRefresh,
-  cpdDomains = [],
 }: UserListProps) => {
   const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
   const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
-  const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -234,7 +229,6 @@ const UserList = ({
           <TableHead>Type</TableHead>
           <TableHead>Joining Date</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead className="w-[120px]">CPD Details</TableHead>
           <TableHead className="w-[150px]">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -258,19 +252,6 @@ const UserList = ({
                 <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
                   Inactive
                 </Badge>
-              )}
-            </TableCell>
-            <TableCell className="whitespace-nowrap">
-              {(user as any).cpd_entries?.length ? (
-                <button
-                  type="button"
-                  onClick={() => setCpdDialogUser(user)}
-                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium cursor-pointer bg-transparent border-none p-0 text-sm"
-                >
-                  CPD Details
-                </button>
-              ) : (
-                <span className="text-muted-foreground">—</span>
               )}
             </TableCell>
             <TableCell>
@@ -526,13 +507,6 @@ const UserList = ({
           </div>
         </div>
       )}
-
-      <CpdDetailsDialog
-        open={cpdDialogUser !== null}
-        onClose={() => setCpdDialogUser(null)}
-        user={cpdDialogUser}
-        domains={cpdDomains}
-      />
     </div>
   );
 };

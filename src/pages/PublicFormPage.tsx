@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -571,7 +571,7 @@ const PublicFormPage = () => {
               {field.label}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id={field.id}
               placeholder={field.placeholder}
               value={formData[field.id] || ''}

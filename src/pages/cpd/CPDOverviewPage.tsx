@@ -32,7 +32,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { Search, BookOpen, PlusCircle, Eye, Loader2, Download, CheckCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import type { FileItem } from '@/types/fileTypes';
 import {
@@ -334,7 +334,7 @@ const AddCpdDialog: React.FC<AddCpdDialogProps> = ({
 
           <div className="space-y-1">
             <Label htmlFor="cpd-what-learned">What did you learn? (optional)</Label>
-            <Textarea
+            <TextareaWithVoice
               id="cpd-what-learned"
               value={cpdLearning}
               onChange={(e) => setCpdLearning(e.target.value)}

@@ -206,7 +206,7 @@ export const backofficeEmployeeService = {
           // If document_url is a storage path, convert to full URL
           if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
             {
-              const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+              const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
               const normalizedBase = base.replace(/\/$/, '');
               documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
             }

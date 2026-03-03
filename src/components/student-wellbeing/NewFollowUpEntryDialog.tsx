@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Calendar, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -126,7 +126,7 @@ export function NewFollowUpEntryDialog({
             <Label htmlFor="follow-up-notes" className="text-sm font-medium">
               Notes <span className="text-muted-foreground">(optional)</span>
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id="follow-up-notes"
               value={notes}
               onChange={(e) => {

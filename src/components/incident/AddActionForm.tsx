@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Action, FileItem } from '@/types/incident';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useFilesManagement } from '@/hooks/useFilesManagement';
@@ -67,7 +67,7 @@ const AddActionForm: React.FC<AddActionFormProps> = ({ onSubmit }) => {
             <label htmlFor="actionDescription" className="text-sm font-medium">
               Action Description
             </label>
-            <Textarea
+            <TextareaWithVoice
               id="actionDescription"
               placeholder="Describe what was done to address the incident"
               value={formAction.description}
