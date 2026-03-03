@@ -33,12 +33,16 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   // Get the "Manual" document type ID
   const manualDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'manual');
   const manualDocumentTypeId = manualDocumentType?.id;
+  const passportDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'passport');
+  const passportDocumentTypeId = passportDocumentType?.id;
 
   // Debug logging
   console.log('🔍 BackofficeDocumentsList Debug:', {
     documentTypes: documentTypes,
     manualDocumentType,
     manualDocumentTypeId,
+    passportDocumentType,
+    passportDocumentTypeId,
     employeeDocuments: employee.documents,
     employeeId: employee.id
   });
@@ -56,7 +60,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   useEffect(() => {
     filterDocuments();
-  }, [employee.documents, manualDocumentTypeId, verificationFilter, searchTerm, dateRange]);
+  }, [employee.documents, manualDocumentTypeId, passportDocumentTypeId, verificationFilter, searchTerm, dateRange]);
   
   useEffect(() => {
     if (!employee?.id) return;
@@ -94,24 +98,43 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
       .join(' ');
   };
 
+  const isManualOrFailedPassportDocument = (doc: Employee['documents'][number]) => {
+    const docType = documentTypes.find(type => type.id === doc.documentTypeId);
+    const resolvedDocTypeName = (docType?.name || doc.documentTypeName || '').toLowerCase();
+
+    const isManual =
+      (manualDocumentTypeId ? doc.documentTypeId === manualDocumentTypeId : resolvedDocTypeName === 'manual');
+    const isFinalized = doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed';
+    if (!isManual && isFinalized) return false;
+    
+    if(doc?.verificationStatus == "in-progress"){
+      const StatusTypes = new Set(['pan', 'passport', 'aadhar', 'driving_license', 'voter_id']);
+      const isStatusEligible = StatusTypes.has(resolvedDocTypeName);
+      return  isStatusEligible || isManual;
+    }
+  };
+
   const filterDocuments = () => {
     const documents = employee.documents || [];
-    let filtered = documents.filter(doc => {
-      if (manualDocumentTypeId) {
-        return doc.documentTypeId === manualDocumentTypeId;
-      }
-      // Fallback: filter by document type name if ID not found
-      const docType = documentTypes.find(type => type.id === doc.documentTypeId);
-      const matchesByName = docType?.name.toLowerCase() === 'manual';
-      const matchesByDocName = doc.documentTypeName?.toLowerCase() === 'manual';
-      return matchesByName || matchesByDocName;
-    });
+    let filtered = documents.filter(isManualOrFailedPassportDocument);
     if (verificationFilter !== 'all') {
       filtered = filtered.filter(doc => {
         const params: any = doc.params || {};
-        const typeValue =
-          params.otherType || params.document_name || params.selected;
-        return typeValue === verificationFilter;
+        const manualType =
+          params.otherType ||
+          params.document_name ||
+          params.selected;
+
+        const standardType = (doc.documentTypeName || '').toLowerCase();
+
+        const docType = documentTypes.find(t => t.id === doc.documentTypeId);
+        const mappedType = (docType?.name || '').toLowerCase();
+
+        return (
+          manualType === verificationFilter ||
+          standardType === verificationFilter ||
+          mappedType === verificationFilter
+        );
       });
     }
 
@@ -138,6 +161,9 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
       filtered = filtered.filter(doc => {
         const displayName = getDisplayDocumentTypeName(doc).toLowerCase();
+        const standardType = (doc.documentTypeName || '').toLowerCase();
+        const docType = documentTypes.find(t => t.id === doc.documentTypeId);
+        const mappedType = (docType?.name || '').toLowerCase();
         const id = String(doc.id ?? '').toLowerCase();
         const params: any = doc.params || {};
         const custom = (
@@ -149,9 +175,11 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           .toString()
           .toLowerCase();
         return (
-          displayName.includes(term) ||
-          id.includes(term) ||
-          custom.includes(term)
+            displayName.includes(term) ||
+            id.includes(term) ||
+            custom.includes(term) ||
+            standardType.includes(term) ||
+            mappedType.includes(term)
         );
       });
     }
@@ -178,24 +206,16 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   };
 
   const getDocumentCounts = () => {
-    // Count only "Manual" documents
-    const manualDocuments = (employee.documents || []).filter(doc => {
-      if (manualDocumentTypeId) {
-        return doc.documentTypeId === manualDocumentTypeId;
-      }
-      const docType = documentTypes.find(type => type.id === doc.documentTypeId);
-      const matchesByName = docType?.name.toLowerCase() === 'manual';
-      const matchesByDocName = doc.documentTypeName?.toLowerCase() === 'manual';
-      return matchesByName || matchesByDocName;
-    });
+    // Count manual documents and failed passports
+    const manualAndFailedPassportDocuments = (employee.documents || []).filter(isManualOrFailedPassportDocument);
     
-    const verified = manualDocuments.filter(doc => doc.verificationStatus === 'verified').length;
-    const completed = manualDocuments.filter(doc => doc.verificationStatus === 'completed').length;
-    const pending = manualDocuments.filter(doc => doc.verificationStatus === 'pending').length;
-    const inProgress = manualDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
-    const failed = manualDocuments.filter(doc => doc.verificationStatus === 'failed').length;
-    const rejected = manualDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
-    const total = manualDocuments.length;
+    const verified = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'verified').length;
+    const completed = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'completed').length;
+    const pending = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'pending').length;
+    const inProgress = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
+    const failed = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'failed').length;
+    const rejected = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
+    const total = manualAndFailedPassportDocuments.length;
     
     return { verified, completed, pending, inProgress, failed, rejected, total };
   };
@@ -232,6 +252,11 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     { value: "digital_credibility_check", label: "Digital Credibility Check" },
     { value: "social_personal_check", label: "Social Personal Check" },
     { value: "drug_check", label: "Drug Check" },
+    { value: "aadhar", label: "Aadhar Card" },
+    { value: "voter_id", label: "Voter ID" },
+    { value: "pan", label: "PAN Card" },
+    { value: "driving_license", label: "Driving License" },
+    { value: "passport", label: "Passport" },
   ];
 
   
@@ -242,7 +267,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
         <div className="flex flex-col gap-4">  
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            <CardTitle>Manual Document Verification</CardTitle>
+            <CardTitle>Document Verification</CardTitle>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -310,7 +335,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           <div className="text-center py-12">
             <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-500">
-              No manual documents match the selected filters.
+              No documents match the selected filters.
             </p>
           </div>
         ) : (
@@ -361,6 +386,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
     </Card>
   );
 };

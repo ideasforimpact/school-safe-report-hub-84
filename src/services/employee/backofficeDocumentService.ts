@@ -29,7 +29,39 @@ export interface UpdateVerificationHistoryRequest {
   verificationHistory: any[];
 }
 
+export interface BackofficeManualVerifyRequest {
+  documentId: string;
+  clientId: string;
+  employeeId: string;
+}
+
 export const backofficeDocumentService = {
+  async verifyByBackoffice({ documentId, clientId, employeeId }: BackofficeManualVerifyRequest) {
+    try {
+      const { data, error } = await supabase.functions.invoke('backoffice-document-verification', {
+        body: {
+          documentId,
+          clientId,
+          employeeId,
+          action: 'backoffice_manual_verify'
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Backoffice verification failed');
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Backoffice verification failed');
+      }
+
+      return data.document;
+    } catch (error) {
+      console.error('Error in verifyByBackoffice:', error);
+      throw error;
+    }
+  },
+
   // Complete a document by updating status to completed and document_status_id to completed
   async completeDocument({ documentId, clientId, employeeId }: CompleteDocumentRequest) {
     try {

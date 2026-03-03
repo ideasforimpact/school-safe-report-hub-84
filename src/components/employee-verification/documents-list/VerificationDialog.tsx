@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Loader2, FileText } from 'lucide-react';
+import { ShieldCheck, Loader2, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -94,6 +94,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isOtherVerifying, setIsOtherVerifying] = useState(false);
   const [isOtherRejecting, setIsOtherRejecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<string | null>(null);
   const [otpExpired, setOtpExpired] = useState(false);
 
   const autoStartedRef = useRef(false);
@@ -402,6 +403,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         body: { action: 'apiVerify', documentId }
       });
       if (error) {
+        setErrorKey(null);
         setErrorMessage(error.message || 'Something went wrong during Passport verification.');
         return;
       }
@@ -412,9 +414,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       const isApiSuccess = apiResponse?.success === true && apiResponse?.status_code === 200;
       const apiData = apiResponse?.data; // The actual passport data object
       const hasData = apiData && Object.keys(apiData).length > 0;
-      
+      const isInProgress = data?.error_key === 'in-progress';
+
       // Only open details dialog if API call was successful and has valid data
       if (data?.success && isApiSuccess && hasData) {
+        setErrorKey(null);
+        setErrorMessage(null);
         onOpenChange(false);
         if (onDocumentAction) await onDocumentAction();
         setTimeout(() => {
@@ -429,11 +434,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setPassportDialogOpen(true);
         }, 100);
       } else {
-        // Show meaningful error message in the current popup
-        const errorMsg = apiResponse?.message || data?.message || data?.error || 'Passport verification failed. Please check your details and try again.';
-        setErrorMessage(errorMsg);
+        if (isInProgress) {
+          setErrorKey('in-progress');
+          setErrorMessage(data?.error ?? 'Your verification request is being processed.');
+        } else {
+          setErrorKey(null);
+          const errorMsg = apiResponse?.message || data?.message || data?.error || 'Passport verification failed. Please check your details and try again.';
+          setErrorMessage(errorMsg);
+        }
       }
     } catch (err: any) {
+      setErrorKey(null);
       setErrorMessage(err.message || 'Passport verification error.');
     } finally {
       setIsPassportVerifying(false);
@@ -501,38 +512,42 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying PAN:', error);
+        setErrorKey(null);
         setErrorMessage(error.message || "Something went wrong during PAN verification. Please try again.");
         return;
       }
-      
+
       // Check if API response indicates success and has actual data
       // The edge function spreads apiResponse into the top level, so status_code is at data.status_code
       const isApiSuccess = data?.success === true && data?.status_code === 200;
       const apiData = data?.data; // The actual PAN data object
       const hasData = apiData && Object.keys(apiData).length > 0;
-      
+      const isInProgress = data?.error_key === 'in-progress';
+
       if (isApiSuccess && hasData) {
         console.log('PAN verification SUCCESS - entering success block');
+        setErrorKey(null);
+        setErrorMessage(null);
         // No toaster for API verification completion
-        
+
         // Close verification popup FIRST
         console.log('PAN verification - About to close verification dialog');
         onOpenChange(false);
-        
+
         // Refresh document data
         console.log('PAN verification - About to refresh document data');
         if (onDocumentAction) {
           await onDocumentAction();
           console.log('PAN verification - Document data refreshed');
         }
-        
+
         // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
         setTimeout(() => {
           // Open PAN detail dialog directly with response data
           console.log('VerificationDialog - About to open PAN dialog with data:', data);
           console.log('VerificationDialog - documentId:', documentId);
           setCurrentDocumentId(documentId);
-          
+
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedPanDetails = {
             data: apiData, // The actual PAN details from the API response
@@ -546,12 +561,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           console.log('VerificationDialog - PAN dialog state set to open');
         }, 100); // Small delay to ensure verification dialog closes completely
       } else {
-        // Show meaningful error message in the current popup
-        const errorMessage = data?.message || data?.error || "PAN verification failed. Please check your details and try again.";
-        setErrorMessage(errorMessage);
+        if (isInProgress) {
+          setErrorKey('in-progress');
+          setErrorMessage(data?.error ?? 'Your verification request is being processed.');
+        } else {
+          setErrorKey(null);
+          const errorMessage = data?.message || data?.error || "PAN verification failed. Please check your details and try again.";
+          setErrorMessage(errorMessage);
+        }
       }
     } catch (err: any) {
       console.error("Exception in handlePanApiVerification:", err);
+      setErrorKey(null);
       setErrorMessage("Something went wrong during PAN verification. Please try again.");
     } finally {
       setIsPanVerifying(false);
@@ -577,33 +598,37 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Driving License:', error);
+        setErrorKey(null);
         setErrorMessage(error.message || "Something went wrong during Driving License verification. Please try again.");
         return;
       }
-      
+
       // Check if API response indicates success and has actual data
       // The edge function spreads apiResponse into the top level, so status_code is at data.status_code
       const isApiSuccess = data?.success === true && data?.status_code === 200;
       const apiData = data?.data; // The actual license data object
       const hasData = apiData && Object.keys(apiData).length > 0;
-      
+      const isInProgress = data?.error_key === 'in-progress';
+
       if (isApiSuccess && hasData) {
         console.log('VerificationDialog - Driving License verification successful, response data:', data);
+        setErrorKey(null);
+        setErrorMessage(null);
         // No toaster for API verification completion
-        
+
         // Close verification popup FIRST
         onOpenChange(false);
-        
+
         // Refresh document data
         if (onDocumentAction) {
           await onDocumentAction();
         }
-        
+
         // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
         setTimeout(() => {
           // Open Driving License detail dialog directly with response data
           setCurrentDocumentId(documentId);
-          
+
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedDrivingLicenseDetails = {
             data: apiData, // The actual Driving License details from the API response
@@ -615,12 +640,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setDrivingLicenseDialogOpen(true);
         }, 100);
       } else {
-        // Show meaningful error message in the current popup
-        const errorMessage = data?.message || data?.error || "Driving License verification failed. Please check your details and try again.";
-        setErrorMessage(errorMessage);
+        if (isInProgress) {
+          setErrorKey('in-progress');
+          setErrorMessage(data?.error ?? 'Your verification request is being processed.');
+        } else {
+          setErrorKey(null);
+          const errorMessage = data?.message || data?.error || "Driving License verification failed. Please check your details and try again.";
+          setErrorMessage(errorMessage);
+        }
       }
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
+      setErrorKey(null);
       setErrorMessage("Something went wrong during Driving License verification. Please try again.");
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -803,32 +834,36 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Voter ID:', error);
+        setErrorKey(null);
         setErrorMessage(error.message || "Something went wrong during Voter ID verification. Please try again.");
         return;
       }
-      
+
       // Check if API response indicates success and has actual data
       // The edge function spreads apiResponse into the top level, so status_code is at data.status_code
       const isApiSuccess = data?.success === true && data?.status_code === 200;
       const apiData = data?.data; // The actual Voter ID data object
       const hasData = apiData && Object.keys(apiData).length > 0;
-      
+      const isInProgress = data?.error_key === 'in-progress';
+
       if (isApiSuccess && hasData) {
+        setErrorKey(null);
+        setErrorMessage(null);
         // No toaster for API verification completion
-        
+
         // Close verification popup FIRST
         onOpenChange(false);
-        
+
         // Refresh document data
         if (onDocumentAction) {
           await onDocumentAction();
         }
-        
+
         // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
         setTimeout(() => {
           // Open Voter ID detail dialog directly with response data
           setCurrentDocumentId(documentId);
-          
+
           // The dialog expects data in response.data format, so we structure it correctly
           const formattedVoterIdDetails = {
             data: apiData, // The actual Voter ID details from the API response
@@ -840,12 +875,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setVoterIdDialogOpen(true);
         }, 100);
       } else {
-        // Show meaningful error message in the current popup
-        const errorMessage = data?.message || data?.error || "Voter ID verification failed. Please check your details and try again.";
-        setErrorMessage(errorMessage);
+        if (isInProgress) {
+          setErrorKey('in-progress');
+          setErrorMessage(data?.error ?? 'Your verification request is being processed.');
+        } else {
+          setErrorKey(null);
+          const errorMessage = data?.message || data?.error || "Voter ID verification failed. Please check your details and try again.";
+          setErrorMessage(errorMessage);
+        }
       }
     } catch (err: any) {
       console.error("Exception in handleVoterIdApiVerification:", err);
+      setErrorKey(null);
       setErrorMessage("Something went wrong during Voter ID verification. Please try again.");
     } finally {
       setIsVoterIdVerifying(false);
@@ -1033,9 +1074,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
         });
         if (error) throw new Error(error.message || 'Failed to request OTP');
+
+        // In-progress: show info box instead of error
+        if (data?.success === false && data?.error_key === 'in-progress') {
+          setErrorKey('in-progress');
+          setErrorMessage(data?.error ?? 'Your verification request is being processed.');
+          return;
+        }
         
         // Handle case where OTP is already sent and still valid
         if (data?.otpStatus === 'valid' && data?.showOtpInput) {
+          setErrorKey(null);
+          setErrorMessage(null);
           setShowOtpInput(true);
           setOtpExpired(false); // Ensure expired state is false
           if (data?.cooldownRemaining) {
@@ -1049,8 +1099,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
           return; // Don't show error, just show OTP input
         }
-        
-        if (data?.error) throw new Error(data.error);
+
+        if (data?.error) {
+          setErrorKey(null);
+          throw new Error(data.error);
+        }
+        setErrorKey(null);
+        setErrorMessage(null);
         // Store client_id from response for OTP verification
         if (data?.client_id) {
           setClientId(String(data.client_id));
@@ -1064,6 +1119,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       } catch (err: any) {
         console.error('requestAadharOtp error:', err);
+        setErrorKey(null);
         setErrorMessage(err.message || 'Failed to request OTP. Please try again.');
       } finally {
         setIsRequestingOtp(false);
@@ -1305,7 +1361,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setOtp("");
     setTxnId(null);
     setClientId(null);
-    setErrorMessage(null); // Clear error message when canceling
+    setErrorMessage(null);
+    setErrorKey(null);
 
     if (cooldownTimerId !== null) {
       clearInterval(cooldownTimerId);
@@ -1350,32 +1407,60 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           onInteractOutside={(e) => { if (showOtpInput) e.preventDefault(); }}
           onEscapeKeyDown={(e) => { if (showOtpInput) e.preventDefault(); }}
         >
-        {/* Error Message Display */}
+        {/* Error / In-Progress Message Display */}
         {errorMessage && (
-          <div className="mt-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <ShieldCheck className="h-5 w-5 text-red-400" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Verification Failed</h3>
-                  <div className="mt-1 text-sm text-red-700">
-                    {errorMessage}
+          errorKey === 'in-progress' ? (
+            <div className="mt-4 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-amber-800">Verification in Progress</h3>
+                    <div className="mt-1 text-sm text-amber-700 whitespace-pre-line">
+                      Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.
+                      {'\n'}Our team will review and update the status within 24 hours.
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => { setErrorMessage(null); setErrorKey(null); }}
+                  className="flex-shrink-0 ml-3 text-amber-500 hover:text-amber-700 transition-colors"
+                  title="Close message"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <button
-                onClick={() => setErrorMessage(null)}
-                className="flex-shrink-0 ml-3 text-red-400 hover:text-red-600 transition-colors"
-                title="Close error message"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <ShieldCheck className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Verification Failed</h3>
+                    <div className="mt-1 text-sm text-red-700">
+                      {errorMessage}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setErrorMessage(null); setErrorKey(null); }}
+                  className="flex-shrink-0 ml-3 text-red-400 hover:text-red-600 transition-colors"
+                  title="Close error message"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )
         )}
         
         <DialogHeader className="text-center">

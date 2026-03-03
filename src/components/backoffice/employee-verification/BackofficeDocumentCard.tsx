@@ -10,6 +10,7 @@ import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
 import DocumentCommentsDialog from '../../employee-verification/DocumentCommentsDialog';
 import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
+import BackofficeVerificationDialog from './BackofficeVerificationDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -30,6 +31,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
+  const [backofficeVerificationDialogOpen, setBackofficeVerificationDialogOpen] = useState(false);
+  const [isBackofficeVerifying, setIsBackofficeVerifying] = useState(false);
   const { toast } = useToast();
 
   // Get the client ID - try both field names for compatibility
@@ -105,6 +108,10 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   const handleVerify = () => {
     console.log('BackofficeDocumentCard - Verify button clicked for document:', document.id);
+    if (isBackofficeEligibleType) {
+      setBackofficeVerificationDialogOpen(true);
+      return;
+    }
     setVerificationDialogOpen(true);
   };
 
@@ -156,6 +163,18 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   // Check if this is a "Manual" document type with verification history
   const showCommentsIcon = document.documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
+  const normalizedDocumentTypeName = (document.documentTypeName || documentTypeName || '').toLowerCase();
+  const isManualDocument = normalizedDocumentTypeName === 'manual';
+  const backofficeEligibleTypes = new Set(['passport', 'pan', 'pan_card', 'aadhar', 'aadhaar', 'driving_license', 'voter_id']);
+  const isBackofficeEligibleType = backofficeEligibleTypes.has(normalizedDocumentTypeName);
+  
+  // For backoffice-eligible docs, API failure should be treated as in-progress even when verification_status is pending
+  const effectiveVerificationStatus: VerificationDocument['verificationStatus'] =
+    isBackofficeEligibleType &&
+    document.apiVerificationStatus === 'failed' &&
+    document.verificationStatus === 'pending'
+      ? 'in-progress'
+      : document.verificationStatus;
 
   const handleCommentsClick = () => {
     console.log('BackofficeDocumentCard - Comments button clicked for document:', document.id);
@@ -167,13 +186,19 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     });
   };
 
-  // Check if this is a "Manual" document with "in-progress" status
-  const isManualInProgress = document.documentTypeName.toLowerCase() === 'manual' && document.verificationStatus === 'in-progress';
+  // Verify action:
+  // - Manual: only when in-progress (existing behavior)
+  // - Backoffice-eligible docs: allow verify when not already finalized
+  const canVerifyDocument =
+    (isManualDocument && effectiveVerificationStatus === 'in-progress') ||
+    (isBackofficeEligibleType && !['verified', 'completed'].includes(effectiveVerificationStatus));
   
   console.log('BackofficeDocumentCard - Button conditions:', {
-    isManualInProgress,
+    canVerifyDocument,
     documentTypeName: documentTypeName.toLowerCase(),
     verificationStatus: document.verificationStatus,
+    effectiveVerificationStatus,
+    apiVerificationStatus: document.apiVerificationStatus,
     hasDocumentImage: !!document.documentImage,
     hasClientId: !!clientId,
     document:document
@@ -191,7 +216,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                   <h3 className="font-semibold text-lg">
                     {formatDocumentTypeName(documentTypeName)}
                   </h3>
-                  {getStatusBadge(document.verificationStatus)}
+                  {getStatusBadge(effectiveVerificationStatus)}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
@@ -297,8 +322,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 </Button>
               )}
               
-              {/* Verify button - only for "Manual" documents with "in-progress" status */}
-              {isManualInProgress && clientId && (
+              {/* Verify button - for Manual/Passport documents with in-progress status */}
+              {canVerifyDocument && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -311,7 +336,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
               )}
               
               {/* Re-upload button - only for "Manual" document types with documentImage and clientId */}
-              {document.documentTypeName.toLowerCase() === 'manual' && document.documentImage && clientId && (
+              {isManualDocument && document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -409,6 +434,52 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         employee={employee}
         mode="backoffice"
         onCommentsUpdated={onRefresh}
+      />
+
+      {/* Backoffice verify dialog for audit-rule documents */}
+      <BackofficeVerificationDialog
+        open={backofficeVerificationDialogOpen}
+        onOpenChange={setBackofficeVerificationDialogOpen}
+        title={`${formatDocumentTypeName(documentTypeName)} Verification`}
+        description="Review the details and proceed with your backoffice verification action."
+        verifyLabel="Verify"
+        isVerifying={isBackofficeVerifying}
+        onVerify={async () => {
+          if (!clientId) {
+            toast({
+              title: 'Verification Failed',
+              description: 'Client ID is missing.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          try {
+            setIsBackofficeVerifying(true);
+
+            await backofficeDocumentService.verifyByBackoffice({
+              documentId: document.id,
+              clientId,
+              employeeId: employee.id
+            });
+
+            toast({
+              title: 'Document Verified',
+              description: `${formatDocumentTypeName(documentTypeName)} verified successfully.`,
+            });
+
+            setBackofficeVerificationDialogOpen(false);
+            onRefresh();
+          } catch (error: any) {
+            toast({
+              title: 'Verification Failed',
+              description: error?.message || 'Failed to verify from backoffice.',
+              variant: 'destructive',
+            });
+          } finally {
+            setIsBackofficeVerifying(false);
+          }
+        }}
       />
     </>
   );

@@ -523,10 +523,25 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { data: inProgressStatus, error: inProgressError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+
+    if (inProgressError) {
+      console.error("Error fetching in-progress status:", inProgressError);
+      return new Response(
+        JSON.stringify({ error: "Could not find in-progress status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const governanceStatusId = governanceStatus?.id;
     const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
+    const inProgressStatusId = inProgressStatus?.id;
     
     console.log("Found status IDs:", {
       governance: governanceStatusId,
@@ -820,18 +835,53 @@ serve(async (req) => {
         } else {
           // Log the technical error for debugging
           console.error(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API error:`, rawData);
-          
-          // Check if error status_code exists (QuickEKYC error format)
-          // If status_code exists and is not 200, don't show details popup
+
+          const statusCode = rawData?.status_code ?? apiResponse?.status;
+          const isSensitiveStatusCode = statusCode === 429 || statusCode === 401 || statusCode === 403 || statusCode === 404;
+          const apiMessage = (rawData?.message ?? '').toString().toLowerCase();
+          const isInvalidAadhaarMessage = apiMessage.includes('invalid aadhaar') || apiMessage.includes('invalid aadhar');
+          const IN_PROGRESS_MSG = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
+          const INVALID_AADHAAR_MSG = "The Aadhaar number you entered is invalid. Please check and try again.";
+          let userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse?.status, isQuickEKYCUsed);
+          let error_key: string | undefined;
+
+          if (isInvalidAadhaarMessage) {
+            userFriendlyMessage = INVALID_AADHAAR_MSG;
+          } else if (!isSensitiveStatusCode && documentId) {
+            userFriendlyMessage = IN_PROGRESS_MSG;
+            error_key = "in-progress";
+            const { data: docForLog } = await supabase
+              .from('employee_documents')
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
+            const existingLogs = docForLog?.employee_docs_log || [];
+            const logEntry = {
+              timestamp: new Date().toISOString(),
+              action: "request_aadhar_otp_failed",
+              response: rawData
+            };
+            await supabase
+              .from('employee_documents')
+              .update({
+                employee_docs_log: [...existingLogs, logEntry],
+                verification_status: 'in-progress',
+                document_status_id: inProgressStatusId,
+                api_verification_status: 'failed',
+                api_verification_method: 'api',
+                api_verification_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+          }
+
           const hasErrorStatusCode = rawData.status_code && rawData.status_code !== 200;
-          
-          // Return user-friendly error message with 200 status to ensure frontend can access it
-          const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse.status, isQuickEKYCUsed);
           return new Response(
-            JSON.stringify({ 
-              success: false, 
+            JSON.stringify({
+              success: false,
               error: userFriendlyMessage,
-              status_code: hasErrorStatusCode ? rawData.status_code : undefined
+              status_code: hasErrorStatusCode ? rawData.status_code : undefined,
+              ...(error_key !== undefined && { error_key })
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

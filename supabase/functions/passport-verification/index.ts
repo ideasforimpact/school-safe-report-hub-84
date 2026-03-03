@@ -58,6 +58,8 @@ serve(async (req) => {
     const governanceStatusId = await fetchStatusId('governance');
     const rejectedStatusId = await fetchStatusId('rejected');
     const manualStatusId = await fetchStatusId('manual');
+    const inProgessStatusId  = await fetchStatusId('in-progress');
+    const pendingStatusId = await fetchStatusId('pending');
 
     if (action === 'apiVerify') {
       if (!documentId) {
@@ -115,15 +117,20 @@ serve(async (req) => {
             response: { error: errorData.message || `HTTP ${response.status}`, status: response.status }
           };
 
+          const isSensitiveError = response.status === 401 || response.status === 429;
           await supabase.from('employee_documents').update({
             employee_docs_log: [...existingLogs, logEntry],
             api_verification_status: 'failed',
+            verification_status: isSensitiveError ? 'pending' : 'in-progress',
+            document_status_id: isSensitiveError ? pendingStatusId : inProgessStatusId,
             api_verification_method: 'api',
             api_verification_date: null
           }).eq('id', documentId);
 
-          let userFriendlyError = "Passport verification failed. Please try again.";
+          const IN_PROGRESS_MESSAGE = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
+          let userFriendlyError = isSensitiveError ? "Passport verification failed. Please try again." : IN_PROGRESS_MESSAGE;
           let errorCode = "PASSPORT_VERIFICATION_FAILED";
+          let error_key: string | undefined;
 
           if (response.status === 401) {
             userFriendlyError = "Authentication failed. Please contact administrator.";
@@ -131,6 +138,8 @@ serve(async (req) => {
           } else if (response.status === 429) {
             userFriendlyError = "Too many verification attempts. Please try again after some time.";
             errorCode = "API_LIMIT_EXCEEDED";
+          } else {
+            error_key = "in-progress";
           }
           await logVerificationError(supabase, {
             employeeId,
@@ -151,7 +160,8 @@ serve(async (req) => {
               error: userFriendlyError,
               errorCode: errorCode,
               originalError: errorData.message,
-              status_code: response.status
+              status_code: response.status,
+              ...(error_key !== undefined && { error_key })
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -172,6 +182,8 @@ serve(async (req) => {
           await supabase.from('employee_documents').update({
             employee_docs_log: [...existingLogs, logEntry],
             api_verification_status: 'failed',
+            verification_status:'in-progress',
+            document_status_id: inProgessStatusId,
             api_verification_method: 'api',
             api_verification_date: null
           }).eq('id', documentId);
@@ -223,23 +235,27 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
-          // Parse specific error types for user-friendly messages
-          let userFriendlyError = "Passport verification failed";
+          // Parse specific error types for user-friendly messages; use in-progress message only when status_code indicates processing
+          const IN_PROGRESS_MSG = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
+          const statusCode = apiResponse?.status_code;
+          let userFriendlyError = IN_PROGRESS_MSG;
           let errorCode = "PASSPORT_VERIFICATION_FAILED";
+          let error_key: string | undefined = isInProgressStatus ? "in-progress" : undefined;
 
           if (apiResponse?.message) {
             const message = apiResponse.message.toLowerCase();
             if (message.includes('invalid passport') || message.includes('not found')) {
               userFriendlyError = "This Passport number is not found in government records";
               errorCode = "PASSPORT_INVALID";
+              error_key = 'failed';
             } else if (message.includes('format') || message.includes('pattern')) {
               userFriendlyError = "Please enter a valid Passport file number";
               errorCode = "PASSPORT_INVALID_FORMAT";
+              error_key = 'failed';
             } else if (message.includes('dob') || message.includes('date of birth')) {
               userFriendlyError = "Date of birth doesn't match with Passport records";
               errorCode = "PASSPORT_DOB_MISMATCH";
-            } else {
-              userFriendlyError = "Passport verification failed. Please check the details and try again.";
+              error_key = 'failed';
             }
           }
 
@@ -265,7 +281,8 @@ serve(async (req) => {
               errorCode: errorCode,
               originalError: apiResponse?.message,
               data: apiResponse,
-              status_code: apiResponse?.status_code
+              status_code: apiResponse?.status_code,
+              ...(error_key !== undefined && { error_key })
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );

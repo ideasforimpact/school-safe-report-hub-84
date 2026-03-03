@@ -23,6 +23,7 @@ export interface EmployeeWithDocumentsSummary {
     total: number;
     verified: number;
     pending: number;
+    inProgress?: number;
     failed: number;
   };
 }
@@ -161,6 +162,7 @@ export const backofficeEmployeeService = {
           comments,
           document_number,
           verification_status,
+          api_verification_status,
           params,
           employee_docs_log,
           last_otp_generated,
@@ -178,6 +180,30 @@ export const backofficeEmployeeService = {
 
       if (documentsError) {
         console.error('Error fetching documents:', documentsError);
+      }
+
+      const documentIds = ((documentsData as any[]) || []).map(doc => doc.id).filter(Boolean);
+      let auditByDocumentId = new Map<string, { both_fallback: boolean | null; latest_status_code: number | null }>();
+
+      if (documentIds.length > 0) {
+        const { data: auditData, error: auditError } = await supabase
+          .from('employee_verification_audit_log')
+          .select('document_id, both_fallback, latest_status_code')
+          .in('document_id', documentIds);
+
+        if (auditError) {
+          console.error('Error fetching employee verification audit logs:', auditError);
+        } else {
+          auditByDocumentId = new Map(
+            (auditData || []).map((row: any) => [
+              row.document_id,
+              {
+                both_fallback: row.both_fallback ?? null,
+                latest_status_code: row.latest_status_code ?? null
+              }
+            ])
+          );
+        }
       }
 
       // Map employee data to the expected format
@@ -223,6 +249,9 @@ export const backofficeEmployeeService = {
             documents_files: Array.isArray((doc as any).documents_files) ? (doc as any).documents_files : [],
             comments: Array.isArray((doc as any).comments) ? (doc as any).comments : [],
             verificationStatus: doc.verification_status as 'verified' | 'failed' | 'pending' | 'in-progress' | 'completed' | 'rejected' || 'pending',
+            apiVerificationStatus: (doc as any).api_verification_status as 'pending' | 'completed' | 'failed' | null,
+            bothFallback: auditByDocumentId.get(doc.id)?.both_fallback ?? undefined,
+            latestStatusCode: auditByDocumentId.get(doc.id)?.latest_status_code ?? undefined,
             documentStatusId: doc.document_status_id,
             documentStatusName: doc.document_status?.name,
             verificationDate: undefined,
