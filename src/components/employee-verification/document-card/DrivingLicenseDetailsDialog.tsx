@@ -14,11 +14,17 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Button } from '@/components/ui/button';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
-import { Loader2, X, CheckCircle } from 'lucide-react';
+import { Loader2, X, CheckCircle, XCircle } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider
+} from "@/components/ui/tooltip";
 
 interface DrivingLicenseDetailsDialogProps {
   open: boolean;
@@ -47,7 +53,19 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   // Extract relevant information from the driving license response
   const data = licenseDetails?.data || {};
   const isSuccessful = licenseDetails?.success && licenseDetails?.status_code === 200;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isExpired = data?.doe ? new Date(data.doe) <= today : false;
+  const isValid = !isExpired;
+  const vehicleClasses = data?.vehicle_classes;
+  const hasVehicleClasses =
+    vehicleClasses &&
+    (
+      (Array.isArray(vehicleClasses) && vehicleClasses.length > 0) ||
+      (typeof vehicleClasses === "string" && vehicleClasses.trim() !== "")
+    );  
   
+  const [overrideExpiry, setOverrideExpiry] = useState(false);
   // Prepare profile image source supporting URL or raw base64 string
   const profileImageSrc = (() => {
     const value = (data as any)?.profile_image || (data as any)?.photo || (data as any)?.image || (data as any)?.image_url;
@@ -56,6 +74,12 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
     return `data:image/jpeg;base64,${value}`;
   })();
   
+  useEffect(() => {
+    if (open) {
+      setOverrideExpiry(false);
+    }
+  }, [open]);
+
   // Comprehensive debugging logs
   // console.log('DrivingLicenseDetailsDialog - Dialog open state:', open);
   // console.log('DrivingLicenseDetailsDialog - Document ID:', documentId);
@@ -252,7 +276,25 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <span>Driving License Details</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              Driving License Details ({data?.doe})
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      {isValid ? (
+                        <CheckCircle size={16} color="green" />
+                      ) : (
+                        <XCircle size={16} color="red" />
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isValid ? "Valid Driving License" : "Driving License Expired"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
           </DialogTitle>
           <DialogDescription>
             Details retrieved from government database for driving license {data?.license_number || licenseDetails?.license_number || 'verification'}
@@ -307,8 +349,57 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
             </div>
           )}
         </ScrollArea>
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm mb-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-blue-900">
+              Authorized Vehicle Classes
+            </div>
 
-        {/* Reject Reason Form */}
+            {data?.doe && (
+              <span
+                className={`text-xs font-medium ${
+                  isExpired ? "text-red-600" : "text-green-600"
+                }`}
+              >
+                {isExpired ? "Expired" : "Valid"}
+              </span>
+            )}
+          </div>
+
+          <div className="text-gray-800">
+            {hasVehicleClasses ? (
+              Array.isArray(vehicleClasses)
+                ? vehicleClasses.join(", ")
+                : vehicleClasses
+            ) : (
+              <span className="text-red-600">
+                No vehicle class information available
+              </span>
+            )}
+          </div>
+
+          {isExpired && (
+            <div className="flex items-start gap-2 text-yellow-800 bg-yellow-50 border border-yellow-300 rounded p-2">
+              <XCircle className="h-4 w-4 mt-0.5" />
+              <div className="text-xs mt-0.5">
+                License expired on <b>{data?.doe}</b>
+              </div>
+            </div>
+          )}
+
+          {isExpired && !readOnly && (
+            <label className="flex items-center gap-2 cursor-pointer mt-1">
+              <input
+                type="checkbox"
+                checked={overrideExpiry}
+                onChange={(e) => setOverrideExpiry(e.target.checked)}
+              />
+              <span className="text-xs">
+               I acknowledge that the driving license has expired and I am approving this document manually.
+              </span>
+            </label>
+          )}
+        </div>
         {showRejectForm && (
           <div className="space-y-4 pt-4 border-t">
             <div>
@@ -376,7 +467,10 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
               </Button>
               <Button
                 onClick={handleVerify}
-                disabled={isApproving || isRejecting}
+                disabled={isApproving ||
+                  isRejecting ||
+                  (isExpired && !overrideExpiry)
+                }
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               >
                 {isApproving ? (
