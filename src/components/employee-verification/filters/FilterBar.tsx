@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import SearchFilter from '@/components/incidents/filters/SearchFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
 import EmployeeDocumentTypeFilter from './EmployeeDocumentTypeFilter';
+import DepartmentFilter from './DepartmentFilter';
 
 
 interface FilterBarProps {
@@ -14,6 +15,9 @@ interface FilterBarProps {
   onClearFilters: () => void;
   documentTypeFilter: string;
   onDocumentTypeChange: (value: string) => void;
+  departmentFilter: string;
+  onDepartmentChange: (value: string) => void;
+  departments: string[];
   resultCount: number;
   totalCount: number;
 }
@@ -27,12 +31,15 @@ const FilterBar: React.FC<FilterBarProps> = ({
   resultCount,
   documentTypeFilter,
   onDocumentTypeChange,
+  departmentFilter,
+  onDepartmentChange,
+  departments,
   totalCount
 }) => {
  const hasActiveFilters =
     searchTerm ||
     documentStatusFilter !== 'all' ||
-    documentTypeFilter !== 'all';
+    documentTypeFilter !== 'all' || departmentFilter !== 'all';
 
   return (
     <div className="space-y-4 mb-6">
@@ -49,7 +56,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
           value={documentTypeFilter}
           onChange={onDocumentTypeChange}
         />
-        
+        <DepartmentFilter
+          value={departmentFilter}
+          onChange={onDepartmentChange}
+          departments={departments}
+        />
         <DocumentStatusFilter
           value={documentStatusFilter}
           onChange={onDocumentStatusChange}

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
@@ -23,6 +23,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/auth/useAuth';
 import { formatDate } from "@/lib/Dateformat";
 import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -45,12 +47,20 @@ const UserList = ({
   onRefresh,
   cpdDomains = [],
 }: UserListProps) => {
+  type EmployeeDocumentInfo = {
+    id: string;
+    name: string;
+    status: 'pending' | 'verified' | 'failed';
+  };
+
   const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
   const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
+  const [documentsByEmployee, setDocumentsByEmployee] = useState<Record<string, EmployeeDocumentInfo[]>>({});
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,6 +104,78 @@ const UserList = ({
     };
   }, [users, employeeData]);
 
+  // Fetch employee uploaded documents for the info popover near Department.
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadEmployeeDocuments = async () => {
+      if (!users.length) {
+        setDocumentsByEmployee({});
+        return;
+      }
+
+      try {
+        setIsDocumentsLoading(true);
+        const employeeIds = users.map((u) => u.id).filter(Boolean);
+
+        const { data, error } = await supabase
+          .from('employee_documents')
+          .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
+          .in('employee_id', employeeIds as any)
+          .eq('is_delete', 0);
+
+        if (error) throw error;
+        if (isCancelled) return;
+
+        const toLabel = (value: string) =>
+          value
+            .split('_')
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+
+        const normalizeStatus = (status: string | null | undefined): EmployeeDocumentInfo['status'] => {
+          if (!status) return 'pending';
+          const normalized = status.toLowerCase();
+          if (normalized === 'verified' || normalized === 'completed') return 'verified';
+          if (normalized === 'failed' || normalized === 'rejected') return 'failed';
+          return 'pending';
+        };
+
+        const grouped: Record<string, EmployeeDocumentInfo[]> = {};
+        users.forEach((u) => {
+          grouped[u.id] = [];
+        });
+
+        (data || []).forEach((doc: any) => {
+          const employeeId = doc.employee_id as string;
+          const selected = doc?.params?.selected;
+          const typeName = doc?.document_type?.name;
+          const displayName = toLabel(typeName || selected || 'document');
+
+          if (!grouped[employeeId]) grouped[employeeId] = [];
+          grouped[employeeId].push({
+            id: doc.id,
+            name: displayName,
+            status: normalizeStatus(doc.verification_status),
+          });
+        });
+
+        setDocumentsByEmployee(grouped);
+      } catch (error) {
+        console.error('Error loading employee documents in user list:', error);
+      } finally {
+        if (!isCancelled) setIsDocumentsLoading(false);
+      }
+    };
+
+    loadEmployeeDocuments();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [users]);
+
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
 
@@ -128,6 +210,16 @@ const UserList = ({
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));
+  };
+
+  const getStatusBadge = (status: 'pending' | 'verified' | 'failed') => {
+    if (status === 'verified') {
+      return <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>;
+    }
+    if (status === 'failed') {
+      return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>;
+    }
+    return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>;
   };
 
 
@@ -231,7 +323,7 @@ const UserList = ({
           <TableHead>Name</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Department</TableHead>
-          <TableHead>Type</TableHead>
+          <TableHead className="w-[70px] text-center">Docs</TableHead>
           <TableHead>Joining Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="w-[120px]">CPD Details</TableHead>
@@ -241,11 +333,90 @@ const UserList = ({
       <TableBody>
         {paginatedUsers.map((user) => (
           <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
-            <TableCell>{user.employeeId || '-'}</TableCell>
-            <TableCell>{user.firstName} {user.lastName}</TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <span>{user.employeeId || '-'}</span>
+                {user.employeeType === 'contract' && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-700 cursor-default">
+                          C
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="relative bg-slate-800 text-white border-slate-800 px-3 py-1.5 text-sm after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-2 after:w-2 after:rotate-45 after:bg-slate-800"
+                      >
+                        Contract Employee
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-900">{user.firstName} {user.lastName}</span>
+                {(() => {
+                  const tags =
+                    Array.isArray((user as any).tags) && (user as any).tags.length > 0
+                      ? (user as any).tags
+                      : ((user as any).designation || '')
+                          .split(',')
+                          .map((tag: string) => tag.trim())
+                          .filter(Boolean)
+                          .slice(0, 2);
+
+                  if (tags.length === 0) return null;
+
+                  return (
+                    <span className="mt-1 text-sm font-semibold text-slate-400">
+                      {tags.join('  •  ')}
+                    </span>
+                  );
+                })()}
+              </div>
+            </TableCell>
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
-            <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
+            <TableCell className="text-center">
+              <HoverCard openDelay={120} closeDelay={150}>
+                <HoverCardTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
+                    aria-label={`View documents for ${user.firstName} ${user.lastName}`}
+                    disabled={isDocumentsLoading}
+                  >
+                    <AlertCircle className="h-4 w-4" />
+                  </button>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-[260px] p-3" align="start">
+                  <div className="text-xs font-semibold tracking-wide text-gray-500 pb-2 border-b">
+                    DOCUMENTS
+                  </div>
+                  <div className="pt-2 space-y-2 max-h-56 overflow-auto">
+                    {isDocumentsLoading ? (
+                      <div className="text-sm text-gray-500">Loading...</div>
+                    ) : (documentsByEmployee[user.id] || []).length === 0 ? (
+                      <div className="text-sm text-gray-500">No uploaded documents</div>
+                    ) : (
+                      (documentsByEmployee[user.id] || []).map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                            <span className="text-sm text-gray-800 truncate">{doc.name}</span>
+                          </div>
+                          {getStatusBadge(doc.status)}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            </TableCell>
+            {/* <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell> */}
             <TableCell>
               {user.joiningDate ? formatDate(user.joiningDate) : '-'}
             </TableCell>            
