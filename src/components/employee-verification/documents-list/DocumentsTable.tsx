@@ -26,16 +26,13 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import {formatDate} from '@/lib/Dateformat';
 import { formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
-import AadharDetailsDialog from './AadharDetailsDialog';
-import PanDetailsDialog from '../document-card/PanDetailsDialog';
-import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
-import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
-import PassportDetailsDialog from '../document-card/PassportDetailsDialog';
 import DocumentCommentsDialog from '../DocumentCommentsDialog';
 import FilesDialog from '../form/FilesDialog';
 import { useAuth } from '@/contexts/AuthContext';
-
+import GovernmentVerificationPopup, { GovernmentDocumentType } 
+from '../document-card/GovernmentVerificationPopup';
+import { normalizeApiData } from '@/lib/governmentNormalizer';
 interface DocumentsTableProps {
   documents: VerificationDocument[];
   onViewDocument: (documentImage: string) => void;
@@ -43,6 +40,7 @@ interface DocumentsTableProps {
   onVerifyDocument: (documentId: string) => void;
   onDocumentAction?: () => void;
   onQuickVerify?: (documentId: string, method: 'api' | 'manual') => void;
+  onViewGovernment?: (doc: VerificationDocument) => void;
 }
 
 const DocumentsTable: React.FC<DocumentsTableProps> = ({
@@ -52,6 +50,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onVerifyDocument,
   onDocumentAction,
   onQuickVerify,
+  onViewGovernment,
 }) => {
   const { documentStatuses, deleteDocument, employees, fetchEmployeeDocuments } = useEmployeeVerification();
   const { toast } = useToast();
@@ -69,22 +68,17 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
   const [selectedVerificationType, setSelectedVerificationType] = useState<string>('police');
-  const [selectedDocumentDetails, setSelectedDocumentDetails] = React.useState<any>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [panDialogOpen, setPanDialogOpen] = React.useState(false);
-  const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
-  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
   const [bankStatementDialogOpen, setBankStatementDialogOpen] = React.useState(false);
-  const [passportDialogOpen, setPassportDialogOpen] = React.useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = React.useState(false);
-  const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
-  const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
-  const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
   const [selectedBankStatementDetails, setSelectedBankStatementDetails] = React.useState<any>(null);
-  const [selectedPassportDetails, setSelectedPassportDetails] = React.useState<any>(null);
   const [selectedVerificationHistory, setSelectedVerificationHistory] = React.useState<any[]>([]);
   const [filesCountOverrides, setFilesCountOverrides] = useState<Record<string, number>>({});
-  
+
+  const [govPopupOpen, setGovPopupOpen] = useState(false);
+  const [selectedGovType, setSelectedGovType] =
+    useState<GovernmentDocumentType>("driving_license");
+  const [selectedGovData, setSelectedGovData] = useState<any>(null);
+
   // Log documents for debugging
   console.log('DocumentsTable - All documents:', documents);
   
@@ -266,109 +260,41 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     });
   };
 
-  const handleBadgeClick = (doc: VerificationDocument) => {
-    console.log('DocumentsTable - Badge clicked for document:', doc);
-    console.log('DocumentsTable - cron_log data:', doc.cronLog);
-    
-    const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    const apiResponse: any = (doc as any).api_response_data;
-    
-    const docType = doc.documentTypeName?.toLowerCase();
-    console.log('DocumentsTable - Document type (lowercase):', docType);
-    setSelectedDocumentId(doc.id);
-    
-    if (docType?.includes('aadhar')) {
-      if (apiResponse) {
-        setSelectedDocumentDetails({
-          timestamp: (doc as any).api_verification_date || doc.updatedAt,
-          action: 'api_verification',
-          response: apiResponse
-        });
-      } else if (hasLogs) {
-      const verificationLog = doc.employee_docs_log
-          .filter(log => log.action === 'verify_aadhar_otp' && log.response)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      setSelectedDocumentDetails(verificationLog || doc.employee_docs_log[0]);
-      }
-      setDialogOpen(true);
-      toast({
-        title: "Viewing Aadhar verification details",
-        description: "Showing verification information for this document."
-      });
-    } 
-    else if (docType === 'pan') {
-      if (apiResponse) {
-        setSelectedPanDetails(apiResponse);
-        setPanDialogOpen(true);
-        toast({ title: "Viewing PAN verification details", description: "Showing verification information for this document." });
-      } else if (hasLogs) {
-        const panVerificationLog = doc.employee_docs_log.find(log => log.action === 'verify_pan_api' && log.response);
-      if (panVerificationLog) {
-        setSelectedPanDetails(panVerificationLog.response);
-        setPanDialogOpen(true);
-          toast({ title: "Viewing PAN verification details", description: "Showing verification information for this document." });
-        }
-      }
-    }
-    else if (docType === 'passport') {
-      if (apiResponse) {
-        setSelectedPassportDetails(apiResponse);
-        setPassportDialogOpen(true);
-        toast({ title: 'Viewing Passport verification details', description: 'Showing verification information for this document.' });
-      } else if (hasLogs) {
-        const passportLog = doc.employee_docs_log?.find(log => log.action === 'verify_passport_api' && log.response);
-        if (passportLog) {
-          setSelectedPassportDetails(passportLog.response);
-          setPassportDialogOpen(true);
-          toast({ title: 'Viewing Passport verification details', description: 'Showing verification information for this document.' });
-        }
-      }
-    }
-    else if (docType === 'voter_id') {
-      if (apiResponse) {
-        setSelectedVoterIdDetails(apiResponse);
-        setVoterIdDialogOpen(true);
-        toast({ title: "Viewing Voter ID verification details", description: "Showing verification information for this document." });
-      } else if (hasLogs) {
-        const voterIdVerificationLog = doc.employee_docs_log.find(log => log.action === 'verify_voter_id_api' && log.response);
-      if (voterIdVerificationLog) {
-        setSelectedVoterIdDetails(voterIdVerificationLog.response);
-        setVoterIdDialogOpen(true);
-          toast({ title: "Viewing Voter ID verification details", description: "Showing verification information for this document." });
-        }
-      }
-    }
-    else if (docType?.includes('driving') || docType?.includes('license')) {
-      if (apiResponse) {
-        setSelectedDrivingLicenseDetails(apiResponse);
-        setDrivingLicenseDialogOpen(true);
-        toast({ title: "Viewing Driving License verification details", description: "Showing verification information for this document." });
-      } else if (hasLogs) {
-        const drivingLicenseLog = doc.employee_docs_log?.find(log => (log.action?.includes('driving') || log.action?.includes('license')) && log.response);
-        if (drivingLicenseLog) {
-          setSelectedDrivingLicenseDetails(drivingLicenseLog.response);
-          setDrivingLicenseDialogOpen(true);
-          toast({ title: "Viewing Driving License verification details", description: "Showing verification information for this document." });
-        }
-      }
-    }
-    else if (docType === 'bank account' || docType?.includes('bank')) {
-      if (apiResponse) {
-        setSelectedBankStatementDetails(apiResponse);
-        setBankStatementDialogOpen(true);
-        toast({ title: "Viewing Bank Account verification details", description: "Showing verification information for this document." });
-      } else if (hasLogs) {
-        const bankVerificationLog = doc.employee_docs_log?.find(log => log.action === 'bank_verification' && log.response);
-        if (bankVerificationLog) {
-          setSelectedBankStatementDetails(bankVerificationLog.response);
-          setBankStatementDialogOpen(true);
-          toast({ title: "Viewing Bank Account verification details", description: "Showing verification information for this document." });
-      } else {
-          toast({ title: "No verification details", description: "No bank verification details available for this document." });
-        }
-      }
-    }
-  };
+// const handleBadgeClick = (doc: VerificationDocument) => {
+//   console.log("Badge clicked:", doc);
+
+//   const logs = doc.employee_docs_log || [];
+//   const docType = doc.documentTypeName?.toLowerCase();
+
+//   // Extract only government API response
+//   const govLog = logs.find(
+//     (log) =>
+//       log.action?.includes("verify") &&
+//       log.response &&
+//       (log.response.success === true || log.response.status_code === 200)
+//   );
+
+//   if (!govLog) {
+//     console.log("No Government API response found");
+//     return;
+//   }
+
+//   // Government APIs return wrapped data
+//   const governmentData = govLog.response?.data;
+
+//   if (!governmentData) {
+//     console.log("Government response has no data field");
+//     return;
+//   }
+
+//   console.log("Government API Data:", governmentData);
+
+//   setSelectedGovType(docType as GovernmentDocumentType);
+//   setSelectedGovData(
+//   normalizeApiData(governmentData, docType as GovernmentDocumentType),
+//   );
+//   setGovPopupOpen(true);
+// };
 
   // Helper function to check if document has comments
   const hasVerificationHistory = (doc: VerificationDocument): boolean => {
@@ -576,7 +502,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                             status={doc.verificationStatus} 
                             documentStatusName={statusName}
                             isGovernance={isGovernanceVerified}
-                            onClick={shouldBeClickable ? () => handleBadgeClick(doc) : undefined}
+                            onClick={
+                              shouldBeClickable && onViewGovernment
+                                ? () => onViewGovernment(doc)
+                                : undefined
+                            }
                             documentLogs={doc.employee_docs_log}
                             documentId={doc.id}
                             documentType={docType}
@@ -598,15 +528,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           <MessageCircle className="h-4 w-4" />
                         </Button>
                       )}
-      {/* Passport Details Dialog */}
-      <PassportDetailsDialog
-        open={passportDialogOpen}
-        onOpenChange={setPassportDialogOpen}
-        passportDetails={selectedPassportDetails}
-        documentId={selectedDocumentId}
-        onVerificationUpdate={onDocumentAction}
-        readOnly={true}
-      />
+      
                     </div>
                   </TableCell>
                   {/* Verified by Column */}
@@ -758,37 +680,18 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       </div>
 
       {/* Dialogs for document verification details */}
-      <AadharDetailsDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        aadharDetails={selectedDocumentDetails}
-        readOnly
+
+      <GovernmentVerificationPopup
+        open={govPopupOpen}
+        onOpenChange={(open) => {
+          setGovPopupOpen(open);
+          if (!open) setSelectedGovData(null);
+        }}
+        documentType={selectedGovType}
+        data={selectedGovData}
       />
       
-      <PanDetailsDialog
-        open={panDialogOpen}
-        onOpenChange={setPanDialogOpen}
-        panDetails={selectedPanDetails}
-        documentId={selectedDocumentId}
-        readOnly
-      />
-      
-      <VoterIdDetailsDialog
-        open={voterIdDialogOpen}
-        onOpenChange={setVoterIdDialogOpen}
-        voterIdDetails={selectedVoterIdDetails}
-        documentId={selectedDocumentId}
-        readOnly
-      />
-      
-      <DrivingLicenseDetailsDialog
-        open={drivingLicenseDialogOpen}
-        onOpenChange={setDrivingLicenseDialogOpen}
-        licenseDetails={selectedDrivingLicenseDetails}
-        documentId={selectedDocumentId}
-        readOnly
-      />
-      
+
       <BankStatementDetailsDialog
         open={bankStatementDialogOpen}
         onOpenChange={setBankStatementDialogOpen}

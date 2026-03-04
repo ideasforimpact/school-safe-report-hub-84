@@ -15,14 +15,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { formatDocumentTypeName } from '../utils/documentUtils';
-import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
-import PanDetailsDialog from '../document-card/PanDetailsDialog';
-import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
-import DrivingLicenseDetailsDialog from '../document-card/DrivingLicenseDetailsDialog';
-import PassportDetailsDialog from '../document-card/PassportDetailsDialog';
-import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
-
 interface VerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,7 +28,8 @@ interface VerificationDialogProps {
   documents?: any[]; // Add documents prop to find the updated document
   onDocumentAction?: () => void; // Add callback for document updates
   setIsVerificationLoading?: (loading: boolean) => void; // Add loading state setter
-  employeeName?: string; // Add employee name prop
+  employeeName?: string;
+  onApiSuccess?: (documentType: string, data: any) => void; // Add API success callback prop
 }
 
 const VerificationDialog: React.FC<VerificationDialogProps> = ({
@@ -53,6 +46,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   documents = [],
   onDocumentAction,
   setIsVerificationLoading,
+  onApiSuccess,
 }) => {
   const { toast: shadcnToast } = useToast();
   
@@ -60,14 +54,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   console.log('VerificationDialog - Received props:', { documentId, documentType, quickStartMethod });
   
   // Wrapper for onDocumentAction that includes loading state
-  const handleDocumentActionWithLoading = async () => {
-    if (onDocumentAction) {
-      setIsVerificationLoading?.(true);
-      await onDocumentAction();
-      setIsVerificationLoading?.(false);
-    }
+  const handleDocumentActionWithLoading = async (action: () => Promise<void>) => {
+    setIsVerificationLoading?.(true);
+    await action();
+    setIsVerificationLoading?.(false);
   };
-  
+
   const isAadhar = documentType?.toLowerCase().includes('aadhar') || 
                    documentType?.toLowerCase().includes('aadhaar');
   const isPan = documentType === 'pan';
@@ -107,14 +99,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   })();
   const OTP_VALIDITY_SECONDS = OTP_VALIDITY_MINUTES * 60;
   console.log('OTP Validity in seconds:', OTP_VALIDITY_SECONDS);
-
-  // Detail dialog states
-  const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
-  const [panDialogOpen, setPanDialogOpen] = useState(false);
-  const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
-  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
-  const [passportDialogOpen, setPassportDialogOpen] = useState(false);
-  const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
   
   // Cleanup effect to reset loading state when dialog closes
   useEffect(() => {
@@ -124,14 +108,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   }, [open, setIsVerificationLoading]);
 
-  // Detail data states
-  const [selectedAadharDetails, setSelectedAadharDetails] = useState<any>(null);
-  const [selectedPanDetails, setSelectedPanDetails] = useState<any>(null);
-  const [selectedVoterIdDetails, setSelectedVoterIdDetails] = useState<any>(null);
-  const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = useState<any>(null);
-  const [selectedPassportDetails, setSelectedPassportDetails] = useState<any>(null);
-  const [selectedBankStatementDetails, setSelectedBankStatementDetails] = useState<any>(null);
-  const [currentDocumentId, setCurrentDocumentId] = useState<string>('');
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -286,23 +262,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         // Refresh document data
         if (onDocumentAction) {
           await onDocumentAction();
-        }
-        
-        // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
-        setTimeout(() => {
-          // Open Bank Statement detail dialog directly with response data
-          setCurrentDocumentId(documentId);
-          
-          // The dialog expects data in response.data format, so we structure it correctly
-          const formattedBankStatementDetails = {
-            data: apiResponse, // The actual Bank Statement details from the API response
-            success: true,
-            status_code: apiResponse.status_code,
-            message: apiResponse.message
-          };
-          setSelectedBankStatementDetails(formattedBankStatementDetails);
-          setBankStatementDialogOpen(true);
-        }, 100);
+        }        
+        onApiSuccess?.('bank_account', apiResponse.data);
       } else {
         // Show meaningful error message in the current popup
         const errorMessage = apiResponse?.message || data?.message || data?.error || "Bank Statement verification failed. Please check your details and try again.";
@@ -330,7 +291,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           verification_notes: 'Document manually verified by staff.'
         }
       });
-      
+    
       console.log("Bank Statement manual verification response:", data, error);
       
       if (error) {
@@ -417,17 +378,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       if (data?.success && isApiSuccess && hasData) {
         onOpenChange(false);
         if (onDocumentAction) await onDocumentAction();
-        setTimeout(() => {
-          setCurrentDocumentId(documentId);
-          const formatted = { 
-            data: apiData, // The actual passport data
-            success: true, 
-            status_code: apiResponse.status_code, 
-            message: apiResponse.message 
-          };
-          setSelectedPassportDetails(formatted);
-          setPassportDialogOpen(true);
-        }, 100);
+        onApiSuccess?.('passport', apiData);
       } else {
         // Show meaningful error message in the current popup
         const errorMsg = apiResponse?.message || data?.message || data?.error || 'Passport verification failed. Please check your details and try again.';
@@ -527,24 +478,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
         
         // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
-        setTimeout(() => {
-          // Open PAN detail dialog directly with response data
-          console.log('VerificationDialog - About to open PAN dialog with data:', data);
-          console.log('VerificationDialog - documentId:', documentId);
-          setCurrentDocumentId(documentId);
-          
-          // The dialog expects data in response.data format, so we structure it correctly
-          const formattedPanDetails = {
-            data: apiData, // The actual PAN details from the API response
-            success: true,
-            status_code: data.status_code,
-            message: data.message
-          };
-          console.log('VerificationDialog - Formatted PAN details:', formattedPanDetails);
-          setSelectedPanDetails(formattedPanDetails);
-          setPanDialogOpen(true);
-          console.log('VerificationDialog - PAN dialog state set to open');
-        }, 100); // Small delay to ensure verification dialog closes completely
+        onApiSuccess?.('pan', apiData); // Small delay to ensure verification dialog closes completely
       } else {
         // Show meaningful error message in the current popup
         const errorMessage = data?.message || data?.error || "PAN verification failed. Please check your details and try again.";
@@ -600,20 +534,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
         
         // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
-        setTimeout(() => {
-          // Open Driving License detail dialog directly with response data
-          setCurrentDocumentId(documentId);
-          
-          // The dialog expects data in response.data format, so we structure it correctly
-          const formattedDrivingLicenseDetails = {
-            data: apiData, // The actual Driving License details from the API response
-            success: true,
-            status_code: data.status_code,
-            message: data.message
-          };
-          setSelectedDrivingLicenseDetails(formattedDrivingLicenseDetails);
-          setDrivingLicenseDialogOpen(true);
-        }, 100);
+        onApiSuccess?.('driving_license', apiData);
       } else {
         // Show meaningful error message in the current popup
         const errorMessage = data?.message || data?.error || "Driving License verification failed. Please check your details and try again.";
@@ -825,20 +746,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
         
         // Use setTimeout to ensure verification dialog is fully closed before opening detail dialog
-        setTimeout(() => {
-          // Open Voter ID detail dialog directly with response data
-          setCurrentDocumentId(documentId);
-          
-          // The dialog expects data in response.data format, so we structure it correctly
-          const formattedVoterIdDetails = {
-            data: apiData, // The actual Voter ID details from the API response
-            success: true,
-            status_code: data.status_code,
-            message: data.message
-          };
-          setSelectedVoterIdDetails(formattedVoterIdDetails);
-          setVoterIdDialogOpen(true);
-        }, 100);
+        onApiSuccess?.('voter_id', apiData);
       } else {
         // Show meaningful error message in the current popup
         const errorMessage = data?.message || data?.error || "Voter ID verification failed. Please check your details and try again.";
@@ -1165,45 +1073,57 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
      // COMMENTED OUT: Old OTP-based Aadhaar verification - replaced with secure government integration
   const handleOtpSubmit = async () => {
-    console.log('handleOtpSubmit - Aadhaar OTP verification');
-    if (otp.length !== 6) {
+  console.log('handleOtpSubmit - Aadhaar OTP verification');
+  if (otp.length !== 6) {
       toast.error("Verification Error", { description: "Please enter a valid 6-digit OTP" });
-      return;
+    return;
+  }
+
+  setIsVerifyingOtp(true);
+
+  try {
+    const requestBody: any = {
+      action: 'verifyAadharOtp',
+      documentId,
+      otp
+    };
+
+    if (clientId) {
+      requestBody.client_id = clientId;
     }
-    setIsVerifyingOtp(true);
-    try {
-      // Build request body with client_id if available
-      const requestBody: any = {
-        action: 'verifyAadharOtp',
-        documentId,
-        otp
-      };
-      
-      // Include client_id if available (required for OTP verification)
-      if (clientId) {
-        requestBody.client_id = clientId;
-      }
-      
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        body: requestBody
-      });
-      if (error) throw new Error(error.message || 'Failed to verify OTP');
-      if (data?.error || data?.success === false) throw new Error(data?.error || 'OTP verification failed');
-      // Close consent dialog, then open Aadhaar details dialog on next tick
-      setCurrentDocumentId(documentId);
-      setSelectedAadharDetails({ response: data });
-      setTimeout(() => {
-        onOpenChange(false);
-        setAadharDialogOpen(true);
-      }, 50);
-      if (onDocumentAction) await onDocumentAction();
-    } catch (err: any) {
-      console.error('verifyAadharOtp error:', err);
-      setErrorMessage(err.message || 'Failed to verify OTP. Please try again.');
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
+
+    const { data, error } = await supabase.functions.invoke(
+      'employee-verification',
+      { body: requestBody }
+    );
+
+    if (error) throw new Error(error.message || 'Failed to verify OTP');
+    if (data?.error || data?.success === false)
+      throw new Error(data?.error || 'OTP verification failed');
+
+    console.log("Aadhaar OTP SUCCESS response:", data);
+
+    // 🔥 Extract real government payload
+    const rawGovernmentData =
+      data?.data?.data ||
+      data?.data ||
+      data;
+
+    // 🔥 Send to parent popup system
+    onApiSuccess?.('aadhar', rawGovernmentData);
+
+    // 🔥 Close verification dialog
+    onOpenChange(false);
+
+    if (onDocumentAction) await onDocumentAction();
+
+  } catch (err: any) {
+    console.error('verifyAadharOtp error:', err);
+    setErrorMessage(err.message || 'Failed to verify OTP. Please try again.');
+  } finally {
+    setIsVerifyingOtp(false);
+  }
+};
    
    // const handleOtpSubmit = async () => {
   //   console.log("handleOtpSubmit called - starting OTP verification process");
@@ -1507,54 +1427,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
       
-      {/* Detail Dialogs */}
-            <AadharDetailsDialog
-        open={aadharDialogOpen}
-        onOpenChange={setAadharDialogOpen}
-        aadharDetails={selectedAadharDetails}
-        documentId={currentDocumentId || documentId}
-        onVerificationUpdate={handleDocumentActionWithLoading}
-      />
-      
-      <PanDetailsDialog 
-        open={panDialogOpen}
-        onOpenChange={setPanDialogOpen}
-        panDetails={selectedPanDetails}
-        documentId={currentDocumentId || documentId}
-        onVerificationUpdate={handleDocumentActionWithLoading}
-      />
-      
-      <VoterIdDetailsDialog
-        open={voterIdDialogOpen}
-        onOpenChange={setVoterIdDialogOpen}
-        voterIdDetails={selectedVoterIdDetails}
-        documentId={currentDocumentId || documentId}
-        onVerificationUpdate={handleDocumentActionWithLoading}
-      />
-      
-      <DrivingLicenseDetailsDialog
-        open={drivingLicenseDialogOpen}
-        onOpenChange={setDrivingLicenseDialogOpen}
-        licenseDetails={selectedDrivingLicenseDetails}
-        documentId={currentDocumentId || documentId}
-        onVerificationUpdate={handleDocumentActionWithLoading}
-      />
-      
-      <PassportDetailsDialog
-        open={passportDialogOpen}
-        onOpenChange={setPassportDialogOpen}
-        passportDetails={selectedPassportDetails}
-        documentId={currentDocumentId || documentId}
-        onVerificationUpdate={handleDocumentActionWithLoading}
-      />
-      
-      <BankStatementDetailsDialog
-        open={bankStatementDialogOpen}
-        onOpenChange={setBankStatementDialogOpen}
-        statementDetails={selectedBankStatementDetails}
-        documentId={currentDocumentId || documentId}
-        onVerificationUpdate={handleDocumentActionWithLoading}
-      />
       
       {/* Removed separate ApiConsentDialog */}
     </Dialog>
