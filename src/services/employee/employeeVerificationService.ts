@@ -141,7 +141,8 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
-        document_status:document_status(name, description)
+        document_status:document_status(name, description),
+        audit_logs:employee_verification_audit_log!fk_employee_verification_audit_document(latest_success_log)
       `)
       .eq('employee_id', employeeId)
       .eq('is_delete', 0);
@@ -150,32 +151,8 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       console.error('Error fetching documents:', documentsError);
       return { employee, documents: [] };
     }
-
-    const documentIds = ((documentsData as any[]) || [])
-      .map((doc) => doc.id)
-      .filter(Boolean);
-
-    let latestAuditLogByDocumentId: Record<string, any> = {};
-    if (documentIds.length > 0) {
-      const { data: auditLogsData, error: auditLogsError } = await (supabase as any)
-        .from('employee_verification_audit_log')
-        .select('document_id, latest_success_log')
-        .eq('employee_id', employeeId)
-        .in('document_id', documentIds);
-
-      if (auditLogsError) {
-        console.error('Error fetching verification audit logs:', auditLogsError);
-      } else {
-        latestAuditLogByDocumentId = ((auditLogsData as any[]) || []).reduce(
-          (acc: Record<string, any>, row: any) => {
-            if (row?.document_id) acc[row.document_id] = row.latest_success_log;
-            return acc;
-          },
-          {}
-        );
-      }
-    }
     
+
     // Map documents to the expected format with proper URL handling and new cron fields
     const documents: VerificationDocument[] = ((documentsData as any[]) || []).map(doc => {
       let documentUrl = doc.document_url;
@@ -231,12 +208,15 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         apiVerificationMethod: doc.api_verification_method || undefined,
         rejectReason: (doc as any).reject_reason || undefined,
         personalInfo: (doc as any).personal_info || undefined,
-        audit: latestAuditLogByDocumentId[doc.id] || undefined,
+        audit: Array.isArray((doc as any).audit_logs)
+          ? (doc as any).audit_logs[0]?.latest_success_log
+          : (doc as any).audit_logs?.latest_success_log,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
     });
 
+    
     console.log(`Fetched employee and ${documents.length} documents`);
     return { employee, documents };
   } catch (error) {
