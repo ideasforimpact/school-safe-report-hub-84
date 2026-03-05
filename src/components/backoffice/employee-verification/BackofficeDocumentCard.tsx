@@ -78,14 +78,58 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     ).join(' ');
   };
 
-  const handleDownload = () => {
-    if (document.documentImage) {
+  const getExtensionFromUrl = (url: string): string | null => {
+    try {
+      const parsed = new URL(url);
+      const fileName = parsed.pathname.split('/').pop() || '';
+      const cleanFileName = fileName.split('?')[0].split('#')[0];
+      const extension = cleanFileName.includes('.') ? cleanFileName.split('.').pop() : null;
+      return extension ? extension.toLowerCase() : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getExtensionFromMime = (mimeType?: string): string => {
+    const mime = (mimeType || '').toLowerCase();
+    if (mime.includes('pdf')) return 'pdf';
+    if (mime.includes('png')) return 'png';
+    if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+    if (mime.includes('webp')) return 'webp';
+    return 'jpg';
+  };
+
+  const handleDownload = async () => {
+    if (!document.documentImage) return;
+
+    try {
+      const response = await fetch(document.documentImage);
+      if (!response.ok) throw new Error('Failed to fetch document file');
+
+      const blob = await response.blob();
+      const urlExtension = getExtensionFromUrl(document.documentImage);
+      const mimeExtension = getExtensionFromMime(blob.type);
+      const extension = urlExtension || mimeExtension;
+
+      const safeEmployeeName = (employee.name || 'employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeDocType = (documentTypeName || 'document').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `${safeEmployeeName}_${safeDocType}_${document.id}.${extension}`;
+
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = window.document.createElement('a');
-      link.href = document.documentImage;
-      link.download = `${employee.name}_${documentTypeName}_${document.id}.jpg`;
+      link.href = blobUrl;
+      link.download = fileName;
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Unable to download this document. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -165,7 +209,13 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const showCommentsIcon = document.documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
   const normalizedDocumentTypeName = (document.documentTypeName || documentTypeName || '').toLowerCase();
   const isManualDocument = normalizedDocumentTypeName === 'manual';
-  const backofficeEligibleTypes = new Set(['passport', 'pan', 'pan_card', 'aadhar', 'aadhaar', 'driving_license', 'voter_id']);
+  const backofficeEligibleTypes = new Set([
+    'passport',
+    'pan',
+    'aadhar',
+    'driving_license',
+    'voter_id'
+  ]);
   const isBackofficeEligibleType = backofficeEligibleTypes.has(normalizedDocumentTypeName);
   
   // For backoffice-eligible docs, API failure should be treated as in-progress even when verification_status is pending
@@ -193,16 +243,6 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     (isManualDocument && effectiveVerificationStatus === 'in-progress') ||
     (isBackofficeEligibleType && !['verified', 'completed'].includes(effectiveVerificationStatus));
   
-  console.log('BackofficeDocumentCard - Button conditions:', {
-    canVerifyDocument,
-    documentTypeName: documentTypeName.toLowerCase(),
-    verificationStatus: document.verificationStatus,
-    effectiveVerificationStatus,
-    apiVerificationStatus: document.apiVerificationStatus,
-    hasDocumentImage: !!document.documentImage,
-    hasClientId: !!clientId,
-    document:document
-  });
 
   return (
     <>

@@ -47,6 +47,22 @@ function prepareQuickEKYCRequestOtpPayload(documentNumber: string, apiKey: strin
 }
 
 /**
+ * Parse QuickEKYC request_id into a number.
+ * QuickEKYC verify-otp API expects request_id as numeric type.
+ */
+function parseQuickEKYCRequestId(requestId?: string | number | null): number | undefined {
+  if (requestId === null || requestId === undefined) return undefined;
+  if (typeof requestId === 'number' && Number.isFinite(requestId)) return requestId;
+  if (typeof requestId === 'string') {
+    const trimmed = requestId.trim();
+    if (/^\d+$/.test(trimmed)) {
+      return Number(trimmed);
+    }
+  }
+  return undefined;
+}
+
+/**
  * Prepare QuickEKYC Request OTP headers
  */
 function prepareQuickEKYCRequestOtpHeaders() {
@@ -85,7 +101,10 @@ function prepareQuickEKYCVerifyOtpPayload(otp: string, apiKey: string, client_id
   };
   
   if (client_id) {
-    payload.request_id = client_id;
+    const requestId = parseQuickEKYCRequestId(client_id);
+    if (requestId !== undefined) {
+      payload.request_id = requestId;
+    }
   }
   
   return payload;
@@ -756,19 +775,6 @@ serve(async (req) => {
             const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
             console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
             
-            // Fetch client_id from employee if available
-            let clientIdForResponse: string | undefined = undefined;
-            if (document?.employee_id) {
-              const { data: employee } = await supabase
-                .from('employees')
-                .select('client_id')
-                .eq('id', document.employee_id)
-                .single();
-              if (employee?.client_id) {
-                clientIdForResponse = employee.client_id;
-              }
-            }
-            
             // Return success response with otpStatus to indicate OTP input should be shown
             return new Response(
               JSON.stringify({ 
@@ -777,7 +783,9 @@ serve(async (req) => {
                 cooldownRemaining: remainingSeconds,
                 otpStatus: "valid",
                 showOtpInput: true,
-                client_id: clientIdForResponse // Include client_id for verifyAadharOtp
+                // client_id is intentionally not sourced from employees.client_id
+                // because that value is tenant-scoping ID, not QuickEKYC request_id.
+                client_id: null
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
@@ -930,27 +938,14 @@ serve(async (req) => {
         );
       }
       
-      // Fetch client_id from employee if not provided in request body
+      // Validate client_id/request_id type for QuickEKYC if provided by frontend.
       let clientIdForVerification = client_id;
-      if (!clientIdForVerification && documentId) {
-        console.log("client_id not provided in request, fetching from employee document");
-        const { data: document } = await supabase
-          .from('employee_documents')
-          .select('employee_id')
-          .eq('id', documentId)
-          .single();
-        
-        if (document?.employee_id) {
-          const { data: employee } = await supabase
-            .from('employees')
-            .select('client_id')
-            .eq('id', document.employee_id)
-            .single();
-          
-          if (employee?.client_id) {
-            clientIdForVerification = employee.client_id;
-            console.log("Fetched client_id from employee:", clientIdForVerification);
-          }
+      if (clientIdForVerification) {
+        const parsedRequestId = parseQuickEKYCRequestId(clientIdForVerification);
+        if (parsedRequestId === undefined) {
+          clientIdForVerification = undefined;
+        } else {
+          clientIdForVerification = String(parsedRequestId);
         }
       }
       
