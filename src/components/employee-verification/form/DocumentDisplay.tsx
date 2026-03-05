@@ -26,6 +26,7 @@ const DocumentDisplay: React.FC<DocumentDisplayProps> = ({
       'pan': 'PAN Card',
       'voter_id': 'Voter ID',
       'driving_license': 'Driving License',
+      'passport': 'Passport',
       'bank_account': 'Bank Account',
       'other': 'Other Document'
     };
@@ -54,7 +55,7 @@ const DocumentDisplay: React.FC<DocumentDisplayProps> = ({
       if (params.ifscCode) details.push(`IFSC: ${params.ifscCode}`);
     }
     
-    if (documentType === 'driving_license' && params?.DOB) {
+    if ((documentType === 'driving_license' || documentType === 'passport') && params?.DOB) {
       details.push(`DOB: ${new Date(params.DOB).toLocaleDateString()}`);
     }
     
