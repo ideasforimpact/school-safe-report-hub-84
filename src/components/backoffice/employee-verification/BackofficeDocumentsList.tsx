@@ -33,16 +33,12 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
   // Get the "Manual" document type ID
   const manualDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'manual');
   const manualDocumentTypeId = manualDocumentType?.id;
-  const passportDocumentType = documentTypes.find(type => type.name.toLowerCase() === 'passport');
-  const passportDocumentTypeId = passportDocumentType?.id;
 
   // Debug logging
   console.log('🔍 BackofficeDocumentsList Debug:', {
     documentTypes: documentTypes,
     manualDocumentType,
     manualDocumentTypeId,
-    passportDocumentType,
-    passportDocumentTypeId,
     employeeDocuments: employee.documents,
     employeeId: employee.id
   });
@@ -60,7 +56,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   useEffect(() => {
     filterDocuments();
-  }, [employee.documents, manualDocumentTypeId, passportDocumentTypeId, verificationFilter, searchTerm, dateRange]);
+  }, [employee.documents, manualDocumentTypeId, verificationFilter, searchTerm, dateRange]);
   
   useEffect(() => {
     if (!employee?.id) return;
@@ -98,25 +94,26 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
       .join(' ');
   };
 
-  const isManualOrFailedPassportDocument = (doc: Employee['documents'][number]) => {
+  const isManualOrFailedDocument = (doc: Employee['documents'][number]) => {
     const docType = documentTypes.find(type => type.id === doc.documentTypeId);
     const resolvedDocTypeName = (docType?.name || doc.documentTypeName || '').toLowerCase();
 
     const isManual =
       (manualDocumentTypeId ? doc.documentTypeId === manualDocumentTypeId : resolvedDocTypeName === 'manual');
-    const isFinalized = doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed';
-    if (!isManual && isFinalized) return false;
-    
-    if(doc?.verificationStatus == "in-progress"){
+    const isFinalized = (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed') ;
+    const isManualsubmitDoc = doc.documentStatusName == 'manual';
+    if (!isManual && isFinalized && !isManualsubmitDoc) return false;
+    if (doc?.verificationStatus == "in-progress" || doc?.verificationStatus == "completed" ) {
       const StatusTypes = new Set(['pan', 'passport', 'aadhar', 'driving_license', 'voter_id']);
       const isStatusEligible = StatusTypes.has(resolvedDocTypeName);
       return  isStatusEligible || isManual;
     }
+    return false;
   };
 
   const filterDocuments = () => {
     const documents = employee.documents || [];
-    let filtered = documents.filter(isManualOrFailedPassportDocument);
+    let filtered = documents.filter(isManualOrFailedDocument);
     if (verificationFilter !== 'all') {
       filtered = filtered.filter(doc => {
         const params: any = doc.params || {};
@@ -207,15 +204,15 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
 
   const getDocumentCounts = () => {
     // Count manual documents and failed passports
-    const manualAndFailedPassportDocuments = (employee.documents || []).filter(isManualOrFailedPassportDocument);
+    const manualAndFailedDocuments = (employee.documents || []).filter(isManualOrFailedDocument);
     
-    const verified = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'verified').length;
-    const completed = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'completed').length;
-    const pending = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'pending').length;
-    const inProgress = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
-    const failed = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'failed').length;
-    const rejected = manualAndFailedPassportDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
-    const total = manualAndFailedPassportDocuments.length;
+    const verified = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'verified').length;
+    const completed = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'completed').length;
+    const pending = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'pending').length;
+    const inProgress = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'in-progress').length;
+    const failed = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'failed').length;
+    const rejected = manualAndFailedDocuments.filter(doc => doc.verificationStatus === 'rejected').length;
+    const total = manualAndFailedDocuments.length;
     
     return { verified, completed, pending, inProgress, failed, rejected, total };
   };

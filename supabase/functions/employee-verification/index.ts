@@ -46,6 +46,7 @@ function prepareQuickEKYCRequestOtpPayload(documentNumber: string, apiKey: strin
   };
 }
 
+
 /**
  * Prepare QuickEKYC Request OTP headers
  */
