@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Button } from '@/components/ui/button';
 
 interface CommentSectionProps {
@@ -27,7 +27,7 @@ const CommentSection = ({
         <Label htmlFor={`comment-${questionId}`} className="text-sm text-gray-600">
           Comments:
         </Label>
-        <Textarea
+        <TextareaWithVoice
           id={`comment-${questionId}`}
           value={comment || ''}
           onChange={onCommentChange}

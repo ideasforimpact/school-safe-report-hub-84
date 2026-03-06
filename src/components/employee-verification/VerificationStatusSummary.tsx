@@ -6,6 +6,7 @@ interface VerificationStatusSummaryProps {
   summary: {
     verified: number;
     pending: number;
+    inProgress?: number;
     failed: number;
     total: number;
   };
@@ -13,7 +14,7 @@ interface VerificationStatusSummaryProps {
 }
 
 const VerificationStatusSummary = ({ summary, className = '' }: VerificationStatusSummaryProps) => {
-  const { verified, pending, failed, total } = summary;
+  const { verified, pending, inProgress, failed, total } = summary;
 
   if (total === 0) {
     return (
@@ -25,7 +26,7 @@ const VerificationStatusSummary = ({ summary, className = '' }: VerificationStat
   }
 
   // Priority-based status logic
-  // Priority: Failed > Pending > Verified
+  // Priority: Failed > In Progress > Pending > Verified
   // If ANY document failed → Show "Failed"
   // If no failures but ANY pending → Show "Pending"  
   // If ALL documents verified → Show "Verified"
@@ -36,6 +37,13 @@ const VerificationStatusSummary = ({ summary, className = '' }: VerificationStat
         icon: XCircle,
         iconColor: 'text-red-600',
         badgeClass: 'bg-red-100 text-red-800 border-red-200'
+      };
+    } else if (inProgress > 0) {
+      return {
+        status: 'In Progress',
+        icon: Clock,
+        iconColor: 'text-blue-600',
+        badgeClass: 'bg-blue-100 text-blue-800 border-blue-200'
       };
     } else if (pending > 0) {
       return {

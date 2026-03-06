@@ -16,7 +16,7 @@ import { AlertTriangle, Building, Banknote, CreditCard, Loader2, X, FileText, Us
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -386,7 +386,7 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
               <Label htmlFor="rejectReason" className="text-sm font-medium">
                 Reason for reject <span className="text-red-500">*</span>
               </Label>
-              <Textarea
+              <TextareaWithVoice
                 id="rejectReason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}

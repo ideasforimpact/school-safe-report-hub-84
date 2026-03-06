@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, XCircle, Upload, X, FileText, ThumbsUp, ThumbsDown, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -273,7 +273,7 @@ const DocumentVerificationDialog: React.FC<DocumentVerificationDialogProps> = ({
             
             {/* Comment Textarea with Thumbs in Bottom Right */}
             <div className="relative w-full">
-            <Textarea
+            <TextareaWithVoice
                 placeholder="Enter your verification comment..."
                 value={currentComment.text}
                 onChange={(e) => setCurrentComment(prev => ({ ...prev, text: e.target.value }))}

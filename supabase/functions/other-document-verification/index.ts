@@ -463,7 +463,7 @@ async function handleBankStatementAnalysis_OLD(requestBody, supabase, corsHeader
     console.log("Using in-progress status ID:", inProgressStatus?.id);
     
     // Create storage URL for the uploaded file using employee-documents bucket
-    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL');
     const normalizedBase = storageBase.replace(/\/$/, '');
     const storageUrl = `${normalizedBase}/employee-documents/${filePath}`;
     

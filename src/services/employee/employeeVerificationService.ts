@@ -141,7 +141,8 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
-        document_status:document_status(name, description)
+        document_status:document_status(name, description),
+        audit_logs:employee_verification_audit_log!fk_employee_verification_audit_document(latest_success_log)
       `)
       .eq('employee_id', employeeId)
       .eq('is_delete', 0);
@@ -150,6 +151,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       console.error('Error fetching documents:', documentsError);
       return { employee, documents: [] };
     }
+    
 
     // Map documents to the expected format with proper URL handling and new cron fields
     const documents: VerificationDocument[] = ((documentsData as any[]) || []).map(doc => {
@@ -157,7 +159,7 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
       
       // If document_url is a storage path, convert to full URL
       if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
         const normalizedBase = base.replace(/\/$/, '');
         documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
       }
@@ -206,11 +208,15 @@ export const fetchEmployeeVerificationData = async (employeeId: string, clientId
         apiVerificationMethod: doc.api_verification_method || undefined,
         rejectReason: (doc as any).reject_reason || undefined,
         personalInfo: (doc as any).personal_info || undefined,
+        audit: Array.isArray((doc as any).audit_logs)
+          ? (doc as any).audit_logs[0]?.latest_success_log
+          : (doc as any).audit_logs?.latest_success_log,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
     });
 
+    
     console.log(`Fetched employee and ${documents.length} documents`);
     return { employee, documents };
   } catch (error) {
@@ -252,7 +258,8 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
-        document_status:document_status(name, description)
+        document_status:document_status(name, description),
+        audit_logs:employee_verification_audit_log!fk_employee_verification_audit_document(latest_success_log)
       `)
       .eq('employee_id', employeeId)
       .eq('is_delete', 0);
@@ -303,7 +310,7 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
       
       // If document_url is a storage path, convert to full URL
       if (documentUrl && !documentUrl.startsWith('data:') && !documentUrl.startsWith('https://')) {
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
         const normalizedBase = base.replace(/\/$/, '');
         documentUrl = `${normalizedBase}/employee-documents/${documentUrl}`;
       }
@@ -353,6 +360,9 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         rejectReason: (doc as any).reject_reason || undefined,
         personalInfo: (doc as any).personal_info || undefined,
         lastOtpGenerated: doc.last_otp_generated || undefined,
+        audit: Array.isArray((doc as any).audit_logs)
+          ? (doc as any).audit_logs[0]?.latest_success_log
+          : (doc as any).audit_logs?.latest_success_log,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };

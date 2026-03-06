@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { FileText, User, Calendar, CreditCard, Fingerprint, CheckCircle, Loader2, X } from 'lucide-react';
@@ -274,7 +274,7 @@ const PanDetailsDialog: React.FC<PanDetailsDialogProps> = ({
               <Label htmlFor="rejectReason" className="text-sm font-medium">
                 Reason for reject <span className="text-red-500">*</span>
               </Label>
-              <Textarea
+              <TextareaWithVoice
                 id="rejectReason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}

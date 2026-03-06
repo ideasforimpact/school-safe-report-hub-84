@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { FileItem } from '@/types/incident';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import ImageUpload from '@/components/ImageUpload';
 
@@ -30,7 +30,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           <label htmlFor="description" className="text-sm font-medium">
             Detailed Information <span className="text-red-500">*</span>
           </label>
-          <Textarea
+          <TextareaWithVoice
             id="description"
             name="description"
             placeholder="Describe what happened in detail"

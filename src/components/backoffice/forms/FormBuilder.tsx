@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -176,7 +176,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ onSave, onCancel, init
         {editingField?.type === 'select' && (
           <div>
             <Label>Options (one per line)</Label>
-            <Textarea
+            <TextareaWithVoice
               value={editingField?.options?.join('\n')}
               onChange={(e) => setEditingField({
                 ...editingField!,
@@ -257,7 +257,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({ onSave, onCancel, init
           </div>
           <div>
             <Label>Description</Label>
-            <Textarea
+            <TextareaWithVoice
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter form description"

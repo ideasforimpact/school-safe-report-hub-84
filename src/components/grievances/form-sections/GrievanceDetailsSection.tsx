@@ -2,7 +2,7 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { MessageSquare, FileText } from 'lucide-react';
 
 interface GrievanceDetailsSectionProps {
@@ -42,8 +42,8 @@ const GrievanceDetailsSection: React.FC<GrievanceDetailsSectionProps> = ({
         <Label htmlFor="description">Description of your grievance <span className="text-red-500">*</span></Label>
       </div>
       <div>
-        <Textarea
-          id="description"
+<TextareaWithVoice
+        id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Please provide details about your grievance"
