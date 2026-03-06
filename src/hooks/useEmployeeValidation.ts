@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getSupabaseTokenRole } from '@/utils/sessionValidation';
 
 /**
  * Custom hook to validate employee access on page loads and visibility changes.
@@ -91,8 +92,17 @@ export const useEmployeeValidation = () => {
         console.warn('No session token available for validation');
         return;
       }
-      console.log(employeeData,"employeeData3232");
-      
+
+      // Treat anonymous session as unauthenticated: redirect to login without calling the API.
+      // This avoids 401 from validate-employee and "Unknown" data when Supabase restores an anon session (e.g. after browser close in prod/UAT).
+      const tokenRole = getSupabaseTokenRole(session.access_token);
+      if (tokenRole === 'anon') {
+        console.log('[validate-employee] RESTRICTED: Anonymous session detected — redirecting to login without calling API');
+        logout('session_expired', 'Your session is not authenticated. Please login again.');
+        return;
+      }
+      console.log('[validate-employee] Session is authenticated — calling validate-employee API');
+
       // Use fetch directly to get the response body (including for 403 errors)
       const response = await fetch(`${supabaseUrl}/functions/v1/validate-employee`, {
         method: 'POST',
@@ -119,10 +129,16 @@ export const useEmployeeValidation = () => {
       
       // If validation fails and not already logging out, log out and redirect
       if (!response.ok || !responseBody?.valid) {
+        console.log('[validate-employee] RESTRICTED: API validation failed', {
+          status: response.status,
+          valid: responseBody?.valid,
+          code: responseBody?.code,
+          message: responseBody?.message,
+        });
         if (state.isLoggingOut) {
           return;
         }
-        
+
         let isIPWhitelistError = false;
         let errorMessage: string | undefined = undefined;
         let logoutReason: 'ip_not_whitelisted' | 'session_expired' | 'validation_failed' = 'validation_failed';
@@ -166,6 +182,7 @@ export const useEmployeeValidation = () => {
         return;
       }
 
+      console.log('[validate-employee] OK: Employee validation succeeded');
       // If validation succeeded, log RLS context for the current authenticated user.
       // This runs in the browser with the user's JWT, so RLS policies see the real context.
       await logRlsContext();
