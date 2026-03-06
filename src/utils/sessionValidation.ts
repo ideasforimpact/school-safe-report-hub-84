@@ -8,19 +8,33 @@ import { authCoordinator } from './authCoordinator';
  * Used to detect anonymous sessions so we can redirect to login instead of calling validate-employee.
  */
 export function getSupabaseTokenRole(accessToken: string | undefined): 'authenticated' | 'anon' | null {
-  if (!accessToken || typeof accessToken !== 'string') return null;
+  if (!accessToken || typeof accessToken !== 'string') {
+    console.log('[Session] getSupabaseTokenRole: no token or invalid type');
+    return null;
+  }
   try {
     const parts = accessToken.split('.');
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.log('[Session] getSupabaseTokenRole: invalid JWT format');
+      return null;
+    }
     const payload = parts[1];
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
     const decoded = JSON.parse(atob(padded)) as { role?: string };
     const role = decoded?.role;
-    if (role === 'authenticated') return 'authenticated';
-    if (role === 'anon') return 'anon';
+    if (role === 'authenticated') {
+      console.log('[Session] getSupabaseTokenRole: role=authenticated — session is valid, not restricted');
+      return 'authenticated';
+    }
+    if (role === 'anon') {
+      console.log('[Session] getSupabaseTokenRole: role=anon — anonymous session detected, will be restricted');
+      return 'anon';
+    }
+    console.log('[Session] getSupabaseTokenRole: unknown role', role ?? 'undefined');
     return null;
-  } catch {
+  } catch (e) {
+    console.warn('[Session] getSupabaseTokenRole: decode failed', e);
     return null;
   }
 }
