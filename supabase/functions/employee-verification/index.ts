@@ -727,10 +727,10 @@ serve(async (req) => {
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
-      // Check if document has had an OTP generated recently
+      // Check if document has had an OTP generated recently (and get stored otp_request_id for "still valid" path)
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('last_otp_generated, employee_id')
+        .select('last_otp_generated, employee_id, params')
         .eq('id', documentId)
         .single();
       const employeeId = document.employee_id;
@@ -756,18 +756,9 @@ serve(async (req) => {
             const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
             console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
             
-            // Fetch client_id from employee if available
-            let clientIdForResponse: string | undefined = undefined;
-            if (document?.employee_id) {
-              const { data: employee } = await supabase
-                .from('employees')
-                .select('client_id')
-                .eq('id', document.employee_id)
-                .single();
-              if (employee?.client_id) {
-                clientIdForResponse = employee.client_id;
-              }
-            }
+            // Use the request_id stored when OTP was generated (required for verify OTP API), not employee's client_id
+            const params = document?.params as { otp_request_id?: string } | undefined;
+            const clientIdForResponse = params?.otp_request_id ?? undefined;
             
             // Return success response with otpStatus to indicate OTP input should be shown
             return new Response(
@@ -777,7 +768,7 @@ serve(async (req) => {
                 cooldownRemaining: remainingSeconds,
                 otpStatus: "valid",
                 showOtpInput: true,
-                client_id: clientIdForResponse // Include client_id for verifyAadharOtp
+                client_id: clientIdForResponse // OTP request_id from when OTP was generated (for verifyAadharOtp)
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
@@ -814,11 +805,21 @@ serve(async (req) => {
         
         // Handle API success case
         if (data.success) {
-          // Update document with timestamp of OTP generation
+          const otpRequestId = data.data?.client_id ?? data.client_id ?? rawData?.request_id?.toString();
           if (documentId) {
+            const { data: currentDoc } = await supabase
+              .from('employee_documents')
+              .select('params')
+              .eq('id', documentId)
+              .single();
+            const existingParams = (currentDoc?.params as Record<string, unknown>) ?? {};
+            const newParams = { ...existingParams, otp_request_id: otpRequestId ?? null };
             await supabase
               .from('employee_documents')
-              .update({ last_otp_generated: new Date().toISOString() })
+              .update({
+                last_otp_generated: new Date().toISOString(),
+                params: newParams
+              })
               .eq('id', documentId);
           }
           
@@ -930,26 +931,28 @@ serve(async (req) => {
         );
       }
       
-      // Fetch client_id from employee if not provided in request body
+      // Use request body client_id, or the otp_request_id stored when OTP was generated (e.g. after user closed and reopened popup)
       let clientIdForVerification = client_id;
       if (!clientIdForVerification && documentId) {
-        console.log("client_id not provided in request, fetching from employee document");
-        const { data: document } = await supabase
+        console.log("client_id not provided in request, fetching from document params (otp_request_id)");
+        const { data: doc } = await supabase
           .from('employee_documents')
-          .select('employee_id')
+          .select('params, employee_id')
           .eq('id', documentId)
           .single();
-        
-        if (document?.employee_id) {
+        const params = doc?.params as { otp_request_id?: string } | undefined;
+        if (params?.otp_request_id) {
+          clientIdForVerification = params.otp_request_id;
+          console.log("Using otp_request_id from document params for verify OTP");
+        } else if (doc?.employee_id) {
           const { data: employee } = await supabase
             .from('employees')
             .select('client_id')
-            .eq('id', document.employee_id)
+            .eq('id', doc.employee_id)
             .single();
-          
           if (employee?.client_id) {
             clientIdForVerification = employee.client_id;
-            console.log("Fetched client_id from employee:", clientIdForVerification);
+            console.log("Fetched client_id from employee (fallback):", clientIdForVerification);
           }
         }
       }
