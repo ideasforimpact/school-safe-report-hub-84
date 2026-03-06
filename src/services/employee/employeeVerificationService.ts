@@ -258,7 +258,8 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         created_at,
         updated_at,
         document_type:employee_document_type(name, description),
-        document_status:document_status(name, description)
+        document_status:document_status(name, description),
+        audit_logs:employee_verification_audit_log!fk_employee_verification_audit_document(latest_success_log)
       `)
       .eq('employee_id', employeeId)
       .eq('is_delete', 0);
@@ -359,6 +360,9 @@ export const fetchEmployeeDocuments = async (employeeId: string, timeframe?: str
         rejectReason: (doc as any).reject_reason || undefined,
         personalInfo: (doc as any).personal_info || undefined,
         lastOtpGenerated: doc.last_otp_generated || undefined,
+        audit: Array.isArray((doc as any).audit_logs)
+          ? (doc as any).audit_logs[0]?.latest_success_log
+          : (doc as any).audit_logs?.latest_success_log,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
