@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getSupabaseTokenRole } from '@/utils/sessionValidation';
 
 /**
  * Custom hook to validate employee access on page loads and visibility changes.
@@ -91,8 +92,16 @@ export const useEmployeeValidation = () => {
         console.warn('No session token available for validation');
         return;
       }
-      console.log(employeeData,"employeeData3232");
-      
+
+      // Treat anonymous session as unauthenticated: redirect to login without calling the API.
+      // This avoids 401 from validate-employee and "Unknown" data when Supabase restores an anon session (e.g. after browser close in prod/UAT).
+      const tokenRole = getSupabaseTokenRole(session.access_token);
+      if (tokenRole === 'anon') {
+        console.warn('validate-employee: Anonymous session detected, redirecting to login');
+        logout('session_expired', 'Your session is not authenticated. Please login again.');
+        return;
+      }
+
       // Use fetch directly to get the response body (including for 403 errors)
       const response = await fetch(`${supabaseUrl}/functions/v1/validate-employee`, {
         method: 'POST',

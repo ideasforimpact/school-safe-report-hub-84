@@ -662,6 +662,13 @@ const handleLogoutBroadcast = useCallback(() => {
         const { data } = await supabase.auth.getSession();
         
         if (data.session && !currentUser) {
+          // Do not restore anonymous session as "logged in" (avoids 401 from validate-employee and "Unknown" data in prod/UAT)
+          const { getSupabaseTokenRole } = await import('@/utils/sessionValidation');
+          const role = getSupabaseTokenRole(data.session?.access_token);
+          if (role === 'anon') {
+            await supabase.auth.signOut();
+            return;
+          }
           setShowAuthLoading(true);
           setTimeout(async () => {
             await handleUserAuthentication(data.session?.user);

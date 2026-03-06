@@ -3,6 +3,28 @@ import { verifyBackofficeToken, isTokenExpired } from './jwtUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { authCoordinator } from './authCoordinator';
 
+/**
+ * Decode Supabase JWT payload and return the role (authenticated | anon).
+ * Used to detect anonymous sessions so we can redirect to login instead of calling validate-employee.
+ */
+export function getSupabaseTokenRole(accessToken: string | undefined): 'authenticated' | 'anon' | null {
+  if (!accessToken || typeof accessToken !== 'string') return null;
+  try {
+    const parts = accessToken.split('.');
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const decoded = JSON.parse(atob(padded)) as { role?: string };
+    const role = decoded?.role;
+    if (role === 'authenticated') return 'authenticated';
+    if (role === 'anon') return 'anon';
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Validate Supabase session for SSO users
 export const validateSupabaseSession = async (): Promise<boolean> => {
   console.log('🔐 validateSupabaseSession: Starting validation for SSO user');
