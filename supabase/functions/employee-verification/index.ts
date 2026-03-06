@@ -46,21 +46,6 @@ function prepareQuickEKYCRequestOtpPayload(documentNumber: string, apiKey: strin
   };
 }
 
-/**
- * Parse QuickEKYC request_id into a number.
- * QuickEKYC verify-otp API expects request_id as numeric type.
- */
-function parseQuickEKYCRequestId(requestId?: string | number | null): number | undefined {
-  if (requestId === null || requestId === undefined) return undefined;
-  if (typeof requestId === 'number' && Number.isFinite(requestId)) return requestId;
-  if (typeof requestId === 'string') {
-    const trimmed = requestId.trim();
-    if (/^\d+$/.test(trimmed)) {
-      return Number(trimmed);
-    }
-  }
-  return undefined;
-}
 
 /**
  * Prepare QuickEKYC Request OTP headers
