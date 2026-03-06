@@ -103,7 +103,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
     const isFinalized = (doc.verificationStatus === 'verified' || doc.verificationStatus === 'completed') ;
     const isManualsubmitDoc = doc.documentStatusName == 'manual';
     if (!isManual && isFinalized && !isManualsubmitDoc) return false;
-    if (doc?.verificationStatus == "in-progress" || doc?.verificationStatus == "completed" || doc.verificationStatus === 'verified' ) {
+    if (doc?.verificationStatus == "in-progress" || doc?.verificationStatus == "completed" ) {
       const StatusTypes = new Set(['pan', 'passport', 'aadhar', 'driving_license', 'voter_id']);
       const isStatusEligible = StatusTypes.has(resolvedDocTypeName);
       return  isStatusEligible || isManual;

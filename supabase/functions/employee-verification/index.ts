@@ -101,10 +101,7 @@ function prepareQuickEKYCVerifyOtpPayload(otp: string, apiKey: string, client_id
   };
   
   if (client_id) {
-    const requestId = parseQuickEKYCRequestId(client_id);
-    if (requestId !== undefined) {
-      payload.request_id = requestId;
-    }
+    payload.request_id = client_id;
   }
   
   return payload;
@@ -775,6 +772,18 @@ serve(async (req) => {
             const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
             console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
             
+            let clientIdForResponse: string | undefined = undefined;
+            if (document?.employee_id) {
+              const { data: employee } = await supabase
+                .from('employees')
+                .select('client_id')
+                .eq('id', document.employee_id)
+                .single();
+              if (employee?.client_id) {
+                clientIdForResponse = employee.client_id;
+              }
+            }
+
             // Return success response with otpStatus to indicate OTP input should be shown
             return new Response(
               JSON.stringify({ 
@@ -783,9 +792,7 @@ serve(async (req) => {
                 cooldownRemaining: remainingSeconds,
                 otpStatus: "valid",
                 showOtpInput: true,
-                // client_id is intentionally not sourced from employees.client_id
-                // because that value is tenant-scoping ID, not QuickEKYC request_id.
-                client_id: null
+                client_id: clientIdForResponse // Include client_id for verifyAadharOtp
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
