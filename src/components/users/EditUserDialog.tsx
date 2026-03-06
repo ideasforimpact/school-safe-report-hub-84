@@ -332,6 +332,19 @@ const EditUserDialog = ({
     setIsOpen(false);
     resetForm();
   };
+
+  const isValidJoiningDate = (date: string) => {
+    if (!date) return true;
+
+    const selectedDate = new Date(date);
+    const year = selectedDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    if (isNaN(selectedDate.getTime())) return false;
+
+    return year >= 1900 && year <= currentYear;
+  };
+
   const isFormValid = () => {
     // Email is optional; if provided must be valid and unique
     const hasValidEmail = !formData.email || (formData.email.trim() !== '' && isValidEmail(formData.email));
@@ -356,6 +369,7 @@ const EditUserDialog = ({
         isValidDesignation(formData.designation))) &&
       formData.employeeId &&
       isValidEmployeeId(formData.employeeId) &&
+      (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
       employeeIdValidation !== 'exists' &&
       emailValidation !== 'exists' &&
       employeeIdValidation !== 'checking' &&
@@ -645,9 +659,23 @@ const EditUserDialog = ({
                 <Input
                   id="joiningDate"
                   type="date"
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                   value={formData.joiningDate || ''}
-                  onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, joiningDate: e.target.value })
+                  }
+                  className={
+                    formData.joiningDate && !isValidJoiningDate(formData.joiningDate)
+                      ? "border-red-500"
+                      : ""
+                  }
                 />
+                {formData.joiningDate && !isValidJoiningDate(formData.joiningDate) && (
+                  <p className="text-xs text-red-500">
+                    Please enter a valid joining date
+                  </p>
+                )}
               </div>
             </div>
 
