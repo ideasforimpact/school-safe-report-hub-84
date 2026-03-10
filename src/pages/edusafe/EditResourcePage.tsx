@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import {
   Select,
   SelectContent,
@@ -269,7 +269,7 @@ const EditResourceContent = () => {
                 </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea 
+                <TextareaWithVoice 
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -71,7 +71,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({
           </Button>
         </div>
         
-        <Textarea
+        <TextareaWithVoice
           value={question.text}
           onChange={handleTextChange}
           placeholder="Enter yes/no question text"

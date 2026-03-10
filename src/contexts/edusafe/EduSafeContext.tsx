@@ -311,8 +311,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!data.success) {
         throw new Error(data.error || 'Failed to update resource');
       }
-
-      toast.success('Resource updated successfully');
+      
       await fetchResources(); // Refresh the list
     } catch (error) {
       console.error('Error updating resource:', error);

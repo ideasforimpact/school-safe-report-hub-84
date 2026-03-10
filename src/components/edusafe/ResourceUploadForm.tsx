@@ -7,7 +7,7 @@ import { FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { formatFileSize } from '@/utils/fileUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -325,7 +325,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
           <Label htmlFor="description">
             Description <span className="text-red-500">*</span>
           </Label>
-          <Textarea 
+          <TextareaWithVoice 
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}

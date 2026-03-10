@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { FileText, User, Calendar, CheckCircle, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
@@ -428,7 +428,7 @@ const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
               <Label htmlFor="rejectReason" className="text-sm font-medium">
                 Reason for reject <span className="text-red-500">*</span>
               </Label>
-              <Textarea
+              <TextareaWithVoice
                 id="rejectReason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}

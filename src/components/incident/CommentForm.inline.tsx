@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Button } from '@/components/ui/button';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
 import { Paperclip, Send, Loader2, CheckCircle } from 'lucide-react';
@@ -91,7 +91,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
       
       <div className="space-y-4">
         <div className="flex flex-col space-y-2">
-          <Textarea
+          <TextareaWithVoice
             placeholder="Type your comment here..."
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
@@ -100,7 +100,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
             maxLength={200}
           />
           <p className="text-xs text-gray-500 text-right">
-            {commentText.length}/200 characters
+            {(commentText ?? '').length}/200 characters
           </p>
           
           {showFileUpload && (

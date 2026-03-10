@@ -1610,29 +1610,25 @@ const ComplianceDocumentsPage: React.FC = () => {
 
             {validityMode === "date" && (
               <div>
-
-                <div className="flex flex-col mt-4 items-center justify-center ">
-                  <Calendar
-                  className='border-2 rounded-sm '
-                    mode="single"
-                    selected={validityDate}
-                    onSelect={(date) => setValidityDate(date)}
-                    disabled={(date) => {
-                      const today = new Date();
-                      const startOfToday = new Date(
-                        today.getFullYear(),
-                        today.getMonth(),
-                        today.getDate()
+                <div className="flex flex-col mt-4 items-center justify-center">
+                  <Input
+                    type="date"
+                    value={
+                      validityDate
+                        ? validityDate.toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setValidityDate(
+                        value ? new Date(value) : undefined
                       );
-                      return date < startOfToday; 
                     }}
-                     classNames={{
-                        day_selected: "bg-secondary text-white",
-                      }}
-                    initialFocus
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-[250px]"
                   />
                 </div>
-                
+
                 <p className="text-md mt-3 text-center text-muted-foreground">
                   {validityDate
                     ? `Selected date: ${formatDisplayDate(validityDate)}`
