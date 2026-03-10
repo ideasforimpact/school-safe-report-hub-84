@@ -22,6 +22,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
+import 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type GovernmentDocumentType =
@@ -346,22 +347,26 @@ console.log("isViewMode:", isViewMode);
     }
   };
 
-  // Gradient styles per document type
   const gradientStyles: Record<GovernmentDocumentType, React.CSSProperties> = {
     driving_license: {
-      background: "linear-gradient(135deg, hsl(var(--gov-dl-gradient-from)), hsl(var(--gov-dl-gradient-to)))",
+      background:
+        "linear-gradient(135deg, hsl(var(--gov-dl-gradient-from)), hsl(var(--gov-dl-gradient-to)))",
     },
     aadhar: {
-      background: "linear-gradient(135deg, rgba(8, 26, 216, 0.76), rgba(115, 43, 239, 0.92))",
+      background:
+        "linear-gradient(135deg, hsl(var(--gov-aadhar-gradient-from)), hsl(var(--gov-aadhar-gradient-to)))",
     },
     pan: {
-      background: "linear-gradient(135deg, hsl(var(--gov-pan-gradient-from)), hsl(var(--gov-pan-gradient-to)))",
+      background:
+        "linear-gradient(135deg, hsl(var(--gov-pan-gradient-from)), hsl(var(--gov-pan-gradient-to)))",
     },
     voter_id: {
-      background: "linear-gradient(135deg, hsl(var(--gov-voter-gradient-from)), hsl(var(--gov-voter-gradient-to)))",
+      background:
+        "linear-gradient(135deg, hsl(var(--gov-voter-gradient-from)), hsl(var(--gov-voter-gradient-to)))",
     },
     passport: {
-      background: "linear-gradient(135deg, hsl(var(--gov-passport-gradient-from)), hsl(var(--gov-passport-gradient-to)))",
+      background:
+        "linear-gradient(135deg, hsl(var(--gov-passport-gradient-from)), hsl(var(--gov-passport-gradient-to)))",
     },
   };
 
