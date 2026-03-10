@@ -54,6 +54,7 @@ import { ActionDetailsDialog } from '@/components/student-wellbeing/ActionDetail
 import { NewFollowUpEntryDialog } from '@/components/student-wellbeing/NewFollowUpEntryDialog';
 import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialog';
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
+import { formatDate } from '@/lib/Dateformat';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -108,16 +109,6 @@ function getAcademicYearForDate(dateInput: string | Date | null | undefined): st
     return `${y - 1}-${y}`;
   } catch {
     return '';
-  }
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return 'Not set';
-  try {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? 'Not set' : d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return 'Not set';
   }
 }
 
@@ -208,7 +199,7 @@ const StudentWellBeingPage = () => {
     setDeleting(true);
     try {
       await deleteStudentWellbeingRecord(recordToDelete.id, clientId, employeeData.id);
-      toast.success('Record deleted');
+      toast.success('Record was deleted successfully');
       setDeleteDialogOpen(false);
       setRecordToDelete(null);
       loadRecords();
@@ -729,7 +720,10 @@ const StudentWellBeingPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete well-being record</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this record for {recordToDelete?.student_name}? This action cannot be undone.
+              Are you sure you want to delete this record for {recordToDelete?.student_name}? 
+              <p className="mt-2 text-sm text-muted-foreground">
+                This action cannot be undone.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
