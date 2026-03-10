@@ -113,6 +113,9 @@ import ModuleRouteGuard from './components/ModuleRouteGuard';
 import MonthlyReportAutoDownloadPage from './pages/MonthlyReportAutoDownloadPage';
 import CPDOverviewPage from './pages/cpd/CPDOverviewPage';
 import EmployeeCpdDetailPage from './pages/cpd/EmployeeCpdDetailPage';
+import CommitteesPage from './pages/committees/CommitteesPage';
+import CommitteeEventsPage from './pages/committees/CommitteeEventsPage';
+import CommitteeEventViewPage from './pages/committees/CommitteeEventViewPage';
 
 
 function App() {
@@ -245,6 +248,11 @@ function App() {
 
                   {/* Student Well-Being Management */}
                   <Route path="/student-well-begin-management" element={<RouteGuard requireAuth={true}><StudentWellBeingPage /></RouteGuard>} />
+
+                  {/* Committees */}
+                  <Route path="/committees" element={<RouteGuard requireAuth={true}><CommitteesPage /></RouteGuard>} />
+                  <Route path="/committees/:committeeId/events" element={<RouteGuard requireAuth={true}><CommitteeEventsPage /></RouteGuard>} />
+                  <Route path="/committees/:committeeId/events/:eventId" element={<RouteGuard requireAuth={true}><CommitteeEventViewPage /></RouteGuard>} />
 
                   {/* CPD Overview */}
                   <Route
