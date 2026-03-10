@@ -62,6 +62,13 @@ export function NewConsultationDialog({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Control future date selection from here
+  const allowFutureDate = false; 
+  const getConsultationCharacterCount = (text: string) => {
+    const trimmed = text.trim();
+    const matches = trimmed.match(/[^\s]/g); 
+    return matches ? matches.length : 0;
+  };
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -103,7 +110,7 @@ export function NewConsultationDialog({
     if (!consultationType) next.consultationType = 'Please select who provided the consultation';
     if (!consultationDate) next.date = 'Please select date';
     if (!modeId) next.mode = 'Please select mode';
-    const notesLen = notes.trim().length;
+    const notesLen = getConsultationCharacterCount(notes);
     if (notesLen > NOTES_MAX) next.notes = `Maximum ${NOTES_MAX} characters allowed`;
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -113,7 +120,7 @@ export function NewConsultationDialog({
     !!consultationType &&
     !!consultationDate &&
     !!modeId &&
-    notes.trim().length <= NOTES_MAX;
+    getConsultationCharacterCount(notes) <= NOTES_MAX
 
   const handleAddConsultation = async () => {
     if (!clientId || !employeeId || !record) {
@@ -134,7 +141,7 @@ export function NewConsultationDialog({
         support_notes: notes.trim() || null,
       });
 
-      toast.success('Consultation added');
+      toast.success('Consultation was added successfully');
       onSuccess();
       onClose();
     } catch (e) {
@@ -211,7 +218,8 @@ export function NewConsultationDialog({
               <DatePicker
                 date={consultationDate}
                 onChange={setConsultationDate}
-                placeholderText="Pick a date"
+                disableFuture={!allowFutureDate}
+                placeholderText="select date"
               />
               {errors.date && (
                 <p className="text-sm text-red-500">{errors.date}</p>
@@ -249,15 +257,29 @@ export function NewConsultationDialog({
             <TextareaWithVoice
               id="notes"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                const currentCount = getConsultationCharacterCount(notes);
+                const newCount = getConsultationCharacterCount(value);
+
+                // allow deletion anytime
+                if (value.length < notes.length) {
+                  setNotes(value);
+                  return;
+                }
+
+                if (currentCount < NOTES_MAX && newCount <= NOTES_MAX) {
+                  setNotes(value);
+                }
+              }}
               placeholder="Enter consultation notes..."
               rows={5}
               disabled={saving}
               className={cn('resize-y min-h-[120px] bg-muted/30', errors.notes ? 'border-red-500' : '')}
-              maxLength={NOTES_MAX + 100}
             />
             <p className="text-xs text-muted-foreground">
-              {notes.trim().length > 0 ? `${notes.trim().length} / ${NOTES_MAX}. ` : ''}
+              {getConsultationCharacterCount(notes)} / {NOTES_MAX}. 
               No medical terms, plain text only. Max {NOTES_MAX} characters.
             </p>
             {errors.notes && (
