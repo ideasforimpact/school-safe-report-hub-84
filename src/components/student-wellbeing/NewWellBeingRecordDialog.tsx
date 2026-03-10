@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent,AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import {
   Select,
   SelectContent,
@@ -29,10 +24,17 @@ const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
 const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
 
-const CONCERN_MIN = 2;
+const CONCERN_MIN = 5;
 const CONCERN_MAX = 2000;
 const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
+// Control future date selection from here
+const allowFutureDate=false;
 
+const CharacterCount = (text: string) => {
+  const trimmed = text.trim();
+  const matches = trimmed.match(/[^\s]/g); 
+  return matches ? matches.length : 0;
+};
 export interface NewWellBeingRecordDialogProps {
   open: boolean;
   onClose: () => void;
@@ -91,7 +93,7 @@ export function NewWellBeingRecordDialog({
     if (!student) next.student = 'Please select a student';
     if (!typeOfConcernId) next.typeOfConcern = 'Please select type of concern';
     if (!dateOfObservation) next.date = 'Please select date of observation';
-    const len = concern.trim().length;
+    const len = CharacterCount(concern);
     if (len < CONCERN_MIN) next.concern = `At least ${CONCERN_MIN} characters required`;
     else if (len > CONCERN_MAX) next.concern = `Maximum ${CONCERN_MAX} characters allowed`;
     else if (!CONCERN_NO_SPECIAL.test(concern)) next.concern = 'Special characters are not allowed';
@@ -104,8 +106,8 @@ export function NewWellBeingRecordDialog({
     !!typeOfConcernId &&
     !!dateOfObservation &&
     concern.trim().length >= CONCERN_MIN &&
-    concern.trim().length <= CONCERN_MAX &&
-    CONCERN_NO_SPECIAL.test(concern);
+    concern.trim().length <= CONCERN_MAX ;
+    
 
   const handleSave = async () => {
     if (!clientId || !employeeId) {
@@ -183,12 +185,12 @@ export function NewWellBeingRecordDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>New Well-Being Record</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
+    <AlertDialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <AlertDialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar">
+        <AlertDialogHeader className="flex-shrink-0">
+          <AlertDialogTitle>New Well-Being Record</AlertDialogTitle>
+        </AlertDialogHeader>
+        <div className="flex-1 grid gap-4 py-4 pr-2">
           {apiError && (
             <Alert variant="destructive" className="flex-shrink-0">
               <AlertCircle className="h-4 w-4" />
@@ -237,6 +239,7 @@ export function NewWellBeingRecordDialog({
             <DatePicker
               date={dateOfObservation}
               onChange={setDateOfObservation}
+              disableFuture={!allowFutureDate}
               placeholderText="Select date"
             />
             {errors.date && (
@@ -246,18 +249,32 @@ export function NewWellBeingRecordDialog({
 
           <div className="grid gap-2">
             <Label htmlFor="concern">Brief Concern Description <span className="text-red-500">*</span></Label>
-            <Textarea
+            <TextareaWithVoice
               id="concern"
               value={concern}
-              onChange={(e) => setConcern(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const currentCount = CharacterCount(concern);
+                const newCount = CharacterCount(value);
+
+                // Allow deletion anytime
+                if (value.length < concern.length) {
+                  setConcern(value);
+                  return;
+                }
+
+                // Allow typing only if counted characters < max
+                if (currentCount < CONCERN_MAX && newCount <= CONCERN_MAX) {
+                  setConcern(value);
+                }
+              }}
               placeholder="Use simple, non-judgmental language"
               rows={4}
               disabled={saving}
               className={`resize-y min-h-[80px] ${errors.concern ? 'border-red-500' : ''}`}
-              maxLength={CONCERN_MAX + 100}
             />
             <p className="text-xs text-gray-500">
-              {concern.trim().length} / {CONCERN_MAX}
+              {CharacterCount(concern)} / {CONCERN_MAX}
             </p>
             {errors.concern && (
               <p className="text-sm text-red-500">{errors.concern}</p>
@@ -296,7 +313,7 @@ export function NewWellBeingRecordDialog({
             Save Record
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

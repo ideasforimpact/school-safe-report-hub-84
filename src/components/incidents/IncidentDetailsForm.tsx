@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
@@ -223,7 +223,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           <Label htmlFor="description" className="text-sm font-medium text-gray-700">
             Description <span className="text-red-500">*</span>
           </Label>
-          <Textarea
+          <TextareaWithVoice
             name="description"
             value={formData.description}
             onChange={onChange}
@@ -233,7 +233,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
             maxLength={DESCRIPTION_MAX_LENGTH}
           />
           <p className="text-xs text-gray-500 text-right">
-            {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
+            {(formData.description ?? '').length}/{DESCRIPTION_MAX_LENGTH} characters
           </p>
         </div>
 

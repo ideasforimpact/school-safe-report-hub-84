@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Paperclip, Eye, Download } from 'lucide-react';
@@ -65,7 +65,7 @@ const AnswerQuestionCard = ({ question, answer, index, onAnswerChange }: AnswerQ
                 <Label htmlFor={`comment-${question.id}`} className="text-sm text-gray-600">
                   Additional Comments (Optional)
                 </Label>
-                <Textarea
+                <TextareaWithVoice
                   id={`comment-${question.id}`}
                   value={answer?.comment || ''}
                   onChange={handleCommentChange}

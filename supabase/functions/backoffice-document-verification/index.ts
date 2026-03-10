@@ -22,7 +22,7 @@ interface VerifyBody {
   documentId: string;
   clientId: string;
   employeeId: string;
-  action: 'completed' | 'rejected';
+  action: 'completed' | 'rejected' | 'backoffice_manual_verify';
   comments: CommentEntry[] | string; // Support both old format (string) and new format (array)
   attachment?: {
     name: string;
@@ -41,7 +41,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = getSupabaseUrl();
     const supabaseServiceKey = getSupabaseServiceRoleKey();
-    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL') || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+    const storageBase = Deno.env.get('PUBLIC_STORAGE_BASE_URL');
     const normalizedBase = storageBase.replace(/\/$/, '');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -52,6 +52,81 @@ serve(async (req) => {
 
     if (!documentId || !clientId || !employeeId || !action) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Backoffice manual verify flow:
+    // - employee_documents.document_status_id => manual
+    // - employee_documents.verification_status => verified
+    // - employee_verification_audit_log.latest_status_code => 200
+    // - employee_verification_audit_log.is_verified_by_backoffice => 1
+    if (action === 'backoffice_manual_verify') {
+      // 1) Validate document belongs to employee
+      const { data: doc, error: docErr } = await supabase
+        .from('employee_documents')
+        .select('id, employee_id')
+        .eq('id', documentId)
+        .eq('employee_id', employeeId)
+        .single();
+
+      if (docErr || !doc) {
+        return new Response(JSON.stringify({ error: 'Document not found or access denied' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // 2) Validate employee belongs to client
+      const { data: emp, error: empErr } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .eq('client_id', clientId)
+        .single();
+      if (empErr || !emp) {
+        return new Response(JSON.stringify({ error: 'Employee does not belong to client' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // 3) Resolve manual status id from document_status
+      const { data: manualStatus, error: manualStatusErr } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', 'manual')
+        .single();
+
+      if (manualStatusErr || !manualStatus) {
+        return new Response(JSON.stringify({ error: 'manual status not found' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // 4) Update employee document
+      const { data: updatedDoc, error: updateDocErr } = await supabase
+        .from('employee_documents')
+        .update({
+          document_status_id: manualStatus.id,
+          verification_status: 'verified',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', documentId)
+        .select()
+        .single();
+
+      if (updateDocErr) {
+        return new Response(JSON.stringify({ error: `Failed to update document: ${updateDocErr.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // 5) Upsert audit log
+      const { error: auditErr } = await supabase
+      .from('employee_verification_audit_log')
+      .update({
+        provider: 'backoffice',
+        // latest_status_code: 200,
+        is_verified_by_backoffice: 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('employee_id', employeeId)
+      .eq('document_id', documentId);
+
+      if (auditErr) {
+        return new Response(JSON.stringify({ error: `Failed to update audit log: ${auditErr.message}` }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({ success: true, document: updatedDoc }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Normalize comments to array format (support backward compatibility)

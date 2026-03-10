@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -85,6 +85,13 @@ const ComplianceDocumentsPage: React.FC = () => {
     folder_id: string;
     name: string;
   } | null>(null);
+
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm?.trim() ? 'search' : '',
+    statusFilter !== 'all' ? 'status' : '',
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
    const clearAllFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
@@ -1213,14 +1220,16 @@ const ComplianceDocumentsPage: React.FC = () => {
                   <SelectItem value="expired">Invalid</SelectItem>
                 </SelectContent>
               </Select>
+              {hasActiveFilters && (
                <Button
                 variant="outline"
                 onClick={clearAllFilters}
                 className="flex items-center gap-2"
               >
-                <Filter className="h-4 w-4" />
-                Clear Filters
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
               </Button>
+              )}
             </div>
           {/* Error Message Alert */}
           {uploadError && (
@@ -1610,29 +1619,25 @@ const ComplianceDocumentsPage: React.FC = () => {
 
             {validityMode === "date" && (
               <div>
-
-                <div className="flex flex-col mt-4 items-center justify-center ">
-                  <Calendar
-                  className='border-2 rounded-sm '
-                    mode="single"
-                    selected={validityDate}
-                    onSelect={(date) => setValidityDate(date)}
-                    disabled={(date) => {
-                      const today = new Date();
-                      const startOfToday = new Date(
-                        today.getFullYear(),
-                        today.getMonth(),
-                        today.getDate()
+                <div className="flex flex-col mt-4 items-center justify-center">
+                  <Input
+                    type="date"
+                    value={
+                      validityDate
+                        ? validityDate.toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setValidityDate(
+                        value ? new Date(value) : undefined
                       );
-                      return date < startOfToday; 
                     }}
-                     classNames={{
-                        day_selected: "bg-secondary text-white",
-                      }}
-                    initialFocus
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-[250px]"
                   />
                 </div>
-                
+
                 <p className="text-md mt-3 text-center text-muted-foreground">
                   {validityDate
                     ? `Selected date: ${formatDisplayDate(validityDate)}`

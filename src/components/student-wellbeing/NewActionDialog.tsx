@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Zap, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ import {
 
 const DESCRIPTION_MIN = 3;
 const DESCRIPTION_MAX = 2000;
-
+const allowFutureDate = false;
 export interface NewActionDialogProps {
   open: boolean;
   onClose: () => void;
@@ -50,10 +50,10 @@ export function NewActionDialog({
     }
   }, [open]);
 
-  const descLen = description.trim().length;
+  const descLen = description.trim().replace(/ /g, '').length;
   const descriptionValid = descLen >= DESCRIPTION_MIN && descLen <= DESCRIPTION_MAX;
   const isFormValid = !!takenDate && descriptionValid;
-
+  
   const handleAddAction = async () => {
     if (!clientId || !employeeId || !record) {
       toast.error('Missing client, employee, or record context');
@@ -78,7 +78,7 @@ export function NewActionDialog({
         taken_date: takenDate.toISOString().slice(0, 10),
         description: description.trim(),
       });
-      toast.success('Action added');
+      toast.success('Action was added successfully');
       onSuccess();
       onClose();
     } catch (e) {
@@ -111,6 +111,7 @@ export function NewActionDialog({
             <DatePicker
               date={takenDate}
               onChange={setTakenDate}
+              disableFuture={!allowFutureDate}
               placeholderText="Pick a date"
             />
             {errors.date && (
@@ -121,18 +122,22 @@ export function NewActionDialog({
             <Label htmlFor="action-desc" className="text-sm font-medium">
               Action Description <span className="text-red-500">*</span>
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id="action-desc"
               value={description}
               onChange={(e) => {
-                setDescription(e.target.value);
-                setErrors((e) => ({ ...e, description: '' }));
+                const value = e.target.value;
+                const newLen = value.trim().replace(/ /g, '').length;
+                if (newLen <= DESCRIPTION_MAX) {
+                  setDescription(value);
+                  setErrors((e) => ({ ...e, description: '' }));
+                }
               }}
               placeholder="e.g., Parent meeting, Counseling session, Academic adjustment, Referral"
               rows={5}
               disabled={saving}
               className={`resize-y min-h-[120px] bg-muted/30 ${errors.description ? 'border-red-500' : ''}`}
-              maxLength={DESCRIPTION_MAX + 100}
+              // maxLength={DESCRIPTION_MAX}
             />
             <p className="text-xs text-muted-foreground">
               {descLen} / {DESCRIPTION_MAX} (min {DESCRIPTION_MIN} characters)

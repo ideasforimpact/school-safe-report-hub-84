@@ -1,13 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent,AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import {
   Select,
   SelectContent,
@@ -28,14 +23,19 @@ import {
   updateStudentWellbeingRecord,
   type StudentWellbeingRecord,
 } from '@/services/student-wellbeing/studentWellbeingService';
-
+//  Control future date selection from here
+const allowFutureDate = false;
 const CONCERN_MIN = 2;
 const CONCERN_MAX = 2000;
 const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
 const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
-
+const CharacterCount = (text: string) => {
+  const trimmed = text.trim();
+  const matches = trimmed.match(/[^\s]/g); 
+  return matches ? matches.length : 0;
+};
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
   { value: 'under_observation', label: 'Under Observation' },
@@ -129,7 +129,7 @@ export function EditWellBeingRecordDialog({
     if (!student) next.student = 'Please select a student';
     if (!typeOfConcernId) next.typeOfConcern = 'Please select type of concern';
     if (!dateOfObservation) next.date = 'Please select date of observation';
-    const len = concern.trim().length;
+    const len = CharacterCount(concern);
     if (len < CONCERN_MIN) next.concern = `At least ${CONCERN_MIN} characters required`;
     else if (len > CONCERN_MAX) next.concern = `Maximum ${CONCERN_MAX} characters allowed`;
     else if (!CONCERN_NO_SPECIAL.test(concern)) next.concern = 'Special characters are not allowed';
@@ -167,7 +167,7 @@ export function EditWellBeingRecordDialog({
         attachments: attachmentsPayload,
       });
 
-      toast.success('Record updated');
+      toast.success('Record was updated successfully');
       setErrors({});
       onSuccess();
       onClose();
@@ -187,14 +187,14 @@ export function EditWellBeingRecordDialog({
   if (!record) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Edit Well-Being Record</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
+    <AlertDialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <AlertDialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar">
+        <AlertDialogHeader className="flex-shrink-0">
+          <AlertDialogTitle>Edit Well-Being Record</AlertDialogTitle>
+        </AlertDialogHeader>
+        <div className="flex-1 overflow grid gap-4 py-4 pr-2 ">
           <div className="grid gap-2">
-            <Label htmlFor="student">Student</Label>
+            <Label htmlFor="student">Student <span className="text-red-500">*</span></Label>
             <StudentSearchSelect
               value={student}
               onChange={setStudent}
@@ -208,7 +208,7 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="typeOfConcern">Type of Concern</Label>
+            <Label htmlFor="typeOfConcern">Type of Concern <span className="text-red-500">*</span></Label>            
             <Select
               value={typeOfConcernId}
               onValueChange={setTypeOfConcernId}
@@ -231,11 +231,12 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Date of Observation</Label>
+            <Label>Date of Observation <span className="text-red-500">*</span></Label>
             <DatePicker
               date={dateOfObservation}
               onChange={setDateOfObservation}
-              placeholderText="Select date"
+              disableFuture={!allowFutureDate}
+              placeholderText="Select date"              
             />
             {errors.date && (
               <p className="text-sm text-red-500">{errors.date}</p>
@@ -243,19 +244,33 @@ export function EditWellBeingRecordDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="concern">Brief Concern Description</Label>
+            <Label htmlFor="concern">Brief Concern Description <span className="text-red-500">*</span></Label>
             <Textarea
               id="concern"
               value={concern}
-              onChange={(e) => setConcern(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const currentCount = CharacterCount(concern);
+                const newCount = CharacterCount(value);
+
+                // Allow deletion anytime
+                if (value.length < concern.length) {
+                  setConcern(value);
+                  return;
+                }
+
+                // Allow typing only if counted characters < max
+                if (currentCount < CONCERN_MAX && newCount <= CONCERN_MAX) {
+                  setConcern(value);
+                }
+              }}
               placeholder="Use simple, non-judgmental language"
               rows={4}
               disabled={saving}
               className={`resize-y min-h-[80px] ${errors.concern ? 'border-red-500' : ''}`}
-              maxLength={CONCERN_MAX + 100}
             />
             <p className="text-xs text-gray-500">
-              {concern.trim().length} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
+              {CharacterCount(concern)} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
             </p>
             {errors.concern && (
               <p className="text-sm text-red-500">{errors.concern}</p>
@@ -344,7 +359,7 @@ export function EditWellBeingRecordDialog({
             Update Record
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

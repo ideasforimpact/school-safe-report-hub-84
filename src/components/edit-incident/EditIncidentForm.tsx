@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -811,7 +811,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               <Label htmlFor="description" className="text-sm font-medium text-gray-700">
                 Description <span className="text-red-500">*</span>
               </Label>
-              <Textarea
+              <TextareaWithVoice
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
@@ -820,8 +820,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                 required
                 maxLength={DESCRIPTION_MAX_LENGTH}
               />
-               <p className="text-xs text-gray-500 text-right">
-                {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
+              <p className="text-xs text-gray-500 text-right">
+                {(formData.description ?? '').length}/{DESCRIPTION_MAX_LENGTH} characters
               </p>
             </div>
 

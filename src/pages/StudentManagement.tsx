@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch, FileUp, Search, RefreshCw } from 'lucide-react';
+import { PlusCircle, UserSearch, FileUp, Search, RefreshCw, X } from 'lucide-react';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
@@ -506,6 +506,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                   onClick={clearAllFilters}
                   className="text-gray-600 h-10"
                 >
+                  <X className="h-4 w-4 mr-1" />
                   Clear Filters ({activeFiltersCount})
                 </Button>
               )}

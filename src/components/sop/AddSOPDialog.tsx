@@ -7,7 +7,7 @@ from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import {
   Select,
   SelectContent,
@@ -432,10 +432,10 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
             <Label htmlFor="description">
               Description <span className="text-red-500">*</span>
             </Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => {
+<TextareaWithVoice
+            id="description"
+            value={description}
+            onChange={(e) => {
                 const value = e.target.value;
                 // Allow only alphanumeric, spaces, and basic punctuation
                 if (value === '' || /^[a-zA-Z0-9\s\-_.,'()]*$/.test(value)) {
@@ -533,7 +533,7 @@ const AddSOPDialog: React.FC<AddSOPDialogProps> = ({ open, onOpenChange, onSucce
           {/* Important Notes */}
           <div className="space-y-2">
             <Label htmlFor="importantNotes">Important Notes (Optional)</Label>
-            <Textarea
+            <TextareaWithVoice
               id="importantNotes"
               value={importantNotes}
               onChange={(e) => setImportantNotes(e.target.value)}

@@ -10,6 +10,7 @@ import DocumentReUploadDialog from './DocumentReUploadDialog';
 import DocumentVerificationDialog from './DocumentVerificationDialog';
 import DocumentCommentsDialog from '../../employee-verification/DocumentCommentsDialog';
 import { backofficeDocumentService } from '@/services/employee/backofficeDocumentService';
+import BackofficeVerificationDialog from './BackofficeVerificationDialog';
 
 interface BackofficeDocumentCardProps {
   document: VerificationDocument;
@@ -30,6 +31,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
   const [reUploadDialogOpen, setReUploadDialogOpen] = useState(false);
   const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
+  const [backofficeVerificationDialogOpen, setBackofficeVerificationDialogOpen] = useState(false);
+  const [isBackofficeVerifying, setIsBackofficeVerifying] = useState(false);
   const { toast } = useToast();
 
   // Get the client ID - try both field names for compatibility
@@ -75,14 +78,58 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     ).join(' ');
   };
 
-  const handleDownload = () => {
-    if (document.documentImage) {
+  const getExtensionFromUrl = (url: string): string | null => {
+    try {
+      const parsed = new URL(url);
+      const fileName = parsed.pathname.split('/').pop() || '';
+      const cleanFileName = fileName.split('?')[0].split('#')[0];
+      const extension = cleanFileName.includes('.') ? cleanFileName.split('.').pop() : null;
+      return extension ? extension.toLowerCase() : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getExtensionFromMime = (mimeType?: string): string => {
+    const mime = (mimeType || '').toLowerCase();
+    if (mime.includes('pdf')) return 'pdf';
+    if (mime.includes('png')) return 'png';
+    if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+    if (mime.includes('webp')) return 'webp';
+    return 'jpg';
+  };
+
+  const handleDownload = async () => {
+    if (!document.documentImage) return;
+
+    try {
+      const response = await fetch(document.documentImage);
+      if (!response.ok) throw new Error('Failed to fetch document file');
+
+      const blob = await response.blob();
+      const urlExtension = getExtensionFromUrl(document.documentImage);
+      const mimeExtension = getExtensionFromMime(blob.type);
+      const extension = urlExtension || mimeExtension;
+
+      const safeEmployeeName = (employee.name || 'employee').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeDocType = (documentTypeName || 'document').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `${safeEmployeeName}_${safeDocType}_${document.id}.${extension}`;
+
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = window.document.createElement('a');
-      link.href = document.documentImage;
-      link.download = `${employee.name}_${documentTypeName}_${document.id}.jpg`;
+      link.href = blobUrl;
+      link.download = fileName;
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Unable to download this document. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -105,6 +152,10 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   const handleVerify = () => {
     console.log('BackofficeDocumentCard - Verify button clicked for document:', document.id);
+    if (isBackofficeEligibleType) {
+      setBackofficeVerificationDialogOpen(true);
+      return;
+    }
     setVerificationDialogOpen(true);
   };
 
@@ -156,6 +207,24 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
 
   // Check if this is a "Manual" document type with verification history
   const showCommentsIcon = document.documentTypeName.toLowerCase() === 'manual' && hasVerificationHistory();
+  const normalizedDocumentTypeName = (document.documentTypeName || documentTypeName || '').toLowerCase();
+  const isManualDocument = normalizedDocumentTypeName === 'manual';
+  const backofficeEligibleTypes = new Set([
+    'passport',
+    'pan',
+    'aadhar',
+    'driving_license',
+    'voter_id'
+  ]);
+  const isBackofficeEligibleType = backofficeEligibleTypes.has(normalizedDocumentTypeName);
+  
+  // For backoffice-eligible docs, API failure should be treated as in-progress even when verification_status is pending
+  const effectiveVerificationStatus: VerificationDocument['verificationStatus'] =
+    isBackofficeEligibleType &&
+    document.apiVerificationStatus === 'failed' &&
+    document.verificationStatus === 'pending'
+      ? 'in-progress'
+      : document.verificationStatus;
 
   const handleCommentsClick = () => {
     console.log('BackofficeDocumentCard - Comments button clicked for document:', document.id);
@@ -167,17 +236,13 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
     });
   };
 
-  // Check if this is a "Manual" document with "in-progress" status
-  const isManualInProgress = document.documentTypeName.toLowerCase() === 'manual' && document.verificationStatus === 'in-progress';
+  // Verify action:
+  // - Manual: only when in-progress (existing behavior)
+  // - Backoffice-eligible docs: allow verify when not already finalized
+  const canVerifyDocument =
+    (isManualDocument && effectiveVerificationStatus === 'in-progress') ||
+    (isBackofficeEligibleType && !['verified', 'completed'].includes(effectiveVerificationStatus));
   
-  console.log('BackofficeDocumentCard - Button conditions:', {
-    isManualInProgress,
-    documentTypeName: documentTypeName.toLowerCase(),
-    verificationStatus: document.verificationStatus,
-    hasDocumentImage: !!document.documentImage,
-    hasClientId: !!clientId,
-    document:document
-  });
 
   return (
     <>
@@ -191,7 +256,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                   <h3 className="font-semibold text-lg">
                     {formatDocumentTypeName(documentTypeName)}
                   </h3>
-                  {getStatusBadge(document.verificationStatus)}
+                  {getStatusBadge(effectiveVerificationStatus)}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
@@ -297,8 +362,8 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
                 </Button>
               )}
               
-              {/* Verify button - only for "Manual" documents with "in-progress" status */}
-              {isManualInProgress && clientId && (
+              {/* Verify button - for Manual/Passport documents with in-progress status */}
+              {canVerifyDocument && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -311,7 +376,7 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
               )}
               
               {/* Re-upload button - only for "Manual" document types with documentImage and clientId */}
-              {document.documentTypeName.toLowerCase() === 'manual' && document.documentImage && clientId && (
+              {isManualDocument && document.documentImage && clientId && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -409,6 +474,52 @@ const BackofficeDocumentCard: React.FC<BackofficeDocumentCardProps> = ({
         employee={employee}
         mode="backoffice"
         onCommentsUpdated={onRefresh}
+      />
+
+      {/* Backoffice verify dialog for audit-rule documents */}
+      <BackofficeVerificationDialog
+        open={backofficeVerificationDialogOpen}
+        onOpenChange={setBackofficeVerificationDialogOpen}
+        title={`${formatDocumentTypeName(documentTypeName)} Verification`}
+        description="Review the details and proceed with your backoffice verification action."
+        verifyLabel="Verify"
+        isVerifying={isBackofficeVerifying}
+        onVerify={async () => {
+          if (!clientId) {
+            toast({
+              title: 'Verification Failed',
+              description: 'Client ID is missing.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          try {
+            setIsBackofficeVerifying(true);
+
+            await backofficeDocumentService.verifyByBackoffice({
+              documentId: document.id,
+              clientId,
+              employeeId: employee.id
+            });
+
+            toast({
+              title: 'Document Verified',
+              description: `${formatDocumentTypeName(documentTypeName)} verified successfully.`,
+            });
+
+            setBackofficeVerificationDialogOpen(false);
+            onRefresh();
+          } catch (error: any) {
+            toast({
+              title: 'Verification Failed',
+              description: error?.message || 'Failed to verify from backoffice.',
+              variant: 'destructive',
+            });
+          } finally {
+            setIsBackofficeVerifying(false);
+          }
+        }}
       />
     </>
   );

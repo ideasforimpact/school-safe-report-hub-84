@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users, X } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -979,6 +979,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   onClick={clearAllFilters}
                   className="text-gray-600 h-10"
                 >
+                  <X className="h-4 w-4" />
                   Clear Filters ({activeFiltersCount})
                 </Button>
               )}
@@ -1002,7 +1003,6 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               {filteredUsers && filteredUsers.length > 0 ? (
                 <UserList 
                   users={filteredUsers}
-                  cpdDomains={cpdDomains}
                   onEditClick={(user) => {
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
                     const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;

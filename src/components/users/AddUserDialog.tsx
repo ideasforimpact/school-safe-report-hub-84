@@ -382,6 +382,18 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     updateTags(nextTags);
     setTagError('');
   };
+  
+  const isValidJoiningDate = (date: string) => {
+    if (!date) return true; 
+
+    const selectedDate = new Date(date);
+    const year = selectedDate.getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    if (isNaN(selectedDate.getTime())) return false;
+
+    return year >= 1900 && year <= currentYear;
+  };
 
   // Check if form is valid for submission
   const isFormValid = () => {
@@ -406,6 +418,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH &&
       isValidEmployeeId(formData.employeeId) &&
       employeeIdValidation === 'available' &&
+      (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
+      
       !isLoading
     );
   };
@@ -639,10 +653,24 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 <Input
                   id="joiningDate"
                   type="date"
-                  // min={new Date().toISOString().split("T")[0]}
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                   value={formData.joiningDate || ''}
-                  onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, joiningDate: e.target.value })
+                  }
+                  className={
+                    formData.joiningDate && !isValidJoiningDate(formData.joiningDate)
+                      ? "border-red-500"
+                      : ""
+                  }
                 />
+
+                {formData.joiningDate && !isValidJoiningDate(formData.joiningDate) && (
+                  <p className="text-xs text-red-500">
+                    Please enter a valid joining date
+                  </p>
+                )}
               </div>
             </div>
 

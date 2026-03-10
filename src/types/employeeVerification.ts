@@ -101,6 +101,8 @@ export interface VerificationDocument {
   apiVerificationStatus?: 'pending' | 'completed' | 'failed' | null;
   apiVerificationDate?: string;
   apiVerificationMethod?: string;
+  bothFallback?: boolean;
+  latestStatusCode?: number | null;
   verifiedByEmployeeId?: string; // Track which employee verified this document
   documents_files?: Array<{
     fileName: string;
@@ -121,6 +123,7 @@ export interface VerificationDocument {
   lastOtpGenerated?: string; // Timestamp when OTP was last generated
   createdAt: string;
   updatedAt: string;
+  audit?: Record<string, any>;
 }
 
 export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'manual' | 'other_documents';

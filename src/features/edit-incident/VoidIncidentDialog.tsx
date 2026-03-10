@@ -11,7 +11,7 @@ import {
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 interface VoidIncidentDialogProps {
   open: boolean;
@@ -43,7 +43,7 @@ const VoidIncidentDialog: React.FC<VoidIncidentDialogProps> = ({
           <Label htmlFor="void-reason" className="text-sm font-medium">
             Reason for voiding (required)
           </Label>
-          <Textarea
+          <TextareaWithVoice
             id="void-reason"
             value={voidReason}
             onChange={(e) => onVoidReasonChange(e.target.value)}

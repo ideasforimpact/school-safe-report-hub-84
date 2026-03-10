@@ -36,10 +36,17 @@ const FilterBar: React.FC<FilterBarProps> = ({
   departments,
   totalCount
 }) => {
- const hasActiveFilters =
-    searchTerm ||
-    documentStatusFilter !== 'all' ||
-    documentTypeFilter !== 'all' || departmentFilter !== 'all';
+ const activeFilterCount = [
+    searchTerm,
+    documentStatusFilter !== 'all' ? documentStatusFilter : '',
+    documentTypeFilter !== 'all' ? documentTypeFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   return (
     <div className="space-y-4 mb-6">
@@ -74,7 +81,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             className="flex items-center gap-1"
           >
             <X className="h-4 w-4" />
-            Clear Filters
+            Clear Filters ({activeFilterCount})
           </Button>
         )}
       </div>

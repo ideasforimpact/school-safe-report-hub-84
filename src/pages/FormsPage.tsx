@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarIcon } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { FileItem } from '@/types/fileTypes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -368,7 +368,20 @@ const FormsPage = () => {
     setDateTo(undefined);
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || formTypeFilter !== 'all' || dateFrom || dateTo;
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    formTypeFilter !== 'all' ? formTypeFilter : '',
+    dateFrom,
+    dateTo
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const handleAcknowledgeSubmission = async () => {
     if (!acknowledgeSubmission) {
@@ -793,7 +806,7 @@ const Content = (
             {hasActiveFilters && (
               <Button variant="outline" size="sm" onClick={clearAllFilters}>
                 <X className="h-4 w-4 mr-1" />
-                Clear Filters
+                Clear Filters ({activeFilterCount})
               </Button>
             )}
           </div>
@@ -1189,7 +1202,7 @@ const Content = (
                         <label className="text-sm font-medium">
                           Comment <span className="text-gray-500 text-xs font-normal">(Optional)</span>
                         </label>
-                        <Textarea
+                        <TextareaWithVoice
                           placeholder="Enter comment (optional)"
                           value={acknowledgeComment}
                           onChange={(e) => setAcknowledgeComment(e.target.value)}

@@ -4,7 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { TextareaWithVoice } from "@/components/ui/textarea-with-voice";
 import { HelpCircle, Mail, PhoneCall, MessageSquare } from "lucide-react";
 
 const faqs = [
@@ -134,7 +134,7 @@ const Support = () => {
                 <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
                   Message
                 </label>
-                <Textarea id="message" placeholder="How can we help you?" rows={5} />
+                <TextareaWithVoice id="message" placeholder="How can we help you?" rows={5} />
               </div>
               <div className="text-center">
                 <Button className="px-8">Submit Request</Button>
