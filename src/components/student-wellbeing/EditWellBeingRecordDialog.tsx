@@ -31,7 +31,11 @@ const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
 const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
-
+const CharacterCount = (text: string) => {
+  const trimmed = text.trim();
+  const matches = trimmed.match(/[^\s]/g); 
+  return matches ? matches.length : 0;
+};
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
   { value: 'under_observation', label: 'Under Observation' },
@@ -125,7 +129,7 @@ export function EditWellBeingRecordDialog({
     if (!student) next.student = 'Please select a student';
     if (!typeOfConcernId) next.typeOfConcern = 'Please select type of concern';
     if (!dateOfObservation) next.date = 'Please select date of observation';
-    const len = concern.trim().length;
+    const len = CharacterCount(concern);
     if (len < CONCERN_MIN) next.concern = `At least ${CONCERN_MIN} characters required`;
     else if (len > CONCERN_MAX) next.concern = `Maximum ${CONCERN_MAX} characters allowed`;
     else if (!CONCERN_NO_SPECIAL.test(concern)) next.concern = 'Special characters are not allowed';
@@ -244,15 +248,29 @@ export function EditWellBeingRecordDialog({
             <Textarea
               id="concern"
               value={concern}
-              onChange={(e) => setConcern(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const currentCount = CharacterCount(concern);
+                const newCount = CharacterCount(value);
+
+                // Allow deletion anytime
+                if (value.length < concern.length) {
+                  setConcern(value);
+                  return;
+                }
+
+                // Allow typing only if counted characters < max
+                if (currentCount < CONCERN_MAX && newCount <= CONCERN_MAX) {
+                  setConcern(value);
+                }
+              }}
               placeholder="Use simple, non-judgmental language"
               rows={4}
               disabled={saving}
               className={`resize-y min-h-[80px] ${errors.concern ? 'border-red-500' : ''}`}
-              maxLength={CONCERN_MAX}
             />
             <p className="text-xs text-gray-500">
-              {concern.length} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
+              {CharacterCount(concern)} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
             </p>
             {errors.concern && (
               <p className="text-sm text-red-500">{errors.concern}</p>
