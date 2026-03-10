@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Input } from '@/components/ui/input';
 
 interface IncidentDescriptionSectionProps {
@@ -22,7 +22,7 @@ const IncidentDescriptionSection: React.FC<IncidentDescriptionSectionProps> = ({
         <label htmlFor="description" className="text-sm font-medium block">
           Description*
         </label>
-        <Textarea
+        <TextareaWithVoice
           id="description"
           name="description"
           value={description}
@@ -39,7 +39,7 @@ const IncidentDescriptionSection: React.FC<IncidentDescriptionSectionProps> = ({
         <label htmlFor="rootCause" className="text-sm font-medium block">
           Root Cause (if known)
         </label>
-        <Textarea
+        <TextareaWithVoice
           id="rootCause"
           name="rootCause"
           value={rootCause}

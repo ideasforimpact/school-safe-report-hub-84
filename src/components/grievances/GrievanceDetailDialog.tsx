@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { toast } from '@/hooks/use-toast';
 import { SubmissionStatus } from '@/contexts/grievances/types';
@@ -171,7 +171,7 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
               <div className="border-t pt-4">
                 <h3 className="font-medium mb-2">Add Internal Note</h3>
                 <div className="space-y-2">
-                  <Textarea
+                  <TextareaWithVoice
                     placeholder="Add notes for internal use only"
                     value={internalNote}
                     onChange={(e) => setInternalNote(e.target.value)}

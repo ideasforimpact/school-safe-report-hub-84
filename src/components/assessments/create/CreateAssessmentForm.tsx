@@ -4,7 +4,7 @@ import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -479,7 +479,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                 Description
               </Label>
 
-              <Textarea
+              <TextareaWithVoice
                 id="description"
                 value={formData.description}
                 onChange={e =>

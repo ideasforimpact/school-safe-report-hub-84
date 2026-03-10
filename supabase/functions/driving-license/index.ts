@@ -168,7 +168,7 @@ serve(async (req) => {
       .select('id')
       .eq('name', 'manual')
       .single();
-    
+
     if (manualError) {
       console.error("Error fetching manual status:", manualError);
       return new Response(
@@ -176,10 +176,25 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { data: inProgressStatus, error: inProgressError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+
+    if (inProgressError) {
+      console.error("Error fetching in-progress status:", inProgressError);
+      return new Response(
+        JSON.stringify({ error: "Could not find in-progress status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const governanceStatusId = governanceStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
     const manualStatusId = manualStatus?.id;
+    const inProgressStatusId = inProgressStatus?.id;
     
     console.log("Status IDs found:", {
       governanceStatusId,
@@ -389,39 +404,67 @@ serve(async (req) => {
           );
         }
 
-        // 3) Both primary and fallback failed: log error with bothFallback true
+        // 3) Both primary and fallback failed: in-progress only when message does NOT match known patterns
         const apiResponse = fallbackResult.data;
         const rawApiResponse = fallbackResult.rawApiResponse;
+        const IN_PROGRESS_MSG = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
         let userFriendlyError = "Driving License verification failed";
         let errorCode = "DL_VERIFICATION_FAILED";
+        let error_key: string | undefined;
+        let isKnownError = false;
+
         if (apiResponse?.message) {
           const message = apiResponse.message.toLowerCase();
           if (message.includes('invalid driving') || message.includes('not found in rto')) {
             userFriendlyError = "This Driving License number is not found in RTO records";
             errorCode = "DL_INVALID";
+            isKnownError = true;
           } else if (message.includes('expired')) {
             userFriendlyError = "This Driving License has expired";
             errorCode = "DL_EXPIRED";
+            isKnownError = true;
           } else if (message.includes('dob') || message.includes('date of birth')) {
             userFriendlyError = "Date of birth doesn't match with Driving License records";
             errorCode = "DL_DOB_MISMATCH";
+            isKnownError = true;
           } else if (message.includes('format') || message.includes('pattern')) {
             userFriendlyError = "Please enter a valid Driving License number";
             errorCode = "DL_INVALID_FORMAT";
+            isKnownError = true;
           }
         }
+
         const fallbackFailureEntry = {
           timestamp: new Date().toISOString(),
           action: "verify_driving_license_api_failed",
           response: apiResponse
         };
-        await supabase
-          .from('employee_documents')
-          .update({
-            employee_docs_log: [...logsWithPrimaryFailure, fallbackFailureEntry],
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', documentId);
+
+        if (!isKnownError) {
+          userFriendlyError = IN_PROGRESS_MSG;
+          error_key = "in-progress";
+          await supabase
+            .from('employee_documents')
+            .update({
+              employee_docs_log: [...logsWithPrimaryFailure, fallbackFailureEntry],
+              verification_status: 'in-progress',
+              document_status_id: inProgressStatusId,
+              api_verification_status: 'failed',
+              api_verification_method: 'api',
+              api_verification_date: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+        } else {
+          await supabase
+            .from('employee_documents')
+            .update({
+              employee_docs_log: [...logsWithPrimaryFailure, fallbackFailureEntry],
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+        }
+
         const bothFallback = apiResponse?.success === false;
         await logVerificationError(supabase, {
           employeeId,
@@ -445,7 +488,8 @@ serve(async (req) => {
             message: userFriendlyError,
             requiresReview: true,
             bothFallback,
-            apiResponse
+            apiResponse,
+            ...(error_key !== undefined && { error_key })
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

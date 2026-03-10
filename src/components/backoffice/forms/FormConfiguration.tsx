@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { FormField, DEFAULT_GRIEVANCE_FIELDS } from '@/types/formTypes';
@@ -128,7 +128,7 @@ export const FormConfiguration: React.FC<FormConfigurationProps> = ({ onSave, on
           </div>
           <div>
             <Label>Description</Label>
-            <Textarea
+            <TextareaWithVoice
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter form description"

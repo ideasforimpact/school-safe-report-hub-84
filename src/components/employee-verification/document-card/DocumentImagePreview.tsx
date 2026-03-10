@@ -26,28 +26,28 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
       // If the URL already contains bucket structure, extract just the file path
       if (url.includes('employee_other_documents/')) {
         filePath = url.split('employee_other_documents/')[1] || url;
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL ;
         const normalizedBase = base.replace(/\/$/, '');
         return `${normalizedBase}/employee_other_documents/${filePath}`;
       }
       
       if (url.includes('employee_other_type_statement/')) {
         filePath = url.split('employee_other_type_statement/')[1] || url;
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL ;
         const normalizedBase = base.replace(/\/$/, '');
         return `${normalizedBase}/employee_other_type_statement/${filePath}`;
       }
       
       if (url.includes('employee-documents/')) {
         filePath = url.split('employee-documents/')[1] || url;
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL ;
         const normalizedBase = base.replace(/\/$/, '');
         return `${normalizedBase}/employee-documents/${filePath}`;
       }
       
       // Check document type based on path indicators
       if (url.includes('bank_statement') || url.includes('court_case') || url.includes('police_verification') || url.includes('other_type')) {
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
         const normalizedBase = base.replace(/\/$/, '');
         return `${normalizedBase}/employee_other_type_statement/${filePath}`;
       }
@@ -56,14 +56,14 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
       // Custom documents are stored with employee_id/document_type_id/timestamp_filename format
       if (url.includes('/') && url.split('/').length >= 3) {
         // This looks like a custom document path, use employee_other_documents bucket
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL ;
         const normalizedBase = base.replace(/\/$/, '');
         return `${normalizedBase}/employee_other_documents/${filePath}`;
       }
       
       // Default to employee-documents bucket for other documents
       {
-        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL ;
         const normalizedBase = base.replace(/\/$/, '');
         return `${normalizedBase}/employee-documents/${filePath}`;
       }
@@ -71,7 +71,7 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
     
     // For simple filenames without path, default to employee-documents
     {
-      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public';
+      const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
       const normalizedBase = base.replace(/\/$/, '');
       return `${normalizedBase}/employee-documents/${url}`;
     }

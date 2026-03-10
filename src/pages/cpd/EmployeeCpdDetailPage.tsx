@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { BookOpen, Edit2, Trash2, Loader2, ArrowLeft, PlusCircle, Paperclip, FileText, Download, X } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import type { FileItem } from '@/types/fileTypes';
 import { buildPublicStorageUrl } from '@/lib/utils';
@@ -346,7 +346,7 @@ const AddCpdEntryDialog: React.FC<AddDialogProps> = ({
             <Label htmlFor="cpd-what-learned-detail">
               What did you learn? (optional)
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id="cpd-what-learned-detail"
               value={cpdLearning}
               onChange={(e) => setCpdLearning(e.target.value)}
@@ -660,7 +660,7 @@ const EditCpdEntryDialog: React.FC<EditDialogProps> = ({
 
           <div className="space-y-1">
             <Label htmlFor="edit-what-learned">What did you learn? (optional)</Label>
-            <Textarea
+            <TextareaWithVoice
               id="edit-what-learned"
               value={cpdLearning}
               onChange={(e) => setCpdLearning(e.target.value)}

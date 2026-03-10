@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 interface RootCauseAnalysisProps {
   rootCause: string;
@@ -18,7 +18,7 @@ const RootCauseAnalysis: React.FC<RootCauseAnalysisProps> = ({
         Identify the fundamental reason this incident occurred
       </p>
       <div className="space-y-2">
-        <Textarea
+        <TextareaWithVoice
           value={rootCause}
           onChange={(e) => setRootCause(e.target.value)}
           placeholder="What was the primary cause of this incident?"

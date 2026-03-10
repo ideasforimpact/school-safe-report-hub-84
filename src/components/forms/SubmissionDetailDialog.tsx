@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, User, MessageSquare } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -243,7 +243,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
                 <Label htmlFor="acknowledgment-comment">
                   {submission.comments ? 'Edit Comment' : 'Add Comment'}
                 </Label>
-                <Textarea
+                <TextareaWithVoice
                   id="acknowledgment-comment"
                   placeholder={submission.comments ? "Edit your comment..." : "Enter your comment..."}
                   value={acknowledgmentComment}

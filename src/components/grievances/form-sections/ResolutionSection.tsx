@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { HelpCircle } from 'lucide-react';
 
 interface ResolutionSectionProps {
@@ -20,8 +20,8 @@ const ResolutionSection: React.FC<ResolutionSectionProps> = ({
         <Label htmlFor="resolution">What action or resolution do you expect?</Label>
       </div>
       <div>
-        <Textarea
-          id="resolution"
+<TextareaWithVoice
+        id="resolution"
           value={resolution}
           onChange={(e) => setResolution(e.target.value)}
           placeholder="Please describe the resolution you are seeking"

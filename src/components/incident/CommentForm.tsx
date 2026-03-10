@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Comment as IncidentComment, FileItem } from '@/types/incident';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
@@ -99,7 +99,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
             <label htmlFor="description" className="text-sm font-medium">
               Comment
             </label>
-            <Textarea
+            <TextareaWithVoice
               id="description"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}

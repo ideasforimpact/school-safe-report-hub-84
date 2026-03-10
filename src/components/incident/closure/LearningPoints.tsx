@@ -1,5 +1,5 @@
 import React from 'react';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 interface LearningPointsProps {
   learningPoints: string;
@@ -17,7 +17,7 @@ const LearningPoints: React.FC<LearningPointsProps> = ({
         Document key learnings and insights from this incident
       </p>
       <div className="space-y-2">
-        <Textarea
+        <TextareaWithVoice
           value={learningPoints}
           onChange={(e) => setLearningPoints(e.target.value)}
           placeholder="What can we learn from this incident to prevent similar issues in the future?"

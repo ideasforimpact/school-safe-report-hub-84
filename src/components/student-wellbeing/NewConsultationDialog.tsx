@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import {
   Select,
   SelectContent,
@@ -246,7 +246,7 @@ export function NewConsultationDialog({
             <Label htmlFor="notes" className="text-sm font-medium">
               Support / Consultation Notes <span className="text-muted-foreground font-normal">(optional)</span>
             </Label>
-            <Textarea
+            <TextareaWithVoice
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
