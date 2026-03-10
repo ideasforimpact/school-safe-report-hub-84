@@ -59,7 +59,7 @@ import { formatDate } from '@/lib/Dateformat';
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
   { value: 'open', label: 'Open' },
-  { value: 'under_observation', label: 'Under Observation' },
+  { value: 'under_observation', label: 'Under Observation Cases' },
   { value: 'closed', label: 'Closed' },
 ] as const;
 
@@ -113,6 +113,9 @@ function getAcademicYearForDate(dateInput: string | Date | null | undefined): st
 }
 
 function formatStatus(status: string): string {
+  if (status === 'under_observation') {
+    return 'Under Observation Cases';
+  }
   return status
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -191,8 +194,8 @@ const StudentWellBeingPage = () => {
   }, [clientId, employeeData?.id, academicYearFilter]);
 
   useEffect(() => {
-    loadRecords();
-  }, [loadRecords]);
+      loadRecords();
+    }, [loadRecords]);
 
   const handleDeleteConfirm = async () => {
     if (!recordToDelete || !clientId || !employeeData?.id) return;
@@ -361,7 +364,7 @@ const StudentWellBeingPage = () => {
                 {/* Same spacing and count layout as SOP: mt-6, grid gap-6, text-sm label, text-3xl font-semibold count */}
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                   <div>
-                    <p className="text-sm text-gray-500">Students</p>
+                    <p className="text-sm text-gray-500">Number of Students</p>
                     <p className="text-3xl font-semibold text-gray-900 tabular-nums">{summary.studentsCount}</p>
                   </div>
                   <div>
@@ -379,7 +382,7 @@ const StudentWellBeingPage = () => {
                     <p className="text-3xl font-semibold text-green-600 tabular-nums">{summary.closed}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Under Observation</p>
+                    <p className="text-sm text-gray-500">Under Observation Cases</p>
                     <p className="text-3xl font-semibold text-blue-600 tabular-nums">{summary.underObservation}</p>
                   </div>
                 </div>
@@ -413,7 +416,7 @@ const StudentWellBeingPage = () => {
             <div className="relative flex-1 min-w-[200px] max-w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by student id, name or concern..."
+                placeholder="Search Student, Grade/Section, or Concern..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-10 border border-input rounded-md bg-background"
@@ -487,8 +490,8 @@ const StudentWellBeingPage = () => {
                     <TableHead className="text-left font-medium">Consultation</TableHead>
                     <TableHead className="text-left font-medium">Action Taken</TableHead>
                     <TableHead className="text-left font-medium">Status</TableHead>
-                    <TableHead className="text-left font-medium">Date</TableHead>
-                    <TableHead className="text-right font-medium">Actions</TableHead>
+                    <TableHead className="text-left font-medium">Created Date</TableHead>
+                    <TableHead className="text-right font-medium">Manage</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -614,6 +617,7 @@ const StudentWellBeingPage = () => {
                               New Consultation
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={row.status === "closed"}
                               onSelect={(e) => {
                                 e.preventDefault();
                                 setRecordForAction(row);
@@ -631,7 +635,7 @@ const StudentWellBeingPage = () => {
                               }}
                             >
                               <Calendar className="mr-2 h-4 w-4" />
-                              Next Follow-up Entry
+                              Next Follow-up Date
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
