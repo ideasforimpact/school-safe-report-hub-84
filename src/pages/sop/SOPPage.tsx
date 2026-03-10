@@ -378,6 +378,18 @@ const SOPPage = () => {
       fetchSOPs();
     },
   });
+
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    categoryFilter !== 'all' ? categoryFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
   const handleClearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
@@ -509,7 +521,7 @@ const SOPPage = () => {
                 className="h-10"
               >
                 <X className="h-4 w-4" />
-                Clear Filter
+                Clear Filter ({activeFilterCount})
               </Button>
             )}
           </div>

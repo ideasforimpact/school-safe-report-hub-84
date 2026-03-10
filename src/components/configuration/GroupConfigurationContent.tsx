@@ -151,6 +151,16 @@ const GroupConfigurationContent = () => {
 
     return filtered;
   }, [groups, searchTerm, statusFilter, groupTypeFilter]);
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    groupTypeFilter !== 'all' ? groupTypeFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
 
   const handleAddGroup = () => {
     setEditingGroup(null);
@@ -295,7 +305,7 @@ const GroupConfigurationContent = () => {
             }}
           >
             <X className="h-4 w-4" />
-            Clear Filter
+            Clear Filter ({activeFilterCount})
           </Button>
         )}
         </div>

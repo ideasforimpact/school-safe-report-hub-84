@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw, AlertCircle, Search, Users, X } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -939,6 +939,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   onClick={clearAllFilters}
                   className="text-gray-600 h-10"
                 >
+                  <X className="h-4 w-4" />
                   Clear Filters ({activeFiltersCount})
                 </Button>
               )}

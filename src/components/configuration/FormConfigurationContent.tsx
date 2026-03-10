@@ -106,6 +106,18 @@ const FormConfigurationContent = () => {
     img.src = url;
   };
 
+  // Active filter count
+  const activeFilterCount = [
+    search,
+    statusFilter !== 'all' ? statusFilter : '',
+    formTypeFilter !== 'all' ? formTypeFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+
   const filteredForms = React.useMemo(() => {
     const query = search.trim().toLowerCase();
     return (forms || []).filter(f => {
@@ -378,11 +390,11 @@ const FormConfigurationContent = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => { setSearch(''); setStatusFilter('all'); setFormTypeFilter('all'); }}
-                  className="text-sm text-blue-600"
+                  className="text-sm"
                   disabled={isPageLoading}
                 >
                   <X className="h-4 w-4" />
-                  Clear Filter
+                  Clear Filter ({activeFilterCount})
                 </Button>
               )}
             </div>

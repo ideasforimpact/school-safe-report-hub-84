@@ -368,7 +368,20 @@ const FormsPage = () => {
     setDateTo(undefined);
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || formTypeFilter !== 'all' || dateFrom || dateTo;
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    formTypeFilter !== 'all' ? formTypeFilter : '',
+    dateFrom,
+    dateTo
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const handleAcknowledgeSubmission = async () => {
     if (!acknowledgeSubmission) {
@@ -793,7 +806,7 @@ const Content = (
             {hasActiveFilters && (
               <Button variant="outline" size="sm" onClick={clearAllFilters}>
                 <X className="h-4 w-4 mr-1" />
-                Clear Filters
+                Clear Filters ({activeFilterCount})
               </Button>
             )}
           </div>

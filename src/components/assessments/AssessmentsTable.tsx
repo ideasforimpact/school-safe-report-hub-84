@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter, UserCheck } from 'lucide-react';
+import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter, UserCheck, X } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -66,6 +66,20 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     assignedTo: string | null;
     assigneeName: string;
   } | null>(null);
+
+  // Count active filters
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    createdByFilter !== 'all' ? createdByFilter : '',
+    assignedToFilter !== 'all' ? assignedToFilter : '',
+    targetDateFrom,
+    targetDateTo
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true; 
+  }).length;
 
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
@@ -574,8 +588,13 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                 onClick={clearAllFilters}
                 className="flex items-center gap-2"
               >
-                <Filter className="h-4 w-4" />
+                <X className="h-4 w-4" />
                 Clear Filters
+                {activeFilterCount > 0 && (
+                  <span >
+                    ({activeFilterCount})
+                  </span>
+                )}
               </Button>
             </div>
           </div>
