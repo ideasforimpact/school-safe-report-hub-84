@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle, AlertTriangle, RotateCcw, Clock } from 'lucide-react';
@@ -1093,7 +1093,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                             
                             <div className="space-y-2">
                               <Label htmlFor="rework-comments">Rework Comments (Optional)</Label>
-                              <Textarea
+                              <TextareaWithVoice
                                 id="rework-comments"
                                 placeholder="Enter any comments about why this assessment needs to be reworked..."
                                 value={reworkComments}
@@ -1149,7 +1149,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId, onAssessmentUp
                             
                             <div className="space-y-2">
                               <Label htmlFor="completion-comments">Completion Comments</Label>
-                              <Textarea
+                              <TextareaWithVoice
                                 id="completion-comments"
                                 placeholder="Enter any comments about the assessment completion..."
                                 value={completionComments}

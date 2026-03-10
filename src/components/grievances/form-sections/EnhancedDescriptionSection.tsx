@@ -2,7 +2,7 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { UseFormReturn } from 'react-hook-form';
 import { EnhancedGrievanceFormValues } from '../hooks/useEnhancedGrievanceForm';
 
@@ -23,7 +23,7 @@ const EnhancedDescriptionSection: React.FC<EnhancedDescriptionSectionProps> = ({
               <FormLabel className="text-sm font-medium">Description of your grievance</FormLabel>
             </div>
             <FormControl>
-              <Textarea
+              <TextareaWithVoice
                 placeholder="Please provide details about your grievance"
                 className="min-h-[150px] bg-gray-50 transition-colors focus:bg-white"
                 {...field}

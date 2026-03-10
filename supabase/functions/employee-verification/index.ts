@@ -46,6 +46,7 @@ function prepareQuickEKYCRequestOtpPayload(documentNumber: string, apiKey: strin
   };
 }
 
+
 /**
  * Prepare QuickEKYC Request OTP headers
  */
@@ -523,10 +524,25 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { data: inProgressStatus, error: inProgressError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+
+    if (inProgressError) {
+      console.error("Error fetching in-progress status:", inProgressError);
+      return new Response(
+        JSON.stringify({ error: "Could not find in-progress status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const governanceStatusId = governanceStatus?.id;
     const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
+    const inProgressStatusId = inProgressStatus?.id;
     
     console.log("Found status IDs:", {
       governance: governanceStatusId,
@@ -712,10 +728,10 @@ serve(async (req) => {
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
-      // Check if document has had an OTP generated recently
+      // Check if document has had an OTP generated recently (and get stored otp_request_id for "still valid" path)
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('last_otp_generated, employee_id')
+        .select('last_otp_generated, employee_id, params')
         .eq('id', documentId)
         .single();
       const employeeId = document.employee_id;
@@ -741,18 +757,9 @@ serve(async (req) => {
             const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
             console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
             
-            // Fetch client_id from employee if available
-            let clientIdForResponse: string | undefined = undefined;
-            if (document?.employee_id) {
-              const { data: employee } = await supabase
-                .from('employees')
-                .select('client_id')
-                .eq('id', document.employee_id)
-                .single();
-              if (employee?.client_id) {
-                clientIdForResponse = employee.client_id;
-              }
-            }
+            // Use the request_id stored when OTP was generated (required for verify OTP API), not employee's client_id
+            const params = document?.params as { otp_request_id?: string } | undefined;
+            const clientIdForResponse = params?.otp_request_id ?? undefined;
             
             // Return success response with otpStatus to indicate OTP input should be shown
             return new Response(
@@ -762,7 +769,7 @@ serve(async (req) => {
                 cooldownRemaining: remainingSeconds,
                 otpStatus: "valid",
                 showOtpInput: true,
-                client_id: clientIdForResponse // Include client_id for verifyAadharOtp
+                client_id: clientIdForResponse // OTP request_id from when OTP was generated (for verifyAadharOtp)
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
@@ -799,11 +806,21 @@ serve(async (req) => {
         
         // Handle API success case
         if (data.success) {
-          // Update document with timestamp of OTP generation
+          const otpRequestId = data.data?.client_id ?? data.client_id ?? rawData?.request_id?.toString();
           if (documentId) {
+            const { data: currentDoc } = await supabase
+              .from('employee_documents')
+              .select('params')
+              .eq('id', documentId)
+              .single();
+            const existingParams = (currentDoc?.params as Record<string, unknown>) ?? {};
+            const newParams = { ...existingParams, otp_request_id: otpRequestId ?? null };
             await supabase
               .from('employee_documents')
-              .update({ last_otp_generated: new Date().toISOString() })
+              .update({
+                last_otp_generated: new Date().toISOString(),
+                params: newParams
+              })
               .eq('id', documentId);
           }
           
@@ -820,18 +837,53 @@ serve(async (req) => {
         } else {
           // Log the technical error for debugging
           console.error(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API error:`, rawData);
-          
-          // Check if error status_code exists (QuickEKYC error format)
-          // If status_code exists and is not 200, don't show details popup
+
+          const statusCode = rawData?.status_code ?? apiResponse?.status;
+          const isSensitiveStatusCode = statusCode === 429 || statusCode === 401 || statusCode === 403 || statusCode === 404;
+          const apiMessage = (rawData?.message ?? '').toString().toLowerCase();
+          const isInvalidAadhaarMessage = apiMessage.includes('invalid aadhaar') || apiMessage.includes('invalid aadhar');
+          const IN_PROGRESS_MSG = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
+          const INVALID_AADHAAR_MSG = "The Aadhaar number you entered is invalid. Please check and try again.";
+          let userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse?.status, isQuickEKYCUsed);
+          let error_key: string | undefined;
+
+          if (isInvalidAadhaarMessage) {
+            userFriendlyMessage = INVALID_AADHAAR_MSG;
+          } else if (!isSensitiveStatusCode && documentId) {
+            userFriendlyMessage = IN_PROGRESS_MSG;
+            error_key = "in-progress";
+            const { data: docForLog } = await supabase
+              .from('employee_documents')
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
+            const existingLogs = docForLog?.employee_docs_log || [];
+            const logEntry = {
+              timestamp: new Date().toISOString(),
+              action: "request_aadhar_otp_failed",
+              response: rawData
+            };
+            await supabase
+              .from('employee_documents')
+              .update({
+                employee_docs_log: [...existingLogs, logEntry],
+                verification_status: 'in-progress',
+                document_status_id: inProgressStatusId,
+                api_verification_status: 'failed',
+                api_verification_method: 'api',
+                api_verification_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+          }
+
           const hasErrorStatusCode = rawData.status_code && rawData.status_code !== 200;
-          
-          // Return user-friendly error message with 200 status to ensure frontend can access it
-          const userFriendlyMessage = getUserFriendlyErrorMessage(rawData, apiResponse.status, isQuickEKYCUsed);
           return new Response(
-            JSON.stringify({ 
-              success: false, 
+            JSON.stringify({
+              success: false,
               error: userFriendlyMessage,
-              status_code: hasErrorStatusCode ? rawData.status_code : undefined
+              status_code: hasErrorStatusCode ? rawData.status_code : undefined,
+              ...(error_key !== undefined && { error_key })
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -880,26 +932,28 @@ serve(async (req) => {
         );
       }
       
-      // Fetch client_id from employee if not provided in request body
+      // Use request body client_id, or the otp_request_id stored when OTP was generated (e.g. after user closed and reopened popup)
       let clientIdForVerification = client_id;
       if (!clientIdForVerification && documentId) {
-        console.log("client_id not provided in request, fetching from employee document");
-        const { data: document } = await supabase
+        console.log("client_id not provided in request, fetching from document params (otp_request_id)");
+        const { data: doc } = await supabase
           .from('employee_documents')
-          .select('employee_id')
+          .select('params, employee_id')
           .eq('id', documentId)
           .single();
-        
-        if (document?.employee_id) {
+        const params = doc?.params as { otp_request_id?: string } | undefined;
+        if (params?.otp_request_id) {
+          clientIdForVerification = params.otp_request_id;
+          console.log("Using otp_request_id from document params for verify OTP");
+        } else if (doc?.employee_id) {
           const { data: employee } = await supabase
             .from('employees')
             .select('client_id')
-            .eq('id', document.employee_id)
+            .eq('id', doc.employee_id)
             .single();
-          
           if (employee?.client_id) {
             clientIdForVerification = employee.client_id;
-            console.log("Fetched client_id from employee:", clientIdForVerification);
+            console.log("Fetched client_id from employee (fallback):", clientIdForVerification);
           }
         }
       }

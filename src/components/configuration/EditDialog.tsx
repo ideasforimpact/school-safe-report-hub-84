@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 interface Field {
   name: string;
@@ -275,7 +275,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                       </SelectContent>
                     </Select>
                   ) : extraField.type === 'textarea' ? (
-                    <Textarea
+                    <TextareaWithVoice
                       id={`extraField-${index}`}
                       value={extraField.value}
                       onChange={(e) => extraField.onChange(e.target.value)}

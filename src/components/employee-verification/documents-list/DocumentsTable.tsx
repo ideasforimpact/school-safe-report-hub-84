@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File } from 'lucide-react';
+import { Eye, Download, MessageCircle, FileSearch, MoreVertical, Trash, Loader2, Wrench, User, Clock, File, CheckCircle, XCircle } from 'lucide-react';
 import GovernmentEmblemIcon from '@/components/ui/GovernmentEmblemIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -411,6 +411,33 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       <span className="capitalize">
                         {(() => {
                           const docType = doc.documentTypeName?.toLowerCase();
+                          if (docType === 'driving_license') {
+                          const doe = doc.audit?.data?.doe || doc.audit?.response?.data?.doe;
+
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+
+                          const isValid = doe ? new Date(doe) > today : false;
+
+                          return (
+                            <span className="inline-flex items-center gap-1">
+                              {formatDocumentTypeName(doc.documentTypeName || '')}
+
+                              {doe && (
+                                <span
+                                  title={isValid ? "Valid Driving License" : "Driving License Expired"}
+                                  className="flex items-center"
+                                >
+                                  {isValid ? (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                  )}
+                                </span>
+                              )}
+                            </span>
+                          );
+                        }
                           // For manual and other document types, show the custom document name
                           if (docType === 'manual' || docType === 'other' || docType === 'other_documents') {
                             const customName = doc.params?.document_name;
@@ -448,6 +475,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                                 selected: doc.params?.selected,
                                 hasOtherType: !!doc.params?.otherType,
                                 hasSelected: !!doc.params?.selected,
+                                valid:doc.audit?.responce.data.doe,
                                 // Check all possible fields
                                 allParamsKeys: Object.keys(doc.params || {}),
                                 documentTypeName: doc.documentTypeName,

@@ -91,10 +91,25 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { data: inProgressStatus, error: inProgressError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'in-progress')
+      .single();
+
+    if (inProgressError) {
+      console.error("Error fetching in-progress status:", inProgressError);
+      return new Response(
+        JSON.stringify({ error: "Could not find in-progress status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const governanceStatusId = governanceStatus?.id;
     const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
+    const inProgressStatusId = inProgressStatus?.id;
     
     console.log("Status IDs found:", {
       governance: governanceStatusId,
@@ -273,34 +288,53 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // API Failure: Store response but keep status as pending for manual review
-          // Don't automatically set to failed - let admin review first
+          // API Failure: in-progress only when message does NOT match known errors
           const apiLogEntry = {
             timestamp: new Date().toISOString(),
             action: "verify_pan_api_failed",
             response: data
           };
-          
-          // Parse specific error types for user-friendly messages
+
+          const IN_PROGRESS_MSG = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
           let userFriendlyError = "PAN verification failed";
           let errorCode = "PAN_VERIFICATION_FAILED";
-          
+          let error_key: string | undefined;
+          let isKnownError = false;
+
           if (data.message) {
             const message = data.message.toLowerCase();
             if (message.includes('invalid pan') || message.includes('pan not found')) {
               userFriendlyError = "This PAN number is not found in government records";
               errorCode = "PAN_INVALID";
+              isKnownError = true;
             } else if (message.includes('format') || message.includes('pattern')) {
               userFriendlyError = "Please enter a valid PAN number (e.g., ABCDE1234F)";
               errorCode = "PAN_INVALID_FORMAT";
+              isKnownError = true;
             } else if (message.includes('already linked')) {
               userFriendlyError = "This PAN is already linked to another Aadhaar";
               errorCode = "PAN_ALREADY_LINKED";
-            } else {
-              userFriendlyError = "PAN verification failed. Please check the number and try again.";
+              isKnownError = false;
             }
           }
-          
+
+          if (!isKnownError) {
+            userFriendlyError = IN_PROGRESS_MSG;
+            error_key = "in-progress";
+            await supabase
+              .from('employee_documents')
+              .update({
+                employee_docs_log: [...existingLogs, apiLogEntry],
+                api_verification_status: 'failed',
+                verification_status: 'in-progress',
+                document_status_id: inProgressStatusId,
+                api_verification_method: 'api',
+                api_verification_date: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+          }
+
           if (data?.success === false) {
             await logVerificationError(supabase, {
               employeeId,
@@ -315,16 +349,17 @@ serve(async (req) => {
               documentNumber: documentNumber
             });
           }
-          // Return response indicating API failed but status remains pending for review
+
           return new Response(
-            JSON.stringify({ 
-              success: false, 
+            JSON.stringify({
+              success: false,
               error: userFriendlyError,
               errorCode: errorCode,
               originalError: data.message,
               message: userFriendlyError,
               requiresReview: true,
-              apiResponse: data // Include API response for review
+              apiResponse: data,
+              ...(error_key !== undefined && { error_key })
             }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 
@@ -88,7 +88,7 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
         
         <div>
           <Label htmlFor="description">Description (Optional)</Label>
-          <Textarea
+          <TextareaWithVoice
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, XCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -154,7 +154,7 @@ const ManualConsentDialog: React.FC<ManualConsentDialogProps> = ({
               <Label htmlFor="reject-reason" className="text-sm font-medium">
                 Reason for reject <span className="text-red-500">*</span>
               </Label>
-              <Textarea
+              <TextareaWithVoice
                 id="reject-reason"
                 placeholder="Please provide a reason for rejecting this document..."
                 value={rejectReason}

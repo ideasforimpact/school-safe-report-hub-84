@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import {
   Select,
   SelectContent,
@@ -246,7 +246,7 @@ export function NewWellBeingRecordDialog({
 
           <div className="grid gap-2">
             <Label htmlFor="concern">Brief Concern Description <span className="text-red-500">*</span></Label>
-            <Textarea
+            <TextareaWithVoice
               id="concern"
               value={concern}
               onChange={(e) => setConcern(e.target.value)}

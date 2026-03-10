@@ -34,9 +34,13 @@ const TruncatedText = ({ text, maxLength = 30 }: { text: string; maxLength?: num
 };
 
 // Helper function to get status from documentsSummary
-const getStatusFromSummary = (summary: EmployeeWithDocumentsSummary['documentsSummary']): 'Verified' | 'Pending' | 'Failed' => {
+const getStatusFromSummary = (summary: EmployeeWithDocumentsSummary['documentsSummary']): 'Verified' | 'Pending' | 'In Progress' | 'Failed' => {
   if (summary.failed > 0) {
     return 'Failed';
+  } else if ((summary.inProgress || 0) > 0) {
+    return 'In Progress';
+  } else if (summary.inProgress === undefined && summary.pending > 0) {
+    return 'In Progress';
   } else if (summary.pending > 0) {
     return 'Pending';
   } else {
@@ -48,7 +52,7 @@ const BackofficeEmployeeVerificationPage = () => {
   const [employees, setEmployees] = useState<EmployeeWithDocumentsSummary[]>([]);
   const [clients, setClients] = useState<BackofficeClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('all'); // Default to 'all'
-  const [selectedStatus, setSelectedStatus] = useState<string>('all'); // Status filter: 'all', 'Pending', 'Verified'
+  const [selectedStatus, setSelectedStatus] = useState<string>('all'); // Status filter: 'all', 'Pending', 'In Progress', 'Verified'
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined); // Date range filter for Created At
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -268,7 +272,7 @@ const BackofficeEmployeeVerificationPage = () => {
             <UserCheck className="h-8 w-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold">Employee Verification Management</h1>
-              <p className="text-gray-500 mt-1">Manage manual document verification for employees across active clients</p>
+              <p className="text-gray-500 mt-1">Manage document verification for employees across active clients</p>
             </div>
           </div>
         </div>
@@ -278,9 +282,9 @@ const BackofficeEmployeeVerificationPage = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Manual Document Verification Overview</CardTitle>
+                  <CardTitle> Document Verification Overview</CardTitle>
                   <CardDescription>
-                    View and manage manual document verification status for employees
+                    View and manage document verification status for employees
                   </CardDescription>
                 </div>
                 <Button
@@ -329,6 +333,7 @@ const BackofficeEmployeeVerificationPage = () => {
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
                       <SelectItem value="Verified">Verified</SelectItem>
                     </SelectContent>
                   </Select>
@@ -355,10 +360,10 @@ const BackofficeEmployeeVerificationPage = () => {
                 <UserCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">
                   {searchTerm 
-                    ? `No employees with manual documents match the search term "${searchTerm}"`
+                    ? `No employees with documents match the search term "${searchTerm}"`
                     : selectedClientId === 'all'
-                    ? 'No employees with uploaded manual documents found'
-                    : 'This client has no employees with uploaded manual documents yet'
+                    ? 'No employees with uploaded documents found'
+                    : 'This client has no employees with uploaded documents yet'
                   }
                 </p>
               </div>
@@ -377,6 +382,15 @@ const BackofficeEmployeeVerificationPage = () => {
                   {filteredEmployees.map((employee) => {
                     const clientName = employee.clientName || clientNameMap.get(employee.clientId) || 'Unknown';
                     const status = getStatusFromSummary(employee.documentsSummary);
+                    const summaryForDisplay =
+                      employee.documentsSummary.inProgress === undefined &&
+                      employee.documentsSummary.pending > 0
+                        ? {
+                            ...employee.documentsSummary,
+                            inProgress: employee.documentsSummary.pending,
+                            pending: 0
+                          }
+                        : employee.documentsSummary;
                     return (
                       <TableRow key={employee.id}>
                         <TableCell className="font-medium">
@@ -386,7 +400,7 @@ const BackofficeEmployeeVerificationPage = () => {
                           <TruncatedText text={clientName} maxLength={30} />
                         </TableCell>
                         <TableCell>
-                          <VerificationStatusSummary summary={employee.documentsSummary} />
+                          <VerificationStatusSummary summary={summaryForDisplay} />
                         </TableCell>
                         <TableCell>
                           {employee.createdAt 

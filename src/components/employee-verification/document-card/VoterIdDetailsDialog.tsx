@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { FileText, User, Calendar, CreditCard, MapPin, CheckCircle, Loader2, X } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification/EmployeeVerificationContext';
@@ -349,7 +349,7 @@ const VoterIdDetailsDialog: React.FC<VoterIdDetailsDialogProps> = ({
               <Label htmlFor="rejectReason" className="text-sm font-medium">
                 Reason for reject <span className="text-red-500">*</span>
               </Label>
-              <Textarea
+              <TextareaWithVoice
                 id="rejectReason"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}

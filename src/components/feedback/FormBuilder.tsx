@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { 
   Dialog, 
@@ -194,7 +194,7 @@ const FormBuilder: React.FC<FormBuilderProps> = ({ formId, onClose }) => {
             
             <div>
               <Label htmlFor="description">Description</Label>
-              <Textarea 
+              <TextareaWithVoice 
                 id="description" 
                 value={form.description} 
                 onChange={handleDescriptionChange}

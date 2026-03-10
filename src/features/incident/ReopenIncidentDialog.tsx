@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Textarea } from '@/components/ui/textarea';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Label } from '@/components/ui/label';
 import { REOPEN_REASON_MAX_LENGTH } from '@/components/constants';
 
@@ -42,7 +42,7 @@ const ReopenIncidentDialog: React.FC<ReopenIncidentDialogProps> = ({
           <Label htmlFor="reopen-reason" className="text-sm font-medium">
             Reason for Reopening <span className="text-red-500">*</span>
           </Label>
-          <Textarea
+          <TextareaWithVoice
             id="reopen-reason"
             placeholder="Enter the reason for reopening this incident..."
             value={reopenReason}
