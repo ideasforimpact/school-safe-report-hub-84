@@ -83,7 +83,7 @@ export function NewFollowUpEntryDialog({
         date: date.toISOString().slice(0, 10),
         notes: notesTrimmed || null,
       });
-      toast.success('Follow-up entry added');
+      toast.success('Follow-up entry was added successfully');
       onSuccess();
       onClose();
     } catch (e) {
@@ -117,6 +117,11 @@ export function NewFollowUpEntryDialog({
               date={date}
               onChange={setDate}
               placeholderText="Pick a date"
+              disabledDates={(d) => {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                return d < today;
+              }}
             />
             {errors.date && (
               <p className="text-sm text-red-500">{errors.date}</p>
