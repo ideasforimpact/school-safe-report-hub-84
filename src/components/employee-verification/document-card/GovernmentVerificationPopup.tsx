@@ -11,6 +11,8 @@ import {
   Calendar,
   Car,
   CheckCircle2,
+  CheckCircle,
+  XCircle,
   CreditCard,
   Fingerprint,
   Vote,
@@ -22,6 +24,12 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -393,9 +401,38 @@ console.log("isViewMode:", isViewMode);
             >
               <span className="text-white">{config.icon}</span>
             </div>
-            <div>
-              <p className="text-base font-semibold text-foreground">{config.title}</p>
-              
+            <div className="flex items-center gap-2">
+              <p className="text-base font-semibold text-foreground">
+                {config.title}
+              </p>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex items-center">
+                      {expired ? (
+                        <XCircle
+                          size={18}
+                          className="text-red-600 cursor-pointer transition-transform duration-200 hover:scale-125"
+                        />
+                      ) : (
+                        <CheckCircle
+                          size={18}
+                          className="text-green-600 cursor-pointer transition-transform duration-200 hover:scale-125"
+                        />
+                      )}
+                    </span>
+                  </TooltipTrigger>
+
+                  <TooltipContent
+                    side="bottom"
+                    align="center"
+                    className={expired ? "bg-red-600 text-white" : "bg-green-600 text-white"}
+                  >
+                    {expired ? "Expired" : "Valid"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           <button
