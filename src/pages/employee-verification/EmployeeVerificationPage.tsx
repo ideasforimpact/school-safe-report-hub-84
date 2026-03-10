@@ -17,6 +17,7 @@ const EmployeeVerificationPage = () => {
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
 
@@ -43,6 +44,16 @@ const EmployeeVerificationPage = () => {
     }
   };
 
+  const departments = useMemo(() => {
+    const uniqueDepartments = new Set(
+      employees
+        .map((emp) => emp.department)
+        .filter(Boolean)
+    );
+
+    return Array.from(uniqueDepartments);
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
       const documents = employee.documents || [];
@@ -60,6 +71,12 @@ const EmployeeVerificationPage = () => {
           (employee.address && employee.address.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) return false;
+      }
+
+      if (departmentFilter !== 'all') {
+        if (employee.department !== departmentFilter) {
+          return false;
+        }
       }
 
       if (documentTypeFilter !== 'all') {
@@ -93,7 +110,7 @@ const EmployeeVerificationPage = () => {
 
       return true;
     });
-  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter]);
+  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter, departmentFilter]);
 
   // Parse URL parameters and set initial filters
   useEffect(() => {
@@ -144,6 +161,7 @@ const EmployeeVerificationPage = () => {
     setSearchTerm('');
     setDocumentStatusFilter('all');
     setDocumentTypeFilter('all');
+    setDepartmentFilter('all');
   };
   const employeeAnalyticsStats = useMemo(() => {
     const totalEmployees = employees.length;
@@ -247,6 +265,9 @@ const EmployeeVerificationPage = () => {
             documentTypeFilter={documentTypeFilter}
             onDocumentTypeChange={setDocumentTypeFilter}
             onClearFilters={handleClearFilters}
+            departmentFilter={departmentFilter}
+            onDepartmentChange={setDepartmentFilter}
+            departments={departments}
             resultCount={filteredEmployees.length}
             totalCount={employees.length}
           />

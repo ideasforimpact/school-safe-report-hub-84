@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, Users, CheckCircle2 } from 'lucide-react';
+import { Eye, Loader2, CheckCircle, XCircle, Clock, Settings, FileX, AlertTriangle, Users, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { formatDepartment } from '@/lib/formatUtils';
 import { aggregatePersonalInfo } from './utils/personalInfoUtils';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 
 interface EmployeesListProps {
   employees: Employee[];
@@ -195,6 +196,25 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
     );
   };
 
+  const getDocumentBadge = (status: Employee['documents'][number]['verificationStatus']) => {
+    if (status === 'verified' || status === 'completed') {
+      return <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>;
+    }
+    if (status === 'failed' || status === 'rejected') {
+      return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>;
+    }
+    return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>;
+  };
+
+  const formatDocumentName = (name?: string) => {
+    if (!name) return 'Document';
+    return name
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
@@ -213,6 +233,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
+              <TableHead className="w-[70px] text-center">Docs</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Total SOPs</TableHead>
               <TableHead>Actions</TableHead>
@@ -221,7 +242,7 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-6 text-gray-500">
                   No employees match your current filters.
                 </TableCell>
               </TableRow>
@@ -259,6 +280,41 @@ const EmployeesList: React.FC<EmployeesListProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>{formatDepartment(employee.department)}</TableCell>
+                    <TableCell className="text-center">
+                      <HoverCard openDelay={120} closeDelay={150}>
+                        <HoverCardTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-blue-600 hover:text-blue-700"
+                            aria-label={`View documents for ${employee.name}`}
+                          >
+                            <AlertCircle className="h-4 w-4" />
+                          </button>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-[280px] p-3" align="start" side="right">
+                          <div className="text-xs font-semibold tracking-wide text-gray-500 pb-2 border-b">
+                            DOCUMENTS
+                          </div>
+                          <div className="pt-2 space-y-2 max-h-56 overflow-auto">
+                            {documents.length === 0 ? (
+                              <div className="text-sm text-gray-500">No uploaded documents</div>
+                            ) : (
+                              documents.map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                    <span className="text-sm text-gray-800 truncate">
+                                      {formatDocumentName(doc.documentTypeName)}
+                                    </span>
+                                  </div>
+                                  {getDocumentBadge(doc.verificationStatus)}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    </TableCell>
                     <TableCell className="max-w-md">
                       {renderDocumentsInfo(employee)}
                     </TableCell>

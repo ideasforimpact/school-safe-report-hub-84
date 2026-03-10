@@ -166,6 +166,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [joiningDateFrom, setJoiningDateFrom] = useState('');
+  const [joiningDateTo, setJoiningDateTo] = useState('');
   
   // Get clientId from employee data or user context
   const clientId = state.employeeData?.clientId || user?.clientId;
@@ -208,6 +210,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     email: string;
     phone?: string;
     designation?: string;
+    tags?: string[];
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -221,6 +224,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     email: '',
     phone: '',
     designation: '',
+    tags: [],
     clientId: clientId,
     moduleAccessPayload: [],
     is_cpd_involved: false,
@@ -253,6 +257,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   // Filter users based on search and filters
   const filteredUsers = React.useMemo(() => {
     try {
+      const normalizeToDate = (value?: string) => {
+        if (!value) return '';
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+      };
+
       return employeeUsers.filter(user => {
         // Search filter
         const searchLower = searchQuery.toLowerCase();
@@ -277,13 +288,18 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           departmentFilter === 'all' ||
           user.department === selectedDept?.department_name;
 
-        return matchesSearch && matchesStatus && matchesDepartment;
+        const normalizedJoiningDate = normalizeToDate(user.joiningDate);
+        const matchesJoiningDateFrom = !joiningDateFrom || (normalizedJoiningDate !== '' && normalizedJoiningDate >= joiningDateFrom);
+        const matchesJoiningDateTo = !joiningDateTo || (normalizedJoiningDate !== '' && normalizedJoiningDate <= joiningDateTo);
+        const matchesJoiningDate = matchesJoiningDateFrom && matchesJoiningDateTo;
+
+        return matchesSearch && matchesStatus && matchesDepartment && matchesJoiningDate;
       });
     } catch (error) {
       console.error('Error filtering users:', error);
       return employeeUsers; // Return all users if filtering fails
     }
-  }, [employeeUsers, searchQuery, statusFilter,departmentFilter]);
+  }, [employeeUsers, searchQuery, statusFilter, departmentFilter, joiningDateFrom, joiningDateTo]);
 
   const fetchEmployeesList = async () => {
     // Add clientId restriction check
@@ -454,7 +470,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               lastName: currentFormData.lastName,
               email: currentFormData.email || undefined,
               phone: currentFormData.phone || '',
-              designation: currentFormData.designation || '',
+              designation: currentFormData.designation || (currentFormData.tags?.join(', ') || ''),
               employeeType: currentFormData.employeeType ?? undefined,
               department: currentFormData.department ?? undefined,
               joiningDate: currentFormData.joiningDate || new Date().toISOString().split('T')[0],
@@ -759,6 +775,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       email: '',
       phone: '',
       designation: '',
+      tags: [],
       clientId: clientId,
       moduleAccessPayload: []
     });
@@ -770,6 +787,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     setSearchQuery('');
     setStatusFilter('all');
     setDepartmentFilter('all');
+    setJoiningDateFrom('');
+    setJoiningDateTo('');
   };
 
   // Get active filters count
@@ -777,6 +796,8 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     searchQuery ? 1 : 0,
     statusFilter !== 'all' ? 1 : 0,
     departmentFilter !== 'all' ? 1 : 0,
+    joiningDateFrom ? 1 : 0,
+    joiningDateTo ? 1 : 0,
   ].reduce((sum, count) => sum + count, 0);
 
   // If no clientId is available, show a warning message
@@ -929,9 +950,28 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                   ))}
                 </SelectContent>
               </Select>
-
-
-              {/* Clear Filters Button */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 whitespace-nowrap">
+                  Joining Date From:
+                </span>
+                <Input
+                  type="date"
+                  value={joiningDateFrom}
+                  onChange={(e) => setJoiningDateFrom(e.target.value)}
+                  className="w-[170px] h-10"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 whitespace-nowrap">
+                  Joining Date To:
+                </span>
+                <Input
+                  type="date"
+                  value={joiningDateTo}
+                  onChange={(e) => setJoiningDateTo(e.target.value)}
+                  className="w-[170px] h-10"
+                />
+              </div>
               {activeFiltersCount > 0 && (
                 <Button
                   variant="outline"
@@ -990,6 +1030,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       email: latestUser.email,
                       phone: (latestUser as any).phone,
                       designation: (latestUser as any).designation,
+                      tags: ((latestUser as any).designation || '')
+                        .split(',')
+                        .map((tag: string) => tag.trim())
+                        .filter(Boolean)
+                        .slice(0, 2),
                       employeeId: latestUser.employeeId,
                       employeeType: latestUser.employeeType,
                       department: latestUser.department,
