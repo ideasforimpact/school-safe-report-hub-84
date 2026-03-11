@@ -9,6 +9,8 @@ import VerificationDialog from './VerificationDialog';
 import { supabase } from '@/integrations/supabase/client';
 import ManualConsentDialog from '../common/ManualConsentDialog';
 import { useAuth } from '@/contexts/auth';
+import GovernmentVerificationPopup, { GovernmentDocumentType } from '../document-card/GovernmentVerificationPopup';
+import { normalizeApiData } from '@/lib/governmentNormalizer';
 interface DocumentsListProps {
   employeeId: string;
   employeeName?: string;
@@ -39,6 +41,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const [isManualConsentOpen, setIsManualConsentOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [consentSuccess, setConsentSuccess] = useState<null | 'verified' | 'rejected'>(null);
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [govPopupOpen, setGovPopupOpen] = useState(false);
+  const [selectedGovType, setSelectedGovType] =
+    useState<GovernmentDocumentType>("aadhar");
+  const [selectedGovData, setSelectedGovData] = useState<any>(null);
   const handleViewDocument = (documentImage: string) => {
     if (!documentImage) {
       toast({
@@ -69,10 +76,10 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       toast({
         title: "Error",
         description: "Failed to open document. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+          variant: "destructive",
+        });
+      }
+    };
 
   const handleDownloadDocument = (documentImage: string) => {
     if (!documentImage) {
@@ -112,8 +119,37 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
   const handleVerifyDocument = (documentId: string) => {
     setSelectedDocumentId(documentId);
+    setIsViewMode(false);
     setQuickStartMethod(null);
     setIsVerificationDialogOpen(true);
+  };
+
+  const handleViewGovernment = (doc: VerificationDocument) => {
+    const logs = doc.employee_docs_log || [];
+    const docType = doc.documentTypeName?.toLowerCase();
+
+    const govLog = logs.find(
+      (log) =>
+        log.action?.includes("verify") &&
+        log.response &&
+        (log.response.success === true || log.response.status_code === 200)
+    );
+
+    if (!govLog) return;
+
+    const governmentData = govLog.response?.data;
+    if (!governmentData) return;
+
+    const normalized = normalizeApiData(
+      governmentData,
+      docType as any
+    );
+
+    setSelectedDocumentId(doc.id);
+    setSelectedGovType(docType as any);
+    setSelectedGovData(normalized);
+    setIsViewMode(true);        
+    setGovPopupOpen(true);
   };
 
   const handleQuickVerify = (documentId: string, method: 'api' | 'manual') => {
@@ -171,7 +207,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
   const handleDialogClose = () => {
     setIsVerificationDialogOpen(false);
-    setSelectedDocumentId('');
+    // setSelectedDocumentId('');
     setQuickStartMethod(null);
   };
 
@@ -352,6 +388,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
           onViewDocument={handleViewDocument}
           onDownloadDocument={handleDownloadDocument}
           onVerifyDocument={handleVerifyDocument}
+          onViewGovernment={handleViewGovernment} 
           onDocumentAction={onDocumentAction}
           onQuickVerify={handleQuickVerify}
         />
@@ -371,6 +408,26 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         onDocumentAction={onDocumentAction}
         setIsVerificationLoading={setIsVerificationLoading}
         employeeName={employeeName}
+        onApiSuccess={(docType, apiResponse) => {
+
+          console.log("🟢 Raw API Response:", apiResponse);
+
+          // Edge functions usually wrap response inside .data
+          const rawGovernmentData =
+            apiResponse?.data?.data || apiResponse?.data || apiResponse;
+
+          const normalized = normalizeApiData(
+            rawGovernmentData,
+            docType as any
+          );
+
+          console.log("🟢 Normalized Data:", normalized);
+
+          setSelectedGovType(docType as GovernmentDocumentType);
+          setSelectedGovData(normalized);
+          setIsViewMode(false);   
+          setGovPopupOpen(true);
+        }}
       />
 
       <ManualConsentDialog
@@ -385,6 +442,23 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
         onReject={handleManualReject}
         isProcessing={isProcessing}
         successState={consentSuccess}
+      />
+
+      <GovernmentVerificationPopup
+        open={govPopupOpen}
+        onOpenChange={(open) => {
+          setGovPopupOpen(open);
+          if (!open) {
+            setSelectedGovData(null);
+            setSelectedDocumentId(''); 
+            setIsViewMode(false);   
+          }
+        }}
+        documentType={selectedGovType}
+        data={selectedGovData}
+        documentId={selectedDocumentId}
+        onVerificationUpdate={onDocumentAction}
+        isViewMode={isViewMode}
       />
     </>
   );
