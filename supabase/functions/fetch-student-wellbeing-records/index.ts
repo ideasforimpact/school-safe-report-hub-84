@@ -2,35 +2,35 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
 import { validateIPWhitelist } from '../_shared/safe-school/ipValidator.ts';
-
+ 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
+ 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
+ 
   try {
     const supabase = createClient(
       getSupabaseUrl(),
       getSupabaseServiceRoleKey()
     );
-
+ 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const clientId = body.clientId ?? body.client_id;
     const employeeId = body.employeeId ?? body.employee_id;
     const academicYear = body.academicYear ?? body.academic_year ?? null;
-
+ 
     if (!clientId) {
       return new Response(
         JSON.stringify({ error: 'Client ID is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
+ 
     const url = new URL(req.url);
     const ipValidation = await validateIPWhitelist(
       supabase,
@@ -47,7 +47,7 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
+ 
     // Academic year: e.g. "2025-2026" => Apr 1, 2025 00:00 to Mar 31, 2026 23:59 (filter by created_at)
     let createdFrom: string | null = null;
     let createdTo: string | null = null;
@@ -62,7 +62,7 @@ serve(async (req) => {
         }
       }
     }
-
+ 
     let query = supabase
       .from('student_well_begin_management')
       .select(`
@@ -70,6 +70,7 @@ serve(async (req) => {
         student_id,
         section_id,
         grade_id,
+        integrated_student_info,
         type_of_concern_id,
         date_of_observation,
         concern,
@@ -86,12 +87,12 @@ serve(async (req) => {
       .eq('client_id', clientId)
       .eq('is_deleted', false)
       .is('deleted_at', null);
-
+ 
     if (createdFrom) query = query.gte('created_at', createdFrom);
     if (createdTo) query = query.lte('created_at', createdTo);
-
+ 
     const { data: records, error } = await query.order('date_of_observation', { ascending: false });
-
+ 
     if (error) {
       console.error('Error fetching student wellbeing records:', error);
       return new Response(
@@ -99,7 +100,7 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
+ 
     const recordIds = (records || []).map((r: any) => r.id);
     const { data: consultationsRows } = recordIds.length > 0
       ? await supabase
@@ -107,7 +108,7 @@ serve(async (req) => {
           .select('id, student_well_begin_management_id, consultation_provided_by, consultation_date, mode_id, support_notes, created_at, consultation_mode:mode_id(name)')
           .in('student_well_begin_management_id', recordIds)
       : { data: [] };
-
+ 
     const consultationsByRecordId: Record<string, any[]> = {};
     for (const id of recordIds) {
       consultationsByRecordId[id] = [];
@@ -127,7 +128,7 @@ serve(async (req) => {
         });
       }
     }
-
+ 
     const { data: actionsRows } = recordIds.length > 0
       ? await supabase
           .from('consultation_action_take')
@@ -136,7 +137,7 @@ serve(async (req) => {
           .eq('is_deleted', false)
           .is('deleted_at', null)
       : { data: [] };
-
+ 
     const actionsByRecordId: Record<string, any[]> = {};
     for (const id of recordIds) {
       actionsByRecordId[id] = [];
@@ -152,7 +153,7 @@ serve(async (req) => {
         });
       }
     }
-
+ 
     const { data: followUpRows } = recordIds.length > 0
       ? await supabase
           .from('student_follow_up_entry')
@@ -160,7 +161,7 @@ serve(async (req) => {
           .in('student_well_begin_management_id', recordIds)
           .order('date', { ascending: false })
       : { data: [] };
-
+ 
     const followUpByRecordId: Record<string, any[]> = {};
     for (const id of recordIds) {
       followUpByRecordId[id] = [];
@@ -176,25 +177,35 @@ serve(async (req) => {
         });
       }
     }
-
+ 
     const list = (records || []).map((r: any) => {
       const student = r.students;
       const section = r.sections;
       const grade = r.grades;
       const concernType = r.general_concern;
+      const integratedInfo = (r.integrated_student_info ?? null) as any;
+      const fallbackStudentId = integratedInfo?.student_id ?? null;
+      const fallbackStudentName = integratedInfo?.student_name ?? null;
+      const fallbackSectionId = integratedInfo?.section_id ?? null;
+      const fallbackGradeId = integratedInfo?.grade_id ?? null;
+      const isExternal = integratedInfo?.is_external === true;
       const classLabel =
         grade?.name && section?.name
           ? `Class ${grade.name}-${section.name}`
           : student
             ? `Class ${student.grade || ''}-${student.section || ''}`.replace(/^-|-$/g, '').trim() || '—'
+            : fallbackGradeId && fallbackSectionId
+              ? `Class ${fallbackGradeId}-${fallbackSectionId}`
             : '—';
       return {
         id: r.id,
-        student_id: r.student_id,
-        student_display_id: student?.student_id ?? null,
-        student_name: student?.name ?? '—',
-        section_id: r.section_id ?? null,
-        grade_id: r.grade_id ?? null,
+        student_id: r.student_id ?? null,
+        student_display_id: student?.student_id ?? fallbackStudentId,
+        student_name: student?.name ?? fallbackStudentName ?? '—',
+        section_id: r.section_id ?? fallbackSectionId,
+        grade_id: r.grade_id ?? fallbackGradeId,
+        integrated_student_info: integratedInfo,
+        is_external: isExternal,
         class: classLabel,
         type_of_concern_id: r.type_of_concern_id,
         concern: concernType?.name ?? r.concern ?? '—',
@@ -210,12 +221,16 @@ serve(async (req) => {
         follow_up_entries: followUpByRecordId[r.id] ?? [],
       };
     });
-
-    const uniqueStudentIds = new Set((list as any[]).map((x) => x.student_id));
+ 
+    const uniqueStudentIds = new Set(
+      (list as any[])
+        .map((x) => x.student_id ?? x.integrated_student_info?.external_student_id ?? x.integrated_student_info?.student_id ?? null)
+        .filter(Boolean)
+    );
     const openCount = (list as any[]).filter((x) => x.status === 'open').length;
     const underObservationCount = (list as any[]).filter((x) => x.status === 'under_observation').length;
     const closedCount = (list as any[]).filter((x) => x.status === 'closed').length;
-
+ 
     return new Response(
       JSON.stringify({
         success: true,

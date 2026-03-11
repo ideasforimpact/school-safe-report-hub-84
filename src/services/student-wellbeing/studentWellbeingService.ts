@@ -41,6 +41,15 @@ export interface StudentWellbeingRecord {
   status: StudentWellbeingStatus;
   next_follow_up: string | null;
   concern_notes: string | null;
+  integrated_student_info?: {
+    is_external?: boolean;
+    external_student_id?: string | null;
+    student_id?: string | null;
+    student_name?: string | null;
+    section_id?: string | null;
+    grade_id?: string | null;
+  } | null;
+  is_external?: Boolean;
   document_url?: { path: string; name: string }[];
   created_at: string;
   updated_at: string;
@@ -101,6 +110,10 @@ export interface UpdateStudentWellbeingRecordPayload {
   client_id: string;
   employee_id: string;
   student_id: string;
+  student_identifier?: string | null;
+  student_name?: string | null;
+  is_external?: boolean;
+  external_student_id?: string | null;
   section_id?: string | null;
   grade_id?: string | null;
   type_of_concern_id: string;
@@ -124,6 +137,10 @@ export async function updateStudentWellbeingRecord(
       client_id: payload.client_id,
       employee_id: payload.employee_id,
       student_id: payload.student_id,
+      student_identifier: payload.student_identifier ?? null,
+      student_name: payload.student_name ?? null,
+      is_external: payload.is_external === true,
+      external_student_id: payload.external_student_id ?? null,
       section_id: payload.section_id ?? null,
       grade_id: payload.grade_id ?? null,
       type_of_concern_id: payload.type_of_concern_id,

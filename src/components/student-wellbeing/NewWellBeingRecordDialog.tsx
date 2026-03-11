@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertDialog, AlertDialogContent,AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent,DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
@@ -19,6 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
@@ -51,6 +53,7 @@ export function NewWellBeingRecordDialog({
   const employeeId = employeeData?.id;
 
   const [student, setStudent] = useState<StudentOption | null>(null);
+  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const [typeOfConcernId, setTypeOfConcernId] = useState<string>('');
   const [dateOfObservation, setDateOfObservation] = useState<Date | undefined>(new Date());
   const [concern, setConcern] = useState('');
@@ -60,6 +63,24 @@ export function NewWellBeingRecordDialog({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [apiError, setApiError] = useState<string | null>(null);
+  const [studentRefreshKey, setStudentRefreshKey] = useState(0);
+  
+  useRealTimeSubHook({
+    channelName: `students-${clientId}`,
+    table: 'students',
+    events: 'DELETE',
+    enabled: Boolean(clientId),
+    filter: `client_id=eq.${clientId}`,
+    onPayload: (payload) => {
+      const deletedStudentId = (payload.old as { id?: string })?.id;
+
+      if (deletedStudentId === student?.id) {
+        setStudent(null);
+        setStudentRefreshKey(prev => prev + 1);   // refresh dropdown
+        toast.error("Selected student was deleted. Please choose another student.");
+      }
+    },
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -101,13 +122,15 @@ export function NewWellBeingRecordDialog({
     return Object.keys(next).length === 0;
   };
 
+  const charCount = CharacterCount(concern);
+
   const isFormValid =
-    !!student &&
-    !!typeOfConcernId &&
-    !!dateOfObservation &&
-    concern.trim().length >= CONCERN_MIN &&
-    concern.trim().length <= CONCERN_MAX ;
-    
+  !!student &&
+  !!typeOfConcernId &&
+  !!dateOfObservation &&
+  charCount >= CONCERN_MIN &&
+  charCount <= CONCERN_MAX;
+  
 
   const handleSave = async () => {
     if (!clientId || !employeeId) {
@@ -131,6 +154,10 @@ export function NewWellBeingRecordDialog({
           client_id: clientId,
           employee_id: employeeId,
           student_id: student!.id,
+          student_identifier: student!.student_id ?? null,
+          student_name: student!.name ?? null,
+          is_external: student!.is_external === true,
+          external_student_id: student!.external_student_id ?? null,
           section_id: student!.section_id ?? null,
           grade_id: student!.grade_id ?? null,
           type_of_concern_id: typeOfConcernId,
@@ -152,8 +179,9 @@ export function NewWellBeingRecordDialog({
         return;
       }
 
-      toast.success('Record saved');
+      toast.success('Record was saved successfully');
       setStudent(null);
+      setStudentRefreshKey(prev => prev + 1);
       setTypeOfConcernId('');
       setDateOfObservation(new Date());
       setConcern('');
@@ -185,11 +213,12 @@ export function NewWellBeingRecordDialog({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <AlertDialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar">
-        <AlertDialogHeader className="flex-shrink-0">
-          <AlertDialogTitle>New Well-Being Record</AlertDialogTitle>
-        </AlertDialogHeader>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar"
+        onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle>New Well-Being Record</DialogTitle>
+        </DialogHeader>
         <div className="flex-1 grid gap-4 py-4 pr-2">
           {apiError && (
             <Alert variant="destructive" className="flex-shrink-0">
@@ -201,6 +230,7 @@ export function NewWellBeingRecordDialog({
             <Label htmlFor="student">Student <span className="text-red-500">*</span></Label>
             <StudentSearchSelect
               value={student}
+              key={studentRefreshKey}
               onChange={setStudent}
               placeholder="Select student..."
               disabled={saving}
@@ -276,9 +306,9 @@ export function NewWellBeingRecordDialog({
             <p className="text-xs text-gray-500">
               {CharacterCount(concern)} / {CONCERN_MAX}
             </p>
-            {errors.concern && (
-              <p className="text-sm text-red-500">{errors.concern}</p>
-            )}
+            <p className="text-sm text-red-500 min-h-[20px]">
+              {errors.concern || ""}
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -313,7 +343,7 @@ export function NewWellBeingRecordDialog({
             Save Record
           </Button>
         </div>
-      </AlertDialogContent>
-    </AlertDialog>
+      </DialogContent>
+    </Dialog>
   );
 }

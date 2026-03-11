@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertDialog, AlertDialogContent,AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
@@ -25,7 +25,7 @@ import {
 } from '@/services/student-wellbeing/studentWellbeingService';
 //  Control future date selection from here
 const allowFutureDate = false;
-const CONCERN_MIN = 2;
+const CONCERN_MIN = 5;
 const CONCERN_MAX = 2000;
 const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
 const ATTACHMENTS_MAX_FILES = 5;
@@ -74,9 +74,17 @@ export function EditWellBeingRecordDialog({
   useEffect(() => {
     if (!open) return;
     if (record) {
+      const integratedInfo = record.integrated_student_info ?? null;
       setStudent({
-        id: record.student_id,
+        id:
+          record.student_id ??
+          integratedInfo?.external_student_id ??
+          integratedInfo?.student_id ??
+          '',
         name: record.student_name,
+        student_id: record.student_display_id ?? integratedInfo?.student_id ?? undefined,
+        is_external: record.is_external === true || integratedInfo?.is_external === true,
+        external_student_id: integratedInfo?.external_student_id ?? undefined,
         section_id: record.section_id ?? undefined,
         grade_id: record.grade_id ?? undefined,
       });
@@ -156,6 +164,10 @@ export function EditWellBeingRecordDialog({
         client_id: clientId,
         employee_id: employeeData?.id ?? '',
         student_id: student!.id,
+        student_identifier: student!.student_id ?? null,
+        student_name: student!.name ?? null,
+        is_external: student!.is_external === true,
+        external_student_id: student!.external_student_id ?? null,
         section_id: student!.section_id ?? null,
         grade_id: student!.grade_id ?? null,
         type_of_concern_id: typeOfConcernId,
@@ -187,11 +199,12 @@ export function EditWellBeingRecordDialog({
   if (!record) return null;
 
   return (
-    <AlertDialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <AlertDialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar">
-        <AlertDialogHeader className="flex-shrink-0">
-          <AlertDialogTitle>Edit Well-Being Record</AlertDialogTitle>
-        </AlertDialogHeader>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar"
+        onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle>Edit Well-Being Record</DialogTitle>
+        </DialogHeader>
         <div className="flex-1 overflow grid gap-4 py-4 pr-2 ">
           <div className="grid gap-2">
             <Label htmlFor="student">Student <span className="text-red-500">*</span></Label>
@@ -245,7 +258,7 @@ export function EditWellBeingRecordDialog({
 
           <div className="grid gap-2">
             <Label htmlFor="concern">Brief Concern Description <span className="text-red-500">*</span></Label>
-            <Textarea
+            <TextareaWithVoice
               id="concern"
               value={concern}
               onChange={(e) => {
@@ -359,7 +372,7 @@ export function EditWellBeingRecordDialog({
             Update Record
           </Button>
         </div>
-      </AlertDialogContent>
-    </AlertDialog>
+      </DialogContent>
+    </Dialog>
   );
 }
