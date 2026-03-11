@@ -26,7 +26,8 @@ export const useEmployeeData = () => {
            location.pathname.includes('/incident') ||
            location.pathname.includes('/transport') ||
            location.pathname.includes('/edusafe') ||
-           location.pathname.includes('/grievances');
+           location.pathname.includes('/grievances') ||
+           location.pathname.includes('/committees');
   }, [location.pathname]);
 
   const shouldSkipEmployeeData = useMemo(() => {
