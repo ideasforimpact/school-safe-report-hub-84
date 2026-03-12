@@ -66,6 +66,7 @@ import {
   updateCommittee,
 } from '@/services/committees/committeeService';
 import { formatDate } from '@/lib/Dateformat';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 type EmployeeOption = {
   id: string;
@@ -87,11 +88,6 @@ const formatDateTime = (value: string): string => {
 
 
 const normalizeRole = (role: string): string => role.toLowerCase().replace(/[^a-z]/g, '');
-
-const buildAutoEventTitle = (eventType: 'mom' | 'event', eventDate: string): string => {
-  const timestamp = eventDate ? formatDate(eventDate) : 'Undated';
-  return `${eventType.toUpperCase()} - ${timestamp}`;
-};
 
 const removeLeadingSpaces = (value: string): string => value.replace(/^\s+/, '');
 
@@ -128,6 +124,7 @@ const CommitteesPage = () => {
   const [addEventDialogOpen, setAddEventDialogOpen] = useState(false);
   const [selectedCommitteeForEvent, setSelectedCommitteeForEvent] = useState<Committee | null>(null);
   const [eventType, setEventType] = useState<'mom' | 'event'>('mom');
+  const [eventTitle, setEventTitle] = useState('');
   const [eventDescription, setEventDescription] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventParticipantIds, setEventParticipantIds] = useState<string[]>([]);
@@ -401,6 +398,7 @@ const CommitteesPage = () => {
 
   const resetEventForm = () => {
     setEventType('mom');
+    setEventTitle('');
     setEventDescription('');
     setEventDate('');
     setEventParticipantIds([]);
@@ -459,8 +457,8 @@ const CommitteesPage = () => {
 
   const handleAddEvent = async () => {
     if (!clientId || !selectedCommitteeForEvent) return;
-    if (!eventDate || !eventDescription.trim()) {
-      toast.error('Date and description are required');
+    if (!eventTitle.trim() || !eventDate || !eventDescription.trim()) {
+      toast.error('Title, date and description are required');
       return;
     }
     if (eventParticipantIds.length === 0) {
@@ -474,7 +472,7 @@ const CommitteesPage = () => {
         committeeId: selectedCommitteeForEvent.id,
         clientId,
         eventType,
-        title: buildAutoEventTitle(eventType, eventDate),
+        title: eventTitle.trim(),
         description: eventDescription,
         eventDate,
         participantIds: eventParticipantIds,
@@ -803,7 +801,7 @@ const CommitteesPage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="committee-description">Description</Label>
-              <Textarea
+              <TextareaWithVoice
                 id="committee-description"
                 value={description}
                 onChange={(e) => setDescription(removeLeadingSpaces(e.target.value))}
@@ -1007,7 +1005,16 @@ const CommitteesPage = () => {
 
           <div className="space-y-4 overflow-y-auto pr-2 px-2 no-scrollbar">
             <div className="space-y-2">
-              <Label>Type</Label>
+              <Label htmlFor="event-title">Title <span className="text-red-500">*</span></Label>
+              <Input
+                id="event-title"
+                value={eventTitle}
+                onChange={(e) => setEventTitle(removeLeadingSpaces(e.target.value))}
+                placeholder="Enter title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Type <span className="text-red-500">*</span></Label>
               <Select value={eventType} onValueChange={(value: 'mom' | 'event') => setEventType(value)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1020,7 +1027,7 @@ const CommitteesPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="event-date">Date</Label>
+              <Label htmlFor="event-date">Date <span className="text-red-500">*</span></Label>
               <Input
                 id="event-date"
                 type="datetime-local"
@@ -1031,19 +1038,19 @@ const CommitteesPage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="event-description">Description</Label>
-              <Textarea
+              <TextareaWithVoice
                 id="event-description"
                 value={eventDescription}
                 onChange={(e) => setEventDescription(removeLeadingSpaces(e.target.value))}
                 placeholder="Enter description"
-                rows={3}
+                rows={8}
               />
             </div>
 
 
 
             <div className="space-y-2">
-              <Label>Participants</Label>
+              <Label>Participants <span className="text-red-500">*</span></Label>
               <SearchMultiSelect
                 options={eventParticipantOptions}
                 selectedIds={eventParticipantIds}
