@@ -43,12 +43,22 @@ export function NewFollowUpEntryDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (open) {
+    if (!open || !record) return;
+
+    if (record.follow_up_entries && record.follow_up_entries.length > 0) {
+      const latestEntry = [...record.follow_up_entries].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      )[0];
+
+      setDate(new Date(latestEntry.date));
+      setNotes(latestEntry.notes || '');
+    } else {
       setDate(new Date());
       setNotes('');
-      setErrors({});
     }
-  }, [open]);
+
+    setErrors({});
+  }, [open, record]);
 
   const notesTrimmed = notes.trim();
   const notesLen = notesTrimmed.length;
@@ -80,7 +90,7 @@ export function NewFollowUpEntryDialog({
         client_id: clientId,
         employee_id: employeeId,
         student_well_begin_management_id: record.id,
-        date: date.toISOString().slice(0, 10),
+        date: date.toLocaleDateString('en-CA'),
         notes: notesTrimmed || null,
       });
       toast.success('Follow-up entry was added successfully');

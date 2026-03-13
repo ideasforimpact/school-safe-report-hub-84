@@ -464,9 +464,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       return searchQuery
         ? availableStaff.filter(staff => {
             const fullName = `${staff.firstName} ${staff.lastName}`;
+            const email = staff.email || '';
             const searchTerm = searchQuery.toLowerCase();
-            return fullName.toLowerCase().includes(searchTerm) || 
-                   staff.email.toLowerCase().includes(searchTerm);
+            return fullName.toLowerCase().includes(searchTerm) ||
+                   email.toLowerCase().includes(searchTerm);
           })
         : availableStaff;
     } else if (role === 'Student') {

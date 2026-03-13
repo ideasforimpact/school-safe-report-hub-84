@@ -134,7 +134,7 @@ export function NewWellBeingRecordDialog({
           section_id: student!.section_id ?? null,
           grade_id: student!.grade_id ?? null,
           type_of_concern_id: typeOfConcernId,
-          date_of_observation: dateOfObservation!.toISOString(),
+          date_of_observation: dateOfObservation!.toLocaleDateString('en-CA'),
           concern: concern.trim() || null,
           attachments: attachmentsPayload,
         },
@@ -152,7 +152,7 @@ export function NewWellBeingRecordDialog({
         return;
       }
 
-      toast.success('Record saved');
+      toast.success('Record was saved successfully');
       setStudent(null);
       setTypeOfConcernId('');
       setDateOfObservation(new Date());
