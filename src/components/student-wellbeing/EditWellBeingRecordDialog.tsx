@@ -171,10 +171,12 @@ export function EditWellBeingRecordDialog({
         section_id: student!.section_id ?? null,
         grade_id: student!.grade_id ?? null,
         type_of_concern_id: typeOfConcernId,
-        date_of_observation: dateOfObservation!.toISOString(),
+        date_of_observation: dateOfObservation!.toLocaleDateString('en-CA'),
         concern: concern.trim() || null,
         status: status as 'open' | 'under_observation' | 'closed',
-        next_follow_up: nextFollowUp ? nextFollowUp.toISOString().slice(0, 10) : null,
+        next_follow_up: nextFollowUp
+        ? nextFollowUp.toLocaleDateString('en-CA')
+        : null,
         document_url: existingKept,
         attachments: attachmentsPayload,
       });

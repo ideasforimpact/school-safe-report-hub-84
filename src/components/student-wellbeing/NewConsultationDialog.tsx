@@ -97,13 +97,28 @@ export function NewConsultationDialog({
   }, [open]);
 
   useEffect(() => {
-    if (open) {
+    if (!open || !record) return;
+
+    if (record.consultations && record.consultations.length > 0) {
+      const latestConsultation = [...record.consultations].sort(
+        (a, b) =>
+          new Date(b.consultation_date).getTime() -
+          new Date(a.consultation_date).getTime()
+      )[0];
+
+      setConsultationDate(new Date(latestConsultation.consultation_date));
+      setConsultationType(latestConsultation.consultation_provided_by as ConsultationType);
+      setNotes(latestConsultation.support_notes || '');
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      setConsultationDate(today);
       setConsultationType(null);
-      setConsultationDate(new Date());
       setNotes('');
-      setErrors({});
     }
-  }, [open]);
+
+    setErrors({});
+  }, [open, record]);
 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
@@ -136,7 +151,7 @@ export function NewConsultationDialog({
         employee_id: employeeId,
         student_well_begin_management_id: record.id,
         consultation_provided_by: consultationType!,
-        consultation_date: consultationDate!.toISOString().slice(0, 10),
+        consultation_date: consultationDate!.toLocaleDateString('en-CA'),
         mode_id: modeId,
         support_notes: notes.trim() || null,
       });

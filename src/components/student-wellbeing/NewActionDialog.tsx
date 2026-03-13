@@ -43,12 +43,26 @@ export function NewActionDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (open) {
-      setTakenDate(new Date());
+    if (!open || !record) return;
+
+    if (record.actions && record.actions.length > 0) {
+      const latestAction = [...record.actions].sort(
+        (a, b) =>
+          new Date(b.taken_date).getTime() -
+          new Date(a.taken_date).getTime()
+      )[0];
+
+      setTakenDate(new Date(latestAction.taken_date));
+      setDescription(latestAction.description || '');
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      setTakenDate(today);
       setDescription('');
-      setErrors({});
     }
-  }, [open]);
+
+    setErrors({});
+  }, [open, record]);
 
   const descLen = description.trim().replace(/ /g, '').length;
   const descriptionValid = descLen >= DESCRIPTION_MIN && descLen <= DESCRIPTION_MAX;
@@ -75,7 +89,7 @@ export function NewActionDialog({
         client_id: clientId,
         employee_id: employeeId,
         student_well_begin_management_id: record.id,
-        taken_date: takenDate.toISOString().slice(0, 10),
+        taken_date: takenDate.toLocaleDateString('en-CA'),
         description: description.trim(),
       });
       toast.success('Action was added successfully');
