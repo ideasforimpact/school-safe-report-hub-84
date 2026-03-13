@@ -54,7 +54,6 @@ import { ActionDetailsDialog } from '@/components/student-wellbeing/ActionDetail
 import { NewFollowUpEntryDialog } from '@/components/student-wellbeing/NewFollowUpEntryDialog';
 import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialog';
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
-import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 
 const STATUS_OPTIONS = [
@@ -197,25 +196,6 @@ const StudentWellBeingPage = () => {
   useEffect(() => {
       loadRecords();
     }, [loadRecords]);
-  
-  // wellbeing realtime
-  useRealTimeSubHook({
-    channelName: `student-wellbeing-${clientId}`,
-    table: 'student_well_begin_management',
-    events: '*',
-    enabled: Boolean(clientId),
-    onPayload: loadRecords,
-  });
-
-  // students realtime
-  useRealTimeSubHook({
-    channelName: `students-${clientId}`,
-    table: 'students',
-    events: 'DELETE',
-    enabled: Boolean(clientId),
-    filter: `client_id=eq.${clientId}`,
-    onPayload: loadRecords,
-  });
 
   const handleDeleteConfirm = async () => {
     if (!recordToDelete || !clientId || !employeeData?.id) return;

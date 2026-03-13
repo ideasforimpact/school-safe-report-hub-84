@@ -12,9 +12,6 @@ export interface StudentOption {
   student_id?: string;
   section_id?: string | null;
   grade_id?: string | null;
-  is_external?: boolean;
-  external_student_id?: string;
-  external_client_id?: string;
 }
 
 interface StudentSearchSelectProps {
@@ -108,9 +105,6 @@ export function StudentSearchSelect({
         student_id: s.student_id,
         section_id: s.section_id ?? null,
         grade_id: s.grade_id ?? null,
-        is_external: s.is_external === true,
-        external_student_id: s.is_external === true ? s.id : undefined,
-        external_client_id: s.external_client_id ?? undefined,
       }));
     } catch (e) {
       console.error(e);
@@ -149,7 +143,6 @@ export function StudentSearchSelect({
             student_id: s.studentId,
             section_id: s.section_id ?? null,
             grade_id: s.grade_id ?? null,
-            is_external: false,
           }))
         );
       } else {
@@ -166,7 +159,6 @@ export function StudentSearchSelect({
             student_id: s.studentId,
             section_id: s.section_id ?? null,
             grade_id: s.grade_id ?? null,
-            is_external: false,
           }))
         );
       }
