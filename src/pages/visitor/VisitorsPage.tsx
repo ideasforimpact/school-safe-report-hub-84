@@ -204,8 +204,8 @@ const VisitorsPage = () => {
 
     // Sort by created_at descending (newest first)
     return unified.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
+      const dateA = new Date(a.in_time || a.created_at).getTime();
+      const dateB = new Date(b.in_time || b.created_at).getTime();
       return dateB - dateA;
     });
   }, []);
