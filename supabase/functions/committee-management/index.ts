@@ -423,7 +423,7 @@ async function createEvent(supabase: any, payload: any) {
       client_id,
       committee_id,
       event_type,
-     
+      title,
       description: description ? String(description).trim() : null,
       event_date,
       created_by: employee_id || null,
@@ -472,7 +472,7 @@ async function updateEvent(supabase: any, payload: any) {
     .from('committee_events')
     .update({
       event_type,
-      
+      title,
       description: description ? String(description).trim() : null,
       event_date,
       updated_by: employee_id || null,

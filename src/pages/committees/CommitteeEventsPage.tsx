@@ -28,6 +28,7 @@ import {
   updateCommitteeEvent,
 } from '@/services/committees/committeeService';
 import { toast } from 'sonner';
+import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 
 type EmployeeOption = { id: string; name: string };
 
@@ -56,11 +57,6 @@ const formatDateTime = (value: string): string => {
   });
 };
 
-const buildAutoEventTitle = (eventType: 'mom' | 'event', eventDate: string): string => {
-  const timestamp = eventDate ? formatDateTime(eventDate) : 'Undated';
-  return `${eventType.toUpperCase()} - ${timestamp}`;
-};
-
 const removeLeadingSpaces = (value: string): string => value.replace(/^\s+/, '');
 
 const CommitteeEventsPage = () => {
@@ -83,6 +79,7 @@ const CommitteeEventsPage = () => {
   const [openForm, setOpenForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CommitteeEvent | null>(null);
   const [eventType, setEventType] = useState<'mom' | 'event'>('mom');
+  const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventDescription, setEventDescription] = useState('');
   const [participantIds, setParticipantIds] = useState<string[]>([]);
@@ -159,6 +156,7 @@ const CommitteeEventsPage = () => {
   const resetForm = () => {
     setEditingEvent(null);
     setEventType('mom');
+    setEventTitle('');
     setEventDate('');
     setEventDescription('');
     setParticipantIds([]);
@@ -182,6 +180,7 @@ const CommitteeEventsPage = () => {
     }
     setEditingEvent(event);
     setEventType(event.event_type);
+    setEventTitle(event.title || '');
     setEventDate(formatDateTimeForInput(event.event_date));
     setEventDescription(event.description || '');
     setParticipantIds(event.participants || []);
@@ -200,8 +199,8 @@ const CommitteeEventsPage = () => {
       toast.error('Only admin users can edit MOM/Event');
       return;
     }
-    if (!eventDate || !eventDescription.trim()) {
-      toast.error('Event date, and description are required');
+    if (!eventTitle.trim() || !eventDate || !eventDescription.trim()) {
+      toast.error('Event title, date, and description are required');
       return;
     }
     if (participantIds.length === 0) {
@@ -214,7 +213,7 @@ const CommitteeEventsPage = () => {
       committeeId,
       clientId,
       eventType,
-      title: editingEvent?.title?.trim() || buildAutoEventTitle(eventType, eventDate),
+      title: eventTitle.trim(),
       eventDate,
       description: eventDescription,
       participantIds,
@@ -490,6 +489,7 @@ const CommitteeEventsPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Title</TableHead>
                     <TableHead>Event Type</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Participants</TableHead>
@@ -501,6 +501,7 @@ const CommitteeEventsPage = () => {
                 <TableBody>
                   {filteredEvents.map((event) => (
                     <TableRow key={event.id}>
+                      <TableCell className="max-w-[220px] truncate">{event.title || '-'}</TableCell>
                       <TableCell className="font-medium">{event.event_type.toUpperCase()}</TableCell>
                       <TableCell>{formatDateTime(event.event_date)}</TableCell>
                       <TableCell>{renderParticipantsIndicator(event)}</TableCell>
@@ -546,6 +547,15 @@ const CommitteeEventsPage = () => {
             <AlertDialogDescription>Record meeting/event details for this committee.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 px-2 overflow-y-auto pr-2 no-scrollbar">
+             <div className="space-y-2">
+              <Label htmlFor="evt-title"> Title <span className="text-red-500">*</span></Label>
+              <Input
+                id="evt-title"
+                value={eventTitle}
+                onChange={(e) => setEventTitle(removeLeadingSpaces(e.target.value))}
+                placeholder="Enter title"
+              />
+            </div>
             <div className="space-y-2">
               <Label>Type <span className="text-red-500">*</span></Label>
               <Select value={eventType} onValueChange={(value: 'mom' | 'event') => setEventType(value)}>
@@ -562,7 +572,7 @@ const CommitteeEventsPage = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="evt-desc">Description <span className="text-red-500">*</span></Label>
-              <Textarea
+              <TextareaWithVoice
                 id="evt-desc"
                 rows={8}
                 value={eventDescription}
