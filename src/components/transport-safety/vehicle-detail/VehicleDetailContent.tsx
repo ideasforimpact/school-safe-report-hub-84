@@ -10,7 +10,7 @@ import VehicleInfoCard from './VehicleInfoCard';
 import VehicleDocumentsCard from './VehicleDocumentsCard';
 import VehicleTabs from './VehicleTabs';
 import VehicleNotFound from './VehicleNotFound';
-import { Loader2 } from 'lucide-react';
+import Loader from '@/components/common/Loader';
 
 const VehicleDetailContent: React.FC = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
@@ -85,13 +85,10 @@ const VehicleDetailContent: React.FC = () => {
     return (
       <div className="container mx-auto py-6 max-w-7xl">
         <VehicleHeader />
+
         
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600">Loading vehicle details...</p>
-          </div>
-        </div>
+          <Loader text="Loading vehicle details..." />
+        
       </div>
     );
   }

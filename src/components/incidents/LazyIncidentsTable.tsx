@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IncidentRecord } from '@/services/incidentService';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { formatDate } from "@/lib/Dateformat";
+import Loader from "@/components/common/Loader";
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -31,6 +32,7 @@ interface PaginationInfo {
 interface LazyIncidentsTableProps {
   incidents: IncidentRecord[];
   loading: boolean;
+  hasFetched: boolean;
   pagination?: PaginationInfo;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
@@ -40,6 +42,7 @@ interface LazyIncidentsTableProps {
 const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({ 
   incidents, 
   loading, 
+  hasFetched,
   pagination,
   onPageChange,
   onPageSizeChange,
@@ -51,7 +54,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const [policyTitles, setPolicyTitles] = React.useState<string[]>([]);
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiPayload, setAiPayload] = React.useState<any | null>(null);
-
+  
   React.useEffect(() => {
     const loadPolicyDocs = async () => {
       try {
@@ -196,12 +199,8 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   if (loading && incidents.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-8 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="text-lg text-gray-600">Loading incidents...</span>
-          </div>
-        </div>
+          <Loader text="Loading incidents..." />
+        
         
         {/* Loading skeleton table */}
         <div className="overflow-x-auto">
@@ -480,11 +479,8 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
       
       {/* Loading indicator for page changes */}
       {loading && incidents.length > 0 && (
-        <div className="text-center py-4 border-t">
-          <div className="flex items-center justify-center space-x-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-gray-500">Loading...</span>
-          </div>
+        <div className="border-t">
+          <Loader text="Loading incidents..." />
         </div>
       )}
     </div>

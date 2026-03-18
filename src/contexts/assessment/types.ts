@@ -34,4 +34,5 @@ export interface AssessmentContextType {
   submitResponse: (id: string) => void;
   getResponsesByAssignment: (assignmentId: string) => AssessmentResponse[];
   getResponsesByUser: (userId: string) => AssessmentResponse[];
+  loading: boolean;
 }

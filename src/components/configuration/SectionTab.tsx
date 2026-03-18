@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
+import Loader from '../common/Loader';
 
 interface SectionTabProps {
   sections: SectionItem[];
@@ -497,11 +498,8 @@ export const SectionTab = ({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-4">
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Loading sections...</span>
-                  </div>
+                <TableCell colSpan={4} className="text-center py-4">                  
+                  <Loader text="Loading sections..." />                  
                 </TableCell>
               </TableRow>
             ) : filteredSections.length === 0 ? (

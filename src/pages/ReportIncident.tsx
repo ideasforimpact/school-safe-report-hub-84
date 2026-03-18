@@ -23,6 +23,7 @@ import { FileItem } from '@/types/fileTypes';
 import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { ArrowLeft } from 'lucide-react';
+import Loader from '@/components/common/Loader';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -676,10 +677,8 @@ const ReportIncident = () => {
           </div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-center items-center min-h-[400px]">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading...</p>
-              </div>
+                
+              <Loader text= "Loading..."/>
             </div>
           </div>
         </div>

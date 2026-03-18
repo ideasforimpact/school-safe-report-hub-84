@@ -55,6 +55,7 @@ import { NewFollowUpEntryDialog } from '@/components/student-wellbeing/NewFollow
 import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialog';
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -171,7 +172,7 @@ const StudentWellBeingPage = () => {
   const [recordForFollowUp, setRecordForFollowUp] = useState<StudentWellbeingRecord | null>(null);
   const [auditDialogOpen, setAuditDialogOpen] = useState(false);
   const [recordForAudit, setRecordForAudit] = useState<StudentWellbeingRecord | null>(null);
-
+  
   const loadRecords = useCallback(async () => {
     if (!clientId) {
       setRecords([]);
@@ -467,9 +468,7 @@ const StudentWellBeingPage = () => {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              Loading records...
-            </div>
+            <Loader text="Loading Records..." />
           ) : filteredRecords.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />

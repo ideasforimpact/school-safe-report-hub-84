@@ -27,6 +27,7 @@ import { FileItem } from '@/types/fileTypes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from "@/lib/Dateformat";
+import Loader from '@/components/common/Loader';
 
 const FormsPage = () => {
   const location = useLocation();
@@ -617,10 +618,7 @@ const Content = (
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-500">Loading forms...</p>
-                </div>
+                <Loader text="Loading forms..." />
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
@@ -820,15 +818,9 @@ const Content = (
           </div>
 
           {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading forms...</p>
-            </div>
+            <Loader text="Loading forms..." />
           ) : submissionsLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading grievances...</p>
-            </div>
+            <Loader text="Loading grievances..." />
           ) : (
             <div className="overflow-x-auto">
               <Table>

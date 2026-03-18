@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
+import Loader from '@/components/common/Loader';
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
@@ -1523,9 +1524,8 @@ const ComplianceDocumentsPage: React.FC = () => {
           </AlertDialog>
           {loading && (
             <div className="mt-4 sm:mt-6 flex items-center justify-center py-8 sm:py-10">
-              <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
-              <span className="text-xs sm:text-sm text-gray-600">Loading...</span>
-          </div>
+              <Loader text="Loading compliance documents..." />
+            </div>
           )}
         </div>
       </div>

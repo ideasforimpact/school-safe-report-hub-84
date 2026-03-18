@@ -37,6 +37,7 @@ import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useCallback } from 'react';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 interface SOP {
   id: string;
@@ -410,9 +411,7 @@ const AssignedSOPPage = () => {
           )}
 
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading assigned SOPs...</p>
-            </div>
+            <Loader text= "Loading assigned SOPs..." />
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No assigned SOPs found</p>

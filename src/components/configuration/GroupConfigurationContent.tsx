@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import Loader from '../common/Loader';
 
 interface Group {
   id: string;
@@ -251,9 +252,7 @@ const GroupConfigurationContent = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">Loading groups...</div>
-      </div>
+      <Loader text="Loading groups..." />
     );
   }
 

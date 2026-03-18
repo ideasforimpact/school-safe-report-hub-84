@@ -15,6 +15,7 @@ import ClientList from '@/components/clients/ClientList';
 import ClientDialog from '@/components/backoffice/ClientDialog';
 import ClientStatusFilter from '@/components/clients/ClientStatusFilter';
 import { Loader2 } from 'lucide-react';
+import Loader from '@/components/common/Loader';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
@@ -73,8 +74,7 @@ const ClientManagement = () => {
             
             {loading ? (
               <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <span className="ml-2">Loading clients...</span>
+                <Loader text="Loading clients..." />
               </div>
             ) : (
               <ClientList 

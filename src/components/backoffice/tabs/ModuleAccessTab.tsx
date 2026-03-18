@@ -8,6 +8,7 @@ import { Loader2, Check } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
 import { updateEmployeeModulePermissions, forceRefreshEmployeeModules } from '@/services/employee/employeeModuleService';
+import Loader from '@/components/common/Loader';
 
 interface Module {
   id: string;
@@ -259,11 +260,8 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preload
       <div className="space-y-2">
         <label className="font-medium text-lg">Module Access</label>
         
-        {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <Loader2 className="w-6 h-6 text-primary animate-spin mr-2" />
-            <p className="text-muted-foreground">Loading modules...</p>
-          </div>
+        {loading ? (          
+          <Loader text="Loading modules..." />
         ) : modules.length === 0 ? (
           <div className="flex items-center justify-center h-40">
             <p className="text-muted-foreground">No modules available</p>
