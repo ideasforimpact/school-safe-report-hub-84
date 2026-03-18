@@ -42,38 +42,67 @@ serve(async (req) => {
     // Parse request body
     const { employeeId, clientId } = await req.json();
     
-    // Check token role from Authorization header and extract user info (optional - for logging only)
+    // Require a valid authenticated user JWT (anon / missing / expired client calls must re-login)
     const authHeader = req.headers.get('Authorization');
-    let tokenPayload: any | null = null;
-    let userId: string | null = null;
-    let isAuthenticated: boolean = false;
-    
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '').trim();
-      tokenPayload = decodeJWTPayload(token);
-      
-      if (tokenPayload) {
-        userId = tokenPayload.sub || null;
-        isAuthenticated = tokenPayload.role === 'authenticated';
-        
-        // Only reject if token is explicitly anonymous (not just missing)
-        if (tokenPayload.role === 'anon') {
-          console.warn('🚫 validate-employee: Anonymous token detected, returning 401', tokenPayload);
-          return new Response(
-            JSON.stringify({ 
-              valid: false,
-              isAuthenticated: false,
-              userId: userId,
-              message: 'Your session is not authenticated. Please login again.',
-              code: 'ANONYMOUS_TOKEN'
-            }),
-            { 
-              status: 401, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-            }
-          );
-        }
-      }
+    if (!authHeader || !authHeader.replace('Bearer ', '').trim()) {
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          isAuthenticated: false,
+          userId: null,
+          message: 'Your session is not authenticated. Please login again.',
+          code: 'MISSING_AUTH',
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '').trim();
+    const tokenPayload = decodeJWTPayload(token);
+    if (!tokenPayload) {
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          isAuthenticated: false,
+          userId: null,
+          message: 'Your session is not authenticated. Please login again.',
+          code: 'INVALID_TOKEN',
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const userId: string | null = tokenPayload.sub || null;
+    const isAuthenticated = tokenPayload.role === 'authenticated';
+
+    if (tokenPayload.role === 'anon') {
+      console.warn('🚫 validate-employee: Anonymous token detected, returning 401', tokenPayload);
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          isAuthenticated: false,
+          userId,
+          message: 'Your session is not authenticated. Please login again.',
+          code: 'ANONYMOUS_TOKEN',
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (tokenPayload.role !== 'authenticated') {
+      console.warn('🚫 validate-employee: JWT role is not authenticated', {
+        role: tokenPayload.role,
+      });
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          isAuthenticated: false,
+          userId,
+          message: 'Your session is not authenticated. Please login again.',
+          code: 'NOT_AUTHENTICATED_ROLE',
+        }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
     
     // Validate input

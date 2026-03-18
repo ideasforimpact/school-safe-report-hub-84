@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getSupabaseTokenRole } from '@/utils/sessionValidation';
+import { ensureFreshAuthenticatedSession } from '@/utils/sessionValidation';
 
 /**
  * Custom hook to validate employee access on page loads and visibility changes.
@@ -86,28 +86,25 @@ export const useEmployeeValidation = () => {
         return;
       }
       
-      // Get the current session token for authorization
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.warn('No session token available for validation');
+      const fresh = await ensureFreshAuthenticatedSession();
+      if (!fresh.ok) {
+        const msg =
+          fresh.reason === 'refresh_failed'
+            ? 'Your session has expired. Please log in again.'
+            : 'Your session is not authenticated. Please login again.';
+        console.warn('[validate-employee] Session not valid:', fresh.reason);
+        logout('session_expired', msg);
         return;
       }
 
-      // Treat anonymous session as unauthenticated: redirect to login without calling the API.
-      // This avoids 401 from validate-employee and "Unknown" data when Supabase restores an anon session (e.g. after browser close in prod/UAT).
-      const tokenRole = getSupabaseTokenRole(session.access_token);
-      if (tokenRole === 'anon') {
-        console.log('[validate-employee] RESTRICTED: Anonymous session detected — redirecting to login without calling API');
-        logout('session_expired', 'Your session is not authenticated. Please login again.');
-        return;
-      }
-      console.log('[validate-employee] Session is authenticated — calling validate-employee API');
+      console.log('[validate-employee] Session refreshed/authenticated — calling validate-employee API');
 
-      // Use fetch directly to get the response body (including for 403 errors)
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
       const response = await fetch(`${supabaseUrl}/functions/v1/validate-employee`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${fresh.accessToken}`,
+          apikey: anonKey ?? '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

@@ -2,6 +2,47 @@ import { loadAuthState, clearPersistedAuthState } from '@/store/authPersistence'
 import { verifyBackofficeToken, isTokenExpired } from './jwtUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { authCoordinator } from './authCoordinator';
+import type { Session } from '@supabase/supabase-js';
+
+/**
+ * True only when JWT role is exactly `authenticated` (SafeSchool / RLS expects this).
+ * Rejects anon, missing token, corrupt JWT, or unknown role — avoids "Unknown" rows from RLS.
+ */
+export function isSupabaseAccessTokenAuthenticated(accessToken: string | undefined): boolean {
+  return getSupabaseTokenRole(accessToken) === 'authenticated';
+}
+
+/**
+ * Refresh session if access token is expired or near expiry, then verify role is authenticated.
+ * Call this before edge functions or sensitive reads so returning users get a valid JWT.
+ */
+export async function ensureFreshAuthenticatedSession(): Promise<
+  | { ok: true; accessToken: string; session: Session }
+  | { ok: false; reason: 'no_session' | 'refresh_failed' | 'not_authenticated' }
+> {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session?.access_token) {
+    return { ok: false, reason: 'no_session' };
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const exp = session.expires_at ?? 0;
+  let active = session;
+
+  if (exp <= now + 120) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError || !refreshed.session?.access_token) {
+      return { ok: false, reason: 'refresh_failed' };
+    }
+    active = refreshed.session;
+  }
+
+  if (!isSupabaseAccessTokenAuthenticated(active.access_token)) {
+    return { ok: false, reason: 'not_authenticated' };
+  }
+
+  return { ok: true, accessToken: active.access_token, session: active };
+}
 
 /**
  * Decode Supabase JWT payload and return the role (authenticated | anon).

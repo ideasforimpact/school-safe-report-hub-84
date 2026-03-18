@@ -660,20 +660,45 @@ const handleLogoutBroadcast = useCallback(() => {
         }
 
         const { data } = await supabase.auth.getSession();
-        
-        if (data.session && !currentUser) {
-          // Do not restore anonymous session as "logged in" (avoids 401 from validate-employee and "Unknown" data in prod/UAT)
-          const { getSupabaseTokenRole } = await import('@/utils/sessionValidation');
-          const role = getSupabaseTokenRole(data.session?.access_token);
-          if (role === 'anon') {
-            console.log('[Auth init] RESTRICTED: Restored session is anonymous — signing out, will not restore as logged in');
-            await supabase.auth.signOut();
-            return;
+
+        if (!data.session) {
+          return;
+        }
+
+        const { ensureFreshAuthenticatedSession, getSupabaseTokenRole } = await import(
+          '@/utils/sessionValidation'
+        );
+
+        const fresh = await ensureFreshAuthenticatedSession();
+        if (!fresh.ok) {
+          console.warn('[Auth init] Invalid or stale Supabase session — signing out', fresh.reason);
+          await supabase.auth.signOut();
+          dispatch(clearAuth());
+          dispatch(resetEmployee());
+          clearPersistedAuthState();
+          if (!isOnLoginRoute) {
+            navigate('/login', { replace: true });
           }
-          console.log('[Auth init] Session is authenticated — restoring user');
+          return;
+        }
+
+        if (getSupabaseTokenRole(fresh.session.access_token) !== 'authenticated') {
+          console.log('[Auth init] RESTRICTED: JWT is not authenticated role — signing out');
+          await supabase.auth.signOut();
+          dispatch(clearAuth());
+          dispatch(resetEmployee());
+          clearPersistedAuthState();
+          if (!isOnLoginRoute) {
+            navigate('/login', { replace: true });
+          }
+          return;
+        }
+
+        if (!currentUser) {
+          console.log('[Auth init] Session refreshed and authenticated — restoring user');
           setShowAuthLoading(true);
           setTimeout(async () => {
-            await handleUserAuthentication(data.session?.user);
+            await handleUserAuthentication(fresh.session.user);
             setTimeout(() => setShowAuthLoading(false), 2000);
           }, 0);
         }
