@@ -602,7 +602,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     <div className="flex items-center justify-end gap-2 w-full whitespace-nowrap">
 
                       {/* API Verify */}
-                      {hasVerifyApi && (
+                      {hasVerifyApi && doc.verificationStatus !== 'in-progress' && (
                         <Button
                           variant="verifyApi"
                           size="sm"

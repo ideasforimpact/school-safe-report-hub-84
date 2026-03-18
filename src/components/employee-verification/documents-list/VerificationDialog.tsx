@@ -1487,25 +1487,42 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={handleCancel}>
-                Cancel
-              </Button>
-            <Button 
-                variant="success"
-                onClick={handleApiClick}
-              disabled={
-                isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                isDrivingLicenseVerifying || isPassportVerifying || isBankAccountVerifying || isAadharManualVerifying ||
-                isOtherVerifying || isOtherRejecting
-              }
-            >
-                {isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                 isDrivingLicenseVerifying || isPassportVerifying || isBankAccountVerifying || isAadharManualVerifying ||
-                 isOtherVerifying ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
-                Verify
-            </Button>
+              {errorKey === 'in-progress' ? (
+                <Button onClick={handleCancel}>OK</Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={handleCancel}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="success"
+                    onClick={handleApiClick}
+                    disabled={
+                      isRequestingOtp ||
+                      isPanVerifying ||
+                      isVoterIdVerifying ||
+                      isDrivingLicenseVerifying ||
+                      isPassportVerifying ||
+                      isBankAccountVerifying ||
+                      isAadharManualVerifying ||
+                      isOtherVerifying ||
+                      isOtherRejecting
+                    }
+                  >
+                    {isRequestingOtp ||
+                    isPanVerifying ||
+                    isVoterIdVerifying ||
+                    isDrivingLicenseVerifying ||
+                    isPassportVerifying ||
+                    isBankAccountVerifying ||
+                    isAadharManualVerifying ||
+                    isOtherVerifying ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Verify
+                  </Button>
+                </>
+              )}
             </>
           )}
         </DialogFooter>
