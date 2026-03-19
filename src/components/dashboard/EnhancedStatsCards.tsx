@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   AlertTriangle, 
@@ -12,7 +12,18 @@ import {
   BarChart3,
   AlertCircle
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { incidentDataService } from '@/services/incident/incidentDataService';
+import { IncidentRecord } from '@/services/incidentService';
+import StudentsInvolvedTable from '@/components/incidents/StudentsInvolvedTable';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 interface EnhancedStatsCardsProps {
   stats: {
@@ -68,9 +79,66 @@ interface EnhancedStatsCardsProps {
 }
 
 const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
-  const navigate = useNavigate();
+  const { state: employeeState } = useEmployeeStore();
+  const { user, employeeData: authEmployeeData } = useAuth();
+  const [studentsDialogOpen, setStudentsDialogOpen] = useState(false);
+  const [studentsDialogLoading, setStudentsDialogLoading] = useState(false);
+  const [studentsDialogIncidents, setStudentsDialogIncidents] = useState<IncidentRecord[]>([]);
+
+  const hasIncidentAdmin = useMemo(() => {
+    const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
+    if (isSuperAdmin) return true;
+    const incidentsModule = employeeState.configuredModules?.find(
+      (module) => module.name.toLowerCase() === 'incidents'
+    );
+    return incidentsModule?.accessLevel?.is_admin === true;
+  }, [employeeState]);
+
+  const loadStudentsInvolvedIncidents = useCallback(async () => {
+    const clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId || user?.clientId;
+    const employeeDataForFiltering = employeeState.employeeData || authEmployeeData;
+
+    if (!clientId || !employeeDataForFiltering?.id) {
+      setStudentsDialogIncidents([]);
+      return;
+    }
+
+    setStudentsDialogLoading(true);
+    try {
+      const response = await incidentDataService.fetchIncidentsForClientWithFilters(
+        clientId,
+        false,
+        employeeDataForFiltering,
+        hasIncidentAdmin,
+        { page: 1, pageSize: 10 },
+        {},
+        true
+      );
+
+      const studentIncidents = response.data.filter((incident: any) => {
+        const people = incident?.peopleInvolved || incident?.people_involved;
+        return (
+          Array.isArray(people) &&
+          people.some((p: any) => (p?.role || '').toLowerCase() === 'student')
+        );
+      });
+
+      setStudentsDialogIncidents(studentIncidents);
+    } catch (error) {
+      console.error('Failed to load students involved incidents:', error);
+      setStudentsDialogIncidents([]);
+    } finally {
+      setStudentsDialogLoading(false);
+    }
+  }, [employeeState.employeeData, authEmployeeData, user?.clientId, hasIncidentAdmin]);
 
   const handleCardClick = (cardType: string) => {
+    if (cardType === 'students_involved') {
+      setStudentsDialogOpen(true);
+      loadStudentsInvolvedIncidents();
+      return;
+    }
+
     const baseUrl = window.location.origin;
     let targetUrl = '';
     
@@ -89,9 +157,6 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
         break;
       case 'safety_vehicles':
         targetUrl = `${baseUrl}/transport-safety?filter=expired`;
-        break;
-      case 'students_involved':
-        targetUrl = `${baseUrl}/incidents?filter=students_involved`;
         break;
       default:
         return;
@@ -290,36 +355,37 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {statsCards.map((card, index) => {
-        const Icon = card.icon;
-        return (
-          <Card 
-            key={index} 
-            className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
-            onClick={() => handleCardClick((card as any).cardType)}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
-                {card.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${card.bgColor} shadow-sm`}>
-                <Icon className={`h-5 w-5 ${card.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className={`font-bold ${card.color} mb-2 flex items-center space-x-2`}>
-                <span>{card.value}</span>
-                {(card as any).trend !== undefined && (
-                  <span className={`text-sm ${(card as any).trend <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {(card as any).trend >= 0 ? '+' : ''}{(card as any).trend.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-3">
-                {card.description}
-              </p>
+    <>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {statsCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <Card 
+              key={index} 
+              className={`bg-gradient-to-br ${card.gradient} border-l-4 border-primary hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}
+              onClick={() => handleCardClick((card as any).cardType)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-700">
+                  {card.title}
+                </CardTitle>
+                <div className={`p-2 rounded-lg ${card.bgColor} shadow-sm`}>
+                  <Icon className={`h-5 w-5 ${card.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className={`font-bold ${card.color} mb-2 flex items-center space-x-2`}>
+                  <span>{card.value}</span>
+                  {(card as any).trend !== undefined && (
+                    <span className={`text-sm ${(card as any).trend <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {(card as any).trend >= 0 ? '+' : ''}{(card as any).trend.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-3">
+                  {card.description}
+                </p>
 
               {/* Show breakdown for Total Number of Open Incidents card */}
               {(card as any).showBreakdown && (
@@ -528,35 +594,54 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
                     )}
 
               {/* Status indicators */}
-              {(card as any).priority && (
-                <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{(card as any).priority}</span>
-                </div>
-              )}
+                {(card as any).priority && (
+                  <div className="text-xs">
+                    <span className={`font-medium ${card.color}`}>{(card as any).priority}</span>
+                  </div>
+                )}
 
-              {(card as any).status && (
-                <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{(card as any).status}</span>
-                </div>
-              )}
+                {(card as any).status && (
+                  <div className="text-xs">
+                    <span className={`font-medium ${card.color}`}>{(card as any).status}</span>
+                  </div>
+                )}
 
 
-              {(card as any).direction && (
-                <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{(card as any).direction}</span>
-                </div>
-              )}
+                {(card as any).direction && (
+                  <div className="text-xs">
+                    <span className={`font-medium ${card.color}`}>{(card as any).direction}</span>
+                  </div>
+                )}
 
-              {(card as any).performance && (
-                <div className="text-xs">
-                  <span className={`font-medium ${card.color}`}>{(card as any).performance}</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+                {(card as any).performance && (
+                  <div className="text-xs">
+                    <span className={`font-medium ${card.color}`}>{(card as any).performance}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <AlertDialog open={studentsDialogOpen} onOpenChange={setStudentsDialogOpen}>
+        <AlertDialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Students Involved</AlertDialogTitle>
+          </AlertDialogHeader>
+          <StudentsInvolvedTable incidents={studentsDialogIncidents} loading={studentsDialogLoading} />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+              onClick={() => setStudentsDialogOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
