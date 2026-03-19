@@ -1634,7 +1634,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                       );
                     }}
                     min={new Date().toISOString().split("T")[0]}
-                    className="w-[250px]"
+                    className="w-[190px]"
                   />
                 </div>
 
