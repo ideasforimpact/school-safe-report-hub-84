@@ -39,7 +39,8 @@ const FilterBar: React.FC<FilterBarProps> = ({
  const activeFilterCount = [
     searchTerm,
     documentStatusFilter !== 'all' ? documentStatusFilter : '',
-    documentTypeFilter !== 'all' ? documentTypeFilter : ''
+    documentTypeFilter !== 'all' ? documentTypeFilter : '',
+    departmentFilter !== 'all' ? departmentFilter : ''
   ].filter(value => {
     if (!value) return false;
     if (typeof value === 'string') return value.trim() !== '';
