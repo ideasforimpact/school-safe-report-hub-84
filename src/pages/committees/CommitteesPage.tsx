@@ -37,7 +37,6 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,7 +58,6 @@ import {
   createCommitteeEvent,
   deleteCommitteeAttachment,
   fetchCommitteeById,
-  fetchCommitteeEvents,
   fetchCommitteeMemberRoles,
   fetchCommitteeMembers,
   fetchCommittees,
@@ -130,6 +128,17 @@ const CommitteesPage = () => {
   const [eventParticipantIds, setEventParticipantIds] = useState<string[]>([]);
   const [eventAttachments, setEventAttachments] = useState<FileItem[]>([]);
   const [addingEvent, setAddingEvent] = useState(false);
+  const [committeeFormTouched, setCommitteeFormTouched] = useState({
+    name: false,
+    members: false,
+    roles: false,
+  });
+  const [eventFormTouched, setEventFormTouched] = useState({
+    title: false,
+    date: false,
+    description: false,
+    participants: false,
+  });
 
   const [eventListDialogOpen, setEventListDialogOpen] = useState(false);
   const [selectedCommitteeForEventList, setSelectedCommitteeForEventList] = useState<Committee | null>(null);
@@ -146,12 +155,17 @@ const CommitteesPage = () => {
     try {
       setLoading(true);
       const data = await fetchCommittees(clientId);
-      setCommittees(data);
-      if (data.length === 0) {
+      const committeesSortedByUpdatedDate = [...data].sort((a, b) => {
+        const aTime = new Date(a.updated_at).getTime();
+        const bTime = new Date(b.updated_at).getTime();
+        return bTime - aTime;
+      });
+      setCommittees(committeesSortedByUpdatedDate);
+      if (committeesSortedByUpdatedDate.length === 0) {
         setCommitteeMemberIdsByCommittee({});
       } else {
         const memberEntries = await Promise.all(
-          data.map(async (committee) => {
+          committeesSortedByUpdatedDate.map(async (committee) => {
             try {
               const members = await fetchCommitteeMembers(committee.id, clientId);
               return [committee.id, members.map((member) => member.employee_id)] as const;
@@ -270,6 +284,11 @@ const CommitteesPage = () => {
     setSelectedMemberRoles({});
     setStatus('active');
     setEditingCommittee(null);
+    setCommitteeFormTouched({
+      name: false,
+      members: false,
+      roles: false,
+    });
   };
 
   const openCreateDialog = () => {
@@ -404,6 +423,12 @@ const CommitteesPage = () => {
     setEventParticipantIds([]);
     setEventAttachments([]);
     setSelectedCommitteeForEvent(null);
+    setEventFormTouched({
+      title: false,
+      date: false,
+      description: false,
+      participants: false,
+    });
   };
 
   const handleOpenAddEvent = (committee: Committee) => {
@@ -445,15 +470,43 @@ const CommitteesPage = () => {
   };
 
   const handleMembersChange = (ids: string[]) => {
+    const defaultMemberRole =
+      memberRoles.find((role) => normalizeRole(role.name) === 'member')?.name || '';
     setSelectedMemberIds(ids);
     setSelectedMemberRoles((prev) => {
       const next: Record<string, string> = {};
       ids.forEach((id) => {
-        next[id] = prev[id] || '';
+        next[id] = prev[id] || defaultMemberRole;
       });
       return next;
     });
   };
+
+  const committeeNameError = useMemo(() => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return 'Committee name is required';
+    if (trimmedName.length < COMMITTEE_NAME_MIN_LENGTH || trimmedName.length > COMMITTEE_NAME_MAX_LENGTH) {
+      return `Committee name must be between ${COMMITTEE_NAME_MIN_LENGTH} and ${COMMITTEE_NAME_MAX_LENGTH} characters`;
+    }
+    return '';
+  }, [name]);
+
+  const committeeMembersError = useMemo(() => {
+    if (selectedMemberIds.length === 0) return 'Committee members are required';
+    return '';
+  }, [selectedMemberIds]);
+
+  const committeeRolesError = useMemo(() => {
+    const memberWithoutRole = selectedMemberIds.find((memberId) => !selectedMemberRoles[memberId]);
+    if (memberWithoutRole) return 'Each selected member must have a role';
+    const chairpersonCount = selectedMemberIds.reduce((count, memberId) => {
+      return count + (normalizeRole(selectedMemberRoles[memberId] || '') === 'chairperson' ? 1 : 0);
+    }, 0);
+    if (chairpersonCount > 1) return 'Only one member can be assigned as Chairperson';
+    return '';
+  }, [selectedMemberIds, selectedMemberRoles]);
+
+  const isCommitteeFormValid = !committeeNameError && !committeeMembersError && !committeeRolesError;
 
   const handleAddEvent = async () => {
     if (!clientId || !selectedCommitteeForEvent) return;
@@ -489,6 +542,18 @@ const CommitteesPage = () => {
     }
   };
 
+  const eventTitleError = useMemo(() => (!eventTitle.trim() ? 'Title is required' : ''), [eventTitle]);
+  const eventDateError = useMemo(() => (!eventDate ? 'Date is required' : ''), [eventDate]);
+  const eventDescriptionError = useMemo(
+    () => (!eventDescription.trim() ? 'Description is required' : ''),
+    [eventDescription]
+  );
+  const eventParticipantsError = useMemo(
+    () => (eventParticipantIds.length === 0 ? 'At least one participant is required' : ''),
+    [eventParticipantIds]
+  );
+  const isEventFormValid = !eventTitleError && !eventDateError && !eventDescriptionError && !eventParticipantsError;
+
   const handleRemoveCommitteeAttachment = async (attachmentId: string) => {
     if (!clientId || !employeeId) return;
     try {
@@ -497,22 +562,6 @@ const CommitteesPage = () => {
       toast.success('Committee attachment removed');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to remove committee attachment');
-    }
-  };
-
-  const handleOpenEventList = async (committee: Committee) => {
-    if (!clientId) return;
-    setSelectedCommitteeForEventList(committee);
-    setEventListDialogOpen(true);
-    setEventsLoading(true);
-    try {
-      const data = await fetchCommitteeEvents(committee.id, clientId);
-      setCommitteeEvents(data);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to load MOM/Event list');
-      setCommitteeEvents([]);
-    } finally {
-      setEventsLoading(false);
     }
   };
 
@@ -794,9 +843,13 @@ const CommitteesPage = () => {
                 id="committee-name"
                 value={name}
                 onChange={(e) => setName(removeLeadingSpaces(e.target.value))}
+                onBlur={() => setCommitteeFormTouched((prev) => ({ ...prev, name: true }))}
                 placeholder="Enter committee name"
                 maxLength={COMMITTEE_NAME_MAX_LENGTH}
               />
+              {committeeFormTouched.name && committeeNameError && (
+                <p className="text-xs text-red-500">{committeeNameError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -816,7 +869,10 @@ const CommitteesPage = () => {
               <SearchMultiSelect
                 options={memberOptions}
                 selectedIds={selectedMemberIds}
-                onChange={handleMembersChange}
+                onChange={(ids) => {
+                  setCommitteeFormTouched((prev) => ({ ...prev, members: true, roles: true }));
+                  handleMembersChange(ids);
+                }}
                 placeholder="Search and select members..."
               />
               {selectedMemberBadges.length > 0 && (
@@ -826,12 +882,13 @@ const CommitteesPage = () => {
                       <span className="text-sm text-gray-700">{member.name}</span>
                       <Select
                         value={selectedMemberRoles[member.id] || ''}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
+                          setCommitteeFormTouched((prev) => ({ ...prev, roles: true }));
                           setSelectedMemberRoles((prev) => ({
                             ...prev,
                             [member.id]: value,
-                          }))
-                        }
+                          }));
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select member role" />
@@ -861,6 +918,12 @@ const CommitteesPage = () => {
               <p className="text-xs text-gray-500">
                 Members are sourced from the employee table. Role is mandatory for each member.
               </p>
+              {(committeeFormTouched.members || committeeFormTouched.roles) && committeeMembersError && (
+                <p className="text-xs text-red-500">{committeeMembersError}</p>
+              )}
+              {committeeFormTouched.roles && committeeRolesError && (
+                <p className="text-xs text-red-500">{committeeRolesError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -934,7 +997,7 @@ const CommitteesPage = () => {
             <Button variant="outline" onClick={() => setOpenDialog(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={handleSave} disabled={saving || !isCommitteeFormValid}>
               {saving ? 'Saving...' : editingCommittee ? 'Update Committee' : 'Create Committee'}
             </Button>
           </AlertDialogFooter>
@@ -1009,9 +1072,16 @@ const CommitteesPage = () => {
               <Input
                 id="event-title"
                 value={eventTitle}
-                onChange={(e) => setEventTitle(removeLeadingSpaces(e.target.value))}
+                onChange={(e) => {
+                  setEventFormTouched((prev) => ({ ...prev, title: true }));
+                  setEventTitle(removeLeadingSpaces(e.target.value));
+                }}
+                onBlur={() => setEventFormTouched((prev) => ({ ...prev, title: true }))}
                 placeholder="Enter title"
               />
+              {eventFormTouched.title && eventTitleError && (
+                <p className="text-xs text-red-500">{eventTitleError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Type <span className="text-red-500">*</span></Label>
@@ -1032,19 +1102,33 @@ const CommitteesPage = () => {
                 id="event-date"
                 type="datetime-local"
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                onChange={(e) => {
+                  setEventFormTouched((prev) => ({ ...prev, date: true }));
+                  setEventDate(e.target.value);
+                }}
+                onBlur={() => setEventFormTouched((prev) => ({ ...prev, date: true }))}
               />
+              {eventFormTouched.date && eventDateError && (
+                <p className="text-xs text-red-500">{eventDateError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="event-description">Description</Label>
+              <Label htmlFor="event-description">Description <span className="text-red-500">*</span></Label>
               <TextareaWithVoice
                 id="event-description"
                 value={eventDescription}
-                onChange={(e) => setEventDescription(removeLeadingSpaces(e.target.value))}
+                onChange={(e) => {
+                  setEventFormTouched((prev) => ({ ...prev, description: true }));
+                  setEventDescription(removeLeadingSpaces(e.target.value));
+                }}
+                onBlur={() => setEventFormTouched((prev) => ({ ...prev, description: true }))}
                 placeholder="Enter description"
                 rows={8}
               />
+              {eventFormTouched.description && eventDescriptionError && (
+                <p className="text-xs text-red-500">{eventDescriptionError}</p>
+              )}
             </div>
 
 
@@ -1054,7 +1138,10 @@ const CommitteesPage = () => {
               <SearchMultiSelect
                 options={eventParticipantOptions}
                 selectedIds={eventParticipantIds}
-                onChange={setEventParticipantIds}
+                onChange={(ids) => {
+                  setEventFormTouched((prev) => ({ ...prev, participants: true }));
+                  setEventParticipantIds(ids);
+                }}
                 placeholder="Search and select participants..."
               />
               {selectedEventParticipants.length > 0 && (
@@ -1067,7 +1154,10 @@ const CommitteesPage = () => {
                       {participant.name}
                       <button
                         type="button"
-                        onClick={() => setEventParticipantIds((prev) => prev.filter((id) => id !== participant.id))}
+                        onClick={() => {
+                          setEventFormTouched((prev) => ({ ...prev, participants: true }));
+                          setEventParticipantIds((prev) => prev.filter((id) => id !== participant.id));
+                        }}
                         className="inline-flex items-center justify-center rounded-full hover:bg-blue-100 p-0.5"
                         aria-label={`Remove ${participant.name}`}
                       >
@@ -1076,6 +1166,9 @@ const CommitteesPage = () => {
                     </span>
                   ))}
                 </div>
+              )}
+              {eventFormTouched.participants && eventParticipantsError && (
+                <p className="text-xs text-red-500">{eventParticipantsError}</p>
               )}
             </div>
 
@@ -1108,7 +1201,7 @@ const CommitteesPage = () => {
             <Button variant="outline" onClick={() => setAddEventDialogOpen(false)} disabled={addingEvent}>
               Cancel
             </Button>
-            <Button onClick={handleAddEvent} disabled={addingEvent}>
+            <Button onClick={handleAddEvent} disabled={addingEvent || !isEventFormValid}>
               {addingEvent ? 'Saving...' : 'Save'}
             </Button>
           </AlertDialogFooter>
@@ -1136,7 +1229,7 @@ const CommitteesPage = () => {
           {eventsLoading ? (
             <div className="py-8 text-center text-gray-500">Loading MOM/Event records...</div>
           ) : committeeEvents.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">No MOM/Event records found.</div>
+            <div className="py-8 text-center text-gray-500">No Record Found.</div>
           ) : (
             <div className="w-full max-h-[420px] overflow-y-auto overflow-x-hidden rounded-md border no-scrollbar">
               <Table className="w-full">
