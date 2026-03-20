@@ -105,6 +105,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
 
   const getActiveFiltersCount = () => {
     let count = 0;
+    if (searchQuery.trim() !== '') count++;
     if (statusFilter !== 'all') count++;
     if (typeFilter !== 'all') count++;
     if (documentTypeFilter !== 'all') count++;

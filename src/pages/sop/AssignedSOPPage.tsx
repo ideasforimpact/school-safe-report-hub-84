@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Search, Users, Eye, Clock3, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Search, Users, Eye, Clock3, FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -232,6 +232,22 @@ const AssignedSOPPage = () => {
     return text.substring(0, maxLength) + '...';
   };
 
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    categoryFilter !== 'all' ? categoryFilter : '',
+  ].filter((value) => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+  };
+
   // Render text with tooltip if truncated
   const renderTextWithTooltip = (text: string | null | undefined, maxLength: number = 25) => {
     if (!text) return <span>-</span>;
@@ -398,6 +414,18 @@ const AssignedSOPPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {activeFilterCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="flex items-center gap-1"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
+              </Button>
+            )}
           </div>
 
           {/* Results Count */}

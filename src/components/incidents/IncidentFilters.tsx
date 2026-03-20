@@ -127,19 +127,19 @@ const IncidentFilters = ({
                 </div>
               </div>
               
-              <Button 
-                variant="outline" 
-                onClick={onClearFilters} 
-                className="whitespace-nowrap"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
-                {activeFilterCount > 0 && (
+              {activeFilterCount > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={onClearFilters} 
+                  className="whitespace-nowrap"
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filters
                   <span>
                     ({activeFilterCount})
                   </span>
-                )}
-              </Button>
+                </Button>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

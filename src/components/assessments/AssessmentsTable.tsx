@@ -583,19 +583,19 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                 />
               </div>
 
-              <Button
-                variant="outline"
-                onClick={clearAllFilters}
-                className="flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
-                {activeFilterCount > 0 && (
-                  <span >
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filters
+                  <span>
                     ({activeFilterCount})
                   </span>
-                )}
-              </Button>
+                </Button>
+              )}
             </div>
           </div>
         </div>
