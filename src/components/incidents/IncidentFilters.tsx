@@ -134,10 +134,7 @@ const IncidentFilters = ({
                   className="whitespace-nowrap"
                 >
                   <X className="h-4 w-4" />
-                  Clear Filters
-                  <span>
-                    ({activeFilterCount})
-                  </span>
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
-import { Car, ArrowLeft, Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { Car, ArrowLeft, Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -214,7 +214,13 @@ const TrustedVehiclesPage = () => {
     setDateRange(undefined);
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dateRange;
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    dateRange?.from,
+    dateRange?.to,
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   const handleDeleteConfirm = async () => {
     if (!vehicleToDelete || !employeeData?.clientId) return;
@@ -324,7 +330,8 @@ const TrustedVehiclesPage = () => {
                   onClick={handleClearFilters}
                   className="flex items-center gap-1"
                 >
-                  Clear Filters
+                  <X className="h-4 w-4" />
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>

@@ -393,7 +393,7 @@ const FormConfigurationContent = () => {
                   disabled={isPageLoading}
                 >
                   <X className="h-4 w-4" />
-                  Clear Filter ({activeFilterCount})
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>

@@ -522,7 +522,7 @@ const SOPPage = () => {
                 className="h-10"
               >
                 <X className="h-4 w-4" />
-                Clear Filter ({activeFilterCount})
+                Clear Filters ({activeFilterCount})
               </Button>
             )}
           </div>

@@ -159,7 +159,12 @@ const ModulesPage = () => {
   // Get unique levels for filter dropdown
   const uniqueLevels = [...new Set(modules.map(module => module.level))].sort();
 
-  const hasActiveFilters = searchTerm || levelFilter !== 'all' || statusFilter !== 'all';
+  const activeFilterCount = [
+    searchTerm,
+    levelFilter !== 'all' ? levelFilter : '',
+    statusFilter !== 'all' ? statusFilter : '',
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   return (
     <Layout>
@@ -236,7 +241,7 @@ const ModulesPage = () => {
                 {hasActiveFilters && (
                   <Button variant="outline" size="sm" onClick={clearFilters}>
                     <X className="h-4 w-4 mr-1" />
-                    Clear Filters
+                    Clear Filters ({activeFilterCount})
                   </Button>
                 )}
               </div>
