@@ -32,7 +32,12 @@ import FilesDialog from '../form/FilesDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import GovernmentVerificationPopup, { GovernmentDocumentType } 
 from '../document-card/GovernmentVerificationPopup';
-import { normalizeApiData } from '@/lib/governmentNormalizer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 interface DocumentsTableProps {
   documents: VerificationDocument[];
   onViewDocument: (documentImage: string) => void;
@@ -420,22 +425,31 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                           const isValid = doe ? new Date(doe) > today : false;
 
                           return (
-                            <span className="inline-flex items-center gap-1">
-                              {formatDocumentTypeName(doc.documentTypeName || '')}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-pointer">
+                                    {formatDocumentTypeName(doc.documentTypeName || '')}
 
-                              {doe && (
-                                <span
-                                  title={isValid ? "Valid Driving License" : "Driving License Expired"}
-                                  className="flex items-center"
+                                    {doe && (
+                                      isValid ? (
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <XCircle className="h-4 w-4 text-red-600" />
+                                      )
+                                    )}
+                                  </span>
+                                </TooltipTrigger>
+
+                                <TooltipContent
+                                  side="bottom"
+                                  align="center"
+                                  className={isValid ? "bg-green-600 text-white" : "bg-red-600 text-white"}
                                 >
-                                  {isValid ? (
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <XCircle className="h-4 w-4 text-red-600" />
-                                  )}
-                                </span>
-                              )}
-                            </span>
+                                  {isValid ? "Valid Driving License" : "Driving License Expired"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           );
                         }
                           // For manual and other document types, show the custom document name

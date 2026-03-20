@@ -405,34 +405,35 @@ console.log("isViewMode:", isViewMode);
               <p className="text-base font-semibold text-foreground">
                 {config.title}
               </p>
+              {documentType === "driving_license" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center">
+                        {expired ? (
+                          <XCircle
+                            size={18}
+                            className="text-red-600 cursor-pointer transition-transform duration-200 hover:scale-125"
+                          />
+                        ) : (
+                          <CheckCircle
+                            size={18}
+                            className="text-green-600 cursor-pointer transition-transform duration-200 hover:scale-125"
+                          />
+                        )}
+                      </span>
+                    </TooltipTrigger>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex items-center">
-                      {expired ? (
-                        <XCircle
-                          size={18}
-                          className="text-red-600 cursor-pointer transition-transform duration-200 hover:scale-125"
-                        />
-                      ) : (
-                        <CheckCircle
-                          size={18}
-                          className="text-green-600 cursor-pointer transition-transform duration-200 hover:scale-125"
-                        />
-                      )}
-                    </span>
-                  </TooltipTrigger>
-
-                  <TooltipContent
-                    side="bottom"
-                    align="center"
-                    className={expired ? "bg-red-600 text-white" : "bg-green-600 text-white"}
-                  >
-                    {expired ? "Expired" : "Valid"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                    <TooltipContent
+                      side="bottom"
+                      align="center"
+                      className={expired ? "bg-red-600 text-white" : "bg-green-600 text-white"}
+                    >
+                      {expired ? "Driving License Expired" : "Valid Driving License"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}  
             </div>
           </div>
           <button
