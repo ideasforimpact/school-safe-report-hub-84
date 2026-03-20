@@ -67,6 +67,7 @@ import {
 } from '@/services/committees/committeeService';
 import { formatDate } from '@/lib/Dateformat';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
+import Loader from '@/components/common/Loader';
 
 type EmployeeOption = {
   id: string;
@@ -670,7 +671,7 @@ const CommitteesPage = () => {
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading committees...</div>
+            <Loader text="Loading committees..."/>
           ) : filteredCommittees.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No committees found</div>
           ) : (

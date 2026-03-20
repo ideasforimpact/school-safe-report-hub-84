@@ -582,10 +582,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                   className="flex items-center gap-2"
                 >
                   <X className="h-4 w-4" />
-                  Clear Filters
-                  <span>
-                    ({activeFilterCount})
-                  </span>
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>
