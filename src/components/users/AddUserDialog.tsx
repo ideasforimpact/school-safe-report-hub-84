@@ -59,6 +59,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState('');
+  const joiningDateRef = useRef<HTMLInputElement>(null);
+  const [joiningDateError, setJoiningDateError] = useState('');
 
   const formDataRef = useRef(formData);
   const mapModulesWithConfigured = (
@@ -211,6 +213,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setEmployeeIdValidation('idle');
     setTagInput('');
     setTagError('');
+    setJoiningDateError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -383,46 +386,83 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setTagError('');
   };
   
-  const isValidJoiningDate = (date: string) => {
-    if (!date) return true; 
+  const isValidJoiningDate = (dateStr: string) => {
+    if (!dateStr) return true; 
+    
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
 
-    const selectedDate = new Date(date);
-    const year = selectedDate.getFullYear();
-    const currentYear = new Date().getFullYear();
+    const [year, month, day] = parts.map(Number);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
 
-    if (isNaN(selectedDate.getTime())) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const inputDate = new Date(year, month - 1, day);
 
-    return year >= 1900 && year <= currentYear;
+    return (
+      year >= 1940 &&
+      year <= today.getFullYear() &&
+      inputDate.getFullYear() === year &&
+      inputDate.getMonth() === month - 1 &&
+      inputDate.getDate() === day &&
+      inputDate <= today
+    );
+  };
+
+  const handleJoiningDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const value = input.value;
+    setFormData({ ...formData, joiningDate: value });
+
+    
+    if (!input.validity.valid) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else if (value && !isValidJoiningDate(value)) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else {
+      setJoiningDateError('');
+    }
+  };
+
+  const handleJoiningDateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const input = e.target;
+    if (!input.validity.valid) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else if (input.value && !isValidJoiningDate(input.value)) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else {
+      setJoiningDateError('');
+    }
   };
 
   // Check if form is valid for submission
   const isFormValid = () => {
-    const hasValidEmail = !formData.email || isValidEmail(formData.email);
-    const isEmailUnique =
-      !formData.email ||
-      emailValidation === 'available' ||
-      emailValidation === 'idle';
+  const hasValidEmail = !formData.email || isValidEmail(formData.email);
+  const isEmailUnique =
+    !formData.email ||
+    emailValidation === 'available' ||
+    emailValidation === 'idle';
 
-    return (
-      formData.firstName &&
-      formData.firstName.length <= 25 &&
-      isValidName(formData.firstName) &&
-      formData.lastName &&
-      formData.lastName.length <= 25 &&
-      isValidName(formData.lastName) &&
-      hasValidEmail &&
-      isEmailUnique &&
-      (!formData.phone || isValidPhone(formData.phone)) &&
-      formData.employeeId &&
-      formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH &&
-      formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH &&
-      isValidEmployeeId(formData.employeeId) &&
-      employeeIdValidation === 'available' &&
-      (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
-      
-      !isLoading
-    );
-  };
+  return (
+    formData.firstName &&
+    formData.firstName.length <= 25 &&
+    isValidName(formData.firstName) &&
+    formData.lastName &&
+    formData.lastName.length <= 25 &&
+    isValidName(formData.lastName) &&
+    hasValidEmail &&
+    isEmailUnique &&
+    (!formData.phone || isValidPhone(formData.phone)) &&
+    formData.employeeId &&
+    formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH &&
+    formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH &&
+    isValidEmployeeId(formData.employeeId) &&
+    employeeIdValidation === 'available' &&
+    (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
+    !joiningDateError && 
+    !isLoading
+  );
+};
 
   const handleDialogOpenChange = (open: boolean) => {
     // Prevent closing if form is being submitted
@@ -443,7 +483,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 px-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 overflow-y-auto pr-1 px-4">
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -653,23 +693,14 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                 <Input
                   id="joiningDate"
                   type="date"
-                  min="1900-01-01"
-                  max={new Date().toISOString().split("T")[0]}
+                  ref={joiningDateRef}
                   value={formData.joiningDate || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, joiningDate: e.target.value })
-                  }
-                  className={
-                    formData.joiningDate && !isValidJoiningDate(formData.joiningDate)
-                      ? "border-red-500"
-                      : ""
-                  }
+                  onChange={handleJoiningDateChange}
+                  onBlur={handleJoiningDateBlur}
+                  className={joiningDateError ? 'border-red-500' : ''}
                 />
-
-                {formData.joiningDate && !isValidJoiningDate(formData.joiningDate) && (
-                  <p className="text-xs text-red-500">
-                    Please enter a valid joining date
-                  </p>
+                {joiningDateError && (
+                  <p className="text-xs text-red-500">{joiningDateError}</p>
                 )}
               </div>
             </div>
@@ -774,7 +805,12 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             </Button>
             <Button 
               type="submit" 
-              disabled={!isFormValid() || employeeIdValidation === 'checking' || emailValidation === 'checking'}
+              disabled={
+                !isFormValid() ||
+                employeeIdValidation === 'checking' ||
+                emailValidation === 'checking' ||
+                !!joiningDateError
+              }
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add User
