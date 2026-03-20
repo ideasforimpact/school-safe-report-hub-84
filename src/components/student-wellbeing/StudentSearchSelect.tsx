@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
-
+ 
 export interface StudentOption {
   id: string;
   name: string;
@@ -13,21 +13,23 @@ export interface StudentOption {
   section_id?: string | null;
   grade_id?: string | null;
 }
-
+ 
 interface StudentSearchSelectProps {
   value: StudentOption | null;
   onChange: (student: StudentOption | null) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  refreshKey?: number;
 }
-
+ 
 export function StudentSearchSelect({
   value,
   onChange,
   placeholder = 'Select student...',
   disabled = false,
   className = '',
+  refreshKey,
 }: StudentSearchSelectProps) {
   const { employeeData } = useAuth();
   const { isIntegrationEnabled } = useClientIntegrationEnabled();
@@ -41,9 +43,9 @@ export function StudentSearchSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   /** When integration is off: only open dropdown after user clicks the input, not on auto-focus when dialog opens */
   const userClickedInputRef = useRef(false);
-
+ 
   const clientId = employeeData?.clientId;
-
+ 
   const fetchStudents = useCallback(async () => {
     if (isIntegrationEnabled || !clientId) {
       setFetchedStudents([]);
@@ -77,11 +79,11 @@ export function StudentSearchSelect({
       setIsLoadingStudents(false);
     }
   }, [clientId, isIntegrationEnabled]);
-
+ 
   useEffect(() => {
     fetchStudents();
-  }, [fetchStudents]);
-
+  }, [refreshKey, fetchStudents]);
+ 
   const searchStudentsAPI = useCallback(async (term: string): Promise<StudentOption[]> => {
     if (!term || term.length < 3 || !clientId) return [];
     try {
@@ -111,7 +113,7 @@ export function StudentSearchSelect({
       return [];
     }
   }, [clientId]);
-
+ 
   useEffect(() => {
     if (!open) return;
     if (timeoutRef.current) {
