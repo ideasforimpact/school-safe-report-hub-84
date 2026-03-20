@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import { AlertCircle, ArrowLeft, CalendarPlus, Download, Eye, Pencil, Trash2, User, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarPlus, Download, Pencil, Trash2, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import SearchMultiSelect, { SearchMultiSelectOption } from '@/components/common/SearchMultiSelect';
@@ -86,9 +85,14 @@ const CommitteeEventsPage = () => {
   const [attachments, setAttachments] = useState<FileItem[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<CommitteeEvent['attachments']>([]);
   const [saving, setSaving] = useState(false);
+  const [formTouched, setFormTouched] = useState({
+    title: false,
+    date: false,
+    description: false,
+    participants: false,
+  });
 
   const [eventToDelete, setEventToDelete] = useState<CommitteeEvent | null>(null);
-  console.log(eventToDelete,'eventtodeleted');
   
   const participantOptions: SearchMultiSelectOption[] = useMemo(
     () => employees.map((employee) => ({ id: employee.id, label: employee.name })),
@@ -105,6 +109,17 @@ const CommitteeEventsPage = () => {
 
   const canCreateEvent = isSuperAdmin || isCommitteeMember;
   const canManageEvent = isSuperAdmin;
+  const eventTitleError = useMemo(() => (!eventTitle.trim() ? 'Title is required' : ''), [eventTitle]);
+  const eventDateError = useMemo(() => (!eventDate ? 'Date is required' : ''), [eventDate]);
+  const eventDescriptionError = useMemo(
+    () => (!eventDescription.trim() ? 'Description is required' : ''),
+    [eventDescription]
+  );
+  const participantsError = useMemo(
+    () => (participantIds.length === 0 ? 'At least one participant is required' : ''),
+    [participantIds]
+  );
+  const isEventFormValid = !eventTitleError && !eventDateError && !eventDescriptionError && !participantsError;
 
   const loadData = useCallback(async () => {
     if (!clientId || !committeeId) return;
@@ -162,6 +177,12 @@ const CommitteeEventsPage = () => {
     setParticipantIds([]);
     setAttachments([]);
     setExistingAttachments([]);
+    setFormTouched({
+      title: false,
+      date: false,
+      description: false,
+      participants: false,
+    });
   };
 
   const openCreate = () => {
@@ -483,7 +504,7 @@ const CommitteeEventsPage = () => {
           {loading ? (
             <div className="text-center py-10 text-gray-500">Loading MOM/Event list...</div>
           ) : filteredEvents.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">No MOM/Event records found.</div>
+            <div className="text-center py-10 text-gray-500">No Record Found.</div>
           ) : (
             <div className="overflow-x-auto rounded-md border">
               <Table>
@@ -552,9 +573,16 @@ const CommitteeEventsPage = () => {
               <Input
                 id="evt-title"
                 value={eventTitle}
-                onChange={(e) => setEventTitle(removeLeadingSpaces(e.target.value))}
+                onChange={(e) => {
+                  setFormTouched((prev) => ({ ...prev, title: true }));
+                  setEventTitle(removeLeadingSpaces(e.target.value));
+                }}
+                onBlur={() => setFormTouched((prev) => ({ ...prev, title: true }))}
                 placeholder="Enter title"
               />
+              {formTouched.title && eventTitleError && (
+                <p className="text-xs text-red-500">{eventTitleError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Type <span className="text-red-500">*</span></Label>
@@ -568,7 +596,19 @@ const CommitteeEventsPage = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="evt-date">Date <span className="text-red-500">*</span></Label>
-              <Input id="evt-date" type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} />
+              <Input
+                id="evt-date"
+                type="datetime-local"
+                value={eventDate}
+                onChange={(e) => {
+                  setFormTouched((prev) => ({ ...prev, date: true }));
+                  setEventDate(e.target.value);
+                }}
+                onBlur={() => setFormTouched((prev) => ({ ...prev, date: true }))}
+              />
+              {formTouched.date && eventDateError && (
+                <p className="text-xs text-red-500">{eventDateError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="evt-desc">Description <span className="text-red-500">*</span></Label>
@@ -576,15 +616,25 @@ const CommitteeEventsPage = () => {
                 id="evt-desc"
                 rows={8}
                 value={eventDescription}
-                onChange={(e) => setEventDescription(removeLeadingSpaces(e.target.value))}
+                onChange={(e) => {
+                  setFormTouched((prev) => ({ ...prev, description: true }));
+                  setEventDescription(removeLeadingSpaces(e.target.value));
+                }}
+                onBlur={() => setFormTouched((prev) => ({ ...prev, description: true }))}
               />
+              {formTouched.description && eventDescriptionError && (
+                <p className="text-xs text-red-500">{eventDescriptionError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Participants <span className="text-red-500">*</span></Label>
               <SearchMultiSelect
                 options={participantOptions}
                 selectedIds={participantIds}
-                onChange={setParticipantIds}
+                onChange={(ids) => {
+                  setFormTouched((prev) => ({ ...prev, participants: true }));
+                  setParticipantIds(ids);
+                }}
                 placeholder="Search and select participants..."
               />
               {selectedParticipants.length > 0 && (
@@ -597,7 +647,10 @@ const CommitteeEventsPage = () => {
                       {participant.name}
                       <button
                         type="button"
-                        onClick={() => setParticipantIds((prev) => prev.filter((id) => id !== participant.id))}
+                        onClick={() => {
+                          setFormTouched((prev) => ({ ...prev, participants: true }));
+                          setParticipantIds((prev) => prev.filter((id) => id !== participant.id));
+                        }}
                         className="inline-flex items-center justify-center rounded-full hover:bg-blue-100 p-0.5"
                         aria-label={`Remove ${participant.name}`}
                       >
@@ -606,6 +659,9 @@ const CommitteeEventsPage = () => {
                     </span>
                   ))}
                 </div>
+              )}
+              {formTouched.participants && participantsError && (
+                <p className="text-xs text-red-500">{participantsError}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -658,7 +714,7 @@ const CommitteeEventsPage = () => {
           </div>
           <AlertDialogFooter className="pt-3 border-t">
             <Button variant="outline" onClick={() => setOpenForm(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editingEvent ? 'Update' : 'Save'}</Button>
+            <Button onClick={handleSave} disabled={saving || !isEventFormValid}>{saving ? 'Saving...' : editingEvent ? 'Update' : 'Save'}</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
