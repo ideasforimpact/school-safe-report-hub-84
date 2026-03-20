@@ -320,6 +320,12 @@ async function updateCommittee(supabase: any, payload: any) {
 
 async function deleteCommittee(supabase: any, clientId: string, committeeId: string, employeeId?: string | null) {
   await assertAdminAccess(supabase, clientId, employeeId);
+  const { data: committeeRow } = await supabase
+    .from('committees')
+    .select('id, name')
+    .eq('id', committeeId)
+    .eq('client_id', clientId)
+    .maybeSingle();
   const { error } = await supabase
     .from('committees')
     .delete()
@@ -328,9 +334,12 @@ async function deleteCommittee(supabase: any, clientId: string, committeeId: str
   if (error) throw new Error(error.message);
   await writeCommitteeAuditLog(supabase, {
     clientId,
-    committeeId,
     employeeId,
     actionType: 'committee_deleted',
+    details: {
+      deleted_committee_id: committeeId,
+      deleted_committee_name: committeeRow?.name || null,
+    },
   });
   return { success: true };
 }
@@ -528,6 +537,12 @@ async function getEvent(supabase: any, clientId: string, eventId: string) {
 
 async function deleteEvent(supabase: any, clientId: string, eventId: string, employeeId?: string | null) {
   await assertAdminAccess(supabase, clientId, employeeId);
+  const { data: eventRow } = await supabase
+    .from('committee_events')
+    .select('id, committee_id, event_type, title, event_date')
+    .eq('client_id', clientId)
+    .eq('id', eventId)
+    .maybeSingle();
   const { data: attachments } = await supabase
     .from('committee_event_attachments')
     .select('storage_bucket, storage_path')
@@ -546,10 +561,14 @@ async function deleteEvent(supabase: any, clientId: string, eventId: string, emp
   if (error) throw new Error(error.message);
   await writeCommitteeAuditLog(supabase, {
     clientId,
-    eventId,
+    committeeId: eventRow?.committee_id || null,
     employeeId,
     actionType: 'event_deleted',
     details: {
+      deleted_event_id: eventId,
+      event_type: eventRow?.event_type || null,
+      title: eventRow?.title || null,
+      event_date: eventRow?.event_date || null,
       removed_attachment_count: (attachments || []).length,
     },
   });
