@@ -12,6 +12,9 @@ const DepartmentFilter: React.FC<DepartmentFilterProps> = ({
   onChange, 
   departments 
 }) => {
+  const formatDepartmentLabel = (department: string) =>
+    department ? department.charAt(0).toUpperCase() + department.slice(1) : department;
+
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-[180px]">
@@ -21,7 +24,7 @@ const DepartmentFilter: React.FC<DepartmentFilterProps> = ({
         <SelectItem value="all">All Departments</SelectItem>
         {departments.map((department) => (
           <SelectItem key={department} value={department}>
-            {department}
+            {formatDepartmentLabel(department)}
           </SelectItem>
         ))}
       </SelectContent>
