@@ -11,6 +11,7 @@ import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import AssignmentSection from './sections/AssignmentSection';
 import DragDropFileUpload from '@/components/file/DragDropFileUpload';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
+import Loader from '../common/Loader';
 
 interface IncidentDetailsFormProps {
   formData: any;
@@ -48,7 +49,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
     return (
       <Card className="border-none shadow-none bg-white">
         <CardContent className="space-y-6 p-6">
-          <div className="text-center py-8">Loading form configuration...</div>
+          
+            <Loader text="Loading form configuration..." />
+          
         </CardContent>
       </Card>
     );

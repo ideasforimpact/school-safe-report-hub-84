@@ -21,6 +21,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 interface TrustedVehicle {
   id: string;
@@ -341,10 +342,7 @@ const TrustedVehiclesPage = () => {
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p className="text-gray-500">Loading trusted vehicles...</p>
-              </div>
+              <Loader text="Loading trusted vehicles..." />
             </div>
           ) : filteredVehicles.length === 0 ? (
           <div className="flex items-center justify-center py-12">

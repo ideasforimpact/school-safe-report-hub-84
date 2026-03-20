@@ -13,6 +13,7 @@ import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentViewDialog from './view/AssessmentViewDialog';
 import ReassignAssessmentDialog from './ReassignAssessmentDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import Loader from '../common/Loader';
 
 interface AssessmentTemplate {
   questions: any;
@@ -461,17 +462,8 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   }
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p>Loading assessments...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    return (      
+      <Loader text="Loading assessments..." />
     );
   }
 

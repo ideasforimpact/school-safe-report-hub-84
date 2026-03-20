@@ -42,6 +42,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import Loader from '@/components/common/Loader';
 
 type CpdLearningCategory = { id: string; name: string };
 
@@ -595,10 +596,8 @@ const CPDOverviewPage: React.FC = () => {
             </div>
           </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+          {loading ? (            
+              <Loader text="Loading employee CPD records..." />            
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <p className="text-gray-500 text-sm">

@@ -9,6 +9,7 @@ import { reportTypeService } from '@/services/incident/reportTypeService';
 import { priorityService } from '@/services/incident/priorityService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useAuth } from '@/contexts';
+import Loader from '../common/Loader';
 
 interface ReportType {
   id: string;
@@ -403,12 +404,9 @@ const IncidentConfigurationContent = () => {
   // Wait for data to load
   if (loading || categoriesLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading configuration...</p>
-        </div>
-      </div>
+      
+        <Loader text="Loading configuration..." />
+      
     );
   }
 

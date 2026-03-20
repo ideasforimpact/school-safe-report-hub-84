@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
 import { useEditIncidentData } from '@/hooks/useEditIncidentData';
+import Loader from '@/components/common/Loader';
 
 const EditIncidentPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -56,7 +57,7 @@ const EditIncidentPage = () => {
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
             <div className="max-w-7xl mx-auto">
               <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
-              <p className="text-gray-600 text-sm mt-1">Loading incident details...</p>
+              <Loader text="Loading incident details..." />
             </div>
           </div>
         </div>

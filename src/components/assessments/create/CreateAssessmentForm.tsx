@@ -13,12 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Save, Loader, AlertCircle, Search } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
 import { assessmentNotificationService } from '@/services/notification/assessmentNotificationService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import Loader from '@/components/common/Loader';
 
 interface EmployeeDepartment {
   id: string;
@@ -404,11 +405,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   if (employeesLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-center p-8">
-          <Loader className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading...</span>
-        </div>
+      <div className="space-y-6">        
+        <Loader text="Loading..." />
       </div>
     );
   }

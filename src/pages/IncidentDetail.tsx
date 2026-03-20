@@ -14,6 +14,7 @@ import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/use
 import { FileItem, ContributingFactor, Action } from '@/types/incident';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -161,14 +162,7 @@ const IncidentDetail = () => {
   if (isLoading || isFetchingIncident) {
     return (
       <Layout>
-        <div className="container max-w-6xl py-6">
-          <div className="flex justify-center items-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading incident details...</p>
-            </div>
-          </div>
-        </div>
+        <Loader text="Loading incident details..." />
       </Layout>
     );
   }

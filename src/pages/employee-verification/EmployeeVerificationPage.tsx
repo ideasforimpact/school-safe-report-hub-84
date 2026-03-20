@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import Loader from "@/components/common/Loader";
 
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
@@ -20,7 +21,8 @@ const EmployeeVerificationPage = () => {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
-
+  const [loading, setLoading] = useState(true);
+  
   // Filter employees based on all criteria
   // Helper function to get overall status based on priority logic
   const getOverallStatus = (employee) => {
@@ -143,19 +145,26 @@ const EmployeeVerificationPage = () => {
 
   // Fetch employees when component mounts
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    const loadEmployees = async () => {
+      setLoading(true);
+      await fetchEmployees();
+      setLoading(false);
+    };
+
+    loadEmployees();
+  }, [fetchEmployees]);  
   
   const handleRefresh = async () => {
-  setIsRefreshing(true);
+    setIsRefreshing(true);
+    setLoading(true);
 
   await Promise.all([
     fetchEmployees(),
     new Promise((resolve) => setTimeout(resolve, 500))
   ]);
-
-  setIsRefreshing(false);
-};
+    setLoading(false);
+    setIsRefreshing(false);
+  };
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -272,9 +281,11 @@ const EmployeeVerificationPage = () => {
             totalCount={employees.length}
           />
           
-          <EmployeesList
-            employees={filteredEmployees}
-          />
+          {loading ? (
+            <Loader text="Loading employees..." />
+          ) : (
+            <EmployeesList employees={filteredEmployees} />
+          )}
         </div>
       </div>
     </Layout>

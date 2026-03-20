@@ -28,6 +28,7 @@ import { checkStudentIdExists } from '@/services/student/studentValidationServic
 import { useAuth } from '@/contexts/auth';
 import { Person } from '@/types/incident';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import Loader from '../common/Loader';
 
 interface Campus {
   id: string;
@@ -415,8 +416,7 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false, peopleInvo
   if (dataLoading) {
     return (
       <div className="flex justify-center items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin mr-2" />
-        <span>Loading educational structure data...</span>
+        <Loader text="Loading educational structure data..." />        
       </div>
     );
   }

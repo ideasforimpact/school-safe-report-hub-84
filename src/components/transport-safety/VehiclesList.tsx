@@ -17,6 +17,7 @@ import { getDocumentStatus, getLatestVerificationLog, findVerificationField } fr
 import { Vehicle } from '@/types/transportSafety';
 import ImportVehiclesDialog from './ImportVehiclesDialog';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
+import Loader from '../common/Loader';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -24,17 +25,24 @@ interface VehiclesListProps {
   onVehiclesChanged: (data: {
     total: number;
     filtered: number;
+    hasFetched: boolean;
     vehicles: Vehicle[];
   }) => void;
 }
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle,onVehiclesChanged }) => {
-  const { vehicles, loading, error, fetchVehicles } = useTransportSafety();
-  
+  const { vehicles, loading, error, hasFetched , fetchVehicles, } = useTransportSafety();
   // State for edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | undefined>(undefined);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  useEffect(() => {
+    if (!loading) {
+      setTimeout(() => setShowLoader(false), 300); 
+    }
+  }, [loading]);
+
   const {
     // State
     searchQuery,
@@ -107,6 +115,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   onVehiclesChanged({
     total: vehicles.length,
     filtered: filteredVehicles.length,
+    hasFetched,
     vehicles,
   });
 }, [vehicles, filteredVehicles, onVehiclesChanged]);
@@ -155,20 +164,27 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   };
   
   // Loading state
-  if (loading) {
+  // if (loading) {
+  //   return (
+  //     <div>
+  //       <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+  //         <Skeleton className="h-10 w-full" />
+  //         <Skeleton className="h-8 w-1/3" />
+  //       </div>
+  //       <div className="space-y-4">
+  //         <Skeleton className="h-64 w-full" />
+  //       </div>
+  //     </div>
+  //   );
+  // }
+  if (showLoader) {
     return (
-      <div>
-        <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-8 w-1/3" />
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-64 w-full" />
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <Loader text="Loading vehicles..." />
       </div>
     );
   }
-  
+    
   // Error state
   if (error) {
     return (

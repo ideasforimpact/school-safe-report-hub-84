@@ -52,7 +52,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     console.log('Refreshing students...');
     await fetchStudents();
   }, [fetchStudents]);
-
+  
   // Fetch students when clientId becomes available or changes
   useEffect(() => {
     console.log('StudentContext useEffect triggered, clientId:', employeeData?.clientId);

@@ -27,6 +27,7 @@ export const useTransportSafety = () => {
 export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = ({ children }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, employeeData } = useAuth();
 
@@ -56,6 +57,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       setError('Failed to load vehicles. Please try again later.');
       toast.error('Failed to load vehicles');
     } finally {
+      setHasFetched(true);
       setLoading(false);
     }
   };
@@ -291,6 +293,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       value={{
         vehicles,
         loading,
+        hasFetched,
         error,
         addVehicle,
         updateVehicle,

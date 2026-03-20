@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
@@ -13,6 +13,7 @@ import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
 import { templateService } from '@/services/assessment/templateService';
 import { FileItem } from '@/types/fileTypes';
 import { supabase } from '@/integrations/supabase/client';
+import Loader from "@/components/common/Loader";
 
 interface CreateTemplateFormProps {
   templateId?: string;
@@ -362,11 +363,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-6">
-        <div className="flex items-center justify-center p-8">
-          <Loader className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading template...</span>
-        </div>
+      <div className="max-w-4xl mx-auto py-6">        
+        <Loader text="Loading templates..." />        
       </div>
     );
   }

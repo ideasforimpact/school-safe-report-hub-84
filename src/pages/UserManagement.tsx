@@ -41,7 +41,7 @@ import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
-
+import Loader from '@/components/common/Loader';
 // Import the necessary types from auth context
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 
@@ -994,10 +994,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
           </div>
           
           {isLoading ? (
-            <div className="flex flex-col justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mb-4"></div>
-              <p className="text-sm text-gray-600">Loading employees...</p>
-            </div>
+            <Loader text="Loading employees..." />
           ) : (
             <div>
               {filteredUsers && filteredUsers.length > 0 ? (

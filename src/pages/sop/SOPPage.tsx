@@ -48,6 +48,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import CompletedEmployeesDialog from './CompletedEmployeesDialog';
+import Loader from '@/components/common/Loader';
 
 interface SOP {
   id: string;
@@ -536,9 +537,7 @@ const SOPPage = () => {
           )}
 
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading SOPs...</p>
-            </div>
+            <Loader text="Loading SOPs..." />
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No SOPs found</p>

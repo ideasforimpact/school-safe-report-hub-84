@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '../common/Loader';
 
 interface FormField {
   id: string;
@@ -320,10 +321,8 @@ const FormConfigurationContent = () => {
   if (loading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <p className="text-gray-500">Loading forms...</p>
-          </div>
+        <CardContent className="py-12">
+          <Loader text="Loading forms..." />
         </CardContent>
       </Card>
     );

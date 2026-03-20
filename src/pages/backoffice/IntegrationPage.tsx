@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts';
+import Loader from '@/components/common/Loader';
 
 interface Client {
   id: string;
@@ -184,8 +185,8 @@ const IntegrationPage = () => {
           <CardContent>
             {loading ? (
               <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                <p className="mt-4 text-gray-500">Loading clients...</p>
+                <Loader text="Loading clients..." />
+                <p className="mt-4 text-gray-500"></p>
               </div>
             ) : clients.length === 0 ? (
               <div className="text-center py-12">
@@ -263,11 +264,8 @@ const IntegrationPage = () => {
         </Card>
       </div>
       {dialogLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg px-6 py-4 flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-sm font-medium">Loading integration details…</span>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">          
+          <Loader text="Loading integration details..." />           
         </div>
       )}
       <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>

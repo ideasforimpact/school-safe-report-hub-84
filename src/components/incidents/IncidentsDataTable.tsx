@@ -17,6 +17,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { useMemo } from 'react';
+import Loader from '../common/Loader';
 
 interface IncidentsDataTableProps {
   incidents: IncidentRecord[];
@@ -98,12 +99,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading incidents...</p>
-        </div>
-      </div>
+      <Loader text="Loading incidents..." />
     );
   }
 
