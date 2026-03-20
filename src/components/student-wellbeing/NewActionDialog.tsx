@@ -43,26 +43,15 @@ export function NewActionDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!open || !record) return;
+    if (!open) return;
 
-    if (record.actions && record.actions.length > 0) {
-      const latestAction = [...record.actions].sort(
-        (a, b) =>
-          new Date(b.taken_date).getTime() -
-          new Date(a.taken_date).getTime()
-      )[0];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-      setTakenDate(new Date(latestAction.taken_date));
-      setDescription(latestAction.description || '');
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      setTakenDate(today);
-      setDescription('');
-    }
-
+    setTakenDate(today);
+    setDescription('');
     setErrors({});
-  }, [open, record]);
+  }, [open]);
 
   const descLen = description.trim().replace(/ /g, '').length;
   const descriptionValid = descLen >= DESCRIPTION_MIN && descLen <= DESCRIPTION_MAX;
