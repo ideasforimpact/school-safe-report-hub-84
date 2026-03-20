@@ -606,6 +606,7 @@ const StudentWellBeingPage = () => {
                               Delete
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={row.status === "closed"}
                               onSelect={(e) => {
                                 e.preventDefault();
                                 setRecordForConsultation(row);
@@ -627,6 +628,7 @@ const StudentWellBeingPage = () => {
                               Action
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={row.status === "closed"}
                               onSelect={(e) => {
                                 e.preventDefault();
                                 setRecordForFollowUp(row);
