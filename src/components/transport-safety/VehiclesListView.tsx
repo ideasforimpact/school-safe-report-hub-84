@@ -137,8 +137,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           </TableHeader>
           <TableBody>
             {paginatedItems.map(vehicle => {
-              console.log(vehicle,'hgfhyftyfytty');
-              
               const hasVerification = hasVerificationData(vehicle);
               const insuranceStatus = hasVerification ? getDocumentStatus(vehicle, 'insurance').status : 'unverified';
               const fcStatus = hasVerification ? getDocumentStatus(vehicle, 'fitness').status : 'unverified';
