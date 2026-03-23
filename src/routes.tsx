@@ -50,6 +50,7 @@ import ClientManagement from './pages/ClientManagement';
 import ModulesPage from './pages/backoffice/ModulesPage';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
+import ClientApiCallsPage from './pages/backoffice/ClientApiCallsPage';
 import AssessmentTemplatesManagementPage from './pages/backoffice/AssessmentTemplatesManagementPage';
 import BackofficeEduSafeResourcesPage from './pages/backoffice/BackofficeEduSafeResourcesPage';
 import BackofficeImportConfiguration from './pages/backoffice/BackofficeImportConfiguration';
@@ -118,6 +119,11 @@ const AppRoutes = () => {
       <Route path="/backoffice/clients" element={
         <RouteGuard requireAuth={true} isBackoffice={true}>
           <ClientManagement />
+        </RouteGuard>
+      } />
+      <Route path="/backoffice/clients/:clientId/api-calls" element={
+        <RouteGuard requireAuth={true} isBackoffice={true}>
+          <ClientApiCallsPage />
         </RouteGuard>
       } />
       <Route path="/backoffice/modules" element={

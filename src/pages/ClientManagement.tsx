@@ -2,6 +2,7 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -19,6 +20,7 @@ import Loader from '@/components/common/Loader';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const {
     clients,
     loading,
@@ -79,6 +81,10 @@ const ClientManagement = () => {
             ) : (
               <ClientList 
                 clients={clients}
+                onViewApiCalls={(client) =>
+                  navigate(`/backoffice/clients/${client.id}/api-calls`, {
+                    state: { clientName: client.name },
+                  })}
                 onEditClick={handleEditClick}
                 onDeleteClient={handleDeleteClient}
               />
