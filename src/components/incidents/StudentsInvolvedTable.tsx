@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { IncidentRecord } from '@/services/incidentService';
 import {
   Table,
@@ -45,8 +44,6 @@ type StudentInvolvementRow = {
 };
 
 const StudentsInvolvedTable: React.FC<StudentsInvolvedTableProps> = ({ incidents, loading }) => {
-  const navigate = useNavigate();
-
   const rows = useMemo<StudentInvolvementRow[]>(() => {
     const byStudent = new Map<string, StudentInvolvementRow>();
 
@@ -130,6 +127,10 @@ const StudentsInvolvedTable: React.FC<StudentsInvolvedTableProps> = ({ incidents
     return initials || 'ST';
   };
 
+  const openIncidentInNewTab = (incidentId: string): void => {
+    window.open(`/incident/${incidentId}`, '_blank', 'noopener,noreferrer');
+  };
+
   if (loading && incidents.length === 0) {
     return (
       <div className="rounded-lg border bg-white p-10">
@@ -186,10 +187,10 @@ const StudentsInvolvedTable: React.FC<StudentsInvolvedTableProps> = ({ incidents
                 <TableCell className="py-5">
                   <div className="leading-6">
                     <p className="text-xl font-medium text-gray-900">
-                      Grade {row.grade || '-'}
+                      {row.grade || '-'}
                     </p>
                     <p className="text-base text-gray-500">
-                      Section{row.section || '-'}
+                      {row.section || '-'}
                     </p>
                   </div>
                 </TableCell>
@@ -201,7 +202,10 @@ const StudentsInvolvedTable: React.FC<StudentsInvolvedTableProps> = ({ incidents
                         <button
                           type="button"
                           className="hover:text-indigo-800 hover:underline"
-                          onClick={() => navigate(`/incident/${incident.id}`)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openIncidentInNewTab(incident.id);
+                          }}
                         >
                           {incident.ticketId}
                         </button>
