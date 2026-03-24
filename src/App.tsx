@@ -83,6 +83,7 @@ import BackofficeEduSafeResourcesPage from '@/pages/backoffice/BackofficeEduSafe
 import BackofficeEmployeeVerificationPage from '@/pages/backoffice/BackofficeEmployeeVerificationPage';
 import BackofficeEmployeeDocumentsPage from '@/pages/backoffice/BackofficeEmployeeDocumentsPage';
 import IntegrationPage from '@/pages/backoffice/IntegrationPage';
+import ClientApiCallsPage from '@/pages/backoffice/ClientApiCallsPage';
 
 // Layout for Backoffice with Client Provider
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -281,6 +282,11 @@ function App() {
                   <Route path="/backoffice/clients" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={ClientManagement} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/clients/:clientId/api-calls" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={ClientApiCallsPage} />
                     </RouteGuard>
                   } />
                   <Route path="/backoffice/settings" element={

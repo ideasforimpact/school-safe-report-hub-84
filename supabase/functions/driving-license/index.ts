@@ -1,6 +1,8 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
+import { recordEmployeeVerificationApiCall } from "../_shared/employeeVerificationApiCalls.ts";
 
 // CORS headers setup
 const corsHeaders = {
@@ -229,7 +231,22 @@ serve(async (req) => {
       const dob = document.params?.DOB;
       const existingLogs = document?.employee_docs_log || [];
       const employeeId = document.employee_id;
-      const documentTypeId = document?.document_type_id;
+      let documentTypeId = document?.document_type_id;
+      if (!documentTypeId) {
+        const { data: dlType, error: dlTypeError } = await supabase
+          .from("employee_document_type")
+          .select("id")
+          .eq("name", "DRIVING_LICENSE")
+          .single();
+        if (!dlTypeError && dlType?.id) {
+          documentTypeId = dlType.id;
+        } else {
+          console.warn("Driving license verification: unable to resolve document_type_id", {
+            documentId,
+            dlTypeError,
+          });
+        }
+      }
 
       if (!licenseNumber) {
         return new Response(
@@ -255,11 +272,31 @@ serve(async (req) => {
       }
 
       let lastAttemptedProvider: 'quickekyc' | 'surepass' = 'quickekyc';
+      const safeRecord = async (attemptProvider: 'quickekyc' | 'surepass', isSuccess: boolean,isMultiple: boolean = false) => {
+        try {
+          await recordEmployeeVerificationApiCall({
+            supabase,
+            employeeId,
+            documentId,
+            documentTypeId: documentTypeId ?? null,
+            provider: attemptProvider,
+            primaryProvider: PRIMARY_PROVIDER,
+            isMultiple: isMultiple,
+            isSuccess,
+          });
+        } catch (e) {
+          console.error("Driving license API call counter record failed:", e);
+        }
+      };
+
       try {
         // 1) Try primary provider (QuickEKYC)
         console.log("Making request to primary (QuickEKYC) API for driving license verification");
         const primaryResult = await callDrivingLicenseProvider(PRIMARY_PROVIDER, licenseNumber, dob);
         console.log("Primary (QuickEKYC) API response:", JSON.stringify(primaryResult.rawApiResponse));
+
+        // Record API result for primary provider (updates success/failed).
+        await safeRecord(PRIMARY_PROVIDER, primaryResult.success);
 
         if (primaryResult.success) {
           const apiResponse = primaryResult.data;
@@ -352,6 +389,9 @@ serve(async (req) => {
         console.log("Primary failed; calling fallback (Surepass) API for driving license verification");
         const fallbackResult = await callDrivingLicenseProvider(FALLBACK_PROVIDER, licenseNumber, dob);
         console.log("Fallback (Surepass) API response:", JSON.stringify(fallbackResult.rawApiResponse));
+
+        // Record API result for fallback provider (updates other_provider_* counters).
+        await safeRecord(FALLBACK_PROVIDER, fallbackResult.success, true);
 
         if (fallbackResult.success) {
           const apiResponse = fallbackResult.data;
