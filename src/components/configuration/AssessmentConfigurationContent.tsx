@@ -1,21 +1,26 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import CreateTemplateForm from '@/components/assessments/templates/CreateTemplateForm';
 import TemplatesList from '@/components/assessments/templates/TemplatesList';
 import TemplateDetailView from '@/components/assessments/templates/TemplateDetailView';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
+import Loader from '../common/Loader';
 
 interface AssessmentConfigurationContentProps {
   embedded?: boolean;
 }
 
 const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigurationContentProps) => {
-  const { getTemplateById } = useAssessment();
+  const { getTemplateById, loading, refreshTemplates } = useAssessment();
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [viewingTemplateId, setViewingTemplateId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    refreshTemplates();
+  }, []);
 
   const handleCreateTemplate = () => {
     setEditingTemplateId(null);
@@ -52,6 +57,14 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader text="Loading assessment templates..." />
+      </div>
+    );
+  }
+
   // Show template detail view
   if (viewingTemplateId) {
     const template = getTemplateById(viewingTemplateId);
@@ -75,7 +88,7 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
         onCancel={handleCancelCreate} 
       />
     );
-  }
+  }  
 
   return (
     <div className="space-y-6">

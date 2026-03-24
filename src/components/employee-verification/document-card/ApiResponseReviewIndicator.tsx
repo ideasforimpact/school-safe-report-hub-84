@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { VerificationDocument } from '@/types/employeeVerification';
-import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
-import PanDetailsDialog from './PanDetailsDialog';
-import VoterIdDetailsDialog from './VoterIdDetailsDialog';
-import DrivingLicenseDetailsDialog from './DrivingLicenseDetailsDialog';
-import BankStatementDetailsDialog from './BankStatementDetailsDialog';
 import { FileQuestion, FileSearch, ClipboardCheck } from 'lucide-react';
-
+import GovernmentVerificationPopup, {
+  GovernmentDocumentType,
+} from "../document-card/GovernmentVerificationPopup";
+import { normalizeApiData } from '@/lib/governmentNormalizer';
 interface ApiResponseReviewIndicatorProps {
   document: VerificationDocument;
   onVerificationUpdate?: () => void;
@@ -17,11 +15,11 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   document, 
   onVerificationUpdate 
 }) => {
-  const [aadharDialogOpen, setAadharDialogOpen] = useState(false);
-  const [panDialogOpen, setPanDialogOpen] = useState(false);
-  const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
-  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
-  const [bankStatementDialogOpen, setBankStatementDialogOpen] = useState(false);
+  
+  const [govPopupOpen, setGovPopupOpen] = useState(false);
+  const [selectedGovType, setSelectedGovType] =
+    useState<GovernmentDocumentType>("aadhar");
+  const [selectedGovData, setSelectedGovData] = useState<any>(null);
 
   // Determine badge content and variant
   const getBadgeContent = () => {
@@ -52,20 +50,23 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
   };
 
   const openDetailDialog = () => {
-    const docType = document.documentTypeName?.toLowerCase();
-    
-    if (docType?.includes('aadhar')) {
-      setAadharDialogOpen(true);
-    } else if (docType === 'pan') {
-      setPanDialogOpen(true);
-    } else if (docType === 'voter_id') {
-      setVoterIdDialogOpen(true);
-    } else if (docType?.includes('driving') || docType?.includes('license')) {
-      setDrivingLicenseDialogOpen(true);
-    } else if (docType === 'bank account' || docType?.includes('bank')) {
-      setBankStatementDialogOpen(true);
-    }
-  };
+  const docType =
+    document.documentTypeName?.toLowerCase() as GovernmentDocumentType;
+
+  if (!document.apiResponseData) return;
+
+  // Extract actual API data
+  const raw =
+    document.apiResponseData?.data?.data ||
+    document.apiResponseData?.data ||
+    document.apiResponseData;
+
+  const normalized = normalizeApiData(raw, docType);
+
+  setSelectedGovType(docType);
+  setSelectedGovData(normalized);
+  setGovPopupOpen(true);
+};
 
   // Extract relevant details from API response for each document type
   const getApiDetails = () => {
@@ -137,51 +138,16 @@ const ApiResponseReviewIndicator: React.FC<ApiResponseReviewIndicatorProps> = ({
 
         {badgeContent.text}
       </Badge>
-
-      {/* Aadhar Details Dialog */}
-      <AadharDetailsDialog
-        open={aadharDialogOpen}
-        onOpenChange={setAadharDialogOpen}
-        aadharDetails={apiDetails}
-        documentId={document.id}
-        onVerificationUpdate={onVerificationUpdate}
-      />
-
-      {/* PAN Details Dialog */}
-      <PanDetailsDialog
-        open={panDialogOpen}
-        onOpenChange={setPanDialogOpen}
-        panDetails={apiDetails}
-        documentId={document.id}
-        onVerificationUpdate={onVerificationUpdate}
-      />
-
-      {/* Voter ID Details Dialog */}
-      <VoterIdDetailsDialog
-        open={voterIdDialogOpen}
-        onOpenChange={setVoterIdDialogOpen}
-        voterIdDetails={apiDetails}
-        documentId={document.id}
-        onVerificationUpdate={onVerificationUpdate}
-      />
-
-      {/* Driving License Details Dialog */}
-      <DrivingLicenseDetailsDialog
-        open={drivingLicenseDialogOpen}
-        onOpenChange={setDrivingLicenseDialogOpen}
-        licenseDetails={apiDetails}
-        documentId={document.id}
-        onVerificationUpdate={onVerificationUpdate}
-      />
-
-      {/* Bank Statement Details Dialog */}
-      <BankStatementDetailsDialog
-        open={bankStatementDialogOpen}
-        onOpenChange={setBankStatementDialogOpen}
-        statementDetails={apiDetails}
-        documentId={document.id}
-        onVerificationUpdate={onVerificationUpdate}
-      />
+    
+      <GovernmentVerificationPopup
+        open={govPopupOpen}
+        onOpenChange={(open) => {
+          setGovPopupOpen(open);
+          if (!open) setSelectedGovData(null);
+        }}
+        documentType={selectedGovType}
+        data={selectedGovData}
+      />      
     </>
   );
 };

@@ -4,9 +4,8 @@
  * Uses validate-employee edge function which includes IP validation
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { ensureFreshAuthenticatedSession } from '@/utils/sessionValidation';
 
-// Request deduplication: track ongoing requests to prevent duplicate calls
 const ongoingRequests = new Map<string, Promise<IPWhitelistCheckResult>>();
 
 export interface IPWhitelistCheckResult {
@@ -15,128 +14,134 @@ export interface IPWhitelistCheckResult {
   error?: string;
 }
 
+function getSupabaseFunctionsUrl(): string | null {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  return url ? `${url.replace(/\/$/, '')}/functions/v1/validate-employee` : null;
+}
+
 /**
- * Check if the current user's IP is whitelisted for their client
- * Calls the validate-employee edge function which includes IP validation
- * Uses supabase.functions.invoke to automatically include Authorization header
- * Uses request deduplication to prevent multiple simultaneous calls
- * 
- * @param clientId - The client ID to check
- * @param employeeId - The employee ID to check (required)
- * @returns Promise<IPWhitelistCheckResult>
+ * Check if the current user's IP is whitelisted for their client.
+ * Refreshes session first so stale JWTs (e.g. after days away) do not get false "allowed".
  */
-export async function checkIPWhitelist(clientId: string | null, employeeId: string | null): Promise<IPWhitelistCheckResult> {
-  // Skip check if no client ID (e.g., backoffice users)
+export async function checkIPWhitelist(
+  clientId: string | null,
+  employeeId: string | null,
+): Promise<IPWhitelistCheckResult> {
   if (!clientId) {
     return { allowed: true, reason: 'no_client_id' };
   }
 
   if (!employeeId) {
-    // No employee ID, can't validate - allow (will be caught by auth check)
     return { allowed: true, reason: 'no_employee_id' };
   }
 
-  // Create a unique key for request deduplication
   const requestKey = `${clientId}-${employeeId}`;
-  
-  // If there's already an ongoing request for this client+employee, return it
+
   if (ongoingRequests.has(requestKey)) {
     return ongoingRequests.get(requestKey)!;
   }
 
-  // Create the request promise
-  const requestPromise = (async () => {
+  const requestPromise = (async (): Promise<IPWhitelistCheckResult> => {
     try {
-      // Call the validate-employee edge function using supabase.functions.invoke
-      // This automatically includes the Authorization header from the current session
-      const { data, error } = await supabase.functions.invoke('validate-employee', {
-        body: {
-          employeeId: employeeId,
-          clientId: clientId
-        }
-      });
-
-      // Handle IP whitelist error (403 status)
-      if (error) {
-        // Check if it's an IP whitelist error
-        if (error.status === 403 || error.message?.includes('IP_NOT_WHITELISTED') || error.message?.includes('not whitelisted')) {
-          const errorMessage = error.message || 
-                              'Your IP address is not whitelisted for this client. Please contact your administrator to add your IP address to the whitelist.';
-          
-          return {
-            allowed: false,
-            reason: 'ip_not_whitelisted',
-            error: errorMessage
-          };
-        }
-
-        // For 401 errors, check if it's due to missing auth (shouldn't happen with supabase.functions.invoke)
-        if (error.status === 401) {
-          console.warn('Employee validation returned 401, allowing access (backend will validate):', error.message);
-          return { 
-            allowed: true, 
-            reason: 'auth_error', 
-            error: error.message 
-          };
-        }
-
-        // Other errors - log but allow (backend will validate on API calls)
-        console.warn('Employee validation returned error, allowing access (backend will validate):', {
-          status: error.status,
-          message: error.message
-        });
-        
-        return { 
-          allowed: true, 
-          reason: 'validation_error', 
-          error: error.message 
+      const fresh = await ensureFreshAuthenticatedSession();
+      if (!fresh.ok) {
+        return {
+          allowed: false,
+          reason: 'session_invalid',
+          error:
+            fresh.reason === 'refresh_failed'
+              ? 'Your session has expired. Please log in again.'
+              : 'Your session is not authenticated. Please login again.',
         };
       }
 
-      // Success response - if valid is true, IP is whitelisted
-      if (data && data.valid === true) {
+      const fnUrl = getSupabaseFunctionsUrl();
+      if (!fnUrl) {
+        console.error('ipWhitelistCheck: VITE_SUPABASE_URL missing');
+        return {
+          allowed: false,
+          reason: 'config_error',
+          error: 'Application configuration error. Please try again later.',
+        };
+      }
+
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+      const response = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${fresh.accessToken}`,
+          apikey: anonKey ?? '',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ employeeId, clientId }),
+      });
+
+      let body: Record<string, unknown> | null = null;
+      try {
+        const text = await response.text();
+        if (text) body = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        /* ignore */
+      }
+
+      const code = typeof body?.code === 'string' ? body.code : '';
+      const message =
+        typeof body?.message === 'string'
+          ? body.message
+          : 'Employee validation failed';
+
+      if (response.status === 403 || code === 'IP_NOT_WHITELISTED') {
+        return {
+          allowed: false,
+          reason: 'ip_not_whitelisted',
+          error: message,
+        };
+      }
+
+      if (
+        response.status === 401 ||
+        code === 'ANONYMOUS_TOKEN' ||
+        code === 'MISSING_AUTH' ||
+        code === 'INVALID_TOKEN' ||
+        code === 'NOT_AUTHENTICATED_ROLE'
+      ) {
+        return {
+          allowed: false,
+          reason: 'session_invalid',
+          error: message,
+        };
+      }
+
+      if (response.ok && body && body.valid === true) {
         return { allowed: true };
       }
 
-      // If validation failed but no error (shouldn't happen)
-      if (data && data.valid === false) {
-        const errorMessage = data.message || 'Employee validation failed';
-        
-        // Check if it's IP whitelist related
-        if (data.code === 'IP_NOT_WHITELISTED') {
-          return {
-            allowed: false,
-            reason: 'ip_not_whitelisted',
-            error: errorMessage
-          };
-        }
-        
-        return { 
-          allowed: true, 
-          reason: 'validation_failed', 
-          error: errorMessage 
+      if (body?.valid === false) {
+        return {
+          allowed: false,
+          reason: 'validation_failed',
+          error: message,
         };
       }
 
-      // Default to allowed if check fails (backend will validate on API calls)
-      return { allowed: true, reason: 'check_incomplete' };
+      return {
+        allowed: false,
+        reason: 'validation_failed',
+        error: message,
+      };
     } catch (error) {
       console.error('Error checking IP whitelist:', error);
-      // On error, allow access (backend will validate on API calls)
-      return { 
-        allowed: true, 
-        reason: 'check_failed', 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      // Transient network errors: do not force logout; RLS still protects data.
+      return {
+        allowed: true,
+        reason: 'network_error',
+        error: error instanceof Error ? error.message : 'Validation failed',
       };
     } finally {
-      // Remove from ongoing requests after completion
       ongoingRequests.delete(requestKey);
     }
   })();
 
-  // Store the promise for deduplication
   ongoingRequests.set(requestKey, requestPromise);
-  
   return requestPromise;
 }
-

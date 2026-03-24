@@ -12,6 +12,7 @@ import Layout from '@/components/layout/Layout';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getModuleAccessForUser } from '@/services/employee/employeeModuleService';
+import Loader from '@/components/common/Loader';
 
 interface ClientInfo {
   name: string;
@@ -122,7 +123,7 @@ const ProfilePage: React.FC = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader text="Loading profile..." />
         </div>
       );
     }

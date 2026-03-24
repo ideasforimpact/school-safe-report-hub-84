@@ -83,6 +83,7 @@ import BackofficeEduSafeResourcesPage from '@/pages/backoffice/BackofficeEduSafe
 import BackofficeEmployeeVerificationPage from '@/pages/backoffice/BackofficeEmployeeVerificationPage';
 import BackofficeEmployeeDocumentsPage from '@/pages/backoffice/BackofficeEmployeeDocumentsPage';
 import IntegrationPage from '@/pages/backoffice/IntegrationPage';
+import ClientApiCallsPage from '@/pages/backoffice/ClientApiCallsPage';
 
 // Layout for Backoffice with Client Provider
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -113,6 +114,9 @@ import ModuleRouteGuard from './components/ModuleRouteGuard';
 import MonthlyReportAutoDownloadPage from './pages/MonthlyReportAutoDownloadPage';
 import CPDOverviewPage from './pages/cpd/CPDOverviewPage';
 import EmployeeCpdDetailPage from './pages/cpd/EmployeeCpdDetailPage';
+import CommitteesPage from './pages/committees/CommitteesPage';
+import CommitteeEventsPage from './pages/committees/CommitteeEventsPage';
+import CommitteeEventViewPage from './pages/committees/CommitteeEventViewPage';
 
 
 function App() {
@@ -246,6 +250,11 @@ function App() {
                   {/* Student Well-Being Management */}
                   <Route path="/student-well-begin-management" element={<RouteGuard requireAuth={true}><StudentWellBeingPage /></RouteGuard>} />
 
+                  {/* Committees */}
+                  <Route path="/committees" element={<RouteGuard requireAuth={true}><CommitteesPage /></RouteGuard>} />
+                  <Route path="/committees/:committeeId/events" element={<RouteGuard requireAuth={true}><CommitteeEventsPage /></RouteGuard>} />
+                  <Route path="/committees/:committeeId/events/:eventId" element={<RouteGuard requireAuth={true}><CommitteeEventViewPage /></RouteGuard>} />
+
                   {/* CPD Overview */}
                   <Route
                     path="/cpd_overview"
@@ -273,6 +282,11 @@ function App() {
                   <Route path="/backoffice/clients" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={ClientManagement} />
+                    </RouteGuard>
+                  } />
+                  <Route path="/backoffice/clients/:clientId/api-calls" element={
+                    <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                      <BackofficeWrapper component={ClientApiCallsPage} />
                     </RouteGuard>
                   } />
                   <Route path="/backoffice/settings" element={

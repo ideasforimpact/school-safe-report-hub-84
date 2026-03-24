@@ -18,6 +18,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {formatDate} from '@/lib/Dateformat';  
+import Loader from '../common/Loader';
 
 interface SOPAssignment {
   group_id: string | null;
@@ -133,9 +134,7 @@ const SignoffRequestDialog: React.FC<SignoffRequestDialogProps> = ({
       <AlertDialogContent className="max-w-4xl p-0 bg-white rounded-lg overflow-hidden">
 
         {!sop ? (
-          <div className="p-6 text-sm text-gray-500">
-            Loading SOP...
-          </div>
+          <Loader text="Loading SOP..." />
         ) : (
           <>
             {/* HEADER */}

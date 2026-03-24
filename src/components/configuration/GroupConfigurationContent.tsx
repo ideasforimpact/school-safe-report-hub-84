@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import Loader from '../common/Loader';
 
 interface Group {
   id: string;
@@ -151,6 +152,16 @@ const GroupConfigurationContent = () => {
 
     return filtered;
   }, [groups, searchTerm, statusFilter, groupTypeFilter]);
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    groupTypeFilter !== 'all' ? groupTypeFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
 
   const handleAddGroup = () => {
     setEditingGroup(null);
@@ -241,9 +252,7 @@ const GroupConfigurationContent = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-gray-500">Loading groups...</div>
-      </div>
+      <Loader text="Loading groups..." />
     );
   }
 
@@ -295,7 +304,7 @@ const GroupConfigurationContent = () => {
             }}
           >
             <X className="h-4 w-4" />
-            Clear Filter
+            Clear Filters ({activeFilterCount})
           </Button>
         )}
         </div>

@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
+import { recordEmployeeVerificationApiCall } from "../_shared/employeeVerificationApiCalls.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,10 +80,47 @@ serve(async (req) => {
       const dob = document.params?.DOB;
       const existingLogs = document.employee_docs_log || [];
       const employeeId = document.employee_id;
-      const documentTypeId = document.document_type_id;
+      let documentTypeId = document.document_type_id;
+      if (!documentTypeId) {
+        // Fallback: resolve passport document_type_id by name
+        const { data: passportType, error: passportTypeError } = await supabase
+          .from("employee_document_type")
+          .select("id")
+          .eq("name", "PASSPORT")
+          .single();
+
+        if (!passportTypeError && passportType?.id) {
+          documentTypeId = passportType.id;
+        } else {
+          console.warn("Passport verification: unable to resolve document_type_id", {
+            documentId,
+            passportTypeError,
+          });
+        }
+      }
       if (!fileNumber || !dob) {
         return new Response(JSON.stringify({ error: 'File number and DOB are required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+
+      let apiCallOutcomeRecorded = false;
+      const safeRecord = async (isSuccess: boolean) => {
+        try {
+          await recordEmployeeVerificationApiCall({
+            supabase,
+            employeeId,
+            documentId,
+            documentTypeId: documentTypeId ?? null,
+            provider: "surepass",
+            primaryProvider: "surepass",
+            isMultiple: false,
+            isSuccess,
+          });
+        } catch (e) {
+          console.error("Passport API call counter record failed:", e);
+        } finally {
+          apiCallOutcomeRecorded = true;
+        }
+      };
 
       try {
         console.log("Making request to Surepass API to verify passport with:", {
@@ -154,6 +192,9 @@ serve(async (req) => {
             documentNumber: fileNumber
           });
 
+          // API call failed (HTTP not OK) => failed++
+          await safeRecord(false);
+
           return new Response(
             JSON.stringify({
               success: false,
@@ -188,6 +229,9 @@ serve(async (req) => {
             api_verification_date: null
           }).eq('id', documentId);
 
+          // Unable to parse Surepass response => failed++
+          await safeRecord(false);
+
           return new Response(
             JSON.stringify({
               success: false,
@@ -206,6 +250,8 @@ serve(async (req) => {
 
         // On success (status_code 200), persist api_* columns and keep verification pending
         if (apiResponse?.success && apiResponse?.status_code === 200) {
+          await safeRecord(true);
+
           await supabase.from('employee_documents').update({
             verification_status: 'pending',
             employee_docs_log: [...existingLogs, logEntry],
@@ -235,6 +281,9 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
+          // API response indicates failure/in-progress => failed++
+          await safeRecord(false);
+
           // Parse specific error types for user-friendly messages; use in-progress message only when status_code indicates processing
           const IN_PROGRESS_MSG = "Your verification request is being processed. In some cases, additional checks are required to ensure accuracy and compliance.";
           const statusCode = apiResponse?.status_code;
@@ -289,6 +338,11 @@ serve(async (req) => {
         }
       } catch (error: any) {
         console.error("Error verifying Passport with Surepass API:", error);
+
+        // Only count failed when we haven't already recorded based on API response.
+        if (!apiCallOutcomeRecorded) {
+          await safeRecord(false);
+        }
 
         // API call failed completely - set to failed status
         await supabase.from('employee_documents').update({

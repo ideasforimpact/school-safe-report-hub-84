@@ -12,11 +12,12 @@ import ClientRow from './ClientRow';
 
 interface ClientListProps {
   clients: Client[];
+  onViewApiCalls: (client: Client) => void;
   onEditClick: (client: Client) => void;
   onDeleteClient: (id: string) => void;
 }
 
-const ClientList = ({ clients, onEditClick, onDeleteClient }: ClientListProps) => {
+const ClientList = ({ clients, onViewApiCalls, onEditClick, onDeleteClient }: ClientListProps) => {
   return (
     <Table>
       <ClientTableHeader />
@@ -32,6 +33,7 @@ const ClientList = ({ clients, onEditClick, onDeleteClient }: ClientListProps) =
             <ClientRow 
               key={client.id}
               client={client}
+              onViewApiCalls={onViewApiCalls}
               onEditClick={onEditClick}
               onDeleteClient={onDeleteClient}
             />

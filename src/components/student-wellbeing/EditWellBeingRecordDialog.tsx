@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
@@ -28,27 +23,32 @@ import {
   updateStudentWellbeingRecord,
   type StudentWellbeingRecord,
 } from '@/services/student-wellbeing/studentWellbeingService';
-
-const CONCERN_MIN = 2;
+//  Control future date selection from here
+const allowFutureDate = false;
+const CONCERN_MIN = 5;
 const CONCERN_MAX = 2000;
 const CONCERN_NO_SPECIAL = /^[a-zA-Z0-9\s.,?!'\-_\n\r]*$/;
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
 const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
-
+const CharacterCount = (text: string) => {
+  const trimmed = text.trim();
+  const matches = trimmed.match(/[^\s]/g);
+  return matches ? matches.length : 0;
+};
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
   { value: 'under_observation', label: 'Under Observation' },
   { value: 'closed', label: 'Closed' },
 ] as const;
-
+ 
 export interface EditWellBeingRecordDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
   record: StudentWellbeingRecord | null;
 }
-
+ 
 export function EditWellBeingRecordDialog({
   open,
   onClose,
@@ -57,7 +57,7 @@ export function EditWellBeingRecordDialog({
 }: EditWellBeingRecordDialogProps) {
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
-
+ 
   const [student, setStudent] = useState<StudentOption | null>(null);
   const [typeOfConcernId, setTypeOfConcernId] = useState<string>('');
   const [dateOfObservation, setDateOfObservation] = useState<Date | undefined>(undefined);
@@ -70,7 +70,7 @@ export function EditWellBeingRecordDialog({
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+ 
   useEffect(() => {
     if (!open) return;
     if (record) {
@@ -96,7 +96,7 @@ export function EditWellBeingRecordDialog({
       setAttachmentFiles([]);
     }
   }, [open, record]);
-
+ 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -123,27 +123,34 @@ export function EditWellBeingRecordDialog({
     load();
     return () => { cancelled = true; };
   }, [open, record]);
-
+ 
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (!student) next.student = 'Please select a student';
     if (!typeOfConcernId) next.typeOfConcern = 'Please select type of concern';
     if (!dateOfObservation) next.date = 'Please select date of observation';
-    const len = concern.trim().length;
-    if (len < CONCERN_MIN) next.concern = `At least ${CONCERN_MIN} characters required`;
-    else if (len > CONCERN_MAX) next.concern = `Maximum ${CONCERN_MAX} characters allowed`;
-    else if (!CONCERN_NO_SPECIAL.test(concern)) next.concern = 'Special characters are not allowed';
+    const len = CharacterCount(concern);
+
+    // ✅ CHECK SPECIAL CHARACTERS FIRST
+    if (!CONCERN_NO_SPECIAL.test(concern)) {
+      next.concern = 'Special characters are not allowed';
+    } else if (len < CONCERN_MIN) {
+      next.concern = `At least ${CONCERN_MIN} characters required`;
+    } else if (len > CONCERN_MAX) {
+      next.concern = `Maximum ${CONCERN_MAX} characters allowed`;
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
-
+ 
   const handleSave = async () => {
     if (!clientId || !record) {
       toast.error('Missing client or record');
       return;
     }
     if (!validate()) return;
-
+ 
     setSaving(true);
     try {
       const attachmentsPayload = attachmentFiles.map((f) => ({
@@ -159,15 +166,17 @@ export function EditWellBeingRecordDialog({
         section_id: student!.section_id ?? null,
         grade_id: student!.grade_id ?? null,
         type_of_concern_id: typeOfConcernId,
-        date_of_observation: dateOfObservation!.toISOString(),
+        date_of_observation: dateOfObservation!.toLocaleDateString('en-CA'),
         concern: concern.trim() || null,
         status: status as 'open' | 'under_observation' | 'closed',
-        next_follow_up: nextFollowUp ? nextFollowUp.toISOString().slice(0, 10) : null,
+        next_follow_up: nextFollowUp
+        ? nextFollowUp.toLocaleDateString('en-CA')
+        : null,
         document_url: existingKept,
         attachments: attachmentsPayload,
       });
-
-      toast.success('Record updated');
+ 
+      toast.success('Record was updated successfully');
       setErrors({});
       onSuccess();
       onClose();
@@ -177,24 +186,26 @@ export function EditWellBeingRecordDialog({
       setSaving(false);
     }
   };
-
+ 
   const handleClose = () => {
     if (!saving) {
       onClose();
     }
   };
-
+ 
   if (!record) return null;
-
+ 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-6">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-y-auto no-scrollbar"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()} >
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Well-Being Record</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto flex-1 min-h-0 no-scrollbar">
+        <div className="flex-1 overflow grid gap-4 py-4 pr-2 ">
           <div className="grid gap-2">
-            <Label htmlFor="student">Student</Label>
+            <Label htmlFor="student">Student <span className="text-red-500">*</span></Label>
             <StudentSearchSelect
               value={student}
               onChange={setStudent}
@@ -206,9 +217,9 @@ export function EditWellBeingRecordDialog({
               <p className="text-sm text-red-500">{errors.student}</p>
             )}
           </div>
-
+ 
           <div className="grid gap-2">
-            <Label htmlFor="typeOfConcern">Type of Concern</Label>
+            <Label htmlFor="typeOfConcern">Type of Concern <span className="text-red-500">*</span></Label>            
             <Select
               value={typeOfConcernId}
               onValueChange={setTypeOfConcernId}
@@ -229,39 +240,54 @@ export function EditWellBeingRecordDialog({
               <p className="text-sm text-red-500">{errors.typeOfConcern}</p>
             )}
           </div>
-
+ 
           <div className="grid gap-2">
-            <Label>Date of Observation</Label>
+            <Label>Date of Observation <span className="text-red-500">*</span></Label>
             <DatePicker
               date={dateOfObservation}
               onChange={setDateOfObservation}
-              placeholderText="Select date"
+              disableFuture={!allowFutureDate}
+              placeholderText="Select date"              
             />
             {errors.date && (
               <p className="text-sm text-red-500">{errors.date}</p>
             )}
           </div>
-
+ 
           <div className="grid gap-2">
-            <Label htmlFor="concern">Brief Concern Description</Label>
+            <Label htmlFor="concern">Brief Concern Description <span className="text-red-500">*</span></Label>
             <TextareaWithVoice
               id="concern"
               value={concern}
-              onChange={(e) => setConcern(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const currentCount = CharacterCount(concern);
+                const newCount = CharacterCount(value);
+
+                // Allow deletion anytime
+                if (value.length < concern.length) {
+                  setConcern(value);
+                  return;
+                }
+
+                // Allow typing only if counted characters < max
+                if (currentCount < CONCERN_MAX && newCount <= CONCERN_MAX) {
+                  setConcern(value);
+                }
+              }}
               placeholder="Use simple, non-judgmental language"
               rows={4}
               disabled={saving}
               className={`resize-y min-h-[80px] ${errors.concern ? 'border-red-500' : ''}`}
-              maxLength={CONCERN_MAX + 100}
             />
             <p className="text-xs text-gray-500">
-              {concern.trim().length} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
+              {CharacterCount(concern)} / {CONCERN_MAX} (min {CONCERN_MIN}, no special characters)
             </p>
-            {errors.concern && (
-              <p className="text-sm text-red-500">{errors.concern}</p>
-            )}
+            <p className="text-sm text-red-500 min-h-[20px]">
+              {errors.concern || ''}
+            </p>
           </div>
-
+ 
           <div className="grid gap-2">
             <Label>Attachments (optional)</Label>
             {existingKept.length > 0 && (
@@ -301,7 +327,7 @@ export function EditWellBeingRecordDialog({
               disabled={saving}
             />
           </div>
-
+ 
           <div className="grid gap-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={setStatus} disabled={saving}>
@@ -317,7 +343,7 @@ export function EditWellBeingRecordDialog({
               </SelectContent>
             </Select>
           </div>
-
+ 
           {/* Next Follow-up field commented out - value is derived from follow_up_entries
           <div className="grid gap-2">
             <Label>Next Follow-up</Label>
@@ -329,13 +355,13 @@ export function EditWellBeingRecordDialog({
           </div>
           */}
         </div>
-
+ 
         {saving && (
           <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80 z-10">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         )}
-
+ 
         <div className="flex justify-end gap-2 pt-2 flex-shrink-0 border-t pt-4 mt-4">
           <Button variant="outline" onClick={handleClose} disabled={saving}>
             Cancel

@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
 import { useAuth } from '@/contexts/auth';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch, FileUp, Search, RefreshCw } from 'lucide-react';
+import { PlusCircle, UserSearch, FileUp, Search, RefreshCw, X } from 'lucide-react';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Loader from '@/components/common/Loader';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -49,7 +50,13 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  
+  useEffect(() => {
+    if (employeeData?.clientId) {
+      refreshStudents(); 
+    }
+  }, [employeeData?.clientId]);
+  
   const handleEditClick = (student: Student) => {
     setSelectedStudent(student);
     setIsEditDialogOpen(true);
@@ -506,6 +513,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                   onClick={clearAllFilters}
                   className="text-gray-600 h-10"
                 >
+                  <X className="h-4 w-4 mr-1" />
                   Clear Filters ({activeFiltersCount})
                 </Button>
               )}
@@ -521,7 +529,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              <Loader text="Loading students..." />
             </div>
           ) : (
             <div>

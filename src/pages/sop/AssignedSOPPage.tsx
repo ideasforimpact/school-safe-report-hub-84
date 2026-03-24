@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Search, Users, Eye, Clock3, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Search, Users, Eye, Clock3, FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -37,6 +37,7 @@ import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useCallback } from 'react';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 interface SOP {
   id: string;
@@ -232,6 +233,22 @@ const AssignedSOPPage = () => {
     return text.substring(0, maxLength) + '...';
   };
 
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    categoryFilter !== 'all' ? categoryFilter : '',
+  ].filter((value) => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+  };
+
   // Render text with tooltip if truncated
   const renderTextWithTooltip = (text: string | null | undefined, maxLength: number = 25) => {
     if (!text) return <span>-</span>;
@@ -398,6 +415,18 @@ const AssignedSOPPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {activeFilterCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="flex items-center gap-1"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
+              </Button>
+            )}
           </div>
 
           {/* Results Count */}
@@ -410,9 +439,7 @@ const AssignedSOPPage = () => {
           )}
 
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading assigned SOPs...</p>
-            </div>
+            <Loader text= "Loading assigned SOPs..." />
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No assigned SOPs found</p>

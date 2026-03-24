@@ -6,14 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { Check, Loader2, X } from 'lucide-react';
+import { Check, Loader2, X, Tag } from 'lucide-react';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS, EMPLOYEE_DESIGNATION_CONSTANTS } from '@/constant/employeeConstant';
+import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS } from '@/constant/employeeConstant';
 import { EmailValidationStatus, EmployeeIdValidationStatus } from './AddUserDialog';
 import { useDebounce } from '@/hooks/useDebounce';
 import { checkEmployeeEmailExists, checkEmployeeIdExists } from '@/services/employee/employeeValidationService';
@@ -29,6 +29,7 @@ interface EditUserDialogProps {
     email: string;
     phone?: string;
     designation?: string;
+    tags?: string[];
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -56,6 +57,8 @@ const EditUserDialog = ({
   currentUser,
   employeeUsers = [],
 }: EditUserDialogProps) => {
+  const MAX_TAGS = 2;
+  const MAX_TAG_LENGTH = 25;
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const { clientId } = useEmployeeData();
@@ -64,11 +67,14 @@ const EditUserDialog = ({
   const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
   const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
+  const [tagInput, setTagInput] = useState('');
+  const [tagError, setTagError] = useState('');
   const originalEmployeeIdRef = useRef<string | undefined>(undefined);
   const originalEmployeeEmailRef = useRef<string | undefined>(undefined);
   const debouncedEmployeeId = useDebounce(formData.employeeId || '', 500);
   const debouncedEmployeeEmail = useDebounce(formData.email || '', 500);
-
+  const joiningDateRef = useRef<HTMLInputElement>(null);
+  const [joiningDateError, setJoiningDateError] = useState('');
   // Determine super admin flag based on the TARGET user being edited, not the current operator
   const targetIsSuperAdmin = currentUser?.isSuperAdmin === true;
   
@@ -111,6 +117,23 @@ const EditUserDialog = ({
       } catch (e) {
         console.warn("Error formatting joining date in EditUserDialog:", e);
       }
+    }
+    if (isOpen) {
+      const existingTags =
+        (Array.isArray(formData.tags) && formData.tags.length > 0
+          ? formData.tags
+          : (formData.designation || '')
+              .split(',')
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+              .slice(0, MAX_TAGS));
+      setFormData(prev => ({
+        ...prev,
+        tags: existingTags,
+        designation: existingTags.join(', ')
+      }));
+      setTagInput('');
+      setTagError('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentUser?.id, employeeUsers]);
@@ -321,17 +344,95 @@ const EditUserDialog = ({
     return /^[6-9]\d{9}$/.test(phone);
   };
 
-  const isValidDesignation = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return false;
-    const nameRegex = /^[a-zA-Z\s]{0,25}$/;
-    return nameRegex.test(name);
+  const sanitizeTag = (value: string) => value.replace(/,/g, '').trim().slice(0, MAX_TAG_LENGTH);
+  const currentTags = Array.isArray(formData.tags) ? formData.tags : [];
+
+  const updateTags = (nextTags: string[]) => {
+    setFormData({
+      ...formData,
+      tags: nextTags,
+      // Keep designation in sync for backend compatibility.
+      designation: nextTags.join(', ')
+    });
+  };
+
+  const addTag = () => {
+    const normalized = sanitizeTag(tagInput);
+    if (!normalized) return;
+    if (currentTags.length >= MAX_TAGS) {
+      setTagError(`Maximum ${MAX_TAGS} tags allowed`);
+      return;
+    }
+    if (currentTags.some((tag) => tag.toLowerCase() === normalized.toLowerCase())) {
+      setTagError('Tag already added');
+      return;
+    }
+    updateTags([...currentTags, normalized]);
+    setTagInput('');
+    setTagError('');
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const nextTags = currentTags.filter((tag) => tag !== tagToRemove);
+    updateTags(nextTags);
+    setTagError('');
   };
 
   const handleClose = () => {
     setIsOpen(false);
-    resetForm();
+    setTagInput('');
+    setTagError('');
+    setJoiningDateError(''); 
+    resetForm();    
   };
+
+  const isValidJoiningDate = (dateStr: string) => {
+    if (!dateStr) return true; // empty is allowed
+
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
+
+    const [year, month, day] = parts.map(Number);
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const inputDate = new Date(year, month - 1, day);
+
+    return (
+      year >= 1940 &&
+      inputDate <= today && // optional: prevent future dates
+      inputDate.getFullYear() === year &&
+      inputDate.getMonth() === month - 1 &&
+      inputDate.getDate() === day
+    );
+  };
+
+  const handleJoiningDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const value = input.value;
+    setFormData({ ...formData, joiningDate: value });
+
+    if (!input.validity.valid) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else if (value && !isValidJoiningDate(value)) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else {
+      setJoiningDateError('');
+    }
+  };
+
+  const handleJoiningDateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const input = e.target;
+    if (!input.validity.valid) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else if (input.value && !isValidJoiningDate(input.value)) {
+      setJoiningDateError('Please enter a valid joining date');
+    } else {
+      setJoiningDateError('');
+    }
+  };
+
   const isFormValid = () => {
     // Email is optional; if provided must be valid and unique
     const hasValidEmail = !formData.email || (formData.email.trim() !== '' && isValidEmail(formData.email));
@@ -351,11 +452,10 @@ const EditUserDialog = ({
       hasValidEmail &&
       isEmailUnique &&
       (!formData.phone || isValidPhone(formData.phone)) &&
-      (!formData.designation ||(
-        formData.designation.length >= EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH &&
-        isValidDesignation(formData.designation))) &&
       formData.employeeId &&
       isValidEmployeeId(formData.employeeId) &&
+      (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
+      !joiningDateError &&
       employeeIdValidation !== 'exists' &&
       emailValidation !== 'exists' &&
       employeeIdValidation !== 'checking' &&
@@ -400,7 +500,7 @@ const EditUserDialog = ({
         lastName: formData.lastName,
         employeeId: formData.employeeId,
         phone: formData.phone,
-        designation: formData.designation,
+        designation: currentTags.join(', '),
         employeeType: formData.employeeType ?? undefined,
         department: formData.department ?? undefined,
         joiningDate: formData.joiningDate,
@@ -457,7 +557,7 @@ const EditUserDialog = ({
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 px-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 overflow-y-auto pr-1 px-4">
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -571,32 +671,54 @@ const EditUserDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="designation">Designation</Label>
-              <Input
-                id="designation"
-                value={formData.designation || ''}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 25);
-                  setFormData({ ...formData, designation: value });
-                }}
-                minLength={EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH}
-                maxLength={EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH }
-              />
-               {formData.designation &&
-                  formData.designation.length < EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH && (
-                    <p className="text-xs text-red-500">
-                      Designation must be at least {EMPLOYEE_DESIGNATION_CONSTANTS.MIN_LENGTH} characters
-                    </p>
-                )}
-                {formData.designation &&
-                  formData.designation.length > EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH && (
-                    <p className="text-xs text-red-500">
-                      Designation cannot exceed {EMPLOYEE_DESIGNATION_CONSTANTS.MAX_LENGTH} characters
-                    </p>
-                )}
-              {formData.designation && !isValidDesignation(formData.designation) && (
-                <p className="text-xs text-red-500">Only letters and spaces</p>
-              )}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="employee-tags" className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-gray-500" />
+                  Tags
+                </Label>
+                <span className="text-xs text-gray-400">{currentTags.length}/{MAX_TAGS} tags</span>
+              </div>
+              <div className="min-h-14 w-full rounded-md border bg-gray-50 px-2 py-2 flex flex-wrap items-center gap-2">
+                {currentTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white text-sm px-2 py-1"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      className="text-white/90 hover:text-white"
+                      onClick={() => removeTag(tag)}
+                      aria-label={`Remove ${tag}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+                <Input
+                  id="employee-tags"
+                  value={tagInput}
+                  onChange={(e) => {
+                    setTagInput(sanitizeTag(e.target.value));
+                    if (tagError) setTagError('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  onBlur={addTag}
+                  placeholder={currentTags.length >= MAX_TAGS ? 'Maximum tags added' : 'Add one more...'}
+                  className="border-0 shadow-none bg-transparent focus-visible:ring-0 h-8 flex-1 min-w-[140px]"
+                  maxLength={MAX_TAG_LENGTH}
+                  disabled={currentTags.length >= MAX_TAGS}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Maximum {MAX_TAGS} tags, {MAX_TAG_LENGTH} characters each
+              </p>
+              {tagError && <p className="text-xs text-red-500">{tagError}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -645,9 +767,15 @@ const EditUserDialog = ({
                 <Input
                   id="joiningDate"
                   type="date"
+                  ref={joiningDateRef}
                   value={formData.joiningDate || ''}
-                  onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+                  onChange={handleJoiningDateChange}
+                  onBlur={handleJoiningDateBlur}
+                  className={joiningDateError ? 'border-red-500' : ''}
                 />
+                {joiningDateError && (
+                  <p className="text-xs text-red-500">{joiningDateError}</p>
+                )}
               </div>
             </div>
 
@@ -742,7 +870,14 @@ const EditUserDialog = ({
             <Button type="button" variant="outline" onClick={handleClose} disabled={isUpdating || isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isUpdating || isLoading || !isFormValid()}>
+            <Button 
+              type="submit" 
+              disabled={
+                !isFormValid() ||
+                employeeIdValidation === 'checking' ||
+                emailValidation === 'checking' ||
+                !!joiningDateError
+              }>
               {(isUpdating || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update User
             </Button>

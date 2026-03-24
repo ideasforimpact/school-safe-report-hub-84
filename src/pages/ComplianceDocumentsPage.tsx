@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
+import Loader from '@/components/common/Loader';
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
@@ -85,6 +86,13 @@ const ComplianceDocumentsPage: React.FC = () => {
     folder_id: string;
     name: string;
   } | null>(null);
+
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm?.trim() ? 'search' : '',
+    statusFilter !== 'all' ? 'status' : '',
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
    const clearAllFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
@@ -1213,14 +1221,16 @@ const ComplianceDocumentsPage: React.FC = () => {
                   <SelectItem value="expired">Invalid</SelectItem>
                 </SelectContent>
               </Select>
+              {hasActiveFilters && (
                <Button
                 variant="outline"
                 onClick={clearAllFilters}
                 className="flex items-center gap-2"
               >
-                <Filter className="h-4 w-4" />
-                Clear Filters
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
               </Button>
+              )}
             </div>
           {/* Error Message Alert */}
           {uploadError && (
@@ -1514,9 +1524,8 @@ const ComplianceDocumentsPage: React.FC = () => {
           </AlertDialog>
           {loading && (
             <div className="mt-4 sm:mt-6 flex items-center justify-center py-8 sm:py-10">
-              <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
-              <span className="text-xs sm:text-sm text-gray-600">Loading...</span>
-          </div>
+              <Loader text="Loading compliance documents..." />
+            </div>
           )}
         </div>
       </div>
@@ -1625,7 +1634,7 @@ const ComplianceDocumentsPage: React.FC = () => {
                       );
                     }}
                     min={new Date().toISOString().split("T")[0]}
-                    className="w-[250px]"
+                    className="w-[190px]"
                   />
                 </div>
 

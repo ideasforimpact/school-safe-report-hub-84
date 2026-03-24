@@ -4,6 +4,7 @@ import { EduSafeResource } from '@/types/eduSafeTypes';
 import ResourceCard from './ResourceCard';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
+import Loader from '../common/Loader';
 
 interface ResourceListProps {
   resources: EduSafeResource[];
@@ -14,9 +15,8 @@ const ResourceList: React.FC<ResourceListProps> = ({ resources }) => {
 
   if (loading) {
     return (
-      <div className="text-center py-16 border rounded-lg bg-gray-50">
-        <Loader2 className="mx-auto h-12 w-12 text-gray-400 animate-spin" />
-        <h3 className="mt-4 text-lg font-medium text-center">Loading resources...</h3>
+      <div className="border rounded-lg bg-gray-50">
+        <Loader text="Loading resources..." />
         <p className="mt-2 text-sm text-gray-500 text-center">
           Please wait while we fetch the resources.
         </p>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import Loader from "@/components/common/Loader";
 
 const EmployeeVerificationPage = () => {
   const { fetchEmployees, employees } = useEmployeeVerification();
@@ -17,9 +18,11 @@ const EmployeeVerificationPage = () => {
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   const [documentStatusFilter, setDocumentStatusFilter] = useState('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
-
+  const [loading, setLoading] = useState(true);
+  
   // Filter employees based on all criteria
   // Helper function to get overall status based on priority logic
   const getOverallStatus = (employee) => {
@@ -43,6 +46,16 @@ const EmployeeVerificationPage = () => {
     }
   };
 
+  const departments = useMemo(() => {
+    const uniqueDepartments = new Set(
+      employees
+        .map((emp) => emp.department)
+        .filter(Boolean)
+    );
+
+    return Array.from(uniqueDepartments);
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
       const documents = employee.documents || [];
@@ -60,6 +73,12 @@ const EmployeeVerificationPage = () => {
           (employee.address && employee.address.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) return false;
+      }
+
+      if (departmentFilter !== 'all') {
+        if (employee.department !== departmentFilter) {
+          return false;
+        }
       }
 
       if (documentTypeFilter !== 'all') {
@@ -93,7 +112,7 @@ const EmployeeVerificationPage = () => {
 
       return true;
     });
-  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter]);
+  }, [employees, searchTerm, documentStatusFilter, documentTypeFilter, departmentFilter]);
 
   // Parse URL parameters and set initial filters
   useEffect(() => {
@@ -126,24 +145,32 @@ const EmployeeVerificationPage = () => {
 
   // Fetch employees when component mounts
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    const loadEmployees = async () => {
+      setLoading(true);
+      await fetchEmployees();
+      setLoading(false);
+    };
+
+    loadEmployees();
+  }, [fetchEmployees]);  
   
   const handleRefresh = async () => {
-  setIsRefreshing(true);
+    setIsRefreshing(true);
+    setLoading(true);
 
   await Promise.all([
     fetchEmployees(),
     new Promise((resolve) => setTimeout(resolve, 500))
   ]);
-
-  setIsRefreshing(false);
-};
+    setLoading(false);
+    setIsRefreshing(false);
+  };
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setDocumentStatusFilter('all');
     setDocumentTypeFilter('all');
+    setDepartmentFilter('all');
   };
   const employeeAnalyticsStats = useMemo(() => {
     const totalEmployees = employees.length;
@@ -247,13 +274,18 @@ const EmployeeVerificationPage = () => {
             documentTypeFilter={documentTypeFilter}
             onDocumentTypeChange={setDocumentTypeFilter}
             onClearFilters={handleClearFilters}
+            departmentFilter={departmentFilter}
+            onDepartmentChange={setDepartmentFilter}
+            departments={departments}
             resultCount={filteredEmployees.length}
             totalCount={employees.length}
           />
           
-          <EmployeesList
-            employees={filteredEmployees}
-          />
+          {loading ? (
+            <Loader text="Loading employees..." />
+          ) : (
+            <EmployeesList employees={filteredEmployees} />
+          )}
         </div>
       </div>
     </Layout>

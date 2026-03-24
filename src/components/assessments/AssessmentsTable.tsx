@@ -85,6 +85,20 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     assigneeName: string;
   } | null>(null);
 
+  // Count active filters
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    createdByFilter !== 'all' ? createdByFilter : '',
+    assignedToFilter !== 'all' ? assignedToFilter : '',
+    targetDateFrom,
+    targetDateTo
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true; 
+  }).length;
+
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
     const creators = assessments
@@ -661,17 +675,8 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   }
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p>Loading assessments...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    return (      
+      <Loader text="Loading assessments..." />
     );
   }
 
@@ -783,14 +788,16 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                 />
               </div>
 
-              <Button
-                variant="outline"
-                onClick={clearAllFilters}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Clear Filters
-              </Button>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filters ({activeFilterCount})
+                </Button>
+              )}
             </div>
 
             {selectedAssessmentIds.length > 0 && (

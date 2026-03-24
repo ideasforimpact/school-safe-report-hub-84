@@ -48,6 +48,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import CompletedEmployeesDialog from './CompletedEmployeesDialog';
+import Loader from '@/components/common/Loader';
 
 interface SOP {
   id: string;
@@ -378,6 +379,18 @@ const SOPPage = () => {
       fetchSOPs();
     },
   });
+
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    categoryFilter !== 'all' ? categoryFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
   const handleClearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
@@ -509,7 +522,7 @@ const SOPPage = () => {
                 className="h-10"
               >
                 <X className="h-4 w-4" />
-                Clear Filter
+                Clear Filters ({activeFilterCount})
               </Button>
             )}
           </div>
@@ -524,9 +537,7 @@ const SOPPage = () => {
           )}
 
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading SOPs...</p>
-            </div>
+            <Loader text="Loading SOPs..." />
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No SOPs found</p>

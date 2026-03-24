@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TemplateBasicInfoProps {
   title: string;
@@ -16,6 +17,7 @@ interface TemplateBasicInfoProps {
   setType: (type: string) => void;
   isActive: boolean;
   setIsActive: (isActive: boolean) => void;
+  typeRef?: React.RefObject<HTMLButtonElement>;
 }
 
 const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
@@ -26,20 +28,59 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
   type,
   setType,
   isActive,
-  setIsActive
+  setIsActive,
+  typeRef
 }) => {
   const [titleError, setTitleError] = useState<string | null>(null);
+  const [templateTypes, setTemplateTypes] = useState<string[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
 
-  const templateTypes = [
-    'Safety',
-    'Compliance',
-    'Risk',
-    'Quality',
-    'Environmental',
-    'Security',
-    'Training',
-    'Maintenance'
-  ];
+  useEffect(() => {
+    const fetchTemplateTypes = async () => {
+      const { data, error } = await supabase
+        .from('template_categories')
+        .select('name')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching template categories:', error);
+        setLoadingTypes(false);
+        return;
+      }
+
+      const categories = data.map((item: any) => item.name);
+      setTemplateTypes(categories);
+      setLoadingTypes(false);
+    };
+
+    fetchTemplateTypes();
+  }, []);
+
+  useEffect(() => {
+    if (!type || templateTypes.length === 0) return;
+
+    const normalizedType = type.trim().toLowerCase();
+    const matched = templateTypes.find(
+      (category) => category.trim().toLowerCase() === normalizedType
+    );
+
+    if (matched && matched !== type) {
+      setType(matched);
+    }
+  }, [type, templateTypes, setType]);
+
+  const selectOptions = useMemo(() => {
+    const normalizedType = type.trim().toLowerCase();
+    const hasMatchingType = templateTypes.some(
+      (category) => category.trim().toLowerCase() === normalizedType
+    );
+
+    if (type && !hasMatchingType) {
+      return [type, ...templateTypes];
+    }
+
+    return templateTypes;
+  }, [type, templateTypes]);
 
   // Validation function for template title (no special characters allowed)
   const isValidTemplateTitle = (value: string) => {
@@ -99,13 +140,19 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
         </div>
         
         <div>
-          <Label htmlFor="type">Assessment Type</Label>
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger>
+          <Label htmlFor="type">Assessment Type <span className="text-red-500">*</span></Label>
+          <Select
+            value={type || ''}
+            disabled={loadingTypes}
+            onValueChange={(value) => {
+              setType(value);
+            }}
+          >
+            <SelectTrigger ref={typeRef}>
               <SelectValue placeholder="Select assessment type" />
             </SelectTrigger>
             <SelectContent>
-              {templateTypes.map((templateType) => (
+              {selectOptions.map((templateType) => (
                 <SelectItem key={templateType} value={templateType}>
                   {templateType}
                 </SelectItem>

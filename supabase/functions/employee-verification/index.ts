@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
+import { recordAadhaarApiCallEvent } from "../_shared/aadhaarApiCallEvents.ts";
 
 // CORS headers setup
 const corsHeaders = {
@@ -238,7 +239,8 @@ async function requestAadharOtpWithFallback(
   documentNumber: string,
   employeeId: string,
   documentId: string,
-  documentTypeId?: string | null
+  documentTypeId?: string | null,
+  requestGroupId?: string
 ): Promise<{ response: Response; data: any; api: string }> {
   // Primary: Always try QuickEKYC first
   console.log('[Request OTP] Attempting primary: QuickEKYC');
@@ -247,6 +249,21 @@ async function requestAadharOtpWithFallback(
   // Clone the response to read JSON without consuming the original
   const quickEKYResponseClone = quickEKYResponse.clone();
   const quickEKYData = await quickEKYResponseClone.json();
+  const normalizedQuickEKYC = normalizeQuickEKYCResponse(quickEKYData, true);
+  const quickEkcySuccess = !!normalizedQuickEKYC?.success;
+
+  await recordAadhaarApiCallEvent({
+    supabase,
+    employeeId,
+    documentId,
+    documentTypeId: documentTypeId ?? null,
+    provider: "quickekyc",
+    primaryProvider: "quickekyc",
+    operation: "generate_otp",
+    isSuccess: quickEkcySuccess,
+    requestGroupId,
+    apiResponse: quickEKYData,
+  });
   
   // Check if QuickEKYC returned status_code 500
   if (quickEKYData?.status_code === 500) {
@@ -278,6 +295,22 @@ async function requestAadharOtpWithFallback(
     const surePareResponse = await callSurePareRequestOtpAPI(documentNumber);
     const surePareData = await surePareResponse.json();
     console.log('data for the surepare',surePareData);
+    const surepareSuccess = !!(
+      surePareData?.status_code === 200 &&
+      surePareData?.success !== false
+    );
+    await recordAadhaarApiCallEvent({
+      supabase,
+      employeeId,
+      documentId,
+      documentTypeId: documentTypeId ?? null,
+      provider: "surepass",
+      primaryProvider: "quickekyc",
+      operation: "generate_otp",
+      isSuccess: surepareSuccess,
+      requestGroupId,
+      apiResponse: surePareData,
+    });
 
     if (surePareData?.status_code === 200) {
       await logVerificationSuccess(supabase, {
@@ -794,8 +827,16 @@ serve(async (req) => {
 
         const employeeId = doc?.employee_id;
         const documentTypeId = doc?.document_type_id;
+        const requestGroupId = generateUUID();
         // Call with fallback: QuickEKYC primary, SurePare secondary if status_code = 500
-        const { response: apiResponse, data: rawData, api: usedApi } = await requestAadharOtpWithFallback(supabase, documentNumber, employeeId, documentId, documentTypeId);
+        const { response: apiResponse, data: rawData, api: usedApi } = await requestAadharOtpWithFallback(
+          supabase,
+          documentNumber,
+          employeeId,
+          documentId,
+          documentTypeId,
+          requestGroupId
+        );
         
         console.log(`${usedApi === 'quickekyc' ? 'QuickEKYC' : 'SurePare'} API response:`, JSON.stringify(rawData));
         currentProvider = usedApi === 'quickekyc' ? 'quickekyc' : 'surepass';
@@ -830,7 +871,8 @@ serve(async (req) => {
               message: data.message || "OTP sent successfully", 
               txnId: data.data?.txn_id || data.txn_id,
               client_id: data.data?.client_id || data.client_id,
-              api: usedApi // Add api key to indicate which integration was used
+              api: usedApi, // Add api key to indicate which integration was used
+              request_group_id: requestGroupId
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -973,8 +1015,31 @@ serve(async (req) => {
         const isQuickEKYCUsed = useApi === 'quickekyc';
         const data = isQuickEKYCUsed ? normalizeQuickEKYCResponse(rawData, false) : rawData;
         
+        const verifyRequestGroupId = String(
+          txnId ||
+          clientIdForVerification ||
+          data?.data?.txn_id ||
+          data?.data?.client_id ||
+          requestBody.request_group_id ||
+          generateUUID()
+        );
+        const verifySuccess = !!(data.success && data.status_code === 200);
+
+        await recordAadhaarApiCallEvent({
+          supabase,
+          employeeId,
+          documentId,
+          documentTypeId: documentTypeId ?? null,
+          provider: useApi === "quickekyc" ? "quickekyc" : "surepass",
+          primaryProvider: "quickekyc",
+          operation: "verify_otp",
+          isSuccess: verifySuccess,
+          requestGroupId: verifyRequestGroupId,
+          apiResponse: data,
+        });
+
         // Check status_code in API response
-        if (data.success && data.status_code === 200) {
+        if (verifySuccess) {
           // Persist API response meta for faster UI rendering; do NOT auto-approve
           if (documentId) {
             const { data: document } = await supabase
@@ -1137,6 +1202,25 @@ serve(async (req) => {
           );
         }
       } catch (error) {
+        const verifyRequestGroupId = String(
+          txnId ||
+          clientIdForVerification ||
+          requestBody.request_group_id ||
+          generateUUID()
+        );
+        await recordAadhaarApiCallEvent({
+          supabase,
+          employeeId,
+          documentId,
+          documentTypeId: documentTypeId ?? null,
+          provider: useApi === "quickekyc" ? "quickekyc" : "surepass",
+          primaryProvider: "quickekyc",
+          operation: "verify_otp",
+          isSuccess: false,
+          requestGroupId: verifyRequestGroupId,
+          apiResponse: { error: String(error) },
+        });
+
         await logVerificationError(supabase, {
           employeeId,
           documentId,

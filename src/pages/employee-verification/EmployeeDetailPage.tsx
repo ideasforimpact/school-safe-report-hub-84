@@ -25,6 +25,7 @@ import AadharDetailsDialog from '@/components/employee-verification/documents-li
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { employeeTypeName } from '@/services/employeeNameHelpers';
+import Loader from '@/components/common/Loader';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -341,11 +342,8 @@ const EmployeeDetailPage = () => {
     return (
       <Layout>
         <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading employee details...</p>
-            </div>
+          <div className="flex items-center justify-center p-8">           
+            <Loader text="Loading employee details..." />            
           </div>
         </div>
       </Layout>

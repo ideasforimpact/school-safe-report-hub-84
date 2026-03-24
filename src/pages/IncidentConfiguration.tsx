@@ -8,6 +8,7 @@ import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { reportTypeService } from '@/services/incident/reportTypeService';
 import { priorityService } from '@/services/incident/priorityService';
+import Loader from '@/components/common/Loader';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
@@ -193,10 +194,7 @@ const IncidentConfiguration = () => {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading configuration...</p>
-          </div>
+          <Loader text="Loading configuration..." />
         </div>
       </Layout>
     );

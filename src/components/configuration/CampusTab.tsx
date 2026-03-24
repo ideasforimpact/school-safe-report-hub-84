@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/auth/useAuth';
+import Loader from '../common/Loader';
 
 interface CampusTabProps {
   campuses: CampusItem[];
@@ -251,7 +252,7 @@ export const CampusTab = ({
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
-                </>
+                </> 
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" /> Add Campus
@@ -301,10 +302,7 @@ export const CampusTab = ({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-center py-4">
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    <span>Loading campuses...</span>
-                  </div>
+                  <Loader text="Loading campuses..." />
                 </TableCell>
               </TableRow>
             ) : filteredCampuses.length === 0 ? (

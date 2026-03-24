@@ -22,6 +22,7 @@ import { Student } from '@/types/student';
 import { formatFileSize } from '@/utils/fileUtils';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
+import Loader from '../common/Loader';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -637,7 +638,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
   if (configLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center py-8">Loading form configuration...</div>
+        <Loader text="Loading form configuration..." />
       </div>
     );
   }

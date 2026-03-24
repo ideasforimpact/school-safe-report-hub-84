@@ -1,11 +1,44 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import {
+  recordVehicleVerificationApiCall,
+  VEHICLE_VERIFY_PRIMARY_PROVIDER,
+  VEHICLE_VERIFY_FALLBACK_PROVIDER,
+} from '../_shared/vehicleVerificationApiCalls.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/** Logs one external API outcome to vehicle_verification_api_calls (never throws). */
+async function safeVehicleApiCallLog(
+  supabase: any,
+  vehicleId: string | undefined,
+  params: {
+    operation: 'rc' | 'challan';
+    provider: string;
+    isSuccess: boolean;
+    isMultiple?: boolean;
+  },
+) {
+  if (!vehicleId) return;
+  try {
+    await recordVehicleVerificationApiCall({
+      supabase,
+      vehicleId,
+      primaryProvider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+      operation: params.operation,
+      provider: params.provider,
+      isSuccess: params.isSuccess,
+      isMultiple: params.isMultiple,
+    });
+  } catch (e) {
+    console.error('[vehicle-verify] vehicle_verification_api_calls log failed:', e);
+  }
+}
 
 const supabaseUrl = getSupabaseUrl();
 const supabaseServiceKey = getSupabaseServiceRoleKey();
@@ -687,6 +720,12 @@ async function callRCAPI(
         surePassData,
         false
       );
+
+      await safeVehicleApiCallLog(supabase, vehicleId, {
+        operation: 'rc',
+        provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+        isSuccess: false,
+      });
       
       console.log('[RC API] SurePass failed, falling back to QuickEKYC');
       
@@ -722,6 +761,13 @@ async function callRCAPI(
         quickEKYData,
         quickEKYSuccess
       );
+
+      await safeVehicleApiCallLog(supabase, vehicleId, {
+        operation: 'rc',
+        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
+        isSuccess: quickEKYSuccess,
+        isMultiple: true,
+      });
       
       return { 
         response: quickEKYResponse, 
@@ -745,6 +791,12 @@ async function callRCAPI(
       surePassData,
       true
     );
+
+    await safeVehicleApiCallLog(supabase, vehicleId, {
+      operation: 'rc',
+      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+      isSuccess: true,
+    });
     
     return { 
       response: surePassResponse, 
@@ -781,6 +833,12 @@ async function callRCAPI(
       { error: errorMessage },
       false
     );
+
+    await safeVehicleApiCallLog(supabase, vehicleId, {
+      operation: 'rc',
+      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+      isSuccess: false,
+    });
     
     // Fallback to QuickEKYC
     console.log('[RC API] SurePass exception, falling back to QuickEKYC');
@@ -816,6 +874,13 @@ async function callRCAPI(
         quickEKYData,
         quickEKYSuccess
       );
+
+      await safeVehicleApiCallLog(supabase, vehicleId, {
+        operation: 'rc',
+        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
+        isSuccess: quickEKYSuccess,
+        isMultiple: true,
+      });
       
       return { 
         response: quickEKYResponse, 
@@ -847,6 +912,13 @@ async function callRCAPI(
         { error: quickEKYErrorMessage },
         false
       );
+
+      await safeVehicleApiCallLog(supabase, vehicleId, {
+        operation: 'rc',
+        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
+        isSuccess: false,
+        isMultiple: true,
+      });
       
       throw error; // Re-throw the original SurePass error
     }
@@ -920,6 +992,13 @@ async function callChallanAPI(
         true,
         challanProcessId
       );
+
+      await safeVehicleApiCallLog(supabase, vehicleId, {
+        operation: 'challan',
+        provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+        isSuccess: true,
+      });
+
       return {
         response: surePassResponse,
         data: surePassData,
@@ -954,6 +1033,13 @@ async function callChallanAPI(
       false,
       challanProcessId
     );
+
+    await safeVehicleApiCallLog(supabase, vehicleId, {
+      operation: 'challan',
+      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+      isSuccess: false,
+    });
+
     console.log('[Challan API] SurePass failed — falling back to QuickEKYC');
   } catch (error) {
     const errorMessage =
@@ -979,6 +1065,12 @@ async function callChallanAPI(
       false,
       challanProcessId
     );
+
+    await safeVehicleApiCallLog(supabase, vehicleId, {
+      operation: 'challan',
+      provider: VEHICLE_VERIFY_PRIMARY_PROVIDER,
+      isSuccess: false,
+    });
 
     console.log('[Challan API] SurePass exception — falling back to QuickEKYC');
   }
@@ -1028,6 +1120,13 @@ async function callChallanAPI(
         isBothFallbackFailure ? challanProcessId : null,
         isBothFallbackFailure
       );
+
+      await safeVehicleApiCallLog(supabase, vehicleId, {
+        operation: 'challan',
+        provider: VEHICLE_VERIFY_FALLBACK_PROVIDER,
+        isSuccess: quickEKYSuccess,
+        isMultiple: true,
+      });
 
       return {
         response: quickEKYResponse,
