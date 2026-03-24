@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 const ATTACHMENTS_MAX_FILES = 5;
 const ATTACHMENTS_MAX_SIZE_MB = 10;
 const ATTACHMENTS_MAX_TOTAL_MB = ATTACHMENTS_MAX_FILES * ATTACHMENTS_MAX_SIZE_MB;
@@ -47,6 +48,7 @@ export function NewWellBeingRecordDialog({
   onSuccess,
 }: NewWellBeingRecordDialogProps) {
   const { employeeData } = useAuth();
+  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const clientId = employeeData?.clientId;
   const employeeId = employeeData?.id;
  
@@ -156,7 +158,25 @@ export function NewWellBeingRecordDialog({
         type: f.type,
         base64: f.base64?.replace(/^data:[^;]+;base64,/, '') ?? '',
       }));
- 
+      const isExternalStudent = isIntegrationEnabled && student?.is_external === true;
+      
+      const externalStudentInvolved = isExternalStudent
+        ? {
+            student: {
+              id: student?.student_id ?? null,
+              name: student?.name ?? null,
+            },
+            grade: {
+              id: student?.grade_id ?? null,
+              name: student?.grade_name ?? null,
+            },
+            section: {
+              id: student?.section_id ?? null,
+              name: student?.section_name ?? null,
+            },
+          }
+        : null;
+          
       const { data, error } = await supabase.functions.invoke('create-student-wellbeing-record', {
         method: 'POST',
         body: {
@@ -165,6 +185,11 @@ export function NewWellBeingRecordDialog({
           student_id: student!.id,
           section_id: student!.section_id ?? null,
           grade_id: student!.grade_id ?? null,
+          student_name: student!.name ?? null,
+          section_name: student!.section_name ?? null,
+          grade_name: student!.grade_name ?? null,
+          is_external_student: isExternalStudent,
+          external_student_involved: externalStudentInvolved,
           type_of_concern_id: typeOfConcernId,
           date_of_observation: dateOfObservation!.toLocaleDateString('en-CA'),
           concern: concern.trim() || null,

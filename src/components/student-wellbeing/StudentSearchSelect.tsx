@@ -12,6 +12,9 @@ export interface StudentOption {
   student_id?: string;
   section_id?: string | null;
   grade_id?: string | null;
+  section_name?: string | null;
+  grade_name?: string | null;
+  is_external?: boolean;
 }
  
 interface StudentSearchSelectProps {
@@ -107,6 +110,9 @@ export function StudentSearchSelect({
         student_id: s.student_id,
         section_id: s.section_id ?? null,
         grade_id: s.grade_id ?? null,
+        section_name: s.sections?.name ?? null,
+        grade_name: s.grades?.name ?? null,
+        is_external: s.is_external === true,
       }));
     } catch (e) {
       console.error(e);
@@ -145,6 +151,9 @@ export function StudentSearchSelect({
             student_id: s.studentId,
             section_id: s.section_id ?? null,
             grade_id: s.grade_id ?? null,
+            section_name: s.section ?? null,
+            grade_name: s.grade ?? null,
+            is_external: false,
           }))
         );
       } else {
@@ -161,6 +170,9 @@ export function StudentSearchSelect({
             student_id: s.studentId,
             section_id: s.section_id ?? null,
             grade_id: s.grade_id ?? null,
+            section_name: s.section ?? null,
+            grade_name: s.grade ?? null,
+            is_external: false,
           }))
         );
       }
@@ -176,7 +188,9 @@ export function StudentSearchSelect({
   }, []);
 
   const displayValue = value
-    ? (value.student_id ? `${value.name} (${value.student_id})` : value.name)
+    ? (value.student_id
+        ? `${value.name || value.student_id} (${value.student_id})`
+        : (value.name || ''))
     : '';
 
   const options = open ? searchResults : [];

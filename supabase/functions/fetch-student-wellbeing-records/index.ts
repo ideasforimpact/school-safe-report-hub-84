@@ -70,6 +70,8 @@ serve(async (req) => {
         student_id,
         section_id,
         grade_id,
+        is_external_student,
+        external_student_involved,
         type_of_concern_id,
         date_of_observation,
         concern,
@@ -182,19 +184,31 @@ serve(async (req) => {
       const section = r.sections;
       const grade = r.grades;
       const concernType = r.general_concern;
+      const external = r.external_student_involved ?? null;
+      const externalStudentId = external?.student?.id ?? null;
+      const externalStudentName = external?.student?.name ?? null;
+      const externalGradeId = external?.grade?.id ?? null;
+      const externalGradeName = external?.grade?.name ?? null;
+      const externalSectionId = external?.section?.id ?? null;
+      const externalSectionName = external?.section?.name ?? null;
+      const isExternalStudent = r.is_external_student === true;
       const classLabel =
-        grade?.name && section?.name
-          ? `Class ${grade.name}-${section.name}`
-          : student
-            ? `Class ${student.grade || ''}-${student.section || ''}`.replace(/^-|-$/g, '').trim() || '—'
-            : '—';
+        isExternalStudent
+          ? [externalGradeName, externalSectionName].filter(Boolean).join('-') || '—'
+          : grade?.name && section?.name
+            ? `Class ${grade.name}-${section.name}`
+            : student
+              ? `Class ${student.grade || ''}-${student.section || ''}`.replace(/^-|-$/g, '').trim() || '—'
+              : '—';
       return {
         id: r.id,
         student_id: r.student_id,
-        student_display_id: student?.student_id ?? null,
-        student_name: student?.name ?? '—',
-        section_id: r.section_id ?? null,
-        grade_id: r.grade_id ?? null,
+        student_display_id: isExternalStudent ? externalStudentId : (student?.student_id ?? null),
+        student_name: isExternalStudent ? (externalStudentName ?? '—') : (student?.name ?? '—'),
+        section_id: isExternalStudent ? externalSectionId : (r.section_id ?? null),
+        grade_id: isExternalStudent ? externalGradeId : (r.grade_id ?? null),
+        is_external_student: isExternalStudent,
+        external_student_involved: isExternalStudent ? external : null,
         class: classLabel,
         type_of_concern_id: r.type_of_concern_id,
         concern: concernType?.name ?? r.concern ?? '—',
@@ -211,7 +225,9 @@ serve(async (req) => {
       };
     });
 
-    const uniqueStudentIds = new Set((list as any[]).map((x) => x.student_id));
+    const uniqueStudentIds = new Set(
+      (list as any[]).map((x) => x.student_id ?? x.student_display_id)
+    );
     const openCount = (list as any[]).filter((x) => x.status === 'open').length;
     const underObservationCount = (list as any[]).filter((x) => x.status === 'under_observation').length;
     const closedCount = (list as any[]).filter((x) => x.status === 'closed').length;
