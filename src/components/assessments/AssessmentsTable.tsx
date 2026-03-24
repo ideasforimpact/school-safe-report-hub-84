@@ -26,6 +26,7 @@ import AssessmentViewDialog from './view/AssessmentViewDialog';
 import ReassignAssessmentDialog from './ReassignAssessmentDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import jsPDF from 'jspdf';
+import Loader from '../common/Loader';
 
 interface AssessmentTemplate {
   questions: any;
