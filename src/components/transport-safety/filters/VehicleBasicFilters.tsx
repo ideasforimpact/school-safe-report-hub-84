@@ -132,7 +132,7 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             className="h-10 text-xs flex items-center gap-1"
           >
             <X className="h-4 w-4 mr-1" />
-            Clear filters ({activeFiltersCount})
+            Clear Filters ({activeFiltersCount})
           </Button>
         )}
       </div>
