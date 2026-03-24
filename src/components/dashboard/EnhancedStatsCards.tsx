@@ -625,7 +625,7 @@ const EnhancedStatsCards = ({ stats, loading }: EnhancedStatsCardsProps) => {
       </div>
 
       <AlertDialog open={studentsDialogOpen} onOpenChange={setStudentsDialogOpen}>
-        <AlertDialogContent className="max-w-6xl max-h-[85vh] overflow-y-auto">
+        <AlertDialogContent className="max-w-7xl max-h-[85vh] overflow-y-auto no-scrollbar">
           <AlertDialogHeader>
             <AlertDialogTitle>Students Involved</AlertDialogTitle>
           </AlertDialogHeader>

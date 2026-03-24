@@ -100,9 +100,9 @@ export const SectionTab = ({
     };
   }, [sections, employeeData]);
 
-  // Validation: allow any characters, max 50 length
+  // Validation: allow any characters, max 15 length
   const isValidSectionName = (name: string) => {
-    const nameRegex = /^.{1,50}$/;
+    const nameRegex = /^.{1,15}$/;
     return nameRegex.test(name);
   };
 
@@ -139,7 +139,7 @@ export const SectionTab = ({
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error("Section name can be up to 50 characters");
+      toast.error("Section name can be up to 15 characters");
       return;
     }
     
@@ -204,7 +204,7 @@ export const SectionTab = ({
     }
     
     if (!isValidSectionName(sectionName)) {
-      toast.error("Section name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Section name can be up to 15 characters");
       return;
     }
     
@@ -381,11 +381,11 @@ export const SectionTab = ({
               placeholder="New section name (e.g., Section A)"
               value={newSection}
               onChange={(e) => setNewSection(e.target.value)}
-              maxLength={50}
+              maxLength={15}
               className={newSection && !isValidSectionName(newSection) ? 'border-red-500' : ''}
             />
             {newSection && !isValidSectionName(newSection) && (
-              <p className="text-xs text-red-500 mt-1">Section name can only contain letters, numbers, and spaces (max 20 characters)</p>
+              <p className="text-xs text-red-500 mt-1">Section name can be up to 15 characters</p>
             )}
             {newSection && selectedClassId && isDuplicateSectionName(newSection, selectedClassId) && (
               <p className="text-xs text-red-500 mt-1">A section with this name already exists in the selected grade</p>
@@ -660,9 +660,9 @@ export const SectionTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={50}
+            maxLength={15}
             validationFunction={isValidSectionName}
-            validationMessage="Section name can be up to 50 characters"
+            validationMessage="Section name can be up to 15 characters"
             isRequired={true}
             extraFields={[
               {

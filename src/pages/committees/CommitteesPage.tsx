@@ -699,7 +699,7 @@ const CommitteesPage = () => {
                 }}
               >
                 <X className="h-4 w-4" />
-                {`Clear filter (${activeCommitteeFilterCount})`}
+                {`Clear Filters (${activeCommitteeFilterCount})`}
               </Button>
             )}
             {/* <div className="w-full max-w-sm">
