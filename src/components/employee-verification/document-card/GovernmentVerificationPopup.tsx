@@ -30,6 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { formatDate } from "@/lib/Dateformat";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -234,8 +235,19 @@ const GovernmentVerificationPopup: React.FC<GovernmentVerificationPopupProps> = 
   const config = DOC_CONFIGS[documentType];
   if (!config) return null;
 
-  const getValue = (key: string, fallback: string) =>
-  safeData[key] ?? fallback;
+  const getValue = (key: string, fallback: string) => {
+  const value = safeData[key] ?? fallback;
+
+  // Apply formatting only for date fields
+  if (
+      ["dob", "issueDate", "expiryDate"].includes(key) &&
+      value !== "—"
+    ) {
+      return formatDate(value);
+    }
+
+    return value;
+  };
 
   const isViewOnly = isViewMode === true;
   const summaryLeftValue = getValue(config.summaryLeft.valueKey, config.summaryLeft.fallback);
