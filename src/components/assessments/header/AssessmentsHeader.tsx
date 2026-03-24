@@ -55,7 +55,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
         </div>
 
         <div className="text-left">
-          <p className="text-sm text-gray-500">Open Assessments</p>
+          <p className="text-sm text-gray-500">New Assessments</p>
           <p className="text-3xl font-semibold text-orange-500">{openCount}</p>
         </div>
 
@@ -70,7 +70,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({
         </div>
 
         <div className="text-left">
-          <p className="text-sm text-gray-500">Closed Assessments</p>
+          <p className="text-sm text-gray-500">Completed Assessments</p>
           <p className="text-3xl font-semibold text-green-600">{closedCount}</p>
         </div>
       </div>
