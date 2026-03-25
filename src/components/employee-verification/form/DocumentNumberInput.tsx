@@ -73,7 +73,7 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
       case 'driving_license':
         return {
           label: 'Driving License Number',
-          placeholder: 'DL-XXXXXXXX',
+          placeholder: 'TN38 20230008943',
           maxLength: 20,
           pattern: /^[A-Z0-9-]+$/,
           format: (val: string) => val.toUpperCase(),
@@ -91,7 +91,7 @@ const DocumentNumberInput: React.FC<DocumentNumberInputProps> = ({
       case 'passport':
         return {
           label: 'File Number',
-          placeholder: 'DL1061291XXXXXX',
+          placeholder: 'CB1063503341321',
           maxLength: 20,
           pattern: /^[A-Z0-9-]+$/,
           format: (val: string) => val.toUpperCase(),

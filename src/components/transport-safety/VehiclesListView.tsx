@@ -127,6 +127,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           <TableHeader>
             <TableRow>
               <TableHead className="w-[80px] text-left">Type</TableHead>
+              <TableHead className="w-[150px] text-left">Internal Vehicle Name</TableHead>
               <TableHead className="w-[150px] text-left">Vehicle Name</TableHead>
               <TableHead className="w-[150px] text-left">Registration</TableHead>
               <TableHead className="w-[120px] text-left">Status</TableHead>
@@ -149,6 +150,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
                       <VehicleTypeIcon type={vehicle.type} icon={vehicle.vehicleTypeIcon} />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium text-left">
+                      {vehicle.internalVehicleName || '-'}
                     </div>
                   </TableCell>
                   <TableCell>
