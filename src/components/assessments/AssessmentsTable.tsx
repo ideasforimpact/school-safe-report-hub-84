@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -85,6 +85,11 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     assignedTo: string | null;
     assigneeName: string;
   } | null>(null);
+  const [isBulkBarPinned, setIsBulkBarPinned] = useState(false);
+  const [bulkBarPlaceholderHeight, setBulkBarPlaceholderHeight] = useState(0);
+  const [bulkBarFixedLeft, setBulkBarFixedLeft] = useState(0);
+  const [bulkBarFixedWidth, setBulkBarFixedWidth] = useState(0);
+  const bulkBarAnchorRef = useRef<HTMLDivElement | null>(null);
 
   // Count active filters
   const activeFilterCount = [
@@ -379,6 +384,36 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
       setStatusFilter('all');
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const headerOffset = 80;
+
+    if (selectedAssessmentIds.length === 0) {
+      setIsBulkBarPinned(false);
+      setBulkBarPlaceholderHeight(0);
+      return;
+    } 
+
+    const anchor = bulkBarAnchorRef.current;
+    if (!anchor) return;
+
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+
+      setBulkBarFixedLeft(rect.left);
+      setBulkBarFixedWidth(rect.width);
+      setBulkBarPlaceholderHeight(anchor.offsetHeight);
+      setIsBulkBarPinned(rect.top <= headerOffset);
+    };
+
+    updatePosition();
+
+    window.addEventListener('scroll', updatePosition, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [selectedAssessmentIds.length]);
 
   const clearAllFilters = () => {
     setSearchTerm('');
@@ -683,7 +718,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-visible">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
@@ -801,26 +836,46 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
               )}
             </div>
 
-            {selectedAssessmentIds.length > 0 && (
-              <div className="flex items-center justify-between gap-3 px-4 py-2 border rounded-md bg-blue-50">
-                <p className="text-sm text-blue-700">
-                  {selectedAssessmentIds.length} assessments selected
-                </p>
+          </div>
+        </div>
 
-                <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="sm"
-                        className="flex items-center gap-1 bg-sky-600 hover:bg-sky-700"
-                        disabled={downloadingBulkType !== null}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download
-                      </Button>
-                    </DropdownMenuTrigger>
+        {selectedAssessmentIds.length > 0 && (
+          <div ref={bulkBarAnchorRef} className="w-full">
+            <div
+              style={
+                isBulkBarPinned
+                  ? {
+                      position: 'fixed',
+                      top: '5rem',
+                      left: `${bulkBarFixedLeft}px`,
+                      width: `${bulkBarFixedWidth}px`,
+                      zIndex: 30,
+                    }
+                  : undefined
+              }
+              className="bg-blue-50 border rounded-md shadow-sm"
+            >
+            
+            <div className="px-6 py-2 flex items-center justify-between gap-3">
+              
+              <p className="text-sm text-blue-700">
+                {selectedAssessmentIds.length} assessments selected
+              </p>
 
-                    <DropdownMenuContent align="end" className="w-64">
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="flex items-center gap-1 bg-sky-600 hover:bg-sky-700"
+                      disabled={downloadingBulkType !== null}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent align="end" className="w-64">
                       <DropdownMenuItem
                         onClick={() => handleBulkDownload(false)}
                         disabled={downloadingBulkType !== null}
@@ -848,23 +903,28 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                           </span>
                         </div>
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedAssessmentIds([])}
-                    className="text-blue-700 hover:text-blue-800"
-                  >
-                    <X className="h-3.5 w-3.5 mr-1" />
-                    Cancel
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedAssessmentIds([])}
+                  className="text-blue-700 hover:text-blue-800"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Cancel
+                </Button>
               </div>
-            )}
+
+            </div>
           </div>
-        </div>
+
+          {isBulkBarPinned && (
+            <div style={{ height: bulkBarPlaceholderHeight }} aria-hidden="true" />
+          )}
+          </div>
+        )}
 
        <div className="p-0">
           {filteredAssessments.length === 0 ? (
