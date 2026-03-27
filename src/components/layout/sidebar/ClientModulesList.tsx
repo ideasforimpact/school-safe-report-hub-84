@@ -21,7 +21,8 @@ import {
   LogIn,
   MessageSquareWarning,
   Plug,
-  BookOpen
+  BookOpen,
+  ClipboardList,
 } from 'lucide-react';
 import { loadAuthState } from '@/store/authPersistence';
 
@@ -43,6 +44,7 @@ const iconMap: Record<string, any> = {
   MessageSquareWarning,
   Integration: Plug, // Alias for backward compatibility
   BookOpen,
+  ClipboardList,
 };
 
 interface ModuleItem {
