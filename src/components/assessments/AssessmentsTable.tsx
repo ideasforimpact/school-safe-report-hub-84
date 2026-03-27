@@ -26,6 +26,7 @@ import AssessmentViewDialog from './view/AssessmentViewDialog';
 import ReassignAssessmentDialog from './ReassignAssessmentDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import jsPDF from 'jspdf';
+import JSZip from 'jszip';
 import Loader from '../common/Loader';
 
 interface AssessmentTemplate {
@@ -505,7 +506,13 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     return answerByIndex;
   };
 
-  const generateBulkAssessmentPdf = (selectedAssessments: Assessment[], includeAnswers: boolean) => {
+  const buildAssessmentPdf = (assessment: Assessment, includeAnswers: boolean) => {
+    const formatAnswer = (value: boolean | undefined) => {
+      if (value === true) return 'Yes';
+      if (value === false) return 'No';
+      return 'Not answered';
+    };
+
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -534,64 +541,70 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
       cursorY += size;
     };
 
-    const formatAnswer = (value: boolean | undefined) => {
-      if (value === true) return 'Yes';
-      if (value === false) return 'No';
-      return 'Not answered';
-    };
+    const questions = Array.isArray(assessment.template?.questions) ? assessment.template?.questions : [];
+    const shouldIncludeAnswers =
+      includeAnswers && (assessment.status === 'Submitted' || assessment.status === 'Completed');
 
-    selectedAssessments.forEach((assessment, assessmentIndex) => {
-      const questions = Array.isArray(assessment.template?.questions) ? assessment.template?.questions : [];
-      const shouldIncludeAnswers =
-        includeAnswers && (assessment.status === 'Submitted' || assessment.status === 'Completed');
+    addText('Assessment', 16, 'bold');
+    addGap(1);
+    addText(`Name: ${assessment.name || '-'}`, 11, 'bold');
+    addGap(1);
+    if (assessment.target_completion_date) {
+      addText(`Due Date: ${formatDate(assessment.target_completion_date)}`, 10);
+    }
+    addGap(4);
+    addText(shouldIncludeAnswers ? 'Questions & Answers' : 'Questions Only', 12, 'bold');
+    addGap(2);
 
-      addText('Assessment', 16, 'bold');
+    questions.forEach((question: any, index: number) => {
+      const answer = getAnswerForQuestion(assessment, question?.id, index);
+      const questionText = `${index + 1}. ${question?.text || 'Untitled question'}${question?.required ? ' *' : ''}`;
+      addText(questionText, 11, 'bold');
       addGap(1);
-      addText(`Name: ${assessment.name || '-'}`, 11, 'bold');
-      addGap(1);
-      if (assessment.target_completion_date) {
-        addText(`Due Date: ${formatDate(assessment.target_completion_date)}`, 10);
-      }
-      addGap(4);
-      addText(shouldIncludeAnswers ? 'Questions & Answers' : 'Questions Only', 12, 'bold');
-      addGap(2);
 
-      questions.forEach((question: any, index: number) => {
-        const answer = getAnswerForQuestion(assessment, question?.id, index);
-        const questionText = `${index + 1}. ${question?.text || 'Untitled question'}${question?.required ? ' *' : ''}`;
-        addText(questionText, 11, 'bold');
-        addGap(1);
-
-        if (shouldIncludeAnswers) {
-          addText(`Answer: ${formatAnswer(answer?.answer)}`, 10);
-          if (answer?.comment) {
-            addText(`Comment: ${answer.comment}`, 10);
-          }
-          if (Array.isArray(answer?.attachments) && answer.attachments.length > 0) {
-            const attachmentNames = answer.attachments
-              .map((attachment: any) => attachment?.name)
-              .filter(Boolean)
-              .join(', ');
-            addText(`Attachments: ${attachmentNames || `${answer.attachments.length} file(s)`}`, 10);
-          }
-        } else {
-          addText('Answer:', 10);
+      if (shouldIncludeAnswers) {
+        addText(`Answer: ${formatAnswer(answer?.answer)}`, 10);
+        if (answer?.comment) {
+          addText(`Comment: ${answer.comment}`, 10);
         }
-
-        addGap(4);
-      });
-
-      if (assessmentIndex < selectedAssessments.length - 1) {
-        pdf.addPage();
-        cursorY = margin;
+        if (Array.isArray(answer?.attachments) && answer.attachments.length > 0) {
+          const attachmentNames = answer.attachments
+            .map((attachment: any) => attachment?.name)
+            .filter(Boolean)
+            .join(', ');
+          addText(`Attachments: ${attachmentNames || `${answer.attachments.length} file(s)`}`, 10);
+        }
+      } else {
+        addText('Answer:', 10);
       }
+
+      addGap(4);
     });
 
-    const typeSuffix = includeAnswers ? 'questions_answers' : 'questions_only';
-    pdf.save(`assessments_bulk_${typeSuffix}.pdf`);
+    const typeSuffix = includeAnswers && shouldIncludeAnswers ? 'questions_answers' : 'questions_only';
+    const sanitizedName = (assessment.name || `assessment_${assessment.assessment_id}`)
+      .replace(/[^a-z0-9]+/gi, '_')
+      .replace(/^_+|_+$/g, '')
+      .toLowerCase();
+
+    return {
+      fileName: `${sanitizedName || `assessment_${assessment.assessment_id}`}_${typeSuffix}.pdf`,
+      blob: pdf.output('blob'),
+    };
   };
 
-  const executeBulkDownload = (includeAnswers: boolean) => {
+  const triggerBrowserDownload = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const executeBulkDownload = async (includeAnswers: boolean) => {
     if (selectedAssessmentIds.length === 0) {
       toast.error('Please select at least one assessment');
       return;
@@ -619,8 +632,23 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
         }
       }
 
-      generateBulkAssessmentPdf(selectedAssessments, includeAnswers);
-      toast.success(`Downloading ${includeAnswers ? 'Questions & Answers' : 'Questions Only'} PDF`);
+      const pdfFiles = selectedAssessments.map((assessment) => buildAssessmentPdf(assessment, includeAnswers));
+
+      if (pdfFiles.length <= 3) {
+        pdfFiles.forEach((file) => {
+          triggerBrowserDownload(file.blob, file.fileName);
+        });
+        toast.success(`Downloading ${pdfFiles.length} PDF file(s)`);
+      } else {
+        const zip = new JSZip();
+        pdfFiles.forEach((file) => {
+          zip.file(file.fileName, file.blob);
+        });
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        triggerBrowserDownload(zipBlob, `assessments_bulk_${Date.now()}.zip`);
+        toast.success(`Downloading ${pdfFiles.length} PDFs as ZIP`);
+      }
     } catch (error) {
       console.error('Error downloading bulk assessment PDF:', error);
       toast.error('Failed to generate bulk PDF');
