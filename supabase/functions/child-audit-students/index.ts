@@ -17,6 +17,9 @@ const corsHeaders = {
 };
 
 const API_VERSION = 1;
+const CHILD_AUDIT_STUDENTS_DISABLED = false;
+const CHILD_AUDIT_DISABLED_MESSAGE =
+  'Child Audit backend is temporarily disabled while schema updates are in progress.';
 
 type StudentRow = {
   id: string;
@@ -98,6 +101,18 @@ async function authorizeRequest(
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (CHILD_AUDIT_STUDENTS_DISABLED) {
+    return json(
+      {
+        ok: false,
+        error: 'CHILD_AUDIT_BACKEND_DISABLED',
+        message: CHILD_AUDIT_DISABLED_MESSAGE,
+        version: API_VERSION,
+      },
+      503
+    );
   }
 
   if (req.method !== 'POST' && req.method !== 'GET') {

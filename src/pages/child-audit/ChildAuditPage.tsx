@@ -3,6 +3,7 @@ import Layout from '@/components/layout/Layout';
 import {
   ArrowLeft,
   Check,
+  Clock3,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -25,14 +26,26 @@ import {
 } from '@/services/child-audit/childAuditStudentsService';
 import {
   createChildAuditRecord,
-  fetchChildAuditLookups,
   fetchChildAuditRecordsByStudent,
   type ChildAuditLookupItem,
   type ChildAuditLookups,
   type ChildAuditRecord,
 } from '@/services/child-audit/childAuditRecordsService';
+import {
+  fetchChildAuditStudentDetails,
+  type ChildAuditCheckTypeDetail,
+  type ChildAuditLatestSelection,
+} from '@/services/child-audit/childAuditStudentDetailsService';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
+type CheckSelectionState = {
+  physical_condition_ids: string[];
+  behaviour_ids: string[];
+  aggression_ids: string[];
+  meltdown_occurred: boolean;
+  notes: string | null;
+  physical_where: Record<string, string[]>;
+};
 
 const DEFAULT_LOOKUPS: ChildAuditLookups = {
   checkTypes: [],
@@ -40,6 +53,83 @@ const DEFAULT_LOOKUPS: ChildAuditLookups = {
   behaviours: [],
   meltdowns: [],
   aggressions: [],
+};
+
+const normalizeGroupKey = (value: string | null | undefined) =>
+  (value ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/\//g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+
+const toLookupItems = (
+  rows: Array<{ id: string; label: string; active: boolean; definition?: string | null }>
+): ChildAuditLookupItem[] =>
+  rows.map((row) => ({
+    id: row.id,
+    name: row.label,
+    active: row.active,
+    definition: row.definition ?? null,
+  }));
+
+const mapLookupsFromCheckTypes = (
+  checkTypes: ChildAuditCheckTypeDetail[],
+  selectedCheckTypeId: string | null
+): ChildAuditLookups => {
+  const checkTypeItems = checkTypes.map((checkType) => ({
+    id: checkType.id,
+    name: checkType.type,
+    active: checkType.active,
+  }));
+
+  const target =
+    checkTypes.find((checkType) => checkType.id === selectedCheckTypeId) ??
+    checkTypes.find((checkType) => checkType.active) ??
+    null;
+
+  if (!target) {
+    return {
+      checkTypes: checkTypeItems,
+      physicalConditions: [],
+      behaviours: [],
+      meltdowns: [],
+      aggressions: [],
+    };
+  }
+
+  const groups = target.lookup_groups ?? [];
+  const valuesByGroup = groups.map((group) => ({
+    key: normalizeGroupKey(group.item_group),
+    values: group.values ?? [],
+  }));
+
+  const collect = (groupKeys: string[]) =>
+    valuesByGroup
+      .filter((group) => groupKeys.includes(group.key))
+      .flatMap((group) => group.values);
+
+  return {
+    checkTypes: checkTypeItems,
+    physicalConditions: toLookupItems(collect(['physical_condition'])),
+    behaviours: toLookupItems(
+      collect([
+        'behaviour_mood',
+        'morning_behaviour_home',
+        'night_behaviour',
+        'sleep_quality_home',
+        'sleep_hostel',
+        'incidents_at_home',
+        'school_incidents',
+        'hostel_incidents',
+        'daily_living',
+        'safety_observations',
+        'health_medical',
+      ])
+    ),
+    meltdowns: toLookupItems(collect(['meltdown'])),
+    aggressions: toLookupItems(collect(['aggression'])),
+  };
 };
 
 const toDateLabel = (value: string) =>
@@ -65,6 +155,7 @@ const BODY_PART_OPTIONS = [
   'Left Foot',
   'Right Foot',
 ];
+const DEFAULT_PHYSICAL_DEFINITION = JSON.stringify(BODY_PART_OPTIONS);
 
 const getCampusType = (campus: string | null) => {
   const value = (campus ?? '').toLowerCase();
@@ -102,6 +193,14 @@ const getFactorStyle = (name: string) => {
   return { title: 'Behaviour / Mood', icon: '👁', textClass: 'text-slate-700' };
 };
 
+const toAuditDateHeader = (value: string) =>
+  new Date(value).toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).toUpperCase();
+
 const ChildAuditPage = () => {
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
@@ -111,9 +210,11 @@ const ChildAuditPage = () => {
   const [students, setStudents] = useState<ChildAuditStudentRow[]>([]);
   const [search, setSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<ChildAuditStudentRow | null>(null);
+  const [checkTypeDetails, setCheckTypeDetails] = useState<ChildAuditCheckTypeDetail[]>([]);
 
   const [lookups, setLookups] = useState<ChildAuditLookups>(DEFAULT_LOOKUPS);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [records, setRecords] = useState<ChildAuditRecord[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('check');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -127,6 +228,82 @@ const ChildAuditPage = () => {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [physicalWhere, setPhysicalWhere] = useState<Record<string, string[]>>({});
+  const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
+  const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
+
+  const parseWhereOptions = useCallback((definition?: string | null): string[] => {
+    if (!definition) return BODY_PART_OPTIONS;
+    const trimmed = definition.trim();
+    if (!trimmed) return BODY_PART_OPTIONS;
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        const values = parsed
+          .filter((value) => typeof value === 'string')
+          .map((value) => value.trim())
+          .filter(Boolean);
+        return values.length > 0 ? values : BODY_PART_OPTIONS;
+      }
+    } catch {
+      // Fallback to comma-separated format
+    }
+
+    const csvValues = trimmed
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return csvValues.length > 0 ? csvValues : BODY_PART_OPTIONS;
+  }, []);
+
+  const applySelectionState = useCallback((selection: CheckSelectionState | null) => {
+    if (!selection) {
+      setSelectedPhysical([]);
+      setSelectedBehaviours([]);
+      setSelectedAggressions([]);
+      setMeltdownOccurred(false);
+      setNotes('');
+      setPhysicalWhere({});
+      return;
+    }
+
+    setSelectedPhysical(selection.physical_condition_ids ?? []);
+    setSelectedBehaviours(selection.behaviour_ids ?? []);
+    setSelectedAggressions(selection.aggression_ids ?? []);
+    setMeltdownOccurred(selection.meltdown_occurred === true);
+    setNotes(selection.notes ?? '');
+    setPhysicalWhere(selection.physical_where ?? {});
+  }, []);
+
+  const savedSelectionByCheckType = useMemo(() => {
+    const byCheckType = new Map<string, CheckSelectionState>();
+    for (const record of records) {
+      if (!record.check_type_id || byCheckType.has(record.check_type_id)) continue;
+      byCheckType.set(record.check_type_id, {
+        physical_condition_ids: record.physical_condition_ids ?? [],
+        behaviour_ids: record.behaviour_ids ?? [],
+        aggression_ids: record.aggression_ids ?? [],
+        meltdown_occurred: record.meltdown_occurred === true,
+        notes: record.notes ?? null,
+        physical_where: record.physical_where ?? {},
+      });
+    }
+    return byCheckType;
+  }, [records]);
+
+  const handleCheckTypeChange = useCallback(
+    (nextId: string | null) => {
+      setSelectedCheckType(nextId);
+      if (!nextId) {
+        applySelectionState(null);
+        return;
+      }
+
+      const savedSelection = savedSelectionByCheckType.get(nextId) ?? null;
+      applySelectionState(savedSelection);
+    },
+    [applySelectionState, savedSelectionByCheckType]
+  );
 
   const lookupMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -135,6 +312,29 @@ const ChildAuditPage = () => {
     );
     return map;
   }, [lookups]);
+
+  const checkTypeById = useMemo(() => {
+    const map = new Map<string, { label: string; icon: string }>();
+    for (const item of lookups.checkTypes) {
+      map.set(item.id, { label: item.name, icon: getCheckTypeIcon(item.name) });
+    }
+    return map;
+  }, [lookups.checkTypes]);
+
+  const lookupMetadataById = useMemo(() => {
+    const map = new Map<string, { label: string; item_group: string | null }>();
+    for (const checkType of checkTypeDetails) {
+      for (const group of checkType.lookup_groups ?? []) {
+        for (const value of group.values ?? []) {
+          map.set(value.id, {
+            label: value.label,
+            item_group: group.item_group ?? value.item_group ?? null,
+          });
+        }
+      }
+    }
+    return map;
+  }, [checkTypeDetails]);
 
   const loadStudents = useCallback(async () => {
     if (!clientId) {
@@ -146,8 +346,6 @@ const ChildAuditPage = () => {
     try {
       const rows = await fetchChildAuditStudents(clientId);
       setStudents(rows);
-      const lookupRows = await fetchChildAuditLookups();
-      setLookups(lookupRows);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load Child Audit');
       setStudents([]);
@@ -159,19 +357,53 @@ const ChildAuditPage = () => {
   const loadStudentRecords = useCallback(async () => {
     if (!clientId || !selectedStudent) {
       setRecords([]);
+      setCheckTypeDetails([]);
+      setLookups(DEFAULT_LOOKUPS);
+      setDetailLoading(false);
       return;
     }
+    setDetailLoading(true);
     setRecordsLoading(true);
     try {
-      const rows = await fetchChildAuditRecordsByStudent(clientId, selectedStudent.id);
+      const [rows, detail] = await Promise.all([
+        fetchChildAuditRecordsByStudent(clientId, selectedStudent.id),
+        fetchChildAuditStudentDetails(clientId, selectedStudent.id),
+      ]);
       setRecords(rows);
+      setCheckTypeDetails(detail.checkTypes);
+      setLookups(mapLookupsFromCheckTypes(detail.checkTypes, null));
+
+      const applyLatestSelection = (latest: ChildAuditLatestSelection | null) => {
+        if (!latest) {
+          if (detail.checkTypes.length > 0) {
+            const firstCheckTypeId = detail.checkTypes[0].id;
+            setSelectedCheckType((prev) => prev ?? firstCheckTypeId);
+          }
+          return;
+        }
+
+        setSelectedCheckType(latest.check_type_id);
+        applySelectionState({
+          physical_condition_ids: latest.physical_condition_ids ?? [],
+          behaviour_ids: latest.behaviour_ids ?? [],
+          aggression_ids: latest.aggression_ids ?? [],
+          meltdown_occurred: latest.meltdown_occurred === true,
+          notes: latest.notes ?? null,
+          physical_where: latest.physical_where ?? {},
+        });
+      };
+
+      applyLatestSelection(detail.latestSelection);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load audit records');
       setRecords([]);
+      setCheckTypeDetails([]);
+      setLookups(DEFAULT_LOOKUPS);
     } finally {
+      setDetailLoading(false);
       setRecordsLoading(false);
     }
-  }, [clientId, selectedStudent]);
+  }, [applySelectionState, clientId, selectedStudent]);
 
   useEffect(() => {
     loadStudents();
@@ -180,6 +412,11 @@ const ChildAuditPage = () => {
   useEffect(() => {
     loadStudentRecords();
   }, [loadStudentRecords]);
+
+  useEffect(() => {
+    if (!checkTypeDetails.length) return;
+    setLookups(mapLookupsFromCheckTypes(checkTypeDetails, selectedCheckType));
+  }, [checkTypeDetails, selectedCheckType]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -257,44 +494,99 @@ const ChildAuditPage = () => {
     const month = calendarMonth;
     const monthKey = getMonthKey(month);
     const monthRows = records.filter((r) => getMonthKey(new Date(r.created_at)) === monthKey);
+    const distribution = new Map<
+      string,
+      { title: string; icon: string; textClass: string; total: number; items: Map<string, number> }
+    >();
+    const ensureBucket = (title: string, icon: string, textClass: string) => {
+      const existing = distribution.get(title);
+      if (existing) return existing;
+      const created = { title, icon, textClass, total: 0, items: new Map<string, number>() };
+      distribution.set(title, created);
+      return created;
+    };
+    const addItem = (title: string, icon: string, textClass: string, itemLabel: string) => {
+      const bucket = ensureBucket(title, icon, textClass);
+      bucket.total += 1;
+      bucket.items.set(itemLabel, (bucket.items.get(itemLabel) ?? 0) + 1);
+    };
 
-    const tags: Record<string, number> = {};
     monthRows.forEach((r) => {
       r.physical_condition_ids.forEach((id) => {
-        const key = lookupMap.get(id) ?? 'Physical';
-        tags[key] = (tags[key] ?? 0) + 1;
+        const label = lookupMap.get(id) ?? 'Physical';
+        const bodyParts = r.physical_where?.[id] ?? [];
+        const whereSuffix = bodyParts.length > 0 ? ` (${bodyParts.join(', ')})` : '';
+        const style = getFactorStyle(label);
+        addItem(style.title, style.icon, style.textClass, `${label}${whereSuffix}`);
       });
       r.behaviour_ids.forEach((id) => {
-        const key = lookupMap.get(id) ?? 'Behaviour';
-        tags[key] = (tags[key] ?? 0) + 1;
+        const label = lookupMap.get(id) ?? 'Behaviour';
+        const style = getFactorStyle(label);
+        addItem(style.title, style.icon, style.textClass, label);
       });
       r.aggression_ids.forEach((id) => {
-        const key = lookupMap.get(id) ?? 'Aggression';
-        tags[key] = (tags[key] ?? 0) + 1;
+        const label = lookupMap.get(id) ?? 'Aggression';
+        const style = getFactorStyle(label);
+        addItem(style.title, style.icon, style.textClass, label);
       });
-      if (r.meltdown_occurred) tags['Meltdown'] = (tags['Meltdown'] ?? 0) + 1;
+      if (r.meltdown_occurred) {
+        const style = getFactorStyle('meltdown');
+        addItem(style.title, style.icon, style.textClass, 'Meltdown occurred');
+      }
     });
+
+    const sectionOrder = [
+      'Physical / Injuries',
+      'Sleep Issues',
+      'Aggression',
+      'Meltdowns',
+      'Health / Medical',
+      'Behaviour / Mood',
+    ];
+    const sections = sectionOrder
+      .map((title) => distribution.get(title))
+      .filter((value): value is { title: string; icon: string; textClass: string; total: number; items: Map<string, number> } => Boolean(value))
+      .map((bucket) => ({
+        ...bucket,
+        chips: Array.from(bucket.items.entries()).sort((a, b) => b[1] - a[1]),
+      }));
 
     return {
       checks: monthRows.length,
       injuryDays: monthRows.filter((r) => r.physical_condition_ids.length > 0).length,
       meltdowns: monthRows.filter((r) => r.meltdown_occurred).length,
-      tags: Object.entries(tags).sort((a, b) => b[1] - a[1]),
+      sections,
     };
   }, [records, calendarMonth, lookupMap]);
 
+  const auditTimelineGroups = useMemo(() => {
+    const sortedRows = [...records].sort((a, b) => {
+      const dateDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (dateDiff !== 0) return auditDateSort === 'asc' ? dateDiff : -dateDiff;
+      const typeA = checkTypeById.get(a.check_type_id ?? '')?.label ?? '';
+      const typeB = checkTypeById.get(b.check_type_id ?? '')?.label ?? '';
+      const typeDiff = typeA.localeCompare(typeB);
+      if (typeDiff !== 0) return auditTypeSort === 'asc' ? typeDiff : -typeDiff;
+      return 0;
+    });
+
+    const grouped = new Map<string, ChildAuditRecord[]>();
+    for (const row of sortedRows) {
+      const key = getDayKey(new Date(row.created_at));
+      const list = grouped.get(key) ?? [];
+      list.push(row);
+      grouped.set(key, list);
+    }
+
+    return Array.from(grouped.entries()).map(([dayKey, dayRows]) => ({
+      dayKey,
+      title: toAuditDateHeader(dayRows[0].created_at),
+      rows: dayRows,
+    }));
+  }, [records, auditDateSort, auditTypeSort, checkTypeById]);
+
   const toggleItem = (items: string[], id: string) =>
     items.includes(id) ? items.filter((value) => value !== id) : [...items, id];
-
-  const resetCheckForm = () => {
-    setSelectedCheckType(null);
-    setSelectedPhysical([]);
-    setSelectedBehaviours([]);
-    setSelectedAggressions([]);
-    setMeltdownOccurred(false);
-    setNotes('');
-    setPhysicalWhere({});
-  };
 
   const submitCheck = async () => {
     if (!clientId || !selectedStudent) return;
@@ -315,11 +607,11 @@ const ChildAuditPage = () => {
         meltdown_occurred: meltdownOccurred,
         aggression_ids: selectedAggressions,
         notes: notes.trim() || null,
+        physical_where: physicalWhere,
       });
       toast.success('Child Audit check submitted');
-      resetCheckForm();
       await loadStudentRecords();
-      setActiveTab('audit');
+      setActiveTab('check');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save check');
     } finally {
@@ -372,7 +664,7 @@ const ChildAuditPage = () => {
               <div className="px-3 pb-1">
                 <p className="text-xs text-muted-foreground mb-1.5">Where?</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {BODY_PART_OPTIONS.map((part) => {
+                  {parseWhereOptions(item.definition ?? DEFAULT_PHYSICAL_DEFINITION).map((part) => {
                     const selectedPart = (physicalWhere[item.id] ?? []).includes(part);
                     return (
                       <button
@@ -441,6 +733,7 @@ const ChildAuditPage = () => {
                             setActiveTab('check');
                             setSelectedDate(new Date());
                             setCalendarMonth(new Date());
+                            setSelectedCheckType(null);
                           }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
@@ -448,6 +741,7 @@ const ChildAuditPage = () => {
                               setActiveTab('check');
                               setSelectedDate(new Date());
                               setCalendarMonth(new Date());
+                              setSelectedCheckType(null);
                             }
                           }}
                         >
@@ -486,7 +780,16 @@ const ChildAuditPage = () => {
         ) : (
           <>
             <div className="flex items-center justify-between gap-3 mb-4 max-w-6xl mx-auto">
-              <Button variant="ghost" className="text-base" onClick={() => setSelectedStudent(null)}>
+              <Button
+                variant="ghost"
+                className="text-base"
+                onClick={() => {
+                  setSelectedStudent(null);
+                  setSelectedCheckType(null);
+                  setCheckTypeDetails([]);
+                  setLookups(DEFAULT_LOOKUPS);
+                }}
+              >
                 <ArrowLeft className="h-5 w-5" />
                 Back
               </Button>
@@ -533,7 +836,14 @@ const ChildAuditPage = () => {
               </CardContent>
             </Card>
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="w-full">
+            {detailLoading ? (
+              <Card className="mt-4">
+                <CardContent className="py-8">
+                  <Loader text="Loading child audit details..." />
+                </CardContent>
+              </Card>
+            ) : (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="w-full">
               <TabsList className="grid w-full grid-cols-4 h-12 bg-slate-100">
                 <TabsTrigger className="text-sm md:text-base" value="check">
                   <span className="mr-1">📋</span>
@@ -562,12 +872,13 @@ const ChildAuditPage = () => {
                     {renderCheckboxRows(
                       lookups.checkTypes,
                       selectedCheckType ? [selectedCheckType] : [],
-                      (id) => setSelectedCheckType(selectedCheckType === id ? null : id)
+                      (id) => handleCheckTypeChange(selectedCheckType === id ? null : id)
                     )}
                   </CardContent>
                 </Card>
 
-                <Card>
+                {lookups.physicalConditions.length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">🩹 Physical Condition</CardTitle>
                   </CardHeader>
@@ -579,9 +890,11 @@ const ChildAuditPage = () => {
                       { showWhereForSelected: true }
                     )}
                   </CardContent>
-                </Card>
+                  </Card>
+                )}
 
-                <Card>
+                {lookups.behaviours.length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">👁 Behaviour</CardTitle>
                   </CardHeader>
@@ -590,9 +903,11 @@ const ChildAuditPage = () => {
                       setSelectedBehaviours((p) => toggleItem(p, id))
                     )}
                   </CardContent>
-                </Card>
+                  </Card>
+                )}
 
-                <Card>
+                {lookups.meltdowns.length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">🔥 Meltdown</CardTitle>
                   </CardHeader>
@@ -603,9 +918,11 @@ const ChildAuditPage = () => {
                       () => setMeltdownOccurred((p) => !p)
                     )}
                   </CardContent>
-                </Card>
+                  </Card>
+                )}
 
-                <Card>
+                {lookups.aggressions.length > 0 && (
+                  <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">⚡ Aggression</CardTitle>
                   </CardHeader>
@@ -614,7 +931,8 @@ const ChildAuditPage = () => {
                       setSelectedAggressions((p) => toggleItem(p, id))
                     )}
                   </CardContent>
-                </Card>
+                  </Card>
+                )}
 
                 <Card>
                   <CardHeader>
@@ -773,92 +1091,217 @@ const ChildAuditPage = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  records.map((record) => (
-                    <Card key={record.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-base font-semibold">{lookupMap.get(record.check_type_id ?? '') ?? 'Check'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {toDateLabel(record.created_at)} · {toTimeLabel(record.created_at)}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {record.physical_condition_ids.map((id) => (
-                            <Badge key={`${record.id}-pp-${id}`} variant="softAmber">
-                              {lookupMap.get(id) ?? 'Physical'}
-                            </Badge>
-                          ))}
-                          {record.behaviour_ids.map((id) => (
-                            <Badge key={`${record.id}-bb-${id}`} variant="teal">
-                              {lookupMap.get(id) ?? 'Behaviour'}
-                            </Badge>
-                          ))}
-                          {record.aggression_ids.map((id) => (
-                            <Badge key={`${record.id}-aa-${id}`} variant="destructive">
-                              {lookupMap.get(id) ?? 'Aggression'}
-                            </Badge>
-                          ))}
-                          {record.meltdown_occurred && <Badge variant="softInfo">Meltdown</Badge>}
-                        </div>
-                        {record.notes && <p className="text-sm text-muted-foreground mt-2">"{record.notes}"</p>}
+                  <div className="space-y-4">
+                    <Card>
+                      <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                        <p className="text-sm font-medium text-muted-foreground">Sort by:</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          onClick={() => setAuditDateSort((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                        >
+                          Date {auditDateSort === 'asc' ? '↑' : '↓'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          onClick={() => setAuditTypeSort((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                        >
+                          Type {auditTypeSort === 'asc' ? '↑' : '↓'}
+                        </Button>
                       </CardContent>
                     </Card>
-                  ))
+
+                    {auditTimelineGroups.map((group) => (
+                      <div key={group.dayKey} className="space-y-3">
+                        <p className="text-sm font-bold tracking-wide text-slate-500">{group.title}</p>
+                        <div className="relative pl-5 space-y-3">
+                          <div className="absolute left-[7px] top-0 bottom-0 w-px bg-slate-200" />
+                          {group.rows.map((record) => {
+                            const typeInfo = checkTypeById.get(record.check_type_id ?? '') ?? {
+                              label: 'Check',
+                              icon: '📋',
+                            };
+
+                            const itemGroups = new Map<string, string[]>();
+                            const pushGroupItem = (groupLabel: string, value: string) => {
+                              const current = itemGroups.get(groupLabel) ?? [];
+                              current.push(value);
+                              itemGroups.set(groupLabel, current);
+                            };
+
+                            for (const id of record.physical_condition_ids) {
+                              const meta = lookupMetadataById.get(id);
+                              const bodyParts = record.physical_where?.[id] ?? [];
+                              const suffix = bodyParts.length > 0 ? ` (${bodyParts.join(', ')})` : '';
+                              pushGroupItem(meta?.item_group ?? 'Physical Condition', `${meta?.label ?? 'Physical'}${suffix}`);
+                            }
+                            for (const id of record.behaviour_ids) {
+                              const meta = lookupMetadataById.get(id);
+                              pushGroupItem(meta?.item_group ?? 'Behaviour', meta?.label ?? 'Behaviour');
+                            }
+                            for (const id of record.aggression_ids) {
+                              const meta = lookupMetadataById.get(id);
+                              pushGroupItem(meta?.item_group ?? 'Aggression', meta?.label ?? 'Aggression');
+                            }
+                            if (record.meltdown_occurred) {
+                              pushGroupItem('Meltdown', 'Meltdown occurred');
+                            }
+
+                            const entries = Array.from(itemGroups.entries());
+
+                            return (
+                              <div key={record.id} className="relative">
+                                <span className="absolute -left-[16px] top-5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-white" />
+                                <Card className="border-slate-200">
+                                  <CardContent className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <p className="text-base font-semibold inline-flex items-center gap-2">
+                                        <span>{typeInfo.icon}</span>
+                                        <span>{typeInfo.label}</span>
+                                      </p>
+                                      <p className="text-xs text-slate-500 inline-flex items-center gap-1">
+                                        <Clock3 className="h-3.5 w-3.5" />
+                                        <span>{toTimeLabel(record.created_at)}</span>
+                                      </p>
+                                    </div>
+
+                                    {entries.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {entries.map(([groupLabel, values]) => (
+                                          <div key={`${record.id}-${groupLabel}`} className="space-y-1">
+                                            <p className="text-xs font-semibold text-slate-500">{groupLabel}</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {values.map((value, idx) => (
+                                                <span
+                                                  key={`${record.id}-${groupLabel}-${value}-${idx}`}
+                                                  className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700"
+                                                >
+                                                  {value}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground">No selected items.</p>
+                                    )}
+
+                                    <div className="pt-1 border-t border-slate-100">
+                                      <p className="text-xs font-semibold text-slate-500 mb-1">Notes</p>
+                                      <p className="text-sm text-slate-600 italic">
+                                        "{record.notes?.trim() ? record.notes : 'No notes provided.'}"
+                                      </p>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </TabsContent>
 
               <TabsContent value="report" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="py-6 text-center">
-                      <p className="text-3xl font-bold">{monthReport.checks}</p>
-                      <p className="text-sm text-muted-foreground mt-1">Total Checks</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="py-6 text-center">
-                      <p className="text-3xl font-bold text-red-500">{monthReport.injuryDays}</p>
-                      <p className="text-sm text-muted-foreground mt-1">Injury Days</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="py-6 text-center">
-                      <p className="text-3xl font-bold text-amber-500">{monthReport.meltdowns}</p>
-                      <p className="text-sm text-muted-foreground mt-1">Meltdowns</p>
-                    </CardContent>
-                  </Card>
+                <div className="flex items-center justify-between px-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <p className="text-3xl font-bold">
+                    {calendarMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
                 </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Factor Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {monthReport.tags.length === 0 ? (
-                      <p className="text-base text-muted-foreground">No factors recorded this month.</p>
-                    ) : (
-                      monthReport.tags.map(([name, count]) => {
-                        const style = getFactorStyle(name);
-                        return (
-                          <div key={name} className="rounded-lg border p-3 flex items-center justify-between">
-                            <p className={cn('text-base font-medium inline-flex items-center gap-2', style.textClass)}>
-                              <span>{style.icon}</span>
-                              <span>{style.title}</span>
-                            </p>
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">{count}</Badge>
-                          </div>
-                        );
-                      })
-                    )}
-                  </CardContent>
-                </Card>
+                {monthReport.checks === 0 ? (
+                  <Card>
+                    <CardContent className="py-16 text-center text-lg text-muted-foreground">
+                      No checks recorded for this month.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="py-6 text-center">
+                          <p className="text-3xl font-bold">{monthReport.checks}</p>
+                          <p className="text-sm text-muted-foreground mt-1">Total Checks</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="py-6 text-center">
+                          <p className="text-3xl font-bold text-red-500">{monthReport.injuryDays}</p>
+                          <p className="text-sm text-muted-foreground mt-1">Injury Days</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="py-6 text-center">
+                          <p className="text-3xl font-bold text-amber-500">{monthReport.meltdowns}</p>
+                          <p className="text-sm text-muted-foreground mt-1">Meltdowns</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div>
+                      <h3 className="text-2xl font-bold mb-3">Factor Distribution</h3>
+                      <div className="space-y-3">
+                        {monthReport.sections.map((section) => (
+                          <Card key={section.title}>
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className={cn('text-xl font-semibold inline-flex items-center gap-2', section.textClass)}>
+                                  <span>{section.icon}</span>
+                                  <span>{section.title}</span>
+                                </p>
+                                <span className="rounded-full bg-emerald-50 border border-emerald-100 px-3 py-0.5 text-sm font-semibold text-emerald-700">
+                                  {section.total}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {section.chips.map(([label, count]) => (
+                                  <span
+                                    key={`${section.title}-${label}`}
+                                    className="rounded-full border border-slate-300 px-2.5 py-1 text-sm text-slate-700"
+                                  >
+                                    {label} ({count})
+                                  </span>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <Button className="w-full h-12 text-base">
                   <Download className="h-4 w-4 mr-2" />
-                  Download {new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' })} Report (PDF)
+                  Download {calendarMonth.toLocaleString('en-US', { month: 'short', year: 'numeric' })} Report (PDF)
                 </Button>
               </TabsContent>
-            </Tabs>
+              </Tabs>
+            )}
           </>
         )}
       </div>
