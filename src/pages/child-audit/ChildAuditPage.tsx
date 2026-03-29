@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import {
   ArrowLeft,
@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Download,
   Search,
-  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +42,7 @@ type CheckSelectionState = {
   behaviour_ids: string[];
   aggression_ids: string[];
   meltdown_occurred: boolean;
+  meltdown_definition: string[];
   notes: string | null;
   physical_where: Record<string, string[]>;
 };
@@ -72,6 +72,57 @@ const toLookupItems = (
     active: row.active,
     definition: row.definition ?? null,
   }));
+
+const toItemGroupTitle = (itemGroup: string | null | undefined) => {
+  const value = (itemGroup ?? '').trim();
+  if (!value) return 'General';
+
+  const labelMap: Record<string, string> = {
+    physical_condition: 'Physical Condition',
+    incidents_at_home: 'Incidents at Home',
+    sleep_quality_home: 'Sleep Quality (Home)',
+    morning_behaviour_home: 'Morning Behaviour at Home',
+    health_medical: 'Health / Medical',
+    behaviour_mood: 'Behaviour / Mood',
+    school_incidents: 'School Incidents',
+    hostel_incidents: 'Hostel Incidents',
+    sleep_hostel: 'Sleep (Hostel)',
+    night_behaviour: 'Night Behaviour',
+    daily_living: 'Daily Living',
+    safety_observations: 'Safety Observations',
+    aggression: 'Aggression',
+    meltdown: 'Meltdown',
+  };
+
+  const normalized = normalizeGroupKey(value);
+  if (labelMap[normalized]) return labelMap[normalized];
+
+  return value
+    .split('_')
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(' ');
+};
+
+const getItemGroupIcon = (itemGroup: string | null | undefined) => {
+  const key = normalizeGroupKey(itemGroup);
+  const iconMap: Record<string, string> = {
+    physical_condition: '🩹',
+    incidents_at_home: '🏠',
+    sleep_quality_home: '😴',
+    morning_behaviour_home: '🌅',
+    health_medical: '🏥',
+    behaviour_mood: '👁',
+    school_incidents: '🏫',
+    hostel_incidents: '🏠',
+    sleep_hostel: '🌙',
+    night_behaviour: '🌙',
+    daily_living: '🧩',
+    safety_observations: '⚠️',
+    aggression: '⚡',
+    meltdown: '🔥',
+  };
+  return iconMap[key] ?? '📋';
+};
 
 const mapLookupsFromCheckTypes = (
   checkTypes: ChildAuditCheckTypeDetail[],
@@ -113,19 +164,9 @@ const mapLookupsFromCheckTypes = (
     checkTypes: checkTypeItems,
     physicalConditions: toLookupItems(collect(['physical_condition'])),
     behaviours: toLookupItems(
-      collect([
-        'behaviour_mood',
-        'morning_behaviour_home',
-        'night_behaviour',
-        'sleep_quality_home',
-        'sleep_hostel',
-        'incidents_at_home',
-        'school_incidents',
-        'hostel_incidents',
-        'daily_living',
-        'safety_observations',
-        'health_medical',
-      ])
+      valuesByGroup
+        .filter((group) => !['physical_condition', 'aggression', 'meltdown'].includes(group.key))
+        .flatMap((group) => group.values)
     ),
     meltdowns: toLookupItems(collect(['meltdown'])),
     aggressions: toLookupItems(collect(['aggression'])),
@@ -225,6 +266,7 @@ const ChildAuditPage = () => {
   const [selectedBehaviours, setSelectedBehaviours] = useState<string[]>([]);
   const [selectedAggressions, setSelectedAggressions] = useState<string[]>([]);
   const [meltdownOccurred, setMeltdownOccurred] = useState(false);
+  const [meltdownDefinition, setMeltdownDefinition] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [physicalWhere, setPhysicalWhere] = useState<Record<string, string[]>>({});
@@ -262,6 +304,7 @@ const ChildAuditPage = () => {
       setSelectedBehaviours([]);
       setSelectedAggressions([]);
       setMeltdownOccurred(false);
+      setMeltdownDefinition([]);
       setNotes('');
       setPhysicalWhere({});
       return;
@@ -271,9 +314,11 @@ const ChildAuditPage = () => {
     setSelectedBehaviours(selection.behaviour_ids ?? []);
     setSelectedAggressions(selection.aggression_ids ?? []);
     setMeltdownOccurred(selection.meltdown_occurred === true);
+    setMeltdownDefinition(selection.meltdown_definition ?? []);
     setNotes(selection.notes ?? '');
     setPhysicalWhere(selection.physical_where ?? {});
   }, []);
+
 
   const savedSelectionByCheckType = useMemo(() => {
     const byCheckType = new Map<string, CheckSelectionState>();
@@ -284,6 +329,7 @@ const ChildAuditPage = () => {
         behaviour_ids: record.behaviour_ids ?? [],
         aggression_ids: record.aggression_ids ?? [],
         meltdown_occurred: record.meltdown_occurred === true,
+        meltdown_definition: record.meltdown_definition ?? [],
         notes: record.notes ?? null,
         physical_where: record.physical_where ?? {},
       });
@@ -304,7 +350,12 @@ const ChildAuditPage = () => {
     },
     [applySelectionState, savedSelectionByCheckType]
   );
+  const [isHeaderPinned, setIsHeaderPinned] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [headerLeft, setHeaderLeft] = useState(0);
+  const [headerWidth, setHeaderWidth] = useState(0);
 
+  const headerRef = useRef<HTMLDivElement | null>(null);
   const lookupMap = useMemo(() => {
     const map = new Map<string, string>();
     [...lookups.checkTypes, ...lookups.physicalConditions, ...lookups.behaviours, ...lookups.aggressions].forEach(
@@ -335,6 +386,32 @@ const ChildAuditPage = () => {
     }
     return map;
   }, [checkTypeDetails]);
+
+  const selectedCheckTypeGroups = useMemo(() => {
+    const target =
+      checkTypeDetails.find((checkType) => checkType.id === selectedCheckType) ??
+      checkTypeDetails.find((checkType) => checkType.active) ??
+      null;
+    if (!target) return [];
+
+    return (target.lookup_groups ?? [])
+      .map((group) => ({
+        key: normalizeGroupKey(group.item_group),
+        item_group: group.item_group,
+        title: toItemGroupTitle(group.item_group),
+        icon: getItemGroupIcon(group.item_group),
+        items: toLookupItems(group.values ?? []),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [checkTypeDetails, selectedCheckType]);
+
+  const dynamicBehaviourGroups = useMemo(
+    () =>
+      selectedCheckTypeGroups.filter(
+        (group) => !['physical_condition', 'aggression', 'meltdown'].includes(group.key)
+      ),
+    [selectedCheckTypeGroups]
+  );
 
   const loadStudents = useCallback(async () => {
     if (!clientId) {
@@ -388,6 +465,7 @@ const ChildAuditPage = () => {
           behaviour_ids: latest.behaviour_ids ?? [],
           aggression_ids: latest.aggression_ids ?? [],
           meltdown_occurred: latest.meltdown_occurred === true,
+          meltdown_definition: latest.meltdown_definition ?? [],
           notes: latest.notes ?? null,
           physical_where: latest.physical_where ?? {},
         });
@@ -418,14 +496,59 @@ const ChildAuditPage = () => {
     setLookups(mapLookupsFromCheckTypes(checkTypeDetails, selectedCheckType));
   }, [checkTypeDetails, selectedCheckType]);
 
+  useEffect(() => {
+    const headerOffset = 80;
+
+    if (!checkTypeDetails.length) return;
+
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updatePosition = () => {
+      const rect = header.getBoundingClientRect();
+
+      setHeaderLeft(rect.left);
+      setHeaderWidth(rect.width);
+      setHeaderHeight(header.offsetHeight);
+
+      setIsHeaderPinned(rect.top <= headerOffset);
+    };
+
+    const timeout = setTimeout(() => {
+      updatePosition();
+    }, 0);
+
+    window.addEventListener("scroll", updatePosition, { passive: true });
+    window.addEventListener("resize", updatePosition); 
+
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [selectedStudent, checkTypeDetails]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return students;
+    const normalizedQuery = q.replace(/[-_/]/g, ' ');
     return students.filter((r) => {
       const id = (r.student_id ?? '').toLowerCase();
       const name = (r.name ?? '').toLowerCase();
       const gs = (r.grade_section ?? '').toLowerCase();
-      return id.includes(q) || name.includes(q) || gs.includes(q);
+      const grade = (r.grade ?? '').toLowerCase();
+      const section = (r.section ?? '').toLowerCase();
+      const gsNormalized = gs.replace(/[-_/]/g, ' ');
+      const combined = `${grade} ${section}`.trim();
+      return (
+        id.includes(q) ||
+        name.includes(q) ||
+        gs.includes(q) ||
+        gsNormalized.includes(normalizedQuery) ||
+        grade.includes(q) ||
+        section.includes(q) ||
+        combined.includes(normalizedQuery)
+      );
     });
   }, [students, search]);
 
@@ -605,6 +728,7 @@ const ChildAuditPage = () => {
         physical_condition_ids: selectedPhysical,
         behaviour_ids: selectedBehaviours,
         meltdown_occurred: meltdownOccurred,
+        meltdown_definition: meltdownDefinition,
         aggression_ids: selectedAggressions,
         notes: notes.trim() || null,
         physical_where: physicalWhere,
@@ -693,11 +817,12 @@ const ChildAuditPage = () => {
 
   return (
     <Layout>
-      <div className="w-full px-4 py-6">
+      <div className="w-full pt-0 py-6">
+        <div className={`mx-6 ${selectedStudent ? 'pb-16' : ''}`}>
         {!selectedStudent ? (
           <>
             <div className="mb-5 w-full">
-              <h1 className="text-3xl font-bold tracking-tight">Child Audit</h1>
+              <h1 className="text-3xl font-bold tracking-tight mt-5">Child Audit</h1>
               <p className="text-base text-muted-foreground mt-1">
                 Search and open a student to create checks, view calendar, audit history, and reports.
               </p>
@@ -756,16 +881,6 @@ const ChildAuditPage = () => {
                               </p>
                             </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label={`Open ${row.name}`}
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
                         </div>
                       ))}
                       {filtered.length === 0 && (
@@ -779,47 +894,87 @@ const ChildAuditPage = () => {
           </>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-3 mb-4 max-w-6xl mx-auto">
-              <Button
-                variant="ghost"
-                className="text-base"
-                onClick={() => {
-                  setSelectedStudent(null);
-                  setSelectedCheckType(null);
-                  setCheckTypeDetails([]);
-                  setLookups(DEFAULT_LOOKUPS);
-                }}
-              >
-                <ArrowLeft className="h-5 w-5" />
-                Back
-              </Button>
-              <p className="text-sm text-muted-foreground">{new Date().toLocaleString('en-IN')}</p>
-            </div>
+            <div ref={headerRef} className="w-full">
+                <div
+                  style={
+                    isHeaderPinned
+                      ? {
+                          position: "fixed",
+                          top: "80px",
+                          left: `115px`,
+                          right: '0px',
+                          zIndex: 40,
+                        }
+                      : undefined
+                  }
+                  className="bg-white"
+                >
+                  <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 bg-white">
+                      <div className="flex items-center justify-between">
+                        
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                              onClick={() => {
+                              setSelectedStudent(null);
+                              setSelectedCheckType(null);
+                              setCheckTypeDetails([]);
+                              setLookups(DEFAULT_LOOKUPS);
+                              }}
+                          >
+                            <ArrowLeft className="h-5 w-5" />
+                          </Button>
 
-            <Card className="mb-3 border-slate-200 bg-white">
-              <CardContent className="p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold">{selectedStudent.name}</h2>
-                    <p className="text-base text-muted-foreground mt-1">ID: {selectedStudent.student_id}</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 min-w-[420px]">
+                          <div>
+                            <h2 className="text-xl font-bold">
+                              {selectedStudent.name}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                              ID: {selectedStudent.student_id}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground whitespace-nowrap">
+                          {new Date().toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {isHeaderPinned && <div style={{ height: headerHeight }} />}
+              </div>
+
+              <Card className="mt-4 mb-4 border-slate-200 bg-white">
+                <CardContent className="p-4">
+                  <div className="w-full flex items-center justify-between px-4">
+                    
                     <div>
                       <p className="text-sm text-muted-foreground">Type</p>
-                      <p className="text-base font-semibold">{getCampusType(selectedStudent.campus)}</p>
+                      <p className="text-base font-semibold">
+                        {getCampusType(selectedStudent.campus)}
+                      </p>
                     </div>
-                    <div>
+
+                    
+                    <div className="text-center">
                       <p className="text-sm text-muted-foreground">Grade</p>
-                      <p className="text-base font-semibold">{selectedStudent.grade ?? '—'}</p>
+                      <p className="text-base font-semibold">
+                        {selectedStudent.grade ?? "—"}
+                      </p>
                     </div>
-                    <div>
+
+                    
+                    <div className="text-right">
                       <p className="text-sm text-muted-foreground">Age</p>
                       <p className="text-base font-semibold">—</p>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
             <Card className="mb-4 border-slate-200 bg-white">
               <CardContent className="p-4">
@@ -844,20 +999,32 @@ const ChildAuditPage = () => {
               </Card>
             ) : (
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 h-12 bg-slate-100">
-                <TabsTrigger className="text-sm md:text-base" value="check">
+              <TabsList className="grid w-full grid-cols-4 h-12 rounded-xl border border-slate-200 bg-slate-100 p-1">
+                <TabsTrigger
+                  className="h-full rounded-lg text-sm md:text-base text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                  value="check"
+                >
                   <span className="mr-1">📋</span>
                   Check
                 </TabsTrigger>
-                <TabsTrigger className="text-sm md:text-base" value="calendar">
+                <TabsTrigger
+                  className="h-full rounded-lg text-sm md:text-base text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                  value="calendar"
+                >
                   <span className="mr-1">📅</span>
                   Calendar
                 </TabsTrigger>
-                <TabsTrigger className="text-sm md:text-base" value="audit">
+                <TabsTrigger
+                  className="h-full rounded-lg text-sm md:text-base text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                  value="audit"
+                >
                   <span className="mr-1">📊</span>
                   Audit
                 </TabsTrigger>
-                <TabsTrigger className="text-sm md:text-base" value="report">
+                <TabsTrigger
+                  className="h-full rounded-lg text-sm md:text-base text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
+                  value="report"
+                >
                   <span className="mr-1">📄</span>
                   Report
                 </TabsTrigger>
@@ -893,18 +1060,20 @@ const ChildAuditPage = () => {
                   </Card>
                 )}
 
-                {lookups.behaviours.length > 0 && (
-                  <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">👁 Behaviour</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {renderCheckboxRows(lookups.behaviours, selectedBehaviours, (id) =>
-                      setSelectedBehaviours((p) => toggleItem(p, id))
-                    )}
-                  </CardContent>
+                {dynamicBehaviourGroups.map((group) => (
+                  <Card key={group.key}>
+                    <CardHeader>
+                      <CardTitle className="text-xl">
+                        {group.icon} {group.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {renderCheckboxRows(group.items, selectedBehaviours, (id) =>
+                        setSelectedBehaviours((p) => toggleItem(p, id))
+                      )}
+                    </CardContent>
                   </Card>
-                )}
+                ))}
 
                 {lookups.meltdowns.length > 0 && (
                   <Card>
@@ -915,7 +1084,40 @@ const ChildAuditPage = () => {
                     {renderCheckboxRows(
                       [{ id: 'meltdown', name: lookups.meltdowns[0]?.name ?? 'Meltdown occurred', active: true }],
                       meltdownOccurred ? ['meltdown'] : [],
-                      () => setMeltdownOccurred((p) => !p)
+                      () =>
+                        setMeltdownOccurred((p) => {
+                          const next = !p;
+                          if (!next) setMeltdownDefinition([]);
+                          return next;
+                        })
+                    )}
+                    {meltdownOccurred && (
+                      <div className="px-1 pt-2">
+                        <div className="flex flex-wrap gap-2">
+                          {parseWhereOptions(lookups.meltdowns[0]?.definition).map((value) => {
+                            const active = meltdownDefinition.includes(value);
+                            return (
+                              <button
+                                type="button"
+                                key={`meltdown-${value}`}
+                                onClick={() =>
+                                  setMeltdownDefinition((prev) =>
+                                    prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+                                  )
+                                }
+                                className={cn(
+                                  'text-xs rounded-full border px-2.5 py-1',
+                                  active
+                                    ? 'bg-emerald-500 text-white border-emerald-500'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                )}
+                              >
+                                {value}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </CardContent>
                   </Card>
@@ -948,10 +1150,18 @@ const ChildAuditPage = () => {
                   </CardContent>
                 </Card>
 
-                <div className="sticky bottom-0 z-20 border-t bg-background/95 backdrop-blur px-2 py-3">
-                  <Button className="w-full h-12 text-base font-semibold" onClick={submitCheck} disabled={saving}>
-                    {saving ? 'Saving...' : 'Submit Check'}
-                  </Button>
+                <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t shadow-md"
+                  style={{
+                    left: '115px',
+                    right: '0px',
+                  }}
+                >
+                  <div className="mx-6 py-3 border-slate-200 shadow-sm">
+                    <Button className="w-full h-12 text-base font-semibold" onClick={submitCheck} disabled={saving}>
+                    
+                      {saving ? 'Saving...' : 'Submit Check'}
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
 
@@ -1305,6 +1515,7 @@ const ChildAuditPage = () => {
           </>
         )}
       </div>
+    </div>
     </Layout>
   );
 };

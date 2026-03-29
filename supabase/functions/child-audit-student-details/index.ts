@@ -51,6 +51,7 @@ type CheckTypeRow = {
   client_id: string;
   type: string;
   key: string;
+  order: number | null;
   alt_definition: unknown;
   active: boolean;
   attachements: unknown;
@@ -80,6 +81,7 @@ type LatestSelection = {
   behaviour_ids: string[];
   aggression_ids: string[];
   meltdown_occurred: boolean;
+  meltdown_definition: string[];
   notes: string | null;
   physical_where: Record<string, string[]>;
 };
@@ -284,9 +286,10 @@ serve(async (req) => {
 
     const { data: checkTypeRows, error: checkTypeError } = await supabase
       .from('child_audit_check_type')
-      .select('id, client_id, type, key, alt_definition, active, attachements')
+      .select('id, client_id, type, key, order, alt_definition, active, attachements')
       .eq('client_id', clientId)
       .eq('active', true)
+      .order('order', { ascending: true })
       .order('created_at', { ascending: true });
 
     if (checkTypeError) {
@@ -332,6 +335,8 @@ serve(async (req) => {
           .select('id, client_id, item_group, type, label, active, definition')
           .eq('client_id', clientId)
           .eq('type', lookupType)
+          // Keep insertion order from seed/migration so UI matches expected checklist order.
+          .order('created_at', { ascending: true })
           .order('label', { ascending: true });
 
         if (groupKey) {
@@ -374,6 +379,7 @@ serve(async (req) => {
         id: checkType.id,
         type: checkType.type,
         key: checkType.key,
+        order: checkType.order ?? null,
         active: checkType.active,
         attachements: checkType.attachements ?? [],
         alt_definition: alt,
@@ -409,6 +415,7 @@ serve(async (req) => {
         .map((item) => item.lookup_id as string);
 
       const meltdown_occurred = itemRows.some((item) => item.item_group === 'meltdown');
+      const meltdownItem = itemRows.find((item) => item.item_group === 'meltdown');
 
       const behaviour_ids = itemRows
         .filter(
@@ -422,6 +429,7 @@ serve(async (req) => {
 
       const recordItemIds = itemRows.map((item) => item.id);
       const physical_where: Record<string, string[]> = {};
+      let meltdown_definition: string[] = [];
 
       if (recordItemIds.length > 0) {
         const { data: locations } = await supabase
@@ -446,6 +454,10 @@ serve(async (req) => {
             physical_where[item.lookup_id] = parts;
           }
         }
+
+        if (meltdownItem) {
+          meltdown_definition = byRecordItemId.get(meltdownItem.id) ?? [];
+        }
       }
 
       latestSelection = {
@@ -455,6 +467,7 @@ serve(async (req) => {
         behaviour_ids,
         aggression_ids,
         meltdown_occurred,
+        meltdown_definition,
         notes: latestRecord.notes ?? null,
         physical_where,
       };

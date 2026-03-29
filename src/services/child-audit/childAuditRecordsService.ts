@@ -25,6 +25,7 @@ export type ChildAuditRecord = {
   physical_where?: Record<string, string[]>;
   behaviour_ids: string[];
   meltdown_occurred: boolean;
+  meltdown_definition: string[];
   aggression_ids: string[];
   notes: string | null;
   created_at: string;
@@ -36,6 +37,7 @@ export type CreateChildAuditRecordPayload = Omit<
   'id' | 'created_at' | 'updated_at'
 > & {
   physical_where?: Record<string, string[]>;
+  meltdown_definition?: string[];
 };
 
 export async function fetchChildAuditLookups(): Promise<ChildAuditLookups> {
@@ -113,6 +115,7 @@ export async function fetchChildAuditRecordsByStudent(
       .filter((item) => item.item_group === 'aggression' && item.lookup_id)
       .map((item) => item.lookup_id as string);
     const meltdown = selected.some((item) => item.item_group === 'meltdown');
+    const meltdownItem = selected.find((item) => item.item_group === 'meltdown');
     const behaviour = selected
       .filter(
         (item) =>
@@ -132,6 +135,11 @@ export async function fetchChildAuditRecordsByStudent(
       }
     }
 
+    const meltdown_definition =
+      meltdownItem && meltdownItem.lookup_id
+        ? (locationsByItem.get(meltdownItem.id) ?? [])
+        : [];
+
     return {
       id: row.id,
       client_id: row.client_id,
@@ -142,6 +150,7 @@ export async function fetchChildAuditRecordsByStudent(
       physical_where,
       behaviour_ids: behaviour,
       meltdown_occurred: meltdown,
+      meltdown_definition,
       aggression_ids: aggression,
       notes: row.notes ?? null,
       created_at: row.submission_time ?? row.created_at,
@@ -171,6 +180,7 @@ export async function createChildAuditRecord(
       behaviour_ids: payload.behaviour_ids,
       aggression_ids: payload.aggression_ids,
       meltdown_occurred: payload.meltdown_occurred,
+      meltdown_definition: payload.meltdown_definition ?? [],
       notes: payload.notes,
       physical_where: payload.physical_where ?? {},
     },

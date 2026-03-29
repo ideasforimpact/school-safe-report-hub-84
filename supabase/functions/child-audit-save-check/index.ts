@@ -21,6 +21,7 @@ type SaveCheckRequest = {
   behaviour_ids?: string[];
   aggression_ids?: string[];
   meltdown_occurred?: boolean;
+  meltdown_definition?: string[];
   notes?: string | null;
   physical_where?: Record<string, string[]>;
   attachments?: Array<{
@@ -164,6 +165,7 @@ serve(async (req) => {
     const behaviourIds = toUniqueIds(body.behaviour_ids);
     const aggressionIds = toUniqueIds(body.aggression_ids);
     const meltdownOccurred = body.meltdown_occurred === true;
+    const meltdownDefinition = toUniqueIds(body.meltdown_definition);
 
     const { data: checkType, error: checkTypeError } = await supabase
       .from('child_audit_check_type')
@@ -369,8 +371,15 @@ serve(async (req) => {
     const locationInserts: Array<Record<string, unknown>> = [];
 
     for (const item of insertedItems) {
-      if (item.item_group !== 'physical_condition' || !item.lookup_id) continue;
-      const parts = Array.isArray(physicalWhere[item.lookup_id]) ? physicalWhere[item.lookup_id] : [];
+      let parts: string[] = [];
+      if (item.item_group === 'physical_condition' && item.lookup_id) {
+        parts = Array.isArray(physicalWhere[item.lookup_id]) ? physicalWhere[item.lookup_id] : [];
+      } else if (item.item_group === 'meltdown') {
+        parts = meltdownDefinition;
+      } else {
+        continue;
+      }
+
       for (const part of parts) {
         if (typeof part !== 'string') continue;
         const trimmed = part.trim();
@@ -443,6 +452,7 @@ serve(async (req) => {
         physical_condition_ids: physicalIds,
         behaviour_ids: behaviourIds,
         meltdown_occurred: meltdownOccurred,
+        meltdown_definition: meltdownDefinition,
         aggression_ids: aggressionIds,
         notes: recordData.notes,
         created_at: recordData.submission_time,

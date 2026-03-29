@@ -20,6 +20,7 @@ export type ChildAuditCheckTypeDetail = {
   id: string;
   type: string;
   key: string;
+  order?: number | null;
   active: boolean;
   attachements?: unknown;
   alt_definition?: unknown;
@@ -33,6 +34,7 @@ export type ChildAuditLatestSelection = {
   behaviour_ids: string[];
   aggression_ids: string[];
   meltdown_occurred: boolean;
+  meltdown_definition: string[];
   notes: string | null;
   physical_where: Record<string, string[]>;
 };
