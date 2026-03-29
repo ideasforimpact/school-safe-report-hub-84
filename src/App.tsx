@@ -117,6 +117,7 @@ import EmployeeCpdDetailPage from './pages/cpd/EmployeeCpdDetailPage';
 import CommitteesPage from './pages/committees/CommitteesPage';
 import CommitteeEventsPage from './pages/committees/CommitteeEventsPage';
 import CommitteeEventViewPage from './pages/committees/CommitteeEventViewPage';
+import ChildAuditPage from './pages/child-audit/ChildAuditPage';
 
 
 function App() {
@@ -249,6 +250,9 @@ function App() {
 
                   {/* Student Well-Being Management */}
                   <Route path="/student-well-begin-management" element={<RouteGuard requireAuth={true}><StudentWellBeingPage /></RouteGuard>} />
+
+                  {/* Child Audit */}
+                  <Route path="/child-audit" element={<RouteGuard requireAuth={true}><ChildAuditPage /></RouteGuard>} />
 
                   {/* Committees */}
                   <Route path="/committees" element={<RouteGuard requireAuth={true}><CommitteesPage /></RouteGuard>} />

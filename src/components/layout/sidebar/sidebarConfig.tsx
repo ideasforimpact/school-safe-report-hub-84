@@ -19,6 +19,7 @@ import {
   Box,
   Plug,
   Download,
+  ClipboardList,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,6 +60,7 @@ const iconMap: Record<string, any> = {
   Box,
   Plug,
   Download,
+  ClipboardList,
   Integration: Plug, // Alias for backward compatibility
 };
 
