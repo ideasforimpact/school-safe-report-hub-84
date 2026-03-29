@@ -398,15 +398,6 @@ SET
   active = EXCLUDED.active,
   updated_at = now();
 
--- Meltdown sub-definition options (duration buckets)
-UPDATE public.child_audit_look_up
-SET
-  definition = '["< 5 minutes","5-15 minutes","15-30 minutes","> 30 minutes"]',
-  updated_at = now()
-WHERE item_group = 'meltdown'
-  AND label = 'Meltdown occurred'
-  AND type IN ('in_school', 'in_hostel');
-
 -- ---------------------------------------------------------------------------
 -- 5) RLS policies (aligned to committees pattern)
 -- ---------------------------------------------------------------------------
