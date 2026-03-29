@@ -23,6 +23,7 @@ import {
   updateStudentWellbeingRecord,
   type StudentWellbeingRecord,
 } from '@/services/student-wellbeing/studentWellbeingService';
+import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 //  Control future date selection from here
 const allowFutureDate = false;
 const CONCERN_MIN = 5;
@@ -56,6 +57,7 @@ export function EditWellBeingRecordDialog({
   record,
 }: EditWellBeingRecordDialogProps) {
   const { employeeData } = useAuth();
+  const { isIntegrationEnabled } = useClientIntegrationEnabled();
   const clientId = employeeData?.clientId;
  
   const [student, setStudent] = useState<StudentOption | null>(null);
@@ -74,12 +76,28 @@ export function EditWellBeingRecordDialog({
   useEffect(() => {
     if (!open) return;
     if (record) {
-      setStudent({
-        id: record.student_id,
-        name: record.student_name,
-        section_id: record.section_id ?? undefined,
-        grade_id: record.grade_id ?? undefined,
-      });
+      if (record.is_external_student) {
+        const external = record.external_student_involved;
+        setStudent({
+          id: external?.student?.id ?? '',
+          student_id: external?.student?.id ?? undefined,
+          name: external?.student?.name ?? record.student_name,
+          section_id: external?.section?.id ?? undefined,
+          grade_id: external?.grade?.id ?? undefined,
+          section_name: external?.section?.name ?? undefined,
+          grade_name: external?.grade?.name ?? undefined,
+          is_external: true,
+        });
+      } else {
+        setStudent({
+          id: record.student_id ?? '',
+          student_id: record.student_display_id ?? undefined,
+          name: record.student_name,
+          section_id: record.section_id ?? undefined,
+          grade_id: record.grade_id ?? undefined,
+          is_external: false,
+        });
+      }
       setTypeOfConcernId(record.type_of_concern_id ?? '');
       setDateOfObservation(
         record.date_of_observation
@@ -158,13 +176,37 @@ export function EditWellBeingRecordDialog({
         type: f.type,
         base64: (f.base64 ?? '').replace(/^data:[^;]+;base64,/, ''),
       }));
+      const isExternalStudent = isIntegrationEnabled && student?.is_external === true;
+      
+      const externalStudentInvolved = isExternalStudent
+        ? {
+            student: {
+              id: student?.id ?? null,
+              name: student?.name ?? null,
+            },
+            grade: {
+              id: student?.grade_id ?? null,
+              name: student?.grade_name ?? null,
+            },
+            section: {
+              id: student?.section_id ?? null,
+              name: student?.section_name ?? null,
+            },
+          }
+        : null;
+        
       await updateStudentWellbeingRecord({
         id: record.id,
         client_id: clientId,
         employee_id: employeeData?.id ?? '',
-        student_id: student!.id,
-        section_id: student!.section_id ?? null,
-        grade_id: student!.grade_id ?? null,
+        student_id: isExternalStudent ? null : student!.id,
+        section_id: isExternalStudent ? null : (student!.section_id ?? null),
+        grade_id: isExternalStudent ? null : (student!.grade_id ?? null),
+        student_name: student!.name ?? null,
+        section_name: student!.section_name ?? null,
+        grade_name: student!.grade_name ?? null,
+        is_external_student: isExternalStudent,
+        external_student_involved: externalStudentInvolved,
         type_of_concern_id: typeOfConcernId,
         date_of_observation: dateOfObservation!.toLocaleDateString('en-CA'),
         concern: concern.trim() || null,
