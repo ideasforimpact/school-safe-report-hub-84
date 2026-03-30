@@ -38,6 +38,12 @@ export type CreateChildAuditRecordPayload = Omit<
 > & {
   physical_where?: Record<string, string[]>;
   meltdown_definition?: string[];
+  attachments?: Array<{
+    file_name: string;
+    mime_type?: string | null;
+    file_size?: number | null;
+    base64: string;
+  }>;
 };
 
 export async function fetchChildAuditLookups(): Promise<ChildAuditLookups> {
@@ -183,6 +189,7 @@ export async function createChildAuditRecord(
       meltdown_definition: payload.meltdown_definition ?? [],
       notes: payload.notes,
       physical_where: payload.physical_where ?? {},
+      attachments: payload.attachments ?? [],
     },
   });
 

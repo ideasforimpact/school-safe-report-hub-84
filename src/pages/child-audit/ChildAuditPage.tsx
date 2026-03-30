@@ -35,6 +35,8 @@ import {
   type ChildAuditCheckTypeDetail,
   type ChildAuditLatestSelection,
 } from '@/services/child-audit/childAuditStudentDetailsService';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
+import { type FileItem } from '@/types/fileTypes';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
 type CheckSelectionState = {
@@ -270,6 +272,8 @@ const ChildAuditPage = () => {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [physicalWhere, setPhysicalWhere] = useState<Record<string, string[]>>({});
+  const [attachments, setAttachments] = useState<FileItem[]>([]);
+  const [attachmentUploaderKey, setAttachmentUploaderKey] = useState(0);
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
 
@@ -732,8 +736,16 @@ const ChildAuditPage = () => {
         aggression_ids: selectedAggressions,
         notes: notes.trim() || null,
         physical_where: physicalWhere,
+        attachments: attachments.map((file) => ({
+          file_name: file.name,
+          mime_type: file.type || null,
+          file_size: file.size,
+          base64: file.base64,
+        })),
       });
       toast.success('Child Audit check submitted');
+      setAttachments([]);
+      setAttachmentUploaderKey((prev) => prev + 1);
       await loadStudentRecords();
       setActiveTab('check');
     } catch (e) {
@@ -1135,7 +1147,27 @@ const ChildAuditPage = () => {
                   </CardContent>
                   </Card>
                 )}
-
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Attachments</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ReusableFileUploader
+                      key={`${selectedStudent.id}-${attachmentUploaderKey}`}
+                      onFilesChange={setAttachments}
+                      initialFiles={[]}
+                      maxFiles={5}
+                      maxSize={10}
+                      maxTotalSize={50}
+                      allowedTypes={['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']}
+                      accept="image/*,.pdf"
+                      showFileList={true}
+                      disabled={saving}
+                    />
+                  </CardContent>
+                </Card>
+                
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Notes</CardTitle>
