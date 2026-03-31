@@ -26,10 +26,11 @@ type SaveCheckRequest = {
   physical_where?: Record<string, string[]>;
   attachments?: Array<{
     bucket?: string;
-    file_path: string;
+    file_path?: string;
     file_name: string;
     mime_type?: string | null;
     file_size?: number | null;
+    base64?: string;
   }>;
 };
 
@@ -57,6 +58,38 @@ function toUniqueIds(values: unknown): string[] {
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
   return [...new Set(ids)];
+}
+
+function sanitizeFilename(filename: string): string {
+  const lastDotIndex = filename.lastIndexOf('.');
+  const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+  const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex).toLowerCase() : '';
+
+  const sanitizedName = name
+    .replace(/ /g, '_')
+    .replace(/[()]/g, '_')
+    .replace(/[–—]/g, '-')
+    .replace(/[[\]{}#%^&*+=|<>?/\\]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  return `${sanitizedName || 'attachment'}${extension}`;
+}
+
+function decodeBase64Payload(base64Value: string): Uint8Array {
+  const payload = base64Value.includes(',') ? base64Value.split(',')[1] : base64Value;
+  const binaryString = atob(payload);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function detectMimeFromDataUrl(base64Value: string): string | null {
+  const match = base64Value.match(/^data:([^;]+);base64,/i);
+  if (!match) return null;
+  return match[1]?.toLowerCase() ?? null;
 }
 
 async function authorizeRequest(
@@ -166,6 +199,19 @@ serve(async (req) => {
     const aggressionIds = toUniqueIds(body.aggression_ids);
     const meltdownOccurred = body.meltdown_occurred === true;
     const meltdownDefinition = toUniqueIds(body.meltdown_definition);
+    const inputAttachments = Array.isArray(body.attachments) ? body.attachments : [];
+
+    if (inputAttachments.length > 5) {
+      return json(
+        {
+          ok: false,
+          error: 'ATTACHMENT_LIMIT_EXCEEDED',
+          message: 'Maximum 5 attachments are allowed',
+          version: API_VERSION,
+        },
+        400
+      );
+    }
 
     const { data: checkType, error: checkTypeError } = await supabase
       .from('child_audit_check_type')
@@ -410,17 +456,132 @@ serve(async (req) => {
       }
     }
 
-    const attachmentInserts = (body.attachments ?? [])
-      .filter((file) => file && typeof file.file_path === 'string' && typeof file.file_name === 'string')
-      .map((file) => ({
+    const allowedMimeTypes = new Set([
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'text/plain',
+    ]);
+    const maxAttachmentSize = 5 * 1024 * 1024;
+    const attachmentInserts: Array<Record<string, unknown>> = [];
+    const uploadedPathsByBucket = new Map<string, string[]>();
+
+    for (const file of inputAttachments) {
+      if (!file || typeof file.file_name !== 'string' || !file.file_name.trim()) {
+        return json(
+          {
+            ok: false,
+            error: 'ATTACHMENT_VALIDATION_ERROR',
+            message: 'Each attachment must include a valid file_name',
+            version: API_VERSION,
+          },
+          400
+        );
+      }
+      if (typeof file.base64 !== 'string' || !file.base64.trim()) {
+        return json(
+          {
+            ok: false,
+            error: 'ATTACHMENT_VALIDATION_ERROR',
+            message: `Attachment "${file.file_name}" is missing base64 content`,
+            version: API_VERSION,
+          },
+          400
+        );
+      }
+
+      const bucket =
+        typeof file.bucket === 'string' && file.bucket.trim() ? file.bucket.trim() : 'child_audit_attachements';
+
+      const decodedBytes = (() => {
+        try {
+          return decodeBase64Payload(file.base64 as string);
+        } catch {
+          return null;
+        }
+      })();
+
+      if (!decodedBytes) {
+        return json(
+          {
+            ok: false,
+            error: 'ATTACHMENT_VALIDATION_ERROR',
+            message: `Attachment "${file.file_name}" has invalid base64 content`,
+            version: API_VERSION,
+          },
+          400
+        );
+      }
+
+      const sizeBytes = decodedBytes.byteLength;
+      if (sizeBytes > maxAttachmentSize) {
+        return json(
+          {
+            ok: false,
+            error: 'ATTACHMENT_FILE_TOO_LARGE',
+            message: `Attachment "${file.file_name}" exceeds the 5MB limit`,
+            version: API_VERSION,
+          },
+          400
+        );
+      }
+
+      const mimeType =
+        (typeof file.mime_type === 'string' && file.mime_type.trim() ? file.mime_type.trim().toLowerCase() : null) ??
+        detectMimeFromDataUrl(file.base64);
+      if (!mimeType || !allowedMimeTypes.has(mimeType)) {
+        return json(
+          {
+            ok: false,
+            error: 'ATTACHMENT_FILE_TYPE_NOT_ALLOWED',
+            message: `Attachment "${file.file_name}" has unsupported file type`,
+            version: API_VERSION,
+          },
+          400
+        );
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const safeName = sanitizeFilename(file.file_name);
+      const objectPath = `${clientId}/${studentId}/${recordData.id}/${timestamp}_${crypto.randomUUID()}_${safeName}`;
+
+      const { error: storageUploadError } = await supabase.storage
+        .from(bucket)
+        .upload(objectPath, decodedBytes, { contentType: mimeType, upsert: false });
+
+      if (storageUploadError) {
+        // best-effort cleanup of already uploaded files for this request
+        for (const [uploadedBucket, uploadedPaths] of uploadedPathsByBucket.entries()) {
+          if (uploadedPaths.length === 0) continue;
+          await supabase.storage.from(uploadedBucket).remove(uploadedPaths);
+        }
+
+        return json(
+          {
+            ok: false,
+            error: 'ATTACHMENT_UPLOAD_FAILED',
+            message: `Failed to upload "${file.file_name}": ${storageUploadError.message}`,
+            version: API_VERSION,
+          },
+          500
+        );
+      }
+
+      const previousPaths = uploadedPathsByBucket.get(bucket) ?? [];
+      previousPaths.push(objectPath);
+      uploadedPathsByBucket.set(bucket, previousPaths);
+
+      attachmentInserts.push({
         record_id: recordData.id,
         client_id: clientId,
-        bucket: typeof file.bucket === 'string' && file.bucket.trim() ? file.bucket.trim() : 'child_audit_attachements',
-        file_path: file.file_path,
+        bucket,
+        file_path: objectPath,
         file_name: file.file_name,
-        mime_type: file.mime_type ?? null,
-        file_size: file.file_size ?? null,
-      }));
+        mime_type: mimeType,
+        file_size: sizeBytes,
+      });
+    }
 
     if (attachmentInserts.length > 0) {
       const { error: attachmentError } = await supabase
@@ -428,6 +589,12 @@ serve(async (req) => {
         .insert(attachmentInserts);
 
       if (attachmentError) {
+        // best-effort cleanup of uploaded objects if DB insert fails
+        for (const [uploadedBucket, uploadedPaths] of uploadedPathsByBucket.entries()) {
+          if (uploadedPaths.length === 0) continue;
+          await supabase.storage.from(uploadedBucket).remove(uploadedPaths);
+        }
+
         return json(
           {
             ok: false,
