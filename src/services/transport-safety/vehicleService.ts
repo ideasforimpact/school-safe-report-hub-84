@@ -428,6 +428,54 @@ const getLatestVehicleVerificationLog = (verificationData: any) => {
   return latestKey ? log.value[latestKey] : null;
 };
 
+const normalizeChallanStatus = (status?: string): string =>
+  String(status || '').trim().toUpperCase();
+
+const isDisposedChallanStatus = (status?: string): boolean =>
+  ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
+
+const dedupeChallans = (challans: any[]): any[] => {
+  if (!Array.isArray(challans)) return [];
+
+  const hasValue = (value: unknown) => {
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return String(value).trim() !== '';
+  };
+
+  const mergeChallan = (base: any, incoming: any) => {
+    const merged = { ...base };
+
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+      const existing = (merged as any)[key];
+      if (!hasValue(existing) && hasValue(value)) {
+        (merged as any)[key] = value;
+      }
+    });
+
+    return merged;
+  };
+
+  const getDedupKey = (challan: any) => {
+    const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
+    if (challanNumber) return `number:${challanNumber}`;
+
+    const challanDate = String(challan?.challan_date_time || challan?.challan_date || '').trim();
+    const amount = String(challan?.amount ?? challan?.challan_amount ?? '').trim();
+    const status = normalizeChallanStatus(challan?.challan_status);
+    return `fallback:${challanDate}|${amount}|${status}`;
+  };
+
+  const deduped = new Map<string, any>();
+  challans.forEach((challan: any) => {
+    const key = getDedupKey(challan);
+    const existing = deduped.get(key);
+    deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
+  });
+
+  return Array.from(deduped.values());
+};
+
 // Helper function to extract challans from verificationData (legacy - used for old data structure)
 const getChallansFromVerificationData = (verificationData: any) => {
   const log = getLatestVehicleVerificationLog(verificationData);
@@ -438,15 +486,15 @@ const getChallansFromVerificationData = (verificationData: any) => {
     (f: any) => f.field === 'challan_details'
   );
 
-  return challanField?.value?.challan_details?.challans ?? [];
+  return dedupeChallans(challanField?.value?.challan_details?.challans ?? []);
 };
 // Legacy function - kept for backward compatibility
 export const getPendingChallans = (verificationData: any) => {
   const allChallans = getChallansFromVerificationData(verificationData);
   return allChallans.filter(
     (c: any) =>
-      c.challan_status &&
-      c.challan_status.toLowerCase() !== 'disposed'
+      c?.challan_status &&
+      !isDisposedChallanStatus(c.challan_status)
   );
 };
 
@@ -464,26 +512,26 @@ export const extractChallansFromVehicleChallans = (vehicleChallans: VehicleChall
   if (challanData?.data?.challan_details?.challans) {
     const challans = challanData.data.challan_details.challans;
     if (Array.isArray(challans)) {
-      return challans;
+      return dedupeChallans(challans);
     }
   }
   if (challanData?.data?.challan_data) {
     const challans = challanData.data.challan_data;
     if (Array.isArray(challans)) {
-      return challans;
+      return dedupeChallans(challans);
     }
   }
   if (challanData?.challan_details?.challans) {
     const challans = challanData.challan_details.challans;
     if (Array.isArray(challans)) {
-      return challans;
+      return dedupeChallans(challans);
     }
   }
   if (Array.isArray(challanData)) {
-    return challanData;
+    return dedupeChallans(challanData);
   }
   if (Array.isArray(challanData?.data)) {
-    return challanData.data;
+    return dedupeChallans(challanData.data);
   }
   
   return [];
@@ -513,19 +561,18 @@ export const getPendingChallansFromVehicleChallans = (
   const challanData = latestLog?.data?.data;
   if (!challanData) return [];
 
-  const challans =
+  const rawChallans =
     challanData?.challan_details?.challans ||
     challanData?.challan_data ||
     [];
 
-  if (!Array.isArray(challans)) return [];
+  if (!Array.isArray(rawChallans)) return [];
+  const challans = dedupeChallans(rawChallans);
 
   return challans.filter(
     (c: any) =>
       c?.challan_status &&
-      !['DISPOSED', 'PAID'].includes(
-        String(c.challan_status).toUpperCase()
-      )
+      !isDisposedChallanStatus(c.challan_status)
   );
 };
 

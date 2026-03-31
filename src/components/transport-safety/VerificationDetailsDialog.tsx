@@ -166,18 +166,60 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         const challanData = latestChallanSuccessLog?.data;
         if (!challanData) return [];
 
-        return (
+        const rawChallans =
             challanData?.challan_details?.challans ||
             challanData?.challan_data ||
-            []
-        );
+            [];
+
+        if (!Array.isArray(rawChallans)) return [];
+
+        const hasValue = (value: unknown) => {
+            if (value === null || value === undefined) return false;
+            if (Array.isArray(value)) return value.length > 0;
+            return String(value).trim() !== '';
+        };
+
+        const mergeChallan = (base: any, incoming: any) => {
+            const merged = { ...base };
+
+            Object.entries(incoming || {}).forEach(([key, value]) => {
+                const existing = (merged as any)[key];
+                if (!hasValue(existing) && hasValue(value)) {
+                    (merged as any)[key] = value;
+                }
+            });
+
+            return merged;
+        };
+
+        const getDedupKey = (challan: any) => {
+            const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
+            if (challanNumber) return `number:${challanNumber}`;
+
+            const challanDate = String(challan?.challan_date_time || challan?.challan_date || '').trim();
+            const amount = String(challan?.amount ?? challan?.challan_amount ?? '').trim();
+            const status = String(challan?.challan_status || '').trim().toUpperCase();
+            return `fallback:${challanDate}|${amount}|${status}`;
+        };
+
+        const deduped = new Map<string, any>();
+        rawChallans.forEach((challan: any) => {
+            const key = getDedupKey(challan);
+            const existing = deduped.get(key);
+            deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
+        });
+
+        return Array.from(deduped.values());
     }, [latestChallanSuccessLog]);
+    const normalizeChallanStatus = (status?: string) => (status || '').trim().toUpperCase();
+    const isDisposedStatus = (status?: string) =>
+        ['DISPOSED', 'PAID', 'CASH'].includes(normalizeChallanStatus(status));
     const disposedChallans = challanDetails.filter((c: any) =>
-        ['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
+        isDisposedStatus(c.challan_status)
     );
 
     const pendingChallans = challanDetails.filter((c: any) =>
-        !['DISPOSED', 'PAID'].includes(c.challan_status?.toUpperCase())
+        !isDisposedStatus(c.challan_status)
     );
 
     // Calculate total amounts
@@ -203,7 +245,9 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
         }, 0);
     }, [challanDetails]);
     const ChallanCard = ({ challan }: { challan: any }) => {
-        const isDisposed = ['DISPOSED', 'PAID'].includes(challan.challan_status?.toUpperCase());
+        const normalizedStatus = normalizeChallanStatus(challan.challan_status);
+        const isDisposed = isDisposedStatus(challan.challan_status);
+        const displayStatus = normalizedStatus === 'CASH' ? 'PAID' : (challan.challan_status || 'UNPAID');
         
         return (
             <div className={`p-4 rounded-lg border-2 transition-all ${
@@ -224,7 +268,7 @@ const VerificationDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
                                 ? 'bg-green-100 text-green-700 border border-green-300'
                                 : 'bg-orange-100 text-orange-700 border border-orange-300'
                         }`}>
-                            {challan.challan_status || 'UNPAID'}
+                            {displayStatus}
                         </span>
                     </div>
 
