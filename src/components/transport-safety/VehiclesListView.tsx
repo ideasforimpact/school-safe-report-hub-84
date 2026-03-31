@@ -160,7 +160,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   <TableCell>
                     <div className="flex items-center text-left">
                       <div className="text-left">
-                        <div className="font-medium text-left">{vehicle.model || (getLatestVerificationFieldValue(vehicle, 'maker_model') as string) || '-'}</div>
+                        <div className="font-medium text-left">{vehicle.internalVehicleName || '-'}</div>
                       </div>
                     </div>
                   </TableCell>
