@@ -294,7 +294,7 @@ const Login = () => {
               </Button>
               
               {/* Enhanced Microsoft SSO button */}
-              <Button 
+              {/* <Button 
                 type="button" 
                 variant="outline" 
                 className="w-full flex items-center gap-3 justify-center bg-slate-800/95 hover:bg-slate-800 backdrop-blur-sm border border-slate-600/40 text-white shadow-lg shadow-slate-400/15 transition-all transform hover:scale-[1.02] hover:shadow-xl hover:shadow-slate-400/25 py-6 rounded-xl"
@@ -308,10 +308,10 @@ const Login = () => {
                   <path d="M20.5 12.5H12.5V20.5H20.5V12.5Z" fill="white"/>
                 </svg>
                 <span className="text-base font-medium">{microsoftLoading ? "Connecting..." : "Sign in with Microsoft"}</span>
-              </Button>
+              </Button> */}
               
               {/* Enhanced Zoho SSO button */}
-              <Button 
+              {/* <Button 
                 type="button" 
                 variant="outline" 
                 className="w-full flex items-center gap-3 justify-center bg-teal-500/95 hover:bg-teal-600/95 backdrop-blur-sm border border-teal-300/40 text-white shadow-lg shadow-teal-200/15 transition-all transform hover:scale-[1.02] hover:shadow-xl hover:shadow-teal-200/25 py-6 rounded-xl"
@@ -320,7 +320,7 @@ const Login = () => {
               >
                 <LogIn className="h-5 w-5" />
                 <span className="text-base font-medium">{zohoLoading ? "Connecting..." : "Sign in with Zoho"}</span>
-              </Button>
+              </Button> */}
             </div>
           </CardContent>
         </Card>
