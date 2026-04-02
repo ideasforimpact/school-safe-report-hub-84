@@ -776,6 +776,30 @@ const ComplianceDocumentsPage: React.FC = () => {
     // Clear any previous error messages
     setUploadError(null);
 
+    // Validation: block MP3 and all video uploads
+    const blockedVideoExtensions = new Set([
+      'mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'm4v', '3gp', 'mpeg', 'mpg',
+    ]);
+    const blockedFiles = files.filter((file) => {
+      const mimeType = (file.type || '').toLowerCase();
+      const extension = (file.name.split('.').pop() || '').toLowerCase();
+      const isMp3 = mimeType === 'audio/mpeg' || extension === 'mp3';
+      const isVideo = mimeType.startsWith('video/') || blockedVideoExtensions.has(extension);
+      return isMp3 || isVideo;
+    });
+    if (blockedFiles.length > 0) {
+      const blockedNames = blockedFiles.map((f) => f.name).join(', ');
+      const errorMessage = `MP3 and video files are not allowed: ${blockedNames}`;
+      setUploadError(errorMessage);
+      toast({
+        title: 'Unsupported file type',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      (e.target as HTMLInputElement).value = '';
+      return;
+    }
+
     // Validation: limit total files per upload
     if (files.length > 25) {
       toast({ title: 'Too many files', description: 'You can upload a maximum of 25 files at a time.' });
