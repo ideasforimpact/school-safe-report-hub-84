@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   Search,
   Loader2,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   fetchChildAuditStudents,
   type ChildAuditStudentRow,
@@ -561,6 +563,11 @@ const ChildAuditPage = () => {
   }, [students, search]);
 
   const recentRecord = records[0];
+  const selectedCheckTypeRecord = useMemo(
+    () => records.find((record) => record.check_type_id === selectedCheckType) ?? null,
+    [records, selectedCheckType]
+  );
+  const savedAttachments = selectedCheckTypeRecord?.attachments ?? [];
 
   const calendarIndicators = useMemo(() => {
     const month = calendarMonth;
@@ -1263,6 +1270,35 @@ const diagnostics = {
                     <CardTitle className="text-xl">Attachments</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {savedAttachments.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <div className="space-y-2">
+                          {savedAttachments.map((attachment) => {
+                            const publicUrl = supabase.storage
+                              .from(attachment.bucket)
+                              .getPublicUrl(attachment.file_path).data.publicUrl;
+                            return (
+                              <div
+                                key={attachment.id}
+                                className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                              >
+                                <span className="truncate text-sm text-slate-700">{attachment.file_name}</span>
+                                <a
+                                  href={publicUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 hover:text-blue-700"
+                                  aria-label={`View ${attachment.file_name}`}
+                                  title="View document"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <ReusableFileUploader
                       key={`${selectedStudent.id}-${attachmentUploaderKey}`}
                       onFilesChange={setAttachments}

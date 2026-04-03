@@ -28,13 +28,26 @@ export type ChildAuditRecord = {
   meltdown_definition: string[];
   aggression_ids: string[];
   notes: string | null;
+  attachments: ChildAuditRecordAttachment[];
   created_at: string;
   updated_at: string;
 };
 
+export type ChildAuditRecordAttachment = {
+  id: string;
+  record_id: string;
+  client_id: string;
+  bucket: string;
+  file_path: string;
+  file_name: string;
+  mime_type: string | null;
+  file_size: number | null;
+  created_at: string;
+};
+
 export type CreateChildAuditRecordPayload = Omit<
   ChildAuditRecord,
-  'id' | 'created_at' | 'updated_at'
+  'id' | 'created_at' | 'updated_at' | 'attachments'
 > & {
   physical_where?: Record<string, string[]>;
   meltdown_definition?: string[];
@@ -112,6 +125,21 @@ export async function fetchChildAuditRecordsByStudent(
     locationsByItem.set(row.record_item_id, list);
   }
 
+  const { data: attachmentsData, error: attachmentsError } = await (supabase as any)
+    .from('child_audit_record_attachment')
+    .select('id, record_id, client_id, bucket, file_path, file_name, mime_type, file_size, created_at')
+    .in('record_id', recordIds)
+    .order('created_at', { ascending: true });
+
+  if (attachmentsError) throw new Error(attachmentsError.message);
+
+  const attachmentsByRecord = new Map<string, ChildAuditRecordAttachment[]>();
+  for (const row of (attachmentsData ?? []) as Array<ChildAuditRecordAttachment>) {
+    const list = attachmentsByRecord.get(row.record_id) ?? [];
+    list.push(row);
+    attachmentsByRecord.set(row.record_id, list);
+  }
+
   return records.map((row) => {
     const selected = byRecord.get(row.id) ?? [];
     const physical = selected
@@ -159,6 +187,7 @@ export async function fetchChildAuditRecordsByStudent(
       meltdown_definition,
       aggression_ids: aggression,
       notes: row.notes ?? null,
+      attachments: attachmentsByRecord.get(row.id) ?? [],
       created_at: row.submission_time ?? row.created_at,
       updated_at: row.updated_at ?? row.created_at,
     } as ChildAuditRecord;
