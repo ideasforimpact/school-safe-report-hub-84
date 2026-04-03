@@ -14,6 +14,7 @@ import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { useFilterOptions } from '@/hooks/filters/useFilterOptions';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import Loader from '@/components/common/Loader';
 
 interface PaginationInfo {
   currentPage: number;
@@ -43,6 +44,8 @@ const IncidentsList = () => {
   // Currently displayed incidents (client-side pagination slice)
   const [displayedIncidents, setDisplayedIncidents] = useState<IncidentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLoader, setShowLoader] = useState(true);
+  const [hasFetched, setHasFetched] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     totalPages: 0,
@@ -77,6 +80,12 @@ const IncidentsList = () => {
     subcategoryOptions: dbSubcategoryOptions,
     locationOptions: dbLocationOptions 
   } = useFilterOptions();
+
+  useEffect(() => {
+    if (!loading) {
+      setTimeout(() => setShowLoader(false), 300);
+    }
+  }, [loading]);
 
   // Check admin access
   const isSuperAdmin = isEmployeeSuperAdmin(employeeState);
@@ -136,6 +145,7 @@ const IncidentsList = () => {
   ) => {
     try {
       setLoading(true);
+      setHasFetched(false);
       console.log(`🔄 Fetching ALL incidents with filters (EAGER LOADING):`, serverFilters);
 
       // Get client ID
@@ -219,6 +229,7 @@ const IncidentsList = () => {
       }
     } finally {
       setLoading(false);
+      setHasFetched(true);
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email, employeeState.employeeData, authEmployeeData, hasIncidentAdmin, pagination.pageSize, applyClientSidePagination]);
 
@@ -336,6 +347,16 @@ const incidentAnalyticsStats = useMemo(() => {
     onPayload: handleIncidentsRealtime,
   });
 
+  if (showLoader) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader text="Loading incidents..." />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6 p-6 w-full">
@@ -385,6 +406,7 @@ const incidentAnalyticsStats = useMemo(() => {
           <LazyIncidentsTable 
             incidents={displayedIncidents} 
             loading={loading}
+            hasFetched={hasFetched}
             pagination={pagination}
             onPageChange={goToPage}
             onPageSizeChange={changePageSize}

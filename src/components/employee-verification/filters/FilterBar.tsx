@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import SearchFilter from '@/components/incidents/filters/SearchFilter';
 import DocumentStatusFilter from './DocumentStatusFilter';
 import EmployeeDocumentTypeFilter from './EmployeeDocumentTypeFilter';
+import DepartmentFilter from './DepartmentFilter';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 
 interface FilterBarProps {
@@ -14,6 +17,9 @@ interface FilterBarProps {
   onClearFilters: () => void;
   documentTypeFilter: string;
   onDocumentTypeChange: (value: string) => void;
+  departmentFilter: string;
+  onDepartmentChange: (value: string) => void;
+  departments: string[];
   resultCount: number;
   totalCount: number;
 }
@@ -27,12 +33,54 @@ const FilterBar: React.FC<FilterBarProps> = ({
   resultCount,
   documentTypeFilter,
   onDocumentTypeChange,
+  departmentFilter,
+  onDepartmentChange,
+  departments,
   totalCount
 }) => {
- const hasActiveFilters =
-    searchTerm ||
-    documentStatusFilter !== 'all' ||
-    documentTypeFilter !== 'all';
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
+
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employee_departments' as any)
+        .select('id, department_name')
+        .order('department_name', { ascending: true });
+
+      if (error) throw error;
+
+      const names = (data || [])
+        .map((item: any) => item.department_name)
+        .filter((name: string | null) => Boolean(name));
+
+      setDepartmentOptions(names);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+      toast.error('Failed to load departments');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, [fetchDepartments]);
+
+  const allDepartments = useMemo(() => {
+    const uniqueDepartments = new Set([...departmentOptions, ...departments]);
+    return Array.from(uniqueDepartments).sort((a, b) => a.localeCompare(b));
+  }, [departmentOptions, departments]);
+
+ const activeFilterCount = [
+    searchTerm,
+    documentStatusFilter !== 'all' ? documentStatusFilter : '',
+    documentTypeFilter !== 'all' ? documentTypeFilter : '',
+    departmentFilter !== 'all' ? departmentFilter : ''
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   return (
     <div className="space-y-4 mb-6">
@@ -49,7 +97,11 @@ const FilterBar: React.FC<FilterBarProps> = ({
           value={documentTypeFilter}
           onChange={onDocumentTypeChange}
         />
-        
+        <DepartmentFilter
+          value={departmentFilter}
+          onChange={onDepartmentChange}
+          departments={allDepartments}
+        />
         <DocumentStatusFilter
           value={documentStatusFilter}
           onChange={onDocumentStatusChange}
@@ -63,7 +115,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             className="flex items-center gap-1"
           >
             <X className="h-4 w-4" />
-            Clear Filters
+            Clear Filters ({activeFilterCount})
           </Button>
         )}
       </div>

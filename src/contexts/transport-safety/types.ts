@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 export interface TransportSafetyContextType {
   vehicles: Vehicle[];
   loading: boolean;
+  hasFetched: boolean;
   error: string | null;
   addVehicle: (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>) => void;
   updateVehicle: (id: string, updates: Partial<Vehicle>) => void;

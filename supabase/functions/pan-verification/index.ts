@@ -1,6 +1,8 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { logVerificationError, logVerificationSuccess } from "../_shared/verificationAuditlog.ts";
+import { recordEmployeeVerificationApiCall } from "../_shared/employeeVerificationApiCalls.ts";
 
 // CORS headers setup
 const corsHeaders = {
@@ -142,7 +144,21 @@ serve(async (req) => {
     // Get existing logs or initialize empty array
     const existingLogs = document?.employee_docs_log || [];
     const employeeId = document.employee_id;
-    const documentTypeId = document?.document_type_id;
+    let documentTypeId = document?.document_type_id;
+    if (!documentTypeId) {
+      console.warn("PAN verification: document_type_id missing for document", { documentId, fallback: "employee_document_type.name=PAN" });
+      const { data: panType, error: panTypeError } = await supabase
+        .from("employee_document_type")
+        .select("id")
+        .eq("name", "PAN")
+        .single();
+
+      if (!panTypeError && panType?.id) {
+        documentTypeId = panType.id;
+      } else {
+        console.warn("PAN verification: unable to resolve document_type_id for PAN", { panTypeError });
+      }
+    }
     // Handle API verification using Surepass - NEW BEHAVIOR
     if (action === 'apiVerify') {
       if (!documentNumber) {
@@ -152,6 +168,23 @@ serve(async (req) => {
         );
       }
       
+      let apiResponseParsed = false;
+      const safeRecord = async (isSuccess: boolean) => {
+        try {
+          await recordEmployeeVerificationApiCall({
+            supabase,
+            employeeId,
+            documentId,
+            documentTypeId: documentTypeId ?? null,
+            provider: "surepass",
+            primaryProvider: "surepass",
+            isMultiple: false,
+            isSuccess,
+          });
+        } catch (e) {
+          console.error("PAN API call counter record failed:", e);
+        }
+      };
       try {
         console.log("Making request to Surepass API to verify PAN with base URL:", baseUrl);
         
@@ -166,6 +199,7 @@ serve(async (req) => {
         });
         
         const data = await response.json();
+        apiResponseParsed = true;
         console.log("Surepass API response:", JSON.stringify(data));
         
         // Create an API log entry with timestamp
@@ -178,6 +212,9 @@ serve(async (req) => {
         // NEW BEHAVIOR: Always store API response and keep status as pending
         // Only set to failed if API call completely failed
         if (data.success && data.status_code === 200) {
+          // Record API-call counter (success++)
+          await safeRecord(true);
+
           // Extract personal_info from API response data
           const apiData = data?.data || {};
           let personalInfo: { dob?: string; address?: string } | null = null;
@@ -288,6 +325,9 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
+          // Record API-call counter (failed++)
+          await safeRecord(false);
+
           // API Failure: in-progress only when message does NOT match known errors
           const apiLogEntry = {
             timestamp: new Date().toISOString(),
@@ -367,7 +407,12 @@ serve(async (req) => {
       } catch (error) {
         console.error("Error verifying PAN with Surepass API:", error);
         
-        // API call failed completely - store error but keep status pending for review
+        // Only increment failed count when we could not even parse the Surepass response.
+        // If parsing succeeded but later DB/logging fails, we do NOT want to count it as an API failure.
+        if (!apiResponseParsed) {
+          await safeRecord(false);
+        }
+
         await supabase
           .from('employee_documents')
           .update({

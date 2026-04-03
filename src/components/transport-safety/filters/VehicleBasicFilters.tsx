@@ -44,7 +44,6 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
     <>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center">
-          <Filter className="h-4 w-4 mr-2 text-gray-500" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[130px] h-10">
               <SelectValue placeholder="Status" />
@@ -83,17 +82,7 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
 
        
         
-        {activeFiltersCount > 0 && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={clearAllFilters}
-            className="h-10 text-xs flex items-center gap-1"
-          >
-            <X className="h-4 w-4 mr-1" />
-            Clear filters
-          </Button>
-        )}
+        
       </div>
 
       <div className="flex flex-wrap items-center gap-4 mt-2">
@@ -135,6 +124,17 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             <span>{documentStatusFilters.expiring_soon ? 'Any Expiring Soon' : 'Expiring Soon'}</span>
           </Label>
         </div>
+        {activeFiltersCount > 0 && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={clearAllFilters}
+            className="h-10 text-xs flex items-center gap-1"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear Filters ({activeFiltersCount})
+          </Button>
+        )}
       </div>
     </>
   );

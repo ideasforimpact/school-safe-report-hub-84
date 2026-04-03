@@ -5,29 +5,34 @@ import { useAuth } from '@/contexts/auth';
 import { useClientIntegrationEnabled } from '@/hooks/useClientIntegrationEnabled';
 import { supabase } from '@/integrations/supabase/client';
 import { Student } from '@/types/student';
-
+ 
 export interface StudentOption {
   id: string;
   name: string;
   student_id?: string;
   section_id?: string | null;
   grade_id?: string | null;
+  section_name?: string | null;
+  grade_name?: string | null;
+  is_external?: boolean;
 }
-
+ 
 interface StudentSearchSelectProps {
   value: StudentOption | null;
   onChange: (student: StudentOption | null) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  refreshKey?: number;
 }
-
+ 
 export function StudentSearchSelect({
   value,
   onChange,
   placeholder = 'Select student...',
   disabled = false,
   className = '',
+  refreshKey,
 }: StudentSearchSelectProps) {
   const { employeeData } = useAuth();
   const { isIntegrationEnabled } = useClientIntegrationEnabled();
@@ -41,9 +46,9 @@ export function StudentSearchSelect({
   const containerRef = useRef<HTMLDivElement>(null);
   /** When integration is off: only open dropdown after user clicks the input, not on auto-focus when dialog opens */
   const userClickedInputRef = useRef(false);
-
+ 
   const clientId = employeeData?.clientId;
-
+ 
   const fetchStudents = useCallback(async () => {
     if (isIntegrationEnabled || !clientId) {
       setFetchedStudents([]);
@@ -77,11 +82,11 @@ export function StudentSearchSelect({
       setIsLoadingStudents(false);
     }
   }, [clientId, isIntegrationEnabled]);
-
+ 
   useEffect(() => {
     fetchStudents();
-  }, [fetchStudents]);
-
+  }, [refreshKey, fetchStudents]);
+ 
   const searchStudentsAPI = useCallback(async (term: string): Promise<StudentOption[]> => {
     if (!term || term.length < 3 || !clientId) return [];
     try {
@@ -105,13 +110,16 @@ export function StudentSearchSelect({
         student_id: s.student_id,
         section_id: s.section_id ?? null,
         grade_id: s.grade_id ?? null,
+        section_name: s.sections?.name ?? null,
+        grade_name: s.grades?.name ?? null,
+        is_external: s.is_external === true,
       }));
     } catch (e) {
       console.error(e);
       return [];
     }
   }, [clientId]);
-
+ 
   useEffect(() => {
     if (!open) return;
     if (timeoutRef.current) {
@@ -143,6 +151,9 @@ export function StudentSearchSelect({
             student_id: s.studentId,
             section_id: s.section_id ?? null,
             grade_id: s.grade_id ?? null,
+            section_name: s.section ?? null,
+            grade_name: s.grade ?? null,
+            is_external: false,
           }))
         );
       } else {
@@ -159,6 +170,9 @@ export function StudentSearchSelect({
             student_id: s.studentId,
             section_id: s.section_id ?? null,
             grade_id: s.grade_id ?? null,
+            section_name: s.section ?? null,
+            grade_name: s.grade ?? null,
+            is_external: false,
           }))
         );
       }
@@ -174,7 +188,9 @@ export function StudentSearchSelect({
   }, []);
 
   const displayValue = value
-    ? (value.student_id ? `${value.name} (${value.student_id})` : value.name)
+    ? (value.student_id
+        ? `${value.name || value.student_id} (${value.student_id})`
+        : (value.name || ''))
     : '';
 
   const options = open ? searchResults : [];

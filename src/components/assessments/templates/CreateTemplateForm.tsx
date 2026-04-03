@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import { AssessmentQuestion, QuestionFile } from '@/types/assessment';
 import { templateService } from '@/services/assessment/templateService';
 import { FileItem } from '@/types/fileTypes';
+import { supabase } from '@/integrations/supabase/client';
+import Loader from "@/components/common/Loader";
 
 interface CreateTemplateFormProps {
   templateId?: string;
@@ -31,13 +33,13 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState('Safety');
+  const [type, setType] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const typeRef = React.useRef<HTMLButtonElement | null>(null);
   // Pending files state - maps question IDs to their pending files
   const [pendingFiles, setPendingFiles] = useState<Record<string, Array<{
     id: string;
@@ -49,28 +51,62 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   }>>>({});
 
   // Load existing template data if in edit mode
+ const template = getTemplateById(templateId);
+
   useEffect(() => {
-    if (isEditMode && templateId) {
+    if (!isEditMode || !templateId) return;
+    if (!template) return; 
+
+    let isMounted = true;
+
+    const initializeEditForm = async () => {
       setLoading(true);
-      const template = getTemplateById(templateId);
-      if (template) {
-        setTitle(template.title);
-        setDescription(template.description);
-        setType(template.type);
-        setIsActive(template.isActive);
-        // Ensure all questions have IDs
-        const questionsWithIds = template.questions.map((q, index) => ({
-          ...q,
-          id: q.id || `temp_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`
-        }));
-        setQuestions(questionsWithIds);
+      setTitle(template.title);
+      setDescription(template.description);
+      setIsActive(template.isActive);
+
+      const normalizedType = (template.type || '').trim();
+      const hasKnownType = normalizedType && normalizedType.toLowerCase() !== 'unknown';
+
+      if (hasKnownType) {
+        setType(normalizedType);
+      } else if (template.category_id) {
+        const { data, error } = await supabase
+          .from('template_categories')
+          .select('name')
+          .eq('id', template.category_id)
+          .maybeSingle();
+
+        if (!error && data?.name && isMounted) {
+          setType(data.name);
+        } else if (isMounted) {
+          setType('');
+        }
       } else {
-        setFormError('Template not found');
-        toast.error('Template not found');
+        setType('');
       }
-      setLoading(false);
-    }
-  }, [isEditMode, templateId, getTemplateById]);
+
+      const questionsWithIds = template.questions.map((q, index) => ({
+        ...q,
+        id:
+          q.id ||
+          `temp_${Date.now()}_${index}_${Math.random()
+            .toString(36)
+            .substring(2, 9)}`
+      }));
+
+      if (isMounted) {
+        setQuestions(questionsWithIds);
+        setLoading(false);
+      }
+    };
+
+    initializeEditForm();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [template, isEditMode, templateId]);
 
   // Ensure all questions always have IDs (only run once on mount or when questions change significantly)
   useEffect(() => {
@@ -131,6 +167,12 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
     const isValidTemplateTitle = /^[a-zA-Z0-9\s]{1,25}$/.test(title.trim());
     if (!isValidTemplateTitle) {
       setFormError('Template title can only contain letters, numbers, and spaces');
+      return false;
+    }
+
+    if (!type) {
+      setFormError('Assessment type is required');
+      typeRef.current?.focus();
       return false;
     }
     
@@ -321,11 +363,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-6">
-        <div className="flex items-center justify-center p-8">
-          <Loader className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading template...</span>
-        </div>
+      <div className="max-w-4xl mx-auto py-6">        
+        <Loader text="Loading templates..." />        
       </div>
     );
   }
@@ -366,6 +405,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           setType={setType}
           isActive={isActive}
           setIsActive={setIsActive}
+          typeRef={typeRef}
         />
         
         <QuestionsSection

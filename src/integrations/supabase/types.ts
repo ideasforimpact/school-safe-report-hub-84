@@ -325,6 +325,260 @@ export type Database = {
           },
         ]
       }
+      child_audit_aggression: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      child_audit_behaviour: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      child_audit_meltdown: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      child_audit_physical_condition: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      child_audit_record_audit_log: {
+        Row: {
+          change_type: string
+          changed_at: string
+          changed_by: string
+          changes: Json
+          client_id: string | null
+          created_at: string
+          description: string | null
+          field_changed: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          record_id: string | null
+        }
+        Insert: {
+          change_type?: string
+          changed_at?: string
+          changed_by: string
+          changes?: Json
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          field_changed: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          record_id?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_at?: string
+          changed_by?: string
+          changes?: Json
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          field_changed?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          record_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_audit_record_audit_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_audit_record_audit_log_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "child_audit_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      child_audit_records: {
+        Row: {
+          aggression_ids: string[]
+          behaviour_ids: string[]
+          check_type_id: string | null
+          client_id: string
+          created_at: string
+          employee_id: string | null
+          id: string
+          meltdown_occurred: boolean
+          notes: string | null
+          physical_condition_ids: string[]
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          aggression_ids?: string[]
+          behaviour_ids?: string[]
+          check_type_id?: string | null
+          client_id: string
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          meltdown_occurred?: boolean
+          notes?: string | null
+          physical_condition_ids?: string[]
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          aggression_ids?: string[]
+          behaviour_ids?: string[]
+          check_type_id?: string | null
+          client_id?: string
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          meltdown_occurred?: boolean
+          notes?: string | null
+          physical_condition_ids?: string[]
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "child_audit_records_check_type_id_fkey"
+            columns: ["check_type_id"]
+            isOneToOne: false
+            referencedRelation: "child_check_type"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_audit_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_audit_records_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "child_audit_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      child_check_type: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_modules: {
         Row: {
           access_level: Json

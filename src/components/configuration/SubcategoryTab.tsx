@@ -28,6 +28,7 @@ import { EditDialog } from './EditDialog';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Loader from '../common/Loader';
 
 // Validation: allow any characters, up to 50 characters
 const isValidSubcategoryName = (name: string) => {
@@ -282,11 +283,8 @@ export const SubcategoryTab = ({
             <TableBody>
               {isRefreshing ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center py-4">
-                    <div className="flex items-center justify-center space-x-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-gray-500">Refreshing data...</span>
-                    </div>
+                  <TableCell colSpan={2} className="text-center py-4">                    
+                    <Loader text="Refreshing data..." />                    
                   </TableCell>
                 </TableRow>
               ) : currentSubcategories.length === 0 ? (

@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/Dateformat';
 import { formatSupabaseUrl } from '@/types/fileTypes';
+import Loader from '../common/Loader';
 
 interface VisitorDetailDialogProps {
   open: boolean;
@@ -161,12 +162,7 @@ const VisitorDetailDialog: React.FC<VisitorDetailDialogProps> = ({
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-gray-500">Loading visitor details...</p>
-            </div>
-          </div>
+          <Loader text="Loading visitor details..." />
         ) : visitor ? (
           <div className="flex flex-col h-full">
             <Tabs defaultValue="kyc" className="w-full">

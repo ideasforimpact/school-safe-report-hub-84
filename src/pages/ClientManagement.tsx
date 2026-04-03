@@ -2,6 +2,7 @@
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -15,9 +16,11 @@ import ClientList from '@/components/clients/ClientList';
 import ClientDialog from '@/components/backoffice/ClientDialog';
 import ClientStatusFilter from '@/components/clients/ClientStatusFilter';
 import { Loader2 } from 'lucide-react';
+import Loader from '@/components/common/Loader';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const {
     clients,
     loading,
@@ -73,12 +76,15 @@ const ClientManagement = () => {
             
             {loading ? (
               <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <span className="ml-2">Loading clients...</span>
+                <Loader text="Loading clients..." />
               </div>
             ) : (
               <ClientList 
                 clients={clients}
+                onViewApiCalls={(client) =>
+                  navigate(`/backoffice/clients/${client.id}/api-calls`, {
+                    state: { clientName: client.name },
+                  })}
                 onEditClick={handleEditClick}
                 onDeleteClient={handleDeleteClient}
               />

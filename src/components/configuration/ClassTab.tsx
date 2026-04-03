@@ -95,9 +95,9 @@ export const ClassTab = ({
     };
   }, [classes, employeeData]);
 
-  // Validation: allow any characters, max 50 length
+  // Validation: allow any characters, max 10 length
   const isValidGradeName = (name: string) => {
-    const nameRegex = /^.{1,50}$/;
+    const nameRegex = /^.{1,10}$/;
     return nameRegex.test(name);
   };
 
@@ -121,7 +121,7 @@ export const ClassTab = ({
     }
     
     if (!isValidGradeName(gradeName)) {
-      toast.error("Grade name can be up to 50 characters");
+      toast.error("Grade name can be up to 10 characters");
       return;
     }
     
@@ -186,7 +186,7 @@ export const ClassTab = ({
     }
     
     if (!isValidGradeName(gradeName)) {
-      toast.error("Grade name can only contain letters, numbers, and spaces (max 20 characters)");
+      toast.error("Grade name can be up to 10 characters");
       return;
     }
     
@@ -293,11 +293,11 @@ export const ClassTab = ({
               placeholder="New grade name (e.g., Grade 5)"
               value={newClass}
               onChange={(e) => setNewClass(e.target.value)}
-              maxLength={50}
+              maxLength={10}
               className={newClass && !isValidGradeName(newClass) ? 'border-red-500' : ''}
             />
             {newClass && !isValidGradeName(newClass) && (
-              <p className="text-xs text-red-500 mt-1">Grade name can be up to 50 characters</p>
+              <p className="text-xs text-red-500 mt-1">Grade name can be up to 10 characters</p>
             )}
             {newClass && selectedCampusId && isDuplicateGradeName(newClass, selectedCampusId) && (
               <p className="text-xs text-red-500 mt-1">A grade with this name already exists in the selected campus</p>
@@ -543,9 +543,9 @@ export const ClassTab = ({
             }}
             onSave={handleEditSave}
             onClose={handleEditClose}
-            maxLength={50}
+            maxLength={10}
             validationFunction={isValidGradeName}
-            validationMessage="Grade name can be up to 50 characters"
+            validationMessage="Grade name can be up to 10 characters"
             isRequired={true}
             extraFields={[
               {

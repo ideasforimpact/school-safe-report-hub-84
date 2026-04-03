@@ -9,8 +9,9 @@ import { Separator } from '@/components/ui/separator';
 import { FileItem } from '@/types/fileTypes';
 import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 import AssignmentSection from './sections/AssignmentSection';
-import DragDropFileUpload from '@/components/file/DragDropFileUpload';
+import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
+import Loader from '../common/Loader';
 
 interface IncidentDetailsFormProps {
   formData: any;
@@ -48,7 +49,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
     return (
       <Card className="border-none shadow-none bg-white">
         <CardContent className="space-y-6 p-6">
-          <div className="text-center py-8">Loading form configuration...</div>
+          
+            <Loader text="Loading form configuration..." />
+          
         </CardContent>
       </Card>
     );
@@ -243,13 +246,17 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           onSelectChange={onSelectChange}
         />
 
-        {/* Supporting Files - Updated to use DragDropFileUpload */}
+        {/* Supporting Files */}
         <div className="space-y-4">
           <Label className="text-sm font-medium text-gray-700">Supporting Files</Label>
-          <DragDropFileUpload
+          <ReusableFileUploader
             onFilesChange={onFilesChange}
             initialFiles={supportingFiles}
             maxFiles={5}
+            maxSize={10}
+            maxTotalSize={50}
+            allowedTypes={['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']}
+            accept=".pdf,.jpg,.jpeg,.png"
             className="w-full"
           />
         </div>

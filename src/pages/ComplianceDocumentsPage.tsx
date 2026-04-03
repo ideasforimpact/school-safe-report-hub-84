@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck } from 'lucide-react';
+import { Plus, FolderPlus, Folder, File, ArrowLeft, Loader2, MoreVertical, Download, Trash2, Home, ChevronRight, AlertCircle, CalendarIcon ,CheckCircle, XCircle, Search, Filter, ShieldCheck, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -26,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
+import Loader from '@/components/common/Loader';
 const ComplianceDocumentsPage: React.FC = () => {
   const { user } = useAuth();
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
@@ -85,6 +86,13 @@ const ComplianceDocumentsPage: React.FC = () => {
     folder_id: string;
     name: string;
   } | null>(null);
+
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm?.trim() ? 'search' : '',
+    statusFilter !== 'all' ? 'status' : '',
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
    const clearAllFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
@@ -768,6 +776,30 @@ const ComplianceDocumentsPage: React.FC = () => {
     // Clear any previous error messages
     setUploadError(null);
 
+    // Validation: block MP3 and all video uploads
+    const blockedVideoExtensions = new Set([
+      'mp4', 'mov', 'avi', 'mkv', 'webm', 'flv', 'wmv', 'm4v', '3gp', 'mpeg', 'mpg',
+    ]);
+    const blockedFiles = files.filter((file) => {
+      const mimeType = (file.type || '').toLowerCase();
+      const extension = (file.name.split('.').pop() || '').toLowerCase();
+      const isMp3 = mimeType === 'audio/mpeg' || extension === 'mp3';
+      const isVideo = mimeType.startsWith('video/') || blockedVideoExtensions.has(extension);
+      return isMp3 || isVideo;
+    });
+    if (blockedFiles.length > 0) {
+      const blockedNames = blockedFiles.map((f) => f.name).join(', ');
+      const errorMessage = `MP3 and video files are not allowed: ${blockedNames}`;
+      setUploadError(errorMessage);
+      toast({
+        title: 'Unsupported file type',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      (e.target as HTMLInputElement).value = '';
+      return;
+    }
+
     // Validation: limit total files per upload
     if (files.length > 25) {
       toast({ title: 'Too many files', description: 'You can upload a maximum of 25 files at a time.' });
@@ -1213,14 +1245,16 @@ const ComplianceDocumentsPage: React.FC = () => {
                   <SelectItem value="expired">Invalid</SelectItem>
                 </SelectContent>
               </Select>
+              {hasActiveFilters && (
                <Button
                 variant="outline"
                 onClick={clearAllFilters}
                 className="flex items-center gap-2"
               >
-                <Filter className="h-4 w-4" />
-                Clear Filters
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
               </Button>
+              )}
             </div>
           {/* Error Message Alert */}
           {uploadError && (
@@ -1514,9 +1548,8 @@ const ComplianceDocumentsPage: React.FC = () => {
           </AlertDialog>
           {loading && (
             <div className="mt-4 sm:mt-6 flex items-center justify-center py-8 sm:py-10">
-              <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
-              <span className="text-xs sm:text-sm text-gray-600">Loading...</span>
-          </div>
+              <Loader text="Loading compliance documents..." />
+            </div>
           )}
         </div>
       </div>
@@ -1610,29 +1643,25 @@ const ComplianceDocumentsPage: React.FC = () => {
 
             {validityMode === "date" && (
               <div>
-
-                <div className="flex flex-col mt-4 items-center justify-center ">
-                  <Calendar
-                  className='border-2 rounded-sm '
-                    mode="single"
-                    selected={validityDate}
-                    onSelect={(date) => setValidityDate(date)}
-                    disabled={(date) => {
-                      const today = new Date();
-                      const startOfToday = new Date(
-                        today.getFullYear(),
-                        today.getMonth(),
-                        today.getDate()
+                <div className="flex flex-col mt-4 items-center justify-center">
+                  <Input
+                    type="date"
+                    value={
+                      validityDate
+                        ? validityDate.toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setValidityDate(
+                        value ? new Date(value) : undefined
                       );
-                      return date < startOfToday; 
                     }}
-                     classNames={{
-                        day_selected: "bg-secondary text-white",
-                      }}
-                    initialFocus
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-[190px]"
                   />
                 </div>
-                
+
                 <p className="text-md mt-3 text-center text-muted-foreground">
                   {validityDate
                     ? `Selected date: ${formatDisplayDate(validityDate)}`

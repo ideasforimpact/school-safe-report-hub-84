@@ -28,12 +28,18 @@ export interface StudentFollowUpEntry {
 
 export interface StudentWellbeingRecord {
   id: string;
-  student_id: string;
+  student_id: string | null;
   /** Human-readable student id from students table (e.g. STUD001). Use for display when present. */
   student_display_id?: string | null;
   student_name: string;
   section_id: string | null;
   grade_id: string | null;
+  is_external_student?: boolean;
+  external_student_involved?: {
+    student?: { id?: string | null; name?: string | null } | null;
+    grade?: { id?: string | null; name?: string | null } | null;
+    section?: { id?: string | null; name?: string | null } | null;
+  } | null;
   class: string;
   type_of_concern_id: string;
   concern: string;
@@ -100,9 +106,14 @@ export interface UpdateStudentWellbeingRecordPayload {
   id: string;
   client_id: string;
   employee_id: string;
-  student_id: string;
+  student_id?: string | null;
   section_id?: string | null;
   grade_id?: string | null;
+  student_name?: string | null;
+  section_name?: string | null;
+  grade_name?: string | null;
+  is_external_student?: boolean;
+  external_student_involved?: Record<string, unknown> | null;
   type_of_concern_id: string;
   date_of_observation: string;
   concern?: string | null;
@@ -123,9 +134,14 @@ export async function updateStudentWellbeingRecord(
       id: payload.id,
       client_id: payload.client_id,
       employee_id: payload.employee_id,
-      student_id: payload.student_id,
+      student_id: payload.student_id ?? null,
       section_id: payload.section_id ?? null,
       grade_id: payload.grade_id ?? null,
+      student_name: payload.student_name ?? null,
+      section_name: payload.section_name ?? null,
+      grade_name: payload.grade_name ?? null,
+      is_external_student: payload.is_external_student ?? false,
+      external_student_involved: payload.external_student_involved ?? null,
       type_of_concern_id: payload.type_of_concern_id,
       date_of_observation: payload.date_of_observation,
       concern: payload.concern ?? null,

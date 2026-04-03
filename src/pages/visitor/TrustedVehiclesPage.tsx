@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
-import { Car, ArrowLeft, Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Search } from 'lucide-react';
+import { Car, ArrowLeft, Plus, Eye, Pencil, Trash2, CheckCircle2, XCircle, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,6 +21,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 interface TrustedVehicle {
   id: string;
@@ -213,7 +214,13 @@ const TrustedVehiclesPage = () => {
     setDateRange(undefined);
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || dateRange;
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    dateRange?.from,
+    dateRange?.to,
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   const handleDeleteConfirm = async () => {
     if (!vehicleToDelete || !employeeData?.clientId) return;
@@ -323,7 +330,8 @@ const TrustedVehiclesPage = () => {
                   onClick={handleClearFilters}
                   className="flex items-center gap-1"
                 >
-                  Clear Filters
+                  <X className="h-4 w-4" />
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>
@@ -341,10 +349,7 @@ const TrustedVehiclesPage = () => {
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p className="text-gray-500">Loading trusted vehicles...</p>
-              </div>
+              <Loader text="Loading trusted vehicles..." />
             </div>
           ) : filteredVehicles.length === 0 ? (
           <div className="flex items-center justify-center py-12">

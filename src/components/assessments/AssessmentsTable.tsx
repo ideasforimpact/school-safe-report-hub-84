@@ -1,11 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, FileText, Calendar, Users, AlertCircle, Star, Filter, UserCheck } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Search, Eye, FileText, AlertCircle, Filter, UserCheck, Download, X } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,6 +25,9 @@ import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentViewDialog from './view/AssessmentViewDialog';
 import ReassignAssessmentDialog from './ReassignAssessmentDialog';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import jsPDF from 'jspdf';
+import JSZip from 'jszip';
+import Loader from '../common/Loader';
 
 interface AssessmentTemplate {
   questions: any;
@@ -61,11 +76,35 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
   const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const [selectedAssessmentIds, setSelectedAssessmentIds] = useState<number[]>([]);
+  const [downloadingBulkType, setDownloadingBulkType] = useState<'questions' | 'qa' | null>(null);
+  const [showDownloadNotice, setShowDownloadNotice] = useState(false);
+  const [pendingBulkDownloadType, setPendingBulkDownloadType] = useState<'questions' | 'qa' | null>(null);
+  const [downloadNoticeStats, setDownloadNoticeStats] = useState({ total: 0, unanswered: 0 });
   const [selectedAssessmentForReassign, setSelectedAssessmentForReassign] = useState<{
     id: number;
     assignedTo: string | null;
     assigneeName: string;
   } | null>(null);
+  const [isBulkBarPinned, setIsBulkBarPinned] = useState(false);
+  const [bulkBarPlaceholderHeight, setBulkBarPlaceholderHeight] = useState(0);
+  const [bulkBarFixedLeft, setBulkBarFixedLeft] = useState(0);
+  const [bulkBarFixedWidth, setBulkBarFixedWidth] = useState(0);
+  const bulkBarAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  // Count active filters
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    createdByFilter !== 'all' ? createdByFilter : '',
+    assignedToFilter !== 'all' ? assignedToFilter : '',
+    targetDateFrom,
+    targetDateTo
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true; 
+  }).length;
 
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
@@ -347,6 +386,36 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    const headerOffset = 80;
+
+    if (selectedAssessmentIds.length === 0) {
+      setIsBulkBarPinned(false);
+      setBulkBarPlaceholderHeight(0);
+      return;
+    } 
+
+    const anchor = bulkBarAnchorRef.current;
+    if (!anchor) return;
+
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+
+      setBulkBarFixedLeft(rect.left);
+      setBulkBarFixedWidth(rect.width);
+      setBulkBarPlaceholderHeight(anchor.offsetHeight);
+      setIsBulkBarPinned(rect.top <= headerOffset);
+    };
+
+    updatePosition();
+
+    window.addEventListener('scroll', updatePosition, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [selectedAssessmentIds.length]);
+
   const clearAllFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
@@ -418,6 +487,229 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     fetchAssessments();
   };
 
+  const getAnswerForQuestion = (assessment: Assessment, questionId: string | undefined, questionIndex: number) => {
+    const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
+
+    if (questionId) {
+      const normalizedQuestionId = String(questionId);
+      const answerById = answers.find((answer: any) => String(answer?.questionId) === normalizedQuestionId);
+      if (answerById) return answerById;
+    }
+
+    const answerByIndex = answers.find((answer: any) => {
+      const answerId = String(answer?.questionId || '');
+      const match = answerId.match(/^question_(\d+)_/);
+      if (!match) return false;
+      return parseInt(match[1], 10) === questionIndex;
+    });
+
+    return answerByIndex;
+  };
+
+  const buildAssessmentPdf = (assessment: Assessment, includeAnswers: boolean) => {
+    const formatAnswer = (value: boolean | undefined) => {
+      if (value === true) return 'Yes';
+      if (value === false) return 'No';
+      return 'Not answered';
+    };
+
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 14;
+    const maxTextWidth = pageWidth - margin * 2;
+    const lineHeight = 6;
+    let cursorY = margin;
+
+    const ensureSpace = (requiredHeight: number) => {
+      if (cursorY + requiredHeight > pageHeight - margin) {
+        pdf.addPage();
+        cursorY = margin;
+      }
+    };
+
+    const addText = (text: string, fontSize = 11, style: 'normal' | 'bold' = 'normal') => {
+      pdf.setFont('helvetica', style);
+      pdf.setFontSize(fontSize);
+      const lines = pdf.splitTextToSize(text || '-', maxTextWidth);
+      ensureSpace(lines.length * lineHeight);
+      pdf.text(lines, margin, cursorY);
+      cursorY += lines.length * lineHeight;
+    };
+
+    const addGap = (size = 4) => {
+      cursorY += size;
+    };
+
+    const questions = Array.isArray(assessment.template?.questions) ? assessment.template?.questions : [];
+    const shouldIncludeAnswers =
+      includeAnswers && (assessment.status === 'Submitted' || assessment.status === 'Completed');
+
+    addText('Assessment', 16, 'bold');
+    addGap(1);
+    addText(`Name: ${assessment.name || '-'}`, 11, 'bold');
+    addGap(1);
+    if (assessment.target_completion_date) {
+      addText(`Due Date: ${formatDate(assessment.target_completion_date)}`, 10);
+    }
+    addGap(4);
+    addText(shouldIncludeAnswers ? 'Questions & Answers' : 'Questions Only', 12, 'bold');
+    addGap(2);
+
+    questions.forEach((question: any, index: number) => {
+      const answer = getAnswerForQuestion(assessment, question?.id, index);
+      const questionText = `${index + 1}. ${question?.text || 'Untitled question'}${question?.required ? ' *' : ''}`;
+      addText(questionText, 11, 'bold');
+      addGap(1);
+
+      if (shouldIncludeAnswers) {
+        addText(`Answer: ${formatAnswer(answer?.answer)}`, 10);
+        if (answer?.comment) {
+          addText(`Comment: ${answer.comment}`, 10);
+        }
+        if (Array.isArray(answer?.attachments) && answer.attachments.length > 0) {
+          const attachmentNames = answer.attachments
+            .map((attachment: any) => attachment?.name)
+            .filter(Boolean)
+            .join(', ');
+          addText(`Attachments: ${attachmentNames || `${answer.attachments.length} file(s)`}`, 10);
+        }
+      } else {
+        addText('Answer:', 10);
+      }
+
+      addGap(4);
+    });
+
+    const typeSuffix = includeAnswers && shouldIncludeAnswers ? 'questions_answers' : 'questions_only';
+    const sanitizedName = (assessment.name || `assessment_${assessment.assessment_id}`)
+      .replace(/[^a-z0-9]+/gi, '_')
+      .replace(/^_+|_+$/g, '')
+      .toLowerCase();
+
+    return {
+      fileName: `${sanitizedName || `assessment_${assessment.assessment_id}`}_${typeSuffix}.pdf`,
+      blob: pdf.output('blob'),
+    };
+  };
+
+  const triggerBrowserDownload = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const executeBulkDownload = async (includeAnswers: boolean) => {
+    if (selectedAssessmentIds.length === 0) {
+      toast.error('Please select at least one assessment');
+      return;
+    }
+
+    const selectedAssessments = assessments.filter((assessment) =>
+      selectedAssessmentIds.includes(assessment.assessment_id)
+    );
+
+    if (selectedAssessments.length === 0) {
+      toast.error('No valid assessments selected');
+      return;
+    }
+
+    setDownloadingBulkType(includeAnswers ? 'qa' : 'questions');
+    try {
+      if (includeAnswers) {
+        const withoutAnswerEligibleStatus = selectedAssessments.filter(
+          (assessment) => assessment.status !== 'Submitted' && assessment.status !== 'Completed'
+        );
+        if (withoutAnswerEligibleStatus.length > 0) {
+          toast.info(
+            `${withoutAnswerEligibleStatus.length} selected assessment(s) are not Submitted/Completed. Those will be downloaded as Questions Only.`
+          );
+        }
+      }
+
+      const pdfFiles = selectedAssessments.map((assessment) => buildAssessmentPdf(assessment, includeAnswers));
+
+      if (pdfFiles.length <= 3) {
+        pdfFiles.forEach((file) => {
+          triggerBrowserDownload(file.blob, file.fileName);
+        });
+        toast.success(`Downloading ${pdfFiles.length} PDF file(s)`);
+      } else {
+        const zip = new JSZip();
+        pdfFiles.forEach((file) => {
+          zip.file(file.fileName, file.blob);
+        });
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        triggerBrowserDownload(zipBlob, `assessments_bulk_${Date.now()}.zip`);
+        toast.success(`Downloading ${pdfFiles.length} PDFs as ZIP`);
+      }
+    } catch (error) {
+      console.error('Error downloading bulk assessment PDF:', error);
+      toast.error('Failed to generate bulk PDF');
+    } finally {
+      setDownloadingBulkType(null);
+    }
+  };
+
+  const handleBulkDownload = (includeAnswers: boolean) => {
+    if (!includeAnswers) {
+      executeBulkDownload(false);
+      return;
+    }
+
+    const selectedAssessments = assessments.filter((assessment) =>
+      selectedAssessmentIds.includes(assessment.assessment_id)
+    );
+
+    const unansweredCount = selectedAssessments.filter(
+      (assessment) => assessment.status !== 'Submitted' && assessment.status !== 'Completed'
+    ).length;
+
+    if (unansweredCount > 0) {
+      setDownloadNoticeStats({
+        total: selectedAssessments.length,
+        unanswered: unansweredCount,
+      });
+      setPendingBulkDownloadType('qa');
+      setShowDownloadNotice(true);
+      return;
+    }
+
+    executeBulkDownload(true);
+  };
+
+  const handleSelectAssessment = (assessmentId: number, checked: boolean) => {
+    setSelectedAssessmentIds((prev) => {
+      if (checked) {
+        if (prev.includes(assessmentId)) return prev;
+        return [...prev, assessmentId];
+      }
+      return prev.filter((id) => id !== assessmentId);
+    });
+  };
+
+  const handleSelectAllFiltered = (checked: boolean) => {
+    const filteredIds = filteredAssessments.map((assessment) => assessment.assessment_id);
+    if (checked) {
+      setSelectedAssessmentIds((prev) => Array.from(new Set([...prev, ...filteredIds])));
+      return;
+    }
+    setSelectedAssessmentIds((prev) => prev.filter((id) => !filteredIds.includes(id)));
+  };
+
+  const allFilteredSelected = filteredAssessments.length > 0 && filteredAssessments.every((assessment) =>
+    selectedAssessmentIds.includes(assessment.assessment_id)
+  );
+  const someFilteredSelected = filteredAssessments.some((assessment) =>
+    selectedAssessmentIds.includes(assessment.assessment_id)
+  );
+
   // Check if user can reassign this assessment (admin + created by user)
   const canReassignAssessment = (assessment: Assessment) => {
     return hasAssessmentAdmin && assessment.created_by === currentUserEmployeeId;
@@ -432,7 +724,7 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
 
   if (!clientId) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-visible">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
@@ -447,23 +739,14 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
   }
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p>Loading assessments...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+    return (      
+      <Loader text="Loading assessments..." />
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-visible">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-center p-8">
             <div className="text-center">
@@ -569,28 +852,137 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                 />
               </div>
 
-              <Button
-                variant="outline"
-                onClick={clearAllFilters}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Clear Filters
-              </Button>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Clear Filters ({activeFilterCount})
+                </Button>
+              )}
             </div>
+
           </div>
         </div>
 
-        <div className="p-0">
+        {selectedAssessmentIds.length > 0 && (
+          <div ref={bulkBarAnchorRef} className="w-full">
+            <div
+              style={
+                isBulkBarPinned
+                  ? {
+                      position: 'fixed',
+                      top: '5rem',
+                      left: `${bulkBarFixedLeft}px`,
+                      width: `${bulkBarFixedWidth}px`,
+                      zIndex: 30,
+                    }
+                  : undefined
+              }
+              className="bg-blue-50 border rounded-md shadow-sm"
+            >
+            
+            <div className="px-6 py-2 flex items-center justify-between gap-3">
+              
+              <p className="text-sm text-blue-700">
+                {selectedAssessmentIds.length} assessments selected
+              </p>
+
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="flex items-center gap-1 bg-sky-600 hover:bg-sky-700"
+                      disabled={downloadingBulkType !== null}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuItem
+                        onClick={() => handleBulkDownload(false)}
+                        disabled={downloadingBulkType !== null}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="h-4 w-4 mr-2 text-blue-600" />
+                        <div className="flex flex-col">
+                          <span>Questions Only</span>
+                          <span className="text-xs text-muted-foreground">
+                            Download selected assessments as PDF
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleBulkDownload(true)}
+                        disabled={downloadingBulkType !== null}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="h-4 w-4 mr-2 text-emerald-600" />
+                        <div className="flex flex-col">
+                          <span>Questions & Answers</span>
+                          <span className="text-xs text-muted-foreground">
+                            Submitted/Completed assessments include answers in PDF
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedAssessmentIds([])}
+                  className="text-blue-700 hover:text-blue-800"
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+
+            </div>
+          </div>
+
+          {isBulkBarPinned && (
+            <div style={{ height: bulkBarPlaceholderHeight }} aria-hidden="true" />
+          )}
+          </div>
+        )}
+
+       <div className="p-0">
           {filteredAssessments.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-gray-500">No assessments found matching your filters</p>
             </div>
           ) : (
+          <>
+            {/* Table Container */}
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={
+                          allFilteredSelected
+                            ? true
+                            : someFilteredSelected
+                            ? "indeterminate"
+                            : false
+                        }
+                        onCheckedChange={(checked) =>
+                          handleSelectAllFiltered(checked === true)
+                        }
+                        aria-label="Select all assessments"
+                        className="border-gray-400 data-[state=checked]:bg-sky-600 data-[state=checked]:border-sky-600"
+                      />
+                    </TableHead>
+
                     <TableHead>Assessment Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Completion</TableHead>
@@ -603,16 +995,37 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                 <TableBody>
                   {filteredAssessments.map((assessment) => (
                     <TableRow key={assessment.assessment_id}>
+                      <TableCell className="w-10">
+                        <Checkbox
+                          checked={selectedAssessmentIds.includes(
+                            assessment.assessment_id
+                          )}
+                          onCheckedChange={(checked) =>
+                            handleSelectAssessment(
+                              assessment.assessment_id,
+                              checked === true
+                            )
+                          }
+                          aria-label={`Select assessment ${assessment.name}`}
+                          className="border-gray-400 data-[state=checked]:bg-sky-600 data-[state=checked]:border-sky-600"
+                        />
+                      </TableCell>
+
                       <TableCell className="font-medium">
-                        <div className="max-w-[200px] truncate" title={assessment.name}>
+                        <div
+                          className="max-w-[200px] truncate"
+                          title={assessment.name}
+                        >
                           {assessment.name}
                         </div>
                       </TableCell>
+
+                      <TableCell>{getStatusBadge(assessment.status)}</TableCell>
+
                       <TableCell>
-                        {getStatusBadge(assessment.status)}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">{calculateCompletionPercentage(assessment)}%</span>
+                        <span className="font-medium">
+                          {calculateCompletionPercentage(assessment)}%
+                        </span>
                       </TableCell>
                       <TableCell>
                         {formatDate(assessment.target_completion_date)}
@@ -674,7 +1087,8 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
                 </TableBody>
               </Table>
             </div>
-          )}
+          </>
+        )}
         </div>
       </div>
 
@@ -697,6 +1111,41 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
           onReassignSuccess={handleReassignSuccess}
         />
       )}
+
+      <AlertDialog open={showDownloadNotice} onOpenChange={setShowDownloadNotice}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl">Download Notice</AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-gray-700 pt-2">
+              You selected <strong>{downloadNoticeStats.total}</strong> assessments, but{' '}
+              <strong>{downloadNoticeStats.unanswered}</strong> of them have not been answered yet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="rounded-md border bg-blue-50 p-3 text-blue-700 text-sm">
+            The unanswered assessments will be downloaded with <strong>questions only</strong>.
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingBulkDownloadType(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-sky-600 hover:bg-sky-700"
+              onClick={() => {
+                if (pendingBulkDownloadType === 'qa') {
+                  executeBulkDownload(true);
+                } else if (pendingBulkDownloadType === 'questions') {
+                  executeBulkDownload(false);
+                }
+                setPendingBulkDownloadType(null);
+              }}
+            >
+              Continue Download
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

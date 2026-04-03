@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, Search, Users, Eye, Clock3, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Search, Users, Eye, Clock3, FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -37,6 +37,7 @@ import { getEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { useCallback } from 'react';
 import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 interface SOP {
   id: string;
@@ -168,7 +169,7 @@ const AssignedSOPPage = () => {
 
     // Apply status filter
     if (statusFilter !== 'all') {
-      if (statusFilter === 'completed') {
+      if (statusFilter === 'signed-off') {
         filtered = filtered.filter((sop) => sop.signoff_request_status === 'Completed');
       } else if (statusFilter === 'in-progress') {
         filtered = filtered.filter((sop) => sop.signoff_request_status !== 'Completed');
@@ -230,6 +231,22 @@ const AssignedSOPPage = () => {
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  };
+
+  const activeFilterCount = [
+    searchTerm,
+    statusFilter !== 'all' ? statusFilter : '',
+    categoryFilter !== 'all' ? categoryFilter : '',
+  ].filter((value) => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
   };
 
   // Render text with tooltip if truncated
@@ -393,11 +410,23 @@ const AssignedSOPPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="signed-off">Signed Off</SelectItem>
                   <SelectItem value="in-progress">In Progress</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {activeFilterCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="flex items-center gap-1"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters ({activeFilterCount})
+              </Button>
+            )}
           </div>
 
           {/* Results Count */}
@@ -410,9 +439,7 @@ const AssignedSOPPage = () => {
           )}
 
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading assigned SOPs...</p>
-            </div>
+            <Loader text= "Loading assigned SOPs..." />
           ) : sops.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 text-lg">No assigned SOPs found</p>

@@ -9,6 +9,51 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const normalizeChallanStatus = (status?: string): string =>
+  String(status || '').trim().toUpperCase();
+
+const dedupeChallans = (challans: any[]): any[] => {
+  if (!Array.isArray(challans)) return [];
+
+  const hasValue = (value: unknown): boolean => {
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return String(value).trim() !== '';
+  };
+
+  const mergeChallan = (base: any, incoming: any) => {
+    const merged = { ...base };
+
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+      const existing = (merged as any)[key];
+      if (!hasValue(existing) && hasValue(value)) {
+        (merged as any)[key] = value;
+      }
+    });
+
+    return merged;
+  };
+
+  const getDedupKey = (challan: any): string => {
+    const challanNumber = String(challan?.challan_number || challan?.challan_no || '').trim().toUpperCase();
+    if (challanNumber) return `number:${challanNumber}`;
+
+    const challanDate = String(challan?.challan_date_time || challan?.challan_date || '').trim();
+    const amount = String(challan?.amount ?? challan?.challan_amount ?? '').trim();
+    const status = normalizeChallanStatus(challan?.challan_status);
+    return `fallback:${challanDate}|${amount}|${status}`;
+  };
+
+  const deduped = new Map<string, any>();
+  challans.forEach((challan: any) => {
+    const key = getDedupKey(challan);
+    const existing = deduped.get(key);
+    deduped.set(key, existing ? mergeChallan(existing, challan) : challan);
+  });
+
+  return Array.from(deduped.values());
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -563,11 +608,12 @@ serve(async (req) => {
 
         if (!latestSuccess) return;
 
-        const challanList =
-          latestSuccess?.data?.data?.challan_details?.challans || [];
+        const challanList = dedupeChallans(
+          latestSuccess?.data?.data?.challan_details?.challans || []
+        );
 
         challanList.forEach((c: any) => {
-          if (c.challan_status === "Pending") {
+          if (normalizeChallanStatus(c.challan_status) === "PENDING") {
             const amount = Number(c.amount || 0);
             if (!isNaN(amount)) {
               totalPendingChallanAmount += amount;
@@ -976,7 +1022,7 @@ serve(async (req) => {
       totalEmployees: employeeIds.length,
       employeesVerified: employeesVerified, 
       employeesFailed: employeesFailed,
-
+      employeesPending: employeesPending,
       vehiclesWithDocuments: uniqueVehiclesWithDocs.size,
       activeVehicles: activeVehicles?.length || 0,
       maintenanceVehicles: maintenanceVehicles?.length || 0,

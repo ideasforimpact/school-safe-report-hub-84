@@ -4,13 +4,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import { Switch } from '@/components/ui/switch';
-import { Plus, X, GripVertical, Loader } from 'lucide-react';
+import { Plus, X, GripVertical} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFormFieldTypes } from '@/hooks/useFormFieldTypes';
 import ConditionalLogicSection from './ConditionalLogicSection';
 import { FormField, CustomForm } from '@/types/formTypes';
 import { toast } from '@/hooks/use-toast';
+import Loader from '../common/Loader';
 
 interface SimpleFormBuilderProps {
   form?: CustomForm | null;
@@ -138,12 +139,7 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
   if (fieldTypesLoading || isSubmitting) {
     return (
       <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-600">
-            {fieldTypesLoading ? 'Loading form builder...' : 'Saving form...'}
-          </p>
-        </div>
+        <Loader text={fieldTypesLoading ? 'Loading form builder...' : 'Saving form...'} />
       </div>
     );
   }

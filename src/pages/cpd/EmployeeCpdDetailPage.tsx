@@ -51,6 +51,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import Loader from '@/components/common/Loader';
 
 type CpdDomain = {
   id: string;
@@ -940,11 +941,8 @@ const EmployeeCpdDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mr-2" />
-          Loading CPD details...
-        </div>
+      <Layout>        
+        <Loader text="Loading CPD details..." />             
       </Layout>
     );
   }

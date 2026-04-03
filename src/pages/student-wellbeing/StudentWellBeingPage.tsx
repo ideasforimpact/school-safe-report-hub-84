@@ -54,11 +54,13 @@ import { ActionDetailsDialog } from '@/components/student-wellbeing/ActionDetail
 import { NewFollowUpEntryDialog } from '@/components/student-wellbeing/NewFollowUpEntryDialog';
 import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialog';
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
+import { formatDate } from '@/lib/Dateformat';
+import Loader from '@/components/common/Loader';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
   { value: 'open', label: 'Open' },
-  { value: 'under_observation', label: 'Under Observation' },
+  { value: 'under_observation', label: 'Under Observation Cases' },
   { value: 'closed', label: 'Closed' },
 ] as const;
 
@@ -111,17 +113,10 @@ function getAcademicYearForDate(dateInput: string | Date | null | undefined): st
   }
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return 'Not set';
-  try {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? 'Not set' : d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return 'Not set';
-  }
-}
-
 function formatStatus(status: string): string {
+  if (status === 'under_observation') {
+    return 'Under Observation Cases';
+  }
   return status
     .split('_')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -177,7 +172,7 @@ const StudentWellBeingPage = () => {
   const [recordForFollowUp, setRecordForFollowUp] = useState<StudentWellbeingRecord | null>(null);
   const [auditDialogOpen, setAuditDialogOpen] = useState(false);
   const [recordForAudit, setRecordForAudit] = useState<StudentWellbeingRecord | null>(null);
-
+  
   const loadRecords = useCallback(async () => {
     if (!clientId) {
       setRecords([]);
@@ -200,15 +195,15 @@ const StudentWellBeingPage = () => {
   }, [clientId, employeeData?.id, academicYearFilter]);
 
   useEffect(() => {
-    loadRecords();
-  }, [loadRecords]);
+      loadRecords();
+    }, [loadRecords]);
 
   const handleDeleteConfirm = async () => {
     if (!recordToDelete || !clientId || !employeeData?.id) return;
     setDeleting(true);
     try {
       await deleteStudentWellbeingRecord(recordToDelete.id, clientId, employeeData.id);
-      toast.success('Record deleted');
+      toast.success('Record was deleted successfully');
       setDeleteDialogOpen(false);
       setRecordToDelete(null);
       loadRecords();
@@ -248,6 +243,17 @@ const StudentWellBeingPage = () => {
       r.concern?.toLowerCase().includes(q)
     );
   });
+  // Active filter count
+  const activeFilterCount = [
+    searchQuery,
+    statusFilter !== 'all' ? statusFilter : '',
+    dateRange?.from || dateRange?.to ? 'date' : '',
+    academicYearFilter !== getCurrentAcademicYear() ? academicYearFilter : '',
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -359,7 +365,7 @@ const StudentWellBeingPage = () => {
                 {/* Same spacing and count layout as SOP: mt-6, grid gap-6, text-sm label, text-3xl font-semibold count */}
                 <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                   <div>
-                    <p className="text-sm text-gray-500">Students</p>
+                    <p className="text-sm text-gray-500">Number of Students</p>
                     <p className="text-3xl font-semibold text-gray-900 tabular-nums">{summary.studentsCount}</p>
                   </div>
                   <div>
@@ -377,7 +383,7 @@ const StudentWellBeingPage = () => {
                     <p className="text-3xl font-semibold text-green-600 tabular-nums">{summary.closed}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Under Observation</p>
+                    <p className="text-sm text-gray-500">Under Observation Cases</p>
                     <p className="text-3xl font-semibold text-blue-600 tabular-nums">{summary.underObservation}</p>
                   </div>
                 </div>
@@ -411,7 +417,7 @@ const StudentWellBeingPage = () => {
             <div className="relative flex-1 min-w-[200px] max-w-[320px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by student id, name or concern..."
+                placeholder="Search Student, Grade/Section, or Concern..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-10 border border-input rounded-md bg-background"
@@ -456,15 +462,13 @@ const StudentWellBeingPage = () => {
                   onClick={handleClearFilters}
                 >
                   <X className="h-4 w-4" />
-                  Clear Filter
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              Loading records...
-            </div>
+            <Loader text="Loading Records..." />
           ) : filteredRecords.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
               <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -485,8 +489,8 @@ const StudentWellBeingPage = () => {
                     <TableHead className="text-left font-medium">Consultation</TableHead>
                     <TableHead className="text-left font-medium">Action Taken</TableHead>
                     <TableHead className="text-left font-medium">Status</TableHead>
-                    <TableHead className="text-left font-medium">Date</TableHead>
-                    <TableHead className="text-right font-medium">Actions</TableHead>
+                    <TableHead className="text-left font-medium">Created Date</TableHead>
+                    <TableHead className="text-right font-medium">Manage</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -602,6 +606,7 @@ const StudentWellBeingPage = () => {
                               Delete
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={row.status === "closed"}
                               onSelect={(e) => {
                                 e.preventDefault();
                                 setRecordForConsultation(row);
@@ -612,6 +617,7 @@ const StudentWellBeingPage = () => {
                               New Consultation
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={row.status === "closed"}
                               onSelect={(e) => {
                                 e.preventDefault();
                                 setRecordForAction(row);
@@ -622,6 +628,7 @@ const StudentWellBeingPage = () => {
                               Action
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={row.status === "closed"}
                               onSelect={(e) => {
                                 e.preventDefault();
                                 setRecordForFollowUp(row);
@@ -629,7 +636,7 @@ const StudentWellBeingPage = () => {
                               }}
                             >
                               <Calendar className="mr-2 h-4 w-4" />
-                              Next Follow-up Entry
+                              Next Follow-up Date
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -729,7 +736,10 @@ const StudentWellBeingPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete well-being record</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this record for {recordToDelete?.student_name}? This action cannot be undone.
+              Are you sure you want to delete this record for {recordToDelete?.student_name}? 
+              <p className="mt-2 text-sm text-muted-foreground">
+                This action cannot be undone.
+              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

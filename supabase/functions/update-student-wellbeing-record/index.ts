@@ -32,6 +32,13 @@ serve(async (req) => {
       sectionId,
       grade_id,
       gradeId,
+      student_name,
+      studentName,
+      grade_name,
+      gradeName,
+      section_name,
+      sectionName,
+      external_student_involved,
       type_of_concern_id,
       typeOfConcernId,
       date_of_observation,
@@ -89,12 +96,75 @@ serve(async (req) => {
     const studentIdResolved = student_id ?? studentId;
     const typeOfConcernResolved = type_of_concern_id ?? typeOfConcernId;
     const dateObsResolved = date_of_observation ?? dateOfObservation;
+    const sectionIdResolved = section_id ?? sectionId ?? null;
+    const gradeIdResolved = grade_id ?? gradeId ?? null;
 
-    if (!studentIdResolved || !typeOfConcernResolved || !dateObsResolved) {
+    const { data: integrationData, error: integrationError } = await supabase
+      .from('client_integration')
+      .select('is_linked, active')
+      .eq('client_id', clientIdResolved)
+      .eq('is_linked', true)
+      .eq('active', true)
+      .maybeSingle();
+    if (integrationError) {
+      console.error('update-student-wellbeing-record integration lookup error:', integrationError);
+    }
+    const isIntegrationEnabled =
+      !!integrationData && integrationData.is_linked === true && integrationData.active === true;
+    const isExternalStudent = isIntegrationEnabled ? true : false;
+
+    let externalStudentInvolvedPayload: Record<string, unknown> | null = null;
+    if (isExternalStudent) {
+      if (
+        external_student_involved &&
+        typeof external_student_involved === 'object' &&
+        !Array.isArray(external_student_involved)
+      ) {
+        externalStudentInvolvedPayload = external_student_involved as Record<string, unknown>;
+      } else {
+        const externalStudentName = student_name ?? studentName ?? null;
+        const externalGradeName = grade_name ?? gradeName ?? null;
+        const externalSectionName = section_name ?? sectionName ?? null;
+        externalStudentInvolvedPayload = {
+          student: {
+            id: studentIdResolved ?? null,
+            name: externalStudentName,
+          },
+          grade: {
+            id: gradeIdResolved,
+            name: externalGradeName,
+          },
+          section: {
+            id: sectionIdResolved,
+            name: externalSectionName,
+          },
+        };
+      }
+    }
+
+    if (!typeOfConcernResolved || !dateObsResolved) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'student_id, type_of_concern_id, and date_of_observation are required',
+          error: 'type_of_concern_id and date_of_observation are required',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!isExternalStudent && !studentIdResolved) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'student_id is required when integration is disabled',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (isExternalStudent && !externalStudentInvolvedPayload) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'external_student_involved is required when integration is enabled',
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -103,7 +173,7 @@ serve(async (req) => {
     // Load existing row so we can compute field-by-field changes for audit trail
     const { data: existingRow, error: existingError } = await supabase
       .from('student_well_begin_management')
-      .select('student_id, section_id, grade_id, type_of_concern_id, date_of_observation, concern, status, next_follow_up')
+      .select('student_id, section_id, grade_id, type_of_concern_id, date_of_observation, concern, status, next_follow_up, is_external_student, external_student_involved')
       .eq('id', recordId)
       .eq('client_id', clientIdResolved)
       .single();
@@ -117,12 +187,14 @@ serve(async (req) => {
     }
 
     const updatePayload: Record<string, unknown> = {
-      student_id: studentIdResolved,
-      section_id: section_id ?? sectionId ?? null,
-      grade_id: grade_id ?? gradeId ?? null,
+      student_id: isExternalStudent ? null : studentIdResolved,
+      section_id: isExternalStudent ? null : sectionIdResolved,
+      grade_id: isExternalStudent ? null : gradeIdResolved,
       type_of_concern_id: typeOfConcernResolved,
       date_of_observation: dateObsResolved,
       concern: concern ?? null,
+      is_external_student: isExternalStudent,
+      external_student_involved: isExternalStudent ? externalStudentInvolvedPayload : null,
       updated_at: new Date().toISOString(),
     };
     if (status !== undefined && status !== null) {
@@ -223,9 +295,15 @@ serve(async (req) => {
       return t1 === t2;
     };
 
-    pushChange('student_id', current.student_id, studentIdResolved);
-    pushChange('section_id', current.section_id ?? null, section_id ?? sectionId ?? null);
-    pushChange('grade_id', current.grade_id ?? null, grade_id ?? gradeId ?? null);
+    pushChange('student_id', current.student_id, isExternalStudent ? null : studentIdResolved);
+    pushChange('section_id', current.section_id ?? null, isExternalStudent ? null : sectionIdResolved);
+    pushChange('grade_id', current.grade_id ?? null, isExternalStudent ? null : gradeIdResolved);
+    pushChange('is_external_student', current.is_external_student ?? false, isExternalStudent);
+    pushChange(
+      'external_student_involved',
+      current.external_student_involved ?? null,
+      isExternalStudent ? externalStudentInvolvedPayload : null
+    );
     pushChange('type_of_concern_id', current.type_of_concern_id, typeOfConcernResolved);
     if (!sameDate(current.date_of_observation ?? null, dateObsResolved ?? null)) {
       pushChange('date_of_observation', current.date_of_observation, dateObsResolved);

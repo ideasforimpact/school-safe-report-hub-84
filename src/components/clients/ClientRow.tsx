@@ -8,11 +8,12 @@ import ClientActionButtons from './ClientActionButtons';
 
 interface ClientRowProps {
   client: Client;
+  onViewApiCalls: (client: Client) => void;
   onEditClick: (client: Client) => void;
   onDeleteClient: (id: string) => void;
 }
 
-const ClientRow = ({ client, onEditClick, onDeleteClient }: ClientRowProps) => {
+const ClientRow = ({ client, onViewApiCalls, onEditClick, onDeleteClient }: ClientRowProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -34,6 +35,7 @@ const ClientRow = ({ client, onEditClick, onDeleteClient }: ClientRowProps) => {
       <TableCell>
         <ClientActionButtons 
           client={client} 
+          onViewApiCalls={onViewApiCalls}
           onEditClick={onEditClick} 
           onDeleteClient={onDeleteClient} 
         />

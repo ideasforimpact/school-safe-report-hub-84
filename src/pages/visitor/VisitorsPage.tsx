@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import { visitorService, Visitor } from '@/services/visitor/visitorService';
-import { Search, Eye, RefreshCw, Car, ArrowLeft, Download, ShieldCheck, DoorOpen } from 'lucide-react';
+import { Search, Eye, RefreshCw, Car, ArrowLeft, Download, ShieldCheck, DoorOpen, X } from 'lucide-react';
 import {
   Pagination,
   PaginationContent,
@@ -27,6 +27,7 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { VISITOR_LIST_CONSTANTS, truncateVisitorName } from '@/constant/visitorConstant';
+import Loader from '@/components/common/Loader';
 
 const VisitorsPage = () => {
   const { employeeData } = useAuth();
@@ -204,8 +205,8 @@ const VisitorsPage = () => {
 
     // Sort by created_at descending (newest first)
     return unified.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
+      const dateA = new Date(a.in_time || a.created_at).getTime();
+      const dateB = new Date(b.in_time || b.created_at).getTime();
       return dateB - dateA;
     });
   }, []);
@@ -595,7 +596,19 @@ const VisitorsPage = () => {
     setCurrentPage(1); // Reset to first page when clearing filters
   };
 
-  const hasActiveFilters = searchTerm || vehicleTypeFilter !== 'all' || dateRange;
+  // Active filter count
+  const activeFilterCount = [
+    searchTerm,
+    vehicleTypeFilter !== 'all' ? vehicleTypeFilter : '',
+    dateRange?.from,
+    dateRange?.to
+  ].filter(value => {
+    if (!value) return false;
+    if (typeof value === 'string') return value.trim() !== '';
+    return true;
+  }).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   // Helper function to get vehicle type name
   const getVehicleTypeName = (vehicleType: string | null | undefined): string => {
@@ -841,7 +854,8 @@ const VisitorsPage = () => {
                   onClick={handleClearFilters}
                   className="flex items-center gap-1"
                 >
-                  Clear Filters
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Filters ({activeFilterCount})
                 </Button>
               )}
             </div>
@@ -861,12 +875,7 @@ const VisitorsPage = () => {
 
           {/* Visitors Table */}
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                <p className="text-gray-500">Loading visitors...</p>
-              </div>
-            </div>
+            <Loader text="Loading visitors..." />
           ) : filteredVisitors.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500">No visitors found</p>
