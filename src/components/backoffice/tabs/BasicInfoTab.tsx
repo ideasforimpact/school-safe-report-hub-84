@@ -161,7 +161,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   ];
 
   if (!allowedTypes.includes(file.type)) {
-    alert("Only PNG, JPG, JPEG, and GIF files are allowed.");
+    alert("Only PNG, JPG, JPEG files are allowed.");
     e.target.value = "";
     return;
   }
