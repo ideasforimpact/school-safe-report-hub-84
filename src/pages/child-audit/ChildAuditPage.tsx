@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Download,
   Search,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +36,8 @@ import {
   type ChildAuditCheckTypeDetail,
   type ChildAuditLatestSelection,
 } from '@/services/child-audit/childAuditStudentDetailsService';
+import { pdf } from "@react-pdf/renderer";
+import ChildAuditReportPDF from '@/pages/child-audit/ChildAuditReportpdf';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
 
@@ -276,6 +279,7 @@ const ChildAuditPage = () => {
   const [attachmentUploaderKey, setAttachmentUploaderKey] = useState(0);
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
+  const [downloading, setDownloading] = useState(false);
 
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
     if (!definition) return BODY_PART_OPTIONS;
@@ -617,74 +621,180 @@ const ChildAuditPage = () => {
     return map;
   }, [calendarIndicators, records, lookupMap]);
 
-  const monthReport = useMemo(() => {
-    const month = calendarMonth;
-    const monthKey = getMonthKey(month);
-    const monthRows = records.filter((r) => getMonthKey(new Date(r.created_at)) === monthKey);
-    const distribution = new Map<
-      string,
-      { title: string; icon: string; textClass: string; total: number; items: Map<string, number> }
-    >();
-    const ensureBucket = (title: string, icon: string, textClass: string) => {
-      const existing = distribution.get(title);
-      if (existing) return existing;
-      const created = { title, icon, textClass, total: 0, items: new Map<string, number>() };
-      distribution.set(title, created);
-      return created;
-    };
-    const addItem = (title: string, icon: string, textClass: string, itemLabel: string) => {
-      const bucket = ensureBucket(title, icon, textClass);
-      bucket.total += 1;
-      bucket.items.set(itemLabel, (bucket.items.get(itemLabel) ?? 0) + 1);
-    };
+  const handleDownload = async () => {
+    if (!selectedStudent) return;
 
-    monthRows.forEach((r) => {
-      r.physical_condition_ids.forEach((id) => {
+    try {
+      setDownloading(true);
+
+      const blob = await pdf(
+        <ChildAuditReportPDF
+          student={selectedStudent}
+          monthReport={monthReport}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${selectedStudent.name}_Report.pdf`;
+
+      document.body.appendChild(link); 
+      link.click();
+      document.body.removeChild(link);      
+    } catch (error) {
+      console.error("Download failed:", error);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const monthReport = useMemo(() => {
+  const month = calendarMonth;
+  const monthKey = getMonthKey(month);
+  const monthRows = records.filter((r) => getMonthKey(new Date(r.created_at)) === monthKey);
+  const distribution = new Map<
+    string,
+    { title: string; icon: string; textClass: string; total: number; items: Map<string, number> }
+  >();
+  const ensureBucket = (title: string, icon: string, textClass: string) => {
+    const existing = distribution.get(title);
+    if (existing) return existing;
+    const created = { title, icon, textClass, total: 0, items: new Map<string, number>() };
+    distribution.set(title, created);
+    return created;
+  };
+  const addItem = (title: string, icon: string, textClass: string, itemLabel: string) => {
+    const bucket = ensureBucket(title, icon, textClass);
+    bucket.total += 1;
+    bucket.items.set(itemLabel, (bucket.items.get(itemLabel) ?? 0) + 1);
+  };
+
+  monthRows.forEach((r) => {
+    r.physical_condition_ids.forEach((id) => {
         const label = lookupMap.get(id) ?? 'Physical';
-        const bodyParts = r.physical_where?.[id] ?? [];
+      const bodyParts = r.physical_where?.[id] ?? [];
         const whereSuffix = bodyParts.length > 0 ? ` (${bodyParts.join(', ')})` : '';
-        const style = getFactorStyle(label);
-        addItem(style.title, style.icon, style.textClass, `${label}${whereSuffix}`);
-      });
-      r.behaviour_ids.forEach((id) => {
+      const style = getFactorStyle(label);
+      addItem(style.title, style.icon, style.textClass, `${label}${whereSuffix}`);
+    });
+    r.behaviour_ids.forEach((id) => {
         const label = lookupMap.get(id) ?? 'Behaviour';
-        const style = getFactorStyle(label);
-        addItem(style.title, style.icon, style.textClass, label);
-      });
-      r.aggression_ids.forEach((id) => {
+      const style = getFactorStyle(label);
+      addItem(style.title, style.icon, style.textClass, label);
+    });
+    r.aggression_ids.forEach((id) => {
         const label = lookupMap.get(id) ?? 'Aggression';
-        const style = getFactorStyle(label);
-        addItem(style.title, style.icon, style.textClass, label);
-      });
-      if (r.meltdown_occurred) {
+      const style = getFactorStyle(label);
+      addItem(style.title, style.icon, style.textClass, label);
+    });
+    if (r.meltdown_occurred) {
         const style = getFactorStyle('meltdown');
         addItem(style.title, style.icon, style.textClass, 'Meltdown occurred');
-      }
-    });
+    }
+  });
 
-    const sectionOrder = [
+  const sectionOrder = [
       'Physical / Injuries',
       'Sleep Issues',
       'Aggression',
       'Meltdowns',
       'Health / Medical',
       'Behaviour / Mood',
-    ];
-    const sections = sectionOrder
-      .map((title) => distribution.get(title))
+  ];
+  const sections = sectionOrder
+    .map((title) => distribution.get(title))
       .filter((value): value is { title: string; icon: string; textClass: string; total: number; items: Map<string, number> } => Boolean(value))
-      .map((bucket) => ({
+    .map((bucket) => ({
         ...bucket,
         chips: Array.from(bucket.items.entries()).sort((a, b) => b[1] - a[1]),
-      }));
+    }));
+  const logs = monthRows.map((r) => ({
+    date: toDateLabel(r.created_at),
+    time: toTimeLabel(r.created_at),
+    type: checkTypeById.get(r.check_type_id ?? "")?.label || "-",
+    injury:
+    r.physical_condition_ids.length > 0
+      ? r.physical_condition_ids
+          .map((id) => lookupMap.get(id))
+          .filter(Boolean)       
+          .join(", ") || "-"
+      : "-",
+    meltdown: r.meltdown_occurred ? "Yes" : "-",
+    observation:
+    r.behaviour_ids.length > 0
+      ? r.behaviour_ids
+          .map((id) => lookupMap.get(id))
+          .filter(Boolean)         
+          .join(", ") || "-"
+      : "-",
+    notes: r.notes || "-",
+  }));
 
-    return {
-      checks: monthRows.length,
-      injuryDays: monthRows.filter((r) => r.physical_condition_ids.length > 0).length,
-      meltdowns: monthRows.filter((r) => r.meltdown_occurred).length,
-      sections,
-    };
-  }, [records, calendarMonth, lookupMap]);
+const getTopItems = (items: Map<string, number>) =>
+  Array.from(items.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([label]) => label);
+
+const findSection = (title: string) =>
+  sections.find((s) => s.title === title);
+
+const sleepSection = findSection("Sleep Issues");
+const injurySection = findSection("Physical / Injuries");
+const behaviourSection = findSection("Behaviour / Mood");
+const healthSection = findSection("Health / Medical");
+const meltdownSection = findSection("Meltdowns");
+
+const diagnostics = {
+  sleep: sleepSection
+    ? {
+        total: sleepSection.total,
+        common: [{ label: getTopItems(sleepSection.items)[0] }],
+      }
+    : null,
+
+  injury: injurySection
+    ? {
+        total: injurySection.total,
+        types: getTopItems(injurySection.items).map((t) => ({ label: t })),
+      }
+    : null,
+
+  behaviour: behaviourSection
+    ? {
+        total: behaviourSection.total,
+        common: getTopItems(behaviourSection.items).map((t) => ({ label: t })),
+      }
+    : null,
+
+  health: healthSection
+    ? {
+        total: healthSection.total,
+        issues: getTopItems(healthSection.items).map((t) => ({ label: t })),
+      }
+    : null,
+
+  meltdown: meltdownSection
+    ? {
+        total: meltdownSection.total,
+        durationBreakdown: [
+          { label: "< 5 minutes", count: 1 },
+          { label: "5–15 minutes", count: 1 },
+        ],
+      }
+    : null,
+};
+  return {
+    checks: monthRows.length,
+    injuryDays: monthRows.filter((r) => r.physical_condition_ids.length > 0).length,
+    meltdowns: monthRows.filter((r) => r.meltdown_occurred).length,
+    sections, 
+    logs,     
+    ...diagnostics,
+  };
+}, [records, calendarMonth, lookupMap, checkTypeById]);
 
   const auditTimelineGroups = useMemo(() => {
     const sortedRows = [...records].sort((a, b) => {
@@ -1537,10 +1647,33 @@ const ChildAuditPage = () => {
                   </>
                 )}
 
-                <Button className="w-full h-12 text-base">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download {calendarMonth.toLocaleString('en-US', { month: 'short', year: 'numeric' })} Report (PDF)
-                </Button>
+                <div
+                  className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t shadow-md"
+                  style={{
+                    left: "115px",   
+                    right: "0px",
+                  }}
+                >
+                  <div className="mx-6 py-3">
+                    <Button
+                      className="w-full h-12 text-base font-semibold"
+                      onClick={handleDownload}
+                      disabled={downloading}
+                    >
+                      {downloading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                      <Download className="h-4 w-4 mr-2" />
+                        Download {calendarMonth.toLocaleString('en-US', { month: 'short', year: 'numeric' })} Report (PDF)
+                          </>
+                        )}                    
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
               </Tabs>
             )}
