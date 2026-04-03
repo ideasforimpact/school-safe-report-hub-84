@@ -624,6 +624,11 @@ const ChildAuditPage = () => {
   const handleDownload = async () => {
     if (!selectedStudent) return;
 
+    if (monthReport.checks === 0) {
+      toast.error("No data available for this month");
+      return;
+    }
+
     try {
       setDownloading(true);
 
@@ -640,9 +645,9 @@ const ChildAuditPage = () => {
       link.href = url;
       link.download = `${selectedStudent.name}_Report.pdf`;
 
-      document.body.appendChild(link); 
+      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);      
+      document.body.removeChild(link);
     } catch (error) {
       console.error("Download failed:", error);
     } finally {
@@ -1658,7 +1663,7 @@ const diagnostics = {
                     <Button
                       className="w-full h-12 text-base font-semibold"
                       onClick={handleDownload}
-                      disabled={downloading}
+                      disabled={downloading || monthReport.checks === 0}
                     >
                       {downloading ? (
                         <>
