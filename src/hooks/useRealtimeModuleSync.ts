@@ -17,6 +17,7 @@ export const useRealtimeModuleSync = () => {
   
   // Toast deduplication: prevent multiple identical toasts within 5 seconds
   const lastToastTimeRef = useRef<number>(0);
+  const previousModuleListSignatureRef = useRef<string | null>(null);
   const TOAST_DEBOUNCE_MS = 5000; // 5 seconds
   const navigate = useNavigate();
   const location = useLocation();
@@ -156,6 +157,15 @@ export const useRealtimeModuleSync = () => {
         if (b.order === null || b.order === undefined) return -1;
         return a.order - b.order;
       });
+      const currentModuleListSignature = configuredModules
+        .map(m => String(m.id))
+        .sort()
+        .join('|');
+      const hadPreviousModuleList = previousModuleListSignatureRef.current !== null;
+      const moduleListChanged =
+        hadPreviousModuleList &&
+        previousModuleListSignatureRef.current !== currentModuleListSignature;
+      previousModuleListSignatureRef.current = currentModuleListSignature;
 
       // Update the configured modules in Redux store
       dispatch(setConfiguredModules(configuredModules));
@@ -183,13 +193,15 @@ export const useRealtimeModuleSync = () => {
         );
         navigate(redirectTarget, { replace: true });
       }
-      // Show toast notification with deduplication - only if enough time has passed
-      const currentTime = Date.now();
-      if (currentTime - lastToastTimeRef.current > TOAST_DEBOUNCE_MS) {
-        lastToastTimeRef.current = currentTime;
-        toast.info('New module assigned', {
-          description: 'A new module has been assigned to your organization. Your module list has been updated.',
-        });
+      if (moduleListChanged) {
+        // Show toast notification with deduplication - only if enough time has passed
+        const currentTime = Date.now();
+        if (currentTime - lastToastTimeRef.current > TOAST_DEBOUNCE_MS) {
+          lastToastTimeRef.current = currentTime;
+          toast.info('New module assigned', {
+            description: 'A new module has been assigned to your organization. Your module list has been updated.',
+          });
+        }
       }
 
     } catch (error) {
