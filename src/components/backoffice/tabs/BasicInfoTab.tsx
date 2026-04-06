@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { ImageIcon, Asterisk } from 'lucide-react';
 import { 
   Select, 
@@ -280,21 +281,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         )}
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div className="space-y-0.5">
-          <label htmlFor="ai-incident-actions" className="text-sm font-medium leading-none">
-            AI — Recommended Actions
-          </label>
-        </div>
-        <Switch
-          id="ai-incident-actions"
-          checked={formData.aiIncidentRecommendedActionsEnabled !== false}
-          onCheckedChange={(checked) =>
-            setFormData({ ...formData, aiIncidentRecommendedActionsEnabled: checked })
-          }
-        />
-      </div>
-
     <div className="space-y-1">
       <RequiredFieldLabel>
         <label htmlFor="superAdminEmail">Super Admin Email</label>
@@ -421,6 +407,24 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {showErrors && !formData.phone && (
           <p className="text-xs text-red-600">Phone is required.</p>
         )}
+      </div>
+
+      <div className="space-y-2 pt-2 border-t border-gray-100">
+        <Label htmlFor="ai-incident-recommendation">AI Integrsation</Label>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="ai-incident-recommendation"
+            checked={formData.aiIncidentRecommendedActionsEnabled !== false}
+            onCheckedChange={(checked) =>
+              setFormData({ ...formData, aiIncidentRecommendedActionsEnabled: checked })
+            }
+          />
+          <span className="text-sm text-gray-600">
+            {formData.aiIncidentRecommendedActionsEnabled !== false
+              ? 'AI Integration Enabled'
+              : 'AI Integration Disabled'}
+          </span>
+        </div>
       </div>
 
       {/* Active Client checkbox hidden for backoffice */}
