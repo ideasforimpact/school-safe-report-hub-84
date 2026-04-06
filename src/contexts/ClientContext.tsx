@@ -4,6 +4,7 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
+import { AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS } from '@/constants/aiFeatureKeys';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 import { useLocation } from 'react-router-dom';
@@ -28,6 +29,8 @@ export interface Client {
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
   };
+  /** false = incident AI "Recommended Actions" off; undefined defaults to on */
+  incidentRecommendedActionsEnabled?: boolean;
 }
 
 // Define ModuleInfo interface for consistent type handling
@@ -86,7 +89,9 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (response?.data) {
           const mappedClients = response.data.map((dbClient: any) => ({
             ...mapDbClientToClient(dbClient),
-            clientTypeId: dbClient.client_type_id
+            clientTypeId: dbClient.client_type_id,
+            incidentRecommendedActionsEnabled:
+              dbClient.incident_recommended_actions_enabled !== false,
           }));
 
           setClients(mappedClients);
@@ -125,6 +130,18 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           modulesByClient[module.client_id].push(module);
         });
 
+        const { data: aiFeaturesData } = await supabase
+          .from('client_ai_features')
+          .select('client_id, enabled')
+          .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS);
+
+        const incidentAiByClient = new Map<string, boolean>(
+          (aiFeaturesData || []).map((r: { client_id: string; enabled: boolean }) => [
+            r.client_id,
+            r.enabled,
+          ]),
+        );
+
         // Map clients and include their module access
         const mappedClients = clientsData.map(dbClient => {
           const clientModules = modulesByClient[dbClient.id] || [];
@@ -133,7 +150,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           return {
             ...mapDbClientToClient(dbClient),
             moduleAccess,
-            clientTypeId: dbClient.client_type_id
+            clientTypeId: dbClient.client_type_id,
+            incidentRecommendedActionsEnabled: incidentAiByClient.has(dbClient.id)
+              ? (incidentAiByClient.get(dbClient.id) as boolean)
+              : true,
           };
         });
 

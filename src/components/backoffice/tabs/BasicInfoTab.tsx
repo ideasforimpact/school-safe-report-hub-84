@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { ImageIcon, Asterisk } from 'lucide-react';
 import { 
   Select, 
@@ -32,6 +33,7 @@ interface BasicInfoTabProps {
     superAdminEmail?: string;
     website?: string;
     clientTypeId?: string;
+    aiIncidentRecommendedActionsEnabled?: boolean;
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -276,6 +278,21 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {showErrors && !formData.institutionType && (
           <p className="text-xs text-red-600">Institution type is required.</p>
         )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="space-y-0.5">
+          <label htmlFor="ai-incident-actions" className="text-sm font-medium leading-none">
+            AI — Recommended Actions
+          </label>
+        </div>
+        <Switch
+          id="ai-incident-actions"
+          checked={formData.aiIncidentRecommendedActionsEnabled !== false}
+          onCheckedChange={(checked) =>
+            setFormData({ ...formData, aiIncidentRecommendedActionsEnabled: checked })
+          }
+        />
       </div>
 
     <div className="space-y-1">

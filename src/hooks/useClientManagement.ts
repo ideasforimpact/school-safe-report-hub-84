@@ -4,6 +4,7 @@ import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { IPAddress } from '@/components/backoffice/tabs/IPList';
+import { AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS } from '@/constants/aiFeatureKeys';
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
@@ -26,6 +27,8 @@ export interface ClientFormData {
   superAdminAllowedDomains: string[];
   moduleInfoArray?: ModuleInfo[];
   whitelistedIPs?: IPAddress[];
+  /** AI "Recommended Actions" for incidents; default on */
+  aiIncidentRecommendedActionsEnabled: boolean;
 }
 
 const initialFormData: ClientFormData = {
@@ -47,7 +50,8 @@ const initialFormData: ClientFormData = {
   },
   superAdminAllowedDomains: [],
   moduleInfoArray: [],
-  whitelistedIPs: []
+  whitelistedIPs: [],
+  aiIncidentRecommendedActionsEnabled: true
 };
 
 export const useClientManagement = () => {
@@ -191,7 +195,8 @@ export const useClientManagement = () => {
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
           website: formData.website,
-          whitelistedIPs: formData.whitelistedIPs || []
+          whitelistedIPs: formData.whitelistedIPs || [],
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
         }
       };
       
@@ -254,7 +259,8 @@ export const useClientManagement = () => {
         google: client.authProviders?.google ?? false,
         microsoft: client.authProviders?.microsoft ?? false,
         zoho: client.authProviders?.zoho ?? false
-      }
+      },
+      aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false
     }));
     
     // Get the client modules and super admin employee for this client
@@ -385,13 +391,27 @@ export const useClientManagement = () => {
           ip: ip.ip_address,
           name: ip.name || undefined
         })) : [];
+
+        const { data: aiFeat, error: aiFeatError } = await supabase
+          .from('client_ai_features')
+          .select('enabled')
+          .eq('client_id', clientId)
+          .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
+          .maybeSingle();
+
+        if (aiFeatError) {
+          console.error('Error fetching client_ai_features:', aiFeatError);
+        }
+        const aiIncidentRecommendedActionsEnabled =
+          aiFeatError || !aiFeat ? true : aiFeat.enabled !== false;
         
         // Update the remaining fields once data arrives
         setFormData(prev => ({
           ...prev,
           superAdminEmail: employeeData?.email || '',
           moduleInfoArray: moduleInfoArray,
-          whitelistedIPs: whitelistedIPs
+          whitelistedIPs: whitelistedIPs,
+          aiIncidentRecommendedActionsEnabled
         }));
       } catch (err) {
         console.error('Error in fetchClientData:', err);
@@ -472,7 +492,8 @@ export const useClientManagement = () => {
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
           website: formData.website,
-          whitelistedIPs: whitelistedIPs // Always send as array, never undefined
+          whitelistedIPs: whitelistedIPs, // Always send as array, never undefined
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
         }
       };
       

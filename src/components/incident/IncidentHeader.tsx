@@ -230,6 +230,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
                 Edit
               </Button>
             )}
+            {user?.client?.incidentRecommendedActionsEnabled !== false && (
             <Button
               variant="outline"
               size="sm"
@@ -239,6 +240,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
             >
               <Sparkles className="h-4 w-4 text-black" />
             </Button>
+            )}
           </div>
         </div>
       </CardHeader>

@@ -120,6 +120,8 @@ export interface Client {
   logo?: string;
   client_type?: ClientType;
   client_integration?: ClientIntegration[] | null;
+  /** false = hide incident AI Recommended Actions */
+  incidentRecommendedActionsEnabled?: boolean;
 }
 
 export interface EmployeeData {

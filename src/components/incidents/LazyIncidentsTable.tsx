@@ -389,6 +389,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                         <span className="sr-only">Edit</span>
                       </Button>
                     )}
+                    {user?.client?.incidentRecommendedActionsEnabled !== false && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -399,6 +400,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                       <Sparkles className="h-4 w-4 text-black" />
                       <span className="sr-only">Recommended Actions</span>
                     </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

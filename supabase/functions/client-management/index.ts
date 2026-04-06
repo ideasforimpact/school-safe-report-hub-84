@@ -869,6 +869,27 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
   }
 }
 
+/** Must match migration backfill / src/constants/aiFeatureKeys.ts */
+const AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS = 'incident_recommended_actions'
+
+async function upsertClientAiIncidentRecommendedActions(clientId: string, enabled: boolean): Promise<void> {
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from('client_ai_features')
+    .upsert(
+      {
+        client_id: clientId,
+        feature_key: AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS,
+        enabled,
+        updated_at: now,
+      },
+      { onConflict: 'client_id,feature_key' },
+    )
+  if (error) {
+    throw new Error(`Failed to upsert client AI feature: ${error.message}`)
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -916,8 +937,9 @@ async function handleCreateClient(clientData: any) {
   let clientId: string | null = null;
   
   try {
-    const { modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, ...clientInfo } = clientData;
-    
+    const { modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
+    const incidentAiEnabled = aiFeatureIncidentRecommendedActions !== false;
+
     // Generate a new UUID for the client
     clientId = crypto.randomUUID();
     
@@ -972,6 +994,14 @@ async function handleCreateClient(clientData: any) {
     }
     
     console.log('Client record inserted successfully:', insertedClient.id);
+
+    try {
+      await upsertClientAiIncidentRecommendedActions(clientId, incidentAiEnabled);
+    } catch (aiErr) {
+      console.error('Error upserting client AI feature:', aiErr);
+      await rollbackClientCreation(clientId);
+      throw new Error(`Failed to save AI feature settings: ${aiErr.message}`);
+    }
     
     // Validate and create super admin employee if email provided
     if (superAdminEmail) {
@@ -1053,7 +1083,7 @@ async function handleUpdateClient(clientData: any) {
   });
   
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, ...clientInfo } = clientData;
+    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
         
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -1157,6 +1187,13 @@ async function handleUpdateClient(clientData: any) {
         isUndefined: whitelistedIPs === undefined,
         isNull: whitelistedIPs === null
       });
+    }
+
+    if (aiFeatureIncidentRecommendedActions !== undefined) {
+      await upsertClientAiIncidentRecommendedActions(
+        clientId,
+        aiFeatureIncidentRecommendedActions !== false,
+      );
     }
     
     return new Response(

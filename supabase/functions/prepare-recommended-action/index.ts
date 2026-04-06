@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Agent, Runner, withTrace } from "https://esm.sh/@openai/agents@latest";
 import { z } from "https://esm.sh/zod@3";
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from "../_shared/env.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,6 +72,12 @@ Respond ONLY in valid JSON format, following the structure below.
 * If no relevant policy applies, return an empty array for "policy_refs".
 `;
 
+const AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS = "incident_recommended_actions";
+
+const supabaseAdmin = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -88,6 +95,28 @@ serve(async (req) => {
     const body = await req.json();
     const validatedData = requestSchema.parse(body);
     const { incidentJson, client_id, employee_id } = validatedData;
+
+    const { data: featRow, error: featErr } = await supabaseAdmin
+      .from("client_ai_features")
+      .select("enabled")
+      .eq("client_id", client_id)
+      .eq("feature_key", AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
+      .maybeSingle();
+
+    if (featErr) {
+      console.error("client_ai_features lookup failed:", featErr);
+      return new Response(
+        JSON.stringify({ error: "Could not verify AI feature settings for this client." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (featRow && featRow.enabled === false) {
+      return new Response(
+        JSON.stringify({ error: "AI recommended actions are disabled for this client." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Correct env variable name for OpenAI
     const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
