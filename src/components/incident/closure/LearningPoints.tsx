@@ -13,7 +13,7 @@ const LearningPoints: React.FC<LearningPointsProps> = ({
   return (
     <div className="space-y-2">
       <h3 className="font-medium">Learning Points (Optional)</h3>
-      <p className="text-sm text-gray-600">
+      <p className="text-md text-gray-600">
         Document key learnings and insights from this incident
       </p>
       <div className="space-y-2">
@@ -21,7 +21,7 @@ const LearningPoints: React.FC<LearningPointsProps> = ({
           value={learningPoints}
           onChange={(e) => setLearningPoints(e.target.value)}
           placeholder="What can we learn from this incident to prevent similar issues in the future?"
-          className="min-h-[100px]"
+          className="min-h-[100px] text-md"
           maxLength={200}
         />
         <div className="text-right text-sm text-gray-500">

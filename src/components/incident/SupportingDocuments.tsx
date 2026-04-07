@@ -118,6 +118,12 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
       alert('Comment documents can only be deleted from the Comments tab.');
       return;
     }
+
+    // Closure attachments are managed by incident closure flow.
+    if (doc.source === 'closure') {
+      alert('Closure documents are managed from the incident closure flow.');
+      return;
+    }
     
     if (confirm(`Are you sure you want to delete "${doc.name}"?`)) {
       try {
@@ -196,6 +202,16 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                           <p className="font-medium text-sm truncate">
                             {document.name || `Document ${index + 1}`}
                           </p>
+                          {document.source === 'incident' && (
+                            <Badge variant="outline" className="text-xs bg-blue-500 text-white">
+                              Report
+                            </Badge>
+                          )}
+                          {document.source === 'closure' && (
+                            <Badge variant="outline" className="text-xs bg-green-500 text-white">
+                              closed
+                            </Badge>
+                          )}
                           {document.source === 'comment' && (
                             <Badge variant="secondary" className="text-xs">
                               Comment
@@ -239,7 +255,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                             <Download className="h-3 w-3" />
                             Download
                           </Button>
-                          {canDelete && document.source !== 'comment' && (
+                          {canDelete && document.source !== 'comment' && document.source !== 'closure' && (
                             <Button
                               variant="outline"
                               size="sm"

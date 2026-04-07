@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, File, AlertCircle, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -51,6 +51,11 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     onFilesChange(files);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
+
+  // Keep local file list in sync when parent provides new initial files.
+  useEffect(() => {
+    setFiles(initialFiles || []);
+  }, [initialFiles]);
 
   // Helper function to extract file extension from filename
   const getFileExtension = (filename: string): string => {

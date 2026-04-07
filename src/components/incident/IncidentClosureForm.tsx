@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Incident, ContributingFactor, Action } from '@/types/incident';
+import React, { useEffect, useState } from 'react';
+import { Incident, ContributingFactor, Action, FileItem } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
+import ReusableFileUploader from '../common/ReusableFileUploader';
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -29,6 +30,7 @@ interface IncidentClosureFormProps {
     learningPoints: string;
     contributingFactors: ContributingFactor[];
     actions: Action[];
+    attachments?: FileItem[];
   }) => void;
 }
 
@@ -52,6 +54,9 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { state } = useEmployeeStore();
   const navigate = useNavigate();
+  const [attachments, setAttachments] = useState<FileItem[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<FileItem[]>([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   
   // Load and validate contributing factors on mount
   React.useEffect(() => {
@@ -124,6 +129,49 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     
     loadContributingFactors();
   }, [incident, state.employeeData?.clientId]);
+
+  useEffect(() => {
+    const loadClosureAttachments = async () => {
+      if (!isOpen || !incident?.id) return;
+
+      setIsLoadingAttachments(true);
+      try {
+        const { data, error } = await supabase
+          .from('incident_closure_attachments' as any)
+          .select('id, file_name, file_type, file_size, file_url, storage_path')
+          .eq('incident_id', incident.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error loading closure attachments:', error);
+          setExistingAttachments([]);
+          setAttachments([]);
+          return;
+        }
+
+        const mapped: FileItem[] = (data || []).map((file: any) => ({
+          id: file.id,
+          name: file.file_name || 'attachment',
+          type: file.file_type || 'application/octet-stream',
+          size: Number(file.file_size || 0),
+          base64: file.file_url || '',
+          url: file.file_url || '',
+          path: file.storage_path || '',
+        }));
+
+        setExistingAttachments(mapped);
+        setAttachments(mapped);
+      } catch (err) {
+        console.error('Error loading closure attachments:', err);
+        setExistingAttachments([]);
+        setAttachments([]);
+      } finally {
+        setIsLoadingAttachments(false);
+      }
+    };
+
+    loadClosureAttachments();
+  }, [isOpen, incident?.id]);
   
   // Initialize current action with existing actionTaken data
   const [currentAction, setCurrentAction] = useState<Action>(() => {
@@ -195,6 +243,15 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         contributing_factor: validatedContributingFactors
       });
 
+      const newAttachments = attachments.filter((file) => {
+        if (!file.base64) return false;
+        return file.base64.startsWith('data:');
+      });
+      const currentAttachmentIds = new Set(attachments.map((file) => file.id));
+      const deletedAttachmentIds = existingAttachments
+        .map((file) => file.id)
+        .filter((id) => id && !currentAttachmentIds.has(id));
+
       const { data, error } = await supabase.functions.invoke('close-incident', {
         body: {
           client_id: state.employeeData.clientId,
@@ -202,7 +259,9 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           root_cause_analysis: rootCause.trim(),
           learning_points: learningPoints.trim(),
           action_taken: currentAction.description.trim(),
-          contributing_factor: validatedContributingFactors
+          contributing_factor: validatedContributingFactors,
+          attachments: newAttachments,
+          deleted_attachment_ids: deletedAttachmentIds
         }
       });
 
@@ -274,7 +333,8 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         rootCause,
         learningPoints,
         contributingFactors: validatedContributingFactors,
-        actions
+        actions,
+        attachments 
       });
 
       onClose();
@@ -340,6 +400,25 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           />
           )}
         </div>
+
+        {/* Attachment Section (Optional) */}
+          <div className="space-y-2">
+            <h3 className="font-medium">
+              Attachments <span className="text-gray-500 text-sm">(Optional)</span>
+            </h3>
+
+            <ReusableFileUploader
+              onFilesChange={setAttachments}
+              initialFiles={existingAttachments}
+              maxFiles={3}
+              maxSize={5}
+              maxTotalSize={15}
+              allowedTypes={['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']}
+              accept="image/*,.pdf"
+              showFileList={true}
+              disabled={isSubmitting || isLoadingAttachments}
+            />
+          </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>

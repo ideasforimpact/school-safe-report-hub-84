@@ -12,6 +12,108 @@ interface CloseIncidentRequest {
   learning_points?: string
   action_taken: string
   contributing_factor: any[]
+  attachments?: Array<{
+    name: string
+    type?: string
+    size?: number
+    base64: string
+  }>
+  deleted_attachment_ids?: string[]
+}
+
+function base64ToBlob(base64: string, type: string): Blob {
+  const byteCharacters = atob(base64.split(',')[1] || base64)
+  const byteNumbers = new Array(byteCharacters.length)
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i)
+  }
+  const byteArray = new Uint8Array(byteNumbers)
+  return new Blob([byteArray], { type })
+}
+
+async function uploadClosureAttachments(
+  clientId: string,
+  incidentId: string,
+  files: Array<{ name: string; type?: string; size?: number; base64: string }>
+) {
+  const rows: Array<Record<string, unknown>> = []
+
+  for (const file of files || []) {
+    if (!file.base64) continue
+
+    const contentType = file.type || 'application/octet-stream'
+    const blob = base64ToBlob(file.base64, contentType)
+    const safeName = String(file.name || 'file').replace(/\s+/g, '-')
+    const path = `${clientId}/${incidentId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('incident-closure-attachments')
+      .upload(path, blob, {
+        contentType,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      throw new Error(`Failed to upload attachment "${safeName}": ${uploadError.message}`)
+    }
+
+    const { data } = supabase.storage.from('incident-closure-attachments').getPublicUrl(path)
+
+    rows.push({
+      incident_id: incidentId,
+      client_id: clientId,
+      file_name: file.name || safeName,
+      file_type: file.type || null,
+      file_size: file.size || 0,
+      storage_bucket: 'incident-closure-attachments',
+      storage_path: path,
+      file_url: data.publicUrl,
+    })
+  }
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from('incident_closure_attachments').insert(rows)
+    if (error) {
+      throw new Error(`Failed to save attachment metadata: ${error.message}`)
+    }
+  }
+}
+
+async function deleteClosureAttachments(
+  clientId: string,
+  incidentId: string,
+  attachmentIds: string[]
+) {
+  const ids = (attachmentIds || []).filter(Boolean)
+  if (ids.length === 0) return
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('incident_closure_attachments')
+    .select('id, storage_bucket, storage_path')
+    .eq('client_id', clientId)
+    .eq('incident_id', incidentId)
+    .in('id', ids)
+
+  if (fetchError) {
+    throw new Error(`Failed to load attachments for deletion: ${fetchError.message}`)
+  }
+
+  for (const row of existing || []) {
+    if (row.storage_bucket && row.storage_path) {
+      await supabase.storage.from(row.storage_bucket).remove([row.storage_path])
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('incident_closure_attachments')
+    .delete()
+    .eq('client_id', clientId)
+    .eq('incident_id', incidentId)
+    .in('id', ids)
+
+  if (deleteError) {
+    throw new Error(`Failed to delete attachment metadata: ${deleteError.message}`)
+  }
 }
 
 // Helper function to check incident close permissions
@@ -264,6 +366,22 @@ Deno.serve(async (req) => {
     }
 
     console.log('Successfully closed incident:', updatedIncident)
+
+    if (requestBody.deleted_attachment_ids && requestBody.deleted_attachment_ids.length > 0) {
+      await deleteClosureAttachments(
+        employee.client_id,
+        requestBody.incident_id,
+        requestBody.deleted_attachment_ids
+      )
+    }
+
+    if (requestBody.attachments && requestBody.attachments.length > 0) {
+      await uploadClosureAttachments(
+        employee.client_id,
+        requestBody.incident_id,
+        requestBody.attachments
+      )
+    }
 
     return new Response(
       JSON.stringify({ 

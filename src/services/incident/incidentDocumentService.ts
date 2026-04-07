@@ -10,7 +10,7 @@ export interface IncidentDocument {
   url: string;
   path: string;
   uploadedAt: string;
-  source?: 'incident' | 'comment';
+  source?: 'incident' | 'closure' | 'comment';
   commentId?: string;
 }
 
@@ -176,7 +176,8 @@ export const incidentDocumentService = {
       size: doc.size || 0,
       url: doc.path ? this.getPublicUrl(doc.path) : (doc.url || ''), // Generate URL from path if available
       path: doc.path || '',
-      uploadedAt: doc.uploadedAt || new Date().toISOString()
+      uploadedAt: doc.uploadedAt || new Date().toISOString(),
+      source: 'incident'
     }));
   },
 

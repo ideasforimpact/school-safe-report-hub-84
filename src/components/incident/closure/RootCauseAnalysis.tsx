@@ -14,7 +14,7 @@ const RootCauseAnalysis: React.FC<RootCauseAnalysisProps> = ({
   return (
     <div className="space-y-2">
       <h3 className="font-medium">Root Cause Analysis <span className="text-red-500">*</span></h3>
-      <p className="text-sm text-gray-600">
+      <p className="text-md text-gray-600">
         Identify the fundamental reason this incident occurred
       </p>
       <div className="space-y-2">
@@ -22,7 +22,7 @@ const RootCauseAnalysis: React.FC<RootCauseAnalysisProps> = ({
           value={rootCause}
           onChange={(e) => setRootCause(e.target.value)}
           placeholder="What was the primary cause of this incident?"
-          className="min-h-[100px]"
+          className="min-h-[100px] text-md"
           maxLength={200}
           required
         />
