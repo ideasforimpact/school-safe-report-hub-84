@@ -322,8 +322,8 @@ export const useBackofficeAuth = () => {
         modules: backofficeModules
       });
 
-      toast.success("Login successful! Redirecting to dashboard...");
-      navigate("/backoffice/dashboard");
+      toast.success("Login successful! Redirecting to clients...");
+      navigate("/backoffice/clients");
       
       setIsLoading(false);
       return true;

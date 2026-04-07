@@ -189,12 +189,21 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
   }
 };
 
+/** Module names excluded from the backoffice sidebar only (routes stay available if bookmarked). */
+const BACKOFFICE_SIDEBAR_HIDDEN_NAMES = new Set(['dashboard', 'modules']);
+
 // Convert database modules to sidebar items
 export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
   
   // Sort modules by order field (nulls last)
-  const sortedModules = [...modules].sort((a, b) => {
+  const sortedModules = [...modules]
+    .filter((module) => {
+      if (basePath !== '/backoffice') return true;
+      const key = module.name.trim().toLowerCase();
+      return !BACKOFFICE_SIDEBAR_HIDDEN_NAMES.has(key);
+    })
+    .sort((a, b) => {
     if (a.order === null || a.order === undefined) return 1;
     if (b.order === null || b.order === undefined) return -1;
     return a.order - b.order;
@@ -226,12 +235,6 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
 // These functions are kept for backward compatibility
 // SaaS Owner (Backoffice) Menu Items - always include backoffice prefix
 export const getSaasOwnerItems = () => [
-  {
-    icon: LayoutDashboard,
-    label: 'Dashboard',
-    path: '/backoffice/dashboard',
-    allowed: true,
-  },
   {
     icon: Building2,
     label: 'Clients',

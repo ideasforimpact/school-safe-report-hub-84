@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import RouteGuard from './components/RouteGuard';
 import ModuleGuard from './components/ModuleGuard';
 
@@ -45,7 +45,6 @@ import AssessmentAnswerPage from './pages/AssessmentAnswerPage';
 
 // Backoffice pages
 import BackofficeLogin from './pages/BackofficeLogin';
-import BackofficeDashboard from './pages/backoffice/BackofficeDashboard';
 import ClientManagement from './pages/ClientManagement';
 import ModulesPage from './pages/backoffice/ModulesPage';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
@@ -113,7 +112,7 @@ const AppRoutes = () => {
       <Route path="/backoffice/login" element={<BackofficeLogin />} />
       <Route path="/backoffice" element={
         <RouteGuard requireAuth={true} isBackoffice={true}>
-          <BackofficeDashboard />
+          <Navigate to="/backoffice/clients" replace />
         </RouteGuard>
       } />
       <Route path="/backoffice/clients" element={

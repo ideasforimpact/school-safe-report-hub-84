@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth';
 import { StudentProvider } from './contexts/StudentContext';
@@ -136,6 +136,14 @@ function App() {
                   <Route path="/home" element={<Home />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/backoffice/login" element={<BackofficeLogin />} />
+                  <Route
+                    path="/backoffice"
+                    element={
+                      <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
+                        <Navigate to="/backoffice/clients" replace />
+                      </RouteGuard>
+                    }
+                  />
                   <Route path="/callback" element={<AuthCallback />} />
                   {/* CAPTCHA Verification routes - public */}
                   <Route path="/captcha-verification" element={<CaptchaVerificationPage />} />
@@ -278,11 +286,11 @@ function App() {
                   />
 
                   {/* Backoffice routes - protected with RouteGuard and wrapped with BackofficeClientProvider */}
-                  <Route path="/backoffice/dashboard" element={
+                  {/* <Route path="/backoffice/dashboard" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={Dashboard} />
                     </RouteGuard>
-                  } />
+                  } /> */}
                   <Route path="/backoffice/clients" element={
                     <RouteGuard requireAuth={true} requireSaasOwner={true} isBackoffice={true}>
                       <BackofficeWrapper component={ClientManagement} />
