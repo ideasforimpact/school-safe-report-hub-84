@@ -97,15 +97,6 @@ async function uploadNewClosureFiles(
   return added
 }
 
-async function removeStoragePaths(paths: string[]) {
-  const unique = [...new Set(paths.filter(Boolean))]
-  if (unique.length === 0) return
-  const { error } = await supabase.storage.from('incident-closure-attachments').remove(unique)
-  if (error) {
-    console.error('Storage remove warning (closure attachments):', error.message)
-  }
-}
-
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -188,10 +179,6 @@ Deno.serve(async (req) => {
     let closureAttachments = parseClosureAttachments(incidentRow.closure_attachments)
 
     const deletedIds = new Set((requestBody.deleted_attachment_ids || []).filter(Boolean))
-    const removedPaths = closureAttachments
-      .filter((a) => deletedIds.has(a.id))
-      .map((a) => a.path)
-
     closureAttachments = closureAttachments.filter((a) => !deletedIds.has(a.id))
 
     const newRows = await uploadNewClosureFiles(
@@ -232,8 +219,6 @@ Deno.serve(async (req) => {
       console.error('Error updating incident:', updateError)
       throw new Error(`Failed to close incident: ${updateError.message}`)
     }
-
-    await removeStoragePaths(removedPaths)
 
     console.log('Successfully closed incident:', updatedIncident)
 
