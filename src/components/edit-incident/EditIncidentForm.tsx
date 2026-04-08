@@ -23,7 +23,6 @@ import { formatFileSize } from '@/utils/fileUtils';
 import { incidentNotificationService } from '@/services/notification/incidentNotificationService';
 import { DESCRIPTION_MAX_LENGTH } from '../constants';
 import Loader from '../common/Loader';
-import { Trash2 } from 'lucide-react';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -53,7 +52,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     handleFilesChange,
     uploadAndSaveDocuments,
     loadDocuments,
-    deleteDocument
   } = useIncidentDocuments(id);
 
   // Add validation hook
@@ -637,19 +635,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
     navigate(`/incident/${id}`);
   };
 
-  const handleDeleteExistingDocument = async (docPath: string) => {
-    if (!id) return;
-    // if (!confirm('Are you sure you want to delete this document?')) return;
-
-    try {
-      await deleteDocument(id, docPath);
-      await loadDocuments(id);
-    } catch (error: any) {
-      console.error('Error deleting existing document:', error);
-      toast.error(error?.message || 'Failed to delete document');
-    }
-  };
-
   if (configLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -879,16 +864,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                             className="h-8 px-3 text-blue-600 hover:text-blue-700"
                           >
                             View
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteExistingDocument(doc.path)}
-                            className="h-8 px-3 text-red-600 hover:text-red-700"
-                            disabled={!doc.path}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
                           </Button>
                         </div>
                       </div>

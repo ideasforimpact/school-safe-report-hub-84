@@ -24,6 +24,7 @@ interface ReusableFileUploaderProps {
   showFileList?: boolean; // Show file list, default true
   className?: string;
   disabled?: boolean;
+  removeIconVariant?: 'trash' | 'close';
 }
 
 const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
@@ -37,6 +38,7 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   showFileList = true,
   className = '',
   disabled = false,
+  removeIconVariant = 'trash',
 }) => {
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -356,8 +358,9 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
                     <FileListItem
                       key={file.id}
                       file={file}
-                      onPreview={handlePreview}        
-                      onRemove={removeFile}       
+                      onPreview={handlePreview}
+                      onRemove={removeFile}
+                      removeIconVariant={removeIconVariant}
                     />
                   ) : (
                     <div className="flex items-start justify-between p-2 bg-gray-50 rounded border min-h-[48px] w-full gap-2">

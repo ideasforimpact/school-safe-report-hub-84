@@ -74,27 +74,59 @@ export const incidentDocumentAggregator = {
 
   async getClosureDocuments(incidentId: string): Promise<IncidentDocument[]> {
     try {
-      const { data, error } = await supabase
-        .from('incident_closure_attachments' as any)
-        .select('id, file_name, file_type, file_size, file_url, storage_path, created_at')
-        .eq('incident_id', incidentId)
-        .order('created_at', { ascending: false });
+      const { data: row, error } = await supabase
+        .from('incidents')
+        .select('closure_attachments')
+        .eq('id', incidentId)
+        .single();
 
-      if (error) {
-        console.error('Error fetching closure documents:', error);
+      if (error || !row?.closure_attachments) {
+        if (error) console.error('Error fetching closure documents:', error);
         return [];
       }
 
-      return (data || []).map((file: any): IncidentDocument => ({
-        id: file.id || crypto.randomUUID(),
-        name: file.file_name || 'Closure attachment',
-        type: file.file_type || 'application/octet-stream',
-        size: file.file_size || 0,
-        url: file.file_url || '',
-        path: file.storage_path || '',
-        uploadedAt: file.created_at || new Date().toISOString(),
-        source: 'closure',
-      }));
+      const raw = row.closure_attachments;
+      const list = Array.isArray(raw) ? raw : [];
+
+      return list
+        .filter(
+          (file: any) =>
+            file &&
+            typeof file.id === 'string' &&
+            typeof file.name === 'string' &&
+            typeof file.path === 'string'
+        )
+        .map((file: any): IncidentDocument => {
+          const { data: pub } = supabase.storage
+            .from('incident-closure-attachments')
+            .getPublicUrl(file.path);
+          const ext = (file.name || '').split('.').pop()?.toLowerCase() || '';
+          const mime =
+            ext === 'pdf'
+              ? 'application/pdf'
+              : ext === 'png'
+                ? 'image/png'
+                : ext === 'jpg' || ext === 'jpeg'
+                  ? 'image/jpeg'
+                  : 'application/octet-stream';
+          return {
+            id: file.id,
+            name: file.name,
+            type: mime,
+            size: typeof file.size === 'number' ? file.size : 0,
+            url: pub.publicUrl,
+            path: file.path,
+            uploadedAt:
+              typeof file.updatedAt === 'string'
+                ? file.updatedAt
+                : new Date().toISOString(),
+            source: 'closure',
+          };
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+        );
     } catch (error) {
       console.error('Error fetching closure documents:', error);
       return [];

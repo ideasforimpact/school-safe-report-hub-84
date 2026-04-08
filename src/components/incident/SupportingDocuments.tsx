@@ -203,13 +203,20 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
                             {document.name || `Document ${index + 1}`}
                           </p>
                           {document.source === 'incident' && (
-                            <Badge variant="outline" className="text-xs bg-blue-500 text-white">
-                              Report
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-gray-200 text-gray-600 border-gray-300"
+                            >
+                              Reference
                             </Badge>
                           )}
+
                           {document.source === 'closure' && (
-                            <Badge variant="outline" className="text-xs bg-green-500 text-white">
-                              closed
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-green-500 text-white"
+                            >
+                              Closure
                             </Badge>
                           )}
                           {document.source === 'comment' && (

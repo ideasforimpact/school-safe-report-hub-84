@@ -21,6 +21,13 @@ interface CloseIncidentRequest {
   deleted_attachment_ids?: string[]
 }
 
+interface ClosureAttachmentRow {
+  id: string
+  name: string
+  path: string
+  updatedAt: string
+}
+
 function base64ToBlob(base64: string, type: string): Blob {
   const byteCharacters = atob(base64.split(',')[1] || base64)
   const byteNumbers = new Array(byteCharacters.length)
@@ -31,12 +38,34 @@ function base64ToBlob(base64: string, type: string): Blob {
   return new Blob([byteArray], { type })
 }
 
-async function uploadClosureAttachments(
+function parseClosureAttachments(raw: unknown): ClosureAttachmentRow[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter(
+      (item): item is ClosureAttachmentRow =>
+        item !== null &&
+        typeof item === 'object' &&
+        typeof (item as ClosureAttachmentRow).id === 'string' &&
+        typeof (item as ClosureAttachmentRow).name === 'string' &&
+        typeof (item as ClosureAttachmentRow).path === 'string'
+    )
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      path: item.path,
+      updatedAt:
+        typeof item.updatedAt === 'string'
+          ? item.updatedAt
+          : new Date().toISOString(),
+    }))
+}
+
+async function uploadNewClosureFiles(
   clientId: string,
   incidentId: string,
   files: Array<{ name: string; type?: string; size?: number; base64: string }>
-) {
-  const rows: Array<Record<string, unknown>> = []
+): Promise<ClosureAttachmentRow[]> {
+  const added: ClosureAttachmentRow[] = []
 
   for (const file of files || []) {
     if (!file.base64) continue
@@ -57,195 +86,24 @@ async function uploadClosureAttachments(
       throw new Error(`Failed to upload attachment "${safeName}": ${uploadError.message}`)
     }
 
-    const { data } = supabase.storage.from('incident-closure-attachments').getPublicUrl(path)
-
-    rows.push({
-      incident_id: incidentId,
-      client_id: clientId,
-      file_name: file.name || safeName,
-      file_type: file.type || null,
-      file_size: file.size || 0,
-      storage_bucket: 'incident-closure-attachments',
-      storage_path: path,
-      file_url: data.publicUrl,
+    added.push({
+      id: crypto.randomUUID(),
+      name: file.name || safeName,
+      path,
+      updatedAt: new Date().toISOString(),
     })
   }
 
-  if (rows.length > 0) {
-    const { error } = await supabase.from('incident_closure_attachments').insert(rows)
-    if (error) {
-      throw new Error(`Failed to save attachment metadata: ${error.message}`)
-    }
-  }
+  return added
 }
 
-async function deleteClosureAttachments(
-  clientId: string,
-  incidentId: string,
-  attachmentIds: string[]
-) {
-  const ids = (attachmentIds || []).filter(Boolean)
-  if (ids.length === 0) return
-
-  const { data: existing, error: fetchError } = await supabase
-    .from('incident_closure_attachments')
-    .select('id, storage_bucket, storage_path')
-    .eq('client_id', clientId)
-    .eq('incident_id', incidentId)
-    .in('id', ids)
-
-  if (fetchError) {
-    throw new Error(`Failed to load attachments for deletion: ${fetchError.message}`)
+async function removeStoragePaths(paths: string[]) {
+  const unique = [...new Set(paths.filter(Boolean))]
+  if (unique.length === 0) return
+  const { error } = await supabase.storage.from('incident-closure-attachments').remove(unique)
+  if (error) {
+    console.error('Storage remove warning (closure attachments):', error.message)
   }
-
-  for (const row of existing || []) {
-    if (row.storage_bucket && row.storage_path) {
-      await supabase.storage.from(row.storage_bucket).remove([row.storage_path])
-    }
-  }
-
-  const { error: deleteError } = await supabase
-    .from('incident_closure_attachments')
-    .delete()
-    .eq('client_id', clientId)
-    .eq('incident_id', incidentId)
-    .in('id', ids)
-
-  if (deleteError) {
-    throw new Error(`Failed to delete attachment metadata: ${deleteError.message}`)
-  }
-}
-
-// Helper function to check incident close permissions
-async function checkClosePermissions(
-  incidentId: string,
-  employeeId: string,
-  clientId: string
-): Promise<{ canClose: boolean, incident: any }> {
-  // Get the incident details with creator and assigned user
-  const { data: incident, error: incidentError } = await supabase
-    .from('incidents')
-    .select('id, created_by, assigned_to, client_id, ticket_id, status_id')
-    .eq('id', incidentId)
-    .eq('client_id', clientId)
-    .single()
-
-  if (incidentError || !incident) {
-    console.error('Error fetching incident:', incidentError)
-    return { canClose: false, incident: null }
-  }
-
-  // Get employee details to check admin status
-  const { data: employee, error: employeeError } = await supabase
-    .from('employees')
-    .select('id, is_super_admin, client_id')
-    .eq('id', employeeId)
-    .eq('client_id', clientId)
-    .single()
-
-  if (employeeError || !employee) {
-    console.error('Error fetching employee:', employeeError)
-    return { canClose: false, incident }
-  }
-
-  console.log('Employee details:', {
-    employeeId: employee.id,
-    isSuperAdmin: employee.is_super_admin,
-    clientId: employee.client_id
-  })
-
-  let hasIncidentAdmin = false
-
-  // Check module access based on employee type
-  if (employee.is_super_admin) {
-    console.log('Checking super admin permissions via client_modules')
-    
-    // For super admins: Check client_modules for incidents module
-    const { data: clientModules, error: clientModuleError } = await supabase
-      .from('client_modules')
-      .select(`
-        enabled,
-        access_level,
-        module:modules(name)
-      `)
-      .eq('client_id', clientId)
-      .eq('enabled', true)
-
-    if (clientModuleError) {
-      console.error('Error fetching client modules:', clientModuleError)
-      return { canClose: false, incident }
-    }
-
-    console.log('Client modules found:', clientModules)
-
-    // Check if incidents module is enabled and has admin access
-    hasIncidentAdmin = clientModules?.some((clientModule: any) => 
-      clientModule.module?.name?.toLowerCase() === 'incidents' && 
-      clientModule.access_level?.isAdmin === true &&
-      clientModule.enabled === true
-    ) || false
-
-    console.log('Super admin incident access:', hasIncidentAdmin)
-  } else {
-    console.log('Checking normal employee permissions via employee_modules')
-    
-    // For normal employees: Check employee_modules for incidents module
-    const { data: employeeModules, error: employeeModuleError } = await supabase
-      .from('employee_modules')
-      .select(`
-        level,
-        module:modules(name)
-      `)
-      .eq('employee_id', employeeId)
-
-    if (employeeModuleError) {
-      console.error('Error fetching employee modules:', employeeModuleError)
-      return { canClose: false, incident }
-    }
-
-    console.log('Employee modules found:', employeeModules)
-
-    // Check if user has incident admin access
-    hasIncidentAdmin = employeeModules?.some((empModule: any) => 
-      empModule.module?.name?.toLowerCase() === 'incidents' && 
-      empModule.level?.is_admin === true
-    ) || false
-
-    console.log('Normal employee incident admin access:', hasIncidentAdmin)
-  }
-
-  // Check if user created the incident
-  const isCreator = incident.created_by === employeeId
-  
-  // Check if user is assigned to the incident
-  const isAssigned = incident.assigned_to === employeeId
-
-  console.log('Close permission check:', {
-    employeeId,
-    isSuperAdmin: employee.is_super_admin,
-    createdBy: incident.created_by,
-    assignedTo: incident.assigned_to,
-    isCreator,
-    isAssigned,
-    hasIncidentAdmin
-  })
-
-  let canClose = false
-
-  // Super admins can close any incident
-  if (employee.is_super_admin) {
-    canClose = true
-  } else if (hasIncidentAdmin) {
-    // Incident admin can close own + assigned incidents
-    canClose = isCreator || isAssigned
-  } else {
-    // Non-admin can only close their own incidents
-    canClose = isCreator
-  }
-
-  console.log('Final permission decision:', { canClose })
-
-  return { canClose, incident }
 }
 
 Deno.serve(async (req) => {
@@ -273,31 +131,30 @@ Deno.serve(async (req) => {
     console.log('User attempting to close incident:', user.id)
 
     const requestBody: CloseIncidentRequest = await req.json()
-    
+
     // Validate required fields
     if (!requestBody.client_id) {
       throw new Error('client_id is required')
     }
-    
+
     if (!requestBody.incident_id) {
       throw new Error('incident_id is required')
     }
-    
+
     if (!requestBody.root_cause_analysis || requestBody.root_cause_analysis.trim() === '') {
       throw new Error('root_cause_analysis is mandatory and cannot be empty')
     }
-    
+
     if (!requestBody.action_taken || requestBody.action_taken.trim() === '') {
       throw new Error('action_taken is mandatory and cannot be empty')
     }
-    
+
     if (!requestBody.contributing_factor || !Array.isArray(requestBody.contributing_factor) || requestBody.contributing_factor.length === 0) {
       throw new Error('contributing_factor is mandatory and must contain at least one factor')
     }
 
     console.log('Closing incident with payload:', requestBody)
 
-    // Get employee data for permission checking
     const { data: employee, error: employeeError } = await supabase
       .from('employees')
       .select('id, client_id')
@@ -309,29 +166,41 @@ Deno.serve(async (req) => {
       throw new Error('Employee not found')
     }
 
-    let canClose = true;
-    // Check permissions before allowing the close
-    // const { canClose, incident } = await checkClosePermissions(
-    //   requestBody.incident_id,
-    //   employee.id,
-    //   requestBody.client_id
-    // )
-
+    const canClose = true
     if (!canClose) {
-      console.log('Permission denied for user:', user.id, 'to close incident:', requestBody.incident_id)
       throw new Error('You do not have permission to close this incident')
     }
 
-    console.log('Permission granted for close')
+    const { data: incidentRow, error: incidentFetchError } = await supabase
+      .from('incidents')
+      .select('id, client_id, closure_attachments')
+      .eq('id', requestBody.incident_id)
+      .single()
 
-    // Verify the incident exists and belongs to the client
-    // if (!incident) {
-    //   throw new Error('Incident not found or access denied')
-    // }
+    if (incidentFetchError || !incidentRow) {
+      throw new Error('Incident not found')
+    }
 
-    // console.log('Found incident:', incident)
+    if (incidentRow.client_id !== requestBody.client_id) {
+      throw new Error('Incident not found or access denied')
+    }
 
-    // Get the "Closed" status ID
+    let closureAttachments = parseClosureAttachments(incidentRow.closure_attachments)
+
+    const deletedIds = new Set((requestBody.deleted_attachment_ids || []).filter(Boolean))
+    const removedPaths = closureAttachments
+      .filter((a) => deletedIds.has(a.id))
+      .map((a) => a.path)
+
+    closureAttachments = closureAttachments.filter((a) => !deletedIds.has(a.id))
+
+    const newRows = await uploadNewClosureFiles(
+      employee.client_id,
+      requestBody.incident_id,
+      requestBody.attachments || []
+    )
+    closureAttachments = [...closureAttachments, ...newRows]
+
     const { data: closedStatus, error: statusError } = await supabase
       .from('incident_status')
       .select('id')
@@ -343,9 +212,6 @@ Deno.serve(async (req) => {
       throw new Error('Could not find Closed status')
     }
 
-    console.log('Closed status ID:', closedStatus.id)
-
-    // Update the incident with closure data
     const { data: updatedIncident, error: updateError } = await supabase
       .from('incidents')
       .update({
@@ -354,9 +220,11 @@ Deno.serve(async (req) => {
         learning_points: requestBody.learning_points || null,
         action_taken: requestBody.action_taken,
         contributing_factor: requestBody.contributing_factor,
-        updated_at: new Date().toISOString()
+        closure_attachments: closureAttachments,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', requestBody.incident_id)
+      .eq('client_id', requestBody.client_id)
       .select()
       .single()
 
@@ -365,50 +233,35 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to close incident: ${updateError.message}`)
     }
 
+    await removeStoragePaths(removedPaths)
+
     console.log('Successfully closed incident:', updatedIncident)
 
-    if (requestBody.deleted_attachment_ids && requestBody.deleted_attachment_ids.length > 0) {
-      await deleteClosureAttachments(
-        employee.client_id,
-        requestBody.incident_id,
-        requestBody.deleted_attachment_ids
-      )
-    }
-
-    if (requestBody.attachments && requestBody.attachments.length > 0) {
-      await uploadClosureAttachments(
-        employee.client_id,
-        requestBody.incident_id,
-        requestBody.attachments
-      )
-    }
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: 'Incident closed successfully',
-        data: updatedIncident 
+        data: updatedIncident,
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     )
-
   } catch (error) {
     console.error('Error in close-incident function:', error)
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'An error occurred while closing the incident' 
+      JSON.stringify({
+        error: error.message || 'An error occurred while closing the incident',
       }),
-      { 
+      {
         status: 400,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     )
   }

@@ -137,10 +137,10 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
       setIsLoadingAttachments(true);
       try {
         const { data, error } = await supabase
-          .from('incident_closure_attachments' as any)
-          .select('id, file_name, file_type, file_size, file_url, storage_path')
-          .eq('incident_id', incident.id)
-          .order('created_at', { ascending: false });
+          .from('incidents')
+          .select('closure_attachments')
+          .eq('id', incident.id)
+          .single();
 
         if (error) {
           console.error('Error loading closure attachments:', error);
@@ -149,15 +149,41 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           return;
         }
 
-        const mapped: FileItem[] = (data || []).map((file: any) => ({
-          id: file.id,
-          name: file.file_name || 'attachment',
-          type: file.file_type || 'application/octet-stream',
-          size: Number(file.file_size || 0),
-          base64: file.file_url || '',
-          url: file.file_url || '',
-          path: file.storage_path || '',
-        }));
+        const list = Array.isArray(data?.closure_attachments)
+          ? data.closure_attachments
+          : [];
+
+        const mapped: FileItem[] = list
+          .filter(
+            (file: any) =>
+              file &&
+              typeof file.id === 'string' &&
+              typeof file.name === 'string' &&
+              typeof file.path === 'string'
+          )
+          .map((file: any) => {
+            const { data: pub } = supabase.storage
+              .from('incident-closure-attachments')
+              .getPublicUrl(file.path);
+            const ext = (file.name || '').split('.').pop()?.toLowerCase() || '';
+            const mime =
+              ext === 'pdf'
+                ? 'application/pdf'
+                : ext === 'png'
+                  ? 'image/png'
+                  : ext === 'jpg' || ext === 'jpeg'
+                    ? 'image/jpeg'
+                    : 'application/octet-stream';
+            return {
+              id: file.id,
+              name: file.name,
+              type: mime,
+              size: typeof file.size === 'number' ? file.size : 0,
+              base64: pub.publicUrl || '',
+              url: pub.publicUrl || '',
+              path: file.path,
+            };
+          });
 
         setExistingAttachments(mapped);
         setAttachments(mapped);
@@ -417,6 +443,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
               accept="image/*,.pdf"
               showFileList={true}
               disabled={isSubmitting || isLoadingAttachments}
+              removeIconVariant="close"
             />
           </div>
 

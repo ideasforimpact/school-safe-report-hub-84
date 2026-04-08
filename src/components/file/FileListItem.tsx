@@ -4,16 +4,23 @@ import { FileItem } from '@/types/fileTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Maximize2, Trash2, FileText, ImageIcon, Video, File } from 'lucide-react';
+import { Maximize2, Trash2, X, FileText, ImageIcon, Video, File } from 'lucide-react';
 import FilePreview from './FilePreview';
 
 interface FileListItemProps {
   file: FileItem;
   onPreview: (file: FileItem) => void;
   onRemove: (id: string) => void;
+  /** 'trash' = red delete icon; 'close' = neutral X (e.g. remove to replace) */
+  removeIconVariant?: 'trash' | 'close';
 }
 
-const FileListItem: React.FC<FileListItemProps> = ({ file, onPreview, onRemove }) => {
+const FileListItem: React.FC<FileListItemProps> = ({
+  file,
+  onPreview,
+  onRemove,
+  removeIconVariant = 'trash',
+}) => {
   const getFileIcon = () => {
     const fileType = file.type || '';
     if (fileType.startsWith('image/')) {
@@ -66,15 +73,23 @@ const FileListItem: React.FC<FileListItemProps> = ({ file, onPreview, onRemove }
             <Maximize2 className="h-4 w-4" />
           </Button>
         )}
-        <Button 
-          type="button" 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => onRemove(file.id)}
-          className="flex-shrink-0 hover:bg-red-50"
-          title="Delete file"
+          className={
+            removeIconVariant === 'close'
+              ? 'flex-shrink-0 h-8 w-8 p-0'
+              : 'flex-shrink-0 hover:bg-red-50'
+          }
+          title={removeIconVariant === 'close' ? 'Remove file' : 'Delete file'}
         >
-          <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+          {removeIconVariant === 'close' ? (
+            <X className="h-4 w-4 text-gray-500" />
+          ) : (
+            <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+          )}
         </Button>
       </div>
     </div>
