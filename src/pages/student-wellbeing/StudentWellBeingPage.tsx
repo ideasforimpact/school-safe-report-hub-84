@@ -442,7 +442,7 @@ const StudentWellBeingPage = () => {
                 className="w-full"
               />
             </div>
-            <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+            {/* <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
               <SelectTrigger className="w-[140px] h-10 border border-input rounded-md bg-background">
                 <SelectValue placeholder="Academic Year" />
               </SelectTrigger>
@@ -453,7 +453,7 @@ const StudentWellBeingPage = () => {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+            </Select> */}
              {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
                 <Button
                   variant="outline"
