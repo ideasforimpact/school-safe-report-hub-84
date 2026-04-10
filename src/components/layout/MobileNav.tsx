@@ -14,6 +14,11 @@ const MobileNav = () => {
   // Navigation items for SaaS owner (backoffice)
   const saasOwnerNavigationItems = [
     {
+      name: 'Dashboard',
+      path: '/backoffice',
+      icon: LayoutDashboard
+    },
+    {
       name: 'Clients',
       path: '/backoffice/clients',
       icon: Building

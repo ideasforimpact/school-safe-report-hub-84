@@ -38,6 +38,37 @@ export interface Module {
   access_level?: any; // Added to support access levels from client_modules
 }
 
+const HIDDEN_BACKOFFICE_MODULES = new Set(['dashboard', 'modules']);
+
+const normalizeModuleName = (name: string) => name.trim().toLowerCase();
+
+export const isBackofficeModuleVisible = (module: Pick<Module, 'name' | 'level'>) => {
+  if (module.level !== 'backoffice') {
+    return true;
+  }
+
+  return !HIDDEN_BACKOFFICE_MODULES.has(normalizeModuleName(module.name));
+};
+
+const sortModulesByOrder = (modules: Module[]) => {
+  return [...modules].sort((a, b) => {
+    if (a.order === null || a.order === undefined) return 1;
+    if (b.order === null || b.order === undefined) return -1;
+    return a.order - b.order;
+  });
+};
+
+export const getBackofficeDefaultPath = (modules: Module[]) => {
+  const firstVisibleModule = sortModulesByOrder(modules).find(isBackofficeModuleVisible);
+
+  if (!firstVisibleModule) {
+    return '/backoffice/clients';
+  }
+
+  const slug = firstVisibleModule.name.toLowerCase().replace(/\s+/g, '-');
+  return `/backoffice/${slug}`;
+};
+
 // Map string icon names to Lucide components
 const iconMap: Record<string, any> = {
   LayoutDashboard,
@@ -189,28 +220,19 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
   }
 };
 
-/** Module names excluded from the backoffice sidebar only (routes stay available if bookmarked). */
-const BACKOFFICE_SIDEBAR_HIDDEN_NAMES = new Set(['dashboard', 'modules']);
-
 // Convert database modules to sidebar items
 export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
   
   // Sort modules by order field (nulls last)
-  const sortedModules = [...modules]
-    .filter((module) => {
-      if (basePath !== '/backoffice') return true;
-      const key = module.name.trim().toLowerCase();
-      return !BACKOFFICE_SIDEBAR_HIDDEN_NAMES.has(key);
-    })
-    .sort((a, b) => {
-    if (a.order === null || a.order === undefined) return 1;
-    if (b.order === null || b.order === undefined) return -1;
-    return a.order - b.order;
-  });
+  const sortedModules = sortModulesByOrder(modules);
   
   // Process sorted modules
   sortedModules.forEach(module => {
+    if (!isBackofficeModuleVisible(module)) {
+      return;
+    }
+
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
@@ -235,6 +257,12 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
 // These functions are kept for backward compatibility
 // SaaS Owner (Backoffice) Menu Items - always include backoffice prefix
 export const getSaasOwnerItems = () => [
+  {
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    path: '/backoffice/dashboard',
+    allowed: true,
+  },
   {
     icon: Building2,
     label: 'Clients',
