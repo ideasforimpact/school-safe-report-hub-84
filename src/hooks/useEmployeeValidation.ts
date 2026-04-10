@@ -6,6 +6,31 @@ import { useAuth } from '@/contexts/auth';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ensureFreshAuthenticatedSession } from '@/utils/sessionValidation';
 
+/** Coalesce duplicate validation runs (e.g. React 18 Strict Mode double effect + fast remount). */
+const validationInflight = new Map<string, Promise<void>>();
+let lastValidationSuccessKey: string | null = null;
+let lastValidationSuccessAt = 0;
+const VALIDATION_SUCCESS_DEDUPE_MS = 750;
+
+function runEmployeeValidationDeduped(key: string, fn: () => Promise<void>): Promise<void> {
+  const inflight = validationInflight.get(key);
+  if (inflight) {
+    return inflight;
+  }
+
+  const now = Date.now();
+  if (lastValidationSuccessKey === key && now - lastValidationSuccessAt < VALIDATION_SUCCESS_DEDUPE_MS) {
+    return Promise.resolve();
+  }
+
+  const p = fn().finally(() => {
+    validationInflight.delete(key);
+  });
+
+  validationInflight.set(key, p);
+  return p;
+}
+
 /**
  * Custom hook to validate employee access on page loads and visibility changes.
  * Will redirect to login page if validation fails.
@@ -71,14 +96,16 @@ export const useEmployeeValidation = () => {
       return;
     }
 
-    // Prevent multiple simultaneous validations
-    if (isValidatingRef.current) {
-      return;
-    }
+    const dedupeKey = `${employeeData.id}:${employeeData.clientId}:${location.pathname}`;
 
-    isValidatingRef.current = true;
-    
-    try {
+    await runEmployeeValidationDeduped(dedupeKey, async () => {
+      if (isValidatingRef.current) {
+        return;
+      }
+
+      isValidatingRef.current = true;
+
+      try {
       
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       if (!supabaseUrl) {
@@ -183,7 +210,10 @@ export const useEmployeeValidation = () => {
       // If validation succeeded, log RLS context for the current authenticated user.
       // This runs in the browser with the user's JWT, so RLS policies see the real context.
       await logRlsContext();
-      
+
+      lastValidationSuccessKey = dedupeKey;
+      lastValidationSuccessAt = Date.now();
+
       // Update last validation timestamp
       lastValidationRef.current = Date.now();
       
@@ -192,6 +222,7 @@ export const useEmployeeValidation = () => {
     } finally {
       isValidatingRef.current = false;
     }
+    });
   };
 
   // Clean up function
@@ -200,7 +231,6 @@ export const useEmployeeValidation = () => {
       clearInterval(validationTimeoutRef.current);
       validationTimeoutRef.current = null;
     }
-    isValidatingRef.current = false;
   };
 
   // Effect to set up validation on page loads and visibility changes (non-backoffice)

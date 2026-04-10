@@ -4,6 +4,184 @@ import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { getBatchEmployeeSOPStatistics } from '@/services/sop/sopStatisticsService';
 
+export interface EmployeeListFilters {
+  search?: string;
+  status?: 'all' | 'active' | 'inactive';
+  departmentId?: string;
+  joiningDateFrom?: string;
+  joiningDateTo?: string;
+  /** When false, skip the employee_documents follow-up query (one HTTP round-trip less). Default true. */
+  includeDocuments?: boolean;
+}
+
+export interface PaginatedEmployeesResult {
+  employees: Employee[];
+  total: number;
+}
+
+export interface GetPaginatedEmployeesOptions {
+  signal?: AbortSignal;
+}
+
+const mapEmployeeRecords = (
+  employeesData: any[],
+  documentsData: any[] = []
+): Employee[] => {
+  return employeesData.map(record => {
+    const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
+
+    const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
+      id: doc.id,
+      employeeId: record.id,
+      documentTypeId: doc.document_type_id || '',
+      documentTypeName: (doc.document_type as any)?.name || 'Unknown',
+      documentNumber: doc.document_number || '',
+      documentImage: doc.document_url || '',
+      verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
+      verificationMethod: 'manual' as const,
+      personalInfo: doc.personal_info || undefined,
+      employee_docs_log: [],
+      params: {},
+      cronActivate: false,
+      createdAt: doc.created_at || new Date().toISOString(),
+      updatedAt: doc.updated_at || new Date().toISOString()
+    }));
+
+    return {
+      id: record.id,
+      employeeId: record.employee_id || '',
+      name: `${record.first_name} ${record.last_name}`,
+      firstName: record.first_name,
+      lastName: record.last_name,
+      email: record.email || '',
+      phone: (record as any).phone || '',
+      designation: (record as any).designation || '',
+      dateOfBirth: '',
+      address: '',
+      joiningDate: record.joining_date || new Date().toISOString(),
+      department: (record.department as any)?.department_name || record.department || '',
+      position: (record.employee_type as any)?.type_name || '',
+      employeeType: (record.employee_type as any)?.type_name ?? '',
+      status: record.status === true,
+      createdAt: record.created_at || new Date().toISOString(),
+      updatedAt: record.updated_at || new Date().toISOString(),
+      isSuperAdmin: record?.is_super_admin,
+      isCpdInvolved: (record as any).is_cpd_involved === true,
+      documents,
+      clientId: record.client_id
+    } as Employee;
+  });
+};
+
+export const getPaginatedEmployeesFromApi = async (
+  clientId?: string | null,
+  page: number = 1,
+  pageSize: number = 10,
+  filters: EmployeeListFilters = {},
+  options?: GetPaginatedEmployeesOptions
+): Promise<PaginatedEmployeesResult> => {
+  try {
+    if (!clientId) {
+      return { employees: [], total: 0 };
+    }
+
+    const signal = options?.signal;
+
+    const safePage = Math.max(1, page);
+    const safePageSize = Math.max(1, pageSize);
+    const from = (safePage - 1) * safePageSize;
+    const to = from + safePageSize - 1;
+
+    let query = supabase
+      .from('employees')
+      .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)', { count: 'exact' })
+      .eq('client_id', clientId);
+
+    if (filters.status === 'active') {
+      query = query.eq('status', true);
+    } else if (filters.status === 'inactive') {
+      query = query.eq('status', false);
+    }
+
+    if (filters.departmentId && filters.departmentId !== 'all') {
+      query = query.eq('department', filters.departmentId);
+    }
+
+    if (filters.joiningDateFrom) {
+      query = query.gte('joining_date', filters.joiningDateFrom);
+    }
+
+    if (filters.joiningDateTo) {
+      query = query.lte('joining_date', filters.joiningDateTo);
+    }
+
+    if (filters.search?.trim()) {
+      const term = filters.search.trim().replace(/[%_]/g, '');
+      query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,employee_id.ilike.%${term}%`);
+    }
+
+    let employeesRequest = query
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (signal) {
+      employeesRequest = employeesRequest.abortSignal(signal);
+    }
+
+    const { data: employeesData, error: employeesError, count } = await employeesRequest;
+
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+
+    if (employeesError) {
+      console.error("Error fetching paginated employees:", employeesError);
+      return { employees: [], total: 0 };
+    }
+
+    if (!employeesData || employeesData.length === 0) {
+      return { employees: [], total: count || 0 };
+    }
+
+    const includeDocuments = filters.includeDocuments !== false;
+
+    if (!includeDocuments) {
+      return {
+        employees: mapEmployeeRecords(employeesData, []),
+        total: count || 0,
+      };
+    }
+
+    const employeeIds = employeesData.map(emp => emp.id);
+    let documentsRequest = (supabase as any)
+      .from('employee_documents')
+      .select('id, employee_id, verification_status, document_type_id, document_url, document_number, personal_info, created_at, updated_at, document_type:employee_document_type(name, description)')
+      .in('employee_id', employeeIds)
+      .eq('is_delete', 0);
+
+    if (signal) {
+      documentsRequest = documentsRequest.abortSignal(signal);
+    }
+
+    const { data: documentsData, error: documentsError } = await documentsRequest;
+
+    if (documentsError) {
+      console.error("Error fetching employee documents:", documentsError);
+    }
+
+    return {
+      employees: mapEmployeeRecords(employeesData, documentsData || []),
+      total: count || 0,
+    };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+    console.error("Error in getPaginatedEmployeesFromApi:", error);
+    return { employees: [], total: 0 };
+  }
+};
+
 export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoClient: boolean = true): Promise<Employee[]> => {
   try {
     console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
@@ -51,56 +229,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
 
     console.log(`Successfully fetched ${employeesData.length} employees from API for client: ${clientId}`);
     
-    // Map the database records to our Employee model
-    const employees = employeesData.map(record => {
-      // Find documents for this employee
-      const employeeDocuments = (documentsData || []).filter(doc => doc.employee_id === record.id);
-      
-      // Map employee documents to our VerificationDocument interface
-      const documents: VerificationDocument[] = employeeDocuments.map(doc => ({
-        id: doc.id,
-        employeeId: record.id,
-        documentTypeId: doc.document_type_id || '',
-        documentTypeName: (doc.document_type as any)?.name || 'Unknown',
-        documentNumber: doc.document_number || '',
-        documentImage: doc.document_url || '',
-        verificationStatus: (doc.verification_status as VerificationDocument['verificationStatus']) || 'pending',
-        verificationMethod: 'manual' as const,
-        personalInfo: doc.personal_info || undefined,
-        employee_docs_log: [],
-        params: {},
-        cronActivate: false,
-        createdAt: doc.created_at || new Date().toISOString(),
-        updatedAt: doc.updated_at || new Date().toISOString()
-      }));
-
-      const employee: Employee = {
-        id: record.id,
-        employeeId: record.employee_id || '',
-        name: `${record.first_name} ${record.last_name}`,
-        firstName: record.first_name,
-        lastName: record.last_name,
-        email: record.email || '',
-        phone: (record as any).phone || '',
-        designation: (record as any).designation || '',
-        dateOfBirth: '',
-        address: '',
-        joiningDate: record.joining_date || new Date().toISOString(),
-        department: (record.department as any)?.department_name || record.department || '',
-        position: (record.employee_type as any)?.type_name || '',
-        employeeType: (record.employee_type as any)?.type_name ?? '',
-        status: record.status === true,
-        createdAt: record.created_at || new Date().toISOString(),
-        updatedAt: record.updated_at || new Date().toISOString(),
-        isSuperAdmin: record?.is_super_admin,
-        isCpdInvolved: (record as any).is_cpd_involved === true,
-        documents: documents,
-        clientId: record.client_id
-      };
-      return employee;
-    });
-    
-    return employees;
+    return mapEmployeeRecords(employeesData, documentsData || []);
   } catch (error) {
     console.error("Error in getAllEmployeesFromApi:", error);
     // Don't show toast error, just return empty array

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { UserRole, ModulePermissions } from '@/contexts/auth/types';
+import React, { useState } from 'react';
+import { UserRole, ModulePermissions } from '@/contexts/auth/types';``  
 import {
   Table,
   TableBody,
@@ -17,10 +17,7 @@ import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmployeeUser } from '@/pages/UserManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { incidentReferenceService, IncidentReferenceCheck } from '@/services/incident/incidentReferenceService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useAuth } from '@/contexts/auth/useAuth';
 import { formatDate } from "@/lib/Dateformat";
 import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -34,6 +31,10 @@ interface UserListProps {
   onReactivateUser: (id: string) => void;
   hasAdminAccess?: boolean;
   onRefresh?: () => void;
+  currentPage: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
 }
 
 const UserList = ({ 
@@ -44,6 +45,10 @@ const UserList = ({
   onReactivateUser, 
   hasAdminAccess = false,
   onRefresh,
+  currentPage,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
 }: UserListProps) => {
   type EmployeeDocumentInfo = {
     id: string;
@@ -51,164 +56,15 @@ const UserList = ({
     status: 'pending' | 'verified' | 'failed';
   };
 
-  const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
-  const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
-  const [documentsByEmployee, setDocumentsByEmployee] = useState<Record<string, EmployeeDocumentInfo[]>>({});
-  const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Pre-load reference info so we can disable delete button for linked employees
-  useEffect(() => {
-    const clientId = employeeData?.clientId;
-    if (!clientId || users.length === 0) {
-      setEmployeeReferences({});
-      return;
-    }
-
-    let isCancelled = false;
-
-    const fetchReferences = async () => {
-      try {
-        const results = await Promise.all(
-          users.map(async (user) => {
-            const refInfo = await incidentReferenceService.checkEmployeeReferences(user.id, clientId);
-            return { id: user.id, refInfo };
-          })
-        );
-
-        if (isCancelled) return;
-
-        const map: Record<string, IncidentReferenceCheck> = {};
-        results.forEach(({ id, refInfo }) => {
-          map[id] = refInfo;
-        });
-        setEmployeeReferences(map);
-      } catch (error) {
-        console.error('Error preloading employee reference info:', error);
-      }
-    };
-
-    fetchReferences();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [users, employeeData]);
-
-  // Fetch employee uploaded documents for the info popover near Department.
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadEmployeeDocuments = async () => {
-      if (!users.length) {
-        setDocumentsByEmployee({});
-        return;
-      }
-
-      try {
-        setIsDocumentsLoading(true);
-        const employeeIds = users.map((u) => u.id).filter(Boolean);
-
-        const { data, error } = await supabase
-          .from('employee_documents')
-          .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
-          .in('employee_id', employeeIds as any)
-          .eq('is_delete', 0);
-
-        if (error) throw error;
-        if (isCancelled) return;
-
-        const toLabel = (value: string) =>
-          value
-            .split('_')
-            .filter(Boolean)
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ');
-
-        const normalizeStatus = (status: string | null | undefined): EmployeeDocumentInfo['status'] => {
-          if (!status) return 'pending';
-          const normalized = status.toLowerCase();
-          if (normalized === 'verified' || normalized === 'completed') return 'verified';
-          if (normalized === 'failed' || normalized === 'rejected') return 'failed';
-          return 'pending';
-        };
-
-        const grouped: Record<string, EmployeeDocumentInfo[]> = {};
-        users.forEach((u) => {
-          grouped[u.id] = [];
-        });
-
-        (data || []).forEach((doc: any) => {
-          const employeeId = doc.employee_id as string;
-          const selected = doc?.params?.selected;
-          const typeName = doc?.document_type?.name;
-          const displayName = toLabel(typeName || selected || 'document');
-
-          if (!grouped[employeeId]) grouped[employeeId] = [];
-          grouped[employeeId].push({
-            id: doc.id,
-            name: displayName,
-            status: normalizeStatus(doc.verification_status),
-          });
-        });
-
-        setDocumentsByEmployee(grouped);
-      } catch (error) {
-        console.error('Error loading employee documents in user list:', error);
-      } finally {
-        if (!isCancelled) setIsDocumentsLoading(false);
-      }
-    };
-
-    loadEmployeeDocuments();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [users]);
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
 
-  // Pagination logic
-  const totalItems = users.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const sortedUsers = useMemo(() => {
-    return [...users].sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0).getTime();
-      const dateB = new Date(b.createdAt || 0).getTime();
-      return dateB - dateA; // newest first
-    });
-  }, [users]);
-  const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return sortedUsers.slice(startIndex, endIndex);
-  }, [sortedUsers, currentPage, itemsPerPage]);
-  // Reset to first page when items per page changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
-
-  // Reset to first page when users array changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [users.length]);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleItemsPerPageChange = (value: string) => {
-    setItemsPerPage(Number(value));
-  };
 
   const getStatusBadge = (status: 'pending' | 'verified' | 'failed') => {
     if (status === 'verified') {
@@ -218,6 +74,29 @@ const UserList = ({
       return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>;
     }
     return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>;
+  };
+
+  const getDocumentsForUser = (user: EmployeeUser): EmployeeDocumentInfo[] => {
+    const toLabel = (value: string) =>
+      value
+        .split('_')
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+
+    const normalizeStatus = (status: string | null | undefined): EmployeeDocumentInfo['status'] => {
+      if (!status) return 'pending';
+      const normalized = status.toLowerCase();
+      if (normalized === 'verified' || normalized === 'completed') return 'verified';
+      if (normalized === 'failed' || normalized === 'rejected') return 'failed';
+      return 'pending';
+    };
+
+    return ((user as any).documents || []).map((doc: any) => ({
+      id: doc.id,
+      name: toLabel(doc.documentTypeName || 'document'),
+      status: normalizeStatus(doc.verificationStatus),
+    }));
   };
 
 
@@ -328,7 +207,7 @@ const UserList = ({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {paginatedUsers.map((user) => (
+        {users.map((user) => (
           <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
             <TableCell>
               <div className="flex items-center gap-2">
@@ -384,7 +263,6 @@ const UserList = ({
                     type="button"
                     className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
                     aria-label={`View documents for ${user.firstName} ${user.lastName}`}
-                    disabled={isDocumentsLoading}
                   >
                     <AlertCircle className="h-4 w-4" />
                   </button>
@@ -394,12 +272,10 @@ const UserList = ({
                     DOCUMENTS
                   </div>
                   <div className="pt-2 space-y-2 max-h-56 overflow-auto">
-                    {isDocumentsLoading ? (
-                      <div className="text-sm text-gray-500">Loading...</div>
-                    ) : (documentsByEmployee[user.id] || []).length === 0 ? (
+                    {getDocumentsForUser(user).length === 0 ? (
                       <div className="text-sm text-gray-500">No uploaded documents</div>
                     ) : (
-                      (documentsByEmployee[user.id] || []).map((doc) => (
+                      getDocumentsForUser(user).map((doc) => (
                         <div key={doc.id} className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -505,46 +381,6 @@ const UserList = ({
                   )}
                   
                   {(() => {
-                    const refInfo = employeeReferences[user.id];
-                    const isLinked = refInfo?.hasReferences || false;
-                    const message = refInfo?.message || '';
-
-                    if (isLinked) {
-                      return (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  disabled={true}
-                                  aria-disabled="true"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                  className="text-red-400 hover:text-red-400 hover:bg-transparent cursor-not-allowed opacity-60"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent 
-                              side="left" 
-                              align="center" 
-                              sideOffset={8} 
-                              className="max-w-xs whitespace-normal text-left"
-                            >
-                              <p className="text-xs leading-snug text-left">
-                                {message}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    }
-
                     return (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -607,7 +443,7 @@ const UserList = ({
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => handlePageChange(1)}
+              onClick={() => onPageChange(1)}
               disabled={currentPage === 1}
             >
               <span className="sr-only">Go to first page</span>
@@ -616,7 +452,7 @@ const UserList = ({
             <Button
               variant="outline"
               className="h-8 w-8 p-0"
-              onClick={() => handlePageChange(currentPage - 1)}
+              onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
               <span className="sr-only">Go to previous page</span>
@@ -652,7 +488,7 @@ const UserList = ({
                     key={pageNumber}
                     variant={isCurrentPage ? "default" : "outline"}
                     className="h-8 w-8 p-0"
-                    onClick={() => handlePageChange(pageNumber)}
+                    onClick={() => onPageChange(pageNumber)}
                   >
                     {pageNumber}
                   </Button>
@@ -663,7 +499,7 @@ const UserList = ({
             <Button
               variant="outline"
               className="h-8 w-8 p-0"
-              onClick={() => handlePageChange(currentPage + 1)}
+              onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
               <span className="sr-only">Go to next page</span>
@@ -672,7 +508,7 @@ const UserList = ({
             <Button
               variant="outline"
               className="hidden h-8 w-8 p-0 lg:flex"
-              onClick={() => handlePageChange(totalPages)}
+              onClick={() => onPageChange(totalPages)}
               disabled={currentPage === totalPages}
             >
               <span className="sr-only">Go to last page</span>

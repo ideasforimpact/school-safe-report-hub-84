@@ -13,6 +13,12 @@ import { InstitutionType } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
 import { buildClientLogoUrl } from '@/lib/utils';
 import { checkSuperAdminEmailExists } from '@/services/employee/employeeValidationService';
+import {
+  isValidClientName,
+  isValidContactPerson,
+  isValidClientFormEmail,
+  isValidClientFormPhone,
+} from '@/services/employee/utils/employeeValidationUtils';
 
 interface ClientType {
   id: string;
@@ -37,24 +43,6 @@ interface BasicInfoTabProps {
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   showErrors?: boolean;
 }
-
-export const isValidClientName = (name: string) => {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  return /^[A-Za-z]+(?:\s[A-Za-z]+)*$/.test(trimmed);
-};
-export const isValidContactPerson = (name: string) => {
-   const trimmed = name.trim();
-   if (!trimmed) return false;
-   return /^[A-Za-z\s]{1,20}$/.test(trimmed);
- };
-
-export const isValidEmail = (email: string) => {
-  const trimmed = email.trim();
-  if (!trimmed) return false;
-  return /^(?!.*\.\.)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/.test(trimmed);
-};
-export const isValidPhone = (phone?: string) => !!phone && /^[6-9]\d{9}$/.test(phone);
 
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
@@ -84,7 +72,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   if (!emailTouched) return;
 
-  if (!isValidEmail(formData.superAdminEmail)) {
+  if (!isValidClientFormEmail(formData.superAdminEmail)) {
     setEmailExists(false);
     setCheckingEmail(false);
     setFormData((prev: any) => ({
@@ -316,7 +304,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
       {emailTouched &&
         formData.superAdminEmail &&
-        !isValidEmail(formData.superAdminEmail) && (
+        !isValidClientFormEmail(formData.superAdminEmail) && (
           <p className="text-xs text-red-600">
             Enter a valid email address
           </p>
@@ -325,7 +313,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
       {!checkingEmail &&
         emailTouched &&
         formData.superAdminEmail &&
-        isValidEmail(formData.superAdminEmail) &&
+        isValidClientFormEmail(formData.superAdminEmail) &&
         !emailExists && (
           <p className="text-xs text-green-600">
             Email is available
@@ -385,7 +373,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         {showErrors && !formData.email && (
           <p className="text-xs text-red-600">Email is required.</p>
         )}
-        {formData.email && !isValidEmail(formData.email) && (
+        {formData.email && !isValidClientFormEmail(formData.email) && (
           <p className="text-xs text-red-600"> Enter a valid email address</p>
         )}
       </div>
@@ -404,12 +392,12 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           maxLength={10}
           required
             className={
-            formData.phone && !isValidPhone(formData.phone)
+            formData.phone && !isValidClientFormPhone(formData.phone)
               ? 'border-red-500'
               : ''
           }
         />
-         {formData.phone && !isValidPhone(formData.phone) && (
+         {formData.phone && !isValidClientFormPhone(formData.phone) && (
           <p className="text-xs text-red-600">
             Phone number must be valid and should contain at least 10 digits.
           </p>
