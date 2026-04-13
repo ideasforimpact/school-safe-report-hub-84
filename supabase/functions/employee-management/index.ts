@@ -33,7 +33,7 @@ serve(async (req) => {
     console.log("Handling operation:", operation);
  
     // Validate client exists for operations that need it
-    if (operation === 'create' || operation === 'update' || operation === 'bulk_import') {
+    if (operation === 'create' || operation === 'update' || operation === 'bulk_import' || operation === 'list') {
       // Extract clientId from different possible locations
       let validationClientId = null;
       
@@ -106,6 +106,10 @@ serve(async (req) => {
     }
  
     switch (operation) {
+      case 'list_departments':
+        return await handleListDepartments(supabaseClient);
+      case 'list':
+        return await handleList(supabaseClient, requestData);
       case 'create':
         return await handleCreate(supabaseClient, employee);
       case 'update':
@@ -386,6 +390,98 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       skipped: errors.length,
       errors,
     }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+async function handleList(supabaseClient: any, requestData: any) {
+  const clientId = requestData.clientId;
+  const page = Math.max(1, Number(requestData.page || 1));
+  const pageSize = Math.max(1, Number(requestData.pageSize || 10));
+  const filters = requestData.filters || {};
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabaseClient
+    .from('employees')
+    .select('*, employee_type:employee_type(id, type_name), department:employee_departments(id, department_name)', { count: 'exact' })
+    .eq('client_id', clientId);
+
+  if (filters.status === 'active') {
+    query = query.eq('status', true);
+  } else if (filters.status === 'inactive') {
+    query = query.eq('status', false);
+  }
+
+  if (filters.departmentId && filters.departmentId !== 'all') {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(filters.departmentId)) {
+      query = query.eq('department', filters.departmentId);
+    }
+  }
+
+  if (filters.joiningDateFrom) {
+    query = query.gte('joining_date', filters.joiningDateFrom);
+  }
+
+  if (filters.joiningDateTo) {
+    query = query.lte('joining_date', filters.joiningDateTo);
+  }
+
+  if (filters.search && String(filters.search).trim()) {
+    const term = String(filters.search).trim().replace(/[%_]/g, '');
+    query = query.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,employee_id.ilike.%${term}%`);
+  }
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    console.error("Error listing employees:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch employees" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({
+      employees: data || [],
+      total: count || 0,
+    }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+async function handleListDepartments(supabaseClient: any) {
+  const { data, error } = await supabaseClient
+    .from('employee_departments')
+    .select('*')
+    .order('department_name', { ascending: true });
+
+  if (error) {
+    console.error("Error listing employee_departments:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to fetch departments" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ departments: data || [] }),
     {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

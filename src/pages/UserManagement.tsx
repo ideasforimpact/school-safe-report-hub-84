@@ -34,7 +34,6 @@ import {
 } from '@/services/auth/userManagementService';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
-import { getPaginatedEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { getModuleAccessForUser } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
@@ -106,6 +105,39 @@ interface UserManagementProps {
 type DepartmentRow = {
   id: string;
   department_name: string;
+};
+
+// De-duplicate identical edge invocations (helps React StrictMode double-effect in dev).
+const employeeListInflight = new Map<string, Promise<any>>();
+const employeeListRecent = new Map<string, { at: number; value: any }>();
+const EMPLOYEE_LIST_DEDUPE_MS = 1200;
+const invokeEmployeeList = async (payload: Record<string, any>) => {
+  const key = JSON.stringify(payload);
+  const recent = employeeListRecent.get(key);
+  const now = Date.now();
+  if (recent && now - recent.at < EMPLOYEE_LIST_DEDUPE_MS) {
+    return recent.value;
+  }
+
+  const existing = employeeListInflight.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const request = supabase.functions
+    .invoke('employee-management', {
+      body: JSON.stringify(payload),
+    })
+    .then((res) => {
+      employeeListRecent.set(key, { at: Date.now(), value: res });
+      return res;
+    })
+    .finally(() => {
+      employeeListInflight.delete(key);
+    });
+
+  employeeListInflight.set(key, request);
+  return request;
 };
 
 // Main UserManagement component
@@ -283,26 +315,30 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     try {
       setIsLoading(true);
-      const paginatedRes = await getPaginatedEmployeesFromApi(
+      const { data: paginatedRes, error: paginatedError } = await invokeEmployeeList({
+        operation: 'list',
         clientId,
         page,
         pageSize,
-        {
+        filters: {
           search: debouncedSearchQuery,
           status: statusFilter as 'all' | 'active' | 'inactive',
+          departmentId: departmentFilter,
           joiningDateFrom,
           joiningDateTo,
-          includeDocuments: false,
         },
-        { signal }
-      );
+      });
+
+      if (paginatedError) {
+        throw paginatedError;
+      }
 
       if (signal?.aborted) {
         return;
       }
 
-      const employeeData = paginatedRes.employees;
-      setTotalUsers(paginatedRes.total);
+      const employeeData = (paginatedRes?.employees || []) as any[];
+      setTotalUsers(Number(paginatedRes?.total || 0));
 
       console.log(employeeData, "employeeData124");
 
@@ -310,23 +346,23 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         const processedUsers = employeeData.map((employee) => {
           return {
             id: employee.id,
-            firstName: employee.firstName,
-            lastName: employee.lastName,
+            firstName: employee.first_name,
+            lastName: employee.last_name,
             email: employee.email,
-            phone: (employee as any).phone,
-            designation: (employee as any).designation,
-            employeeId: employee.employeeId,
-            employeeType: employee.employeeType as any,
-            department: employee.department as any,
-            joiningDate: employee.joiningDate,
+            phone: employee.phone,
+            designation: employee.designation,
+            employeeId: employee.employee_id,
+            employeeType: employee.employee_type?.type_name as any,
+            department: (employee.department?.department_name || employee.department) as any,
+            joiningDate: employee.joining_date,
             isActive: employee.status === true,
-            createdAt: employee.createdAt || new Date().toISOString(),
-            clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin,
-            is_cpd_involved: employee.isCpdInvolved ?? false,
+            createdAt: employee.created_at || new Date().toISOString(),
+            clientId: employee.client_id,
+            isSuperAdmin: employee.is_super_admin,
+            is_cpd_involved: employee.is_cpd_involved ?? false,
             moduleAccessPayload: [],
             cpd_entries: [],
-            documents: employee.documents || [],
+            documents: [],
             role: 'user' as const
           };
         });

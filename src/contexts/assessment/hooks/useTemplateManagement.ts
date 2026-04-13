@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { templateService } from '@/services/assessment/templateService';
 import { useAuth } from '@/contexts/auth';
 
-export const useTemplateManagement = (userId?: string) => {
+export const useTemplateManagement = (userId?: string, enabled: boolean = true) => {
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const { employeeData } = useAuth();
@@ -32,10 +32,13 @@ export const useTemplateManagement = (userId?: string) => {
   };
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
     if (employeeData?.clientId) {
       loadTemplates();
     }
-  }, [employeeData?.clientId]);
+  }, [employeeData?.clientId, enabled]);
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {

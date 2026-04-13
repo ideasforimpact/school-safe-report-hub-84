@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Shield, User } from "lucide-react";
 import { useEmployeeDepartments } from "@/hooks/useEmployeeDepartments";
 import { employeeDepartmentName } from "@/services/employeeNameHelpers";
+import { useLocation } from "react-router-dom";
 
 
 interface UserRoleBadgeProps {
@@ -18,7 +19,10 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department 
 }) => {
-  const needsDepartmentLookup = !!department ;
+  const location = useLocation();
+  const isUsersRoute = location.pathname === '/users';
+  const uuidLike = !!department && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(department.trim());
+  const needsDepartmentLookup = !isUsersRoute && uuidLike;
   const { employeeDepartments } = useEmployeeDepartments(needsDepartmentLookup);
 
   const departmentLabel = needsDepartmentLookup

@@ -12,6 +12,7 @@ import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { initialDocumentTypes, initialDocumentStatuses } from './initialData';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
+import { useLocation } from 'react-router-dom';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -22,6 +23,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>(initialDocumentStatuses);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({});
+  const location = useLocation();
+  const isUsersRoute = location.pathname === '/users';
 
   // Use the employee management hook
   const { 
@@ -227,9 +230,12 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
 
   // Fetch initial data when the context mounts, but only once
   useEffect(() => {
+    if (isUsersRoute) {
+      return;
+    }
     fetchDocumentTypes();
     fetchDocumentStatuses();
-  }, []);
+  }, [isUsersRoute]);
   const handleEmployeeDocumentsRealtime = useCallback(
     (payload: any) => {
       const employeeId = payload.new?.employee_id || payload.old?.employee_id;

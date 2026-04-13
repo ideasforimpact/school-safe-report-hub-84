@@ -49,6 +49,11 @@ export const useEmployeeValidation = () => {
     return location.pathname.startsWith('/backoffice');
   };
 
+  // Keep /users route quiet: user requested only user-page data call on hard refresh.
+  const isQuietUsersRoute = () => {
+    return location.pathname === '/users';
+  };
+
   // Common helper to log RLS context from the current browser session
   const logRlsContext = async () => {
     if (state.isLoggingOut) return;
@@ -88,6 +93,11 @@ export const useEmployeeValidation = () => {
 
     // Skip validation for backoffice paths (backoffice uses its own auth)
     if (isBackofficePath()) {
+      return;
+    }
+
+    // Skip validation for users route to avoid extra network requests on hard refresh.
+    if (isQuietUsersRoute()) {
       return;
     }
     
@@ -236,7 +246,7 @@ export const useEmployeeValidation = () => {
   // Effect to set up validation on page loads and visibility changes (non-backoffice)
   useEffect(() => {
     // Skip for backoffice paths or if logging out
-    if (isBackofficePath() || state.isLoggingOut) {
+    if (isBackofficePath() || isQuietUsersRoute() || state.isLoggingOut) {
       cleanup();
       return;
     }

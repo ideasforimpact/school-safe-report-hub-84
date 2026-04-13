@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
 import { fetchStudentsByClientId } from '@/services/student/fetchStudentService';
+import { useLocation } from 'react-router-dom';
 
 interface StudentContextType {
   students: Student[];
@@ -22,6 +23,8 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { employeeData } = useAuth();
+  const location = useLocation();
+  const isUsersRoute = location.pathname === '/users';
 
   // Fetch students function
   const fetchStudents = useCallback(async () => {
@@ -55,9 +58,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   
   // Fetch students when clientId becomes available or changes
   useEffect(() => {
+    if (isUsersRoute) {
+      setStudents([]);
+      setIsLoading(false);
+      return;
+    }
     console.log('StudentContext useEffect triggered, clientId:', employeeData?.clientId);
     fetchStudents();
-  }, [fetchStudents, employeeData?.clientId]);
+  }, [fetchStudents, employeeData?.clientId, isUsersRoute]);
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
