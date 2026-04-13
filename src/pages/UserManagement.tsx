@@ -82,6 +82,7 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
   employeeId?: string;
   employeeType?: EmployeeType; 
+  departmentId?: string;
   department?: DepartmentType;
   joiningDate?: string;
   cpd_entries?: CpdEntryForUser[];
@@ -226,12 +227,13 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
 
     employeeUsers.forEach((employee) => {
       const rawDepartment = (employee.department || '').trim();
+      const rawDepartmentId = (employee.departmentId || '').trim();
       if (!rawDepartment) return;
-      const key = rawDepartment.toLowerCase();
+      const key = rawDepartmentId || rawDepartment.toLowerCase();
       if (seen.has(key)) return;
       seen.add(key);
       nextOptions.push({
-        id: rawDepartment,
+        id: rawDepartmentId || rawDepartment,
         department_name: rawDepartment,
       });
     });
@@ -353,6 +355,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             designation: employee.designation,
             employeeId: employee.employee_id,
             employeeType: employee.employee_type?.type_name as any,
+            departmentId: employee.department?.id,
             department: (employee.department?.department_name || employee.department) as any,
             joiningDate: employee.joining_date,
             isActive: employee.status === true,
