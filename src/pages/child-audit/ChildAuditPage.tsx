@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   Search,
   Loader2,
 } from 'lucide-react';
@@ -20,17 +21,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   fetchChildAuditStudents,
   type ChildAuditStudentRow,
 } from '@/services/child-audit/childAuditStudentsService';
-import {
-  createChildAuditRecord,
-  fetchChildAuditRecordsByStudent,
-  type ChildAuditLookupItem,
-  type ChildAuditLookups,
-  type ChildAuditRecord,
-} from '@/services/child-audit/childAuditRecordsService';
 import {
   fetchChildAuditStudentDetails,
   type ChildAuditCheckTypeDetail,
@@ -43,6 +38,68 @@ import { type FileItem } from '@/types/fileTypes';
 import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
+type ChildAuditLookupItem = {
+  id: string;
+  name: string;
+  active: boolean;
+  definition?: string | null;
+};
+
+type ChildAuditLookups = {
+  checkTypes: ChildAuditLookupItem[];
+  physicalConditions: ChildAuditLookupItem[];
+  behaviours: ChildAuditLookupItem[];
+  meltdowns: ChildAuditLookupItem[];
+  aggressions: ChildAuditLookupItem[];
+};
+
+type ChildAuditRecord = {
+  id: string;
+  client_id: string;
+  student_id: string;
+  employee_id: string | null;
+  check_type_id: string | null;
+  physical_condition_ids: string[];
+  physical_where?: Record<string, string[]>;
+  behaviour_ids: string[];
+  meltdown_occurred: boolean;
+  meltdown_definition: string[];
+  aggression_ids: string[];
+  notes: string | null;
+  attachments?: Array<{
+    id: string;
+    bucket: string;
+    file_path: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+    signed_url: string | null;
+  }>;
+  created_at: string;
+  updated_at: string;
+};
+
+type CreateChildAuditRecordPayload = Omit<
+  ChildAuditRecord,
+  'id' | 'created_at' | 'updated_at'
+> & {
+  attachments?: Array<{
+    file_name: string;
+    mime_type?: string | null;
+    file_size?: number | null;
+    base64: string;
+  }>;
+};
+
+type ChildAuditEdgeResponse = {
+  ok: boolean;
+  version?: number;
+  data?: ChildAuditRecord[];
+  record?: ChildAuditRecord;
+  error?: string;
+  message?: string;
+};
+
 type CheckSelectionState = {
   physical_condition_ids: string[];
   behaviour_ids: string[];
@@ -247,6 +304,53 @@ const toAuditDateHeader = (value: string) =>
     month: 'short',
     year: 'numeric',
   }).toUpperCase();
+
+const fetchChildAuditRecordsByStudent = async (
+  clientId: string,
+  studentId: string
+): Promise<ChildAuditRecord[]> => {
+  const { data, error } = await supabase.functions.invoke<ChildAuditEdgeResponse>('child-audit-save-check', {
+    body: {
+      action: 'fetch_records',
+      client_id: clientId,
+      student_id: studentId,
+    },
+  });
+
+  if (error) throw new Error(error.message ?? 'Failed to fetch child audit records');
+  if (!data?.ok || !Array.isArray(data.data)) {
+    throw new Error(data?.message ?? data?.error ?? 'Invalid response from child-audit-save-check');
+  }
+
+  return data.data;
+};
+
+const createChildAuditRecord = async (payload: CreateChildAuditRecordPayload): Promise<ChildAuditRecord> => {
+  const { data, error } = await supabase.functions.invoke<ChildAuditEdgeResponse>('child-audit-save-check', {
+    body: {
+      action: 'save_check',
+      client_id: payload.client_id,
+      student_id: payload.student_id,
+      employee_id: payload.employee_id,
+      check_type_id: payload.check_type_id,
+      physical_condition_ids: payload.physical_condition_ids,
+      behaviour_ids: payload.behaviour_ids,
+      aggression_ids: payload.aggression_ids,
+      meltdown_occurred: payload.meltdown_occurred,
+      meltdown_definition: payload.meltdown_definition ?? [],
+      notes: payload.notes,
+      physical_where: payload.physical_where ?? {},
+      attachments: payload.attachments ?? [],
+    },
+  });
+
+  if (error) throw new Error(error.message ?? 'Failed to save child audit check');
+  if (!data?.ok || !data.record) {
+    throw new Error(data?.message ?? data?.error ?? 'Invalid response from child-audit-save-check');
+  }
+
+  return data.record;
+};
 
 const ChildAuditPage = () => {
   const { employeeData } = useAuth();
@@ -562,6 +666,11 @@ const ChildAuditPage = () => {
   }, [students, search]);
 
   const recentRecord = records[0];
+  const selectedCheckTypeRecord = useMemo(
+    () => records.find((record) => record.check_type_id === selectedCheckType) ?? null,
+    [records, selectedCheckType]
+  );
+  const savedAttachments = selectedCheckTypeRecord?.attachments ?? [];
 
   const calendarIndicators = useMemo(() => {
     const month = calendarMonth;
@@ -1258,6 +1367,35 @@ const diagnostics = {
                     <CardTitle className="text-xl">Attachments</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {savedAttachments.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <div className="space-y-2">
+                          {savedAttachments.map((attachment) => {
+                            const publicUrl = supabase.storage
+                              .from(attachment.bucket)
+                              .getPublicUrl(attachment.file_path).data.publicUrl;
+                            return (
+                              <div
+                                key={attachment.id}
+                                className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                              >
+                                <span className="truncate text-sm text-slate-700">{attachment.file_name}</span>
+                                <a
+                                  href={publicUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 hover:text-blue-700"
+                                  aria-label={`View ${attachment.file_name}`}
+                                  title="View document"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <ReusableFileUploader
                       key={`${selectedStudent.id}-${attachmentUploaderKey}`}
                       onFilesChange={setAttachments}
