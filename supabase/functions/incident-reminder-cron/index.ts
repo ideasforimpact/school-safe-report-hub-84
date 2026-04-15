@@ -335,6 +335,31 @@ async function sendReminderEmail(supabase: any, originalEmail: any, incidentId: 
       return false;
     }
 
+    const messagePreview = (reminderBody || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240);
+
+    const { error: centralizedError } = await supabase.rpc('create_centralized_notification', {
+      p_client_id: originalEmail.client_id,
+      p_module_id: null,
+      p_module_name: originalEmail.module_name || 'incident',
+      p_email_id: originalEmail.id,
+      p_is_reminder_notification: true,
+      p_notification_type: 'incident_reminder_10_days',
+      p_channel: 'email',
+      p_title: reminderSubject,
+      p_message: messagePreview || null,
+      p_payload: reminderVariables,
+      p_recipient_employee_id: null,
+      p_recipient_email: originalEmail.recipient_email,
+    });
+
+    if (centralizedError) {
+      console.error('Failed to create centralized notification for incident reminder:', centralizedError);
+    }
+
     console.log(`Successfully sent reminder email for incident ${incidentId}`);
     return true;
 
