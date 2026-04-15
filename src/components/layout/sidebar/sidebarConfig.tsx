@@ -48,16 +48,16 @@ export const isBackofficeModuleVisible = (module: Pick<Module, 'name' | 'level'>
   return !hiddenBackofficeModules.has(module.name.toLowerCase());
 };
 
-const sortModulesByOrder = (modules: Module[]) => {
-  return [...modules].sort((a, b) => {
-    if (a.order === null || a.order === undefined) return 1;
-    if (b.order === null || b.order === undefined) return -1;
-    return a.order - b.order;
-  });
-};
+// const sortModulesByOrder = (modules: Module[]) => {
+//   return [...modules].sort((a, b) => {
+//     if (a.order === null || a.order === undefined) return 1;
+//     if (b.order === null || b.order === undefined) return -1;
+//     return a.order - b.order;
+//   });
+// };
 
 export const getBackofficeDefaultPath = (modules: Module[]) => {
-  const firstVisibleModule = sortModulesByOrder(modules).find(isBackofficeModuleVisible);
+  const firstVisibleModule = modules.find(isBackofficeModuleVisible);
 
   if (!firstVisibleModule) {
     return '/backoffice/clients';
@@ -221,12 +221,12 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
 // Convert database modules to sidebar items
 export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
-  
+
   // Sort modules by order field (nulls last)
-  const sortedModules = sortModulesByOrder(modules);
+  // const sortedModules = sortModulesByOrder(modules);
   
   // Process sorted modules
-  sortedModules.forEach(module => {
+  modules.forEach(module => {
     if (!isBackofficeModuleVisible(module)) {
       return;
     }
