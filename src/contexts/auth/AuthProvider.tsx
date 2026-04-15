@@ -17,7 +17,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
-import { clearPersistedAuthState, clearBackofficePersistedAuthState } from '@/store/authPersistence';
+import { clearPersistedAuthState } from '@/store/authPersistence';
 import { validateSession } from '@/utils/sessionValidation';
 import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -796,32 +796,18 @@ const handleLogoutBroadcast = useCallback(() => {
     }
     
     try {
-      const isBackofficeSession = isBackofficeUser || location.pathname.startsWith('/backoffice');
-
       // Immediate state clearing - no setTimeout delays
       dispatch(setLogoutState(true)); 
-      // Broadcast logout only for SSO flows, not backoffice session isolation.
-      if (!isBackofficeSession) {
-        handleLogoutBroadcast();
-      }
+      handleLogoutBroadcast();
       dispatch(clearAuth());
       dispatch(resetEmployee());
-      if (isBackofficeSession) {
-        clearBackofficePersistedAuthState();
-      } else {
-        clearPersistedAuthState();
-      }
+      clearPersistedAuthState();
       logoutUser();
       
-      // Sign out from Supabase only for SSO users.
-      // Backoffice uses isolated, non-persistent auth and must not touch global Supabase session.
-      if (!isBackofficeSession) {
-        await supabase.auth.signOut();
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('authState');
-      } else {
-        sessionStorage.removeItem('authState');
-      }
+      // Sign out from Supabase (for SSO users)
+      await supabase.auth.signOut();
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('authState');
       
       // Navigate immediately
       const shouldRedirectToBackoffice = isBackofficeUser || location.pathname.startsWith('/backoffice');
