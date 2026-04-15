@@ -38,6 +38,35 @@ export interface Module {
   access_level?: any; // Added to support access levels from client_modules
 }
 
+export const isBackofficeModuleVisible = (module: Pick<Module, 'name' | 'level'>) => {
+  // Client-level modules are always visible here.
+  if (module.level !== 'backoffice') return true;
+
+  // Backoffice modules should be visible by default unless explicitly hidden.
+  // Keep this as an allow-by-default guard to avoid empty sidebar regressions.
+  const hiddenBackofficeModules = new Set<string>([]);
+  return !hiddenBackofficeModules.has(module.name.toLowerCase());
+};
+
+const sortModulesByOrder = (modules: Module[]) => {
+  return [...modules].sort((a, b) => {
+    if (a.order === null || a.order === undefined) return 1;
+    if (b.order === null || b.order === undefined) return -1;
+    return a.order - b.order;
+  });
+};
+
+export const getBackofficeDefaultPath = (modules: Module[]) => {
+  const firstVisibleModule = sortModulesByOrder(modules).find(isBackofficeModuleVisible);
+
+  if (!firstVisibleModule) {
+    return '/backoffice/clients';
+  }
+
+  const slug = firstVisibleModule.name.toLowerCase().replace(/\s+/g, '-');
+  return `/backoffice/${slug}`;
+};
+
 // Map string icon names to Lucide components
 const iconMap: Record<string, any> = {
   LayoutDashboard,
@@ -194,14 +223,14 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
   const items = [];
   
   // Sort modules by order field (nulls last)
-  const sortedModules = [...modules].sort((a, b) => {
-    if (a.order === null || a.order === undefined) return 1;
-    if (b.order === null || b.order === undefined) return -1;
-    return a.order - b.order;
-  });
+  const sortedModules = sortModulesByOrder(modules);
   
   // Process sorted modules
   sortedModules.forEach(module => {
+    if (!isBackofficeModuleVisible(module)) {
+      return;
+    }
+
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     

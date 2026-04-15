@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setCurrentUser, setBackofficeUser, setAuthStatus } from '@/store/authActions';
@@ -9,6 +11,20 @@ import { setEmployeeData, setConfiguredModules } from '@/store/employeeActions';
 import { User, EmployeeData } from '@/contexts/auth/types';
 import { generateBackofficeToken } from '@/utils/jwtUtils';
 import { saveAuthState } from '@/store/authPersistence';
+import { getBackofficeDefaultPath } from '@/components/layout/sidebar/sidebarConfig';
+import type { Module } from '@/components/layout/sidebar/sidebarConfig';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Isolated auth client for backoffice login to avoid overriding global app session.
+const backofficeAuthClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
 
 // Helper function to create fresh Supabase auth user with email provider
 const createSupabaseAuthUser = async (email: string, password: string): Promise<boolean> => {
@@ -16,7 +32,7 @@ const createSupabaseAuthUser = async (email: string, password: string): Promise<
     console.log('Creating fresh Supabase auth user with email provider:', email);
     
     // Use Supabase's native signUp for fresh email provider authentication
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await backofficeAuthClient.auth.signUp({
       email: email,
       password: password,
      
@@ -57,7 +73,7 @@ export const useBackofficeAuth = () => {
       console.log('Attempting backoffice login for email:', cleanedEmail);
 
       // Step 1: Check if user exists first
-      const { data: existingUser, error: checkError } = await supabase
+      const { data: existingUser, error: checkError } = await backofficeAuthClient
         .from('backoffice_users')
         .select('email')
         .eq('email', cleanedEmail)
@@ -81,10 +97,9 @@ export const useBackofficeAuth = () => {
       let authUser = null;
       let isValidCredentials = false;
 
-      await supabase.auth.signOut();
       // First, try Supabase's built-in email authentication
       try {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        const { data: authData, error: authError } = await backofficeAuthClient.auth.signInWithPassword({
           email: cleanedEmail,
           password: password
         });
@@ -157,7 +172,7 @@ export const useBackofficeAuth = () => {
         const authUserCreated = await createSupabaseAuthUser(cleanedEmail, password);
         if (authUserCreated) {
           // Try to get the newly created auth user
-          const { data: newAuthData } = await supabase.auth.signInWithPassword({
+          const { data: newAuthData } = await backofficeAuthClient.auth.signInWithPassword({
             email: cleanedEmail,
             password: password
           });
@@ -223,14 +238,14 @@ export const useBackofficeAuth = () => {
       };
 
       // Step 7: Fetch backoffice modules from database
-      const { data: modulesData, error: modulesError } = await supabase
+      const { data: modulesData, error: modulesError } = await backofficeAuthClient
         .from('modules')
         .select('*')
         .eq('level', 'backoffice')
         .eq('active', true)
         .order('order', { ascending: true, nullsFirst: false });
 
-      let backofficeModules = [];
+      let backofficeModules:Module[] = [];
       if (!modulesError && modulesData) {
         backofficeModules = modulesData.map(module => ({
           id: module.id,
@@ -322,8 +337,10 @@ export const useBackofficeAuth = () => {
         modules: backofficeModules
       });
 
-      toast.success("Login successful! Redirecting to dashboard...");
-      navigate("/backoffice/dashboard");
+      const defaultBackofficePath = getBackofficeDefaultPath(backofficeModules);
+
+      toast.success("Login successful! Redirecting to your module...");
+      navigate(defaultBackofficePath);
       
       setIsLoading(false);
       return true;
