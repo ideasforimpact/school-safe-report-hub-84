@@ -7,7 +7,6 @@ import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId 
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
-import { AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS } from '@/constants/aiFeatureKeys';
 import { NavigateFunction } from 'react-router-dom';
 
 // Define the SupabaseUser type that's missing
@@ -162,15 +161,12 @@ export const useAuthHandlers = ({
         clientIntegration = null;
       }
 
-      const { data: aiFeatRow, error: aiFeatErr } = await supabase
-        .from('client_ai_features')
-        .select('enabled')
-        .eq('client_id', clientId)
-        .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
-        .maybeSingle();
+      const { data: aiFeatureResponse, error: aiFeatureError } = await supabase.functions.invoke('client-management', {
+        body: { operation: 'get-ai-feature', client: { id: clientId } },
+      });
 
-      if (aiFeatErr) {
-        console.warn('client_ai_features fetch failed (useAuthHandlers):', aiFeatErr);
+      if (aiFeatureError) {
+        console.warn('client-management get-ai-feature failed (useAuthHandlers):', aiFeatureError);
       }
 
       // Build logo URL from path if needed
@@ -193,9 +189,10 @@ export const useAuthHandlers = ({
         logo: logoUrl,
         client_type: clientData.client_type,
         client_integration: clientIntegration,
-        incidentRecommendedActionsEnabled: aiFeatErr
-          ? true
-          : aiFeatRow?.enabled !== false,
+        incidentRecommendedActionsEnabled:
+          aiFeatureError || aiFeatureResponse?.enabled === undefined
+            ? true
+            : aiFeatureResponse.enabled !== false,
       };
 
       const clientType: ClientType | null = clientData.client_type ? {

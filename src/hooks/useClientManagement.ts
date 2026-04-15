@@ -4,7 +4,6 @@ import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { IPAddress } from '@/components/backoffice/tabs/IPList';
-import { AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS } from '@/constants/aiFeatureKeys';
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
@@ -392,18 +391,17 @@ export const useClientManagement = () => {
           name: ip.name || undefined
         })) : [];
 
-        const { data: aiFeat, error: aiFeatError } = await supabase
-          .from('client_ai_features')
-          .select('enabled')
-          .eq('client_id', clientId)
-          .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
-          .maybeSingle();
+        const { data: aiFeatureResponse, error: aiFeatureError } = await supabase.functions.invoke('client-management', {
+          body: { operation: 'get-ai-feature', client: { id: clientId } },
+        });
 
-        if (aiFeatError) {
-          console.error('Error fetching client_ai_features:', aiFeatError);
+        if (aiFeatureError) {
+          console.error('Error fetching ai feature via client-management:', aiFeatureError);
         }
         const aiIncidentRecommendedActionsEnabled =
-          aiFeatError || !aiFeat ? true : aiFeat.enabled !== false;
+          aiFeatureError || aiFeatureResponse?.enabled === undefined
+            ? true
+            : aiFeatureResponse.enabled !== false;
         
         // Update the remaining fields once data arrives
         setFormData(prev => ({

@@ -890,6 +890,37 @@ async function upsertClientAiIncidentRecommendedActions(clientId: string, enable
   }
 }
 
+async function getClientAiIncidentRecommendedActions(clientId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('client_ai_features')
+    .select('enabled')
+    .eq('client_id', clientId)
+    .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Failed to fetch client AI feature: ${error.message}`)
+  }
+
+  return data?.enabled !== false
+}
+
+async function listClientAiIncidentRecommendedActions(clientIds: string[]): Promise<Array<{ client_id: string; enabled: boolean }>> {
+  if (!Array.isArray(clientIds) || clientIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('client_ai_features')
+    .select('client_id, enabled')
+    .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
+    .in('client_id', clientIds)
+
+  if (error) {
+    throw new Error(`Failed to list client AI features: ${error.message}`)
+  }
+
+  return (data || []) as Array<{ client_id: string; enabled: boolean }>
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -901,10 +932,10 @@ serve(async (req) => {
     
     const { operation, client } = requestBody
     console.log('Client management operation:', operation)
-    console.log('Client data received:', {
+    console.log('Client data received:', client ? {
       ...client,
       logo: client.logo ? 'Logo data present' : 'No logo data'
-    })
+    } : null)
 
     switch (operation) {
       case 'create':
@@ -913,6 +944,24 @@ serve(async (req) => {
         return await handleUpdateClient(client)
       case 'delete':
         return await handleDeleteClient(client)
+      case 'get-ai-feature': {
+        if (!client?.id) {
+          throw new Error('client.id is required for get-ai-feature')
+        }
+        const enabled = await getClientAiIncidentRecommendedActions(client.id)
+        return new Response(
+          JSON.stringify({ success: true, client_id: client.id, enabled }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+      case 'list-ai-features': {
+        const clientIds = Array.isArray(requestBody?.clientIds) ? requestBody.clientIds : []
+        const rows = await listClientAiIncidentRecommendedActions(clientIds)
+        return new Response(
+          JSON.stringify({ success: true, rows }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
       default:
         throw new Error(`Unknown operation: ${operation}`)
     }

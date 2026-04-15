@@ -23,7 +23,6 @@ import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSessionRefresh } from '@/hooks/useSessionRefresh';
 import { authCoordinator } from '@/utils/authCoordinator';
-import { AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS } from '@/constants/aiFeatureKeys';
 
 // Create the context with async logout
 export const AuthContext = createContext<AuthContextType>({
@@ -173,15 +172,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clientIntegration = null;
       }
 
-      const { data: aiFeatRow, error: aiFeatErr } = await supabase
-        .from('client_ai_features')
-        .select('enabled')
-        .eq('client_id', clientId)
-        .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS)
-        .maybeSingle();
+      const { data: aiFeatureResponse, error: aiFeatureError } = await supabase.functions.invoke('client-management', {
+        body: { operation: 'get-ai-feature', client: { id: clientId } },
+      });
 
-      if (aiFeatErr) {
-        console.warn('client_ai_features fetch failed:', aiFeatErr);
+      if (aiFeatureError) {
+        console.warn('client-management get-ai-feature failed:', aiFeatureError);
       }
 
       // Build logo URL from path if needed
@@ -204,9 +200,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         logo: logoUrl,
         client_type: clientData.client_type,
         client_integration: clientIntegration,
-        incidentRecommendedActionsEnabled: aiFeatErr
-          ? true
-          : aiFeatRow?.enabled !== false,
+        incidentRecommendedActionsEnabled:
+          aiFeatureError || aiFeatureResponse?.enabled === undefined
+            ? true
+            : aiFeatureResponse.enabled !== false,
       };
 
       const clientType: ClientType | null = clientData.client_type ? {

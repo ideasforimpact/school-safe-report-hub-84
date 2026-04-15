@@ -4,7 +4,6 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
-import { AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS } from '@/constants/aiFeatureKeys';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser } from '@/store/authSelectors';
 import { useLocation } from 'react-router-dom';
@@ -130,13 +129,17 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           modulesByClient[module.client_id].push(module);
         });
 
-        const { data: aiFeaturesData } = await supabase
-          .from('client_ai_features')
-          .select('client_id, enabled')
-          .eq('feature_key', AI_FEATURE_INCIDENT_RECOMMENDED_ACTIONS);
+        const clientIds = clientsData.map(c => c.id);
+        const { data: aiFeaturesResponse, error: aiFeaturesError } = await supabase.functions.invoke('client-management', {
+          body: { operation: 'list-ai-features', clientIds },
+        });
+
+        if (aiFeaturesError) {
+          console.error('Error fetching AI features via client-management:', aiFeaturesError);
+        }
 
         const incidentAiByClient = new Map<string, boolean>(
-          (aiFeaturesData || []).map((r: { client_id: string; enabled: boolean }) => [
+          ((aiFeaturesResponse?.rows || []) as Array<{ client_id: string; enabled: boolean }>).map((r) => [
             r.client_id,
             r.enabled,
           ]),
