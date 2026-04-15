@@ -27,13 +27,6 @@ import {
   type ChildAuditStudentRow,
 } from '@/services/child-audit/childAuditStudentsService';
 import {
-  createChildAuditRecord,
-  fetchChildAuditRecordsByStudent,
-  type ChildAuditLookupItem,
-  type ChildAuditLookups,
-  type ChildAuditRecord,
-} from '@/services/child-audit/childAuditRecordsService';
-import {
   fetchChildAuditStudentDetails,
   type ChildAuditCheckTypeDetail,
   type ChildAuditLatestSelection,
@@ -44,6 +37,68 @@ import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
+type ChildAuditLookupItem = {
+  id: string;
+  name: string;
+  active: boolean;
+  definition?: string | null;
+};
+
+type ChildAuditLookups = {
+  checkTypes: ChildAuditLookupItem[];
+  physicalConditions: ChildAuditLookupItem[];
+  behaviours: ChildAuditLookupItem[];
+  meltdowns: ChildAuditLookupItem[];
+  aggressions: ChildAuditLookupItem[];
+};
+
+type ChildAuditRecord = {
+  id: string;
+  client_id: string;
+  student_id: string;
+  employee_id: string | null;
+  check_type_id: string | null;
+  physical_condition_ids: string[];
+  physical_where?: Record<string, string[]>;
+  behaviour_ids: string[];
+  meltdown_occurred: boolean;
+  meltdown_definition: string[];
+  aggression_ids: string[];
+  notes: string | null;
+  attachments?: Array<{
+    id: string;
+    bucket: string;
+    file_path: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+    signed_url: string | null;
+  }>;
+  created_at: string;
+  updated_at: string;
+};
+
+type CreateChildAuditRecordPayload = Omit<
+  ChildAuditRecord,
+  'id' | 'created_at' | 'updated_at'
+> & {
+  attachments?: Array<{
+    file_name: string;
+    mime_type?: string | null;
+    file_size?: number | null;
+    base64: string;
+  }>;
+};
+
+type ChildAuditEdgeResponse = {
+  ok: boolean;
+  version?: number;
+  data?: ChildAuditRecord[];
+  record?: ChildAuditRecord;
+  error?: string;
+  message?: string;
+};
+
 type CheckSelectionState = {
   physical_condition_ids: string[];
   behaviour_ids: string[];
@@ -248,6 +303,53 @@ const toAuditDateHeader = (value: string) =>
     month: 'short',
     year: 'numeric',
   }).toUpperCase();
+
+const fetchChildAuditRecordsByStudent = async (
+  clientId: string,
+  studentId: string
+): Promise<ChildAuditRecord[]> => {
+  const { data, error } = await supabase.functions.invoke<ChildAuditEdgeResponse>('child-audit-save-check', {
+    body: {
+      action: 'fetch_records',
+      client_id: clientId,
+      student_id: studentId,
+    },
+  });
+
+  if (error) throw new Error(error.message ?? 'Failed to fetch child audit records');
+  if (!data?.ok || !Array.isArray(data.data)) {
+    throw new Error(data?.message ?? data?.error ?? 'Invalid response from child-audit-save-check');
+  }
+
+  return data.data;
+};
+
+const createChildAuditRecord = async (payload: CreateChildAuditRecordPayload): Promise<ChildAuditRecord> => {
+  const { data, error } = await supabase.functions.invoke<ChildAuditEdgeResponse>('child-audit-save-check', {
+    body: {
+      action: 'save_check',
+      client_id: payload.client_id,
+      student_id: payload.student_id,
+      employee_id: payload.employee_id,
+      check_type_id: payload.check_type_id,
+      physical_condition_ids: payload.physical_condition_ids,
+      behaviour_ids: payload.behaviour_ids,
+      aggression_ids: payload.aggression_ids,
+      meltdown_occurred: payload.meltdown_occurred,
+      meltdown_definition: payload.meltdown_definition ?? [],
+      notes: payload.notes,
+      physical_where: payload.physical_where ?? {},
+      attachments: payload.attachments ?? [],
+    },
+  });
+
+  if (error) throw new Error(error.message ?? 'Failed to save child audit check');
+  if (!data?.ok || !data.record) {
+    throw new Error(data?.message ?? data?.error ?? 'Invalid response from child-audit-save-check');
+  }
+
+  return data.record;
+};
 
 const ChildAuditPage = () => {
   const { employeeData } = useAuth();

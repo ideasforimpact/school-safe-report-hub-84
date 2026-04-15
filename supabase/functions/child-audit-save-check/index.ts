@@ -13,6 +13,7 @@ const corsHeaders = {
 const API_VERSION = 1;
 
 type SaveCheckRequest = {
+  action?: 'save_check' | 'fetch_records';
   client_id: string;
   student_id: string;
   employee_id?: string | null;
@@ -42,6 +43,32 @@ type LookupRow = {
   label: string;
   active: boolean;
   definition: string | null;
+};
+
+type ChildAuditRecordResponse = {
+  id: string;
+  client_id: string;
+  student_id: string;
+  employee_id: string | null;
+  check_type_id: string | null;
+  physical_condition_ids: string[];
+  physical_where?: Record<string, string[]>;
+  behaviour_ids: string[];
+  meltdown_occurred: boolean;
+  meltdown_definition: string[];
+  aggression_ids: string[];
+  notes: string | null;
+  attachments?: Array<{
+    id: string;
+    bucket: string;
+    file_path: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+    signed_url: string | null;
+  }>;
+  created_at: string;
+  updated_at: string;
 };
 
 function json(payload: unknown, status = 200) {
@@ -90,6 +117,184 @@ function detectMimeFromDataUrl(base64Value: string): string | null {
   const match = base64Value.match(/^data:([^;]+);base64,/i);
   if (!match) return null;
   return match[1]?.toLowerCase() ?? null;
+}
+
+async function fetchRecordsByStudent(
+  supabase: ReturnType<typeof createClient>,
+  clientId: string,
+  studentId: string
+): Promise<{ ok: true; records: ChildAuditRecordResponse[] } | { ok: false; message: string }> {
+  const { data: recordsData, error: recordsError } = await supabase
+    .from('child_audit_record')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('student_id', studentId)
+    .order('submission_time', { ascending: false });
+
+  if (recordsError) {
+    return { ok: false, message: recordsError.message };
+  }
+
+  const records = (recordsData ?? []) as Array<Record<string, unknown>>;
+  if (records.length === 0) return { ok: true, records: [] };
+
+  const recordIds = records
+    .map((row) => (typeof row.id === 'string' ? row.id : null))
+    .filter((id): id is string => Boolean(id));
+  const { data: itemsData, error: itemsError } = await supabase
+    .from('child_audit_record_item')
+    .select('id, record_id, lookup_id, item_group')
+    .in('record_id', recordIds);
+
+  if (itemsError) {
+    return { ok: false, message: itemsError.message };
+  }
+
+  const items = (itemsData ?? []) as Array<{
+    id: string;
+    record_id: string;
+    lookup_id: string | null;
+    item_group: string;
+  }>;
+  const byRecord = new Map<string, Array<{ id: string; lookup_id: string | null; item_group: string }>>();
+
+  for (const item of items) {
+    const list = byRecord.get(item.record_id) ?? [];
+    list.push({ id: item.id, lookup_id: item.lookup_id, item_group: item.item_group });
+    byRecord.set(item.record_id, list);
+  }
+
+  const itemIds = items.map((item) => item.id);
+  const locationRows =
+    itemIds.length > 0
+      ? (
+          await supabase
+            .from('child_audit_record_item_location')
+            .select('record_item_id, body_part')
+            .in('record_item_id', itemIds)
+        ).data ?? []
+      : [];
+
+  const locationsByItem = new Map<string, string[]>();
+  for (const row of locationRows as Array<{ record_item_id: string; body_part: string }>) {
+    const list = locationsByItem.get(row.record_item_id) ?? [];
+    list.push(row.body_part);
+    locationsByItem.set(row.record_item_id, list);
+  }
+
+  const { data: attachmentRows, error: attachmentError } = await supabase
+    .from('child_audit_record_attachment')
+    .select('id, record_id, bucket, file_path, file_name, mime_type, file_size')
+    .in('record_id', recordIds);
+
+  if (attachmentError) {
+    return { ok: false, message: attachmentError.message };
+  }
+
+  const attachmentRowsSafe = (attachmentRows ?? []) as Array<{
+    id: string;
+    record_id: string;
+    bucket: string;
+    file_path: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+  }>;
+
+  const signedUrlByAttachmentId = new Map<string, string | null>();
+  for (const attachment of attachmentRowsSafe) {
+    const { data: signed, error: signedError } = await supabase.storage
+      .from(attachment.bucket)
+      .createSignedUrl(attachment.file_path, 60 * 60);
+    if (signedError) {
+      console.error('child-audit-save-check signed url error:', signedError);
+      signedUrlByAttachmentId.set(attachment.id, null);
+      continue;
+    }
+    signedUrlByAttachmentId.set(attachment.id, signed?.signedUrl ?? null);
+  }
+
+  const attachmentsByRecord = new Map<
+    string,
+    Array<{
+      id: string;
+      bucket: string;
+      file_path: string;
+      file_name: string;
+      mime_type: string | null;
+      file_size: number | null;
+      signed_url: string | null;
+    }>
+  >();
+
+  for (const attachment of attachmentRowsSafe) {
+    const list = attachmentsByRecord.get(attachment.record_id) ?? [];
+    list.push({
+      id: attachment.id,
+      bucket: attachment.bucket,
+      file_path: attachment.file_path,
+      file_name: attachment.file_name,
+      mime_type: attachment.mime_type ?? null,
+      file_size: attachment.file_size ?? null,
+      signed_url: signedUrlByAttachmentId.get(attachment.id) ?? null,
+    });
+    attachmentsByRecord.set(attachment.record_id, list);
+  }
+
+  const mapped = records.map((row) => {
+    const selected = byRecord.get(row.id as string) ?? [];
+    const physical = selected
+      .filter((item) => item.item_group === 'physical_condition' && item.lookup_id)
+      .map((item) => item.lookup_id as string);
+    const aggression = selected
+      .filter((item) => item.item_group === 'aggression' && item.lookup_id)
+      .map((item) => item.lookup_id as string);
+    const meltdown = selected.some((item) => item.item_group === 'meltdown');
+    const meltdownItem = selected.find((item) => item.item_group === 'meltdown');
+    const behaviour = selected
+      .filter(
+        (item) =>
+          item.item_group !== 'physical_condition' &&
+          item.item_group !== 'aggression' &&
+          item.item_group !== 'meltdown' &&
+          item.lookup_id
+      )
+      .map((item) => item.lookup_id as string);
+
+    const physical_where: Record<string, string[]> = {};
+    for (const item of selected) {
+      if (item.item_group !== 'physical_condition' || !item.lookup_id) continue;
+      const bodyParts = locationsByItem.get(item.id) ?? [];
+      if (bodyParts.length > 0) {
+        physical_where[item.lookup_id] = bodyParts;
+      }
+    }
+
+    const meltdown_definition =
+      meltdownItem && meltdownItem.lookup_id
+        ? (locationsByItem.get(meltdownItem.id) ?? [])
+        : [];
+
+    return {
+      id: row.id as string,
+      client_id: row.client_id as string,
+      student_id: row.student_id as string,
+      employee_id: (row.employee_id as string | null) ?? null,
+      check_type_id: (row.check_type_id as string | null) ?? null,
+      physical_condition_ids: physical,
+      physical_where,
+      behaviour_ids: behaviour,
+      meltdown_occurred: meltdown,
+      meltdown_definition,
+      aggression_ids: aggression,
+      notes: (row.notes as string | null) ?? null,
+      attachments: attachmentsByRecord.get(row.id as string) ?? [],
+      created_at: (row.submission_time as string) ?? (row.created_at as string),
+      updated_at: ((row.updated_at as string) ?? (row.created_at as string)) as string,
+    } as ChildAuditRecordResponse;
+  });
+
+  return { ok: true, records: mapped };
 }
 
 async function authorizeRequest(
@@ -158,14 +363,15 @@ serve(async (req) => {
 
     const clientId = typeof body.client_id === 'string' ? body.client_id.trim() : '';
     const studentId = typeof body.student_id === 'string' ? body.student_id.trim() : '';
+    const action = body.action === 'fetch_records' ? 'fetch_records' : 'save_check';
     const checkTypeId = typeof body.check_type_id === 'string' ? body.check_type_id.trim() : '';
 
-    if (!clientId || !studentId || !checkTypeId) {
+    if (!clientId || !studentId) {
       return json(
         {
           ok: false,
           error: 'VALIDATION_ERROR',
-          message: 'client_id, student_id and check_type_id are required',
+          message: 'client_id and student_id are required',
           version: API_VERSION,
         },
         400
@@ -191,6 +397,39 @@ serve(async (req) => {
       return json(
         { ok: false, error: 'UNAUTHORIZED', message: auth.message, version: API_VERSION },
         auth.status
+      );
+    }
+
+    if (action === 'fetch_records') {
+      const fetched = await fetchRecordsByStudent(supabase, clientId, studentId);
+      if (!fetched.ok) {
+        return json(
+          {
+            ok: false,
+            error: 'RECORD_FETCH_FAILED',
+            message: fetched.message,
+            version: API_VERSION,
+          },
+          500
+        );
+      }
+
+      return json({
+        ok: true,
+        version: API_VERSION,
+        data: fetched.records,
+      });
+    }
+
+    if (!checkTypeId) {
+      return json(
+        {
+          ok: false,
+          error: 'VALIDATION_ERROR',
+          message: 'check_type_id is required for save_check',
+          version: API_VERSION,
+        },
+        400
       );
     }
 
