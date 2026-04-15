@@ -97,14 +97,3 @@ export const clearPersistedAuthState = (): void => {
     console.error("💾 clearPersistedAuthState: Error clearing persisted auth state:", error);
   }
 };
-
-// Clear only backoffice auth state (session-scoped)
-export const clearBackofficePersistedAuthState = (): void => {
-  try {
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-    console.log('💾 clearBackofficePersistedAuthState: Cleared backoffice auth state from sessionStorage');
-  } catch (error) {
-    console.error("💾 clearBackofficePersistedAuthState: Error clearing backoffice auth state:", error);
-  }
-};
-

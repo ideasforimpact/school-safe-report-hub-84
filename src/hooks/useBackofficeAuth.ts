@@ -2,8 +2,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setCurrentUser, setBackofficeUser, setAuthStatus } from '@/store/authActions';
@@ -12,26 +10,13 @@ import { User, EmployeeData } from '@/contexts/auth/types';
 import { generateBackofficeToken } from '@/utils/jwtUtils';
 import { saveAuthState } from '@/store/authPersistence';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Isolated auth client for backoffice credential checks.
-// It does not persist session, so it never overrides the main app tab auth state.
-const backofficeAuthClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  }
-});
-
 // Helper function to create fresh Supabase auth user with email provider
 const createSupabaseAuthUser = async (email: string, password: string): Promise<boolean> => {
   try {
     console.log('Creating fresh Supabase auth user with email provider:', email);
     
     // Use Supabase's native signUp for fresh email provider authentication
-    const { data, error } = await backofficeAuthClient.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email,
       password: password,
      
@@ -96,9 +81,10 @@ export const useBackofficeAuth = () => {
       let authUser = null;
       let isValidCredentials = false;
 
+      await supabase.auth.signOut();
       // First, try Supabase's built-in email authentication
       try {
-        const { data: authData, error: authError } = await backofficeAuthClient.auth.signInWithPassword({
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: cleanedEmail,
           password: password
         });
