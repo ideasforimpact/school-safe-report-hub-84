@@ -183,7 +183,7 @@ const StudentWellBeingPage = () => {
     try {
       setLoading(true);
       const academicYear = academicYearFilter && academicYearFilter !== 'all' ? academicYearFilter : undefined;
-      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id, academicYear);
+      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id);
       setRecords(result.records);
       setSummary(result.summary);
     } catch (err) {
@@ -259,7 +259,7 @@ const StudentWellBeingPage = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setDateRange(undefined);
-    setAcademicYearFilter(getCurrentAcademicYear());
+    // setAcademicYearFilter(getCurrentAcademicYear());
   };
 
   const exportToCsv = () => {
@@ -454,7 +454,7 @@ const StudentWellBeingPage = () => {
                 ))}
               </SelectContent>
             </Select> */}
-             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
+             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to) && (
                 <Button
                   variant="outline"
                   size="sm"
