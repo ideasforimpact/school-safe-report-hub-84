@@ -161,6 +161,7 @@ export const useAuthHandlers = ({
         clientIntegration = null;
       }
 
+
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
       const logoUrl = buildClientLogoUrl(clientData.logo || clientData.client_logo);
@@ -180,7 +181,8 @@ export const useAuthHandlers = ({
         institution_type: clientData.institution_type,
         logo: logoUrl,
         client_type: clientData.client_type,
-        client_integration: clientIntegration
+        client_integration: clientIntegration,
+
       };
 
       const clientType: ClientType | null = clientData.client_type ? {

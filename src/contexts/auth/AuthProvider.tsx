@@ -172,6 +172,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clientIntegration = null;
       }
 
+
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
       const logoUrl = buildClientLogoUrl(clientData.logo || clientData.client_logo);
@@ -191,7 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         institution_type: clientData.institution_type,
         logo: logoUrl,
         client_type: clientData.client_type,
-        client_integration: clientIntegration
+        client_integration: clientIntegration,
+
       };
 
       const clientType: ClientType | null = clientData.client_type ? {
@@ -218,21 +220,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     setShowAuthLoading(true);
 
-    // If user already has client info, use it directly
-    if (user.client !== undefined && user.clientType !== undefined) {
+    const clientMissingAiFlag =
+      user.client &&
+      typeof user.client === 'object' &&
+      user.client.incidentRecommendedActionsEnabled === undefined;
+
+    // If user already has client info including AI feature flag, use it directly
+    if (
+      user.client !== undefined &&
+      user.clientType !== undefined &&
+      !clientMissingAiFlag
+    ) {
       dispatch(setCurrentUser(user));
       setShowAuthLoading(false);
       return;
     }
 
-    // If user has clientId but no client info, fetch it
-    if (user.clientId && !user.client) {
+    // Fetch full client when missing, or when client exists but predates incidentRecommendedActionsEnabled
+    if (user.clientId && (!user.client || clientMissingAiFlag)) {
       try {
-        const { client, clientType, clientIntegration } = await fetchClientInfo(user.clientId);
+        const { client, clientType } = await fetchClientInfo(user.clientId);
         const userWithClientInfo = {
           ...user,
-          client,
-          clientType
+          client: client ?? user.client,
+          clientType: clientType ?? user.clientType,
         };
         dispatch(setCurrentUser(userWithClientInfo));
         setShowAuthLoading(false);

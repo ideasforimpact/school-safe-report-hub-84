@@ -26,6 +26,8 @@ export interface ClientFormData {
   superAdminAllowedDomains: string[];
   moduleInfoArray?: ModuleInfo[];
   whitelistedIPs?: IPAddress[];
+  /** AI "Recommended Actions" for incidents; default on */
+  aiIncidentRecommendedActionsEnabled: boolean;
 }
 
 const initialFormData: ClientFormData = {
@@ -47,7 +49,8 @@ const initialFormData: ClientFormData = {
   },
   superAdminAllowedDomains: [],
   moduleInfoArray: [],
-  whitelistedIPs: []
+  whitelistedIPs: [],
+  aiIncidentRecommendedActionsEnabled: true
 };
 
 export const useClientManagement = () => {
@@ -191,7 +194,8 @@ export const useClientManagement = () => {
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
           website: formData.website,
-          whitelistedIPs: formData.whitelistedIPs || []
+          whitelistedIPs: formData.whitelistedIPs || [],
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
         }
       };
       
@@ -254,7 +258,8 @@ export const useClientManagement = () => {
         google: client.authProviders?.google ?? false,
         microsoft: client.authProviders?.microsoft ?? false,
         zoho: client.authProviders?.zoho ?? false
-      }
+      },
+      aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false
     }));
     
     // Get the client modules and super admin employee for this client
@@ -385,13 +390,26 @@ export const useClientManagement = () => {
           ip: ip.ip_address,
           name: ip.name || undefined
         })) : [];
+
+        const { data: aiFeatureResponse, error: aiFeatureError } = await supabase.functions.invoke('client-management', {
+          body: { operation: 'get-ai-feature', client: { id: clientId } },
+        });
+
+        if (aiFeatureError) {
+          console.error('Error fetching ai feature via client-management:', aiFeatureError);
+        }
+        const aiIncidentRecommendedActionsEnabled =
+          aiFeatureError || aiFeatureResponse?.enabled === undefined
+            ? true
+            : aiFeatureResponse.enabled !== false;
         
         // Update the remaining fields once data arrives
         setFormData(prev => ({
           ...prev,
           superAdminEmail: employeeData?.email || '',
           moduleInfoArray: moduleInfoArray,
-          whitelistedIPs: whitelistedIPs
+          whitelistedIPs: whitelistedIPs,
+          aiIncidentRecommendedActionsEnabled
         }));
       } catch (err) {
         console.error('Error in fetchClientData:', err);
@@ -472,7 +490,8 @@ export const useClientManagement = () => {
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
           authProviders: formData.authProviders,
           website: formData.website,
-          whitelistedIPs: whitelistedIPs // Always send as array, never undefined
+          whitelistedIPs: whitelistedIPs, // Always send as array, never undefined
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
         }
       };
       

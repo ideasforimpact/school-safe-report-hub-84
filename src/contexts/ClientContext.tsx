@@ -28,6 +28,8 @@ export interface Client {
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
   };
+  /** false = incident AI "Recommended Actions" off; undefined defaults to on */
+  incidentRecommendedActionsEnabled?: boolean;
 }
 
 // Define ModuleInfo interface for consistent type handling
@@ -86,7 +88,9 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         if (response?.data) {
           const mappedClients = response.data.map((dbClient: any) => ({
             ...mapDbClientToClient(dbClient),
-            clientTypeId: dbClient.client_type_id
+            clientTypeId: dbClient.client_type_id,
+            incidentRecommendedActionsEnabled:
+              dbClient.incident_recommended_actions_enabled !== false,
           }));
 
           setClients(mappedClients);
@@ -125,6 +129,22 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           modulesByClient[module.client_id].push(module);
         });
 
+        const clientIds = clientsData.map(c => c.id);
+        const { data: aiFeaturesResponse, error: aiFeaturesError } = await supabase.functions.invoke('client-management', {
+          body: { operation: 'list-ai-features', clientIds },
+        });
+
+        if (aiFeaturesError) {
+          console.error('Error fetching AI features via client-management:', aiFeaturesError);
+        }
+
+        const incidentAiByClient = new Map<string, boolean>(
+          ((aiFeaturesResponse?.rows || []) as Array<{ client_id: string; enabled: boolean }>).map((r) => [
+            r.client_id,
+            r.enabled,
+          ]),
+        );
+
         // Map clients and include their module access
         const mappedClients = clientsData.map(dbClient => {
           const clientModules = modulesByClient[dbClient.id] || [];
@@ -133,7 +153,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           return {
             ...mapDbClientToClient(dbClient),
             moduleAccess,
-            clientTypeId: dbClient.client_type_id
+            clientTypeId: dbClient.client_type_id,
+            incidentRecommendedActionsEnabled: incidentAiByClient.has(dbClient.id)
+              ? (incidentAiByClient.get(dbClient.id) as boolean)
+              : true,
           };
         });
 
