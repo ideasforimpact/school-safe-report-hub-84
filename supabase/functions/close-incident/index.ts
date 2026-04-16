@@ -26,6 +26,142 @@ interface CloseIncidentRequest {
   deleted_attachment_ids?: string[]
 }
 
+// Helper function to check incident close permissions
+async function checkClosePermissions(
+  incidentId: string,
+  employeeId: string,
+  clientId: string
+): Promise<{ canClose: boolean; incident: any }> {
+  // Get the incident details with creator and assigned user
+  const { data: incident, error: incidentError } = await supabase
+    .from('incidents')
+    .select('id, created_by, assigned_to, client_id, ticket_id, status_id')
+    .eq('id', incidentId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (incidentError || !incident) {
+    console.error('Error fetching incident:', incidentError)
+    return { canClose: false, incident: null }
+  }
+
+  // Get employee details to check admin status
+  const { data: employee, error: employeeError } = await supabase
+    .from('employees')
+    .select('id, is_super_admin, client_id')
+    .eq('id', employeeId)
+    .eq('client_id', clientId)
+    .single()
+
+  if (employeeError || !employee) {
+    console.error('Error fetching employee:', employeeError)
+    return { canClose: false, incident }
+  }
+
+  console.log('Employee details:', {
+    employeeId: employee.id,
+    isSuperAdmin: employee.is_super_admin,
+    clientId: employee.client_id,
+  })
+
+  let hasIncidentAdmin = false
+
+  // Check module access based on employee type
+  if (employee.is_super_admin) {
+    console.log('Checking super admin permissions via client_modules')
+
+    // For super admins: Check client_modules for incidents module
+    const { data: clientModules, error: clientModuleError } = await supabase
+      .from('client_modules')
+      .select(`
+        enabled,
+        access_level,
+        module:modules(name)
+      `)
+      .eq('client_id', clientId)
+      .eq('enabled', true)
+
+    if (clientModuleError) {
+      console.error('Error fetching client modules:', clientModuleError)
+      return { canClose: false, incident }
+    }
+
+    console.log('Client modules found:', clientModules)
+
+    // Check if incidents module is enabled and has admin access
+    hasIncidentAdmin =
+      clientModules?.some(
+        (clientModule: any) =>
+          clientModule.module?.name?.toLowerCase() === 'incidents' &&
+          clientModule.access_level?.isAdmin === true &&
+          clientModule.enabled === true
+      ) || false
+
+    console.log('Super admin incident access:', hasIncidentAdmin)
+  } else {
+    console.log('Checking normal employee permissions via employee_modules')
+
+    // For normal employees: Check employee_modules for incidents module
+    const { data: employeeModules, error: employeeModuleError } = await supabase
+      .from('employee_modules')
+      .select(`
+        level,
+        module:modules(name)
+      `)
+      .eq('employee_id', employeeId)
+
+    if (employeeModuleError) {
+      console.error('Error fetching employee modules:', employeeModuleError)
+      return { canClose: false, incident }
+    }
+
+    console.log('Employee modules found:', employeeModules)
+
+    // Check if user has incident admin access
+    hasIncidentAdmin =
+      employeeModules?.some(
+        (empModule: any) =>
+          empModule.module?.name?.toLowerCase() === 'incidents' &&
+          empModule.level?.is_admin === true
+      ) || false
+
+    console.log('Normal employee incident admin access:', hasIncidentAdmin)
+  }
+
+  // Check if user created the incident
+  const isCreator = incident.created_by === employeeId
+
+  // Check if user is assigned to the incident
+  const isAssigned = incident.assigned_to === employeeId
+
+  console.log('Close permission check:', {
+    employeeId,
+    isSuperAdmin: employee.is_super_admin,
+    createdBy: incident.created_by,
+    assignedTo: incident.assigned_to,
+    isCreator,
+    isAssigned,
+    hasIncidentAdmin,
+  })
+
+  let canClose = false
+
+  // Super admins can close any incident
+  if (employee.is_super_admin) {
+    canClose = true
+  } else if (hasIncidentAdmin) {
+    // Incident admin can close own + assigned incidents
+    canClose = isCreator || isAssigned
+  } else {
+    // Non-admin can only close their own incidents
+    canClose = isCreator
+  }
+
+  console.log('Final permission decision:', { canClose })
+
+  return { canClose, incident }
+}
+
 function base64ToBlob(base64: string, type: string): Blob {
   const byteCharacters = atob(base64.split(',')[1] || base64)
   const byteNumbers = new Array(byteCharacters.length)
@@ -133,9 +269,26 @@ Deno.serve(async (req) => {
       throw new Error('Employee not found')
     }
 
-    const canClose = true
+    const { canClose, incident } = await checkClosePermissions(
+      requestBody.incident_id,
+      employee.id,
+      requestBody.client_id
+    )
+
     if (!canClose) {
+      console.log(
+        'Permission denied for user:',
+        user.id,
+        'to close incident:',
+        requestBody.incident_id
+      )
       throw new Error('You do not have permission to close this incident')
+    }
+
+    console.log('Permission granted for close')
+
+    if (!incident) {
+      throw new Error('Incident not found or access denied')
     }
 
     const { data: incidentRow, error: incidentFetchError } = await supabase
