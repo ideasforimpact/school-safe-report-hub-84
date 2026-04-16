@@ -29,6 +29,8 @@ export interface Module {
   name: string;
   icon: string; 
   level: string;
+  url?: string;
+  enabled?: boolean;
   order?: number; // Added order field
   created_at?: string;
   updated_at?: string;

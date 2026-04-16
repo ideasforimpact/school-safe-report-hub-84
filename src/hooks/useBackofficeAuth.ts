@@ -78,55 +78,25 @@ export const useBackofficeAuth = () => {
         return false;
       }
 
-      // Step 2: Try Supabase auth first, then fallback to custom verification
-      let authUser = null;
-      let isValidCredentials = false;
+      // Step 2: Verify password with custom RPC without touching Supabase auth session.
+      // This keeps user-portal and backoffice sessions independent in the same browser.
+      const { data: customAuthResult, error: verifyError } = await supabase.rpc('verify_password', {
+        email: cleanedEmail,
+        password_attempt: password
+      });
 
-      await supabase.auth.signOut();
-      // First, try Supabase's built-in email authentication
-      try {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: cleanedEmail,
-          password: password
-        });
-
-        console.log('Supabase auth attempt:', { authError, authData, email: cleanedEmail });
-
-        if (!authError && authData?.user) {
-          console.log('Successfully authenticated with Supabase auth:', authData.user.id);
-          authUser = authData.user;
-          isValidCredentials = true;
-        } else if (authError) {
-          console.log('Supabase auth failed (expected for local dev), will try custom verification:', authError.message);
-        }
-      } catch (authErr: any) {
-        console.log('Supabase auth exception, trying custom verification:', authErr?.message || authErr);
+      if (verifyError) {
+        console.error('Password verification error:', verifyError);
+        setError("Authentication error occurred. Please try again.");
+        setIsLoading(false);
+        return false;
       }
 
-      // If Supabase auth failed, try custom RPC verification
-      if (!isValidCredentials) {
-        console.log('Trying custom password verification...');
-        const { data: customAuthResult, error: verifyError } = await supabase.rpc('verify_password', { 
-          email: cleanedEmail, 
-          password_attempt: password 
-        });
-
-        if (verifyError) {
-          console.error('Password verification error:', verifyError);
-          setError("Authentication error occurred. Please try again.");
-          setIsLoading(false);
-          return false;
-        }
-
-        if (!customAuthResult) {
-          console.log('Invalid password for user:', cleanedEmail);
-          setError("Invalid password. Please try again.");
-          setIsLoading(false);
-          return false;
-        }
-
-        isValidCredentials = true;
-        console.log('Custom authentication successful, will attempt to create Supabase auth user');
+      if (!customAuthResult) {
+        console.log('Invalid password for user:', cleanedEmail);
+        setError("Invalid password. Please try again.");
+        setIsLoading(false);
+        return false;
       }
 
       // Step 3: Fetch backoffice user information
@@ -151,38 +121,10 @@ export const useBackofficeAuth = () => {
       }
 
       console.log('Successfully retrieved backoffice user:', { id: backofficeUser.id, email: backofficeUser.email });
-
-      // Step 3: If custom auth was used and no Supabase auth user exists, try to create one
-      if (!authUser && isValidCredentials) {
-        console.log('Custom auth successful, attempting to create Supabase auth user for future logins...');
-        const authUserCreated = await createSupabaseAuthUser(cleanedEmail, password);
-        if (authUserCreated) {
-          // Try to get the newly created auth user
-          const { data: newAuthData } = await supabase.auth.signInWithPassword({
-            email: cleanedEmail,
-            password: password
-          });
-          if (newAuthData?.user) {
-            authUser = newAuthData.user;
-            console.log('Supabase auth user created and retrieved:', authUser.id);
-          } else {
-            console.log('Auth user created but could not retrieve it, continuing with custom auth');
-          }
-        } else {
-          console.log('Failed to create Supabase auth user, but continuing with custom auth');
-        }
-      }
-      
-      console.log('Auth user status:', authUser ? `User ID: ${authUser.id}` : 'No auth user (using custom auth)');
-      
       // Step 4: Update last_signed_in timestamp
-      const updateData: any = { last_signed_in: new Date().toISOString() };
-      if (authUser?.id) {
-        updateData.auth_user_id = authUser.id;
-      }
       await supabase
         .from('backoffice_users')
-        .update(updateData)
+        .update({ last_signed_in: new Date().toISOString() })
         .eq('id', backofficeUser.id);
 
       // Step 5: Create User object for Redux
@@ -223,30 +165,44 @@ export const useBackofficeAuth = () => {
         clientType: null
       };
 
-      // Step 7: Fetch backoffice modules from database
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('modules')
-        .select('*')
-        .eq('level', 'backoffice')
-        .eq('active', true)
-        .order('order', { ascending: true, nullsFirst: false });
-
+      // Step 7: Fetch backoffice modules via edge function first (bypasses RLS/session constraints)
       let backofficeModules = [];
-      if (!modulesError && modulesData) {
-        backofficeModules = modulesData.map(module => ({
-          id: module.id,
-          name: module.name,
-          key: module.name.toLowerCase().replace(/\s+/g, '_'),
-          icon: module.icon || 'LayoutDashboard',
-          level: module.level,
-          enabled: module.active,
-          accessLevel: {},
-          url: module.url,
-          order: module.order,
-          active: module.active,
-          created_at: module.created_at,
-          updated_at: module.updated_at
-        }));
+      try {
+        const { data: moduleResponse, error: moduleError } = await supabase.functions.invoke('fetch-modules', {
+          body: { fetchLevel: 'backoffice' }
+        });
+
+        if (moduleError) {
+          throw moduleError;
+        } else if (moduleResponse?.modules && Array.isArray(moduleResponse.modules)) {
+          backofficeModules = moduleResponse.modules.map((module: any) => ({
+            id: module.id,
+            name: module.name,
+            key: module.key || module.name?.toLowerCase().replace(/\s+/g, '_') || module.id,
+            icon: module.icon || 'LayoutDashboard',
+            level: module.level || 'backoffice',
+            enabled: module.active ?? true,
+            accessLevel: module.access_level || {},
+            url: module.url || `/backoffice/${module.name?.toLowerCase().replace(/\s+/g, '-')}`,
+            order: module.order,
+            active: module.active ?? true,
+            created_at: module.created_at,
+            updated_at: module.updated_at
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch backoffice modules from source-of-truth endpoint', error);
+        setError("Unable to load backoffice modules. Please contact your administrator.");
+        toast.error("Unable to load backoffice modules.");
+        setIsLoading(false);
+        return false;
+      }
+
+      if (backofficeModules.length === 0) {
+        setError("No active backoffice modules found. Please configure modules in the modules table.");
+        toast.error("No active backoffice modules found.");
+        setIsLoading(false);
+        return false;
       }
 
       // Step 8: Generate browser-compatible token with 24-hour expiration
@@ -272,50 +228,6 @@ export const useBackofficeAuth = () => {
         expiresAt,
         sessionType: 'backoffice' // Mark as backoffice session
       });
-
-      // Step 11: Log RLS debug context so we can see auth.uid, client_id, admin flag
-      // Wait a bit for the session to be fully propagated before checking RLS context
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Verify session is still valid before calling RPC
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !currentSession) {
-        console.error('❌ RLS DEBUG: No valid session found after backoffice login:', sessionError);
-      } else {
-        console.log('⚠️ RLS DEBUG: Starting RLS policy check after backoffice login');
-        
-        try {
-          console.log('🔍 RLS DEBUG: Calling debug_current_rls_context RPC...');
-          const { data: rlsDebug, error: rpcError } = await supabase.rpc('debug_current_rls_context');
-          
-          if (rpcError) {
-            console.error('❌ RLS DEBUG: RPC call failed:', rpcError);
-            console.error('❌ RLS DEBUG: Error details:', {
-              message: rpcError.message,
-              code: rpcError.code,
-              details: rpcError.details,
-              hint: rpcError.hint
-            });
-          } else {
-            console.log('📊 RLS DEBUG: RPC response received:', rlsDebug);
-            
-            if (rlsDebug && Array.isArray(rlsDebug) && rlsDebug[0]) {
-              console.log('✅ RLS DEBUG: RLS context (backoffice login):', JSON.stringify(rlsDebug[0], null, 2));
-            } else {
-              console.warn('⚠️ RLS DEBUG: RLS context (backoffice login): no data returned or empty array');
-              console.warn('⚠️ RLS DEBUG: Response type:', typeof rlsDebug, 'Is array:', Array.isArray(rlsDebug));
-            }
-          }
-        } catch (rlsErr) {
-          console.error('❌ RLS DEBUG: Exception fetching RLS debug context (backoffice login):', rlsErr);
-          console.error('❌ RLS DEBUG: Exception details:', {
-            name: rlsErr instanceof Error ? rlsErr.name : 'Unknown',
-            message: rlsErr instanceof Error ? rlsErr.message : String(rlsErr),
-            stack: rlsErr instanceof Error ? rlsErr.stack : undefined
-          });
-        }
-      }
 
       console.log('Backoffice authentication successful:', {
         user: saasUser,
