@@ -88,7 +88,8 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
       .select('*')
       .eq('module_name', 'assessment')
       .eq('active', true)
-      .eq('is_sent', false)
+      .eq('is_sent', true)
+      .eq('is_processing', false)
       .eq('is_due_reminder_sent', false);
 
     if (error) {
@@ -102,9 +103,20 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
 
     for (const email of queue || []) {
       try {
+        const claimed = await claimEmailForProcessing(supabase, email.id, 'assessment-reminders-cron-due');
+        if (!claimed) {
+          continue;
+        }
+
         const validation = await validateAssessmentNotification(supabase, email);
         if (!validation.isValid) {
-          await supabase.from('email_queue').update({ active: false, error_message: validation.reason }).eq('id', email.id);
+          await supabase.from('email_queue').update({
+            active: false,
+            error_message: validation.reason,
+            is_processing: false,
+            processing_started_at: null,
+            processing_by: null
+          }).eq('id', email.id);
           await supabase.from('notification_logs').update({ status: 'failed', error_message: validation.reason }).eq('email_queue_id', email.id);
           result.errors++;
           continue;
@@ -115,16 +127,20 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
         const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
         const { data: assessment } = await supabase
           .from('assessments')
-          .select('title, target_completion_date, assigned_to, created_by, client_id')
+          .select('name, target_completion_date, assigned_to, created_by, client_id')
           .eq('id', assessmentId)
           .single();
+
+        console.log(assessment,"assessment 5-day",assessmentId);
         if (!assessment?.target_completion_date) {
+          await releaseEmailClaim(supabase, email.id);
           continue;
         }
         const today = new Date(); today.setHours(0,0,0,0);
         const dueDate = new Date(assessment.target_completion_date); dueDate.setHours(0,0,0,0);
         const daysDiff = Math.round((dueDate.getTime() - today.getTime()) / (24*60*60*1000));
         if (daysDiff !== 5) {
+          await releaseEmailClaim(supabase, email.id);
           continue;
         }
 
@@ -132,7 +148,7 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
         const variables = {
           User_Name: email.recipient_name,
           Assessment_ID: assessmentId,
-          Assessment_Title: assessment.title,
+          Assessment_Title: assessment.name,
           Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
           Assessment_URL: `${getBaseUrl()}/assessments`
         };
@@ -162,17 +178,36 @@ Safe School Team
         });
         if (!sendErr && sendRes?.success) {
           const nowIso = new Date().toISOString();
-          await supabase.from('email_queue').update({ is_sent: true, is_due_reminder_sent: true, sent_at: nowIso, error_message: null }).eq('id', email.id);
+          await supabase.from('email_queue').update({
+            is_sent: true,
+            is_due_reminder_sent: true,
+            sent_at: nowIso,
+            error_message: null,
+            is_processing: false,
+            processing_started_at: null,
+            processing_by: null
+          }).eq('id', email.id);
           await supabase.from('notification_logs').update({ status: 'sent', sent_at: nowIso, error_message: null }).eq('email_queue_id', email.id);
           await createCentralizedReminderNotification(supabase, email, subject, body, 'assessment_due_5_days');
           result.dueReminders++;
         } else {
-          await supabase.from('email_queue').update({ retry_count: (email.retry_count || 0) + 1, error_message: sendErr?.message || 'Send failed' }).eq('id', email.id);
-          await supabase.from('notification_logs').update({ status: 'failed', error_message: sendErr?.message || 'Send failed' }).eq('email_queue_id', email.id);
+          const errorMessage = extractSendErrorMessage(sendErr, sendRes);
+          const nextRetryCount = Math.min((email.retry_count || 0) + 1, email.max_retries || 3);
+          const isExhausted = nextRetryCount >= (email.max_retries || 3);
+          await supabase.from('email_queue').update({
+            retry_count: nextRetryCount,
+            active: isExhausted ? false : true,
+            error_message: errorMessage,
+            is_processing: false,
+            processing_started_at: null,
+            processing_by: null
+          }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'failed', error_message: errorMessage }).eq('email_queue_id', email.id);
           result.errors++;
         }
       } catch (e) {
         console.error('Error validating 5-day queue email:', e);
+        await releaseEmailClaim(supabase, email.id);
         result.errors++;
       }
     }
@@ -192,8 +227,10 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
       .from('email_queue')
       .select('*')
       .eq('module_name', 'assessment')
+      .eq('notification_type', 'assessment_assigned')
       .eq('active', true)
-      .eq('is_sent', false)
+      .eq('is_sent', true)
+      .eq('is_processing', false)
       .eq('is_remainder_cron_started', false);
 
     if (error) {
@@ -207,9 +244,20 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
 
     for (const email of queue || []) {
       try {
+        const claimed = await claimEmailForProcessing(supabase, email.id, 'assessment-reminders-cron-overdue');
+        if (!claimed) {
+          continue;
+        }
+
         const validation = await validateAssessmentNotification(supabase, email);
         if (!validation.isValid) {
-          await supabase.from('email_queue').update({ active: false, error_message: validation.reason }).eq('id', email.id);
+          await supabase.from('email_queue').update({
+            active: false,
+            error_message: validation.reason,
+            is_processing: false,
+            processing_started_at: null,
+            processing_by: null
+          }).eq('id', email.id);
           await supabase.from('notification_logs').update({ status: 'failed', error_message: validation.reason }).eq('email_queue_id', email.id);
           result.errors++;
           continue;
@@ -220,15 +268,20 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
         const assessmentId = params.Assessment_ID || params.assessmentId || params.assessment_id;
         const { data: assessment } = await supabase
           .from('assessments')
-          .select('title, target_completion_date, assigned_to, created_by, client_id')
+          .select('name, target_completion_date, assigned_to, created_by, client_id')
           .eq('id', assessmentId)
           .single();
+
+        console.log(assessment,"assessment",assessmentId);
+        
         if (!assessment?.target_completion_date) {
+          await releaseEmailClaim(supabase, email.id);
           continue;
         }
         const today = new Date(); today.setHours(0,0,0,0);
         const dueDate = new Date(assessment.target_completion_date); dueDate.setHours(0,0,0,0);
         if (!(dueDate.getTime() < today.getTime())) {
+          await releaseEmailClaim(supabase, email.id);
           continue;
         }
 
@@ -237,7 +290,7 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
         const variables = {
           User_Name: email.recipient_name,
           Assessment_ID: assessmentId,
-          Assessment_Title: assessment.title,
+          Assessment_Title: assessment.name,
           Due_Date: new Date(assessment.target_completion_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
           Overdue_Days: overdueDays.toString(),
           Assessment_URL: `${getBaseUrl()}/assessments`
@@ -268,17 +321,36 @@ Safe School Team
         });
         if (!sendErr && sendRes?.success) {
           const nowIso = new Date().toISOString();
-          await supabase.from('email_queue').update({ is_sent: true, is_remainder_cron_started: true, sent_at: nowIso, error_message: null }).eq('id', email.id);
+          await supabase.from('email_queue').update({
+            is_sent: true,
+            is_remainder_cron_started: true,
+            sent_at: nowIso,
+            error_message: null,
+            is_processing: false,
+            processing_started_at: null,
+            processing_by: null
+          }).eq('id', email.id);
           await supabase.from('notification_logs').update({ status: 'sent', sent_at: nowIso, error_message: null }).eq('email_queue_id', email.id);
           await createCentralizedReminderNotification(supabase, email, subject, body, 'assessment_overdue');
           result.overdueReminders++;
         } else {
-          await supabase.from('email_queue').update({ retry_count: (email.retry_count || 0) + 1, error_message: sendErr?.message || 'Send failed' }).eq('id', email.id);
-          await supabase.from('notification_logs').update({ status: 'failed', error_message: sendErr?.message || 'Send failed' }).eq('email_queue_id', email.id);
+          const errorMessage = extractSendErrorMessage(sendErr, sendRes);
+          const nextRetryCount = Math.min((email.retry_count || 0) + 1, email.max_retries || 3);
+          const isExhausted = nextRetryCount >= (email.max_retries || 3);
+          await supabase.from('email_queue').update({
+            retry_count: nextRetryCount,
+            active: isExhausted ? false : true,
+            error_message: errorMessage,
+            is_processing: false,
+            processing_started_at: null,
+            processing_by: null
+          }).eq('id', email.id);
+          await supabase.from('notification_logs').update({ status: 'failed', error_message: errorMessage }).eq('email_queue_id', email.id);
           result.errors++;
         }
       } catch (e) {
         console.error('Error validating overdue queue email:', e);
+        await releaseEmailClaim(supabase, email.id);
         result.errors++;
       }
     }
@@ -365,6 +437,50 @@ function getBaseUrl(): string {
   return getFrontendUrl();
 } 
 
+async function claimEmailForProcessing(supabase: any, emailId: string, processorName: string): Promise<boolean> {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('email_queue')
+      .update({
+        is_processing: true,
+        processing_started_at: nowIso,
+        processing_by: processorName,
+      })
+      .eq('id', emailId)
+      .eq('active', true)
+      .eq('is_sent', true)
+      .eq('is_processing', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Failed to claim assessment reminder email ${emailId}:`, error);
+      return false;
+    }
+
+    return Boolean(data?.id);
+  } catch (error) {
+    console.error(`Error claiming assessment reminder email ${emailId}:`, error);
+    return false;
+  }
+}
+
+async function releaseEmailClaim(supabase: any, emailId: string): Promise<void> {
+  try {
+    await supabase
+      .from('email_queue')
+      .update({
+        is_processing: false,
+        processing_started_at: null,
+        processing_by: null,
+      })
+      .eq('id', emailId);
+  } catch (error) {
+    console.error(`Error releasing assessment reminder email claim ${emailId}:`, error);
+  }
+}
+
 async function createCentralizedReminderNotification(
   supabase: any,
   email: any,
@@ -400,4 +516,15 @@ async function createCentralizedReminderNotification(
   } catch (error) {
     console.error('Error creating centralized assessment reminder notification:', error);
   }
+}
+
+function extractSendErrorMessage(error?: any, data?: any): string {
+  const parts: string[] = [];
+  if (error?.message) parts.push(error.message);
+  if (data?.error) parts.push(String(data.error));
+  if (data?.message) parts.push(String(data.message));
+  if (data?.errorType) parts.push(`type=${data.errorType}`);
+  if (data?.status) parts.push(`status=${data.status}`);
+  const composed = parts.filter(Boolean).join(' | ');
+  return composed || 'Email send failed';
 }
