@@ -15,6 +15,7 @@ import LearningPoints from './closure/LearningPoints';
 import ActionsTakenForm from './closure/ActionsTakenForm';
 import ContributingFactorsSection from './closure/ContributingFactorsSection';
 import { supabase } from '@/integrations/supabase/client';
+import { incidentDocumentService } from '@/services/incident/incidentDocumentService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -136,55 +137,18 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
 
       setIsLoadingAttachments(true);
       try {
-        const { data, error } = await supabase
-          .from('incidents')
-          .select('closure_attachments')
-          .eq('id', incident.id)
-          .single();
-
-        if (error) {
-          console.error('Error loading closure attachments:', error);
-          setExistingAttachments([]);
-          setAttachments([]);
-          return;
-        }
-
-        const list = Array.isArray(data?.closure_attachments)
-          ? data.closure_attachments
-          : [];
-
-        const mapped: FileItem[] = list
-          .filter(
-            (file: any) =>
-              file &&
-              typeof file.id === 'string' &&
-              typeof file.name === 'string' &&
-              typeof file.path === 'string'
-          )
-          .map((file: any) => {
-            const { data: pub } = supabase.storage
-              .from('incident-closure-attachments')
-              .getPublicUrl(file.path);
-            const ext = (file.name || '').split('.').pop()?.toLowerCase() || '';
-            const mime =
-              ext === 'pdf'
-                ? 'application/pdf'
-                : ext === 'png'
-                  ? 'image/png'
-                  : ext === 'jpg' || ext === 'jpeg'
-                    ? 'image/jpeg'
-                    : 'application/octet-stream';
-            return {
-              id: file.id,
-              name: file.name,
-              type: mime,
-              size: typeof file.size === 'number' ? file.size : 0,
-              base64: pub.publicUrl || '',
-              url: pub.publicUrl || '',
-              path: file.path,
-            };
-          });
-
+        const docs = await incidentDocumentService.fetchClosureDocuments(
+          incident.id
+        );
+        const mapped: FileItem[] = docs.map((doc) => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          size: doc.size,
+          base64: doc.url || '',
+          url: doc.url,
+          path: doc.path,
+        }));
         setExistingAttachments(mapped);
         setAttachments(mapped);
       } catch (err) {

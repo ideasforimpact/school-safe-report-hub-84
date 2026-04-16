@@ -14,7 +14,8 @@ export const incidentDocumentAggregator = {
       const incidentDocuments = await incidentDocumentService.getIncidentDocuments(incidentId);
 
       // Get incident closure documents
-      const closureDocuments = await this.getClosureDocuments(incidentId);
+      const closureDocuments =
+        await incidentDocumentService.fetchClosureDocuments(incidentId);
       
       // Get comment documents
       const commentDocuments = await this.getCommentDocuments(incidentId);
@@ -68,67 +69,6 @@ export const incidentDocumentAggregator = {
       return commentDocuments;
     } catch (error) {
       console.error('Error fetching comment documents:', error);
-      return [];
-    }
-  },
-
-  async getClosureDocuments(incidentId: string): Promise<IncidentDocument[]> {
-    try {
-      const { data: row, error } = await supabase
-        .from('incidents')
-        .select('closure_attachments')
-        .eq('id', incidentId)
-        .single();
-
-      if (error || !row?.closure_attachments) {
-        if (error) console.error('Error fetching closure documents:', error);
-        return [];
-      }
-
-      const raw = row.closure_attachments;
-      const list = Array.isArray(raw) ? raw : [];
-
-      return list
-        .filter(
-          (file: any) =>
-            file &&
-            typeof file.id === 'string' &&
-            typeof file.name === 'string' &&
-            typeof file.path === 'string'
-        )
-        .map((file: any): IncidentDocument => {
-          const { data: pub } = supabase.storage
-            .from('incident-closure-attachments')
-            .getPublicUrl(file.path);
-          const ext = (file.name || '').split('.').pop()?.toLowerCase() || '';
-          const mime =
-            ext === 'pdf'
-              ? 'application/pdf'
-              : ext === 'png'
-                ? 'image/png'
-                : ext === 'jpg' || ext === 'jpeg'
-                  ? 'image/jpeg'
-                  : 'application/octet-stream';
-          return {
-            id: file.id,
-            name: file.name,
-            type: mime,
-            size: typeof file.size === 'number' ? file.size : 0,
-            url: pub.publicUrl,
-            path: file.path,
-            uploadedAt:
-              typeof file.updatedAt === 'string'
-                ? file.updatedAt
-                : new Date().toISOString(),
-            source: 'closure',
-          };
-        })
-        .sort(
-          (a, b) =>
-            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-        );
-    } catch (error) {
-      console.error('Error fetching closure documents:', error);
       return [];
     }
   }

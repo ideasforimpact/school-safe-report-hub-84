@@ -181,6 +181,58 @@ export const incidentDocumentService = {
     }));
   },
 
+  /** Closure attachments: fetch via edge function (public URLs + metadata). */
+  async fetchClosureDocuments(incidentId: string): Promise<IncidentDocument[]> {
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'get-closure-documents',
+        {
+          body: { incident_id: incidentId },
+        }
+      );
+
+      if (error) {
+        console.error('Error fetching closure documents:', error);
+        return [];
+      }
+
+      if (data?.error) {
+        console.error('get-closure-documents:', data.error);
+        return [];
+      }
+
+      const docs = (data?.documents || []) as Array<{
+        id: string;
+        name: string;
+        type: string;
+        size: number;
+        url: string;
+        path: string;
+        uploadedAt: string;
+        source?: string;
+      }>;
+
+      return docs.map(
+        (doc): IncidentDocument => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          size: typeof doc.size === 'number' ? doc.size : 0,
+          url: doc.url || '',
+          path: doc.path || '',
+          uploadedAt:
+            typeof doc.uploadedAt === 'string'
+              ? doc.uploadedAt
+              : new Date().toISOString(),
+          source: 'closure',
+        })
+      );
+    } catch (err) {
+      console.error('Error fetching closure documents:', err);
+      return [];
+    }
+  },
+
   // Delete document from storage and update incident
   async deleteDocument(incidentId: string, documentPath: string): Promise<void> {
     try {

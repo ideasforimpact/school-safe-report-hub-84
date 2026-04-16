@@ -3,6 +3,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts'
 
+import {
+  parseClosureAttachments,
+  type ClosureAttachmentRow,
+} from '../_shared/closureAttachments.ts'
+
 const supabase = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey())
 
 interface CloseIncidentRequest {
@@ -21,13 +26,6 @@ interface CloseIncidentRequest {
   deleted_attachment_ids?: string[]
 }
 
-interface ClosureAttachmentRow {
-  id: string
-  name: string
-  path: string
-  updatedAt: string
-}
-
 function base64ToBlob(base64: string, type: string): Blob {
   const byteCharacters = atob(base64.split(',')[1] || base64)
   const byteNumbers = new Array(byteCharacters.length)
@@ -36,28 +34,6 @@ function base64ToBlob(base64: string, type: string): Blob {
   }
   const byteArray = new Uint8Array(byteNumbers)
   return new Blob([byteArray], { type })
-}
-
-function parseClosureAttachments(raw: unknown): ClosureAttachmentRow[] {
-  if (!Array.isArray(raw)) return []
-  return raw
-    .filter(
-      (item): item is ClosureAttachmentRow =>
-        item !== null &&
-        typeof item === 'object' &&
-        typeof (item as ClosureAttachmentRow).id === 'string' &&
-        typeof (item as ClosureAttachmentRow).name === 'string' &&
-        typeof (item as ClosureAttachmentRow).path === 'string'
-    )
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      path: item.path,
-      updatedAt:
-        typeof item.updatedAt === 'string'
-          ? item.updatedAt
-          : new Date().toISOString(),
-    }))
 }
 
 async function uploadNewClosureFiles(
