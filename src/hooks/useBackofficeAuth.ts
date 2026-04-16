@@ -9,7 +9,8 @@ import { setEmployeeData, setConfiguredModules } from '@/store/employeeActions';
 import { User, EmployeeData } from '@/contexts/auth/types';
 import { generateBackofficeToken } from '@/utils/jwtUtils';
 import { saveAuthState } from '@/store/authPersistence';
-
+import { getBackofficeDefaultPath } from '@/components/layout/sidebar/sidebarConfig';
+import type { Module } from '@/components/layout/sidebar/sidebarConfig';
 // Helper function to create fresh Supabase auth user with email provider
 const createSupabaseAuthUser = async (email: string, password: string): Promise<boolean> => {
   try {
@@ -322,8 +323,10 @@ export const useBackofficeAuth = () => {
         modules: backofficeModules
       });
 
-      toast.success("Login successful! Redirecting to dashboard...");
-      navigate("/backoffice/dashboard");
+      const defaultBackofficePath = getBackofficeDefaultPath(backofficeModules);
+
+      toast.success("Login successful! Redirecting to your module...");
+      navigate(defaultBackofficePath);
       
       setIsLoading(false);
       return true;
