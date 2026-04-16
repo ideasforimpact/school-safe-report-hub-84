@@ -21,6 +21,8 @@ import { supabase } from '@/integrations/supabase/client';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { formatDate } from "@/lib/Dateformat";
 import Loader from "@/components/common/Loader";
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getCurrentUser } from '@/store/authSelectors';
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -54,6 +56,9 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
   const [policyTitles, setPolicyTitles] = React.useState<string[]>([]);
   const [aiOpen, setAiOpen] = React.useState(false);
   const [aiPayload, setAiPayload] = React.useState<any | null>(null);
+  const { state } = useEmployeeStore();
+    
+  const currentUser = getCurrentUser(state);
   
   React.useEffect(() => {
     const loadPolicyDocs = async () => {
@@ -389,7 +394,7 @@ const LazyIncidentsTable: React.FC<LazyIncidentsTableProps> = ({
                         <span className="sr-only">Edit</span>
                       </Button>
                     )}
-                    {user?.client?.incidentRecommendedActionsEnabled !== false && (
+                    {currentUser?.client?.incidentRecommendedActionsEnabled !== false && (
                     <Button
                       variant="ghost"
                       size="sm"
