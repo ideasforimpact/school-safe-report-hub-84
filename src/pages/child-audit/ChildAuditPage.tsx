@@ -504,6 +504,7 @@ const ChildAuditPage = () => {
     }
     return map;
   }, [checkTypeDetails]);
+  
 
   const selectedCheckTypeGroups = useMemo(() => {
     const target =
@@ -1181,7 +1182,7 @@ const diagnostics = {
                         </div>
                         
                         <p className="text-sm text-muted-foreground whitespace-nowrap">
-                          {currentTime.toLocaleString("en-IN")}
+                          {formatDate(new Date())}
                         </p>
                       </div>
                     </CardContent>
@@ -1220,7 +1221,7 @@ const diagnostics = {
                   <p className="text-base mt-1">
                     {lookupMap.get(recentRecord.check_type_id ?? '') ?? 'Check'}
                     {' · '}
-                    {formatDate(recentRecord.created_at, { isTiming: true })}
+                    {formatDate(recentRecord.created_at)}
                   </p>
                 ) : (
                   <p className="text-base mt-1">No record yet.</p>
