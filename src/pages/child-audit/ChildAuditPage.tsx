@@ -36,6 +36,7 @@ import ChildAuditReportPDF from '@/pages/child-audit/ChildAuditReportpdf';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
 import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
+import { formatDate } from '@/lib/Dateformat';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
 type ChildAuditLookupItem = {
@@ -297,13 +298,15 @@ const getFactorStyle = (name: string) => {
   return { title: 'Behaviour / Mood', icon: '👁', textClass: 'text-slate-700' };
 };
 
-const toAuditDateHeader = (value: string) =>
-  new Date(value).toLocaleDateString('en-US', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).toUpperCase();
+const toAuditDateHeader = (value: string) => {
+  const date = new Date(value);
+
+  const dayName = date.toLocaleDateString("en-US", {
+    weekday: "long",
+  });
+
+  return `${dayName}, ${formatDate(value)}`.toUpperCase();
+};
 
 const fetchChildAuditRecordsByStudent = async (
   clientId: string,
@@ -385,6 +388,7 @@ const ChildAuditPage = () => {
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
   const [downloading, setDownloading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
     if (!definition) return BODY_PART_OPTIONS;
@@ -499,6 +503,14 @@ const ChildAuditPage = () => {
     }
     return map;
   }, [checkTypeDetails]);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // update every second
+
+    return () => clearInterval(interval);
+  }, []);
 
   const selectedCheckTypeGroups = useMemo(() => {
     const target =
@@ -565,6 +577,7 @@ const ChildAuditPage = () => {
 
       const applyLatestSelection = (latest: ChildAuditLatestSelection | null) => {
         if (!latest) {
+          applySelectionState(null);
           if (detail.checkTypes.length > 0) {
             const firstCheckTypeId = detail.checkTypes[0].id;
             setSelectedCheckType((prev) => prev ?? firstCheckTypeId);
@@ -1175,7 +1188,7 @@ const diagnostics = {
                         </div>
                         
                         <p className="text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date().toLocaleString("en-IN")}
+                          {currentTime.toLocaleString("en-IN")}
                         </p>
                       </div>
                     </CardContent>
@@ -1212,9 +1225,9 @@ const diagnostics = {
                 <p className="text-sm text-muted-foreground">Last recorded</p>
                 {recentRecord ? (
                   <p className="text-base mt-1">
-                    {lookupMap.get(recentRecord.check_type_id ?? '') ?? 'Check'} · {toDateLabel(recentRecord.created_at)}
+                    {lookupMap.get(recentRecord.check_type_id ?? '') ?? 'Check'}
                     {' · '}
-                    {toTimeLabel(recentRecord.created_at)}
+                    {formatDate(recentRecord.created_at, { isTiming: true })}
                   </p>
                 ) : (
                   <p className="text-base mt-1">No record yet.</p>
@@ -1425,7 +1438,7 @@ const diagnostics = {
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Optional notes..."
-                      className="min-h-[110px] text-base"
+                      className="min-h-[110px] text-base break-words whitespace-pre-wrap"
                       maxLength={DESCRIPTION_MAX_LENGTH}
                     />
                     <div className="text-right text-sm text-gray-500 mt-2">
@@ -1537,7 +1550,7 @@ const diagnostics = {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">{selectedDate ? toDateLabel(selectedDate.toISOString()) : 'Day records'}</CardTitle>
+                    <CardTitle className="text-lg"> {selectedDate ? formatDate(selectedDate.toISOString()) : 'Day records'} </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {selectedDayRecords.length === 0 ? (
@@ -1567,7 +1580,7 @@ const diagnostics = {
                             ))}
                             {record.meltdown_occurred && <Badge variant="softInfo">Meltdown</Badge>}
                           </div>
-                          {record.notes && <p className="text-sm text-muted-foreground mt-2">"{record.notes}"</p>}
+                          {record.notes && <p className="text-sm text-muted-foreground mt-2 break-words whitespace-pre-wrap">"{record.notes}"</p>}
                         </div>
                       ))
                     )}
@@ -1688,7 +1701,7 @@ const diagnostics = {
 
                                     <div className="pt-1 border-t border-slate-100">
                                       <p className="text-xs font-semibold text-slate-500 mb-1">Notes</p>
-                                      <p className="text-sm text-slate-600 italic">
+                                      <p className="text-sm text-slate-600 italic break-words whitespace-pre-wrap">
                                         "{record.notes?.trim() ? record.notes : 'No notes provided.'}"
                                       </p>
                                     </div>
