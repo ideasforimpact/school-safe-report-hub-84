@@ -335,8 +335,9 @@ serve(async (req) => {
         key: mapModuleToPermissionKey(module.name)
       }));
       
-      // Always ensure dashboard is present for standard query
-      if (!modules.some(m => m.name.toLowerCase() === 'dashboard')) {
+      // Ensure dashboard is present only for client-level standard query.
+      // Backoffice should strictly follow active modules configured in DB.
+      if (level !== 'backoffice' && !modules.some(m => m.name.toLowerCase() === 'dashboard')) {
         console.log('Adding default dashboard module to standard query results');
         modules.unshift({
           id: 'dashboard-default',

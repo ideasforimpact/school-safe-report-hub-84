@@ -19,18 +19,14 @@ export const saveAuthState = (state: PersistedAuthState): void => {
   try {
     const serializedState = JSON.stringify(state);
     
-    // CRITICAL: Only use localStorage for SSO, sessionStorage for backoffice
-    // This prevents storage conflicts that cause re-authentication loops
+    // Keep portal states isolated: backoffice in sessionStorage, SSO in localStorage.
+    // Do not clear the other storage so both portals can coexist in one browser.
     if (state.sessionType === 'backoffice' || state.isBackofficeUser) {
-      // Clear localStorage to prevent conflicts
-      localStorage.removeItem(AUTH_STORAGE_KEY);
       sessionStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-      console.log('💾 saveAuthState: Saved backoffice auth state to sessionStorage (cleared localStorage)');
+      console.log('💾 saveAuthState: Saved backoffice auth state to sessionStorage');
     } else {
-      // Clear sessionStorage to prevent conflicts  
-      sessionStorage.removeItem(AUTH_STORAGE_KEY);
       localStorage.setItem(AUTH_STORAGE_KEY, serializedState);
-      console.log('💾 saveAuthState: Saved SSO auth state to localStorage (cleared sessionStorage)');
+      console.log('💾 saveAuthState: Saved SSO auth state to localStorage');
     }
   } catch (error) {
     console.error("❌ saveAuthState: Error saving auth state:", error);
@@ -41,14 +37,20 @@ export const saveAuthState = (state: PersistedAuthState): void => {
 export const loadAuthState = (): PersistedAuthState | null => {
   console.log('💾 loadAuthState: Loading auth state');
   try {
-    // Try sessionStorage first (for backoffice users)
-    let serializedState = sessionStorage.getItem(AUTH_STORAGE_KEY);
-    let storageType = 'sessionStorage';
-    
-    // If not found in sessionStorage, try localStorage (for SSO users)
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isBackofficeRoute = pathname.startsWith('/backoffice');
+    const primaryStorage = isBackofficeRoute ? sessionStorage : localStorage;
+    const fallbackStorage = isBackofficeRoute ? localStorage : sessionStorage;
+    const primaryStorageType = isBackofficeRoute ? 'sessionStorage' : 'localStorage';
+    const fallbackStorageType = isBackofficeRoute ? 'localStorage' : 'sessionStorage';
+
+    // Prefer portal-specific storage based on current route, then fallback.
+    let serializedState = primaryStorage.getItem(AUTH_STORAGE_KEY);
+    let storageType = primaryStorageType;
+
     if (serializedState === null) {
-      serializedState = localStorage.getItem(AUTH_STORAGE_KEY);
-      storageType = 'localStorage';
+      serializedState = fallbackStorage.getItem(AUTH_STORAGE_KEY);
+      storageType = fallbackStorageType;
     }
     
     if (serializedState === null) {
@@ -61,7 +63,8 @@ export const loadAuthState = (): PersistedAuthState | null => {
       hasJwtToken: !!parsedState.jwtToken,
       expiresAt: parsedState.expiresAt ? new Date(parsedState.expiresAt).toISOString() : null,
       sessionType: parsedState.sessionType || (parsedState.isBackofficeUser ? 'backoffice' : 'sso'),
-      storageType
+      storageType,
+      route: pathname
     });
     
     // Only check JWT token expiration for backoffice users
