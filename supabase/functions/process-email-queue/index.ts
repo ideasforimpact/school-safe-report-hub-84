@@ -91,7 +91,8 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
       .select('*')
       .eq('is_sent', false)
       .eq('active', true) // Only process active emails
-      .lt('retry_count', 3) // Only process emails that haven't exceeded max retries
+      .eq('is_processing', false) // Skip rows already claimed by another worker
+      .lt('retry_count', 3) // Default cap; per-row max_retries still enforced on update
       .order('priority', { ascending: false }) // High priority first
       .order('created_at', { ascending: true }) // Oldest first
       .limit(50); // Process in batches
@@ -112,6 +113,11 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
       result.processed++;
       
       try {
+        const claimed = await claimEmailForProcessing(supabase, email.id, 'process-email-queue');
+        if (!claimed) {
+          continue;
+        }
+
         // Validate incident notifications before processing
         if (email.module_name === 'incident') {
           console.log(`Validating incident notification for email ${email.id}`);
@@ -119,7 +125,7 @@ async function processEmailQueue(supabase: any): Promise<ProcessResult> {
           if (!validationResult.isValid) {
             console.log(`Incident validation failed for email ${email.id}: ${validationResult.reason}`);
             console.log(`Calling deactivateEmailAndUpdateLogs for email ${email.id}`);
-            await deactivateEmailAndUpdateLogs(supabase, email.id, validationResult.reason);
+            await deactivateEmailAndUpdateLogs(supabase, email.id, validationResult.reason || 'Incident validation failed');
             console.log(`deactivateEmailAndUpdateLogs completed for email ${email.id}`);
             result.failed++;
             result.errors.push(`Incident validation failed: ${validationResult.reason}`);
@@ -175,7 +181,7 @@ async function sendQueuedEmail(supabase: any, email: EmailQueueItem): Promise<bo
 
     if (error) {
       console.error(`Error sending email ${email.id}:`, error);
-      await updateEmailStatus(supabase, email.id, false, error.message);
+      await updateEmailStatus(supabase, email.id, false, extractSendErrorMessage(error, data));
       return false;
     }
 
@@ -185,13 +191,13 @@ async function sendQueuedEmail(supabase: any, email: EmailQueueItem): Promise<bo
       return true;
     } else {
       console.error(`Email send failed for ${email.id}:`, data);
-      await updateEmailStatus(supabase, email.id, false, 'Email send failed');
+      await updateEmailStatus(supabase, email.id, false, extractSendErrorMessage(undefined, data));
       return false;
     }
 
   } catch (error: any) {
     console.error(`Error in sendQueuedEmail for ${email.id}:`, error);
-    await updateEmailStatus(supabase, email.id, false, error.message);
+    await updateEmailStatus(supabase, email.id, false, extractSendErrorMessage(error));
     return false;
   }
 }
@@ -210,7 +216,10 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         .update({
           is_sent: true,
           sent_at: currentTime,
-          error_message: null
+          error_message: null,
+          is_processing: false,
+          processing_started_at: null,
+          processing_by: null
         })
         .eq('id', emailId);
 
@@ -240,7 +249,7 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
       // First get the current retry count
       const { data: emailData, error: fetchError } = await supabase
         .from('email_queue')
-        .select('retry_count')
+        .select('retry_count, max_retries')
         .eq('id', emailId)
         .single();
 
@@ -249,14 +258,23 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         return;
       }
 
+      const currentRetryCount = emailData?.retry_count || 0;
+      const maxRetries = emailData?.max_retries || 3;
+      const nextRetryCount = Math.min(currentRetryCount + 1, maxRetries);
+      const isExhausted = nextRetryCount >= maxRetries;
+
       // Update email_queue with failure info
       const { error: emailError } = await supabase
         .from('email_queue')
         .update({
           is_sent: false,
-          retry_count: (emailData?.retry_count || 0) + 1,
+          retry_count: nextRetryCount,
+          active: isExhausted ? false : true,
           error_message: errorMessage,
-          sent_at: null
+          sent_at: null,
+          is_processing: false,
+          processing_started_at: null,
+          processing_by: null
         })
                 .eq('id', emailId);
 
@@ -281,6 +299,17 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
   } catch (error) {
     console.error('Error updating email status:', error);
   }
+}
+
+function extractSendErrorMessage(error?: any, data?: any): string {
+  const parts: string[] = [];
+  if (error?.message) parts.push(error.message);
+  if (data?.error) parts.push(String(data.error));
+  if (data?.message) parts.push(String(data.message));
+  if (data?.errorType) parts.push(`type=${data.errorType}`);
+  if (data?.status) parts.push(`status=${data.status}`);
+  const composed = parts.filter(Boolean).join(' | ');
+  return composed || 'Email send failed';
 }
 
 async function recordCentralizedNotificationForEmail(supabase: any, emailId: string): Promise<void> {
@@ -388,7 +417,10 @@ async function deactivateEmailAndUpdateLogs(supabase: any, emailId: string, reas
       .update({
         active: false,
         error_message: reason, // Add error message to email_queue as well
-        updated_at: currentTime
+        updated_at: currentTime,
+        is_processing: false,
+        processing_started_at: null,
+        processing_by: null
       })
       .eq('id', emailId);
 
@@ -471,3 +503,32 @@ async function deactivateEmailAndUpdateLogs(supabase: any, emailId: string, reas
     console.error('Error deactivating email and updating logs:', error);
   }
 } 
+
+async function claimEmailForProcessing(supabase: any, emailId: string, processorName: string): Promise<boolean> {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('email_queue')
+      .update({
+        is_processing: true,
+        processing_started_at: nowIso,
+        processing_by: processorName,
+      })
+      .eq('id', emailId)
+      .eq('is_sent', false)
+      .eq('active', true)
+      .eq('is_processing', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Failed to claim email ${emailId} for processing:`, error);
+      return false;
+    }
+
+    return Boolean(data?.id);
+  } catch (error) {
+    console.error(`Error claiming email ${emailId} for processing:`, error);
+    return false;
+  }
+}

@@ -161,6 +161,16 @@ export const useAuthHandlers = ({
         clientIntegration = null;
       }
 
+      let incidentRecommendedActionsEnabled = true;
+      const { data: aiFeatureResponse, error: aiFeatureError } = await supabase.functions.invoke(
+        'client-management',
+        { body: { operation: 'get-ai-feature', client: { id: clientId } } },
+      );
+      if (aiFeatureError) {
+        console.warn('client-management get-ai-feature failed (useAuthHandlers):', aiFeatureError);
+      } else if (aiFeatureResponse && typeof aiFeatureResponse.enabled === 'boolean') {
+        incidentRecommendedActionsEnabled = aiFeatureResponse.enabled !== false;
+      }
 
       // Build logo URL from path if needed
       const { buildClientLogoUrl } = await import('@/lib/utils');
@@ -182,7 +192,7 @@ export const useAuthHandlers = ({
         logo: logoUrl,
         client_type: clientData.client_type,
         client_integration: clientIntegration,
-
+        incidentRecommendedActionsEnabled,
       };
 
       const clientType: ClientType | null = clientData.client_type ? {

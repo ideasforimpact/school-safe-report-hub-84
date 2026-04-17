@@ -63,6 +63,7 @@ async function processAssessmentNotifications(supabase: any) {
       .eq('is_sent', false)
       .eq('module_name', 'assessment')
       .eq('active', true)
+      .eq('is_processing', false)
       .lt('retry_count', 3)
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
@@ -88,13 +89,24 @@ async function processAssessmentNotifications(supabase: any) {
       processed++;
       
       try {
+        const claimed = await claimEmailForProcessing(supabase, email.id, 'process-assessment-notifications');
+        if (!claimed) {
+          continue;
+        }
+
         // Validate assessment like incident validation
         const validation = await validateAssessmentNotification(supabase, email);
         if (!validation.isValid) {
           // Mark queue inactive and update notification_log
           await supabase
             .from('email_queue')
-            .update({ active: false, error_message: validation.reason })
+            .update({
+              active: false,
+              error_message: validation.reason,
+              is_processing: false,
+              processing_started_at: null,
+              processing_by: null,
+            })
             .eq('id', email.id);
 
           await supabase
@@ -122,7 +134,7 @@ async function processAssessmentNotifications(supabase: any) {
 
         if (error || !data?.success) {
           console.error(`Failed to send assessment notification ${email.id}:`, error || data);
-          await updateEmailStatus(supabase, email.id, false, error?.message || 'Send failed');
+          await updateEmailStatus(supabase, email.id, false, extractSendErrorMessage(error, data));
           failed++;
         } else {
           console.log(`Assessment notification sent successfully: ${email.id}`);
@@ -131,7 +143,7 @@ async function processAssessmentNotifications(supabase: any) {
         }
       } catch (error: any) {
         console.error(`Error processing assessment notification ${email.id}:`, error);
-        await updateEmailStatus(supabase, email.id, false, error.message);
+        await updateEmailStatus(supabase, email.id, false, extractSendErrorMessage(error));
         failed++;
       }
     }
@@ -196,7 +208,10 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         .update({
           is_sent: true,
           sent_at: currentTime,
-          error_message: null
+          error_message: null,
+          is_processing: false,
+          processing_started_at: null,
+          processing_by: null
         })
         .eq('id', emailId);
 
@@ -224,7 +239,7 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
       // Get current retry count and increment
       const { data: emailData, error: fetchError } = await supabase
         .from('email_queue')
-        .select('retry_count')
+        .select('retry_count, max_retries')
         .eq('id', emailId)
         .single();
 
@@ -233,14 +248,23 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         return;
       }
 
+      const currentRetryCount = emailData?.retry_count || 0;
+      const maxRetries = emailData?.max_retries || 3;
+      const nextRetryCount = Math.min(currentRetryCount + 1, maxRetries);
+      const isExhausted = nextRetryCount >= maxRetries;
+
       // Update email_queue with failure info
       const { error: emailError } = await supabase
         .from('email_queue')
         .update({
           is_sent: false,
-          retry_count: (emailData?.retry_count || 0) + 1,
+          retry_count: nextRetryCount,
+          active: isExhausted ? false : true,
           error_message: errorMessage,
-          sent_at: null
+          sent_at: null,
+          is_processing: false,
+          processing_started_at: null,
+          processing_by: null
         })
         .eq('id', emailId);
 
@@ -300,5 +324,45 @@ async function recordCentralizedNotificationForEmail(supabase: any, emailId: str
     }
   } catch (error) {
     console.error('Error creating centralized notification from assessment processor:', error);
+  }
+}
+
+function extractSendErrorMessage(error?: any, data?: any): string {
+  const parts: string[] = [];
+  if (error?.message) parts.push(error.message);
+  if (data?.error) parts.push(String(data.error));
+  if (data?.message) parts.push(String(data.message));
+  if (data?.errorType) parts.push(`type=${data.errorType}`);
+  if (data?.status) parts.push(`status=${data.status}`);
+  const composed = parts.filter(Boolean).join(' | ');
+  return composed || 'Email send failed';
+}
+
+async function claimEmailForProcessing(supabase: any, emailId: string, processorName: string): Promise<boolean> {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('email_queue')
+      .update({
+        is_processing: true,
+        processing_started_at: nowIso,
+        processing_by: processorName,
+      })
+      .eq('id', emailId)
+      .eq('is_sent', false)
+      .eq('active', true)
+      .eq('is_processing', false)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Failed to claim assessment email ${emailId}:`, error);
+      return false;
+    }
+
+    return Boolean(data?.id);
+  } catch (error) {
+    console.error(`Error claiming assessment email ${emailId}:`, error);
+    return false;
   }
 }
