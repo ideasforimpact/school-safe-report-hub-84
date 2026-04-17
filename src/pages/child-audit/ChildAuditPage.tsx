@@ -388,8 +388,7 @@ const ChildAuditPage = () => {
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
   const [downloading, setDownloading] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
-
+  
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
     if (!definition) return BODY_PART_OPTIONS;
     const trimmed = definition.trim();
@@ -503,14 +502,6 @@ const ChildAuditPage = () => {
     }
     return map;
   }, [checkTypeDetails]);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000); // update every second
-
-    return () => clearInterval(interval);
-  }, []);
 
   const selectedCheckTypeGroups = useMemo(() => {
     const target =
