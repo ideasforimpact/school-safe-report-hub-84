@@ -1,5 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { styles } from "./pdfstyles";
+import { formatDate } from "@/lib/Dateformat";
 
 /* TABLE ROW */
 const TableRow = ({ row, widths, index, small = false, isLast = false }: any) => (
@@ -109,7 +110,7 @@ const generateDiagnostics = (report: any) => {
 
 const ChildAuditReportPDF = ({ student, monthReport }: any) => {
   const insights = generateDiagnostics(monthReport);
-  const generatedAt = new Date().toLocaleString();
+  const generatedAt = formatDate(new Date());;
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
