@@ -36,6 +36,7 @@ import ChildAuditReportPDF from '@/pages/child-audit/ChildAuditReportpdf';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
 import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
+import { formatDate } from '@/lib/Dateformat';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
 type ChildAuditLookupItem = {
@@ -385,6 +386,7 @@ const ChildAuditPage = () => {
   const [auditDateSort, setAuditDateSort] = useState<'asc' | 'desc'>('desc');
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
   const [downloading, setDownloading] = useState(false);
+  
 
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
     if (!definition) return BODY_PART_OPTIONS;
@@ -499,6 +501,7 @@ const ChildAuditPage = () => {
     }
     return map;
   }, [checkTypeDetails]);
+  
 
   const selectedCheckTypeGroups = useMemo(() => {
     const target =
@@ -1175,7 +1178,7 @@ const diagnostics = {
                         </div>
                         
                         <p className="text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date().toLocaleString("en-IN")}
+                          {formatDate(new Date())}
                         </p>
                       </div>
                     </CardContent>
@@ -1214,7 +1217,7 @@ const diagnostics = {
                   <p className="text-base mt-1">
                     {lookupMap.get(recentRecord.check_type_id ?? '') ?? 'Check'} · {toDateLabel(recentRecord.created_at)}
                     {' · '}
-                    {toTimeLabel(recentRecord.created_at)}
+                    {formatDate(recentRecord.created_at)}
                   </p>
                 ) : (
                   <p className="text-base mt-1">No record yet.</p>
