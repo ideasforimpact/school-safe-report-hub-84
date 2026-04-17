@@ -82,7 +82,7 @@ type ChildAuditRecord = {
 
 type CreateChildAuditRecordPayload = Omit<
   ChildAuditRecord,
-  'id' | 'created_at' | 'updated_at'
+  'id' | 'created_at' | 'updated_at' | 'attachments'
 > & {
   attachments?: Array<{
     file_name: string;
@@ -387,6 +387,7 @@ const ChildAuditPage = () => {
   const [auditTypeSort, setAuditTypeSort] = useState<'asc' | 'desc'>('asc');
   const [downloading, setDownloading] = useState(false);
   
+  const EMPTY_INITIAL_FILES = useMemo<FileItem[]>(() => [], []);
 
   const parseWhereOptions = useCallback((definition?: string | null): string[] => {
     if (!definition) return BODY_PART_OPTIONS;
@@ -1407,7 +1408,7 @@ const diagnostics = {
                     <ReusableFileUploader
                       key={`${selectedStudent.id}-${attachmentUploaderKey}`}
                       onFilesChange={setAttachments}
-                      initialFiles={[]}
+                      initialFiles={EMPTY_INITIAL_FILES}
                       maxFiles={5}
                       maxSize={10}
                       maxTotalSize={50}

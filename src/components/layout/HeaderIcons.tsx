@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData } from '@/store/employeeSelectors';
+import { getIsBackofficeUser } from '@/store/authSelectors';
 
 interface NotificationItem {
   id: string;
@@ -50,6 +51,12 @@ const HeaderIcons = () => {
   const location = useLocation();
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
+  const isBackofficeUser = getIsBackofficeUser(state);
+  const isBackofficeRoute =
+    location.pathname.startsWith('/backoffice') ||
+    location.pathname.startsWith('/backoffice-');
+  const skipNotifications = isBackofficeRoute || isBackofficeUser;
+
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -57,6 +64,7 @@ const HeaderIcons = () => {
   const currentModuleName = useMemo(() => getModuleNameFromPath(location.pathname), [location.pathname]);
 
   const fetchSummary = useCallback(async () => {
+    if (skipNotifications) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('fetch-notification-summary', {
@@ -78,13 +86,20 @@ const HeaderIcons = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentModuleName]);
+  }, [currentModuleName, skipNotifications]);
 
   useEffect(() => {
+    if (skipNotifications) {
+      setUnreadCount(0);
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
     fetchSummary();
-  }, [fetchSummary]);
+  }, [fetchSummary, skipNotifications]);
 
   useEffect(() => {
+    if (skipNotifications) return;
     if (!employeeData?.id) return;
 
     const recipientChannel = supabase
@@ -122,9 +137,10 @@ const HeaderIcons = () => {
       supabase.removeChannel(recipientChannel);
       supabase.removeChannel(notificationChannel);
     };
-  }, [employeeData?.id, currentModuleName, fetchSummary]);
+  }, [employeeData?.id, currentModuleName, fetchSummary, skipNotifications]);
 
   const markAsRead = useCallback(async (recipientNotificationId: string) => {
+    if (skipNotifications) return;
     try {
       const { error } = await supabase.functions.invoke('mark-notification-read', {
         body: {
@@ -144,7 +160,11 @@ const HeaderIcons = () => {
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
-  }, []);
+  }, [skipNotifications]);
+
+  if (skipNotifications) {
+    return null;
+  }
 
   return (
     <DropdownMenu>
