@@ -28,6 +28,8 @@ export interface ClientFormData {
   whitelistedIPs?: IPAddress[];
   /** AI "Recommended Actions" for incidents; default on */
   aiIncidentRecommendedActionsEnabled: boolean;
+  isHeadOffice: boolean;
+  mappedClientIds: string[];
 }
 
 const initialFormData: ClientFormData = {
@@ -50,7 +52,9 @@ const initialFormData: ClientFormData = {
   superAdminAllowedDomains: [],
   moduleInfoArray: [],
   whitelistedIPs: [],
-  aiIncidentRecommendedActionsEnabled: true
+  aiIncidentRecommendedActionsEnabled: true,
+  isHeadOffice: false,
+  mappedClientIds: []
 };
 
 export const useClientManagement = () => {
@@ -195,7 +199,9 @@ export const useClientManagement = () => {
           authProviders: formData.authProviders,
           website: formData.website,
           whitelistedIPs: formData.whitelistedIPs || [],
-          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
+          is_head_office: formData.isHeadOffice,
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : []
         }
       };
       
@@ -259,7 +265,9 @@ export const useClientManagement = () => {
         microsoft: client.authProviders?.microsoft ?? false,
         zoho: client.authProviders?.zoho ?? false
       },
-      aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false
+      aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false,
+      isHeadOffice: client.isHeadOffice === true,
+      mappedClientIds: client.mappedClientIds || []
     }));
     
     // Get the client modules and super admin employee for this client
@@ -491,7 +499,9 @@ export const useClientManagement = () => {
           authProviders: formData.authProviders,
           website: formData.website,
           whitelistedIPs: whitelistedIPs, // Always send as array, never undefined
-          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
+          is_head_office: formData.isHeadOffice,
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : []
         }
       };
       

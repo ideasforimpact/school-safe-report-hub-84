@@ -33,6 +33,8 @@ interface ClientData {
   authProviders?: Record<string, boolean>;
   website?: string;
   whitelistedIPs?: Array<{ ip: string; name?: string }>;
+  is_head_office?: boolean;
+  mapped_client_ids?: string[];
 }
 
 interface ModuleInfo {
@@ -40,6 +42,8 @@ interface ModuleInfo {
   module_id: string;
   is_admin: boolean;
 }
+
+const REQUIRE_MAPPINGS_FOR_HEAD_OFFICE = false;
 
 // Check if super admin email domain is allowed
 function isSuperAdminEmailDomainAllowed(email: string, allowedDomains: string | null): boolean {
@@ -921,6 +925,115 @@ async function listClientAiIncidentRecommendedActions(clientIds: string[]): Prom
   return (data || []) as Array<{ client_id: string; enabled: boolean }>
 }
 
+function normalizeMappedClientIds(mappedClientIds: unknown): string[] {
+  if (!Array.isArray(mappedClientIds)) return [];
+  const normalizedIds = mappedClientIds
+    .filter((id): id is string => typeof id === 'string')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+  return [...new Set(normalizedIds)];
+}
+
+function resolveIsHeadOffice(clientData: Record<string, unknown>): boolean {
+  if (typeof clientData.is_head_office === 'boolean') {
+    return clientData.is_head_office;
+  }
+  if (typeof clientData.isHeadOffice === 'boolean') {
+    return clientData.isHeadOffice;
+  }
+  return false;
+}
+
+function resolveMappedClientIds(clientData: Record<string, unknown>): string[] {
+  if (Array.isArray(clientData.mapped_client_ids)) {
+    return normalizeMappedClientIds(clientData.mapped_client_ids);
+  }
+  if (Array.isArray(clientData.mappedClientIds)) {
+    return normalizeMappedClientIds(clientData.mappedClientIds);
+  }
+  return [];
+}
+
+function validateHeadOfficeMappingInput(
+  isHeadOffice: boolean,
+  mappedClientIds: string[],
+  headOfficeId?: string,
+) {
+  if (!isHeadOffice) return;
+
+  if (REQUIRE_MAPPINGS_FOR_HEAD_OFFICE && mappedClientIds.length === 0) {
+    throw new Error('At least one mapped client is required when is_head_office is true');
+  }
+
+  if (headOfficeId && mappedClientIds.includes(headOfficeId)) {
+    throw new Error('Head office cannot be mapped to itself');
+  }
+}
+
+async function syncClientMappings(
+  headOfficeId: string,
+  isHeadOffice: boolean,
+  mappedClientIds: string[] | undefined,
+) {
+  if (!isHeadOffice) {
+    const { error: clearMappingsError } = await supabase
+      .from('client_mappings')
+      .delete()
+      .eq('head_office_id', headOfficeId);
+
+    if (clearMappingsError) {
+      throw new Error(`Failed to clear client mappings: ${clearMappingsError.message}`);
+    }
+    return;
+  }
+
+  const normalizedMappedClientIds = normalizeMappedClientIds(mappedClientIds ?? []);
+  validateHeadOfficeMappingInput(true, normalizedMappedClientIds, headOfficeId);
+
+  const { data: existingMappings, error: fetchMappingsError } = await supabase
+    .from('client_mappings')
+    .select('sub_client_id')
+    .eq('head_office_id', headOfficeId);
+
+  if (fetchMappingsError) {
+    throw new Error(`Failed to fetch existing client mappings: ${fetchMappingsError.message}`);
+  }
+
+  const existingSubClientIds = new Set((existingMappings || []).map((mapping) => mapping.sub_client_id));
+  const targetSubClientIds = new Set(normalizedMappedClientIds);
+
+  const subClientIdsToAdd = normalizedMappedClientIds.filter((id) => !existingSubClientIds.has(id));
+  const subClientIdsToRemove = [...existingSubClientIds].filter((id) => !targetSubClientIds.has(id));
+
+  if (subClientIdsToRemove.length > 0) {
+    const { error: deleteMappingsError } = await supabase
+      .from('client_mappings')
+      .delete()
+      .eq('head_office_id', headOfficeId)
+      .in('sub_client_id', subClientIdsToRemove);
+
+    if (deleteMappingsError) {
+      throw new Error(`Failed to remove client mappings: ${deleteMappingsError.message}`);
+    }
+  }
+
+  if (subClientIdsToAdd.length > 0) {
+    const rowsToInsert = subClientIdsToAdd.map((subClientId) => ({
+      head_office_id: headOfficeId,
+      sub_client_id: subClientId,
+    }));
+
+    const { error: insertMappingsError } = await supabase
+      .from('client_mappings')
+      .insert(rowsToInsert);
+
+    if (insertMappingsError) {
+      throw new Error(`Failed to add client mappings: ${insertMappingsError.message}`);
+    }
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -987,10 +1100,13 @@ async function handleCreateClient(clientData: any) {
   
   try {
     const { modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
+    const isHeadOffice = resolveIsHeadOffice(clientData);
+    const mappedClientIds = resolveMappedClientIds(clientData);
     const incidentAiEnabled = aiFeatureIncidentRecommendedActions !== false;
 
     // Generate a new UUID for the client
     clientId = crypto.randomUUID();
+    validateHeadOfficeMappingInput(isHeadOffice, mappedClientIds, clientId);
     
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -1027,6 +1143,7 @@ async function handleCreateClient(clientData: any) {
       client_type_id: clientTypeId || null,
       client_logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
       logo: clientLogoUrl, // Store path: client-logos/{clientId}/logo.{ext}
+      is_head_office: isHeadOffice,
       creation_date: new Date().toISOString()
     };
     
@@ -1043,6 +1160,16 @@ async function handleCreateClient(clientData: any) {
     }
     
     console.log('Client record inserted successfully:', insertedClient.id);
+
+    if (isHeadOffice || mappedClientIds.length > 0) {
+      try {
+        await syncClientMappings(clientId, isHeadOffice, mappedClientIds);
+      } catch (mappingsError) {
+        console.error('Error syncing client mappings during create:', mappingsError);
+        await rollbackClientCreation(clientId);
+        throw new Error(`Failed to save client mappings: ${mappingsError.message}`);
+      }
+    }
 
     try {
       await upsertClientAiIncidentRecommendedActions(clientId, incidentAiEnabled);
@@ -1133,6 +1260,10 @@ async function handleUpdateClient(clientData: any) {
   
   try {
     const { id: clientId, modules, superAdminEmail, clientTypeId, logo, whitelistedIPs, aiFeatureIncidentRecommendedActions, ...clientInfo } = clientData;
+    const isHeadOfficeProvided = typeof clientData.is_head_office === 'boolean' || typeof clientData.isHeadOffice === 'boolean';
+    const mappedClientIdsProvided = Array.isArray(clientData.mapped_client_ids) || Array.isArray(clientData.mappedClientIds);
+    const requestedIsHeadOffice = resolveIsHeadOffice(clientData);
+    const requestedMappedClientIds = resolveMappedClientIds(clientData);
         
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -1171,6 +1302,9 @@ async function handleUpdateClient(clientData: any) {
     if (clientInfo.authProviders !== undefined) {
       updateData.auth_providers = JSON.stringify(clientInfo.authProviders);
     }
+    if (isHeadOfficeProvided) {
+      updateData.is_head_office = requestedIsHeadOffice;
+    }
     // if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
     
     if (clientTypeId) {
@@ -1194,6 +1328,27 @@ async function handleUpdateClient(clientData: any) {
       throw new Error(`Failed to update client record: ${updateError.message}`);
     } else {
       console.log('Successfully updated client record');
+    }
+
+    if (isHeadOfficeProvided || mappedClientIdsProvided) {
+      let effectiveIsHeadOffice = requestedIsHeadOffice;
+
+      if (!isHeadOfficeProvided && mappedClientIdsProvided) {
+        const { data: existingClient, error: clientLookupError } = await supabase
+          .from('clients')
+          .select('is_head_office')
+          .eq('id', clientId)
+          .single();
+
+        if (clientLookupError) {
+          throw new Error(`Failed to resolve current head office status: ${clientLookupError.message}`);
+        }
+
+        effectiveIsHeadOffice = existingClient.is_head_office;
+      }
+
+      validateHeadOfficeMappingInput(effectiveIsHeadOffice, requestedMappedClientIds, clientId);
+      await syncClientMappings(clientId, effectiveIsHeadOffice, requestedMappedClientIds);
     }
     
     // Process module access with isCreation flag set to false (default)
