@@ -8,6 +8,7 @@ import { IPAddress } from '@/components/backoffice/tabs/IPList';
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
 export interface ClientFormData {
+  id?: string;
   name: string;
   email: string;
   contactPerson: string;
@@ -30,9 +31,12 @@ export interface ClientFormData {
   aiIncidentRecommendedActionsEnabled: boolean;
   isHeadOffice: boolean;
   mappedClientIds: string[];
+  parentHeadOfficeId?: string;
+  parentHeadOfficeName?: string;
 }
 
 const initialFormData: ClientFormData = {
+  id: undefined,
   name: '',
   email: '',
   contactPerson: '',
@@ -54,7 +58,9 @@ const initialFormData: ClientFormData = {
   whitelistedIPs: [],
   aiIncidentRecommendedActionsEnabled: true,
   isHeadOffice: false,
-  mappedClientIds: []
+  mappedClientIds: [],
+  parentHeadOfficeId: undefined,
+  parentHeadOfficeName: undefined,
 };
 
 export const useClientManagement = () => {
@@ -143,6 +149,11 @@ export const useClientManagement = () => {
   };
 
   const handleAddClient = async () => {
+    if (formData.isHeadOffice && formData.mappedClientIds.length === 0) {
+      toast.error('Please map at least one sub-client for a Head Office client');
+      return;
+    }
+
     // Prevent duplicate calls - check submission state first
     if (isSubmitting) {
       console.log('Add client submission already in progress, skipping...');
@@ -250,6 +261,7 @@ export const useClientManagement = () => {
     // Prefill basic client info so user can see something immediately
     setFormData(prev => ({
       ...prev,
+      id: client.id,
       name: client.name,
       email: client.email,
       contactPerson: client.contactPerson,
@@ -267,7 +279,9 @@ export const useClientManagement = () => {
       },
       aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false,
       isHeadOffice: client.isHeadOffice === true,
-      mappedClientIds: client.mappedClientIds || []
+      mappedClientIds: client.mappedClientIds || [],
+      parentHeadOfficeId: undefined,
+      parentHeadOfficeName: undefined,
     }));
     
     // Get the client modules and super admin employee for this client
@@ -275,9 +289,9 @@ export const useClientManagement = () => {
       try {
         // Fetch latest client data from database to ensure we have the most up-to-date auth_providers
         // Use maybeSingle() instead of single() to handle cases where the client doesn't exist or RLS blocks access
-        const { data: latestClientData, error: clientError } = await supabase
+      const { data: latestClientData, error: clientError } = await supabase
           .from('clients')
-          .select('auth_providers, logo, client_logo')
+          .select('auth_providers, logo, client_logo, is_head_office')
           .eq('id', clientId)
           .maybeSingle();
         
@@ -330,7 +344,8 @@ export const useClientManagement = () => {
           setFormData(prev => ({
             ...prev,
             authProviders: parsedAuthProviders,
-            logo: logoUrl || prev.logo || ''
+            logo: logoUrl || prev.logo || '',
+            isHeadOffice: latestClientData.is_head_office === true
           }));
         }
         
@@ -411,13 +426,57 @@ export const useClientManagement = () => {
             ? true
             : aiFeatureResponse.enabled !== false;
         
+        const { data: mappingData, error: mappingError } = await supabase
+          .from('client_mappings')
+          .select('sub_client_id')
+          .eq('head_office_id', clientId);
+
+        if (mappingError) {
+          console.error('Error fetching client mappings:', mappingError);
+        }
+
+        const { data: parentMapping, error: parentMappingError } = await supabase
+          .from('client_mappings')
+          .select('head_office_id')
+          .eq('sub_client_id', clientId)
+          .limit(1)
+          .maybeSingle();
+
+        if (parentMappingError) {
+          console.error('Error fetching parent head-office mapping:', parentMappingError);
+        }
+
+        let parentHeadOfficeName: string | undefined;
+        let parentHeadOfficeId: string | undefined;
+        const isCurrentClientHeadOffice = latestClientData?.is_head_office === true;
+
+        if (!isCurrentClientHeadOffice && parentMapping?.head_office_id) {
+          parentHeadOfficeId = parentMapping.head_office_id;
+          const { data: parentClient, error: parentClientError } = await supabase
+            .from('clients')
+            .select('name')
+            .eq('id', parentMapping.head_office_id)
+            .maybeSingle();
+
+          if (parentClientError) {
+            console.error('Error fetching parent head-office name:', parentClientError);
+          } else {
+            parentHeadOfficeName = parentClient?.name || undefined;
+          }
+        }
         // Update the remaining fields once data arrives
         setFormData(prev => ({
           ...prev,
           superAdminEmail: employeeData?.email || '',
           moduleInfoArray: moduleInfoArray,
           whitelistedIPs: whitelistedIPs,
-          aiIncidentRecommendedActionsEnabled
+          aiIncidentRecommendedActionsEnabled,
+          mappedClientIds: isCurrentClientHeadOffice
+            ? (mappingData || []).map((row: { sub_client_id: string }) => row.sub_client_id)
+            : [],
+          isHeadOffice: isCurrentClientHeadOffice,
+          parentHeadOfficeId,
+          parentHeadOfficeName,
         }));
       } catch (err) {
         console.error('Error in fetchClientData:', err);
@@ -431,6 +490,11 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
+    if (formData.isHeadOffice && formData.mappedClientIds.length === 0) {
+      toast.error('Please map at least one sub-client for a Head Office client');
+      return;
+    }
+
     // Prevent duplicate calls - check submission state first
     if (isSubmitting) {
       console.log('Update client submission already in progress, skipping...');

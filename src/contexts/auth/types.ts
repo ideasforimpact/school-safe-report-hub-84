@@ -118,6 +118,7 @@ export interface Client {
   client_type_id?: string;
   institution_type?: string;
   logo?: string;
+  is_head_office?: boolean;
   client_type?: ClientType;
   client_integration?: ClientIntegration[] | null;
   /** false = hide incident AI Recommended Actions */

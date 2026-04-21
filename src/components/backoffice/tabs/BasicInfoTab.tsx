@@ -24,6 +24,7 @@ interface ClientType {
 
 interface BasicInfoTabProps {
   formData: {
+    id?: string;
     name: string;
     contactPerson: string;
     email: string;
@@ -35,6 +36,10 @@ interface BasicInfoTabProps {
     website?: string;
     clientTypeId?: string;
     aiIncidentRecommendedActionsEnabled?: boolean;
+    isHeadOffice?: boolean;
+    mappedClientIds?: string[];
+    parentHeadOfficeId?: string;
+    parentHeadOfficeName?: string;
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -61,7 +66,15 @@ export const isValidPhone = (phone?: string) => !!phone && /^[6-9]\d{9}$/.test(p
 
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
+  const [clientsForMapping, setClientsForMapping] = useState<Array<{
+    id: string;
+    name: string;
+    active: boolean;
+    isHeadOffice: boolean;
+  }>>([]);
+  const [existingMappings, setExistingMappings] = useState<Array<{ head_office_id: string; sub_client_id: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [mappingClientsLoading, setMappingClientsLoading] = useState(true);
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
@@ -72,6 +85,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   useEffect(() => {
     fetchClientTypes();
+    fetchClientsForMapping();
   }, []);
   
  useEffect(() => {
@@ -136,6 +150,80 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
       setLoading(false);
     }
   };
+
+  const fetchClientsForMapping = async () => {
+    try {
+      setMappingClientsLoading(true);
+      const { data, error } = await supabase.functions.invoke('backoffice-client-management', {
+        body: { action: 'fetch-clients' },
+      });
+
+      if (error) {
+        console.error('Error fetching clients for mapping:', error);
+        setClientsForMapping([]);
+        return;
+      }
+
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      const mappedRows = rows
+        .filter((row: any) => row?.id && row?.name)
+        .map((row: any) => ({
+          id: row.id as string,
+          name: row.name as string,
+          active: row.active !== false,
+          isHeadOffice: row.is_head_office === true,
+        }));
+
+      setClientsForMapping(mappedRows);
+
+      const { data: mappingRows, error: mappingError } = await supabase
+        .from('client_mappings')
+        .select('head_office_id, sub_client_id');
+
+      if (mappingError) {
+        console.error('Error fetching existing client mappings:', mappingError);
+        setExistingMappings([]);
+      } else {
+        setExistingMappings(mappingRows || []);
+      }
+    } catch (error) {
+      console.error('Error loading mapping client list:', error);
+      setClientsForMapping([]);
+      setExistingMappings([]);
+    } finally {
+      setMappingClientsLoading(false);
+    }
+  };
+
+  const toggleMappedClientId = (clientId: string, checked: boolean) => {
+    const existing = formData.mappedClientIds || [];
+    if (checked) {
+      setFormData({
+        ...formData,
+        mappedClientIds: [...new Set([...existing, clientId])],
+      });
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      mappedClientIds: existing.filter((id) => id !== clientId),
+    });
+  };
+
+  const currentHeadOfficeId = formData.isHeadOffice ? formData.id : undefined;
+  const mappingOptions = clientsForMapping.filter((client) => {
+    if (client.id === formData.id) return false;
+    if (client.isHeadOffice) return false;
+
+    const mappedToDifferentHeadOffice = existingMappings.some(
+      (mapping) =>
+        mapping.sub_client_id === client.id &&
+        mapping.head_office_id !== currentHeadOfficeId,
+    );
+
+    return !mappedToDifferentHeadOffice;
+  });
 
   // Component for required field label
   const RequiredFieldLabel = ({ children }: { children: React.ReactNode }) => (
@@ -439,6 +527,77 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           </span>
         </div>
       </div>
+
+      {formData.parentHeadOfficeId ? (
+        <div className="space-y-2 pt-2 border-t border-gray-100">
+          <Label htmlFor="parent-head-office">Head Office</Label>
+          <Input
+            id="parent-head-office"
+            value={formData.parentHeadOfficeName || 'Head Office'}
+            readOnly
+            disabled
+          />
+          <p className="text-xs text-gray-500">
+            Head office assignment is read-only for this client.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="is-head-office">Is Head Office</Label>
+              <Switch
+                id="is-head-office"
+                checked={formData.isHeadOffice === true}
+                onCheckedChange={(checked) =>
+                  setFormData({
+                    ...formData,
+                    isHeadOffice: checked,
+                    mappedClientIds: checked ? (formData.mappedClientIds || []) : [],
+                  })
+                }
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              Enable this to map this client to one or more sub-clients.
+            </p>
+          </div>
+
+          {formData.isHeadOffice === true && (
+            <div className="space-y-2">
+              <Label>Clients</Label>
+              <div className="max-h-44 overflow-y-auto rounded-md border p-2 space-y-2">
+                {mappingClientsLoading ? (
+                  <p className="text-xs text-gray-500">Loading clients...</p>
+                ) : mappingOptions.length === 0 ? (
+                  <p className="text-xs text-gray-500">No clients available for mapping.</p>
+                ) : (
+                  mappingOptions.map((client) => (
+                    <div key={client.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`map-client-${client.id}`}
+                        checked={(formData.mappedClientIds || []).includes(client.id)}
+                        onCheckedChange={(checked) => toggleMappedClientId(client.id, checked === true)}
+                      />
+                      <label htmlFor={`map-client-${client.id}`} className="text-sm">
+                        {client.name}
+                      </label>
+                    </div>
+                  ))
+                )}
+              </div>
+              {(formData.mappedClientIds || []).length > 0 && (
+                <p className="text-xs text-gray-500">
+                  {(formData.mappedClientIds || []).length} client selected
+                </p>
+              )}
+              {showErrors && (formData.mappedClientIds || []).length === 0 && (
+                <p className="text-xs text-red-600">Please select at least one sub-client.</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Active Client checkbox hidden for backoffice */}
       {/* <div className="flex items-center space-x-2 pt-2">
