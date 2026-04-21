@@ -190,6 +190,7 @@ export const useAuthHandlers = ({
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
+        is_head_office: clientData.is_head_office === true,
         client_type: clientData.client_type,
         client_integration: clientIntegration,
         incidentRecommendedActionsEnabled,
