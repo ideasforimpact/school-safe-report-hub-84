@@ -164,6 +164,7 @@ Safe School Team
           const nowIso = new Date().toISOString();
           await supabase.from('email_queue').update({ is_sent: true, is_due_reminder_sent: true, sent_at: nowIso, error_message: null }).eq('id', email.id);
           await supabase.from('notification_logs').update({ status: 'sent', sent_at: nowIso, error_message: null }).eq('email_queue_id', email.id);
+          await createCentralizedReminderNotification(supabase, email, subject, body, 'assessment_due_5_days');
           result.dueReminders++;
         } else {
           await supabase.from('email_queue').update({ retry_count: (email.retry_count || 0) + 1, error_message: sendErr?.message || 'Send failed' }).eq('id', email.id);
@@ -269,6 +270,7 @@ Safe School Team
           const nowIso = new Date().toISOString();
           await supabase.from('email_queue').update({ is_sent: true, is_remainder_cron_started: true, sent_at: nowIso, error_message: null }).eq('id', email.id);
           await supabase.from('notification_logs').update({ status: 'sent', sent_at: nowIso, error_message: null }).eq('email_queue_id', email.id);
+          await createCentralizedReminderNotification(supabase, email, subject, body, 'assessment_overdue');
           result.overdueReminders++;
         } else {
           await supabase.from('email_queue').update({ retry_count: (email.retry_count || 0) + 1, error_message: sendErr?.message || 'Send failed' }).eq('id', email.id);
@@ -362,3 +364,40 @@ async function validateAssessmentNotification(supabase: any, email: any): Promis
 function getBaseUrl(): string {
   return getFrontendUrl();
 } 
+
+async function createCentralizedReminderNotification(
+  supabase: any,
+  email: any,
+  subject: string,
+  body: string,
+  type: string
+): Promise<void> {
+  try {
+    const messagePreview = (body || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240);
+
+    const { error } = await supabase.rpc('create_centralized_notification', {
+      p_client_id: email.client_id,
+      p_module_id: null,
+      p_module_name: email.module_name || 'assessment',
+      p_email_id: email.id,
+      p_is_reminder_notification: true,
+      p_notification_type: type,
+      p_channel: 'email',
+      p_title: subject || email.subject || null,
+      p_message: messagePreview || null,
+      p_payload: email.params || {},
+      p_recipient_employee_id: null,
+      p_recipient_email: email.recipient_email || null,
+    });
+
+    if (error) {
+      console.error('Failed to create centralized assessment reminder notification:', error);
+    }
+  } catch (error) {
+    console.error('Error creating centralized assessment reminder notification:', error);
+  }
+}
