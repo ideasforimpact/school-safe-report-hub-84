@@ -677,6 +677,42 @@ export type Database = {
           },
         ]
       }
+      client_mappings: {
+        Row: {
+          created_at: string
+          head_office_id: string
+          id: string
+          sub_client_id: string
+        }
+        Insert: {
+          created_at?: string
+          head_office_id: string
+          id?: string
+          sub_client_id: string
+        }
+        Update: {
+          created_at?: string
+          head_office_id?: string
+          id?: string
+          sub_client_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_mappings_head_office_id_fkey"
+            columns: ["head_office_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_mappings_sub_client_id_fkey"
+            columns: ["sub_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           active: boolean
@@ -688,6 +724,7 @@ export type Database = {
           creation_date: string
           email: string | null
           id: string
+          is_head_office: boolean
           institution_type: string | null
           logo: string | null
           name: string
@@ -704,6 +741,7 @@ export type Database = {
           creation_date?: string
           email?: string | null
           id?: string
+          is_head_office?: boolean
           institution_type?: string | null
           logo?: string | null
           name: string
@@ -720,6 +758,7 @@ export type Database = {
           creation_date?: string
           email?: string | null
           id?: string
+          is_head_office?: boolean
           institution_type?: string | null
           logo?: string | null
           name?: string

@@ -210,7 +210,9 @@ export const useClientManagement = () => {
           authProviders: formData.authProviders,
           website: formData.website,
           whitelistedIPs: formData.whitelistedIPs || [],
-          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
+          is_head_office: formData.isHeadOffice,
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : []
         }
       };
       
@@ -561,7 +563,9 @@ export const useClientManagement = () => {
           authProviders: formData.authProviders,
           website: formData.website,
           whitelistedIPs: whitelistedIPs, // Always send as array, never undefined
-          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
+          is_head_office: formData.isHeadOffice,
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : []
         }
       };
       
