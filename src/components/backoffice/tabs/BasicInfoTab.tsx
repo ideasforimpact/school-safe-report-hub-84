@@ -147,44 +147,31 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   // Enhanced logo upload handler
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
 
-  if (!file) {
-    setFormData({
-      ...formData,
-      logo: ""   
-    });
-    return;
-  }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
 
-  const allowedTypes = [
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-  ];
-
-  if (!allowedTypes.includes(file.type)) {
-    alert("Only PNG, JPG, JPEG files are allowed.");
-    e.target.value = "";
-    return;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    alert("File size must be less than 5MB");
-    e.target.value = "";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    const base64String = reader.result as string;
-    setFormData({
-      ...formData,
-      logo: base64String
-    });
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        setFormData({
+          ...formData, 
+          logo: base64String
+        });
+      };
+      reader.readAsDataURL(file);
+    }
   };
-  reader.readAsDataURL(file);
-};
 
   return (
     <div className="space-y-4">
@@ -211,7 +198,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
           <div className="flex-1">
             <Input
               type="file"
-              accept="image/png, image/jpeg, image/jpg"
+              accept="image/*"
               onChange={handleLogoChange}
               className="cursor-pointer"
             />
