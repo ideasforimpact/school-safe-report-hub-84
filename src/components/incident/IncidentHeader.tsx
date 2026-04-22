@@ -13,7 +13,6 @@ import ReopenIncidentDialog from '@/features/incident/ReopenIncidentDialog';
 import AIRecommendationDialog from '@/components/incidents/AIRecommendationDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/lib/Dateformat';
-import IncidentDescription from './details/IncidentDescription';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -244,13 +243,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent className="pt-6 space-y-6">
-
-        <IncidentDescription
-            description={incident.description}
-            image={incident.image}
-        />
-
+      <CardContent className="pt-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-400" />

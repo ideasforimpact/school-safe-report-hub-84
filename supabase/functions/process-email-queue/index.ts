@@ -233,9 +233,6 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
         console.error('Error updating notification log status to sent:', logError);
       }
 
-      // Record centralized in-app notification only after successful delivery
-      await recordCentralizedNotificationForEmail(supabase, emailId);
-
     } else {
       // First get the current retry count
       const { data: emailData, error: fetchError } = await supabase
@@ -280,43 +277,6 @@ async function updateEmailStatus(supabase: any, emailId: string, isSent: boolean
     }
   } catch (error) {
     console.error('Error updating email status:', error);
-  }
-}
-
-async function recordCentralizedNotificationForEmail(supabase: any, emailId: string): Promise<void> {
-  try {
-    const { data: emailRow, error: emailFetchError } = await supabase
-      .from('email_queue')
-      .select('id, client_id, module_name, notification_type, recipient_email, subject, body, params')
-      .eq('id', emailId)
-      .single();
-
-    if (emailFetchError || !emailRow) {
-      console.error('Failed to fetch email queue row for centralized notification:', emailFetchError);
-      return;
-    }
-
-    const messagePreview = (emailRow.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
-
-    const { error: rpcError } = await supabase.rpc('create_centralized_notification', {
-      p_client_id: emailRow.client_id,
-      p_module_id: null,
-      p_module_name: emailRow.module_name || null,
-      p_email_id: emailRow.id,
-      p_notification_type: emailRow.notification_type || 'email_notification',
-      p_channel: 'email',
-      p_title: emailRow.subject || null,
-      p_message: messagePreview || null,
-      p_payload: emailRow.params || {},
-      p_recipient_employee_id: null,
-      p_recipient_email: emailRow.recipient_email || null,
-    });
-
-    if (rpcError) {
-      console.error('Failed to create centralized notification from email queue:', rpcError);
-    }
-  } catch (error) {
-    console.error('Error creating centralized notification from email queue:', error);
   }
 }
 

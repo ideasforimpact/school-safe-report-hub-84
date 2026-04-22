@@ -14,32 +14,11 @@ interface SuperAdminDomainInputProps {
 const SuperAdminDomainInput = ({ domains, onAdd, onRemove }: SuperAdminDomainInputProps) => {
   const [newDomain, setNewDomain] = useState('');
   
-  const [error, setError] = useState('');
   const handleAdd = () => {
-    const value = newDomain.trim();
-
-    const domainRegex = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
-    if (!value) return;
-
-    if (value.includes('@')) {
-      setError("Enter only domain like gmail.com (no @ or email)");
-      return;
+    if (newDomain && !domains.includes(newDomain)) {
+      onAdd(newDomain);
+      setNewDomain('');
     }
-
-    if (!domainRegex.test(value)) {
-      setError("Enter a valid domain like gmail.com");
-      return;
-    }
-
-    if (domains.includes(value)) {
-      setError("Domain already added");
-      return;
-    }
-
-    onAdd(value);
-    setNewDomain('');
-    setError('');
   };
 
   return (
@@ -61,9 +40,7 @@ const SuperAdminDomainInput = ({ domains, onAdd, onRemove }: SuperAdminDomainInp
           Add
         </Button>
       </div>
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+
       <DomainList domains={domains} onRemove={onRemove} />
     </div>
   );
