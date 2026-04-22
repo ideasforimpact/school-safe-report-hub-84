@@ -40,7 +40,6 @@ import { pdf } from "@react-pdf/renderer";
 import ChildAuditReportPDF from '@/pages/child-audit/ChildAuditReportpdf';
 import ReusableFileUploader from '@/components/common/ReusableFileUploader';
 import { type FileItem } from '@/types/fileTypes';
-import { DESCRIPTION_MAX_LENGTH } from '@/components/constants';
 
 type TabKey = 'check' | 'calendar' | 'audit' | 'report';
 type CheckSelectionState = {
@@ -1089,6 +1088,12 @@ const diagnostics = {
                         {selectedStudent.grade ?? "—"}
                       </p>
                     </div>
+
+                    
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Age</p>
+                      <p className="text-base font-semibold">—</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1283,11 +1288,7 @@ const diagnostics = {
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Optional notes..."
                       className="min-h-[110px] text-base"
-                      maxLength={DESCRIPTION_MAX_LENGTH}
                     />
-                    <div className="text-right text-sm text-gray-500 mt-2">
-                      {notes.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </div>
                   </CardContent>
                 </Card>
 

@@ -123,10 +123,16 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
 
           {/* People Involved section */}
           {incident.peopleInvolved && incident.peopleInvolved.length > 0 && (
-            <div className="pb-3">
+            <div className="border-b pb-6">
               <PeopleInvolved people={incident.peopleInvolved} />
             </div>
           )}
+
+          {/* Description section */}
+          <IncidentDescription
+            description={incident.description}
+            image={incident.image}
+          />
 
           {/* Show closure information only if the incident is closed */}
           {incident.status === 'Closed' && (
