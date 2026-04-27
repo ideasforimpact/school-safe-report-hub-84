@@ -273,11 +273,11 @@ const ImportVehicleDialog: React.FC<ImportVehiclesDialogProps> = ({
 
                         {selectedFile ? (
                             <div className="border-2 border-blue-500 bg-blue-50 rounded-md p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-3 min-w-0">
                                         <FileIcon className="h-8 w-8 text-blue-600" />
-                                        <div>
-                                            <p className="text-sm font-medium">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium break-all">
                                                 {selectedFile.name}
                                             </p>
                                             <p className="text-xs text-gray-500">
