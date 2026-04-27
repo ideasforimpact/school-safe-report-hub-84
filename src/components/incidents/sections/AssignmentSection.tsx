@@ -45,7 +45,9 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           .from('employees')
           .select('id, first_name, last_name, email')
           .eq('client_id', employeeData.clientId)
-          .eq('status', true);
+          .eq('status', true)
+          .not('email', 'is', null)
+          .neq('email', '');
 
         if (error) throw error;
 
