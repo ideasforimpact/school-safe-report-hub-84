@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
@@ -13,7 +13,7 @@ interface Employee {
   id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  email: string | null;
 }
 
 interface ReassignAssessmentDialogProps {
@@ -36,6 +36,7 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
   const { clientId } = useAssessmentAccess();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetchingEmployees, setFetchingEmployees] = useState(false);
 
@@ -65,7 +66,10 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
         return;
       }
 
-      setEmployees(employeesData || []);
+      const employeesWithEmail = (employeesData || []).filter(
+        (employee) => typeof employee.email === 'string' && employee.email.trim() !== ''
+      );
+      setEmployees(employeesWithEmail);
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to fetch employees');
@@ -108,6 +112,7 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
       onReassignSuccess();
       onOpenChange(false);
       setSelectedEmployeeId('');
+      setEmployeeSearchTerm('');
     } catch (error) {
       console.error('Error reassigning assessment:', error);
       toast.error('Failed to reassign assessment');
@@ -119,7 +124,20 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
   const handleCancel = () => {
     onOpenChange(false);
     setSelectedEmployeeId('');
+    setEmployeeSearchTerm('');
   };
+
+  const filteredEmployees = employees.filter((employee) => {
+    const fullName = `${employee.first_name || ''} ${employee.last_name || ''}`.toLowerCase().trim();
+    const email = (employee.email || '').toLowerCase();
+    const normalizedSearch = employeeSearchTerm.trim().toLowerCase();
+
+    if (!normalizedSearch) return true;
+
+    return fullName.includes(normalizedSearch) || email.includes(normalizedSearch);
+  });
+  const shouldShowEmployeeDropdown = employeeSearchTerm.trim().length > 0;
+  const selectedEmployee = employees.find((employee) => employee.id === selectedEmployeeId);
 
   const handleEmployeeUpdate = useCallback(async () => {
     await fetchEmployees();
@@ -150,22 +168,51 @@ const ReassignAssessmentDialog: React.FC<ReassignAssessmentDialogProps> = ({
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="employee-select" className="text-sm font-medium text-gray-700">
+          <div className="relative">
+            <Label htmlFor="employee-search" className="text-sm font-medium text-gray-700">
               Reassign To
             </Label>
-            <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder={fetchingEmployees ? "Loading employees..." : "Select an employee"} />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>
-                    {employee.first_name} {employee.last_name} ({employee.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="employee-search"
+              value={employeeSearchTerm}
+              onChange={(event) => setEmployeeSearchTerm(event.target.value)}
+              placeholder="Search employee by name or email"
+              className="mt-1"
+            />
+            {selectedEmployee && (
+              <div className="mt-2 rounded-md bg-purple-50 px-3 py-2 text-sm text-purple-700">
+                Selected: {selectedEmployee.first_name} {selectedEmployee.last_name} ({selectedEmployee.email})
+              </div>
+            )}
+            {shouldShowEmployeeDropdown && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-md border bg-white shadow-md">
+                {fetchingEmployees ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">Loading employees...</div>
+                ) : filteredEmployees.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">No employee found</div>
+                ) : (
+                  filteredEmployees.map((employee) => {
+                    const isSelected = selectedEmployeeId === employee.id;
+                    return (
+                      <button
+                        key={employee.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedEmployeeId(employee.id);
+                          setEmployeeSearchTerm('');
+                        }}
+                        className={`w-full border-b px-3 py-2 text-left text-sm last:border-b-0 ${
+                          isSelected ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium">{employee.first_name} {employee.last_name}</div>
+                        <div className="text-xs text-gray-500">{employee.email}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         </div>
 
