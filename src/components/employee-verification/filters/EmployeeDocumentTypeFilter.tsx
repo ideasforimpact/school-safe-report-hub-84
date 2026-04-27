@@ -21,9 +21,19 @@ interface Props {
 const EmployeeDocumentTypeFilter: React.FC<Props> = ({ value, onChange }) => {
   const [types, setTypes] = useState<DocumentType[]>([]);
   const orderedTypes = React.useMemo(() => {
-    const otherDocuments = types.filter((type) => type.name === 'other_documents');
-    const remainingTypes = types.filter((type) => type.name !== 'other_documents');
-    return [...remainingTypes, ...otherDocuments];
+    const result: DocumentType[] = [];
+    let other: DocumentType | null = null;
+
+    for (const type of types) {
+      if (type.name === 'other_documents') {
+        other = type;
+      } else {
+        result.push(type);
+      }
+    }
+
+    if (other) result.push(other);
+    return result;
   }, [types]);
 
   useEffect(() => {
