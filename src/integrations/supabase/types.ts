@@ -679,18 +679,21 @@ export type Database = {
       }
       client_mappings: {
         Row: {
+          access_level: Database["public"]["Enums"]["client_mapping_access_level"]
           created_at: string
           head_office_id: string
           id: string
           sub_client_id: string
         }
         Insert: {
+          access_level?: Database["public"]["Enums"]["client_mapping_access_level"]
           created_at?: string
           head_office_id: string
           id?: string
           sub_client_id: string
         }
         Update: {
+          access_level?: Database["public"]["Enums"]["client_mapping_access_level"]
           created_at?: string
           head_office_id?: string
           id?: string
@@ -2142,7 +2145,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      client_mapping_access_level: "read_only" | "read_write_delete"
     }
     CompositeTypes: {
       [_ in never]: never

@@ -12,7 +12,17 @@ const restorePersistedAuthState = (): Partial<EmployeeState> => {
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
       configuredModules: persistedState.configuredModules || [],
-      employeeData: persistedState.employeeData || null
+      employeeData: persistedState.employeeData || null,
+      homeClientId: persistedState.homeClientId || persistedState.employeeData?.clientId || null,
+      activeClientId: persistedState.activeClientId || persistedState.employeeData?.clientId || null,
+      isSwitchedContext: persistedState.isSwitchedContext === true,
+      clientManagementReadOnly: persistedState.clientManagementReadOnly === true,
+      switchedAccessLevel: (() => {
+        const raw = (persistedState.switchedAccessLevel as unknown as string | undefined) || 'R';
+        if (raw === 'full_access') return 'W/R';
+        if (raw === 'read_only') return 'R';
+        return raw as 'R' | 'W/R';
+      })(),
     };
   }
   return {};
@@ -36,6 +46,11 @@ export const initialEmployeeState: EmployeeState = {
   isLoading: false,
   error: null,
   clientId: restoredState.employeeData?.clientId || null,
+  homeClientId: restoredState.homeClientId || restoredState.employeeData?.clientId || null,
+  activeClientId: restoredState.activeClientId || restoredState.employeeData?.clientId || null,
+  isSwitchedContext: restoredState.isSwitchedContext === true,
+  clientManagementReadOnly: restoredState.clientManagementReadOnly === true,
+  switchedAccessLevel: restoredState.switchedAccessLevel || 'R',
   isLoggingOut: false
 };
 
@@ -82,6 +97,11 @@ export const employeeReducer = (
         configuredModules: [],
         employeeData: null,
         clientId: null,
+        homeClientId: null,
+        activeClientId: null,
+        isSwitchedContext: false,
+        clientManagementReadOnly: false,
+        switchedAccessLevel: 'R',
         isLoggingOut: false
       };
       
@@ -89,7 +109,11 @@ export const employeeReducer = (
       return {
         ...state,
         employeeData: action.payload,
-        clientId: action.payload?.clientId || state.clientId
+        clientId: state.isSwitchedContext ? state.clientId : (action.payload?.clientId || state.clientId),
+        homeClientId: state.homeClientId ?? action.payload?.clientId ?? null,
+        activeClientId: state.isSwitchedContext
+          ? state.activeClientId
+          : (action.payload?.clientId || state.activeClientId || state.clientId)
       };
       
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
@@ -113,7 +137,41 @@ export const employeeReducer = (
     case EmployeeActionTypes.SET_CLIENT_ID:
       return {
         ...state,
-        clientId: action.payload
+        clientId: action.payload,
+        activeClientId: action.payload,
+        employeeData: state.employeeData
+          ? {
+              ...state.employeeData,
+              clientId: action.payload || state.employeeData.clientId,
+            }
+          : state.employeeData
+      };
+
+    case EmployeeActionTypes.SET_SWITCH_CONTEXT:
+      return {
+        ...state,
+        homeClientId: action.payload.homeClientId,
+        activeClientId: action.payload.activeClientId,
+        isSwitchedContext: action.payload.isSwitchedContext,
+        clientManagementReadOnly: action.payload.clientManagementReadOnly,
+        switchedAccessLevel: action.payload.switchedAccessLevel || 'R',
+        clientId: action.payload.activeClientId,
+        employeeData: state.employeeData
+          ? {
+              ...state.employeeData,
+              clientId: action.payload.activeClientId || state.employeeData.clientId,
+            }
+          : state.employeeData
+      };
+
+    case EmployeeActionTypes.RESET_SWITCH_CONTEXT:
+      return {
+        ...state,
+        activeClientId: state.homeClientId,
+        isSwitchedContext: false,
+        clientManagementReadOnly: false,
+        switchedAccessLevel: 'R',
+        clientId: state.homeClientId
       };
       
     case EmployeeActionTypes.SET_LOGOUT_STATE:
@@ -133,6 +191,11 @@ export const employeeReducer = (
         isLoading: false,
         error: null,
         clientId: null,
+        homeClientId: null,
+        activeClientId: null,
+        isSwitchedContext: false,
+        clientManagementReadOnly: false,
+        switchedAccessLevel: 'R',
         isLoggingOut: false
       };
       

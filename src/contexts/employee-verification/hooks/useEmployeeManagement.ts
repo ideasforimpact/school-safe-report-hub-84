@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { getActiveEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Employee } from '../types';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getCurrentUser, getIsBackofficeUser } from '@/store/authSelectors';
+import { getIsBackofficeUser } from '@/store/authSelectors';
 import { useSafeClient } from '@/hooks/useSafeClient';
 
 export const useEmployeeManagement = () => {
@@ -12,7 +12,6 @@ export const useEmployeeManagement = () => {
   const { client } = useSafeClient();
   
   // Get authentication state from Redux
-  const currentUser = getCurrentUser(state);
   const isBackofficeUser = getIsBackofficeUser(state);
 
   // Determine the client ID to use
@@ -22,9 +21,9 @@ export const useEmployeeManagement = () => {
       return client.id;
     }
     
-    // For regular users, use their own client ID
-    return currentUser?.clientId || null;
-  }, [isBackofficeUser, client?.id, currentUser?.clientId]);
+    // For regular users, trust switch-context aware Redux client IDs only.
+    return state.activeClientId || state.clientId || state.homeClientId || null;
+  }, [isBackofficeUser, client?.id, state.activeClientId, state.clientId, state.homeClientId]);
 
   const fetchEmployees = useCallback(async (): Promise<Employee[]> => {
     try {

@@ -3,9 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setCurrentUser } from '@/store/authActions';
-import { setClientId, setConfiguredModules, setEmployeeData } from '@/store/employeeActions';
-import { buildClientLogoUrl } from '@/lib/utils';
+import { setClientId, setConfiguredModules, setSwitchContext } from '@/store/employeeActions';
 import type { User, EmployeeData } from '@/contexts/auth/types';
 
 type SwitchableClient = {
@@ -17,6 +15,13 @@ type SwitchableClient = {
 
 type SwitchClientResponse = {
   success: boolean;
+  home_client_id?: string | null;
+  target_client_id?: string | null;
+  is_switched_context?: boolean;
+  client_management_read_only?: boolean;
+  client_management_permissions?: {
+    access_level?: 'R' | 'W/R';
+  };
   clients?: SwitchableClient[];
   selected_client?: {
     id: string;
@@ -42,17 +47,18 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   employeeData,
   isBackofficeUser,
 }) => {
-  const { dispatch } = useEmployeeStore();
+  const { state, dispatch } = useEmployeeStore();
   const [switchableClients, setSwitchableClients] = useState<SwitchableClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentClientId = employeeData?.clientId || currentUser?.clientId || '';
+  const currentClientId = state.activeClientId || state.homeClientId || employeeData?.clientId || currentUser?.clientId || '';
 
   const shouldShow = useMemo(() => {
     if (isBackofficeUser) return false;
+    if (employeeData?.isSuperAdmin !== true) return false;
     return switchableClients.length > 1;
-  }, [isBackofficeUser, switchableClients.length]);
+  }, [isBackofficeUser, employeeData?.isSuperAdmin, switchableClients.length]);
 
   const loadConfiguredModules = async (employeeId: string, targetClientId: string, isSuperAdmin: boolean) => {
     try {
@@ -100,7 +106,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
           enabled: true,
           accessLevel: row.access_level || {},
           order: row.modules?.order || 999,
-          url: row.modules?.url || '/dashboard',
+          url: row.modules?.url || `/${(row.modules?.name || 'dashboard').toLowerCase().replace(/\s+/g, '-')}`,
         }))
         .sort((a, b) => (a.order || 999) - (b.order || 999));
 
@@ -126,7 +132,42 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
 
       const clients = Array.isArray(data.clients) ? data.clients : [];
       setSwitchableClients(clients);
-      setSelectedClientId(currentClientId || clients[0]?.id || '');
+
+      const homeId = data.home_client_id || state.homeClientId || employeeData?.clientId || '';
+      let effectiveData = data;
+      let activeId = data.target_client_id || currentClientId || homeId || clients[0]?.id || '';
+
+      // Fresh login should always land on Head Office (home client), not previous switched client.
+      if (!state.isSwitchedContext && homeId && activeId !== homeId) {
+        const { data: resetData, error: resetError } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
+          body: {
+            action: 'switch-client',
+            target_client_id: homeId,
+          },
+        });
+
+        if (!resetError && resetData?.success) {
+          effectiveData = resetData;
+          activeId = resetData.target_client_id || homeId;
+        } else {
+          // Keep UI aligned to home client even if reset call fails.
+          activeId = homeId;
+        }
+      }
+
+      setSelectedClientId(activeId);
+      dispatch(setSwitchContext({
+        homeClientId: effectiveData.home_client_id || homeId || null,
+        activeClientId: activeId || null,
+        isSwitchedContext: effectiveData.is_switched_context === true,
+        clientManagementReadOnly: effectiveData.client_management_read_only === true,
+        switchedAccessLevel: effectiveData.client_management_permissions?.access_level || 'R',
+      }));
+
+      if (activeId && activeId !== currentClientId && employeeData?.id) {
+        dispatch(setClientId(activeId));
+        await loadConfiguredModules(employeeData.id, activeId, employeeData.isSuperAdmin === true);
+      }
     } catch (error) {
       console.error('Error loading switchable clients:', error);
       setSwitchableClients([]);
@@ -157,46 +198,14 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
       }
 
       const selectedClient = data.selected_client;
-      const logo = buildClientLogoUrl(selectedClient.logo || selectedClient.client_logo) || undefined;
-      const updatedUser: User = {
-        ...currentUser,
-        clientId: selectedClient.id,
-        client: {
-          ...(currentUser.client || {}),
-          id: selectedClient.id,
-          name: selectedClient.name,
-          active: selectedClient.active,
-          is_head_office: selectedClient.is_head_office,
-          client_type_id: selectedClient.client_type_id || undefined,
-          institution_type: selectedClient.institution_type || undefined,
-          logo,
-        },
-      };
-
-      const updatedEmployeeData: EmployeeData = {
-        ...(employeeData || {
-          id: currentUser.id,
-          firstName: currentUser.firstName,
-          lastName: currentUser.lastName,
-          email: currentUser.email,
-          clientId: selectedClient.id,
-        }),
-        clientId: selectedClient.id,
-        client: {
-          ...(employeeData?.client || {}),
-          id: selectedClient.id,
-          name: selectedClient.name,
-          active: selectedClient.active,
-          is_head_office: selectedClient.is_head_office,
-          client_type_id: selectedClient.client_type_id || undefined,
-          institution_type: selectedClient.institution_type || undefined,
-          logo,
-        },
-      };
-
-      dispatch(setCurrentUser(updatedUser));
-      dispatch(setEmployeeData(updatedEmployeeData));
       dispatch(setClientId(selectedClient.id));
+      dispatch(setSwitchContext({
+        homeClientId: data.home_client_id || state.homeClientId || employeeData?.clientId || null,
+        activeClientId: data.target_client_id || selectedClient.id,
+        isSwitchedContext: data.is_switched_context === true,
+        clientManagementReadOnly: data.client_management_read_only === true,
+        switchedAccessLevel: data.client_management_permissions?.access_level || 'R',
+      }));
       await loadConfiguredModules(employeeData.id, selectedClient.id, employeeData.isSuperAdmin === true);
       setSelectedClientId(selectedClient.id);
       toast.success(`Switched to ${selectedClient.name}`);

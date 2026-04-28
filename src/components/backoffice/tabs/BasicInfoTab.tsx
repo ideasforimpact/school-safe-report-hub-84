@@ -38,6 +38,7 @@ interface BasicInfoTabProps {
     aiIncidentRecommendedActionsEnabled?: boolean;
     isHeadOffice?: boolean;
     mappedClientIds?: string[];
+    mappedClientAccessLevels?: Record<string, 'read_only' | 'read_write_delete'>;
     parentHeadOfficeId?: string;
     parentHeadOfficeName?: string;
   };
@@ -197,17 +198,40 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
   const toggleMappedClientId = (clientId: string, checked: boolean) => {
     const existing = formData.mappedClientIds || [];
+    const accessLevels = formData.mappedClientAccessLevels || {};
     if (checked) {
       setFormData({
         ...formData,
         mappedClientIds: [...new Set([...existing, clientId])],
+        mappedClientAccessLevels: {
+          ...accessLevels,
+          [clientId]: accessLevels[clientId] || 'read_only',
+        },
       });
       return;
     }
 
+    const nextAccessLevels = { ...accessLevels };
+    delete nextAccessLevels[clientId];
+
     setFormData({
       ...formData,
       mappedClientIds: existing.filter((id) => id !== clientId),
+      mappedClientAccessLevels: nextAccessLevels,
+    });
+  };
+
+  const updateMappedClientAccessLevel = (
+    clientId: string,
+    accessLevel: 'read_only' | 'read_write_delete',
+  ) => {
+    const accessLevels = formData.mappedClientAccessLevels || {};
+    setFormData({
+      ...formData,
+      mappedClientAccessLevels: {
+        ...accessLevels,
+        [clientId]: accessLevel,
+      },
     });
   };
 
@@ -554,6 +578,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
                     ...formData,
                     isHeadOffice: checked,
                     mappedClientIds: checked ? (formData.mappedClientIds || []) : [],
+                    mappedClientAccessLevels: checked ? (formData.mappedClientAccessLevels || {}) : {},
                   })
                 }
               />
@@ -573,15 +598,35 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
                   <p className="text-xs text-gray-500">No clients available for mapping.</p>
                 ) : (
                   mappingOptions.map((client) => (
-                    <div key={client.id} className="flex items-center gap-2">
-                      <Checkbox
-                        id={`map-client-${client.id}`}
-                        checked={(formData.mappedClientIds || []).includes(client.id)}
-                        onCheckedChange={(checked) => toggleMappedClientId(client.id, checked === true)}
-                      />
-                      <label htmlFor={`map-client-${client.id}`} className="text-sm">
-                        {client.name}
-                      </label>
+                    <div key={client.id} className="space-y-1 rounded border border-gray-100 p-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`map-client-${client.id}`}
+                          checked={(formData.mappedClientIds || []).includes(client.id)}
+                          onCheckedChange={(checked) => toggleMappedClientId(client.id, checked === true)}
+                        />
+                        <label htmlFor={`map-client-${client.id}`} className="text-sm">
+                          {client.name}
+                        </label>
+                      </div>
+                      {/* {(formData.mappedClientIds || []).includes(client.id) && (
+                        <div className="ml-6">
+                          <Select
+                            value={formData.mappedClientAccessLevels?.[client.id] || 'read_only'}
+                            onValueChange={(value: 'read_only' | 'read_write_delete') =>
+                              updateMappedClientAccessLevel(client.id, value)
+                            }
+                          >
+                            <SelectTrigger className="h-8 w-[220px]">
+                              <SelectValue placeholder="Select access level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="read_only">Read Only</SelectItem>
+                              <SelectItem value="read_write_delete">Read / Write / Delete</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )} */}
                     </div>
                   ))
                 )}

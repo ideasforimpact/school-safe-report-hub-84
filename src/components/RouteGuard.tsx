@@ -60,9 +60,9 @@ const RouteGuard = ({
       return;
     }
 
-    // Only check if we have employee data with clientId
-    const clientId = employeeData?.clientId || state.clientId;
-    const employeeId = employeeData?.id || currentUser?.id || null;
+    // Always validate against the employee's home client, not the active switched client context.
+    const clientId = state.homeClientId || employeeData?.clientId || state.employeeData?.clientId || null;
+    const employeeId = employeeData?.id || state.employeeData?.id || null;
     
     if (!clientId) {
       // No client ID means backoffice user or no client assigned - skip check
@@ -105,6 +105,9 @@ const RouteGuard = ({
     isBackoffice,
     isOnLoginRoute,
     isExceptionRoute,
+    state.homeClientId,
+    state.employeeData?.id,
+    state.employeeData?.clientId,
     ipCheckCompleted,
     dispatch
   ]);

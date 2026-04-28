@@ -66,8 +66,11 @@ export const useEmployeeValidation = () => {
       return;
     }
     
-    // Skip if no employee data
-    if (!employeeData?.id || !employeeData?.clientId) {
+    const employeeId = employeeData?.id || state.employeeData?.id || null;
+    const validationClientId = state.homeClientId || employeeData?.clientId || state.employeeData?.clientId || null;
+
+    // Skip if no employee identity or no home client context yet
+    if (!employeeId || !validationClientId) {
       return;
     }
 
@@ -108,8 +111,8 @@ export const useEmployeeValidation = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employeeId: employeeData.id,
-          clientId: employeeData.clientId
+          employeeId,
+          clientId: validationClientId
         }),
       });
       
@@ -248,7 +251,15 @@ export const useEmployeeValidation = () => {
       cleanup();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [employeeData?.id, employeeData?.clientId, location.pathname, state.isLoggingOut]);
+  }, [
+    employeeData?.id,
+    employeeData?.clientId,
+    state.employeeData?.id,
+    state.employeeData?.clientId,
+    state.homeClientId,
+    location.pathname,
+    state.isLoggingOut,
+  ]);
 
   // Effect to log RLS context on backoffice routes whenever the path changes
   useEffect(() => {

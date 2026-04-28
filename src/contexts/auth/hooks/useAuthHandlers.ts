@@ -3,7 +3,7 @@ import { User, UserRole, EmployeeData, Client, ClientType, ClientIntegration, De
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
+import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId, setSwitchContext } from '@/store/employeeActions';
 import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
@@ -744,6 +744,13 @@ export const useAuthHandlers = ({
         // Also set clientId in Redux
         if (employeeData.clientId) {
           dispatch(setClientId(employeeData.clientId));
+          dispatch(setSwitchContext({
+            homeClientId: employeeData.clientId,
+            activeClientId: employeeData.clientId,
+            isSwitchedContext: false,
+            clientManagementReadOnly: false,
+            switchedAccessLevel: 'W/R',
+          }));
         }
       }
       

@@ -52,7 +52,12 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
       isBackofficeUser: state.isBackofficeUser,
       authError: state.authError,
       configuredModules: state.configuredModules,
-      employeeData: state.employeeData
+      employeeData: state.employeeData,
+      homeClientId: state.homeClientId,
+      activeClientId: state.activeClientId,
+      isSwitchedContext: state.isSwitchedContext,
+      clientManagementReadOnly: state.clientManagementReadOnly,
+      switchedAccessLevel: state.switchedAccessLevel,
     };
 
     // Create a hash of the current state to compare changes
@@ -91,7 +96,12 @@ export const EmployeeProvider: React.FC<EmployeeProviderProps> = ({ children }) 
     state.isBackofficeUser, 
     state.authError, 
     state.configuredModules, 
-    state.employeeData
+    state.employeeData,
+    state.homeClientId,
+    state.activeClientId,
+    state.isSwitchedContext,
+    state.clientManagementReadOnly,
+    state.switchedAccessLevel,
   ]);
 
   return (

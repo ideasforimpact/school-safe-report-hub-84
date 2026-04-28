@@ -39,7 +39,9 @@ const ClientManagement = () => {
     modulesLoading,
     editLoading,
     statusFilter,
-    setStatusFilter
+    setStatusFilter,
+    clientManagementReadOnly,
+    canManageClientsInCurrentContext,
   } = useClientManagement();
 
   if (!isAdmin) {
@@ -59,7 +61,7 @@ const ClientManagement = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <ClientHeader onAddClick={handleAddDialogOpen} />
+        <ClientHeader onAddClick={handleAddDialogOpen} canCreateClient={canManageClientsInCurrentContext} />
 
         <Card>
           <CardHeader>
@@ -69,6 +71,11 @@ const ClientManagement = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {clientManagementReadOnly && (
+              <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                Switched client context is read-only for Client Management. Switch back to your Head Office client to add or edit clients.
+              </div>
+            )}
             <ClientStatusFilter 
               currentFilter={statusFilter}
               onFilterChange={setStatusFilter}
@@ -87,6 +94,7 @@ const ClientManagement = () => {
                   })}
                 onEditClick={handleEditClick}
                 onDeleteClient={handleDeleteClient}
+                canEditClient={canManageClientsInCurrentContext}
               />
             )}
           </CardContent>

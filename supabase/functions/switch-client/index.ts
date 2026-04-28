@@ -102,7 +102,129 @@ async function getSwitchableClients(headOfficeClientId: string) {
   return {
     headOffice: headOfficeClient,
     subClients,
+    mappings: mappings || [],
   };
+}
+
+function getClientManagementPermissions(
+  roleCode: "W/R" | "R",
+) {
+  return {
+    access_level: roleCode,
+  };
+}
+
+async function getRoleLookup() {
+  const { data: roles, error } = await serviceSupabase
+    .from("client_roles")
+    .select("id, access_level")
+    .in("access_level", ["W/R", "R"]);
+
+  if (error || !roles || roles.length < 2) {
+    throw new Error(`Failed to load client roles: ${error?.message || "missing roles"}`);
+  }
+
+  const fullAccessRoleId = roles.find((role) => role.access_level === "W/R")?.id;
+  const readOnlyRoleId = roles.find((role) => role.access_level === "R")?.id;
+
+  if (!fullAccessRoleId || !readOnlyRoleId) {
+    throw new Error("Required client roles are not configured");
+  }
+
+  return { fullAccessRoleId, readOnlyRoleId };
+}
+
+async function resolveClientRoleCode(clientId: string): Promise<"W/R" | "R"> {
+  const { data: client, error: clientError } = await serviceSupabase
+    .from("clients")
+    .select("client_role_id, client_roles!clients_client_role_id_fkey(access_level)")
+    .eq("id", clientId)
+    .single();
+
+  if (clientError || !client) {
+    throw new Error(`Failed to resolve client role: ${clientError?.message || "client not found"}`);
+  }
+
+  const accessLevel = (client.client_roles as { access_level?: string } | null)?.access_level;
+  return accessLevel === "R" ? "R" : "W/R";
+}
+
+async function getOrCreateUserClientContext(
+  userId: string,
+  homeClientId: string,
+  readOnlyRoleId: string,
+) {
+  const { data: existingContext, error: contextError } = await serviceSupabase
+    .from("user_client_context")
+    .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (contextError) {
+    throw new Error(`Failed to read user client context: ${contextError.message}`);
+  }
+
+  if (!existingContext) {
+    const { data: insertedContext, error: insertError } = await serviceSupabase
+      .from("user_client_context")
+      .insert({
+        user_id: userId,
+        home_client_id: homeClientId,
+        target_client_id: homeClientId,
+        role_id: readOnlyRoleId,
+      })
+      .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+      .single();
+
+    if (insertError || !insertedContext) {
+      throw new Error(`Failed to initialize user client context: ${insertError?.message || "unknown error"}`);
+    }
+
+    return insertedContext;
+  }
+
+  if (existingContext.home_client_id !== homeClientId) {
+    const { data: updatedContext, error: updateError } = await serviceSupabase
+      .from("user_client_context")
+      .update({
+        home_client_id: homeClientId,
+        target_client_id: homeClientId,
+        role_id: readOnlyRoleId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+      .single();
+
+    if (updateError || !updatedContext) {
+      throw new Error(`Failed to realign user client context: ${updateError?.message || "unknown error"}`);
+    }
+    return updatedContext;
+  }
+
+  return existingContext;
+}
+
+async function updateTargetClientContext(
+  userId: string,
+  targetClientId: string,
+  readOnlyRoleId: string,
+) {
+  const { data: updatedContext, error: updateError } = await serviceSupabase
+    .from("user_client_context")
+    .update({
+      target_client_id: targetClientId,
+      role_id: readOnlyRoleId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+    .single();
+
+  if (updateError || !updatedContext) {
+    throw new Error(`Failed to update target client context: ${updateError?.message || "unknown error"}`);
+  }
+  return updatedContext;
 }
 
 Deno.serve(async (req) => {
@@ -121,7 +243,7 @@ Deno.serve(async (req) => {
 
     const { data: employee, error: employeeError } = await serviceSupabase
       .from("employees")
-      .select("id, client_id, status")
+      .select("id, client_id, status, is_super_admin")
       .eq("user_id", user.id)
       .eq("status", true)
       .limit(1)
@@ -131,21 +253,50 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: "Employee context not found" }, 403);
     }
 
+    if (employee.is_super_admin !== true) {
+      return jsonResponse({ success: false, error: "Client switching is available only for super admin users" }, 403);
+    }
+
     const headOfficeClientId = await resolveHeadOfficeClientId(employee.client_id);
     if (!headOfficeClientId) {
       return jsonResponse({ success: false, error: "Client switching is not available" }, 403);
     }
 
     const switchableClients = await getSwitchableClients(headOfficeClientId);
+    const { fullAccessRoleId, readOnlyRoleId } = await getRoleLookup();
     const allowedClientIds = new Set([
       switchableClients.headOffice.id,
       ...switchableClients.subClients.map((client) => client.id),
     ]);
+    let userContext = await getOrCreateUserClientContext(user.id, employee.client_id, readOnlyRoleId);
+
+    if (!allowedClientIds.has(userContext.target_client_id)) {
+      userContext = await updateTargetClientContext(user.id, userContext.home_client_id, readOnlyRoleId);
+    }
+
+    const isSwitchedContext = userContext.target_client_id !== userContext.home_client_id;
+    const contextRoleCode = ((userContext.client_roles as { access_level?: string } | null)?.access_level === "R"
+      ? "R"
+      : "W/R") as "R" | "W/R";
+    const effectiveRoleCode = isSwitchedContext
+      ? contextRoleCode
+      : await resolveClientRoleCode(userContext.home_client_id);
+    const clientManagementPermissions = getClientManagementPermissions(
+      effectiveRoleCode,
+    );
+    const clientManagementReadOnly =
+      isSwitchedContext &&
+      clientManagementPermissions.access_level === "R";
 
     if (action === "list-switchable-clients") {
       return jsonResponse({
         success: true,
         head_office_id: headOfficeClientId,
+        home_client_id: userContext.home_client_id,
+        target_client_id: userContext.target_client_id,
+        is_switched_context: isSwitchedContext,
+        client_management_read_only: clientManagementReadOnly,
+        client_management_permissions: clientManagementPermissions,
         clients: [switchableClients.headOffice, ...switchableClients.subClients],
       });
     }
@@ -169,9 +320,28 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: false, error: "Target client not found" }, 404);
       }
 
+      const isSwitchingToHome = targetClientId === userContext.home_client_id;
+      const updatedContext = await updateTargetClientContext(user.id, targetClientId, readOnlyRoleId);
+      const switched = updatedContext.target_client_id !== updatedContext.home_client_id;
+      const contextRole = ((updatedContext.client_roles as { access_level?: string } | null)?.access_level === "R"
+        ? "R"
+        : "W/R") as "R" | "W/R";
+      const resolvedRoleCode = switched
+        ? contextRole
+        : await resolveClientRoleCode(updatedContext.home_client_id);
+      const permissions = getClientManagementPermissions(
+        resolvedRoleCode,
+      );
+      const normalizedReadOnly = switched && permissions.access_level === "R";
+
       return jsonResponse({
         success: true,
         head_office_id: headOfficeClientId,
+        home_client_id: updatedContext.home_client_id,
+        target_client_id: updatedContext.target_client_id,
+        is_switched_context: switched,
+        client_management_read_only: normalizedReadOnly,
+        client_management_permissions: permissions,
         selected_client: targetClient,
       });
     }

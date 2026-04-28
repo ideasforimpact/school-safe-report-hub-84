@@ -4,6 +4,7 @@ import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { IPAddress } from '@/components/backoffice/tabs/IPList';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
@@ -31,6 +32,7 @@ export interface ClientFormData {
   aiIncidentRecommendedActionsEnabled: boolean;
   isHeadOffice: boolean;
   mappedClientIds: string[];
+  mappedClientAccessLevels: Record<string, 'read_only' | 'read_write_delete'>;
   parentHeadOfficeId?: string;
   parentHeadOfficeName?: string;
 }
@@ -59,11 +61,13 @@ const initialFormData: ClientFormData = {
   aiIncidentRecommendedActionsEnabled: true,
   isHeadOffice: false,
   mappedClientIds: [],
+  mappedClientAccessLevels: {},
   parentHeadOfficeId: undefined,
   parentHeadOfficeName: undefined,
 };
 
 export const useClientManagement = () => {
+  const { state } = useEmployeeStore();
   const { clients, loading, updateClient, deleteClient, fetchClients } = useClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -73,6 +77,13 @@ export const useClientManagement = () => {
   const [modulesLoading, setModulesLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const clientManagementReadOnly = state.clientManagementReadOnly === true;
+  const switchedAccessLevel = state.switchedAccessLevel;
+
+  const hasEditPermissionInCurrentContext =
+    !state.isSwitchedContext || switchedAccessLevel === 'W/R';
+  const hasDeletePermissionInCurrentContext =
+    !state.isSwitchedContext || switchedAccessLevel === 'W/R';
 
   // Filter clients based on status
   const filteredClients = useMemo(() => {
@@ -133,6 +144,10 @@ export const useClientManagement = () => {
 
   // Open add dialog and load modules
   const handleAddDialogOpen = async () => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     setIsAddDialogOpen(true);
     // Load modules immediately when dialog opens
     await loadModulesForNewClient();
@@ -149,6 +164,10 @@ export const useClientManagement = () => {
   };
 
   const handleAddClient = async () => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     if (formData.isHeadOffice && formData.mappedClientIds.length === 0) {
       toast.error('Please map at least one sub-client for a Head Office client');
       return;
@@ -212,7 +231,7 @@ export const useClientManagement = () => {
           whitelistedIPs: formData.whitelistedIPs || [],
           aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
           is_head_office: formData.isHeadOffice,
-          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : []
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : [],
         }
       };
       
@@ -253,6 +272,10 @@ export const useClientManagement = () => {
   };
 
   const handleEditClick = (client: Client) => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     setCurrentClient(client);
     // Open the dialog immediately and show a loading state while fetching
     setIsEditDialogOpen(true);
@@ -280,6 +303,7 @@ export const useClientManagement = () => {
       aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false,
       isHeadOffice: client.isHeadOffice === true,
       mappedClientIds: client.mappedClientIds || [],
+      mappedClientAccessLevels: {},
       parentHeadOfficeId: undefined,
       parentHeadOfficeName: undefined,
     }));
@@ -474,6 +498,9 @@ export const useClientManagement = () => {
           mappedClientIds: isCurrentClientHeadOffice
             ? (mappingData || []).map((row: { sub_client_id: string }) => row.sub_client_id)
             : [],
+          mappedClientAccessLevels: isCurrentClientHeadOffice
+            ? Object.fromEntries((mappingData || []).map((row: { sub_client_id: string }) => [row.sub_client_id, 'read_only']))
+            : {},
           isHeadOffice: isCurrentClientHeadOffice,
           parentHeadOfficeId,
           parentHeadOfficeName,
@@ -490,6 +517,10 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     if (formData.isHeadOffice && formData.mappedClientIds.length === 0) {
       toast.error('Please map at least one sub-client for a Head Office client');
       return;
@@ -565,7 +596,7 @@ export const useClientManagement = () => {
           whitelistedIPs: whitelistedIPs, // Always send as array, never undefined
           aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
           is_head_office: formData.isHeadOffice,
-          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : []
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : [],
         }
       };
       
@@ -608,6 +639,10 @@ export const useClientManagement = () => {
   };
 
   const handleDeleteClient = async (id: string) => {
+    if (!hasDeletePermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     if (confirm('Are you sure you want to delete this client?')) {
       await deleteClient(id);
     }
@@ -633,7 +668,10 @@ export const useClientManagement = () => {
     modulesLoading,
     editLoading,
     statusFilter,
-    setStatusFilter
+    setStatusFilter,
+    clientManagementReadOnly,
+    canManageClientsInCurrentContext: hasEditPermissionInCurrentContext,
+    canDeleteClientsInCurrentContext: hasDeletePermissionInCurrentContext,
   };
 };
 

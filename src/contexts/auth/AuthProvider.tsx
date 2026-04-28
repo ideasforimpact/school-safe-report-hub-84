@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState, setSwitchContext } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
@@ -596,6 +596,11 @@ const handleLogoutBroadcast = useCallback(() => {
               authError: null,
               configuredModules: state.configuredModules,
               employeeData: state.employeeData,
+              homeClientId: state.homeClientId,
+              activeClientId: state.activeClientId,
+              isSwitchedContext: state.isSwitchedContext,
+              clientManagementReadOnly: state.clientManagementReadOnly,
+              switchedAccessLevel: state.switchedAccessLevel,
               sessionType: 'sso' as const
             };
             
@@ -773,6 +778,13 @@ const handleLogoutBroadcast = useCallback(() => {
             
             if (employee.clientId) {
               dispatch(setClientId(employee.clientId));
+              dispatch(setSwitchContext({
+                homeClientId: employee.clientId,
+                activeClientId: employee.clientId,
+                isSwitchedContext: false,
+                clientManagementReadOnly: false,
+                switchedAccessLevel: 'W/R',
+              }));
             }
           }
           

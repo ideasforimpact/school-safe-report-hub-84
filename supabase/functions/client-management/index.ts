@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getSupabaseUrl, getSupabaseServiceRoleKey } from '../_shared/env.ts';
+import { getSupabaseUrl, getSupabaseServiceRoleKey, getSupabaseAnonKey } from '../_shared/env.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +11,7 @@ const corsHeaders = {
 // Initialize Supabase client with environment variables
 const supabaseUrl = getSupabaseUrl();
 const supabaseServiceKey = getSupabaseServiceRoleKey();
+const supabaseAnonKey = getSupabaseAnonKey();
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface ClientData {
@@ -925,6 +926,104 @@ async function listClientAiIncidentRecommendedActions(clientIds: string[]): Prom
   return (data || []) as Array<{ client_id: string; enabled: boolean }>
 }
 
+async function getAuthedUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return null;
+
+  const authedClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data, error } = await authedClient.auth.getUser();
+  if (error || !data?.user) return null;
+  return data.user;
+}
+
+async function assertClientManagementWriteAllowed(
+  req: Request,
+  operation: 'create' | 'update' | 'delete',
+): Promise<void> {
+  const authHeader = req.headers.get('Authorization');
+  const authedUser = await getAuthedUser(req);
+  if (!authHeader && !authedUser) {
+    // Keep compatibility with non-SSO flows where no bearer token exists.
+    return;
+  }
+  if (!authedUser) {
+    throw new Error('Unauthorized client management write request');
+  }
+
+  const { data: employee, error: employeeError } = await supabase
+    .from('employees')
+    .select('client_id, status')
+    .eq('user_id', authedUser.id)
+    .eq('status', true)
+    .limit(1)
+    .maybeSingle();
+
+  if (employeeError || !employee?.client_id) {
+    // Backoffice users are not represented in employees table.
+    const { data: backofficeUser, error: backofficeUserError } = await supabase
+      .from('backoffice_users')
+      .select('id')
+      .eq('email', authedUser.email || '')
+      .maybeSingle();
+
+    if (!backofficeUserError && backofficeUser?.id) {
+      return;
+    }
+
+    throw new Error('Employee context not found for write permission check');
+  }
+
+  const { data: userContext, error: contextError } = await supabase
+    .from('user_client_context')
+    .select('home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)')
+    .eq('user_id', authedUser.id)
+    .maybeSingle();
+
+  if (contextError) {
+    throw new Error(`Failed to read user client context: ${contextError.message}`);
+  }
+
+  // If context row is missing, assume unswitched home context.
+  const homeClientId = userContext?.home_client_id || employee.client_id;
+  const targetClientId = userContext?.target_client_id || homeClientId;
+  const isSwitchedContext = targetClientId !== homeClientId;
+
+  let roleCode: 'W/R' | 'R' = 'W/R';
+  if (isSwitchedContext) {
+    roleCode =
+      ((userContext?.client_roles as { access_level?: string } | null)?.access_level === 'R')
+        ? 'R'
+        : 'W/R';
+  } else {
+    const { data: homeClient, error: homeClientError } = await supabase
+      .from('clients')
+      .select('client_roles!clients_client_role_id_fkey(access_level)')
+      .eq('id', homeClientId)
+      .single();
+
+    if (homeClientError || !homeClient) {
+      throw new Error('Failed to resolve client role for write permission check');
+    }
+    roleCode =
+      ((homeClient.client_roles as { access_level?: string } | null)?.access_level === 'R')
+        ? 'R'
+        : 'W/R';
+  }
+
+  if (roleCode !== 'W/R') {
+    if (operation === 'delete') {
+      throw new Error('Delete permission is denied for this client role');
+    }
+    if (operation === 'create' || operation === 'update') {
+      throw new Error('Edit permission is denied for this client role');
+    }
+  }
+}
+
 function normalizeMappedClientIds(mappedClientIds: unknown): string[] {
   if (!Array.isArray(mappedClientIds)) return [];
   const normalizedIds = mappedClientIds
@@ -1032,6 +1131,8 @@ async function syncClientMappings(
       throw new Error(`Failed to add client mappings: ${insertMappingsError.message}`);
     }
   }
+
+  // No per-mapping access-level persistence in this schema version.
 }
 
 serve(async (req) => {
@@ -1049,6 +1150,10 @@ serve(async (req) => {
       ...client,
       logo: client.logo ? 'Logo data present' : 'No logo data'
     } : null)
+
+    if (operation === 'create' || operation === 'update' || operation === 'delete') {
+      await assertClientManagementWriteAllowed(req, operation);
+    }
 
     switch (operation) {
       case 'create':
@@ -1080,10 +1185,13 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Error in client-management function:', error)
+    const isPermissionError =
+      (error?.message || '').includes('not permitted') ||
+      (error?.message || '').includes('permission is denied')
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
-        status: 500,
+        status: isPermissionError ? 403 : 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
@@ -1163,7 +1271,11 @@ async function handleCreateClient(clientData: any) {
 
     if (isHeadOffice || mappedClientIds.length > 0) {
       try {
-        await syncClientMappings(clientId, isHeadOffice, mappedClientIds);
+        await syncClientMappings(
+          clientId,
+          isHeadOffice,
+          mappedClientIds,
+        );
       } catch (mappingsError) {
         console.error('Error syncing client mappings during create:', mappingsError);
         await rollbackClientCreation(clientId);
@@ -1263,7 +1375,7 @@ async function handleUpdateClient(clientData: any) {
     const isHeadOfficeProvided = typeof clientData.is_head_office === 'boolean' || typeof clientData.isHeadOffice === 'boolean';
     const mappedClientIdsProvided = Array.isArray(clientData.mapped_client_ids) || Array.isArray(clientData.mappedClientIds);
     const requestedIsHeadOffice = resolveIsHeadOffice(clientData);
-    const requestedMappedClientIds = resolveMappedClientIds(clientData);
+    let requestedMappedClientIds = resolveMappedClientIds(clientData);
         
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -1348,7 +1460,11 @@ async function handleUpdateClient(clientData: any) {
       }
 
       validateHeadOfficeMappingInput(effectiveIsHeadOffice, requestedMappedClientIds, clientId);
-      await syncClientMappings(clientId, effectiveIsHeadOffice, requestedMappedClientIds);
+      await syncClientMappings(
+        clientId,
+        effectiveIsHeadOffice,
+        requestedMappedClientIds,
+      );
     }
     
     // Process module access with isCreation flag set to false (default)
