@@ -179,7 +179,8 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
       const { data: mappingRows, error: mappingError } = await supabase
         .from('client_mappings')
-        .select('head_office_id, sub_client_id');
+        .select('head_office_id, sub_client_id')
+        .eq('active', true);
 
       if (mappingError) {
         console.error('Error fetching existing client mappings:', mappingError);

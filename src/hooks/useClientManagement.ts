@@ -453,7 +453,8 @@ export const useClientManagement = () => {
         const { data: mappingData, error: mappingError } = await supabase
           .from('client_mappings')
           .select('sub_client_id')
-          .eq('head_office_id', clientId);
+          .eq('head_office_id', clientId)
+          .eq('active', true);
 
         if (mappingError) {
           console.error('Error fetching client mappings:', mappingError);
@@ -463,6 +464,7 @@ export const useClientManagement = () => {
           .from('client_mappings')
           .select('head_office_id')
           .eq('sub_client_id', clientId)
+          .eq('active', true)
           .limit(1)
           .maybeSingle();
 

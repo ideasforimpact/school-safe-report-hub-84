@@ -979,7 +979,7 @@ async function assertClientManagementWriteAllowed(
 
   const { data: userContext, error: contextError } = await supabase
     .from('user_client_context')
-    .select('home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)')
+    .select('home_client_id, target_client_id, role_id')
     .eq('user_id', authedUser.id)
     .maybeSingle();
 
@@ -994,24 +994,40 @@ async function assertClientManagementWriteAllowed(
 
   let roleCode: 'W/R' | 'R' = 'W/R';
   if (isSwitchedContext) {
-    roleCode =
-      ((userContext?.client_roles as { access_level?: string } | null)?.access_level === 'R')
-        ? 'R'
-        : 'W/R';
+    const { data: switchedRole, error: switchedRoleError } = await supabase
+      .from('client_roles')
+      .select('access_level')
+      .eq('id', userContext?.role_id || '')
+      .eq('active', true)
+      .maybeSingle();
+
+    if (switchedRoleError || !switchedRole) {
+      roleCode = 'R';
+    } else {
+      roleCode = switchedRole.access_level === 'R' ? 'R' : 'W/R';
+    }
   } else {
     const { data: homeClient, error: homeClientError } = await supabase
       .from('clients')
-      .select('client_roles!clients_client_role_id_fkey(access_level)')
+      .select('client_role_id')
       .eq('id', homeClientId)
       .single();
 
     if (homeClientError || !homeClient) {
       throw new Error('Failed to resolve client role for write permission check');
     }
-    roleCode =
-      ((homeClient.client_roles as { access_level?: string } | null)?.access_level === 'R')
-        ? 'R'
-        : 'W/R';
+    const { data: homeRole, error: homeRoleError } = await supabase
+      .from('client_roles')
+      .select('access_level')
+      .eq('id', homeClient.client_role_id || '')
+      .eq('active', true)
+      .maybeSingle();
+
+    if (homeRoleError || !homeRole) {
+      roleCode = 'R';
+    } else {
+      roleCode = homeRole.access_level === 'R' ? 'R' : 'W/R';
+    }
   }
 
   if (roleCode !== 'W/R') {
@@ -1093,7 +1109,8 @@ async function syncClientMappings(
   const { data: existingMappings, error: fetchMappingsError } = await supabase
     .from('client_mappings')
     .select('sub_client_id')
-    .eq('head_office_id', headOfficeId);
+    .eq('head_office_id', headOfficeId)
+    .eq('active', true);
 
   if (fetchMappingsError) {
     throw new Error(`Failed to fetch existing client mappings: ${fetchMappingsError.message}`);

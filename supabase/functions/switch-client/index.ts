@@ -54,6 +54,7 @@ async function resolveHeadOfficeClientId(employeeClientId: string): Promise<stri
     .from("client_mappings")
     .select("head_office_id")
     .eq("sub_client_id", employeeClientId)
+    .eq("active", true)
     .limit(1)
     .maybeSingle();
 
@@ -78,7 +79,8 @@ async function getSwitchableClients(headOfficeClientId: string) {
   const { data: mappings, error: mappingsError } = await serviceSupabase
     .from("client_mappings")
     .select("sub_client_id")
-    .eq("head_office_id", headOfficeClientId);
+    .eq("head_office_id", headOfficeClientId)
+    .eq("active", true);
 
   if (mappingsError) {
     throw new Error(`Failed to load mapped clients: ${mappingsError.message}`);
@@ -118,7 +120,8 @@ async function getRoleLookup() {
   const { data: roles, error } = await serviceSupabase
     .from("client_roles")
     .select("id, access_level")
-    .in("access_level", ["W/R", "R"]);
+    .in("access_level", ["W/R", "R"])
+    .eq("active", true);
 
   if (error || !roles || roles.length < 2) {
     throw new Error(`Failed to load client roles: ${error?.message || "missing roles"}`);
@@ -134,10 +137,26 @@ async function getRoleLookup() {
   return { fullAccessRoleId, readOnlyRoleId };
 }
 
+async function resolveRoleAccessLevelById(roleId: string | null | undefined): Promise<"W/R" | "R"> {
+  if (!roleId) return "R";
+  const { data: role, error: roleError } = await serviceSupabase
+    .from("client_roles")
+    .select("access_level")
+    .eq("id", roleId)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (roleError || !role) {
+    return "R";
+  }
+
+  return role.access_level === "R" ? "R" : "W/R";
+}
+
 async function resolveClientRoleCode(clientId: string): Promise<"W/R" | "R"> {
   const { data: client, error: clientError } = await serviceSupabase
     .from("clients")
-    .select("client_role_id, client_roles!clients_client_role_id_fkey(access_level)")
+    .select("client_role_id")
     .eq("id", clientId)
     .single();
 
@@ -145,8 +164,7 @@ async function resolveClientRoleCode(clientId: string): Promise<"W/R" | "R"> {
     throw new Error(`Failed to resolve client role: ${clientError?.message || "client not found"}`);
   }
 
-  const accessLevel = (client.client_roles as { access_level?: string } | null)?.access_level;
-  return accessLevel === "R" ? "R" : "W/R";
+  return await resolveRoleAccessLevelById(client.client_role_id);
 }
 
 async function getOrCreateUserClientContext(
@@ -156,7 +174,7 @@ async function getOrCreateUserClientContext(
 ) {
   const { data: existingContext, error: contextError } = await serviceSupabase
     .from("user_client_context")
-    .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+    .select("user_id, home_client_id, target_client_id, role_id")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -173,7 +191,7 @@ async function getOrCreateUserClientContext(
         target_client_id: homeClientId,
         role_id: readOnlyRoleId,
       })
-      .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+      .select("user_id, home_client_id, target_client_id, role_id")
       .single();
 
     if (insertError || !insertedContext) {
@@ -193,7 +211,7 @@ async function getOrCreateUserClientContext(
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
-      .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+      .select("user_id, home_client_id, target_client_id, role_id")
       .single();
 
     if (updateError || !updatedContext) {
@@ -218,7 +236,7 @@ async function updateTargetClientContext(
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId)
-    .select("user_id, home_client_id, target_client_id, role_id, client_roles!user_client_context_role_id_fkey(access_level)")
+    .select("user_id, home_client_id, target_client_id, role_id")
     .single();
 
   if (updateError || !updatedContext) {
@@ -275,9 +293,7 @@ Deno.serve(async (req) => {
     }
 
     const isSwitchedContext = userContext.target_client_id !== userContext.home_client_id;
-    const contextRoleCode = ((userContext.client_roles as { access_level?: string } | null)?.access_level === "R"
-      ? "R"
-      : "W/R") as "R" | "W/R";
+    const contextRoleCode = await resolveRoleAccessLevelById(userContext.role_id);
     const effectiveRoleCode = isSwitchedContext
       ? contextRoleCode
       : await resolveClientRoleCode(userContext.home_client_id);
@@ -320,12 +336,9 @@ Deno.serve(async (req) => {
         return jsonResponse({ success: false, error: "Target client not found" }, 404);
       }
 
-      const isSwitchingToHome = targetClientId === userContext.home_client_id;
       const updatedContext = await updateTargetClientContext(user.id, targetClientId, readOnlyRoleId);
       const switched = updatedContext.target_client_id !== updatedContext.home_client_id;
-      const contextRole = ((updatedContext.client_roles as { access_level?: string } | null)?.access_level === "R"
-        ? "R"
-        : "W/R") as "R" | "W/R";
+      const contextRole = await resolveRoleAccessLevelById(updatedContext.role_id);
       const resolvedRoleCode = switched
         ? contextRole
         : await resolveClientRoleCode(updatedContext.home_client_id);

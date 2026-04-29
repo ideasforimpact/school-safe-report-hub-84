@@ -680,6 +680,7 @@ export type Database = {
       client_mappings: {
         Row: {
           access_level: Database["public"]["Enums"]["client_mapping_access_level"]
+          active: boolean
           created_at: string
           head_office_id: string
           id: string
@@ -687,6 +688,7 @@ export type Database = {
         }
         Insert: {
           access_level?: Database["public"]["Enums"]["client_mapping_access_level"]
+          active?: boolean
           created_at?: string
           head_office_id: string
           id?: string
@@ -694,6 +696,7 @@ export type Database = {
         }
         Update: {
           access_level?: Database["public"]["Enums"]["client_mapping_access_level"]
+          active?: boolean
           created_at?: string
           head_office_id?: string
           id?: string
