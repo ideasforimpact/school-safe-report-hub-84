@@ -92,19 +92,24 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({
     viewDocument(url, doc.name || 'document');
   };
 
-  const handleDownload = (doc: IncidentDocument) => {
+  const handleDownload = async (doc: IncidentDocument) => {
     try {
-      // Generate URL from path if URL is not available
       const url = doc.url || incidentDocumentService.getPublicUrl(doc.path);
-      
+
+      const response = await fetch(url);
+      const blob = await response.blob();
+
+      const blobUrl = window.URL.createObjectURL(blob);
+
       const link = window.document.createElement('a');
-      link.href = url;
+      link.href = blobUrl;
       link.download = doc.name || 'document';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
+      
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
+
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Error downloading document:', error);
     }
