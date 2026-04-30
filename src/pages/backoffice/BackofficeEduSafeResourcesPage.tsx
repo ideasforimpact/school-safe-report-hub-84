@@ -324,22 +324,37 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     }
 
     try {
-      // Create a temporary anchor element to trigger download
+      let fileUrl = resource.document_url;
+      if (
+        fileUrl.startsWith('edusafe-resources/') ||
+        fileUrl.startsWith('/edusafe-resources/')
+      ) {
+        const base = (import.meta as any).env?.VITE_SUPABASE_PUBLIC_STORAGE_BASE_URL;
+        const normalizedBase = base.replace(/\/$/, '');
+        const normalizedPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+        fileUrl = `${normalizedBase}${normalizedPath}`;
+      }
+
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+
+      // Create download URL
+      const blobUrl = window.URL.createObjectURL(blob);
+
       const link = document.createElement('a');
-      link.href = resource.document_url;
-      
-      // Extract filename from URL or use resource title
-      const urlParts = resource.document_url.split('/');
-      const filename = urlParts[urlParts.length - 1] || `${resource.title}.pdf`;
-      
+      link.href = blobUrl;
+
+      const filename =
+        resource.document_url.split('/').pop() || `${resource.title}.file`;
+
       link.download = filename;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      
-      // Append to body, click, and remove
+
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+
     } catch (error) {
       console.error('Error downloading resource:', error);
       toast.error('Failed to download resource');
