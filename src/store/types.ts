@@ -4,6 +4,7 @@ import { User } from '@/contexts/auth/types';
 export interface EmployeeData {
   id: string;
   clientId: string;
+  homeClientId?: string | null;
   email: string;
   firstName: string;
   lastName: string;
@@ -39,7 +40,6 @@ export interface EmployeeState {
   isLoading: boolean;
   error: string | null;
   clientId: string | null;
-  homeClientId: string | null;
   activeClientId: string | null;
   isSwitchedContext: boolean;
   clientManagementReadOnly: boolean;

@@ -12,7 +12,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const { state } = useEmployeeStore();
 
   // Use switch-context aware Redux client IDs first, then auth fallbacks.
-  const clientId = state.activeClientId || state.clientId || state.homeClientId || employeeData?.clientId || user?.clientId;
+  const clientId =
+    state.activeClientId ||
+    state.clientId ||
+    employeeData?.homeClientId ||
+    employeeData?.clientId ||
+    user?.clientId;
 
   // Helper function to upload base64 file to Supabase storage
   const uploadDocumentToStorage = async (base64Data: string, employeeId: string, documentType: string): Promise<string> => {

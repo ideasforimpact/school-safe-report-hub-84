@@ -61,7 +61,10 @@ const RouteGuard = ({
     }
 
     // Always validate against the employee's home client, not the active switched client context.
-    const clientId = state.homeClientId || employeeData?.clientId || state.employeeData?.clientId || null;
+    const clientId =
+      employeeData?.homeClientId ||
+      employeeData?.clientId ||
+      null;
     const employeeId = employeeData?.id || state.employeeData?.id || null;
     
     if (!clientId) {
@@ -105,9 +108,7 @@ const RouteGuard = ({
     isBackoffice,
     isOnLoginRoute,
     isExceptionRoute,
-    state.homeClientId,
     state.employeeData?.id,
-    state.employeeData?.clientId,
     ipCheckCompleted,
     dispatch
   ]);

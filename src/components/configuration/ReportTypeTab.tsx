@@ -41,10 +41,11 @@ interface ReportTypeTabProps {
   updateReportType: (id: string, name: string, description: string) => void;
   deleteReportType: (id: string) => void;
   toggleReportTypeStatus: (id: string, isActive: boolean) => void;
+  canCreate?: boolean;
 }
 
 export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
-  // Ignore props and use hook data with RLS
+  canCreate = true,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -287,16 +288,18 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Report Types</h3>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setIsAddDialogOpen(true)}
-          className="flex items-center gap-2"
-          disabled={loading}
-        >
-          <PlusCircle className="h-4 w-4" />
-          Add Report Type
-        </Button>
+        {canCreate && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsAddDialogOpen(true)}
+            className="flex items-center gap-2"
+            disabled={loading}
+          >
+            <PlusCircle className="h-4 w-4" />
+            Add Report Type
+          </Button>
+        )}
       </div>
 
       {/* Status Filter */}
@@ -494,7 +497,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           description="Enter the details for the new report type."
           fieldLabel="Name"
           value={newTypeName}
-          open={isAddDialogOpen}
+          open={isAddDialogOpen && canCreate}
           onOpenChange={(open) => {
             setIsAddDialogOpen(open);
             if (!open) {

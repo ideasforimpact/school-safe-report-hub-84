@@ -35,6 +35,7 @@ interface ClassTabProps {
   deleteClass: (id: string) => void;
   sections: Array<{ id: string, name: string, classId: string }>;
   loading?: boolean;
+  canCreate?: boolean;
 }
 
 export const ClassTab = ({ 
@@ -44,7 +45,8 @@ export const ClassTab = ({
   updateClass, 
   deleteClass,
   sections,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: ClassTabProps) => {
   const { employeeData } = useAuth();
   const [newClass, setNewClass] = useState('');
@@ -268,6 +270,7 @@ export const ClassTab = ({
         <CardDescription>Add, edit, or remove grades/classes for each campus</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleClassAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
@@ -321,6 +324,7 @@ export const ClassTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">

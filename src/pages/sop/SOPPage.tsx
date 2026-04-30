@@ -9,6 +9,7 @@ import SignoffRequestDialog from '@/components/sop/SignoffRequestDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { getEmployeeData, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useClient } from '@/contexts/ClientContext';
 import {
@@ -113,6 +114,7 @@ const SOPPage = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
   const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const employeeData = getEmployeeData(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   const { client } = useClient();
@@ -461,6 +463,7 @@ const SOPPage = () => {
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
           <SOPHeader 
             onCreateSOP={handleCreateSOP}
+            canCreateSOP={!isReadOnlySwitchedContext}
             onStatisticsRefresh={() => {
               // Statistics will be refreshed automatically via real-time hooks
               // This callback can be used for additional actions if needed

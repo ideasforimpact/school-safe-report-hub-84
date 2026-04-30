@@ -42,6 +42,7 @@ interface SubcategoryTabProps {
   addSubcategory: (categoryId: string, name: string) => void;
   updateSubcategory: (categoryId: string, id: string, name: string) => void;
   deleteSubcategory: (categoryId: string, id: string) => void;
+  canCreate?: boolean;
 }
 
 export const SubcategoryTab = ({
@@ -49,7 +50,8 @@ export const SubcategoryTab = ({
   subcategoryMappings,
   addSubcategory,
   updateSubcategory,
-  deleteSubcategory
+  deleteSubcategory,
+  canCreate = true,
 }: SubcategoryTabProps) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
@@ -241,7 +243,7 @@ export const SubcategoryTab = ({
             </Select>
           </div>
           
-          {selectedCategoryId && (
+          {selectedCategoryId && canCreate && (
             <form className="flex gap-4 mt-4" onSubmit={handleAddSubcategory}>
               <div className="flex-1">
                 <Input

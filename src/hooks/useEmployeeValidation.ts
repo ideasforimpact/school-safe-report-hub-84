@@ -67,7 +67,10 @@ export const useEmployeeValidation = () => {
     }
     
     const employeeId = employeeData?.id || state.employeeData?.id || null;
-    const validationClientId = state.homeClientId || employeeData?.clientId || state.employeeData?.clientId || null;
+    const validationClientId =
+      employeeData?.homeClientId ||
+      employeeData?.clientId ||
+      null;
 
     // Skip if no employee identity or no home client context yet
     if (!employeeId || !validationClientId) {
@@ -253,10 +256,9 @@ export const useEmployeeValidation = () => {
     };
   }, [
     employeeData?.id,
+    employeeData?.homeClientId,
     employeeData?.clientId,
     state.employeeData?.id,
-    state.employeeData?.clientId,
-    state.homeClientId,
     location.pathname,
     state.isLoggingOut,
   ]);

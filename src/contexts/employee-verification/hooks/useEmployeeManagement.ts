@@ -22,8 +22,8 @@ export const useEmployeeManagement = () => {
     }
     
     // For regular users, trust switch-context aware Redux client IDs only.
-    return state.activeClientId || state.clientId || state.homeClientId || null;
-  }, [isBackofficeUser, client?.id, state.activeClientId, state.clientId, state.homeClientId]);
+    return state.activeClientId || state.clientId || null;
+  }, [isBackofficeUser, client?.id, state.activeClientId, state.clientId]);
 
   const fetchEmployees = useCallback(async (): Promise<Employee[]> => {
     try {

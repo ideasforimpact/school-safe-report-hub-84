@@ -596,7 +596,6 @@ const handleLogoutBroadcast = useCallback(() => {
               authError: null,
               configuredModules: state.configuredModules,
               employeeData: state.employeeData,
-              homeClientId: state.homeClientId,
               activeClientId: state.activeClientId,
               isSwitchedContext: state.isSwitchedContext,
               clientManagementReadOnly: state.clientManagementReadOnly,
@@ -760,6 +759,7 @@ const handleLogoutBroadcast = useCallback(() => {
             const employee: EmployeeData = {
               id: employeeData.id,
               clientId: employeeData.client_id,
+              homeClientId: employeeData.client_id,
               email: employeeData.email,
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,

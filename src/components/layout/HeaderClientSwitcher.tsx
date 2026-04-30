@@ -52,7 +52,12 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentClientId = state.activeClientId || state.homeClientId || employeeData?.clientId || currentUser?.clientId || '';
+  const currentClientId =
+    state.activeClientId ||
+    employeeData?.homeClientId ||
+    employeeData?.clientId ||
+    currentUser?.clientId ||
+    '';
 
   const shouldShow = useMemo(() => {
     if (isBackofficeUser) return false;
@@ -133,7 +138,11 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
       const clients = Array.isArray(data.clients) ? data.clients : [];
       setSwitchableClients(clients);
 
-      const homeId = data.home_client_id || state.homeClientId || employeeData?.clientId || '';
+      const homeId =
+        data.home_client_id ||
+        employeeData?.homeClientId ||
+        employeeData?.clientId ||
+        '';
       let effectiveData = data;
       let activeId = data.target_client_id || currentClientId || homeId || clients[0]?.id || '';
 
@@ -200,7 +209,11 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
       const selectedClient = data.selected_client;
       dispatch(setClientId(selectedClient.id));
       dispatch(setSwitchContext({
-        homeClientId: data.home_client_id || state.homeClientId || employeeData?.clientId || null,
+        homeClientId:
+          data.home_client_id ||
+          employeeData?.homeClientId ||
+          employeeData?.clientId ||
+          null,
         activeClientId: data.target_client_id || selectedClient.id,
         isSwitchedContext: data.is_switched_context === true,
         clientManagementReadOnly: data.client_management_read_only === true,

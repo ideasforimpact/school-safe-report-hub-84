@@ -6,15 +6,29 @@ import { loadAuthState } from './authPersistence';
 const restorePersistedAuthState = (): Partial<EmployeeState> => {
   const persistedState = loadAuthState();
   if (persistedState) {
+    const restoredHomeClientId =
+      persistedState.employeeData?.homeClientId ||
+      persistedState.employeeData?.clientId ||
+      null;
+    const restoredEmployeeData = persistedState.employeeData
+      ? {
+          ...persistedState.employeeData,
+          homeClientId:
+            persistedState.employeeData.homeClientId ??
+            restoredHomeClientId,
+        }
+      : null;
+
     return {
       currentUser: persistedState.currentUser,
       isAuthenticated: persistedState.isAuthenticated,
       isBackofficeUser: persistedState.isBackofficeUser,
       authError: persistedState.authError,
       configuredModules: persistedState.configuredModules || [],
-      employeeData: persistedState.employeeData || null,
-      homeClientId: persistedState.homeClientId || persistedState.employeeData?.clientId || null,
-      activeClientId: persistedState.activeClientId || persistedState.employeeData?.clientId || null,
+      employeeData: restoredEmployeeData,
+      activeClientId:
+        persistedState.activeClientId ||
+        restoredHomeClientId,
       isSwitchedContext: persistedState.isSwitchedContext === true,
       clientManagementReadOnly: persistedState.clientManagementReadOnly === true,
       switchedAccessLevel: (() => {
@@ -46,8 +60,11 @@ export const initialEmployeeState: EmployeeState = {
   isLoading: false,
   error: null,
   clientId: restoredState.employeeData?.clientId || null,
-  homeClientId: restoredState.homeClientId || restoredState.employeeData?.clientId || null,
-  activeClientId: restoredState.activeClientId || restoredState.employeeData?.clientId || null,
+  activeClientId:
+    restoredState.activeClientId ||
+    restoredState.employeeData?.homeClientId ||
+    restoredState.employeeData?.clientId ||
+    null,
   isSwitchedContext: restoredState.isSwitchedContext === true,
   clientManagementReadOnly: restoredState.clientManagementReadOnly === true,
   switchedAccessLevel: restoredState.switchedAccessLevel || 'R',
@@ -97,7 +114,6 @@ export const employeeReducer = (
         configuredModules: [],
         employeeData: null,
         clientId: null,
-        homeClientId: null,
         activeClientId: null,
         isSwitchedContext: false,
         clientManagementReadOnly: false,
@@ -106,11 +122,20 @@ export const employeeReducer = (
       };
       
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
+      const nextHomeClientId =
+        action.payload?.homeClientId ??
+        action.payload?.clientId ??
+        (state.employeeData ? state.employeeData.homeClientId : null) ??
+        null;
       return {
         ...state,
-        employeeData: action.payload,
+        employeeData: action.payload
+          ? {
+              ...action.payload,
+              homeClientId: nextHomeClientId,
+            }
+          : null,
         clientId: state.isSwitchedContext ? state.clientId : (action.payload?.clientId || state.clientId),
-        homeClientId: state.homeClientId ?? action.payload?.clientId ?? null,
         activeClientId: state.isSwitchedContext
           ? state.activeClientId
           : (action.payload?.clientId || state.activeClientId || state.clientId)
@@ -142,6 +167,7 @@ export const employeeReducer = (
         employeeData: state.employeeData
           ? {
               ...state.employeeData,
+              homeClientId: state.employeeData.homeClientId || state.employeeData.clientId || null,
               clientId: action.payload || state.employeeData.clientId,
             }
           : state.employeeData
@@ -150,7 +176,6 @@ export const employeeReducer = (
     case EmployeeActionTypes.SET_SWITCH_CONTEXT:
       return {
         ...state,
-        homeClientId: action.payload.homeClientId,
         activeClientId: action.payload.activeClientId,
         isSwitchedContext: action.payload.isSwitchedContext,
         clientManagementReadOnly: action.payload.clientManagementReadOnly,
@@ -159,19 +184,28 @@ export const employeeReducer = (
         employeeData: state.employeeData
           ? {
               ...state.employeeData,
+              homeClientId: action.payload.homeClientId,
               clientId: action.payload.activeClientId || state.employeeData.clientId,
             }
           : state.employeeData
       };
 
     case EmployeeActionTypes.RESET_SWITCH_CONTEXT:
+      const resetHomeClientId = state.employeeData ? state.employeeData.homeClientId || null : null;
       return {
         ...state,
-        activeClientId: state.homeClientId,
+        activeClientId: resetHomeClientId,
         isSwitchedContext: false,
         clientManagementReadOnly: false,
         switchedAccessLevel: 'R',
-        clientId: state.homeClientId
+        clientId: resetHomeClientId,
+        employeeData: state.employeeData
+          ? {
+              ...state.employeeData,
+              homeClientId: resetHomeClientId,
+              clientId: resetHomeClientId || state.employeeData.clientId,
+            }
+          : state.employeeData
       };
       
     case EmployeeActionTypes.SET_LOGOUT_STATE:
@@ -191,7 +225,6 @@ export const employeeReducer = (
         isLoading: false,
         error: null,
         clientId: null,
-        homeClientId: null,
         activeClientId: null,
         isSwitchedContext: false,
         clientManagementReadOnly: false,

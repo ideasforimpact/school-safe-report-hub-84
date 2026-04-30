@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import Loader from '../common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface Group {
   id: string;
@@ -44,6 +45,7 @@ interface Group {
 
 const GroupConfigurationContent = () => {
   const { employeeData, user } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const clientId = employeeData?.clientId || user?.clientId;
   const employeeId = employeeData?.id || user?.id;
 
@@ -169,6 +171,10 @@ const GroupConfigurationContent = () => {
   };
 
   const handleEditGroup = (group: Group) => {
+    if (isReadOnlySwitchedContext) {
+      return;
+    }
+
     // Safety check: prevent editing if group is assigned to any SOP
     if (group.is_assigned_to_sop) {
       toast.error('Cannot edit group that is assigned to any SOP');
@@ -308,10 +314,12 @@ const GroupConfigurationContent = () => {
           </Button>
         )}
         </div>
-        <Button onClick={handleAddGroup} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Group
-        </Button>
+        {!isReadOnlySwitchedContext && (
+          <Button onClick={handleAddGroup} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Group
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -397,25 +405,27 @@ const GroupConfigurationContent = () => {
                   <TableCell className="text-right">
                     <TooltipProvider>
                       <div className="flex justify-end gap-2">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditGroup(group)}
-                                disabled={group.is_assigned_to_sop}
-                              >
-                                <Edit className={`h-4 w-4 ${group.is_assigned_to_sop ? 'text-gray-400' : 'text-purple-600'}`} />
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {group.is_assigned_to_sop && (
-                            <TooltipContent>
-                              <p>Cannot edit group that is assigned to any SOP</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
+                        {!isReadOnlySwitchedContext && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditGroup(group)}
+                                  disabled={group.is_assigned_to_sop}
+                                >
+                                  <Edit className={`h-4 w-4 ${group.is_assigned_to_sop ? 'text-gray-400' : 'text-purple-600'}`} />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {group.is_assigned_to_sop && (
+                              <TooltipContent>
+                                <p>Cannot edit group that is assigned to any SOP</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span>

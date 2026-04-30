@@ -34,6 +34,7 @@ interface CategoryTabProps {
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
   deleteCategory: (id: string) => Promise<void>;
+  canCreate?: boolean;
 }
 
 // Validation: allow any characters, up to 50 characters
@@ -46,7 +47,8 @@ export const CategoryTab = ({
   categories, 
   addCategory, 
   updateCategory, 
-  deleteCategory 
+  deleteCategory,
+  canCreate = true,
 }: CategoryTabProps) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
@@ -210,6 +212,7 @@ export const CategoryTab = ({
         <CardDescription>Manage available incident categories</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleCategoryAdd} className="flex gap-4 mb-6">
           <Input
             placeholder="New category name"
@@ -235,6 +238,7 @@ export const CategoryTab = ({
             )}
           </Button>
         </form>
+        )}
         
         <Table>
           <TableHeader>

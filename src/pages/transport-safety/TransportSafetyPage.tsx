@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import VehiclesList from '@/components/transport-safety/VehiclesList';
 import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 import { useAuth } from '@/contexts';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import {
   getPendingChallansFromVehicleChallans,
 } from '@/services/transport-safety/vehicleService';
@@ -16,9 +17,8 @@ const TransportSafetyPage = () => {
   const [pendingAmount, setPendingAmount] = useState(0);
   const [pendingChallanCount, setPendingChallanCount] = useState(0);
 
-  const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const navigate = useNavigate();
-  const clientId = employeeData?.clientId;
   
 
 const handleVehiclesChanged = useCallback(({ vehicles }) => {
@@ -93,13 +93,15 @@ const handleVehiclesChanged = useCallback(({ vehicles }) => {
                 </div>
               </div>
             </div>
-            <Button
-              onClick={() => setShowAddVehicle(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Vehicle</span>
-            </Button>
+            {!isReadOnlySwitchedContext && (
+              <Button
+                onClick={() => setShowAddVehicle(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Vehicle</span>
+              </Button>
+            )}
           </div>
         </div>
 

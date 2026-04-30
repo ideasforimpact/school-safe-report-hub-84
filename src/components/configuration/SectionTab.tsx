@@ -36,6 +36,7 @@ interface SectionTabProps {
   deleteSection: (id: string) => void;
   loading?: boolean;
   campuses: CampusItem[];
+  canCreate?: boolean;
 }
 
 export const SectionTab = ({ 
@@ -45,7 +46,8 @@ export const SectionTab = ({
   addSection, 
   updateSection, 
   deleteSection,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: SectionTabProps) => {
   const { employeeData } = useAuth();
   const [newSection, setNewSection] = useState('');
@@ -329,6 +331,7 @@ export const SectionTab = ({
         <CardDescription>Add, edit, or remove sections for each grade</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleSectionAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
@@ -410,6 +413,7 @@ export const SectionTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">

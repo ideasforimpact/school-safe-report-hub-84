@@ -701,6 +701,7 @@ export const useAuthHandlers = ({
       const employeeData: EmployeeData = {
         id: employeeRecord.id,
         clientId: employeeRecord.client_id,
+        homeClientId: employeeRecord.client_id,
         firstName: employeeRecord.first_name,
         lastName: employeeRecord.last_name,
         email: employeeRecord.email,

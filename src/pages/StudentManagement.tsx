@@ -29,6 +29,7 @@ import { processStudentExcel } from '@/services/student/importStudentService';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -37,6 +38,7 @@ interface StudentManagementProps {
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, refreshStudents, isLoading } = useStudents();
   const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
@@ -398,37 +400,41 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
               Manage students in your institution
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
+          {!isReadOnlySwitchedContext && (
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsImportDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="secondary"
+              >
+                <FileUp className="h-4 w-4" />
+                <span>Import Students</span>
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
       {embedded && (
         <div className="flex justify-end items-center">
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
+          {!isReadOnlySwitchedContext && (
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsImportDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="secondary"
+              >
+                <FileUp className="h-4 w-4" />
+                <span>Import Students</span>
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

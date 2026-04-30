@@ -48,6 +48,7 @@ interface FacilityTabProps {
   updateFacility: (id: string, name: string, campusId: string) => void;
   deleteFacility: (id: string) => void;
   loading?: boolean;
+  canCreate?: boolean;
 }
 
 export const FacilityTab = ({ 
@@ -56,7 +57,8 @@ export const FacilityTab = ({
   addFacility, 
   updateFacility, 
   deleteFacility,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: FacilityTabProps) => {
   const { employeeData } = useAuth();
   const [newFacility, setNewFacility] = useState('');
@@ -279,6 +281,7 @@ export const FacilityTab = ({
         <CardDescription>Manage facilities for your institution</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleFacilityAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
@@ -332,6 +335,7 @@ export const FacilityTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">

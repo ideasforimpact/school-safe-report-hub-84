@@ -128,6 +128,7 @@ export interface Client {
 export interface EmployeeData {
   id: string;
   clientId: string | null;
+  homeClientId?: string | null;
   firstName: string;
   lastName: string;
   email: string;

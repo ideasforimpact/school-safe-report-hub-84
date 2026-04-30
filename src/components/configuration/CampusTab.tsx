@@ -37,6 +37,7 @@ interface CampusTabProps {
   deleteCampus: (id: string) => void;
   classes: Array<{ id: string, name: string, campusId: string }>;
   loading?: boolean;
+  canCreate?: boolean;
 }
 
 export const CampusTab = ({ 
@@ -45,7 +46,8 @@ export const CampusTab = ({
   updateCampus, 
   deleteCampus,
   classes,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: CampusTabProps) => {
   const { employeeData } = useAuth();
   const [newCampus, setNewCampus] = useState('');
@@ -227,6 +229,7 @@ export const CampusTab = ({
         <CardDescription>Add, edit, or remove campuses</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleCampusAdd} className="mb-6">
           <div className="flex gap-4 flex-col sm:flex-row">
             <div className="flex-1">
@@ -261,6 +264,7 @@ export const CampusTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">

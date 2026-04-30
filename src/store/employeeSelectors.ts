@@ -7,7 +7,8 @@ export const getEmployeeData = (state: EmployeeState) => state.employeeData;
 export const getConfiguredModules = (state: EmployeeState) => state.configuredModules;
 export const getEmployeeLoadingState = (state: EmployeeState) => state.isLoading;
 export const getEmployeeError = (state: EmployeeState) => state.error;
-export const getHomeClientId = (state: EmployeeState) => state.homeClientId;
+export const getHomeClientId = (state: EmployeeState) =>
+  state.employeeData ? state.employeeData.homeClientId || null : null;
 export const getActiveClientId = (state: EmployeeState) => state.activeClientId;
 export const getIsSwitchedContext = (state: EmployeeState) => state.isSwitchedContext;
 export const getClientManagementReadOnly = (state: EmployeeState) => state.clientManagementReadOnly;

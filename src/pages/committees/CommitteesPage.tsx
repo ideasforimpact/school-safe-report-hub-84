@@ -66,6 +66,7 @@ import {
 import { formatDate } from '@/lib/Dateformat';
 import { TextareaWithVoice } from '@/components/ui/textarea-with-voice';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 type EmployeeOption = {
   id: string;
@@ -91,6 +92,7 @@ const normalizeRole = (role: string): string => role.toLowerCase().replace(/[^a-
 const removeLeadingSpaces = (value: string): string => value.replace(/^\s+/, '');
 
 const CommitteesPage = () => {
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { employeeData } = useAuth();
   const navigate = useNavigate();
   const clientId = employeeData?.clientId || '';
@@ -665,15 +667,17 @@ const CommitteesPage = () => {
               </div>
             </div>
 
-            <Button
-              onClick={openCreateDialog}
-              className="flex items-center gap-2"
-              disabled={!isAdmin}
-              title={isAdmin ? 'Add Committee' : 'Admin only'}
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Committee</span>
-            </Button>
+            {!isReadOnlySwitchedContext && (
+              <Button
+                onClick={openCreateDialog}
+                className="flex items-center gap-2"
+                disabled={!isAdmin}
+                title={isAdmin ? 'Add Committee' : 'Admin only'}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Committee</span>
+              </Button>
+            )}
           </div>
         </div>
 

@@ -43,10 +43,11 @@ interface PriorityTabProps {
   updatePriority: (id: string, name: string, description: string, color: string, weight: number) => void;
   deletePriority: (id: string) => void;
   togglePriorityStatus: (id: string, isActive: boolean) => void;
+  canCreate?: boolean;
 }
 
 export const PriorityTab: React.FC<PriorityTabProps> = ({
-  // Ignore props and use hook data with RLS
+  canCreate = true,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -315,15 +316,17 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Incident Priorities</h3>
-        <Button 
-          onClick={() => setIsAddDialogOpen(true)} 
-          size="sm"
-          disabled={loading}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Priority
-        </Button>
+        {canCreate && (
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)} 
+            size="sm"
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Priority
+          </Button>
+        )}
       </div>
 
       {/* Status Filter */}
@@ -521,7 +524,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         description="Enter the details for the new priority."
         fieldLabel="Name"
         value={newPriorityName}
-        open={isAddDialogOpen}
+        open={isAddDialogOpen && canCreate}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open);
           if (!open) {

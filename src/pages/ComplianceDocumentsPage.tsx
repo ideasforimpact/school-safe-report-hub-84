@@ -27,7 +27,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 const ComplianceDocumentsPage: React.FC = () => {
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { user } = useAuth();
   const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
   const { getEmployeeId } = useEmployeeAccess();
@@ -1134,14 +1136,16 @@ const ComplianceDocumentsPage: React.FC = () => {
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setNewFolderOpen(true)}
-                  className="w-full sm:w-auto"
-                >
-                  <FolderPlus className="h-4 w-4 mr-2" />{' '}
-                  <span className="hidden sm:inline">New</span> Folder
-                </Button>
+                {!isReadOnlySwitchedContext && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setNewFolderOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <FolderPlus className="h-4 w-4 mr-2" />{' '}
+                    <span className="hidden sm:inline">New</span> Folder
+                  </Button>
+                )}
                 {/* Export Files button with confirmation */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

@@ -9,7 +9,6 @@ export interface PersistedAuthState {
   authError: string | null;
   configuredModules: any[] | null;
   employeeData: any | null;
-  homeClientId?: string | null;
   activeClientId?: string | null;
   isSwitchedContext?: boolean;
   clientManagementReadOnly?: boolean;
