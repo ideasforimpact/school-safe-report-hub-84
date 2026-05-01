@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, File, AlertCircle, FileText, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -45,6 +45,39 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
+  const prevInitialFilesSignatureRef = useRef<string>('');
+  
+  const serializeFiles = (list: FileItem[]) =>
+    JSON.stringify(
+      (list || []).map((file) => ({
+        id: file.id || '',
+        name: file.name || '',
+        type: file.type || '',
+        size: file.size || 0,
+        base64: file.base64 || '',
+        url: file.url || '',
+        path: file.path || '',
+      }))
+    );
+
+  const initialFilesSignature = useMemo(
+    () => serializeFiles(initialFiles),
+    [initialFiles]
+  );
+
+  // Sync internal files only when initialFiles content truly changes.
+  // This avoids loop-like updates when parents pass a new array instance every render.
+  React.useEffect(() => {
+    if (prevInitialFilesSignatureRef.current === initialFilesSignature) return;
+    prevInitialFilesSignatureRef.current = initialFilesSignature;
+
+    setFiles((currentFiles) => {
+      const currentSignature = serializeFiles(currentFiles);
+      if (currentSignature === initialFilesSignature) return currentFiles;
+      return initialFiles;
+    });
+  }, [initialFiles, initialFilesSignature]);
+
   const handlePreview = (file: FileItem) => {
     setPreviewFile(file);
   };
@@ -53,11 +86,6 @@ const ReusableFileUploader: React.FC<ReusableFileUploaderProps> = ({
     onFilesChange(files);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
-
-  // Keep local file list in sync when parent provides new initial files.
-  useEffect(() => {
-    setFiles(initialFiles || []);
-  }, [initialFiles]);
 
   // Helper function to extract file extension from filename
   const getFileExtension = (filename: string): string => {

@@ -185,7 +185,7 @@ const StudentWellBeingPage = () => {
     try {
       setLoading(true);
       const academicYear = academicYearFilter && academicYearFilter !== 'all' ? academicYearFilter : undefined;
-      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id);
+      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id, academicYear);
       setRecords(result.records);
       setSummary(result.summary);
     } catch (err) {
@@ -261,7 +261,7 @@ const StudentWellBeingPage = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setDateRange(undefined);
-    // setAcademicYearFilter(getCurrentAcademicYear());
+    setAcademicYearFilter(getCurrentAcademicYear());
   };
 
   const exportToCsv = () => {
@@ -446,7 +446,7 @@ const StudentWellBeingPage = () => {
                 className="w-full"
               />
             </div>
-            {/* <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+            <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
               <SelectTrigger className="w-[140px] h-10 border border-input rounded-md bg-background">
                 <SelectValue placeholder="Academic Year" />
               </SelectTrigger>
@@ -457,8 +457,8 @@ const StudentWellBeingPage = () => {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select> */}
-             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to) && (
+            </Select>
+             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
                 <Button
                   variant="outline"
                   size="sm"
