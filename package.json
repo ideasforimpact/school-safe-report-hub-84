@@ -23,7 +23,10 @@
     "supabase:logs": "supabase logs",
     "supabase:link:uat": "echo 'Replace <UAT_PROJECT_ID> with your actual UAT project ID' && supabase link --project-ref <UAT_PROJECT_ID>",
     "supabase:db:push": "supabase db push",
-    "supabase:functions:deploy": "supabase functions deploy"
+    "supabase:functions:deploy": "supabase functions deploy",
+    "perf:worker-health": "k6 run k6/worker-health.js",
+    "perf:validate-employee": "k6 run k6/validate-employee.js",
+    "perf:dashboard-stats": "k6 run k6/dashboard-stats.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

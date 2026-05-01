@@ -240,11 +240,6 @@ serve(async (req) => {
               entryFailed++
             } else {
               console.log(`✅ Successfully sent email to ${recipient.email}`)
-              await recordCentralizedNotification({
-                supabase,
-                emailEntry,
-                recipient,
-              })
               entryProcessed++
             }
           } catch (recipientError) {
@@ -383,41 +378,3 @@ serve(async (req) => {
     )
   }
 }) 
-
-async function recordCentralizedNotification({
-  supabase,
-  emailEntry,
-  recipient,
-}: {
-  supabase: any;
-  emailEntry: any;
-  recipient: { id: string; email: string };
-}) {
-  try {
-    const messagePreview = (emailEntry.body || '')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 240)
-
-    const { error } = await supabase.rpc('create_centralized_notification', {
-      p_client_id: emailEntry.client_id,
-      p_module_id: null,
-      p_module_name: emailEntry.module_name || 'grievance',
-      p_email_id: emailEntry.id,
-      p_notification_type: emailEntry.notification_type || 'grievance_submitted',
-      p_channel: 'email',
-      p_title: emailEntry.subject || null,
-      p_message: messagePreview || null,
-      p_payload: emailEntry.params || {},
-      p_recipient_employee_id: recipient.id,
-      p_recipient_email: recipient.email,
-    })
-
-    if (error) {
-      console.error('Failed to create centralized grievance notification:', error)
-    }
-  } catch (error) {
-    console.error('Error creating centralized grievance notification:', error)
-  }
-}
