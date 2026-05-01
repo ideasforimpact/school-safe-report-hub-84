@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ImageIcon, Asterisk } from 'lucide-react';
+import { ImageIcon, Asterisk, Check } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -11,10 +12,13 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { InstitutionType } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
 import { buildClientLogoUrl } from '@/lib/utils';
 import { checkSuperAdminEmailExists } from '@/services/employee/employeeValidationService';
+import { toast } from 'sonner';
 
 interface ClientType {
   id: string;
@@ -45,6 +49,7 @@ interface BasicInfoTabProps {
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   showErrors?: boolean;
+  isEdit?: boolean;
 }
 
 export const isValidClientName = (name: string) => {
@@ -65,7 +70,7 @@ export const isValidEmail = (email: string) => {
 };
 export const isValidPhone = (phone?: string) => !!phone && /^[6-9]\d{9}$/.test(phone);
 
-const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false }: BasicInfoTabProps) => {
+const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = false, isEdit = false }: BasicInfoTabProps) => {
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
   const [clientsForMapping, setClientsForMapping] = useState<Array<{
     id: string;
@@ -79,6 +84,10 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [headOfficeMappingDialogOpen, setHeadOfficeMappingDialogOpen] = useState(false);
+  const [mappingDropdownOpen, setMappingDropdownOpen] = useState(false);
+  const [draftMappedClientIds, setDraftMappedClientIds] = useState<string[]>([]);
+  const [savingHeadOfficeMapping, setSavingHeadOfficeMapping] = useState(false);
 
   const institutionTypes: InstitutionType[] = [
     'CBSE', 'IB', 'IGCSE', 'ICSE', 'Matric', 'Combined Campus', 'Other'
@@ -298,6 +307,76 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
   };
   reader.readAsDataURL(file);
 };
+
+  const toggleDraftMappedClient = (clientId: string, checked: boolean) => {
+    setDraftMappedClientIds((prev) => {
+      if (checked) return [...new Set([...prev, clientId])];
+      return prev.filter((id) => id !== clientId);
+    });
+  };
+
+  const handleOpenHeadOfficeMappingDialog = () => {
+    setDraftMappedClientIds(formData.mappedClientIds || []);
+    setHeadOfficeMappingDialogOpen(true);
+  };
+
+  const handleSaveHeadOfficeMapping = async () => {
+    if (!formData.id) {
+      toast.error('Client ID is missing');
+      return;
+    }
+    if (draftMappedClientIds.length === 0) {
+      toast.error('Please select at least one sub-client');
+      return;
+    }
+
+    setSavingHeadOfficeMapping(true);
+    try {
+      const anyFormData = formData as any;
+      const payload = {
+        operation: 'update',
+        client: {
+          id: formData.id,
+          modules: anyFormData.moduleInfoArray || [],
+          superAdminEmail: anyFormData.superAdminEmail || '',
+          clientTypeId: formData.clientTypeId,
+          logo: formData.logo || '',
+          name: formData.name,
+          email: formData.email,
+          contactPerson: formData.contactPerson,
+          phone: formData.phone,
+          active: formData.active,
+          institutionType: formData.institutionType,
+          allowedDomains: anyFormData.allowedDomains || [],
+          superAdminAllowedDomains: anyFormData.superAdminAllowedDomains || [],
+          authProviders: anyFormData.authProviders || {},
+          website: anyFormData.website,
+          whitelistedIPs: anyFormData.whitelistedIPs || [],
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled !== false,
+          is_head_office: true,
+          mapped_client_ids: draftMappedClientIds,
+        },
+      };
+
+      const { data, error } = await supabase.functions.invoke('client-management', { body: payload });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to save head office mapping');
+      }
+
+      setFormData({
+        ...formData,
+        isHeadOffice: true,
+        mappedClientIds: draftMappedClientIds,
+      });
+      await fetchClientsForMapping();
+      toast.success('Head office and sub-client mapping saved');
+      setHeadOfficeMappingDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to save head office mapping');
+    } finally {
+      setSavingHeadOfficeMapping(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -553,7 +632,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
         </div>
       </div>
 
-      {formData.parentHeadOfficeId ? (
+      {isEdit && (formData.parentHeadOfficeId ? (
         <div className="space-y-2 pt-2 border-t border-gray-100">
           <Label htmlFor="parent-head-office">Head Office</Label>
           <Input
@@ -574,14 +653,20 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
               <Switch
                 id="is-head-office"
                 checked={formData.isHeadOffice === true}
-                onCheckedChange={(checked) =>
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setDraftMappedClientIds(formData.mappedClientIds || []);
+                    setHeadOfficeMappingDialogOpen(true);
+                  }
+                  return (
                   setFormData({
                     ...formData,
                     isHeadOffice: checked,
                     mappedClientIds: checked ? (formData.mappedClientIds || []) : [],
                     mappedClientAccessLevels: checked ? (formData.mappedClientAccessLevels || {}) : {},
                   })
-                }
+                  );
+                }}
               />
             </div>
             <p className="text-xs text-gray-500">
@@ -591,47 +676,9 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
 
           {formData.isHeadOffice === true && (
             <div className="space-y-2">
-              <Label>Clients</Label>
-              <div className="max-h-44 overflow-y-auto rounded-md border p-2 space-y-2">
-                {mappingClientsLoading ? (
-                  <p className="text-xs text-gray-500">Loading clients...</p>
-                ) : mappingOptions.length === 0 ? (
-                  <p className="text-xs text-gray-500">No clients available for mapping.</p>
-                ) : (
-                  mappingOptions.map((client) => (
-                    <div key={client.id} className="space-y-1 rounded border border-gray-100 p-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id={`map-client-${client.id}`}
-                          checked={(formData.mappedClientIds || []).includes(client.id)}
-                          onCheckedChange={(checked) => toggleMappedClientId(client.id, checked === true)}
-                        />
-                        <label htmlFor={`map-client-${client.id}`} className="text-sm">
-                          {client.name}
-                        </label>
-                      </div>
-                      {/* {(formData.mappedClientIds || []).includes(client.id) && (
-                        <div className="ml-6">
-                          <Select
-                            value={formData.mappedClientAccessLevels?.[client.id] || 'read_only'}
-                            onValueChange={(value: 'read_only' | 'read_write_delete') =>
-                              updateMappedClientAccessLevel(client.id, value)
-                            }
-                          >
-                            <SelectTrigger className="h-8 w-[220px]">
-                              <SelectValue placeholder="Select access level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="read_only">Read Only</SelectItem>
-                              <SelectItem value="read_write_delete">Read / Write / Delete</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )} */}
-                    </div>
-                  ))
-                )}
-              </div>
+              <Button type="button" variant="outline" onClick={handleOpenHeadOfficeMappingDialog}>
+                Configure Sub-client Mapping
+              </Button>
               {(formData.mappedClientIds || []).length > 0 && (
                 <p className="text-xs text-gray-500">
                   {(formData.mappedClientIds || []).length} client selected
@@ -643,7 +690,63 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
             </div>
           )}
         </>
-      )}
+      ))}
+
+      <Dialog open={headOfficeMappingDialogOpen} onOpenChange={setHeadOfficeMappingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Head Office Mapping</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Select Sub-clients</Label>
+            <DropdownMenu open={mappingDropdownOpen} onOpenChange={setMappingDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" className="w-full justify-between">
+                  <span>
+                    {draftMappedClientIds.length > 0
+                      ? `${draftMappedClientIds.length} client selected`
+                      : 'Choose clients'}
+                  </span>
+                  <span className="text-xs text-gray-500">Dropdown</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[360px] max-h-64 overflow-y-auto">
+                {mappingClientsLoading ? (
+                  <div className="px-2 py-1.5 text-xs text-gray-500">Loading clients...</div>
+                ) : mappingOptions.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-gray-500">No clients available for mapping.</div>
+                ) : (
+                  mappingOptions.map((client) => {
+                    const checked = draftMappedClientIds.includes(client.id);
+                    return (
+                      <DropdownMenuItem
+                        key={client.id}
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          toggleDraftMappedClient(client.id, !checked);
+                        }}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{client.name}</span>
+                        {checked && <Check className="h-3.5 w-3.5" />}
+                      </DropdownMenuItem>
+                    );
+                  })
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={handleSaveHeadOfficeMapping}
+              disabled={savingHeadOfficeMapping || draftMappedClientIds.length === 0}
+            >
+              {savingHeadOfficeMapping ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Active Client checkbox hidden for backoffice */}
       {/* <div className="flex items-center space-x-2 pt-2">

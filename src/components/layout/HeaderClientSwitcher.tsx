@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setClientId, setConfiguredModules, setSwitchContext } from '@/store/employeeActions';
+import { setClientId, setConfiguredModules, setLoading, setSwitchContext } from '@/store/employeeActions';
 import type { User, EmployeeData } from '@/contexts/auth/types';
 
 type SwitchableClient = {
@@ -36,6 +37,8 @@ type SwitchClientResponse = {
   error?: string;
 };
 
+let cachedSwitchableClientsByUserId: Record<string, SwitchableClient[]> = {};
+
 interface HeaderClientSwitcherProps {
   currentUser: User | null;
   employeeData: EmployeeData | null;
@@ -48,7 +51,12 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   isBackofficeUser,
 }) => {
   const { state, dispatch } = useEmployeeStore();
-  const [switchableClients, setSwitchableClients] = useState<SwitchableClient[]>([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const cachedClientsForCurrentUser = currentUser?.id
+    ? (cachedSwitchableClientsByUserId[currentUser.id] || [])
+    : [];
+  const [switchableClients, setSwitchableClients] = useState<SwitchableClient[]>(cachedClientsForCurrentUser);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,8 +70,12 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
   const shouldShow = useMemo(() => {
     if (isBackofficeUser) return false;
     if (employeeData?.isSuperAdmin !== true) return false;
-    return switchableClients.length > 1;
-  }, [isBackofficeUser, employeeData?.isSuperAdmin, switchableClients.length]);
+    const effectiveCount =
+      switchableClients.length > 0
+        ? switchableClients.length
+        : cachedClientsForCurrentUser.length;
+    return effectiveCount > 1;
+  }, [isBackofficeUser, employeeData?.isSuperAdmin, switchableClients.length, cachedClientsForCurrentUser.length]);
 
   const loadConfiguredModules = async (employeeId: string, targetClientId: string, isSuperAdmin: boolean) => {
     try {
@@ -116,14 +128,30 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
         .sort((a, b) => (a.order || 999) - (b.order || 999));
 
       dispatch(setConfiguredModules(modules));
+      return modules;
     } catch (error) {
       console.error('Error refreshing configured modules after client switch:', error);
       toast.error('Client switched, but module refresh failed');
+      return [];
     }
   };
 
   const loadSwitchableClients = async () => {
     if (!currentUser || !employeeData?.id) return;
+
+    const cachedClients = cachedSwitchableClientsByUserId[currentUser.id];
+    if (cachedClients && cachedClients.length > 0) {
+      setSwitchableClients(cachedClients);
+      const activeId =
+        state.activeClientId ||
+        employeeData?.homeClientId ||
+        employeeData?.clientId ||
+        currentUser?.clientId ||
+        cachedClients[0]?.id ||
+        '';
+      setSelectedClientId(activeId);
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
@@ -137,6 +165,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
 
       const clients = Array.isArray(data.clients) ? data.clients : [];
       setSwitchableClients(clients);
+      cachedSwitchableClientsByUserId[currentUser.id] = clients;
 
       const homeId =
         data.home_client_id ||
@@ -185,7 +214,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
 
   useEffect(() => {
     loadSwitchableClients();
-  }, [currentUser?.id, employeeData?.id, currentClientId]);
+  }, [currentUser?.id, employeeData?.id]);
 
   const handleSwitchClient = async (targetClientId: string) => {
     if (!currentUser || !employeeData?.id || !targetClientId || targetClientId === currentClientId) {
@@ -195,6 +224,7 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
 
     try {
       setIsLoading(true);
+      dispatch(setLoading(true));
       const { data, error } = await supabase.functions.invoke<SwitchClientResponse>('switch-client', {
         body: {
           action: 'switch-client',
@@ -219,14 +249,33 @@ const HeaderClientSwitcher: React.FC<HeaderClientSwitcherProps> = ({
         clientManagementReadOnly: data.client_management_read_only === true,
         switchedAccessLevel: data.client_management_permissions?.access_level || 'R',
       }));
-      await loadConfiguredModules(employeeData.id, selectedClient.id, employeeData.isSuperAdmin === true);
+      const modules = await loadConfiguredModules(employeeData.id, selectedClient.id, employeeData.isSuperAdmin === true);
       setSelectedClientId(selectedClient.id);
+
+      const allowedPaths = modules
+        .map((module: any) => module.url)
+        .filter((url: string | undefined): url is string => typeof url === 'string' && url.length > 0);
+      const firstAllowedPath = allowedPaths[0] || '/dashboard';
+      const normalizePath = (path: string) => {
+        if (!path) return '/';
+        return path.length > 1 ? path.replace(/\/+$/, '') : path;
+      };
+      const currentPath = normalizePath(location.pathname);
+      const isCurrentPathAllowed = allowedPaths.some((path) => {
+        const allowedBase = normalizePath(path);
+        return currentPath === allowedBase || currentPath.startsWith(`${allowedBase}/`);
+      });
+      if (!isCurrentPathAllowed && location.pathname !== firstAllowedPath) {
+        navigate(firstAllowedPath, { replace: true });
+      }
+
       toast.success(`Switched to ${selectedClient.name}`);
     } catch (error) {
       console.error('Error switching client:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to switch client');
       setSelectedClientId(currentClientId || '');
     } finally {
+      dispatch(setLoading(false));
       setIsLoading(false);
     }
   };

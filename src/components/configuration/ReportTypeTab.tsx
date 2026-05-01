@@ -361,7 +361,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                 <TableCell title={type.description || '-'}>{type.description || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {(() => {
+                    {canCreate && (() => {
                       const refInfo = reportTypeReferences[type.id];
                       const isLinked = refInfo?.hasReferences;
 
@@ -413,6 +413,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>
+                  {canCreate && (
                   <div className="flex gap-1">
                     <Button 
                       variant="ghost" 
@@ -475,6 +476,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                       );
                     })()}
                   </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -533,7 +535,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           description="Update the report type details."
           fieldLabel="Name"
           value={editTypeName}
-          open={isEditDialogOpen}
+          open={isEditDialogOpen && canCreate}
           onOpenChange={(open) => {
             setIsEditDialogOpen(open);
             if (!open) {

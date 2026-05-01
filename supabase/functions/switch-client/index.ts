@@ -50,19 +50,9 @@ async function resolveHeadOfficeClientId(employeeClientId: string): Promise<stri
     return employeeClient.id;
   }
 
-  const { data: mapping, error: mappingError } = await serviceSupabase
-    .from("client_mappings")
-    .select("head_office_id")
-    .eq("sub_client_id", employeeClientId)
-    .eq("active", true)
-    .limit(1)
-    .maybeSingle();
-
-  if (mappingError) {
-    return null;
-  }
-
-  return mapping?.head_office_id ?? null;
+  // Only users logged into a head office client can access switch-client actions.
+  // Sub-client users (even if mapped under a head office) must not see switcher.
+  return null;
 }
 
 async function getSwitchableClients(headOfficeClientId: string) {

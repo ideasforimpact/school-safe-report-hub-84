@@ -60,11 +60,17 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   }, [employeeData?.clientId]);
   
   const handleEditClick = (student: Student) => {
+    if (isReadOnlySwitchedContext) {
+      return;
+    }
     setSelectedStudent(student);
     setIsEditDialogOpen(true);
   };
 
   const handleDeleteClick = async (id: string) => {
+    if (isReadOnlySwitchedContext) {
+      return;
+    }
     if (!employeeData?.clientId) {
       toast.error('Client information not available');
       return;
@@ -544,6 +550,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
                   students={paginatedStudents}
                   onEditClick={handleEditClick}
                   onDeleteStudent={handleDeleteClick}
+                  canManageStudents={!isReadOnlySwitchedContext}
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={setCurrentPage}
@@ -567,7 +574,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       />
 
       {/* Edit Student Dialog */}
-      {selectedStudent && (
+      {selectedStudent && !isReadOnlySwitchedContext && (
         <EditStudentDialog
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
@@ -583,7 +590,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialog open={isDeleteAlertOpen && !isReadOnlySwitchedContext} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

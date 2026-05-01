@@ -76,6 +76,7 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
           template={template}
           onBack={handleBackToList}
           onEdit={handleEditFromDetail}
+          canEdit={!isReadOnlySwitchedContext}
         />
       );
     }
@@ -105,8 +106,9 @@ const AssessmentConfigurationContent = ({ embedded = false }: AssessmentConfigur
       
       <TemplatesList 
         onCreateTemplate={isReadOnlySwitchedContext ? undefined : handleCreateTemplate}
-        onEditTemplate={handleEditTemplate}
+        onEditTemplate={isReadOnlySwitchedContext ? undefined : handleEditTemplate}
         onViewTemplate={handleViewTemplate}
+        canEditTemplate={!isReadOnlySwitchedContext}
       />
     </div>
   );

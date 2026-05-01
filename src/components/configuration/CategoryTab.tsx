@@ -268,6 +268,7 @@ export const CategoryTab = ({
                 <TableRow key={category.id}>
                   <TableCell>{category.name}</TableCell>
                   <TableCell>
+                    {canCreate && (
                     <div className="flex gap-2">
                       <Button 
                         variant="ghost" 
@@ -334,6 +335,7 @@ export const CategoryTab = ({
                         );
                       })()}
                     </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -342,7 +344,7 @@ export const CategoryTab = ({
         </Table>
 
         {/* Edit Dialog */}
-        {editingCategory && (
+        {editingCategory && canCreate && (
           <EditDialog
             title="Edit Category"
             description="Update the category name below"
@@ -370,7 +372,7 @@ export const CategoryTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog open={isDeleteDialogOpen && canCreate} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Category</AlertDialogTitle>

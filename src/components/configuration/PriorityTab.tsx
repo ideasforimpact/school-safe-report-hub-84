@@ -380,7 +380,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
               <TableHead>Description</TableHead>
               <TableHead>Weight</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
+              {canCreate && <TableHead>Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -394,7 +394,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                 <TableCell>{priority.weight || '-'}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    {(() => {
+                    {canCreate && (() => {
                       const refInfo = priorityReferences[priority.id];
                       const isLinked = refInfo?.hasReferences;
 
@@ -445,6 +445,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                     </Badge>
                   </div>
                 </TableCell>
+                {canCreate && (
                 <TableCell className="flex space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => handleEditClick(priority)}>
                     <Edit className="h-4 w-4" />
@@ -503,6 +504,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
                     );
                   })()}
                 </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -574,7 +576,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         description="Update the priority details."
         fieldLabel="Name"
         value={editPriorityName}
-        open={isEditDialogOpen}
+        open={isEditDialogOpen && canCreate}
         onOpenChange={(open) => {
           setIsEditDialogOpen(open);
           if (!open) {

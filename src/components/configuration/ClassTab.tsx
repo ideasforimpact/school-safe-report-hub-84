@@ -143,6 +143,7 @@ export const ClassTab = ({
   };
 
   const handleClassDelete = async (id: string) => {
+    if (!canCreate) return;
     const hasSections = sections.some(section => section.classId === id);
     
     if (hasSections) {
@@ -170,6 +171,7 @@ export const ClassTab = ({
   };
 
   const handleEditOpen = (cls: ClassItem) => {
+    if (!canCreate) return;
     console.log("Opening edit dialog for class:", cls);
     setEditingClass({
       id: cls.id,
@@ -381,13 +383,13 @@ export const ClassTab = ({
             <TableRow>
               <TableHead>Grade/Class Name</TableHead>
               <TableHead>Campus</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-4">
+                <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4">
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
                     <span>Loading grades...</span>
@@ -396,7 +398,7 @@ export const ClassTab = ({
               </TableRow>
             ) : filteredClasses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4 text-muted-foreground">
                   {classes.length === 0 
                     ? "No grades available. Add your first grade above."
                     : "No grades match your search criteria."
@@ -408,6 +410,7 @@ export const ClassTab = ({
                 <TableRow key={cls.id}>
                   <TableCell>{cls.name}</TableCell>
                   <TableCell>{getCampusName(cls.campusId)}</TableCell>
+                  {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">
                       <Button 
@@ -474,6 +477,7 @@ export const ClassTab = ({
                       })()}
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -534,13 +538,13 @@ export const ClassTab = ({
         )}
 
         {/* Edit Dialog */}
-        {editingClass && (
+        {editingClass && canCreate && (
           <EditDialog
             title="Edit Grade"
             description="Update the grade details below"
             fieldLabel="Grade name"
             value={editingClass.name}
-            open={isEditDialogOpen}
+            open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
             onChange={(value) => {
               setEditingClass(prev => prev ? { ...prev, name: value } : null);

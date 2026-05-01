@@ -200,6 +200,9 @@ const GroupConfigurationContent = () => {
   };
 
   const handleDeleteClick = (group: Group) => {
+    if (isReadOnlySwitchedContext) {
+      return;
+    }
     setGroupToDelete(group);
     setDeleteDialogOpen(true);
   };
@@ -426,25 +429,27 @@ const GroupConfigurationContent = () => {
                             )}
                           </Tooltip>
                         )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteClick(group)}
-                                disabled={group.is_assigned_to_sop}
-                              >
-                                <Trash2 className={`h-4 w-4 ${group.is_assigned_to_sop ? 'text-gray-400' : 'text-red-500'}`} />
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {group.is_assigned_to_sop && (
-                            <TooltipContent>
-                              <p>Cannot delete group that is assigned to any SOP</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
+                        {!isReadOnlySwitchedContext && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteClick(group)}
+                                  disabled={group.is_assigned_to_sop}
+                                >
+                                  <Trash2 className={`h-4 w-4 ${group.is_assigned_to_sop ? 'text-gray-400' : 'text-red-500'}`} />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {group.is_assigned_to_sop && (
+                              <TooltipContent>
+                                <p>Cannot delete group that is assigned to any SOP</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        )}
                       </div>
                     </TooltipProvider>
                   </TableCell>
@@ -466,7 +471,7 @@ const GroupConfigurationContent = () => {
       />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen && !isReadOnlySwitchedContext} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Group</AlertDialogTitle>

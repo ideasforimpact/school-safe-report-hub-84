@@ -295,11 +295,19 @@ const CommitteesPage = () => {
   };
 
   const openCreateDialog = () => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: create is not allowed');
+      return;
+    }
     resetForm();
     setOpenDialog(true);
   };
 
   const openEditDialog = async (committee: Committee) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: update is not allowed');
+      return;
+    }
     setEditingCommittee(committee);
     setName(committee.name);
     setDescription(committee.description || '');
@@ -435,6 +443,10 @@ const CommitteesPage = () => {
   };
 
   const handleOpenAddEvent = (committee: Committee) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: add is not allowed');
+      return;
+    }
     const committeeMemberIds = committeeMemberIdsByCommittee[committee.id] || [];
     const canAddMom = isAdmin || (!!employeeId && committeeMemberIds.includes(employeeId));
     if (!canAddMom) {
@@ -749,32 +761,36 @@ const CommitteesPage = () => {
                       <TableCell>{formatDate(committee.updated_at)}</TableCell>
                       <TableCell className="text-right">
                         <div className="inline-flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            onClick={() => openEditDialog(committee)}
-                            disabled={!isAdmin}
-                            title={isAdmin ? 'Edit committee' : 'Admin only'}
-                          >
-                            <Pencil className="h-4 w-4 mr-1" />
+                          {!isReadOnlySwitchedContext && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              onClick={() => openEditDialog(committee)}
+                              disabled={!isAdmin}
+                              title={isAdmin ? 'Edit committee' : 'Admin only'}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
 
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            onClick={() => handleOpenAddEvent(committee)}
-                            disabled={!(isAdmin || ((committeeMemberIdsByCommittee[committee.id] || []).includes(employeeId || '')))}
-                            title={
-                              isAdmin || ((committeeMemberIdsByCommittee[committee.id] || []).includes(employeeId || ''))
-                                ? 'Add MOM/Event'
-                                : 'Committee member or admin only'
-                            }
-                          >
-                            <CalendarPlus className="h-4 w-4 mr-1" />
+                            </Button>
+                          )}
+                          {!isReadOnlySwitchedContext && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              onClick={() => handleOpenAddEvent(committee)}
+                              disabled={!(isAdmin || ((committeeMemberIdsByCommittee[committee.id] || []).includes(employeeId || '')))}
+                              title={
+                                isAdmin || ((committeeMemberIdsByCommittee[committee.id] || []).includes(employeeId || ''))
+                                  ? 'Add MOM/Event'
+                                  : 'Committee member or admin only'
+                              }
+                            >
+                              <CalendarPlus className="h-4 w-4 mr-1" />
 
-                          </Button>
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -829,7 +845,7 @@ const CommitteesPage = () => {
       </div>
 
       <AlertDialog
-        open={openDialog}
+        open={openDialog && !isReadOnlySwitchedContext}
         onOpenChange={(open) => {
           setOpenDialog(open);
           if (!open) resetForm();
@@ -1057,7 +1073,7 @@ const CommitteesPage = () => {
       </AlertDialog>
 
       <AlertDialog
-        open={addEventDialogOpen}
+        open={addEventDialogOpen && !isReadOnlySwitchedContext}
         onOpenChange={(open) => {
           setAddEventDialogOpen(open);
           if (!open) resetEventForm();

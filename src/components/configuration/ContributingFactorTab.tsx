@@ -399,6 +399,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      {canCreate && (
                       <div className="flex justify-end space-x-2">
                         <Button
                           variant="ghost"
@@ -464,6 +465,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                           );
                         })()}
                       </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -578,7 +580,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       </Dialog>
 
       {/* Edit Factor Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isEditDialogOpen && canCreate} onOpenChange={(open) => {
         setIsEditDialogOpen(open);
         if (!open) {
           // Clear error when dialog closes

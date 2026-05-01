@@ -158,6 +158,7 @@ export const FacilityTab = ({
   };
 
   const handleDeleteClick = (facility: FacilityItem) => {
+    if (!canCreate) return;
     setFacilityToDelete({
       id: facility.id,
       name: facility.name
@@ -180,6 +181,7 @@ export const FacilityTab = ({
   };
 
   const handleEditOpen = (facility: FacilityItem) => {
+    if (!canCreate) return;
     console.log("Opening edit dialog for facility:", facility);
     setEditingFacility({
       id: facility.id,
@@ -392,13 +394,13 @@ export const FacilityTab = ({
             <TableRow>
               <TableHead>Facility Name</TableHead>
               <TableHead>Campus</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-4">
+                <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4">
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
                     <span>Loading facilities...</span>
@@ -407,7 +409,7 @@ export const FacilityTab = ({
               </TableRow>
             ) : filteredFacilities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4 text-muted-foreground">
                   {facilities.length === 0 
                     ? "No facilities available. Add your first facility above."
                     : "No facilities match your search criteria."
@@ -421,6 +423,7 @@ export const FacilityTab = ({
                   <TableCell>
                     {getCampusName(facility.campusId)}
                   </TableCell>
+                  {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">
                       <Button 
@@ -487,6 +490,7 @@ export const FacilityTab = ({
                       })()}
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -547,7 +551,7 @@ export const FacilityTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen && canCreate} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Facility</AlertDialogTitle>
@@ -575,13 +579,13 @@ export const FacilityTab = ({
         </AlertDialog>
 
         {/* Edit Dialog */}
-        {editingFacility && (
+        {editingFacility && canCreate && (
           <EditDialog
             title="Edit Facility"
             description="Update the facility details below"
             fieldLabel="Facility name"
             value={editingFacility.name}
-            open={isEditDialogOpen}
+            open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
             onChange={(value) => {
               setEditingFacility(prev => prev ? { ...prev, name: value } : null);

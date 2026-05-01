@@ -300,6 +300,7 @@ export const SubcategoryTab = ({
                   <TableRow key={subcategory.id}>
                     <TableCell>{subcategory.name}</TableCell>
                     <TableCell>
+                      {canCreate && (
                       <div className="flex gap-2">
                         <Button 
                           variant="ghost" 
@@ -363,6 +364,7 @@ export const SubcategoryTab = ({
                           );
                         })()}
                       </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -378,7 +380,7 @@ export const SubcategoryTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen && canCreate} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
@@ -429,7 +431,7 @@ export const SubcategoryTab = ({
         </AlertDialog>
 
         {/* Edit Dialog */}
-        {editingSubcategory && (
+        {editingSubcategory && canCreate && (
           <EditDialog
             title="Edit Subcategory"
             description="Update the subcategory name below"
