@@ -154,24 +154,7 @@ async function processDueIn5DaysReminders(supabase: any, today: Date, result: an
         };
 
         const subject = `Reminder – 5 Days Left for Assessment Due Date [Assessment ID: ${variables.Assessment_ID}]`;
-        const body = `
-Hello ${variables.User_Name},
-
-This is a reminder that your assessment is due in 5 days.
-
-Details:
-
-Assessment ID: ${variables.Assessment_ID}
-
-Title: ${variables.Assessment_Title}
-
-Due Date: ${variables.Due_Date}
-
-Kindly complete and submit it on time.
-
-Regards,
-Safe School Team
-        `.trim();
+        const body = generateAssessmentDueReminderEmailBody(variables);
         const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
           body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: email.priority > 0 ? 'high' : 'normal' },
           headers: { Authorization: `Bearer ${getSupabaseServiceRoleKey()}` }
@@ -297,24 +280,7 @@ async function processOverdueReminders(supabase: any, today: Date, result: any) 
         };
 
         const subject = `Assessment Overdue by ${variables.Overdue_Days} Days – [Assessment ID: ${variables.Assessment_ID}]`;
-        const body = `
-Hello ${variables.User_Name},
-
-The following assessment is overdue by ${variables.Overdue_Days} days and requires immediate attention.
-
-Details:
-
-Assessment ID: ${variables.Assessment_ID}
-
-Title: ${variables.Assessment_Title}
-
-Due Date: ${variables.Due_Date}
-
-Please submit it at the earliest to avoid escalation.
-
-Regards,
-Safe School Team
-        `.trim();
+        const body = generateAssessmentOverdueEmailBody(variables);
         const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-notification-email', {
           body: { to: email.recipient_email, toName: email.recipient_name, subject, body, priority: 'high' },
           headers: { Authorization: `Bearer ${getSupabaseServiceRoleKey()}` }
@@ -527,4 +493,51 @@ function extractSendErrorMessage(error?: any, data?: any): string {
   if (data?.status) parts.push(`status=${data.status}`);
   const composed = parts.filter(Boolean).join(' | ');
   return composed || 'Email send failed';
+}
+
+function generateAssessmentDueReminderEmailBody(variables: any): string {
+  return `
+<div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
+<div style="text-align:center;background-color:#f9fafb;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">
+<h2 style="margin:0;color:#1f2937;font-size:24px;">⏰ Assessment Due Reminder</h2>
+</div>
+<div style="text-align:left;">
+<p style="margin:0 0 20px;font-size:16px;">Hello <strong>${variables.User_Name}</strong>,</p>
+<p style="margin:0 0 20px;font-size:16px;">This is a reminder that your assessment is due in <strong>5 days</strong>.</p>
+<div style="background-color:#fef3c7;padding:16px;border-radius:6px;border-left:4px solid #f59e0b;margin:20px 0;">
+<h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Assessment Details:</h3>
+<p style="margin:6px 0;"><strong>Assessment ID:</strong> ${variables.Assessment_ID}</p>
+<p style="margin:6px 0;"><strong>Title:</strong> ${variables.Assessment_Title}</p>
+<p style="margin:6px 0;"><strong>Due Date:</strong> ${variables.Due_Date}</p>
+</div>
+<p style="margin:20px 0;font-size:16px;color:#6b7280;">Kindly complete and submit it on time. <a href="${variables.Assessment_URL}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
+</div>
+<div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;color:#6b7280;">
+<p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>
+</div>
+</div>`;
+}
+
+function generateAssessmentOverdueEmailBody(variables: any): string {
+  return `
+<div style="max-width:640px;margin:0 auto;padding:24px;font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#1f2937;background-color:#ffffff;border:1px solid #e5e7eb;border-radius:8px;">
+<div style="text-align:center;background-color:#f9fafb;padding:20px;margin:-24px -24px 24px -24px;border-bottom:1px solid #e5e7eb;border-radius:8px 8px 0 0;">
+<h2 style="margin:0;color:#1f2937;font-size:24px;">🚨 Assessment Overdue</h2>
+</div>
+<div style="text-align:left;">
+<p style="margin:0 0 20px;font-size:16px;">Hello <strong>${variables.User_Name}</strong>,</p>
+<p style="margin:0 0 20px;font-size:16px;">The following assessment is overdue by <strong>${variables.Overdue_Days} days</strong> and requires immediate attention.</p>
+<div style="background-color:#fee2e2;padding:16px;border-radius:6px;border-left:4px solid #dc2626;margin:20px 0;">
+<h3 style="margin:0 0 12px;color:#1f2937;font-size:18px;">Overdue Assessment:</h3>
+<p style="margin:6px 0;"><strong>Assessment ID:</strong> ${variables.Assessment_ID}</p>
+<p style="margin:6px 0;"><strong>Title:</strong> ${variables.Assessment_Title}</p>
+<p style="margin:6px 0;"><strong>Due Date:</strong> ${variables.Due_Date}</p>
+<p style="margin:6px 0;"><strong>Days Overdue:</strong> ${variables.Overdue_Days}</p>
+</div>
+<p style="margin:20px 0;font-size:16px;color:#6b7280;">Please submit it at the earliest to avoid escalation. <a href="${variables.Assessment_URL}" style="color:#3b82f6;text-decoration:none;"><strong>Click Here</strong></a></p>
+</div>
+<div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid #e5e7eb;color:#6b7280;">
+<p style="margin:0;font-size:14px;">Regards,<br/><strong>Safe School Team</strong></p>
+</div>
+</div>`;
 }
