@@ -94,6 +94,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null, skipIfNoC
         updatedAt: record.updated_at || new Date().toISOString(),
         isSuperAdmin: record?.is_super_admin,
         isCpdInvolved: (record as any).is_cpd_involved === true,
+        profileDocuments: Array.isArray((record as any).documents) ? (record as any).documents : [],
         documents: documents,
         clientId: record.client_id
       };
@@ -198,6 +199,7 @@ export const getActiveEmployeesFromApi = async (clientId?: string | null, skipIf
         email: record.email || '',
         phone: (record as any).phone || '',
         designation: (record as any).designation || '',
+        profileDocuments: Array.isArray((record as any).documents) ? (record as any).documents : [],
         dateOfBirth: '',
         address: '',
         joiningDate: record.joining_date || new Date().toISOString(),
@@ -265,6 +267,7 @@ export const getEmployeeByIdFromApi = async (id: string, clientId?: string): Pro
       lastName: data.last_name,
       email: data.email || '',
       phone: (data as any).phone || '',
+      profileDocuments: Array.isArray((data as any).documents) ? (data as any).documents : [],
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),
@@ -324,6 +327,8 @@ export const getEmployeeByUserIdFromApi = async (userId: string, routePath?: str
       lastName: data.last_name,
       email: data.email || '',
       phone: '',
+      designation: (data as any).designation || '',
+      profileDocuments: Array.isArray((data as any).documents) ? (data as any).documents : [],
       dateOfBirth: '',
       address: '',
       joiningDate: data.joining_date || new Date().toISOString(),

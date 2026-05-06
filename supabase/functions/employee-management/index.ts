@@ -336,6 +336,7 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
       user_id: emp.user_id || null,
       is_super_admin: emp.is_super_admin || false,
       is_cpd_involved: emp.is_cpd_involved === true,
+      documents: Array.isArray(emp.documents) ? emp.documents : [],
     });
   }
   
@@ -392,7 +393,7 @@ async function handleBulkImport(supabaseClient: any, employees: any[], clientId:
     }
   );
 }
- 
+
 async function handleCreate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
   
@@ -493,7 +494,8 @@ async function handleCreate(supabaseClient: any, employee: any) {
     client_id: clientId,
     user_id: employee.user_id || null,
     is_super_admin: employee.is_super_admin || false,
-    is_cpd_involved: employee.is_cpd_involved === true
+    is_cpd_involved: employee.is_cpd_involved === true,
+    documents: Array.isArray(employee.documents) ? employee.documents : []
   };
  
   console.log("Creating employee with data:", employeeData);
@@ -668,6 +670,9 @@ async function handleUpdate(supabaseClient: any, employee: any) {
   }
   if (employee.is_cpd_involved !== undefined) {
     updateData.is_cpd_involved = employee.is_cpd_involved === true;
+  }
+  if (employee.documents !== undefined) {
+    updateData.documents = Array.isArray(employee.documents) ? employee.documents : [];
   }
  
   console.log("Update data:", updateData);

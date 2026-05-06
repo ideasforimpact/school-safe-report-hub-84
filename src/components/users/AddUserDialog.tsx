@@ -1,22 +1,24 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { Loader2, Check, X, Tag } from 'lucide-react';
+import { Loader2, Check, X, Tag, Upload, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 import { checkEmployeeIdExists,checkEmployeeEmailExists } from '@/services/employee/employeeValidationService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import defaultModules from "@/utils/default-modules.json";
-import { applyDefaultModules, DefaultModule } from "@/utils/moduleDefault";
+import { applyDefaultModules } from "@/utils/moduleDefault";
 import { useEmployeeTypes } from '@/hooks/useEmployeeTypes';
 import { useEmployeeDepartments } from '@/hooks/useEmployeeDepartments';
+import WizardProgress from '@/components/ui/wizard-progress';
 
 import { EMPLOYEE_ID_CONSTANTS, isValidEmployeeId as validateEmployeeId, getEmployeeIdErrorMessage, EMPLOYEE_NAME_CONSTANTS, EMPLOYEE_LAST_NAME_CONSTANTS } from '@/constant/employeeConstant';
 
@@ -35,6 +37,12 @@ interface AddUserDialogProps {
     department?: DepartmentType;
     joiningDate?: string;
     moduleAccessPayload?: ModuleAccessItem[];
+    documents?: Array<{
+      key?: string;
+      fileName: string;
+      filePath?: string;
+      uploadedAt: string;
+    }>;
     clientId?: string;
     is_cpd_involved?: boolean;
   };
@@ -51,15 +59,42 @@ export type EmailValidationStatus = 'idle' | 'checking' | 'available' | 'exists'
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const MAX_TAGS = 2;
   const MAX_TAG_LENGTH = 25;
+  const hasEmail = Boolean(formData.email?.trim());
+  const steps = useMemo(
+    () =>
+      hasEmail
+        ? (['Basic Information', 'Professional Details', 'Module Access', 'Documents & Compliance'] as const)
+        : (['Basic Information', 'Professional Details', 'Documents & Compliance'] as const),
+    [hasEmail]
+  );
+  const moduleAccessStepIndex = hasEmail ? 2 : -1;
+  const documentsStepIndex = hasEmail ? 3 : 2;
+  const complianceDocuments = [
+    { key: 'letterOfAppointment', label: 'Letter of Appointment' },
+    { key: 'marksheets10And12', label: '10th/12th Marksheets' },
+    { key: 'aadhaarCard', label: 'Aadhaar Card' },
+    { key: 'panCard', label: 'PAN Card' },
+    { key: 'passport', label: 'Passport' },
+    { key: 'bankPassbook', label: 'Bank Passbook' },
+    { key: 'esiProof', label: 'ESI Number Proof' }
+  ] as const;
   const { state } = useEmployeeStore();
   const { employeeTypes, loading: employeeTypesLoading } = useEmployeeTypes();
   const { employeeDepartments, loading: employeeDepartmentsLoading } = useEmployeeDepartments();
+  const [currentStep, setCurrentStep] = useState(0);
+  const completedSteps = useMemo(
+    () => Array.from({ length: currentStep }, (_, index) => index),
+    [currentStep]
+  );
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   const [employeeIdValidation, setEmployeeIdValidation] = useState<EmployeeIdValidationStatus>('idle');
   const [emailValidation, setEmailValidation] = useState<EmailValidationStatus>('idle');
+  const [uploadedDocuments, setUploadedDocuments] = useState<Record<string, string>>({});
+  const [uploadedDocumentFiles, setUploadedDocumentFiles] = useState<Record<string, File>>({});
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState('');
   const joiningDateRef = useRef<HTMLInputElement>(null);
+  const documentInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [joiningDateError, setJoiningDateError] = useState('');
 
   const formDataRef = useRef(formData);
@@ -122,9 +157,22 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     }));
     setTagInput('');
     setTagError('');
+    setUploadedDocuments({});
   }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [isOpen, state.configuredModules, formData.employeeId]);
+}, [isOpen, state.configuredModules]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(0);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (currentStep > steps.length - 1) {
+      setCurrentStep(steps.length - 1);
+    }
+  }, [currentStep, steps.length]);
 
 
   // Log clientId for debugging
@@ -209,15 +257,19 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const handleClose = () => {
     setIsOpen(false);
     resetForm();
+    setCurrentStep(0);
     setSelectedModules([]);
     setEmployeeIdValidation('idle');
     setTagInput('');
     setTagError('');
+    setUploadedDocuments({});
+    setUploadedDocumentFiles({});
     setJoiningDateError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    // Submit only from final step to avoid accidental create.
+    if (currentStep !== steps.length - 1) return;
     
     // Prevent submission if employee ID already exists
     if (employeeIdValidation === 'exists') {
@@ -256,6 +308,43 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       ...module,
       employeeId: formData.employeeId || undefined
     }));
+
+    const documentsPayload: Array<{
+      key: string;
+      fileName: string;
+      filePath: string;
+      uploadedAt: string;
+    }> = [];
+
+    const bucketName = 'employee_profile_documents';
+    const activeClientId = formData.clientId || clientId ;
+    const activeEmployeeKey = formData.employeeId ;
+
+    for (const doc of complianceDocuments) {
+      const file = uploadedDocumentFiles[doc.key];
+      if (!file) continue;
+
+      const safeFileName = file.name.replace(/\s+/g, '_');
+      const storagePath = `${activeClientId}/${activeEmployeeKey}/${doc.key}/${Date.now()}_${safeFileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(storagePath, file, {
+          upsert: false,
+          contentType: file.type || 'application/octet-stream'
+        });
+
+      if (uploadError) {
+        toast.error(`Failed to upload ${doc.label}`);
+        return;
+      }
+
+      documentsPayload.push({
+        key: doc.key,
+        fileName: file.name,
+        filePath: storagePath,
+        uploadedAt: new Date().toISOString()
+      });
+    }
     
     console.log("Module access payload for backend:", moduleAccessPayload);
     console.log("Form data before update:", formData);
@@ -264,8 +353,9 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     const completeFormData = {
       ...formData,
       clientId: formData.clientId || clientId,
-      designation: currentTags.join(', '),
-      moduleAccessPayload
+      designation: (formData.designation || '').trim() || currentTags.join(', '),
+      moduleAccessPayload,
+      documents: documentsPayload
     };
     
     console.log("Complete form data for submission:", completeFormData);
@@ -338,7 +428,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     return validateEmployeeId(employeeId);
   };
 
-  // Phone validation (E.164 basic or 10-15 digits allowing +, space, hyphen)
   // Phone validation (digits only, exactly 10 digits)
   const isValidPhone = (phone: string) => {
     return /^[6-9]\d{9}$/.test(phone);
@@ -435,6 +524,38 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     }
   };
 
+  const openDocumentPicker = (documentKey: string) => {
+    documentInputRefs.current[documentKey]?.click();
+  };
+
+  const handleDocumentChange = (documentKey: string, file: File | null) => {
+    setUploadedDocuments((prev) => ({
+      ...prev,
+      [documentKey]: file ? file.name : ''
+    }));
+    setUploadedDocumentFiles((prev) => {
+      const next = { ...prev };
+      if (file) next[documentKey] = file;
+      else delete next[documentKey];
+      return next;
+    });
+  };
+
+  const handleRemoveDocument = (documentKey: string) => {
+    setUploadedDocuments((prev) => {
+      const next = { ...prev };
+      delete next[documentKey];
+      return next;
+    });
+    setUploadedDocumentFiles((prev) => {
+      const next = { ...prev };
+      delete next[documentKey];
+      return next;
+    });
+    const input = documentInputRefs.current[documentKey];
+    if (input) input.value = '';
+  };
+
   // Check if form is valid for submission
   const isFormValid = () => {
   const hasValidEmail = !formData.email || isValidEmail(formData.email);
@@ -464,6 +585,53 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   );
 };
 
+  const isBasicStepValid = () => {
+    const hasValidEmail = !formData.email || isValidEmail(formData.email);
+    const isEmailUnique =
+      !formData.email ||
+      emailValidation === 'available' ||
+      emailValidation === 'idle';
+
+    return (
+      !!formData.firstName &&
+      formData.firstName.length <= EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH &&
+      isValidName(formData.firstName) &&
+      !!formData.lastName &&
+      formData.lastName.length <= EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH &&
+      isValidName(formData.lastName) &&
+      hasValidEmail &&
+      isEmailUnique &&
+      (!formData.phone || isValidPhone(formData.phone))
+    );
+  };
+
+  const isProfessionalStepValid = () => {
+    return (
+      !!formData.employeeId &&
+      formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH &&
+      formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH &&
+      isValidEmployeeId(formData.employeeId) &&
+      employeeIdValidation === 'available' &&
+      (!formData.joiningDate || isValidJoiningDate(formData.joiningDate)) &&
+      !joiningDateError
+    );
+  };
+
+  const canProceedToNextStep = () => {
+    if (currentStep === 0) return isBasicStepValid() && emailValidation !== 'checking';
+    if (currentStep === 1) return isProfessionalStepValid() && employeeIdValidation !== 'checking';
+    return true;
+  };
+
+  const handleStepClick = (stepIndex: number) => {
+    if (stepIndex === currentStep) return;
+    if (stepIndex > currentStep && !canProceedToNextStep()) {
+      toast.error('Please fill in all required fields correctly before continuing');
+      return;
+    }
+    setCurrentStep(stepIndex);
+  };
+
   const handleDialogOpenChange = (open: boolean) => {
     // Prevent closing if form is being submitted
     if (!open && isLoading) {
@@ -479,342 +647,456 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
   return (
     <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} noValidate className="space-y-4 overflow-y-auto pr-1 px-4">
+        <WizardProgress
+          steps={[...steps]}
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+          onStepClick={handleStepClick}
+        />
+        <form
+          onSubmit={(e) => e.preventDefault()}
+          onKeyDown={(e) => {
+            if (
+              e.key === 'Enter' &&
+              (e.target as HTMLElement).id !== 'employee-tags'
+            ) {
+              e.preventDefault();
+            }
+          }}
+          noValidate
+          className="space-y-4 overflow-y-auto pr-1 px-4"
+        >
           <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
-                <Input
-                  id="firstName"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  maxLength={EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH}
-                  minLength={EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH}
-                  required
-                  className={formData.firstName && !isValidName(formData.firstName) ? 'border-red-500' : ''}
-                />
-                {formData.firstName &&
-                  formData.firstName.length < EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH && (
-                    <p className="text-xs text-red-500">
-                      First name must be at least {EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH} characters
-                    </p>
-                )}
-
-                {formData.firstName &&
-                  formData.firstName.length > EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH && (
-                    <p className="text-xs text-red-500">
-                      First name cannot exceed {EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH} characters
-                    </p>
-                )}
-                {formData.firstName && !isValidName(formData.firstName) && (
-                  <p className="text-xs text-red-500">First name can only contain letters and spaces</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
-                <Input
-                  id="lastName"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  maxLength={EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH}
-                  minLength={EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH}
-                  required
-                  className={formData.lastName && !isValidName(formData.lastName) ? 'border-red-500' : ''}
-                />
-               {formData.lastName &&
-                  formData.lastName.length < EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH && (
-                    <p className="text-xs text-red-500">
-                      Last name must be at least {EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH} character
-                    </p>
-                )}
-
-                {formData.lastName &&
-                  formData.lastName.length > EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH && (
-                    <p className="text-xs text-red-500">
-                      Last name cannot exceed {EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH} characters
-                    </p>
-                )}
-                {formData.lastName && !isValidName(formData.lastName) && (
-                  <p className="text-xs text-red-500">Last name can only contain letters and spaces</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-                {formData.email && !isValidEmail(formData.email) && (
-                  <p className="text-xs text-red-500">Please enter a valid email address</p>
-                )}
-                {formData.email && emailValidation !== 'idle' && isValidEmail(formData.email) && (
-                  <p
-                    className={`text-xs ${
-                      emailValidation === 'exists' || emailValidation === 'error'
-                        ? 'text-red-500'
-                        : emailValidation === 'available'
-                        ? 'text-green-500'
-                        : 'text-blue-500'
-                    }`}
-                  >
-                    {getEmployeeEmailValidationMessage()}
-                  </p>
-                )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                inputMode="numeric"
-                value={formData.phone || ''}
-                onChange={(e) => {
-                  const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
-                  setFormData({ ...formData, phone: digitsOnly });
-                }}
-                placeholder="10-digit mobile number"
-                maxLength={10}
-              />
-              {formData.phone && formData.phone.length < 10 && (
-                <p className="text-xs text-red-500">
-                  Mobile number must be 10 digits
-                </p>
-              )}
-
-              {formData.phone?.length === 10 && !isValidPhone(formData.phone) && (
-                <p className="text-xs text-red-500">
-                  Mobile number must be valid 
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="employee-tags" className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-gray-500" />
-                  Tags
-                </Label>
-                <span className="text-xs text-gray-400">{currentTags.length}/{MAX_TAGS} tags</span>
-              </div>
-              <div className="min-h-14 w-full rounded-md border bg-gray-50 px-2 py-2 flex flex-wrap items-center gap-2">
-                {currentTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white text-sm px-2 py-1"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      className="text-white/90 hover:text-white"
-                      onClick={() => removeTag(tag)}
-                      aria-label={`Remove ${tag}`}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                ))}
-                <Input
-                  id="employee-tags"
-                  value={tagInput}
-                  onChange={(e) => {
-                    setTagInput(sanitizeTag(e.target.value));
-                    if (tagError) setTagError('');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                  onBlur={addTag}
-                  placeholder={currentTags.length >= MAX_TAGS ? 'Maximum tags added' : 'Add one more...'}
-                  className="border-0 shadow-none bg-transparent focus-visible:ring-0 h-8 flex-1 min-w-[140px]"
-                  maxLength={MAX_TAG_LENGTH}
-                  disabled={currentTags.length >= MAX_TAGS}
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                Maximum {MAX_TAGS} tags, {MAX_TAG_LENGTH} characters each
-              </p>
-              {tagError && <p className="text-xs text-red-500">{tagError}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="employeeId">Employee ID <span className="text-red-500">*</span></Label>
-                <div className="relative">
-                  <Input
-                    id="employeeId"
-                    value={formData.employeeId || ''}
-                    onChange={(e) => {
-                      const upperValue = e.target.value.toUpperCase();
-                      setFormData({ ...formData, employeeId: upperValue });
-                    }}
-                    maxLength={EMPLOYEE_ID_CONSTANTS.MAX_LENGTH}
-                    minLength={EMPLOYEE_ID_CONSTANTS.MIN_LENGTH}
-                    className={`pr-10 uppercase ${
-                      employeeIdValidation === 'exists' ? 'border-red-500 focus:border-red-500' :
-                      employeeIdValidation === 'available' ? 'border-green-500 focus:border-green-500' : ''
-                    }`}
-                    required
-                  />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {getEmployeeIdValidationIcon()}
+            {currentStep === 0 && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      maxLength={EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH}
+                      minLength={EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH}
+                      required
+                      className={formData.firstName && !isValidName(formData.firstName) ? 'border-red-500' : ''}
+                    />
+                    {formData.firstName &&
+                      formData.firstName.length < EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH && (
+                        <p className="text-xs text-red-500">
+                          First name must be at least {EMPLOYEE_NAME_CONSTANTS.MIN_LENGTH} characters
+                        </p>
+                    )}
+                    {formData.firstName &&
+                      formData.firstName.length > EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH && (
+                        <p className="text-xs text-red-500">
+                          First name cannot exceed {EMPLOYEE_NAME_CONSTANTS.MAX_LENGTH} characters
+                        </p>
+                    )}
+                    {formData.firstName && !isValidName(formData.firstName) && (
+                      <p className="text-xs text-red-500">First name can only contain letters and spaces</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      maxLength={EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH}
+                      minLength={EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH}
+                      required
+                      className={formData.lastName && !isValidName(formData.lastName) ? 'border-red-500' : ''}
+                    />
+                    {formData.lastName &&
+                      formData.lastName.length < EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH && (
+                        <p className="text-xs text-red-500">
+                          Last name must be at least {EMPLOYEE_LAST_NAME_CONSTANTS.MIN_LENGTH} character
+                        </p>
+                    )}
+                    {formData.lastName &&
+                      formData.lastName.length > EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH && (
+                        <p className="text-xs text-red-500">
+                          Last name cannot exceed {EMPLOYEE_LAST_NAME_CONSTANTS.MAX_LENGTH} characters
+                        </p>
+                    )}
+                    {formData.lastName && !isValidName(formData.lastName) && (
+                      <p className="text-xs text-red-500">Last name can only contain letters and spaces</p>
+                    )}
                   </div>
                 </div>
-               {formData.employeeId && formData.employeeId.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && (
-                  <p className="text-xs text-red-500">Employee ID must be at least {EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters</p>
-                )}
-                {formData.employeeId && formData.employeeId.length > EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && (
-                  <p className="text-xs text-red-500">Employee ID cannot exceed {EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters</p>
-                )}
-                {formData.employeeId && formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && !isValidEmployeeId(formData.employeeId) && (
-                  <p className="text-xs text-red-500">{getEmployeeIdErrorMessage()}</p>
-                )}
-                {employeeIdValidation !== 'idle' && (
-                <p className={`text-xs ${
-                  employeeIdValidation === 'exists' || employeeIdValidation === 'error' ? 'text-red-500' :
-                  employeeIdValidation === 'available' ? 'text-green-500' : 'text-blue-500'
-                }`}>
-                  {getEmployeeIdValidationMessage()}
-                </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="joiningDate">Joining Date</Label>
-                <Input
-                  id="joiningDate"
-                  type="date"
-                  ref={joiningDateRef}
-                  value={formData.joiningDate || ''}
-                  onChange={handleJoiningDateChange}
-                  onBlur={handleJoiningDateBlur}
-                  className={joiningDateError ? 'border-red-500' : ''}
-                />
-                {joiningDateError && (
-                  <p className="text-xs text-red-500">{joiningDateError}</p>
-                )}
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="employeeType">Employee Type</Label>
-                <Select
-                  value={formData.employeeType}
-                  onValueChange={(value) => setFormData({ ...formData, employeeType: value as any })}
-                  disabled={employeeTypesLoading}
-                >
-                  <SelectTrigger id="employeeType">
-                    <SelectValue placeholder={employeeTypesLoading ? "Loading..." : "Select type"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employeeTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.type_name.charAt(0).toUpperCase() + type.type_name.slice(1).replace('_', ' ')}
-                      </SelectItem>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                  {formData.email && !isValidEmail(formData.email) && (
+                    <p className="text-xs text-red-500">Please enter a valid email address</p>
+                  )}
+                  {formData.email && emailValidation !== 'idle' && isValidEmail(formData.email) && (
+                    <p
+                      className={`text-xs ${
+                        emailValidation === 'exists' || emailValidation === 'error'
+                          ? 'text-red-500'
+                          : emailValidation === 'available'
+                          ? 'text-green-500'
+                          : 'text-blue-500'
+                      }`}
+                    >
+                      {getEmployeeEmailValidationMessage()}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    inputMode="numeric"
+                    value={formData.phone || ''}
+                    onChange={(e) => {
+                      const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, phone: digitsOnly });
+                    }}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                  />
+                  {formData.phone && formData.phone.length < 10 && (
+                    <p className="text-xs text-red-500">
+                      Mobile number must be 10 digits
+                    </p>
+                  )}
+                  {formData.phone?.length === 10 && !isValidPhone(formData.phone) && (
+                    <p className="text-xs text-red-500">
+                      Mobile number must be valid 
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="employee-tags" className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-gray-500" />
+                      Tags
+                    </Label>
+                    <span className="text-xs text-gray-400">{currentTags.length}/{MAX_TAGS} tags</span>
+                  </div>
+                  <div className="min-h-14 w-full rounded-md border bg-gray-50 px-2 py-2 flex flex-wrap items-center gap-2">
+                    {currentTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white text-sm px-2 py-1"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          className="text-white/90 hover:text-white"
+                          onClick={() => removeTag(tag)}
+                          aria-label={`Remove ${tag}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={(value) => setFormData({ ...formData, department: value as any })}
-                  disabled={employeeDepartmentsLoading}
-                >
-                  <SelectTrigger id="department">
-                    <SelectValue placeholder={employeeDepartmentsLoading ? "Loading..." : "Select department"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employeeDepartments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.department_name.charAt(0).toUpperCase() + dept.department_name.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Hidden input for clientId */}
-            <input 
-              type="hidden" 
-              id="clientId" 
-              name="clientId" 
-              value={formData.clientId || clientId || ''} 
-            />
-
-            {/* Module Access Section - only when email provided */}
-            {formData.email && (
-              <div className="space-y-2">
-                <Label>Module Access</Label>
-                <ModuleAccess
-                  selectedModules={selectedModules}
-                  onModuleChange={handleModuleChange}
-                  employeeId={formData.employeeId}
-                />
-                 {selectedModules.length === 0 && (
-                  <p className="text-xs text-red-500">
-                    Please select at least one module.
+                    <Input
+                      id="employee-tags"
+                      value={tagInput}
+                      onChange={(e) => {
+                        setTagInput(sanitizeTag(e.target.value));
+                        if (tagError) setTagError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ',') {
+                          e.preventDefault();
+                          addTag();
+                        }
+                      }}
+                      onBlur={addTag}
+                      placeholder={currentTags.length >= MAX_TAGS ? 'Maximum tags added' : 'Add one more...'}
+                      className="border-0 shadow-none bg-transparent focus-visible:ring-0 h-8 flex-1 min-w-[140px]"
+                      maxLength={MAX_TAG_LENGTH}
+                      disabled={currentTags.length >= MAX_TAGS}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Maximum {MAX_TAGS} tags, {MAX_TAG_LENGTH} characters each
                   </p>
-                )}
-              </div>
+                  {tagError && <p className="text-xs text-red-500">{tagError}</p>}
+                </div>
+              </>
             )}
 
-            <div className="space-y-2 pt-2 border-t border-gray-100">
-              <Label htmlFor="cpd-toggle">CPD Involved</Label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  id="cpd-toggle"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      is_cpd_involved: !formData.is_cpd_involved,
-                    })
-                  }
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <span className="text-sm text-gray-600">
-                  {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
-                </span>
-              </div>
-            </div>
+            {currentStep === 1 && (
+              <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="employeeId" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Employee ID <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="employeeId"
+                          value={formData.employeeId || ''}
+                          onChange={(e) => {
+                            const upperValue = e.target.value.toUpperCase();
+                            setFormData({ ...formData, employeeId: upperValue });
+                          }}
+                          maxLength={EMPLOYEE_ID_CONSTANTS.MAX_LENGTH}
+                          minLength={EMPLOYEE_ID_CONSTANTS.MIN_LENGTH}
+                          className={`pr-10 uppercase ${
+                            employeeIdValidation === 'exists' ? 'border-red-500 focus:border-red-500' :
+                            employeeIdValidation === 'available' ? 'border-green-500 focus:border-green-500' : ''
+                          }`}
+                          required
+                        />
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          {getEmployeeIdValidationIcon()}
+                        </div>
+                      </div>
+                      {formData.employeeId && formData.employeeId.length < EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && (
+                        <p className="text-xs text-red-500">Employee ID must be at least {EMPLOYEE_ID_CONSTANTS.MIN_LENGTH} characters</p>
+                      )}
+                      {formData.employeeId && formData.employeeId.length > EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && (
+                        <p className="text-xs text-red-500">Employee ID cannot exceed {EMPLOYEE_ID_CONSTANTS.MAX_LENGTH} characters</p>
+                      )}
+                      {formData.employeeId && formData.employeeId.length >= EMPLOYEE_ID_CONSTANTS.MIN_LENGTH && formData.employeeId.length <= EMPLOYEE_ID_CONSTANTS.MAX_LENGTH && !isValidEmployeeId(formData.employeeId) && (
+                        <p className="text-xs text-red-500">{getEmployeeIdErrorMessage()}</p>
+                      )}
+                      {employeeIdValidation !== 'idle' && (
+                        <p className={`text-xs ${
+                          employeeIdValidation === 'exists' || employeeIdValidation === 'error' ? 'text-red-500' :
+                          employeeIdValidation === 'available' ? 'text-green-500' : 'text-blue-500'
+                        }`}>
+                          {getEmployeeIdValidationMessage()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="joiningDate" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Joining Date
+                      </Label>
+                      <Input
+                        id="joiningDate"
+                        type="date"
+                        ref={joiningDateRef}
+                        value={formData.joiningDate || ''}
+                        onChange={handleJoiningDateChange}
+                        onBlur={handleJoiningDateBlur}
+                        className={joiningDateError ? 'border-red-500' : ''}
+                      />
+                      {joiningDateError && (
+                        <p className="text-xs text-red-500">{joiningDateError}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="employeeType" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Employee Type
+                      </Label>
+                      <Select
+                        value={formData.employeeType}
+                        onValueChange={(value) => setFormData({ ...formData, employeeType: value as EmployeeType })}
+                        disabled={employeeTypesLoading}
+                      >
+                        <SelectTrigger id="employeeType">
+                          <SelectValue placeholder={employeeTypesLoading ? "Loading..." : "Select type"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employeeTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.type_name.charAt(0).toUpperCase() + type.type_name.slice(1).replace('_', ' ')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department" className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Department
+                      </Label>
+                      <Select
+                        value={formData.department}
+                        onValueChange={(value) => setFormData({ ...formData, department: value as DepartmentType })}
+                        disabled={employeeDepartmentsLoading}
+                      >
+                        <SelectTrigger id="department">
+                          <SelectValue placeholder={employeeDepartmentsLoading ? "Loading..." : "Select department"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employeeDepartments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.id}>
+                              {dept.department_name.charAt(0).toUpperCase() + dept.department_name.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-gray-100 mt-3 mb-4">
+                  <Label htmlFor="cpd-toggle">CPD Involved</Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      id="cpd-toggle"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          is_cpd_involved: !formData.is_cpd_involved,
+                        })
+                      }
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        formData.is_cpd_involved ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.is_cpd_involved ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      {formData.is_cpd_involved ? 'Included in CPD tracking' : 'Not included in CPD tracking'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {moduleAccessStepIndex !== -1 && currentStep === moduleAccessStepIndex && (
+              <>
+                <div className="h-[420px] overflow-y-auto">
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Module Access
+                    </Label>
+                    <ModuleAccess
+                      selectedModules={selectedModules}
+                      onModuleChange={handleModuleChange}
+                      employeeId={formData.employeeId}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {currentStep === documentsStepIndex && (
+              <>
+                <input 
+                  type="hidden" 
+                  id="clientId" 
+                  name="clientId" 
+                  value={formData.clientId || clientId || ''} 
+                />
+
+                <div className="h-[420px] overflow-y-auto mb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <h3 className="text-base font-semibold text-blue-600">Documents & Compliance</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    {complianceDocuments.map((document) => {
+                      const fileName = uploadedDocuments[document.key];
+                      return (
+                        <div key={document.key} className="space-y-1.5">
+                          <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {document.label}
+                          </Label>
+                          <div className="flex items-center justify-between rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2">
+                            <span className="text-sm text-slate-500 truncate pr-2">
+                              {fileName || `Upload ${document.label}`}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {fileName && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveDocument(document.key)}
+                                  className="text-red-500 hover:text-red-600"
+                                  aria-label={`Remove ${document.label}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => openDocumentPicker(document.key)}
+                                className="text-blue-600 hover:text-blue-700"
+                                aria-label={`Upload ${document.label}`}
+                              >
+                                <Upload className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <input
+                              ref={(element) => {
+                                documentInputRefs.current[document.key] = element;
+                              }}
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => handleDocumentChange(document.key, e.target.files?.[0] ?? null)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </>
+            )}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={
-                !isFormValid() ||
-                employeeIdValidation === 'checking' ||
-                emailValidation === 'checking' ||
-                !!joiningDateError
-              }
-            >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add User
-            </Button>
+            {currentStep > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}
+                disabled={isLoading}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+              </Button>
+            )}
+            {currentStep < steps.length - 1 ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!canProceedToNextStep()) {
+                    toast.error('Please fill in all required fields correctly before continuing');
+                    return;
+                  }
+                  setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+                }}
+                disabled={isLoading || !canProceedToNextStep()}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            ) : (
+              <Button 
+                type="button"
+                onClick={handleSubmit}
+                disabled={
+                  !isFormValid() ||
+                  employeeIdValidation === 'checking' ||
+                  emailValidation === 'checking' ||
+                  !!joiningDateError
+                }
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add User
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

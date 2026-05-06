@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle, FileText, Download, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
@@ -25,6 +25,15 @@ import { formatDate } from "@/lib/Dateformat";
 import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  fetchEmployeeProfileDocuments,
+  fetchEmployeeVerificationDocuments,
+  getProfileDocumentSignedUrl,
+  ProfileDocumentRow,
+  resolveVerificationDocumentUrl,
+  VerificationDocumentRow,
+} from '@/services/employee/employeeProfileDocumentService';
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -45,24 +54,22 @@ const UserList = ({
   hasAdminAccess = false,
   onRefresh,
 }: UserListProps) => {
-  type EmployeeDocumentInfo = {
-    id: string;
-    name: string;
-    status: 'pending' | 'verified' | 'failed';
-  };
-
   const { employeeData } = useAuth();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
   const [employeeReferences, setEmployeeReferences] = useState<Record<string, IncidentReferenceCheck>>({});
   const [cpdDialogUser, setCpdDialogUser] = useState<EmployeeUser | null>(null);
-  const [documentsByEmployee, setDocumentsByEmployee] = useState<Record<string, EmployeeDocumentInfo[]>>({});
-  const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
-  
+  const [documentDialogUser, setDocumentDialogUser] = useState<EmployeeUser | null>(null);
+  const [profileDocsForDialog, setProfileDocsForDialog] = useState<ProfileDocumentRow[]>([]);
+  const [profileDocsLoading, setProfileDocsLoading] = useState(false);
+  const [verificationDocsForDialog, setVerificationDocsForDialog] = useState<VerificationDocumentRow[]>([]);
+  const [verificationDocsLoading, setVerificationDocsLoading] = useState(false);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
 
   // Pre-load reference info so we can disable delete button for linked employees
   useEffect(() => {
@@ -102,77 +109,48 @@ const UserList = ({
     };
   }, [users, employeeData]);
 
-  // Fetch employee uploaded documents for the info popover near Department.
   useEffect(() => {
-    let isCancelled = false;
+    if (!documentDialogUser?.id) {
+      setProfileDocsForDialog([]);
+      setVerificationDocsForDialog([]);
+      return;
+    }
 
-    const loadEmployeeDocuments = async () => {
-      if (!users.length) {
-        setDocumentsByEmployee({});
-        return;
-      }
+    let cancelled = false;
 
+    const loadDocuments = async () => {
+      setProfileDocsLoading(true);
+      setVerificationDocsLoading(true);
       try {
-        setIsDocumentsLoading(true);
-        const employeeIds = users.map((u) => u.id).filter(Boolean);
-
-        const { data, error } = await supabase
-          .from('employee_documents')
-          .select('id, employee_id, verification_status, params, document_type:document_type_id(name)')
-          .in('employee_id', employeeIds as any)
-          .eq('is_delete', 0);
-
-        if (error) throw error;
-        if (isCancelled) return;
-
-        const toLabel = (value: string) =>
-          value
-            .split('_')
-            .filter(Boolean)
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(' ');
-
-        const normalizeStatus = (status: string | null | undefined): EmployeeDocumentInfo['status'] => {
-          if (!status) return 'pending';
-          const normalized = status.toLowerCase();
-          if (normalized === 'verified' || normalized === 'completed') return 'verified';
-          if (normalized === 'failed' || normalized === 'rejected') return 'failed';
-          return 'pending';
-        };
-
-        const grouped: Record<string, EmployeeDocumentInfo[]> = {};
-        users.forEach((u) => {
-          grouped[u.id] = [];
-        });
-
-        (data || []).forEach((doc: any) => {
-          const employeeId = doc.employee_id as string;
-          const selected = doc?.params?.selected;
-          const typeName = doc?.document_type?.name;
-          const displayName = toLabel(typeName || selected || 'document');
-
-          if (!grouped[employeeId]) grouped[employeeId] = [];
-          grouped[employeeId].push({
-            id: doc.id,
-            name: displayName,
-            status: normalizeStatus(doc.verification_status),
-          });
-        });
-
-        setDocumentsByEmployee(grouped);
+        const [profileRows, verificationRows] = await Promise.all([
+          fetchEmployeeProfileDocuments(
+            documentDialogUser.id,
+            documentDialogUser.clientId || employeeData?.clientId
+          ),
+          fetchEmployeeVerificationDocuments(documentDialogUser.id),
+        ]);
+        if (cancelled) return;
+        setProfileDocsForDialog(profileRows);
+        setVerificationDocsForDialog(verificationRows);
       } catch (error) {
-        console.error('Error loading employee documents in user list:', error);
+        if (cancelled) return;
+        console.error('UserList: document fetch failed:', error);
+        setProfileDocsForDialog([]);
+        setVerificationDocsForDialog([]);
       } finally {
-        if (!isCancelled) setIsDocumentsLoading(false);
+        if (!cancelled) {
+          setProfileDocsLoading(false);
+          setVerificationDocsLoading(false);
+        }
       }
     };
 
-    loadEmployeeDocuments();
+    loadDocuments();
 
     return () => {
-      isCancelled = true;
+      cancelled = true;
     };
-  }, [users]);
+  }, [documentDialogUser?.id]);
 
   console.log("UserList component - Users:", users);
   console.log("UserList component - hasAdminAccess:", hasAdminAccess);
@@ -210,17 +188,70 @@ const UserList = ({
     setItemsPerPage(Number(value));
   };
 
-  const getStatusBadge = (status: 'pending' | 'verified' | 'failed') => {
-    if (status === 'verified') {
-      return <Badge className="bg-green-100 text-green-700 border-green-200">Verified</Badge>;
-    }
-    if (status === 'failed') {
-      return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>;
-    }
-    return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Pending</Badge>;
+  const valueOrNotSet = (value?: string) => {
+    if (!value || !String(value).trim()) return 'Not Set';
+    return value;
   };
 
+  const openProfileStoredFile = async (bucket: string, storagePath: string) => {
+    const signedUrl = await getProfileDocumentSignedUrl(bucket, storagePath);
+    if (!signedUrl) {
+      toast.error('Unable to open document');
+      return;
+    }
+    window.open(signedUrl, '_blank', 'noopener,noreferrer');
+  };
 
+  const downloadProfileStoredFile = async (bucket: string, storagePath: string, fileName: string) => {
+    const signedUrl = await getProfileDocumentSignedUrl(bucket, storagePath);
+    if (!signedUrl) {
+      toast.error('Unable to download document');
+      return;
+    }
+    try {
+      const res = await fetch(signedUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'download';
+      a.rel = 'noopener noreferrer';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const openVerificationStoredFile = async (documentUrl: string) => {
+    const url = await resolveVerificationDocumentUrl(documentUrl);
+    if (!url) {
+      toast.error('Unable to open document');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const downloadVerificationFile = async (documentUrl: string, fileName: string) => {
+    const url = await resolveVerificationDocumentUrl(documentUrl);
+    if (!url) {
+      toast.error('Unable to download document');
+      return;
+    }
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = fileName || 'download';
+      a.rel = 'noopener noreferrer';
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   // Handle deactivate user with database update
   const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
@@ -378,40 +409,18 @@ const UserList = ({
             <TableCell>{user.email}</TableCell>
             <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
             <TableCell className="text-center">
-              <HoverCard openDelay={120} closeDelay={150}>
-                <HoverCardTrigger asChild>
-                  <button
-                    type="button"
-                    className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
-                    aria-label={`View documents for ${user.firstName} ${user.lastName}`}
-                    disabled={isDocumentsLoading}
-                  >
-                    <AlertCircle className="h-4 w-4" />
-                  </button>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-[260px] p-3" align="start">
-                  <div className="text-xs font-semibold tracking-wide text-gray-500 pb-2 border-b">
-                    DOCUMENTS
-                  </div>
-                  <div className="pt-2 space-y-2 max-h-56 overflow-auto">
-                    {isDocumentsLoading ? (
-                      <div className="text-sm text-gray-500">Loading...</div>
-                    ) : (documentsByEmployee[user.id] || []).length === 0 ? (
-                      <div className="text-sm text-gray-500">No uploaded documents</div>
-                    ) : (
-                      (documentsByEmployee[user.id] || []).map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span className="text-sm text-gray-800 truncate">{doc.name}</span>
-                          </div>
-                          {getStatusBadge(doc.status)}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
+              <button
+                type="button"
+                className="text-blue-600 hover:text-blue-700 disabled:text-gray-300"
+                aria-label={`View documents for ${user.firstName} ${user.lastName}`}
+                onClick={() =>{ 
+                  console.log("Selected User:", user);
+                  setDocumentDialogUser(user);
+              }}
+                
+              >
+                <AlertCircle className="h-4 w-4" />
+              </button>
             </TableCell>
             {/* <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell> */}
             <TableCell>
@@ -681,6 +690,209 @@ const UserList = ({
           </div>
         </div>
       )}
+
+      <Dialog open={!!documentDialogUser} onOpenChange={(open) => !open && setDocumentDialogUser(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+          {documentDialogUser && (
+            <div className="space-y-5 px-6 pb-6">
+              <div className="sticky top-0 z-50 bg-white pb-4 border-b -mx-6 px-6 pt-4">
+                <div className="h-14 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold shrink-0">
+                      {(documentDialogUser.firstName?.[0] || 'U').toUpperCase()}
+                    </div>
+                    <div className="">
+                      <h1 className="text-xl font-semibold leading-tight truncate">
+                        {valueOrNotSet(`${documentDialogUser.firstName || ''} ${documentDialogUser.lastName || ''}`.trim())}
+                      </h1>
+                      <p className="text-sm text-slate-500 truncate">{valueOrNotSet(documentDialogUser.employeeId)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge
+                      variant="outline"
+                      className={
+                        documentDialogUser.isActive
+                          ? "bg-green-100 text-green-800 border-green-200"
+                          : "bg-gray-100 text-gray-800 border-gray-200"
+                      }
+                    >
+                      {documentDialogUser.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-end text-slate-500 hover:text-slate-700 h-6 w-6"
+                      onClick={() => setDocumentDialogUser(null)}
+                      aria-label="Close details dialog"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Basic Information
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-xs text-slate-500 mb-1">First Name</p>
+                  <p className="font-medium">{valueOrNotSet(documentDialogUser.firstName)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Last Name</p>
+                  <p className="font-medium">{valueOrNotSet(documentDialogUser.lastName)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Email</p>
+                  <p className="font-medium">{valueOrNotSet(documentDialogUser.email)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Phone</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).phone)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Tags</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Professional Details
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  
+                  <div><p className="text-xs text-slate-500 mb-1">Designation</p>
+                  <p className="font-medium">{valueOrNotSet((documentDialogUser as any).designation)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Department</p>
+                  <p className="font-medium">{valueOrNotSet(documentDialogUser.department)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Employee Type</p>
+                  <p className="font-medium">{valueOrNotSet(documentDialogUser.employeeType)}</p>
+                  </div>
+                  <div><p className="text-xs text-slate-500 mb-1">Joining Date</p>
+                  <p className="font-medium mb-4">{documentDialogUser.joiningDate ? formatDate(documentDialogUser.joiningDate) : 'Not Set'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Documents & Compliance
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+                <div className="space-y-4">
+                  {profileDocsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      Loading documents…
+                    </div>
+                  ) : profileDocsForDialog.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">No uploaded documents</div>
+                  ) : (
+                    profileDocsForDialog.map((row) => {
+                      const canOpen = Boolean(row.bucket && row.storagePath);
+                      return (
+                        <div key={row.id} className="space-y-1.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            {row.label}
+                          </p>
+                          <div className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors hover:border-blue-400">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <FileText className="h-4 w-4 shrink-0 text-slate-400 transition-colors group-hover:text-blue-600" />
+                              <span className="text-sm text-slate-800 truncate">{row.fileName}</span>
+                            </div>
+                            {canOpen && (
+                              <div className="flex items-center gap-3 shrink-0 text-sm">
+                                <button
+                                  type="button"
+                                  className="text-blue-400 hover:underline font-medium"
+                                  onClick={() => {
+                                    if (row.bucket && row.storagePath) {
+                                      openProfileStoredFile(row.bucket, row.storagePath);
+                                    }
+                                  }}
+                                >
+                                  View
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 text-gray-600 hover:underline font-medium"
+                                  onClick={() => {
+                                    if (row.bucket && row.storagePath) {
+                                      downloadProfileStoredFile(
+                                        row.bucket,
+                                        row.storagePath,
+                                        row.fileName || 'document'
+                                      );
+                                    }
+                                  }}
+                                >
+                                  Download
+                                  <Download className="h-3.5 w-3.5" aria-hidden />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 whitespace-nowrap px-1">
+                    Employee Verification Documents
+                  </h3>
+                  <div className="h-px flex-1 bg-slate-200" aria-hidden />
+                </div>
+
+                <div className="space-y-4 max-h-[min(45vh,360px)] overflow-y-auto pr-1">
+                  {verificationDocsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                      Loading verification documents…
+                    </div>
+                  ) : verificationDocsForDialog.length === 0 ? (
+                    <div className="text-sm text-gray-500 py-2">No uploaded verification documents</div>
+                  ) : (
+                    verificationDocsForDialog.map((row) => (
+                      <div key={row.id} className="flex items-center justify-between rounded-lg mb-2 border border-slate-200 bg-white px-3 py-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                          <span className="text-sm text-slate-800 truncate ">{row.typeLabel}</span>
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border ${
+                            row.status === 'verified'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {row.status === 'verified' ? 'Verified' : 'Pending'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

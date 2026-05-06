@@ -85,6 +85,11 @@ export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   employeeType?: EmployeeType; 
   department?: DepartmentType;
   joiningDate?: string;
+  documents?: Array<{
+    label: string;
+    fileName: string;
+    uploadedAt: string;
+  }>;
   cpd_entries?: CpdEntryForUser[];
   // No need to explicitly define role here since we're extending from User
 }
@@ -215,6 +220,11 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
+    documents?: Array<{
+      label: string;
+      fileName: string;
+      uploadedAt: string;
+    }>;
     clientId?: string;
     moduleAccessPayload?: ModuleAccessItem[];
     is_cpd_involved?: boolean;
@@ -224,6 +234,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
     email: '',
     phone: '',
     designation: '',
+    documents: [],
     tags: [],
     clientId: clientId,
     moduleAccessPayload: [],
@@ -367,6 +378,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             email: employee.email,
             phone: (employee as any).phone,
             designation: (employee as any).designation,
+            documents: (employee as any).profileDocuments || [],
             employeeId: employee.employeeId,
             employeeType: employee.employeeType as any,
             department: employee.department as any,
@@ -471,6 +483,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               email: currentFormData.email || undefined,
               phone: currentFormData.phone || '',
               designation: currentFormData.designation || (currentFormData.tags?.join(', ') || ''),
+              documents: currentFormData.documents || [],
               employeeType: currentFormData.employeeType ?? undefined,
               department: currentFormData.department ?? undefined,
               joiningDate: currentFormData.joiningDate || new Date().toISOString().split('T')[0],
@@ -588,6 +601,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
             isSuperAdmin: employee.isSuperAdmin,
             phone: employee.phone,
             designation: employee.designation,
+            documents: (employee as any).profileDocuments || [],
             is_cpd_involved: employee.isCpdInvolved ?? false,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
@@ -775,6 +789,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
       email: '',
       phone: '',
       designation: '',
+      documents: [],
       tags: [],
       clientId: clientId,
       moduleAccessPayload: []
@@ -1027,6 +1042,10 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                       email: latestUser.email,
                       phone: (latestUser as any).phone,
                       designation: (latestUser as any).designation,
+                      documents:
+                        (latestUser as any).documents ||
+                        (latestUser as any).profileDocuments ||
+                        [],
                       tags: ((latestUser as any).designation || '')
                         .split(',')
                         .map((tag: string) => tag.trim())
