@@ -27,9 +27,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import * as XLSX from 'xlsx';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData } from '@/store/employeeSelectors';
 const ComplianceDocumentsPage: React.FC = () => {
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { user } = useAuth();
-  const clientId = (user as any)?.client_id || (user as any)?.clientId || '';
+  const { state } = useEmployeeStore();
+  const employeeData = getEmployeeData(state);
+  const clientId =
+    state.activeClientId ||
+    employeeData?.clientId ||
+    employeeData?.client?.id ||
+    (user as any)?.client_id ||
+    (user as any)?.clientId ||
+    '';
   const { getEmployeeId } = useEmployeeAccess();
   const employeeId = getEmployeeId();
   const [searchTerm, setSearchTerm] = useState('');
@@ -338,13 +350,12 @@ const ComplianceDocumentsPage: React.FC = () => {
   }, [uploading, uploadItems]);
 
   const refresh = async () => {
-    if (!clientId || !employeeId) return;
+    if (!clientId) return;
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('compliance_documents')
       .select('id, folder_exists, folder_id, parent_folder_id, files,is_valid,valid_date')
       .eq('client_id', clientId)
-      .eq('created_by', employeeId)
       .eq('is_delete', 0); // Only fetch non-deleted records
     if (error) throw error;
       
@@ -542,17 +553,16 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   useEffect(() => {
     refresh();
-  }, [clientId, employeeId, currentFolderId]);
+  }, [clientId, currentFolderId]);
 
   // Build a flat list of all files for export (independent of current folder view)
   const fetchAllFilesForExport = async () => {
-    if (!clientId || !employeeId) return [];
+    if (!clientId) return [];
 
     const { data, error } = await (supabase as any)
       .from('compliance_documents')
       .select('id, folder_exists, files, is_valid, valid_date, is_delete, parent_folder_id')
       .eq('client_id', clientId)
-      .eq('created_by', employeeId)
       .eq('is_delete', 0);
 
     if (error) throw error;
@@ -745,21 +755,18 @@ const ComplianceDocumentsPage: React.FC = () => {
 
   // Realtime sync: refresh UI when metadata worker updates the table
   useEffect(() => {
-    if (!clientId || !employeeId) return;
+    if (!clientId) return;
     const channel = (supabase as any)
-      .channel(`compliance-docs-${clientId}-${employeeId}`)
+      .channel(`compliance-docs-${clientId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'compliance_documents', filter: `client_id=eq.${clientId}` },
-        (payload: any) => {
-          const createdBy = (payload?.new?.created_by ?? payload?.old?.created_by) as string | null | undefined;
-          if (!createdBy || createdBy === employeeId) {
-            // Avoid thrashing: debounce a bit
-            clearTimeout((window as any).__cdocs_rtimer);
-            (window as any).__cdocs_rtimer = setTimeout(() => {
-              refresh();
-            }, 150);
-          }
+        () => {
+          // Avoid thrashing: debounce a bit
+          clearTimeout((window as any).__cdocs_rtimer);
+          (window as any).__cdocs_rtimer = setTimeout(() => {
+            refresh();
+          }, 150);
         }
       )
       .subscribe();
@@ -767,9 +774,19 @@ const ComplianceDocumentsPage: React.FC = () => {
     return () => {
       try { (supabase as any).removeChannel(channel); } catch (_) { /* noop */ }
     };
-  }, [clientId, employeeId]);
+  }, [clientId]);
 
   const onChooseFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnlySwitchedContext) {
+      toast({
+        title: 'Read-only access',
+        description: 'File upload is not allowed in switched read-only context.',
+        variant: 'destructive',
+      });
+      if (e.target) e.target.value = '';
+      return;
+    }
+
     const files = Array.from(e.target.files || []);
     if (files.length === 0 || !clientId) return;
 
@@ -1134,14 +1151,16 @@ const ComplianceDocumentsPage: React.FC = () => {
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setNewFolderOpen(true)}
-                  className="w-full sm:w-auto"
-                >
-                  <FolderPlus className="h-4 w-4 mr-2" />{' '}
-                  <span className="hidden sm:inline">New</span> Folder
-                </Button>
+                {!isReadOnlySwitchedContext && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setNewFolderOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    <FolderPlus className="h-4 w-4 mr-2" />{' '}
+                    <span className="hidden sm:inline">New</span> Folder
+                  </Button>
+                )}
                 {/* Export Files button with confirmation */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -1271,9 +1290,11 @@ const ComplianceDocumentsPage: React.FC = () => {
             <div className="flex flex-col items-center gap-3 sm:gap-4">
               <div className="text-xs sm:text-sm">Drag and drop files here, or click to browse</div>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onChooseFiles} />
-              <Button variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
-                <span>Choose Files</span>
-              </Button>
+              {!isReadOnlySwitchedContext && (
+                <Button variant="outline" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+                  <span>Choose Files</span>
+                </Button>
+              )}
             </div>
           </div>
 

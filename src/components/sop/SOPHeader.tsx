@@ -18,9 +18,14 @@ import {
 interface SOPHeaderProps {
   onCreateSOP?: () => void;
   onStatisticsRefresh?: () => void;
+  canCreateSOP?: boolean;
 }
 
-const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh }) => {
+const SOPHeader: React.FC<SOPHeaderProps> = ({
+  onCreateSOP,
+  onStatisticsRefresh,
+  canCreateSOP = true,
+}) => {
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
@@ -382,6 +387,7 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
         </div>
 
         {/* Add SOP button in top right */}
+        {canCreateSOP && (
           <Button 
             onClick={handleCreateSOP}
             className="flex items-center gap-2"
@@ -389,6 +395,7 @@ const SOPHeader: React.FC<SOPHeaderProps> = ({ onCreateSOP, onStatisticsRefresh 
             <PlusCircle className="h-4 w-4" />
             Add SOP
           </Button>
+        )}
         </div>
   );
 };

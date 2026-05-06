@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileX, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface EmptyStateProps {
   hasIncidents: boolean;
@@ -15,6 +16,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   hasFilteredIncidents 
 }) => {
   const navigate = useNavigate();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   if (!hasIncidents) {
     return (
@@ -27,9 +29,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
               There are no incidents matching your current filters or no incidents have been reported yet.
             </p>
             <div className="flex justify-center gap-4">
-              <Button onClick={() => navigate('/report-incident')}>
-                Report New Incident
-              </Button>
+              {!isReadOnlySwitchedContext && (
+                <Button onClick={() => navigate('/report-incident')}>
+                  Report New Incident
+                </Button>
+              )}
               <Button variant="outline" onClick={() => window.location.reload()}>
                 Refresh Page
               </Button>

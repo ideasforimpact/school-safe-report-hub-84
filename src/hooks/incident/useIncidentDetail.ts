@@ -12,6 +12,8 @@ export const useIncidentDetail = (incidentId?: string) => {
   const loadIncident = useCallback(async (id: string) => {
     setIsLoading(true);
     setError(null);
+    // Clear previous incident while fetching to avoid stale detail data across client switches.
+    setIncident(null);
 
     try {
       const incidentData = await fetchIncidentWithRelationsOptimized(id);
@@ -19,11 +21,13 @@ export const useIncidentDetail = (incidentId?: string) => {
       if (incidentData) {
         setIncident(incidentData);
       } else {
+        setIncident(null);
         setError('Incident not found');
         toast.error('Incident not found');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load incident';
+      setIncident(null);
       setError(errorMessage);
       
       if (errorMessage.includes('timeout')) {

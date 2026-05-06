@@ -42,6 +42,7 @@ interface SubcategoryTabProps {
   addSubcategory: (categoryId: string, name: string) => void;
   updateSubcategory: (categoryId: string, id: string, name: string) => void;
   deleteSubcategory: (categoryId: string, id: string) => void;
+  canCreate?: boolean;
 }
 
 export const SubcategoryTab = ({
@@ -49,7 +50,8 @@ export const SubcategoryTab = ({
   subcategoryMappings,
   addSubcategory,
   updateSubcategory,
-  deleteSubcategory
+  deleteSubcategory,
+  canCreate = true,
 }: SubcategoryTabProps) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
@@ -241,7 +243,7 @@ export const SubcategoryTab = ({
             </Select>
           </div>
           
-          {selectedCategoryId && (
+          {selectedCategoryId && canCreate && (
             <form className="flex gap-4 mt-4" onSubmit={handleAddSubcategory}>
               <div className="flex-1">
                 <Input
@@ -298,6 +300,7 @@ export const SubcategoryTab = ({
                   <TableRow key={subcategory.id}>
                     <TableCell>{subcategory.name}</TableCell>
                     <TableCell>
+                      {canCreate && (
                       <div className="flex gap-2">
                         <Button 
                           variant="ghost" 
@@ -361,6 +364,7 @@ export const SubcategoryTab = ({
                           );
                         })()}
                       </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -376,7 +380,7 @@ export const SubcategoryTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen && canCreate} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
@@ -427,7 +431,7 @@ export const SubcategoryTab = ({
         </AlertDialog>
 
         {/* Edit Dialog */}
-        {editingSubcategory && (
+        {editingSubcategory && canCreate && (
           <EditDialog
             title="Edit Subcategory"
             description="Update the subcategory name below"

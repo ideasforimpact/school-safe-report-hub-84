@@ -36,6 +36,7 @@ interface SectionTabProps {
   deleteSection: (id: string) => void;
   loading?: boolean;
   campuses: CampusItem[];
+  canCreate?: boolean;
 }
 
 export const SectionTab = ({ 
@@ -45,7 +46,8 @@ export const SectionTab = ({
   addSection, 
   updateSection, 
   deleteSection,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: SectionTabProps) => {
   const { employeeData } = useAuth();
   const [newSection, setNewSection] = useState('');
@@ -165,6 +167,7 @@ export const SectionTab = ({
   };
 
   const handleSectionDelete = async (id: string) => {
+    if (!canCreate) return;
     // Check if section is linked to students
     const clientId = employeeData?.clientId || employeeData?.client_id;
     if (clientId) {
@@ -185,6 +188,7 @@ export const SectionTab = ({
   };
 
   const handleEditOpen = (section: SectionItem) => {
+    if (!canCreate) return;
     console.log("Opening edit dialog for section:", section);
     setEditingSection({
       id: section.id,
@@ -329,6 +333,7 @@ export const SectionTab = ({
         <CardDescription>Add, edit, or remove sections for each grade</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleSectionAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
@@ -410,6 +415,7 @@ export const SectionTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">
@@ -492,19 +498,19 @@ export const SectionTab = ({
               <TableHead>Section Name</TableHead>
               <TableHead>Grade</TableHead>
               <TableHead>Campus</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-4">                  
+                <TableCell colSpan={canCreate ? 4 : 3} className="text-center py-4">                  
                   <Loader text="Loading sections..." />                  
                 </TableCell>
               </TableRow>
             ) : filteredSections.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={canCreate ? 4 : 3} className="text-center py-4 text-muted-foreground">
                   {sections.length === 0 
                     ? "No sections available. Add your first section above."
                     : "No sections match your search criteria."
@@ -517,6 +523,7 @@ export const SectionTab = ({
                   <TableCell>{section.name}</TableCell>
                   <TableCell>{getClassName(section.classId)}</TableCell>
                   <TableCell>{section.campusId ? getCampusName(section.campusId) : 'Not assigned'}</TableCell>
+                  {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">
                       <Button 
@@ -587,6 +594,7 @@ export const SectionTab = ({
                       })()}
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -647,13 +655,13 @@ export const SectionTab = ({
         )}
 
         {/* Edit Dialog */}
-        {editingSection && (
+        {editingSection && canCreate && (
           <EditDialog
             title="Edit Section"
             description="Update the section details below"
             fieldLabel="Section name"
             value={editingSection.name}
-            open={isEditDialogOpen}
+            open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
             onChange={(value) => {
               setEditingSection(prev => prev ? { ...prev, name: value } : null);

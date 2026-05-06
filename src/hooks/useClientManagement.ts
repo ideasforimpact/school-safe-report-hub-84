@@ -4,10 +4,12 @@ import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { IPAddress } from '@/components/backoffice/tabs/IPList';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 export type StatusFilter = 'active' | 'inactive' | 'all';
 
 export interface ClientFormData {
+  id?: string;
   name: string;
   email: string;
   contactPerson: string;
@@ -28,9 +30,15 @@ export interface ClientFormData {
   whitelistedIPs?: IPAddress[];
   /** AI "Recommended Actions" for incidents; default on */
   aiIncidentRecommendedActionsEnabled: boolean;
+  isHeadOffice: boolean;
+  mappedClientIds: string[];
+  mappedClientAccessLevels: Record<string, 'read_only' | 'read_write_delete'>;
+  parentHeadOfficeId?: string;
+  parentHeadOfficeName?: string;
 }
 
 const initialFormData: ClientFormData = {
+  id: undefined,
   name: '',
   email: '',
   contactPerson: '',
@@ -50,10 +58,16 @@ const initialFormData: ClientFormData = {
   superAdminAllowedDomains: [],
   moduleInfoArray: [],
   whitelistedIPs: [],
-  aiIncidentRecommendedActionsEnabled: true
+  aiIncidentRecommendedActionsEnabled: true,
+  isHeadOffice: false,
+  mappedClientIds: [],
+  mappedClientAccessLevels: {},
+  parentHeadOfficeId: undefined,
+  parentHeadOfficeName: undefined,
 };
 
 export const useClientManagement = () => {
+  const { state } = useEmployeeStore();
   const { clients, loading, updateClient, deleteClient, fetchClients } = useClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -63,6 +77,13 @@ export const useClientManagement = () => {
   const [modulesLoading, setModulesLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const clientManagementReadOnly = state.clientManagementReadOnly === true;
+  const switchedAccessLevel = state.switchedAccessLevel;
+
+  const hasEditPermissionInCurrentContext =
+    !state.isSwitchedContext || switchedAccessLevel === 'W/R';
+  const hasDeletePermissionInCurrentContext =
+    !state.isSwitchedContext || switchedAccessLevel === 'W/R';
 
   // Filter clients based on status
   const filteredClients = useMemo(() => {
@@ -123,6 +144,10 @@ export const useClientManagement = () => {
 
   // Open add dialog and load modules
   const handleAddDialogOpen = async () => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     setIsAddDialogOpen(true);
     // Load modules immediately when dialog opens
     await loadModulesForNewClient();
@@ -139,6 +164,15 @@ export const useClientManagement = () => {
   };
 
   const handleAddClient = async () => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
+    if (formData.isHeadOffice && formData.mappedClientIds.length === 0) {
+      toast.error('Please map at least one sub-client for a Head Office client');
+      return;
+    }
+
     // Prevent duplicate calls - check submission state first
     if (isSubmitting) {
       console.log('Add client submission already in progress, skipping...');
@@ -195,7 +229,9 @@ export const useClientManagement = () => {
           authProviders: formData.authProviders,
           website: formData.website,
           whitelistedIPs: formData.whitelistedIPs || [],
-          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
+          is_head_office: formData.isHeadOffice,
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : [],
         }
       };
       
@@ -236,6 +272,10 @@ export const useClientManagement = () => {
   };
 
   const handleEditClick = (client: Client) => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     setCurrentClient(client);
     // Open the dialog immediately and show a loading state while fetching
     setIsEditDialogOpen(true);
@@ -244,6 +284,7 @@ export const useClientManagement = () => {
     // Prefill basic client info so user can see something immediately
     setFormData(prev => ({
       ...prev,
+      id: client.id,
       name: client.name,
       email: client.email,
       contactPerson: client.contactPerson,
@@ -259,7 +300,12 @@ export const useClientManagement = () => {
         microsoft: client.authProviders?.microsoft ?? false,
         zoho: client.authProviders?.zoho ?? false
       },
-      aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false
+      aiIncidentRecommendedActionsEnabled: client.incidentRecommendedActionsEnabled !== false,
+      isHeadOffice: client.isHeadOffice === true,
+      mappedClientIds: client.mappedClientIds || [],
+      mappedClientAccessLevels: {},
+      parentHeadOfficeId: undefined,
+      parentHeadOfficeName: undefined,
     }));
     
     // Get the client modules and super admin employee for this client
@@ -267,9 +313,9 @@ export const useClientManagement = () => {
       try {
         // Fetch latest client data from database to ensure we have the most up-to-date auth_providers
         // Use maybeSingle() instead of single() to handle cases where the client doesn't exist or RLS blocks access
-        const { data: latestClientData, error: clientError } = await supabase
+      const { data: latestClientData, error: clientError } = await supabase
           .from('clients')
-          .select('auth_providers, logo, client_logo')
+          .select('auth_providers, logo, client_logo, is_head_office')
           .eq('id', clientId)
           .maybeSingle();
         
@@ -322,7 +368,8 @@ export const useClientManagement = () => {
           setFormData(prev => ({
             ...prev,
             authProviders: parsedAuthProviders,
-            logo: logoUrl || prev.logo || ''
+            logo: logoUrl || prev.logo || '',
+            isHeadOffice: latestClientData.is_head_office === true
           }));
         }
         
@@ -403,13 +450,62 @@ export const useClientManagement = () => {
             ? true
             : aiFeatureResponse.enabled !== false;
         
+        const { data: mappingData, error: mappingError } = await supabase
+          .from('client_mappings')
+          .select('sub_client_id')
+          .eq('head_office_id', clientId)
+          .eq('active', true);
+
+        if (mappingError) {
+          console.error('Error fetching client mappings:', mappingError);
+        }
+
+        const { data: parentMapping, error: parentMappingError } = await supabase
+          .from('client_mappings')
+          .select('head_office_id')
+          .eq('sub_client_id', clientId)
+          .eq('active', true)
+          .limit(1)
+          .maybeSingle();
+
+        if (parentMappingError) {
+          console.error('Error fetching parent head-office mapping:', parentMappingError);
+        }
+
+        let parentHeadOfficeName: string | undefined;
+        let parentHeadOfficeId: string | undefined;
+        const isCurrentClientHeadOffice = latestClientData?.is_head_office === true;
+
+        if (!isCurrentClientHeadOffice && parentMapping?.head_office_id) {
+          parentHeadOfficeId = parentMapping.head_office_id;
+          const { data: parentClient, error: parentClientError } = await supabase
+            .from('clients')
+            .select('name')
+            .eq('id', parentMapping.head_office_id)
+            .maybeSingle();
+
+          if (parentClientError) {
+            console.error('Error fetching parent head-office name:', parentClientError);
+          } else {
+            parentHeadOfficeName = parentClient?.name || undefined;
+          }
+        }
         // Update the remaining fields once data arrives
         setFormData(prev => ({
           ...prev,
           superAdminEmail: employeeData?.email || '',
           moduleInfoArray: moduleInfoArray,
           whitelistedIPs: whitelistedIPs,
-          aiIncidentRecommendedActionsEnabled
+          aiIncidentRecommendedActionsEnabled,
+          mappedClientIds: isCurrentClientHeadOffice
+            ? (mappingData || []).map((row: { sub_client_id: string }) => row.sub_client_id)
+            : [],
+          mappedClientAccessLevels: isCurrentClientHeadOffice
+            ? Object.fromEntries((mappingData || []).map((row: { sub_client_id: string }) => [row.sub_client_id, 'read_only']))
+            : {},
+          isHeadOffice: isCurrentClientHeadOffice,
+          parentHeadOfficeId,
+          parentHeadOfficeName,
         }));
       } catch (err) {
         console.error('Error in fetchClientData:', err);
@@ -423,6 +519,15 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
+    if (!hasEditPermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
+    if (formData.isHeadOffice && formData.mappedClientIds.length === 0) {
+      toast.error('Please map at least one sub-client for a Head Office client');
+      return;
+    }
+
     // Prevent duplicate calls - check submission state first
     if (isSubmitting) {
       console.log('Update client submission already in progress, skipping...');
@@ -491,7 +596,9 @@ export const useClientManagement = () => {
           authProviders: formData.authProviders,
           website: formData.website,
           whitelistedIPs: whitelistedIPs, // Always send as array, never undefined
-          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled
+          aiFeatureIncidentRecommendedActions: formData.aiIncidentRecommendedActionsEnabled,
+          is_head_office: formData.isHeadOffice,
+          mapped_client_ids: formData.isHeadOffice ? formData.mappedClientIds : [],
         }
       };
       
@@ -534,6 +641,10 @@ export const useClientManagement = () => {
   };
 
   const handleDeleteClient = async (id: string) => {
+    if (!hasDeletePermissionInCurrentContext) {
+      toast.error('Client management is read-only in switched context');
+      return;
+    }
     if (confirm('Are you sure you want to delete this client?')) {
       await deleteClient(id);
     }
@@ -559,7 +670,10 @@ export const useClientManagement = () => {
     modulesLoading,
     editLoading,
     statusFilter,
-    setStatusFilter
+    setStatusFilter,
+    clientManagementReadOnly,
+    canManageClientsInCurrentContext: hasEditPermissionInCurrentContext,
+    canDeleteClientsInCurrentContext: hasDeletePermissionInCurrentContext,
   };
 };
 

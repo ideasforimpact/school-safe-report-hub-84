@@ -56,6 +56,7 @@ import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialo
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -137,6 +138,7 @@ function getStatusBadgeClass(status: string): string {
 }
 
 const StudentWellBeingPage = () => {
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
 
@@ -183,7 +185,7 @@ const StudentWellBeingPage = () => {
     try {
       setLoading(true);
       const academicYear = academicYearFilter && academicYearFilter !== 'all' ? academicYearFilter : undefined;
-      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id);
+      const result = await fetchStudentWellbeingRecords(clientId, employeeData?.id, academicYear);
       setRecords(result.records);
       setSummary(result.summary);
     } catch (err) {
@@ -259,7 +261,7 @@ const StudentWellBeingPage = () => {
     setSearchQuery('');
     setStatusFilter('all');
     setDateRange(undefined);
-    // setAcademicYearFilter(getCurrentAcademicYear());
+    setAcademicYearFilter(getCurrentAcademicYear());
   };
 
   const exportToCsv = () => {
@@ -399,13 +401,15 @@ const StudentWellBeingPage = () => {
                 <Download className="h-4 w-4" />
                 <span>Export</span>
               </Button>
-              <Button
-                className="flex items-center gap-2"
-                onClick={() => setNewRecordDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Record</span>
-              </Button>
+              {!isReadOnlySwitchedContext && (
+                <Button
+                  className="flex items-center gap-2"
+                  onClick={() => setNewRecordDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>New Record</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -442,7 +446,7 @@ const StudentWellBeingPage = () => {
                 className="w-full"
               />
             </div>
-            {/* <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
+            <Select value={academicYearFilter} onValueChange={setAcademicYearFilter}>
               <SelectTrigger className="w-[140px] h-10 border border-input rounded-md bg-background">
                 <SelectValue placeholder="Academic Year" />
               </SelectTrigger>
@@ -453,8 +457,8 @@ const StudentWellBeingPage = () => {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select> */}
-             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to) && (
+            </Select>
+             {(searchQuery || statusFilter !== 'all' || dateRange?.from || dateRange?.to || academicYearFilter !== getCurrentAcademicYear()) && (
                 <Button
                   variant="outline"
                   size="sm"

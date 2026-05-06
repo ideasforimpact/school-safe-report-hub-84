@@ -28,7 +28,8 @@ export const mapDbClientToClient = (dbClient: ClientRecord) => {
     clientTypeId: dbClient.client_type_id || undefined,
     allowedDomains: dbClient.allowed_domains ? dbClient.allowed_domains.split(',') : [],
     superAdminAllowedDomains: dbClient.super_admin_allowed_domain ? dbClient.super_admin_allowed_domain.split(',') : [],
-    authProviders: parseAuthProviders(dbClient.auth_providers || '')
+    authProviders: parseAuthProviders(dbClient.auth_providers || ''),
+    isHeadOffice: dbClient.is_head_office ?? false
   };
 };
 
@@ -91,6 +92,7 @@ export const prepareClientForDb = (client: any): Omit<ClientRecord, 'id' | 'crea
           .filter(([_, enabled]) => enabled)
           .map(([provider]) => provider)
           .join(',')
-      : null
+      : null,
+    is_head_office: client.isHeadOffice === true
   };
 };

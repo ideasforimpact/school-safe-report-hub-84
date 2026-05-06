@@ -2,6 +2,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Vehicle, VehicleType, VehicleChallans } from "@/types/transportSafety";
 
+const isReadOnlySwitchedWriteError = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error.message.includes('Read-only switched client context') ||
+    error.message.includes('Switched client permission denied:'));
+
 // Get all vehicles from the database filtered by client_id
 export const getAllVehicles = async (clientId?: string): Promise<Vehicle[]> => {
   try {
@@ -361,6 +366,9 @@ export const deleteVehicle = async (id: string): Promise<boolean> => {
     
     return true;
   } catch (error) {
+    if (isReadOnlySwitchedWriteError(error)) {
+      throw error;
+    }
     console.error('Error in deleteVehicle:', error);
     return false;
   }

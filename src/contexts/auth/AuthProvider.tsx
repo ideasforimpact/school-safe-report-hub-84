@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState, setSwitchContext } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
@@ -191,6 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
+        is_head_office: clientData.is_head_office === true,
         client_type: clientData.client_type,
         client_integration: clientIntegration,
 
@@ -310,11 +311,6 @@ const handleLogoutBroadcast = useCallback(() => {
 
   const handleLogoutSync = useRef(async (): Promise<void> => {
     try {
-      if (isBackofficeUser || location.pathname.startsWith('/backoffice')) {
-        console.log('🔄 Cross-tab sync: Skipping logout sync for backoffice custom session');
-        return;
-      }
-
       console.log('🔄 Cross-tab sync: Processing logout sync');
       
       dispatch(clearAuth());
@@ -372,7 +368,6 @@ const handleLogoutBroadcast = useCallback(() => {
         const { type, tabId } = event.data;
         
         if (tabId === currentTabIdRef.current) return;
-        if (isBackofficeUser || location.pathname.startsWith('/backoffice')) return;
         
         console.log(`📡 Received broadcast: ${type} from tab ${tabId}`);
         
@@ -390,7 +385,7 @@ const handleLogoutBroadcast = useCallback(() => {
             supabase.auth.getSession().then(({ data: { session } }) => {
               if (session && !currentUser) {
                 handleLoginSync();
-              } else if (!session && currentUser && !isBackofficeUser) {
+              } else if (!session && currentUser) {
                 handleLogoutSync();
               }
             });
@@ -404,7 +399,6 @@ const handleLogoutBroadcast = useCallback(() => {
     // Listen for storage changes from other tabs
     const handleStorageChange = (e: StorageEvent) => {
       if (!ALL_TAB_SYNC_ENABLED) return;
-      if (isBackofficeUser || location.pathname.startsWith('/backoffice')) return;
       // Skip changes from the current tab
       if (e.key?.startsWith('tab_') && e.key !== currentTabIdRef.current) {
         return;
@@ -423,7 +417,7 @@ const handleLogoutBroadcast = useCallback(() => {
               setShowAuthLoading(true);
               await handleUserAuthentication(session.user);
               setShowAuthLoading(false);
-            } else if (!session && currentUser && !isBackofficeUser) {
+            } else if (!session && currentUser) {
               // Another tab logged out - sync this tab
               console.log('🔄 Storage event: Logging out from another tab');
               handleLogoutSync();
@@ -451,7 +445,7 @@ const handleLogoutBroadcast = useCallback(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session && !currentUser) {
             handleLoginSync();
-          } else if (!session && currentUser && !isBackofficeUser) {
+          } else if (!session && currentUser) {
             handleLogoutSync();
           }
         });
@@ -480,10 +474,6 @@ const handleLogoutBroadcast = useCallback(() => {
     const heartbeatInterval = setInterval(setupTabHeartbeat, 10000);
 
     const handleVisibilityChange = () => {
-      if (isBackofficeUser || location.pathname.startsWith('/backoffice')) {
-        return;
-      }
-
       if (!document.hidden) {
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (session && !currentUser) {
@@ -491,7 +481,7 @@ const handleLogoutBroadcast = useCallback(() => {
             handleUserAuthentication(session.user).finally(() => {
               setShowAuthLoading(false);
             });
-          } else if (!session && currentUser && !isBackofficeUser) {
+          } else if (!session && currentUser) {
             handleLogoutSync();
           }
         });
@@ -606,6 +596,10 @@ const handleLogoutBroadcast = useCallback(() => {
               authError: null,
               configuredModules: state.configuredModules,
               employeeData: state.employeeData,
+              activeClientId: state.activeClientId,
+              isSwitchedContext: state.isSwitchedContext,
+              clientManagementReadOnly: state.clientManagementReadOnly,
+              switchedAccessLevel: state.switchedAccessLevel,
               sessionType: 'sso' as const
             };
             
@@ -625,10 +619,6 @@ const handleLogoutBroadcast = useCallback(() => {
           }
         }, 0);
       } else if (event === 'SIGNED_OUT') {
-        if (isBackofficeUser || location.pathname.startsWith('/backoffice')) {
-          console.log('🔐 Auth listener: Ignoring SIGNED_OUT for backoffice custom session');
-          return;
-        }
         // Only process SIGNED_OUT if it's not part of our own logout process
         if (!state.isLoggingOut && !authCoordinator.isLogoutInProgress()) {
           if (ALL_TAB_SYNC_ENABLED) {
@@ -678,10 +668,9 @@ const handleLogoutBroadcast = useCallback(() => {
       try {
         // Skip all operations on login routes
         const isOnLoginRoute = location.pathname === '/login' || location.pathname === '/backoffice/login';
-        const isOnBackofficeRoute = location.pathname.startsWith('/backoffice');
         
         // Skip all validation and clearing on login routes
-        if (isOnLoginRoute || isOnBackofficeRoute) {
+        if (isOnLoginRoute) {
           setIsInitializing(false);
           return;
         }
@@ -770,6 +759,7 @@ const handleLogoutBroadcast = useCallback(() => {
             const employee: EmployeeData = {
               id: employeeData.id,
               clientId: employeeData.client_id,
+              homeClientId: employeeData.client_id,
               email: employeeData.email,
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
@@ -788,6 +778,13 @@ const handleLogoutBroadcast = useCallback(() => {
             
             if (employee.clientId) {
               dispatch(setClientId(employee.clientId));
+              dispatch(setSwitchContext({
+                homeClientId: employee.clientId,
+                activeClientId: employee.clientId,
+                isSwitchedContext: false,
+                clientManagementReadOnly: false,
+                switchedAccessLevel: 'W/R',
+              }));
             }
           }
           
@@ -825,20 +822,16 @@ const handleLogoutBroadcast = useCallback(() => {
     try {
       // Immediate state clearing - no setTimeout delays
       dispatch(setLogoutState(true)); 
-      if (!isBackofficeUser && !location.pathname.startsWith('/backoffice')) {
-        handleLogoutBroadcast();
-      }
+      handleLogoutBroadcast();
       dispatch(clearAuth());
       dispatch(resetEmployee());
       clearPersistedAuthState();
       logoutUser();
       
       // Sign out from Supabase (for SSO users)
-      if (!isBackofficeUser && !location.pathname.startsWith('/backoffice')) {
-        await supabase.auth.signOut();
-        localStorage.removeItem('supabase.auth.token');
-        localStorage.removeItem('authState');
-      }
+      await supabase.auth.signOut();
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('authState');
       
       // Navigate immediately
       const shouldRedirectToBackoffice = isBackofficeUser || location.pathname.startsWith('/backoffice');

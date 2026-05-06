@@ -34,6 +34,7 @@ interface UserListProps {
   onReactivateUser: (id: string) => void;
   hasAdminAccess?: boolean;
   onRefresh?: () => void;
+  canEditUsers?: boolean;
 }
 
 const UserList = ({ 
@@ -44,6 +45,7 @@ const UserList = ({
   onReactivateUser, 
   hasAdminAccess = false,
   onRefresh,
+  canEditUsers = true,
 }: UserListProps) => {
   type EmployeeDocumentInfo = {
     id: string;
@@ -431,14 +433,16 @@ const UserList = ({
             <TableCell>
               {!user.isSuperAdmin && hasAdminAccess ? (
                 <div className="flex space-x-1">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => onEditClick(user)}
-                      disabled={isTableLoading}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  {canEditUsers && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => onEditClick(user)}
+                        disabled={isTableLoading}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                   
                   {user.isActive ? (
                       // Deactivate Button
@@ -581,14 +585,16 @@ const UserList = ({
               ) : (
                 <div className="flex space-x-1">
                   {/* Show only view button if user doesn't have admin access */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => onEditClick(user)}
-                      disabled={!user.isActive || !hasAdminAccess || isTableLoading}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  {canEditUsers && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => onEditClick(user)}
+                        disabled={!user.isActive || !hasAdminAccess || isTableLoading}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               )}
             </TableCell>

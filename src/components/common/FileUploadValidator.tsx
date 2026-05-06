@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
 
 interface FileUploadValidatorProps {
@@ -20,6 +20,19 @@ const FileUploadValidator: React.FC<FileUploadValidatorProps> = ({
   warningFooterText,
   maxVisibleItems = 10,
 }) => {
+  const [showAllErrors, setShowAllErrors] = useState(false);
+  const [showAllWarnings, setShowAllWarnings] = useState(false);
+
+  const visibleErrors = useMemo(
+    () => (showAllErrors ? errors : errors.slice(0, maxVisibleItems)),
+    [errors, maxVisibleItems, showAllErrors]
+  );
+
+  const visibleWarnings = useMemo(
+    () => (showAllWarnings ? warnings : warnings.slice(0, maxVisibleItems)),
+    [warnings, maxVisibleItems, showAllWarnings]
+  );
+
   if (!errors.length && !warnings.length) return null;
 
   return (
@@ -35,16 +48,21 @@ const FileUploadValidator: React.FC<FileUploadValidatorProps> = ({
           </div>
 
           <ul className="list-disc list-inside space-y-1 text-sm text-red-600">
-            {errors.slice(0, maxVisibleItems).map((error, index) => (
+            {visibleErrors.map((error, index) => (
               <li key={index}>{error}</li>
             ))}
-
-            {errors.length > maxVisibleItems && (
-              <li className="font-medium">
-                ... and {errors.length - maxVisibleItems} more
-              </li>
-            )}
           </ul>
+          {errors.length > maxVisibleItems && (
+            <button
+              type="button"
+              onClick={() => setShowAllErrors(prev => !prev)}
+              className="mt-2 text-sm font-medium text-red-700 underline underline-offset-2 hover:text-red-800"
+            >
+              {showAllErrors
+                ? 'Show less'
+                : `... and ${errors.length - maxVisibleItems} more`}
+            </button>
+          )}
         </div>
       )}
 
@@ -59,16 +77,21 @@ const FileUploadValidator: React.FC<FileUploadValidatorProps> = ({
           </div>
 
           <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
-            {warnings.slice(0, maxVisibleItems).map((warning, index) => (
+            {visibleWarnings.map((warning, index) => (
               <li key={index}>{warning}</li>
             ))}
-
-            {warnings.length > maxVisibleItems && (
-              <li className="font-medium">
-                ... and {warnings.length - maxVisibleItems} more
-              </li>
-            )}
           </ul>
+          {warnings.length > maxVisibleItems && (
+            <button
+              type="button"
+              onClick={() => setShowAllWarnings(prev => !prev)}
+              className="mt-2 text-sm font-medium text-yellow-800 underline underline-offset-2 hover:text-yellow-900"
+            >
+              {showAllWarnings
+                ? 'Show less'
+                : `... and ${warnings.length - maxVisibleItems} more`}
+            </button>
+          )}
 
           {warningFooterText && (
             <p className="text-xs text-yellow-700 mt-2">

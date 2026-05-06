@@ -20,6 +20,21 @@ interface Props {
 
 const EmployeeDocumentTypeFilter: React.FC<Props> = ({ value, onChange }) => {
   const [types, setTypes] = useState<DocumentType[]>([]);
+  const orderedTypes = React.useMemo(() => {
+    const result: DocumentType[] = [];
+    let other: DocumentType | null = null;
+
+    for (const type of types) {
+      if (type.name === 'other_documents') {
+        other = type;
+      } else {
+        result.push(type);
+      }
+    }
+
+    if (other) result.push(other);
+    return result;
+  }, [types]);
 
   useEffect(() => {
     const loadTypes = async () => {
@@ -43,7 +58,7 @@ const EmployeeDocumentTypeFilter: React.FC<Props> = ({ value, onChange }) => {
       <SelectContent>
         <SelectItem value="all">All Documents</SelectItem>
 
-        {types.map((type) => (
+        {orderedTypes.map((type) => (
           <SelectItem key={type.id} value={type.id}>
             {type.name.replace('_', ' ').toUpperCase()}
           </SelectItem>
