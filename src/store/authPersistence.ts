@@ -9,6 +9,10 @@ export interface PersistedAuthState {
   authError: string | null;
   configuredModules: any[] | null;
   employeeData: any | null;
+  activeClientId?: string | null;
+  isSwitchedContext?: boolean;
+  clientManagementReadOnly?: boolean;
+  switchedAccessLevel?: 'R' | 'W/R';
   jwtToken?: string; // JWT token for backoffice authentication
   expiresAt?: number; // Token expiration timestamp
   sessionType?: 'backoffice' | 'sso'; // Track session type for proper validation

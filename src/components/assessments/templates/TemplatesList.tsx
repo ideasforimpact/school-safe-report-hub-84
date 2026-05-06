@@ -13,12 +13,14 @@ interface TemplatesListProps {
   onCreateTemplate?: () => void;
   onEditTemplate?: (templateId: string) => void;
   onViewTemplate?: (templateId: string) => void;
+  canEditTemplate?: boolean;
 }
 
 const TemplatesList: React.FC<TemplatesListProps> = ({
   onCreateTemplate,
   onEditTemplate,
-  onViewTemplate
+  onViewTemplate,
+  canEditTemplate = true,
 }) => {
   const navigate = useNavigate();
   const { templates } = useAssessment();
@@ -130,13 +132,15 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
                           } 
                         />
                         
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => handleEditClick(template.id, e)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        {canEditTemplate && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={(e) => handleEditClick(template.id, e)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

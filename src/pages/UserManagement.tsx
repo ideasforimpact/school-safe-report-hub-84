@@ -39,6 +39,7 @@ import { getEmployeeModuleAccessItems, getModuleAccessForUser, updateEmployeeMod
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { incidentReferenceService } from '@/services/incident/incidentReferenceService';
 import Loader from '@/components/common/Loader';
@@ -114,6 +115,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const { employeeData } = useAuth();
     const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   
   // Force refresh of employee data
@@ -836,7 +838,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
               <Users className="h-6 w-6 text-primary" />
               <h1 className="text-2xl font-bold">User Management</h1>
             </div>
-            {hasUserManagementAdminAccess && (
+            {hasUserManagementAdminAccess && !isReadOnlySwitchedContext && (
               <div className="flex gap-2">
                 <Button 
                   onClick={() => setIsImportDialogOpen(true)}
@@ -860,7 +862,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
         </div>
       )}
 
-      {embedded && hasUserManagementAdminAccess && (
+      {embedded && hasUserManagementAdminAccess && !isReadOnlySwitchedContext && (
         <div className="flex justify-end items-center">
           <div className="flex gap-2">
             <Button 
@@ -1001,6 +1003,9 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                 <UserList 
                   users={filteredUsers}
                   onEditClick={(user) => {
+                    if (isReadOnlySwitchedContext) {
+                      return;
+                    }
                     // Use latest user from list by id so we always show fresh data (e.g. after a save)
                     const latestUser = employeeUsers.find((u: any) => u.id === user.id) ?? user;
                     const cpdValue = (latestUser as any).is_cpd_involved ?? (latestUser as any).isCpdInvolved ?? false;
@@ -1064,6 +1069,7 @@ const UserManagement = ({ embedded = false }: UserManagementProps) => {
                     }
                   }}
                   hasAdminAccess={hasUserManagementAdminAccess}
+                  canEditUsers={!isReadOnlySwitchedContext}
                   onRefresh={refreshEmployeesList}
                 />
               ) : (

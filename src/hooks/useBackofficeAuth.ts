@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setCurrentUser, setBackofficeUser, setAuthStatus } from '@/store/authActions';
-import { setEmployeeData, setConfiguredModules } from '@/store/employeeActions';
+import { setEmployeeData, setConfiguredModules, setSwitchContext } from '@/store/employeeActions';
 import { User, EmployeeData } from '@/contexts/auth/types';
 import { generateBackofficeToken } from '@/utils/jwtUtils';
 import { saveAuthState } from '@/store/authPersistence';
@@ -259,6 +259,13 @@ export const useBackofficeAuth = () => {
       dispatch(setAuthStatus(true));
       dispatch(setEmployeeData(backofficeEmployeeData));
       dispatch(setConfiguredModules(backofficeModules));
+      dispatch(setSwitchContext({
+        homeClientId: null,
+        activeClientId: null,
+        isSwitchedContext: false,
+        clientManagementReadOnly: false,
+        switchedAccessLevel: 'W/R',
+      }));
 
       // Step 10: Save auth state with JWT token to sessionStorage
       saveAuthState({
@@ -268,6 +275,11 @@ export const useBackofficeAuth = () => {
         authError: null,
         configuredModules: backofficeModules,
         employeeData: backofficeEmployeeData,
+        homeClientId: null,
+        activeClientId: null,
+        isSwitchedContext: false,
+        clientManagementReadOnly: false,
+        switchedAccessLevel: 'W/R',
         jwtToken,
         expiresAt,
         sessionType: 'backoffice' // Mark as backoffice session

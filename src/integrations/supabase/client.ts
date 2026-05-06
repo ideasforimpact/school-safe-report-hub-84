@@ -10,4 +10,170 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   throw new Error('Missing required environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const rawSupabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+type PersistedAuthSnapshot = {
+  isSwitchedContext?: boolean;
+  switchedAccessLevel?: 'R' | 'W/R';
+};
+
+function readPersistedAuthSnapshot(): PersistedAuthSnapshot | null {
+  try {
+    const fromSession = sessionStorage.getItem('auth_state');
+    const fromLocal = localStorage.getItem('auth_state');
+    const serialized = fromSession ?? fromLocal;
+    if (!serialized) return null;
+    return JSON.parse(serialized) as PersistedAuthSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function assertSwitchedWriteAllowed(operation: 'edit' | 'delete') {
+  const authSnapshot = readPersistedAuthSnapshot();
+  if (!authSnapshot?.isSwitchedContext) return;
+
+  const rawAccessLevel = authSnapshot.switchedAccessLevel as unknown as string | undefined;
+  const effectiveAccessLevel = rawAccessLevel || 'R';
+  const normalizedAccessLevel =
+    effectiveAccessLevel === 'full_access'
+      ? 'W/R'
+      : effectiveAccessLevel === 'read_only'
+        ? 'R'
+        : effectiveAccessLevel;
+
+  if (normalizedAccessLevel === 'W/R') return;
+
+  if (operation === 'delete') {
+    throw new Error('Switched client permission denied: delete is not enabled for this client');
+  }
+  throw new Error('Switched client permission denied: edit/create is not enabled for this client');
+}
+
+function inferMutationTypeFromPayload(payload: unknown): 'edit' | 'delete' | null {
+  let parsedPayload = payload;
+
+  if (typeof parsedPayload === 'string') {
+    try {
+      parsedPayload = JSON.parse(parsedPayload);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!parsedPayload || typeof parsedPayload !== 'object') return null;
+  const obj = parsedPayload as Record<string, unknown>;
+
+  const candidateValues: string[] = [];
+  const pushValue = (value: unknown) => {
+    if (typeof value === 'string') {
+      candidateValues.push(value.toLowerCase());
+    }
+  };
+
+  pushValue(obj.action);
+  pushValue(obj.operation);
+  pushValue(obj.method);
+  pushValue(obj.type);
+  pushValue(obj.event);
+
+  const deleteKeywords = ['delete', 'remove', 'destroy'];
+  const editKeywords = ['create', 'insert', 'add', 'update', 'edit', 'upsert', 'save', 'assign'];
+
+  if (candidateValues.some((value) => deleteKeywords.some((keyword) => value.includes(keyword)))) {
+    return 'delete';
+  }
+  if (candidateValues.some((value) => editKeywords.some((keyword) => value.includes(keyword)))) {
+    return 'edit';
+  }
+
+  return null;
+}
+
+function inferMutationTypeFromInvoke(
+  functionName: string,
+  payload: unknown
+): 'edit' | 'delete' | null {
+  const fromPayload = inferMutationTypeFromPayload(payload);
+  if (fromPayload) return fromPayload;
+
+  const normalizedFunctionName = functionName.toLowerCase();
+  if (
+    normalizedFunctionName.includes('delete') ||
+    normalizedFunctionName.includes('remove') ||
+    normalizedFunctionName.includes('destroy')
+  ) {
+    return 'delete';
+  }
+  if (
+    normalizedFunctionName.includes('create') ||
+    normalizedFunctionName.includes('insert') ||
+    normalizedFunctionName.includes('add') ||
+    normalizedFunctionName.includes('update') ||
+    normalizedFunctionName.includes('edit') ||
+    normalizedFunctionName.includes('upsert')
+  ) {
+    return 'edit';
+  }
+
+  return null;
+}
+
+function wrapFrom(table: string) {
+  const builder = rawSupabase.from(table as never) as Record<string, unknown>;
+
+  return new Proxy(builder, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value !== 'function') return value;
+
+      if (prop === 'insert' || prop === 'update' || prop === 'upsert') {
+        return (...args: unknown[]) => {
+          assertSwitchedWriteAllowed('edit');
+          return (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+        };
+      }
+
+      if (prop === 'delete') {
+        return (...args: unknown[]) => {
+          assertSwitchedWriteAllowed('delete');
+          return (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+        };
+      }
+
+      return (...args: unknown[]) => (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+    },
+  });
+}
+
+export const supabase = new Proxy(rawSupabase, {
+  get(target, prop, receiver) {
+    if (prop === 'from') {
+      return (table: string) => wrapFrom(table);
+    }
+
+    if (prop === 'functions') {
+      const functionsObj = Reflect.get(target, prop, receiver) as Record<string, unknown>;
+      return new Proxy(functionsObj, {
+        get(fnTarget, fnProp, fnReceiver) {
+          const fnValue = Reflect.get(fnTarget, fnProp, fnReceiver);
+          if (fnProp !== 'invoke' || typeof fnValue !== 'function') return fnValue;
+
+          return (name: string, options?: { body?: unknown } & Record<string, unknown>) => {
+            const mutationType = inferMutationTypeFromInvoke(name, options?.body);
+            if (mutationType) {
+              assertSwitchedWriteAllowed(mutationType);
+            }
+            return (fnValue as (n: string, o?: unknown) => unknown).call(fnTarget, name, options);
+          };
+        },
+      });
+    }
+
+    const value = Reflect.get(target, prop, receiver);
+    if (typeof value === 'function') {
+      return (...args: unknown[]) => (value as (...innerArgs: unknown[]) => unknown).apply(target, args);
+    }
+    return value;
+  },
+}) as typeof rawSupabase;

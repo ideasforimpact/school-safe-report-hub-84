@@ -48,6 +48,7 @@ interface FacilityTabProps {
   updateFacility: (id: string, name: string, campusId: string) => void;
   deleteFacility: (id: string) => void;
   loading?: boolean;
+  canCreate?: boolean;
 }
 
 export const FacilityTab = ({ 
@@ -56,7 +57,8 @@ export const FacilityTab = ({
   addFacility, 
   updateFacility, 
   deleteFacility,
-  loading = false
+  loading = false,
+  canCreate = true,
 }: FacilityTabProps) => {
   const { employeeData } = useAuth();
   const [newFacility, setNewFacility] = useState('');
@@ -156,6 +158,7 @@ export const FacilityTab = ({
   };
 
   const handleDeleteClick = (facility: FacilityItem) => {
+    if (!canCreate) return;
     setFacilityToDelete({
       id: facility.id,
       name: facility.name
@@ -178,6 +181,7 @@ export const FacilityTab = ({
   };
 
   const handleEditOpen = (facility: FacilityItem) => {
+    if (!canCreate) return;
     console.log("Opening edit dialog for facility:", facility);
     setEditingFacility({
       id: facility.id,
@@ -279,6 +283,7 @@ export const FacilityTab = ({
         <CardDescription>Manage facilities for your institution</CardDescription>
       </CardHeader>
       <CardContent>
+        {canCreate && (
         <form onSubmit={handleFacilityAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
@@ -332,6 +337,7 @@ export const FacilityTab = ({
             </Button>
           </div>
         </form>
+        )}
 
         {/* Filter Section */}
         <div className="flex gap-4 mb-4">
@@ -388,13 +394,13 @@ export const FacilityTab = ({
             <TableRow>
               <TableHead>Facility Name</TableHead>
               <TableHead>Campus</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              {canCreate && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-4">
+                <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4">
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
                     <span>Loading facilities...</span>
@@ -403,7 +409,7 @@ export const FacilityTab = ({
               </TableRow>
             ) : filteredFacilities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={canCreate ? 3 : 2} className="text-center py-4 text-muted-foreground">
                   {facilities.length === 0 
                     ? "No facilities available. Add your first facility above."
                     : "No facilities match your search criteria."
@@ -417,6 +423,7 @@ export const FacilityTab = ({
                   <TableCell>
                     {getCampusName(facility.campusId)}
                   </TableCell>
+                  {canCreate && (
                   <TableCell>
                     <div className="flex gap-2">
                       <Button 
@@ -483,6 +490,7 @@ export const FacilityTab = ({
                       })()}
                     </div>
                   </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -543,7 +551,7 @@ export const FacilityTab = ({
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen && canCreate} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Facility</AlertDialogTitle>
@@ -571,13 +579,13 @@ export const FacilityTab = ({
         </AlertDialog>
 
         {/* Edit Dialog */}
-        {editingFacility && (
+        {editingFacility && canCreate && (
           <EditDialog
             title="Edit Facility"
             description="Update the facility details below"
             fieldLabel="Facility name"
             value={editingFacility.name}
-            open={isEditDialogOpen}
+            open={isEditDialogOpen && canCreate}
             onOpenChange={setIsEditDialogOpen}
             onChange={(value) => {
               setEditingFacility(prev => prev ? { ...prev, name: value } : null);

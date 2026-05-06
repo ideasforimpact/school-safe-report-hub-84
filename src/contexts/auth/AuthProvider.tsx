@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState } from '@/store/employeeActions';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading, setLogoutState, setSwitchContext } from '@/store/employeeActions';
 import { setCurrentUser, setBackofficeUser, setAuthStatus, setAuthError, clearAuth } from '@/store/authActions';
 import { getCurrentUser, getIsAuthenticated, getIsBackofficeUser, getAuthError } from '@/store/authSelectors';
 import { clearPersistedAuthState } from '@/store/authPersistence';
@@ -191,6 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         client_type_id: clientData.client_type_id,
         institution_type: clientData.institution_type,
         logo: logoUrl,
+        is_head_office: clientData.is_head_office === true,
         client_type: clientData.client_type,
         client_integration: clientIntegration,
 
@@ -595,6 +596,10 @@ const handleLogoutBroadcast = useCallback(() => {
               authError: null,
               configuredModules: state.configuredModules,
               employeeData: state.employeeData,
+              activeClientId: state.activeClientId,
+              isSwitchedContext: state.isSwitchedContext,
+              clientManagementReadOnly: state.clientManagementReadOnly,
+              switchedAccessLevel: state.switchedAccessLevel,
               sessionType: 'sso' as const
             };
             
@@ -754,6 +759,7 @@ const handleLogoutBroadcast = useCallback(() => {
             const employee: EmployeeData = {
               id: employeeData.id,
               clientId: employeeData.client_id,
+              homeClientId: employeeData.client_id,
               email: employeeData.email,
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
@@ -772,6 +778,13 @@ const handleLogoutBroadcast = useCallback(() => {
             
             if (employee.clientId) {
               dispatch(setClientId(employee.clientId));
+              dispatch(setSwitchContext({
+                homeClientId: employee.clientId,
+                activeClientId: employee.clientId,
+                isSwitchedContext: false,
+                clientManagementReadOnly: false,
+                switchedAccessLevel: 'W/R',
+              }));
             }
           }
           

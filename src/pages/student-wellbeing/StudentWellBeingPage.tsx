@@ -56,6 +56,7 @@ import { ViewRecordDialog } from '@/components/student-wellbeing/ViewRecordDialo
 import { StudentWellbeingAuditDialog } from '@/components/student-wellbeing/StudentWellbeingAuditDialog';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All status' },
@@ -137,6 +138,7 @@ function getStatusBadgeClass(status: string): string {
 }
 
 const StudentWellBeingPage = () => {
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const { employeeData } = useAuth();
   const clientId = employeeData?.clientId;
 
@@ -399,13 +401,15 @@ const StudentWellBeingPage = () => {
                 <Download className="h-4 w-4" />
                 <span>Export</span>
               </Button>
-              <Button
-                className="flex items-center gap-2"
-                onClick={() => setNewRecordDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Record</span>
-              </Button>
+              {!isReadOnlySwitchedContext && (
+                <Button
+                  className="flex items-center gap-2"
+                  onClick={() => setNewRecordDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>New Record</span>
+                </Button>
+              )}
             </div>
           </div>
         </div>

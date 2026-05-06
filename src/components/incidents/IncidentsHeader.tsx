@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, PieChart, BookOpen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import React from 'react';
 
@@ -14,6 +15,7 @@ const IncidentsHeader = ({ hasIncidentAdmin }: IncidentsHeaderProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   // Check if user has admin access level for incidents
   const isSuperAdmin = isEmployeeSuperAdmin(state);
@@ -68,11 +70,13 @@ const IncidentsHeader = ({ hasIncidentAdmin }: IncidentsHeaderProps) => {
           </Button>
         )}
         
-        {/* Show Report Incident button for all users */}
-        <Button onClick={() => navigate('/report-incident')}>
-          <AlertTriangle className="h-4 w-4 mr-2" />
-          Report Incident
-        </Button>
+        {/* Hide report action in switched read-only context */}
+        {!isReadOnlySwitchedContext && (
+          <Button onClick={() => navigate('/report-incident')}>
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Report Incident
+          </Button>
+        )}
       </div>
     </div>
   );

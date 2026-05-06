@@ -37,6 +37,7 @@ interface ContributingFactorTabProps {
   addFactor: (name: string, description: string, weight: string) => void;
   updateFactor: (id: string, name: string, description: string, weight: string) => void;
   deleteFactor: (id: string) => void;
+  canCreate?: boolean;
 }
 
 export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
@@ -44,6 +45,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   addFactor: propAddFactor,
   updateFactor: propUpdateFactor,
   deleteFactor: propDeleteFactor,
+  canCreate = true,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -326,13 +328,15 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Contributing Factors</h3>
-        <Button 
-          variant="outline" 
-          onClick={() => setIsAddDialogOpen(true)}
-          disabled={loading}
-        >
-          <Plus className="h-4 w-4 mr-2" /> Add Factor
-        </Button>
+        {canCreate && (
+          <Button 
+            variant="outline" 
+            onClick={() => setIsAddDialogOpen(true)}
+            disabled={loading}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Factor
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -395,6 +399,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      {canCreate && (
                       <div className="flex justify-end space-x-2">
                         <Button
                           variant="ghost"
@@ -460,6 +465,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                           );
                         })()}
                       </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -470,7 +476,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       )}
 
       {/* Add Factor Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isAddDialogOpen && canCreate} onOpenChange={(open) => {
         setIsAddDialogOpen(open);
         if (!open) {
           // Clear error and reset form when dialog closes
@@ -574,7 +580,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       </Dialog>
 
       {/* Edit Factor Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isEditDialogOpen && canCreate} onOpenChange={(open) => {
         setIsEditDialogOpen(open);
         if (!open) {
           // Clear error when dialog closes
