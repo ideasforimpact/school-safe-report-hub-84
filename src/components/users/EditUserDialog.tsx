@@ -1136,7 +1136,7 @@ const EditUserDialog = ({
 
             {moduleAccessStepIndex !== -1 && currentStep === moduleAccessStepIndex && (
               <>
-                <div className="h-[420px] overflow-y-auto">
+                <div className="h-[420px] overflow-y-auto no-scrollbar">
                   <div className="space-y-2 pt-2">
                     <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Module Access
@@ -1159,7 +1159,7 @@ const EditUserDialog = ({
 
             {currentStep === documentsStepIndex && (
               <>
-                <div className="h-[420px] overflow-y-auto mb-5">
+                <div className="h-[420px] overflow-y-auto mb-5 no-scrollbar">
                   <div className="flex items-center gap-2 mb-3">
                     <FileText className="h-4 w-4 text-blue-600" />
                     <h3 className="text-base font-semibold text-blue-600">Documents & Compliance</h3>
