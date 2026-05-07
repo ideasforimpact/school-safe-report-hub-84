@@ -18,18 +18,24 @@ import {
   getLatestVerificationFieldValue
 } from '@/utils/transport-safety/documentStatusUtils';
 import { getPendingChallansFromVehicleChallans } from '@/services/transport-safety/vehicleService';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
   onRefresh?: () => void;
   onEditVehicle?: (vehicle: Vehicle) => void;
+  isReadOnly?: boolean;
 }
 
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   vehicles,
   onRefresh,
-  onEditVehicle
+  onEditVehicle,
+  isReadOnly = false
 }) => {
+    const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
+    const shouldHideWriteActions = isReadOnly || isReadOnlySwitchedContext;
+
     const sortedVehicles = React.useMemo(() => {
       return [...vehicles].sort((a, b) => {
         const dateA = new Date(a.createdAt || 0).getTime();
@@ -241,7 +247,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                             <Settings className="h-4 w-4" />
                         </Link>
                       </Button>
-                      {onEditVehicle && (
+                      {!shouldHideWriteActions && onEditVehicle && (
                         <Button 
                           variant="ghost" 
                           size="icon"

@@ -433,6 +433,7 @@ const EmployeeDetailPage = () => {
               onDocumentAction={refetchDocuments}
               isVerificationLoading={isVerificationLoading}
               setIsVerificationLoading={setIsVerificationLoading}
+              isReadOnly={isReadOnlySwitchedContext}
             />
           </div>
         </div>
@@ -460,6 +461,7 @@ const EmployeeDetailPage = () => {
         aadharDetails={aadharVerificationData}
         documentId={aadharVerificationData?.documentId}
         onVerificationUpdate={refetchDocuments}
+        readOnly={isReadOnlySwitchedContext}
       />
     </Layout>
   );

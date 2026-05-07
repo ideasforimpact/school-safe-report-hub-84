@@ -143,6 +143,7 @@ const IncidentDetail = () => {
 
   // Handle close button click - open the closure form
   const handleCloseButtonClick = async () => {
+    if (isReadOnlySwitchedContext) return;
     setIsClosureFormOpen(true);
   };
 
@@ -246,7 +247,8 @@ const IncidentDetail = () => {
     isAdmin: false,
     updateIncident: () => Promise.resolve(),
     navigate,
-    onRefreshIncident: handleRefreshIncident
+    onRefreshIncident: handleRefreshIncident,
+    isReadOnly: isReadOnlySwitchedContext
   };
 
   return (
@@ -273,6 +275,7 @@ const IncidentDetail = () => {
           getStatusColor={getStatusColor}
           onCloseButtonClick={handleCloseButtonClick}
           onIncidentUpdate={handleRefreshIncident}
+          isReadOnly={isReadOnlySwitchedContext}
         />
       </div>
       
@@ -281,7 +284,7 @@ const IncidentDetail = () => {
       {/* Incident Closure Form */}
       <IncidentClosureForm
         incident={incident}
-        isOpen={isClosureFormOpen && !incident?.isVoided}
+        isOpen={isClosureFormOpen && !incident?.isVoided && !isReadOnlySwitchedContext}
         onClose={() => setIsClosureFormOpen(false)}
         onSubmit={handleClosureFormSubmit}
       />

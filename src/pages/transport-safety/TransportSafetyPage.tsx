@@ -112,7 +112,7 @@ const handleVehiclesChanged = useCallback(({ vehicles }) => {
 
       {/* Add Vehicle Dialog */}
       <AddVehicleDialog
-        open={showAddVehicle}
+        open={showAddVehicle && !isReadOnlySwitchedContext}
         onClose={() => setShowAddVehicle(false)}
       />
     </Layout>

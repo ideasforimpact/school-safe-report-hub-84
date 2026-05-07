@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import AddDocumentForm from '@/components/employee-verification/AddDocumentForm';
 import Layout from '@/components/layout/Layout';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const UploadDocumentPage = () => {
   const {
@@ -16,6 +18,7 @@ const UploadDocumentPage = () => {
   const navigate = useNavigate();
   const { getEmployee, fetchEmployees } = useEmployeeVerification();
   const [isLoadingEmployee, setIsLoadingEmployee] = useState(true);
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const employee = getEmployee(employeeId || '');
 
@@ -65,6 +68,25 @@ const UploadDocumentPage = () => {
         </Button>
       </div>
     </Layout>;
+  }
+
+  if (isReadOnlySwitchedContext) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
+          <Alert className="mb-6">
+            <AlertTitle>Read-only access</AlertTitle>
+            <AlertDescription>
+              You can view employee documents in this client, but uploading is disabled for read-only access.
+            </AlertDescription>
+          </Alert>
+          <Button onClick={() => navigate(`/employee-verification/${employeeId}`)}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Employee Details
+          </Button>
+        </div>
+      </Layout>
+    );
   }
 
   const handleSuccess = () => {

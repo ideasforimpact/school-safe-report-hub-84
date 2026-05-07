@@ -33,6 +33,7 @@ import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import VerificationDetailsDialog from '../VerificationDetailsDialog';
 import { getVehicleChallans } from '@/services/transport-safety/vehicleService';
 import { VehicleChallans } from '@/types/transportSafety';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -40,6 +41,7 @@ interface VehicleTabsProps {
 
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const { getVehicle } = useTransportSafety();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
   const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
   const [vehicleChallans, setVehicleChallans] = React.useState<VehicleChallans | null>(null);
@@ -332,12 +334,14 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   
   // Show delete confirmation dialog
   const handleDeleteFile = (document: UploadedDocument, fileIndex: number) => {
+    if (isReadOnlySwitchedContext) return;
     setDocumentToDelete({ document, fileIndex });
     setShowDeleteConfirm(true);
   };
 
   // Actually delete the file from storage and update database
   const confirmDeleteFile = async () => {
+    if (isReadOnlySwitchedContext) return;
     if (!documentToDelete) return;
     
     const { document, fileIndex } = documentToDelete;
@@ -583,15 +587,17 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       <TabsContent value="documents" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Vehicle Documents</h2>
-          <Button 
-            onClick={() => setShowAddDocumentDialog(true)} 
-            variant="outline" 
-            size="sm"
-            className="flex items-center gap-1"
-          >
-            <FilePlus className="h-4 w-4" />
-            Upload Documents
-          </Button>
+          {!isReadOnlySwitchedContext && (
+            <Button 
+              onClick={() => setShowAddDocumentDialog(true)} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <FilePlus className="h-4 w-4" />
+              Upload Documents
+            </Button>
+          )}
         </div>
         
         {/* Documents List: Loading, Empty, or Populated */}
@@ -658,15 +664,17 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                             <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
                             Download
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            title="Delete file"
-                            onClick={() => handleDeleteFile(doc, fileIdx)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {!isReadOnlySwitchedContext && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              title="Delete file"
+                              onClick={() => handleDeleteFile(doc, fileIdx)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -802,7 +810,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
 />
       
       {/* Upload Document Dialog */}
-      <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
+      <Dialog open={showAddDocumentDialog && !isReadOnlySwitchedContext} onOpenChange={setShowAddDocumentDialog}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="break-words">Upload Documents</DialogTitle>
@@ -921,29 +929,31 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           )}
           
           <DialogFooter className="flex justify-between">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-1"
-              onClick={() => {
-                if (selectedUploadedDocument) {
-                  handleDeleteFile(selectedUploadedDocument, selectedFileIndex);
-                } else {
-                  console.log(`Delete legacy file at index ${selectedFileIndex}`);
-                  toast({
-                    title: 'Delete not implemented',
-                    description: 'Legacy file deletion feature will be implemented soon',
-                  });
-                }
-                
-                // Close preview if it was the last file
-                if (getTotalFiles() <= 1) {
-                  setShowFilePreview(false);
-                }
-              }}
-            >
-              <FileX className="h-4 w-4" />
-              Delete File
-            </Button>
+            {!isReadOnlySwitchedContext && (
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-1"
+                onClick={() => {
+                  if (selectedUploadedDocument) {
+                    handleDeleteFile(selectedUploadedDocument, selectedFileIndex);
+                  } else {
+                    console.log(`Delete legacy file at index ${selectedFileIndex}`);
+                    toast({
+                      title: 'Delete not implemented',
+                      description: 'Legacy file deletion feature will be implemented soon',
+                    });
+                  }
+                  
+                  // Close preview if it was the last file
+                  if (getTotalFiles() <= 1) {
+                    setShowFilePreview(false);
+                  }
+                }}
+              >
+                <FileX className="h-4 w-4" />
+                Delete File
+              </Button>
+            )}
             <Button onClick={() => setShowFilePreview(false)}>
               Close
             </Button>
@@ -952,7 +962,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       </Dialog>
 
       {/* Delete Document Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={showDeleteConfirm && !isReadOnlySwitchedContext} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center text-red-600">

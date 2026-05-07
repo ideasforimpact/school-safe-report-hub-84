@@ -35,6 +35,7 @@ interface DocumentCommentsDialogProps {
   employee?: Employee;
   onCommentsUpdated?: () => void;
   mode?: 'client' | 'backoffice';
+  isReadOnly?: boolean;
 }
 
 const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
@@ -44,7 +45,8 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
   documentId,
   employee,
   onCommentsUpdated,
-  mode = 'client'
+  mode = 'client',
+  isReadOnly = false
 }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'positive' | 'negative'>('positive');
@@ -179,7 +181,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
 
   // Backoffice-only editing helpers
   const handleEditComment = (comment: CommentEntry) => {
-    if (mode !== 'backoffice') return;
+    if (mode !== 'backoffice' || isReadOnly) return;
     setEditingCommentId(comment.id);
     setEditedText(comment.text);
     setEditedSentiment(comment.sentiment);
@@ -196,16 +198,19 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
     const files = Array.from(event.target.files || []);
     setEditedFiles(files);
   };
 
   const markFileForDeletion = (file: CommentFile | string) => {
+    if (isReadOnly) return;
     const path = getFilePath(file);
     setFilesToDelete(prev => prev.includes(path) ? prev : [...prev, path]);
   };
 
   const handleSaveEdit = async () => {
+    if (isReadOnly) return;
     if (!editingCommentId || !documentId) return;
     if (!editedText.trim() || editedSentiment === null) return;
     setIsProcessing(true);
@@ -279,7 +284,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
   };
 
   const handleDeleteComment = async (comment: CommentEntry) => {
-    if (mode !== 'backoffice' || !documentId) return;
+    if (mode !== 'backoffice' || isReadOnly || !documentId) return;
     try {
       const paths = getCommentFiles(comment).map(getFilePath);
       await supabase.functions.invoke('document-comment-operation-queue', {
@@ -310,7 +315,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
     >
       {editingCommentId === comment.id ? (
         <div className="space-y-3">
-          {mode === 'backoffice' && (
+          {mode === 'backoffice' && !isReadOnly && (
             <div className="flex items-center justify-end mb-1">
               <Button variant="ghost" size="sm" onClick={handleCancelEdit} title="Cancel edit">
                 <X className="h-4 w-4" />
@@ -339,17 +344,19 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
                         <span className="text-sm">{name}</span>
                         {marked && <span className="text-xs text-red-600">(Will be deleted)</span>}
                       </div>
-                      {!marked && <Button variant="ghost" size="sm" onClick={()=>markFileForDeletion(file)} className="text-red-600">✕</Button>}
+                      {!isReadOnly && !marked && <Button variant="ghost" size="sm" onClick={()=>markFileForDeletion(file)} className="text-red-600">✕</Button>}
                     </div>
                   )
                 })}
               </div>
             )
           })()}
-          <div>
-            <p className="text-xs font-medium text-gray-500 mb-2">Add New Files:</p>
-            <input type="file" multiple onChange={handleFileSelect} className="w-full" />
-          </div>
+          {!isReadOnly && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">Add New Files:</p>
+              <input type="file" multiple onChange={handleFileSelect} className="w-full" />
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -362,7 +369,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
         <div className="flex-1">
           <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.text}</p>
         </div>
-        {mode === 'backoffice' && (
+        {mode === 'backoffice' && !isReadOnly && (
           <div className="ml-2 flex items-center gap-1">
             <Button variant="ghost" size="sm" onClick={() => handleEditComment(comment)} title="Edit">
               <Edit2 className="h-4 w-4" />
@@ -473,7 +480,7 @@ const DocumentCommentsDialog: React.FC<DocumentCommentsDialogProps> = ({
 
         {/* Bottom Footer */}
         <div className="flex justify-end gap-2 pt-4 border-t">
-          {mode === 'backoffice' && editingCommentId ? (
+          {mode === 'backoffice' && editingCommentId && !isReadOnly ? (
             <>
               <Button onClick={handleSaveEdit} disabled={isProcessing || !editedText.trim() || editedSentiment===null}>Save</Button>
             </>
