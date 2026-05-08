@@ -43,6 +43,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 type CpdLearningCategory = { id: string; name: string };
 
@@ -420,6 +421,7 @@ const CPDOverviewPage: React.FC = () => {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportDomainIds, setExportDomainIds] = useState<string[]>([]);
   const navigate = useNavigate();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   const loadData = useCallback(async () => {
     if (!clientId || !employeeId) {
@@ -707,6 +709,7 @@ const CPDOverviewPage: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-right w-[120px]">
                           <div className="inline-flex items-center gap-2">
+                            {!isReadOnlySwitchedContext && (
                             <button
                               type="button"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -718,6 +721,7 @@ const CPDOverviewPage: React.FC = () => {
                             >
                               <PlusCircle className="h-4 w-4" />
                             </button>
+                            )}
                             <button
                               type="button"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors"

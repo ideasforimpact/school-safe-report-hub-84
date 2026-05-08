@@ -185,7 +185,7 @@ export const useRealtimeModuleSync = () => {
         currentPath.startsWith(url)
       );
 
-      if (!isAllowed) {
+      if (!isAllowed && state.isSwitchedContext !== true) {
         const redirectTarget = enabledUrls[0];
         console.warn(
           'Realtime module disabled → redirecting to:',
@@ -207,7 +207,7 @@ export const useRealtimeModuleSync = () => {
     } catch (error) {
       console.error('Error refreshing modules:', error);
     }
-  }, [getEmployeeId, getClientId, dispatch]);
+  }, [getEmployeeId, getClientId, dispatch, navigate, location.pathname, state.isSwitchedContext]);
 
   useEffect(() => {
     const employeeId = getEmployeeId();

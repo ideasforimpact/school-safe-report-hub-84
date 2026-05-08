@@ -17,11 +17,13 @@ import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics'
 import { summaryData, assessmentTypes, recentAssessments } from '@/components/assessments/data/mockData';
 import { useAssessmentAccess } from '@/hooks/assessments/useAssessmentAccess';
 import AssessmentsTable from '@/components/assessments/AssessmentsTable';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const AssessmentsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { hasAssessmentAdmin } = useAssessmentAccess();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
@@ -71,7 +73,7 @@ const AssessmentsPage = () => {
     } else if (location.pathname.match(/\/templates\/[^/]+$/)) {
       return <TemplateDetail />;
     } else {
-      return <TemplatesList onCreateTemplate={handleCreateTemplate} />;
+      return <TemplatesList onCreateTemplate={isReadOnlySwitchedContext ? undefined : handleCreateTemplate} />;
     }
   };
    const assessmentAnalyticsStats = useMemo(() => {
@@ -144,6 +146,7 @@ const AssessmentsPage = () => {
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-6 mx-6 mb-8 rounded-xl border border-gray-200">
           <AssessmentsHeader
             onCreateAssessment={() => setShowCreateAssessment(true)}
+            canCreateAssessment={!isReadOnlySwitchedContext}
             totalCount={assessmentAnalyticsStats.total}
             openCount={assessmentAnalyticsStats.open}
             draftCount={assessmentAnalyticsStats.draft}

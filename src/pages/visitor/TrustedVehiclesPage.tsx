@@ -22,6 +22,7 @@ import { isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useRealTimeSubHook } from '@/hooks/useRealTimeSubHook';
 import { formatDate } from '@/lib/Dateformat';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface TrustedVehicle {
   id: string;
@@ -49,6 +50,7 @@ const TrustedVehiclesPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [trustedVehicles, setTrustedVehicles] = useState<TrustedVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -274,7 +276,7 @@ const TrustedVehiclesPage = () => {
               <p className="text-gray-500 text-sm text-left">Manage trusted vehicles for visitors</p>
             </div>
           </div>
-          {hasVisitorAdminAccess && (
+          {hasVisitorAdminAccess && !isReadOnlySwitchedContext &&(
             <Button 
               onClick={() => setIsDialogOpen(true)}
             >
@@ -479,7 +481,7 @@ const TrustedVehiclesPage = () => {
                                 <p>View</p>
                               </TooltipContent>
                             </Tooltip>
-                            {hasVisitorAdminAccess && (
+                            {hasVisitorAdminAccess && !isReadOnlySwitchedContext && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -498,7 +500,7 @@ const TrustedVehiclesPage = () => {
                                 </TooltipContent>
                               </Tooltip>
                             )}
-                            {hasVisitorAdminAccess && (
+                            {hasVisitorAdminAccess && !isReadOnlySwitchedContext && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button

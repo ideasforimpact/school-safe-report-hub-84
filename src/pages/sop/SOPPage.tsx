@@ -9,6 +9,7 @@ import SignoffRequestDialog from '@/components/sop/SignoffRequestDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 import { getEmployeeData, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useClient } from '@/contexts/ClientContext';
 import {
@@ -113,8 +114,10 @@ const SOPPage = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [categories, setCategories] = useState<Array<{ id: string; category_name: string }>>([]);
   const { state } = useEmployeeStore();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const employeeData = getEmployeeData(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
+  const canManageSOPInCurrentContext = isSuperAdmin && !isReadOnlySwitchedContext;
   const { client } = useClient();
   const [completedEmployeesDialogOpen, setCompletedEmployeesDialogOpen] = useState(false);
   const [completedEmployees, setCompletedEmployees] = useState<any[]>([]);
@@ -126,9 +129,13 @@ const SOPPage = () => {
   const resolvedClientId = employeeData?.clientId || employeeData?.client?.id || client?.id || null;
 
   useEffect(() => {
+    // Clear stale records while switching client context
+    setSops([]);
+    setAllSops([]);
+    setLoading(true);
     fetchSOPs();
     fetchCategories();
-  }, []);
+  }, [resolvedClientId, employeeData?.id, isSuperAdmin]);
 
   // Fetch categories
   const fetchCategories = async () => {
@@ -185,6 +192,12 @@ const SOPPage = () => {
       const clientId = resolvedClientId;
       const employeeId = employeeData?.id || null;
 
+      if (!clientId) {
+        setAllSops([]);
+        setSops([]);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('fetch-sop', {
         body: {
           client_id: clientId,
@@ -218,11 +231,19 @@ const SOPPage = () => {
   };
 
   const handleCreateSOP = () => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: create is not allowed');
+      return;
+    }
     setEditingSOP(null);
     setShowAddDialog(true);
   };
 
   const handleEditSOP = (sop: SOP) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: update is not allowed');
+      return;
+    }
     setEditingSOP(sop);
     setShowAddDialog(true);
   };
@@ -234,6 +255,10 @@ const SOPPage = () => {
   };
 
   const handleAssignClick = (sop: SOP) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: assign is not allowed');
+      return;
+    }
     setAssigningSOP(sop);
     setAssignDialogOpen(true);
   };
@@ -251,6 +276,10 @@ const SOPPage = () => {
   };
 
   const handleDeleteClick = (sop: SOP) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only switched client context: delete is not allowed');
+      return;
+    }
     setSopToDelete(sop);
     setDeleteDialogOpen(true);
   };
@@ -461,6 +490,7 @@ const SOPPage = () => {
         <div className="bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100 mx-6 mb-8">
           <SOPHeader 
             onCreateSOP={handleCreateSOP}
+            canCreateSOP={!isReadOnlySwitchedContext}
             onStatisticsRefresh={() => {
               // Statistics will be refreshed automatically via real-time hooks
               // This callback can be used for additional actions if needed
@@ -700,7 +730,7 @@ const SOPPage = () => {
                       )}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {isSuperAdmin ? (
+                          {canManageSOPInCurrentContext ? (
                             <>
                               {(() => {
                                 const isAssigned = isSOPAssigned(sop);
@@ -774,11 +804,15 @@ const SOPPage = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                setSignoffSOP(sop);
-                                setSignoffDialogOpen(true);
+                                if (isReadOnlySwitchedContext) {
+                                  handleViewSOP(sop);
+                                } else {
+                                  setSignoffSOP(sop);
+                                  setSignoffDialogOpen(true);
+                                }
                               }}
                               className="h-8 w-8 p-0"
-                              title="View"
+                              title={isReadOnlySwitchedContext ? 'View' : 'Sign off'}
                             >
                               <Eye className="h-4 w-4 text-green-600" />
                             </Button>
@@ -796,7 +830,7 @@ const SOPPage = () => {
 
         {/* Add/Edit SOP Dialog */}
         <AddSOPDialog
-          open={showAddDialog}
+          open={showAddDialog && !isReadOnlySwitchedContext}
           onOpenChange={handleDialogClose}
           onSuccess={handleSOPCreated}
           editingSOP={editingSOP}
@@ -804,7 +838,7 @@ const SOPPage = () => {
 
         {/* Assign SOP Dialog */}
         <AssignSOPDialog
-          open={assignDialogOpen}
+          open={assignDialogOpen && !isReadOnlySwitchedContext}
           onOpenChange={handleAssignDialogChange}
           sopId={assigningSOP?.id || null}
           clientId={resolvedClientId}
@@ -864,7 +898,7 @@ const SOPPage = () => {
         />
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog open={deleteDialogOpen && !isReadOnlySwitchedContext} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete SOP</AlertDialogTitle>

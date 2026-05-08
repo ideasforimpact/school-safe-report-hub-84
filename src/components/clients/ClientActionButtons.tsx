@@ -9,13 +9,15 @@ interface ClientActionButtonsProps {
   onViewApiCalls: (client: Client) => void;
   onEditClick: (client: Client) => void;
   onDeleteClient: (id: string) => void;
+  canEdit?: boolean;
 }
 
 const ClientActionButtons = ({ 
   client, 
   onViewApiCalls,
   onEditClick, 
-  onDeleteClient 
+  onDeleteClient,
+  canEdit = true,
 }: ClientActionButtonsProps) => {
   return (
     <div className="flex space-x-2">
@@ -27,13 +29,15 @@ const ClientActionButtons = ({
       >
         <Eye className="h-4 w-4" />
       </Button>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        onClick={() => onEditClick(client)}
-      >
-        <Edit className="h-4 w-4" />
-      </Button>
+      {canEdit && (
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => onEditClick(client)}
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+      )}
       {/* Delete button commented out for backoffice clients */}
       {/* <Button 
         variant="ghost" 

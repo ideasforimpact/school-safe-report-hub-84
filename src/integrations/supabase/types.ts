@@ -677,6 +677,48 @@ export type Database = {
           },
         ]
       }
+      client_mappings: {
+        Row: {
+          access_level: Database["public"]["Enums"]["client_mapping_access_level"]
+          active: boolean
+          created_at: string
+          head_office_id: string
+          id: string
+          sub_client_id: string
+        }
+        Insert: {
+          access_level?: Database["public"]["Enums"]["client_mapping_access_level"]
+          active?: boolean
+          created_at?: string
+          head_office_id: string
+          id?: string
+          sub_client_id: string
+        }
+        Update: {
+          access_level?: Database["public"]["Enums"]["client_mapping_access_level"]
+          active?: boolean
+          created_at?: string
+          head_office_id?: string
+          id?: string
+          sub_client_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_mappings_head_office_id_fkey"
+            columns: ["head_office_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_mappings_sub_client_id_fkey"
+            columns: ["sub_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           active: boolean
@@ -688,6 +730,7 @@ export type Database = {
           creation_date: string
           email: string | null
           id: string
+          is_head_office: boolean
           institution_type: string | null
           logo: string | null
           name: string
@@ -704,6 +747,7 @@ export type Database = {
           creation_date?: string
           email?: string | null
           id?: string
+          is_head_office?: boolean
           institution_type?: string | null
           logo?: string | null
           name: string
@@ -720,6 +764,7 @@ export type Database = {
           creation_date?: string
           email?: string | null
           id?: string
+          is_head_office?: boolean
           institution_type?: string | null
           logo?: string | null
           name?: string
@@ -2103,7 +2148,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      client_mapping_access_level: "read_only" | "read_write_delete"
     }
     CompositeTypes: {
       [_ in never]: never

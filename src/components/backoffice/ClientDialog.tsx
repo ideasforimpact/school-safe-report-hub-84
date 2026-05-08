@@ -214,6 +214,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             setFormData={setFormData} 
             handleLogoUpload={() => {}}
             showErrors={attemptedSteps.has(0)}
+            isEdit={isEdit}
           />
         );
       case 1:

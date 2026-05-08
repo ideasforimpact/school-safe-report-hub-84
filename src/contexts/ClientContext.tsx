@@ -30,6 +30,8 @@ export interface Client {
   };
   /** false = incident AI "Recommended Actions" off; undefined defaults to on */
   incidentRecommendedActionsEnabled?: boolean;
+  isHeadOffice?: boolean;
+  mappedClientIds?: string[];
 }
 
 // Define ModuleInfo interface for consistent type handling

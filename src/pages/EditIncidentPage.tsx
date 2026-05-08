@@ -8,11 +8,13 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
 import { useEditIncidentData } from '@/hooks/useEditIncidentData';
 import Loader from '@/components/common/Loader';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 const EditIncidentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { incidentData, isLoading, error } = useEditIncidentData(id);
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
 
   // Add comprehensive logging for debugging
   console.log('=== EDIT INCIDENT PAGE DEBUG ===');
@@ -42,6 +44,32 @@ const EditIncidentPage = () => {
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Return to Incidents List
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (isReadOnlySwitchedContext) {
+    return (
+      <Layout>
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+          <Alert className="mb-4">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle className="ml-2">Read-only access</AlertTitle>
+            <AlertDescription className="ml-2">
+              You can view incidents in this client, but editing is disabled for read-only access.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex justify-center mt-6">
+            <Button
+              className="mr-4 flex items-center"
+              onClick={() => navigate(id ? `/incident/${id}` : '/incidents')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Incident Details
             </Button>
           </div>
         </div>
