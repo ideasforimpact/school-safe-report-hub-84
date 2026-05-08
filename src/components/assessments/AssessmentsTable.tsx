@@ -106,6 +106,14 @@ const AssessmentsTable: React.FC<AssessmentsTableProps> = ({onDataLoaded}) => {
     return true; 
   }).length;
 
+  useEffect(() => {
+    const search = searchParams.get('search');
+
+    if (search) {
+      setSearchTerm(search);
+    }
+  }, [searchParams]);
+
   // Get unique creators and assignees for filter options
   const getUniqueCreators = () => {
     const creators = assessments
