@@ -578,6 +578,7 @@ const StudentWellBeingPage = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               onSelect={(e) => {
                                 e.preventDefault();
@@ -588,6 +589,7 @@ const StudentWellBeingPage = () => {
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onSelect={(e) => {
                                 e.preventDefault();
@@ -598,6 +600,7 @@ const StudentWellBeingPage = () => {
                               <Eye className="mr-2 h-4 w-4" />
                               View
                             </DropdownMenuItem>
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600"
                               onSelect={(e) => {
@@ -609,6 +612,8 @@ const StudentWellBeingPage = () => {
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               disabled={row.status === "closed"}
                               onSelect={(e) => {
@@ -620,6 +625,8 @@ const StudentWellBeingPage = () => {
                               <MessageSquare className="mr-2 h-4 w-4" />
                               New Consultation
                             </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem
                               disabled={row.status === "closed"}
                               onSelect={(e) => {
@@ -631,17 +638,20 @@ const StudentWellBeingPage = () => {
                               <Zap className="mr-2 h-4 w-4" />
                               Action
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={row.status === "closed"}
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                setRecordForFollowUp(row);
-                                setNewFollowUpDialogOpen(true);
-                              }}
-                            >
-                              <Calendar className="mr-2 h-4 w-4" />
-                              Next Follow-up Date
-                            </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
+                              <DropdownMenuItem
+                                disabled={row.status === "closed"}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setRecordForFollowUp(row);
+                                  setNewFollowUpDialogOpen(true);
+                                }}
+                              >
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Next Follow-up Date
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                         </div>

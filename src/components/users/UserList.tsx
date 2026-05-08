@@ -25,6 +25,7 @@ import { formatDate } from "@/lib/Dateformat";
 import CpdDetailsDialog from '@/components/users/CpdDetailsDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface UserListProps {
   users: EmployeeUser[];
@@ -54,6 +55,7 @@ const UserList = ({
   };
 
   const { employeeData } = useAuth();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState<string | null>(null);
   const [showActivateDialog, setShowActivateDialog] = useState<string | null>(null);
@@ -65,6 +67,7 @@ const UserList = ({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const shouldHideWriteActions = isReadOnlySwitchedContext || !canEditUsers;
 
   // Pre-load reference info so we can disable delete button for linked employees
   useEffect(() => {
@@ -226,6 +229,11 @@ const UserList = ({
 
   // Handle deactivate user with database update
   const handleDeactivateUser = async (userId: string, employeeId: string, clientId: string) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only users cannot deactivate users');
+      return;
+    }
+
     try {
       setIsTableLoading(true);
       
@@ -266,6 +274,11 @@ const UserList = ({
 
   // Handle activate user with database update
   const handleActivateUser = async (userId: string, employeeId: string, clientId: string) => {
+    if (isReadOnlySwitchedContext) {
+      toast.error('Read-only users cannot activate users');
+      return;
+    }
+
     try {
       setIsTableLoading(true);
       
@@ -433,7 +446,7 @@ const UserList = ({
             <TableCell>
               {!user.isSuperAdmin && hasAdminAccess ? (
                 <div className="flex space-x-1">
-                  {canEditUsers && (
+                  {!shouldHideWriteActions && (
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -444,7 +457,7 @@ const UserList = ({
                     </Button>
                   )}
                   
-                  {user.isActive ? (
+                  {!shouldHideWriteActions && (user.isActive ? (
                       // Deactivate Button
                       <AlertDialog open={showDeactivateDialog === user.id} onOpenChange={(open) => setShowDeactivateDialog(open ? user.id : null)}>
                       <AlertDialogTrigger asChild>
@@ -474,7 +487,7 @@ const UserList = ({
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
-                    </AlertDialog>
+                      </AlertDialog>
                   ) : (
                       // Activate Button
                       <AlertDialog open={showActivateDialog === user.id} onOpenChange={(open) => setShowActivateDialog(open ? user.id : null)}>
@@ -506,9 +519,9 @@ const UserList = ({
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                  )}
+                  ))}
                   
-                  {(() => {
+                  {!shouldHideWriteActions && (() => {
                     const refInfo = employeeReferences[user.id];
                     const isLinked = refInfo?.hasReferences || false;
                     const message = refInfo?.message || '';

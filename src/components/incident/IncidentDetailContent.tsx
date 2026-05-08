@@ -43,6 +43,7 @@ interface IncidentDetailContentProps {
   updateIncident: () => Promise<void>;
   navigate: ReturnType<typeof useNavigate>;
   onRefreshIncident?: () => Promise<void>;
+  isReadOnly?: boolean;
 }
 
 const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
@@ -69,7 +70,8 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   isAdmin,
   updateIncident,
   navigate,
-  onRefreshIncident
+  onRefreshIncident,
+  isReadOnly = false
 }) => {
   const { users } = useIncidents();
   const { user: authUser } = useAuth();
@@ -127,7 +129,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   }));
 
   // Determine if user can upload documents (admin users)
-  const canUploadDocuments = isAdmin;
+  const canUploadDocuments = isAdmin && !isReadOnly;
 
   return (
     <div className="container max-w-6xl py-6">
@@ -169,7 +171,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <TabsContent value="documents" className="mt-6">
           <SupportingDocuments
             incidentId={displayIncident.id}
-            canDelete={isAdmin}
+            canDelete={isAdmin && !isReadOnly}
             canUpload={canUploadDocuments}
             onDocumentDeleted={onRefreshIncident}
           />
@@ -177,16 +179,18 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
 
         <TabsContent value="comments" className="mt-6 space-y-6">
           {/* Add Comment Form */}
-          <InlineCommentForm
-            incidentId={displayIncident.id}
-            commentText={localCommentText}
-            setCommentText={setLocalCommentText}
-            commentFiles={localCommentFiles}
-            setCommentFiles={setLocalCommentFiles}
-            isSubmitting={localIsSubmitting}
-            setIsSubmitting={setLocalIsSubmitting}
-            onCommentAdded={handleCommentAdded}
-          />
+          {!isReadOnly && (
+            <InlineCommentForm
+              incidentId={displayIncident.id}
+              commentText={localCommentText}
+              setCommentText={setLocalCommentText}
+              commentFiles={localCommentFiles}
+              setCommentFiles={setLocalCommentFiles}
+              isSubmitting={localIsSubmitting}
+              setIsSubmitting={setLocalIsSubmitting}
+              onCommentAdded={handleCommentAdded}
+            />
+          )}
 
           {/* Comments List */}
           <CommentsList

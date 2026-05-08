@@ -69,6 +69,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   
   // Handle edit vehicle
   const handleEditVehicle = (vehicle: Vehicle) => {
+    if (isReadOnlySwitchedContext) return;
     setSelectedVehicle(vehicle);
     setShowEditDialog(true);
   };
@@ -274,12 +275,13 @@ return (
       <VehiclesListView
         vehicles={filteredVehicles}
         onRefresh={handleRefresh}
-        onEditVehicle={handleEditVehicle}
+        onEditVehicle={isReadOnlySwitchedContext ? undefined : handleEditVehicle}
+        isReadOnly={isReadOnlySwitchedContext}
       />
     )}
     {/* Edit Vehicle Dialog */}
     <AddVehicleDialog
-      open={showEditDialog}
+      open={showEditDialog && !isReadOnlySwitchedContext}
       onClose={handleCloseEditDialog}
       vehicle={selectedVehicle}
     />

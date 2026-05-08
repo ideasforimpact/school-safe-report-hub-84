@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ImageIcon, Asterisk, Check } from 'lucide-react';
+import { ImageIcon, Asterisk, Check, ChevronDown } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -694,7 +694,7 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload, showErrors = fa
                       ? `${draftMappedClientIds.length} client selected`
                       : 'Choose clients'}
                   </span>
-                  <span className="text-xs text-gray-500">Dropdown</span>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[360px] max-h-64 overflow-y-auto">

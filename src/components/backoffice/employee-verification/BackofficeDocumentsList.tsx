@@ -18,11 +18,13 @@ import { DateRange } from 'react-day-picker';
 interface BackofficeDocumentsListProps {
   employee: Employee;
   onRefresh: () => void;
+  isReadOnly?: boolean;
 }
 
 const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({ 
   employee, 
-  onRefresh 
+  onRefresh,
+  isReadOnly = false
 }) => {
   const [filteredDocuments, setFilteredDocuments] = useState(employee.documents || []);
   const { documentTypes, fetchDocumentTypes } = useEmployeeVerification();
@@ -345,6 +347,7 @@ const BackofficeDocumentsList: React.FC<BackofficeDocumentsListProps> = ({
                 employee={employee}
                 onRefresh={onRefresh}
                 onOpenFiles={handleOpenFiles}
+                isReadOnly={isReadOnly}
               />
             ))}
           </div>

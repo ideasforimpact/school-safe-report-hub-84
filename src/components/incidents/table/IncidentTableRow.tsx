@@ -10,6 +10,7 @@ import { getSimpleId } from '@/utils/ticketUtils';
 import { formatDate } from '@/utils/dateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIncidentPermissions } from '@/utils/incidentPermissions';
+import { useIsReadOnlySwitchedContext } from '@/hooks/useIsReadOnlySwitchedContext';
 
 interface IncidentTableRowProps {
   incident: Incident;
@@ -25,6 +26,7 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   onEditClick 
 }) => {
   const { checkPermissions, hasIncidentAdmin, isSuperAdmin, currentEmployeeId } = useIncidentPermissions();
+  const isReadOnlySwitchedContext = useIsReadOnlySwitchedContext();
   
   // Debug logging to identify permission issues
   console.log('🔍 Permission Debug for incident:', incident.ticketId);
@@ -44,7 +46,7 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   console.log('✅ Permission check result:', permissions);
   
   // Show edit button only if user has edit permission AND incident is not voided AND not closed
-  const canShowEditButton = permissions.canEdit && !incident.isVoided && incident.status !== 'Closed';
+  const canShowEditButton = !isReadOnlySwitchedContext && permissions.canEdit && !incident.isVoided && incident.status !== 'Closed';
   
   console.log('🎯 Final decision - Show edit button:', canShowEditButton);
   

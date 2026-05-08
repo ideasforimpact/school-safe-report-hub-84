@@ -88,7 +88,7 @@ const ComplianceDocumentsPage: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [folderError, setFolderError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-
+  
   const [validityDialogOpen, setValidityDialogOpen] = useState(false);
   const [validityMode, setValidityMode] = useState<"none" | "date">("none");
   const [validityDate, setValidityDate] = useState<Date | undefined>(undefined);
@@ -1304,39 +1304,41 @@ const ComplianceDocumentsPage: React.FC = () => {
               {visibleRootFolders.map((f) => (
                 <div key={f.folder_id} className="relative p-4 sm:p-5 md:p-6 border rounded-xl bg-white hover:shadow-lg transition-shadow text-center max-w-full">
                   <div className="absolute top-2 right-2">
-                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFolderToDelete({
-                            id: f.id,
-                            folder_id: f.folder_id,
-                            name: f.name,
-                          });
-                        }}
-                      >
-                        {deletingFolderId === f.folder_id ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </>
-                        )}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    {!isReadOnlySwitchedContext && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-gray-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFolderToDelete({
+                                id: f.id,
+                                folder_id: f.folder_id,
+                                name: f.name,
+                              });
+                            }}
+                          >
+                            {deletingFolderId === f.folder_id ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                   <div onClick={async () => { setLoading(true); setCurrentFolderId(f.folder_id); setCurrentFolderName(f.name); await refresh(); }} className="cursor-pointer">
                     <Folder className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500 mx-auto mb-2 sm:mb-3" />
@@ -1364,23 +1366,27 @@ const ComplianceDocumentsPage: React.FC = () => {
                             <DropdownMenuItem onClick={() => handleDownload(it.path)}>
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
+                            {!isReadOnlySwitchedContext && (
                             <DropdownMenuItem onClick={() => handleSetValidityClick(it)}>
                               <CalendarIcon className="mr-2 h-4 w-4" /> Set Validity
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(it.path, it.rowId)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              {deletingPath === it.path ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
-                                </>
-                              ) : (
-                                <>
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </>
-                              )}
-                            </DropdownMenuItem>
+                            )}
+                            {!isReadOnlySwitchedContext && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(it.path, it.rowId)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                {deletingPath === it.path ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

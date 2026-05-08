@@ -15,11 +15,12 @@ interface DocumentsListProps {
   employeeId: string;
   employeeName?: string;
   documents: VerificationDocument[];
-  onAddDocument: () => void;
+  onAddDocument?: () => void;
   initialLoadComplete: boolean;
   onDocumentAction?: () => void;
   isVerificationLoading?: boolean;
   setIsVerificationLoading?: (loading: boolean) => void;
+  isReadOnly?: boolean;
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({
@@ -30,7 +31,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   initialLoadComplete,
   onDocumentAction,
   isVerificationLoading = false,
-  setIsVerificationLoading
+  setIsVerificationLoading,
+  isReadOnly = false
 }) => {
   const { verifyDocument, employees } = useEmployeeVerification();
   const { toast } = useToast();
@@ -118,6 +120,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleVerifyDocument = (documentId: string) => {
+    if (isReadOnly) return;
     setSelectedDocumentId(documentId);
     setIsViewMode(false);
     setQuickStartMethod(null);
@@ -153,6 +156,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleQuickVerify = (documentId: string, method: 'api' | 'manual') => {
+    if (isReadOnly) return;
     // console.log('DocumentsList - handleQuickVerify called with:', { documentId, method });
     setSelectedDocumentId(documentId);
     // console.log('DocumentsList - selectedDocumentId set to:', documentId);
@@ -166,6 +170,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleVerificationSubmit = async (method: 'api' | 'manual') => {
+    if (isReadOnly) return;
     if (!selectedDocumentId) return;
 
     const doc = documents.find(d => d.id === selectedDocumentId);
@@ -192,6 +197,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleRejectDocument = async () => {
+    if (isReadOnly) return;
     if (selectedDocumentId) {
       await verifyDocument(selectedDocumentId, 'failed', 'manual');
       setIsVerificationDialogOpen(false);
@@ -234,6 +240,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     }
   };
   const handleManualApprove = async (): Promise<void> => {
+    if (isReadOnly) return;
     if (!selectedDocumentId) return;
     const verifierId = employeeData?.id;
     const clientId = employeeData?.clientId || null;
@@ -284,6 +291,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   };
 
   const handleManualReject = async (reason: string): Promise<void> => {
+    if (isReadOnly) return;
     if (!selectedDocumentId) return;
     const verifierId = employeeData?.id;
     const clientId = employeeData?.clientId || null;
@@ -391,11 +399,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
           onViewGovernment={handleViewGovernment} 
           onDocumentAction={onDocumentAction}
           onQuickVerify={handleQuickVerify}
+          isReadOnly={isReadOnly}
         />
       </div>
       
       <VerificationDialog
-        open={isVerificationDialogOpen}
+        open={isVerificationDialogOpen && !isReadOnly}
         onOpenChange={handleDialogClose}
         onVerify={handleVerificationSubmit}
         onReject={handleRejectDocument}
@@ -431,7 +440,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       />
 
       <ManualConsentDialog
-        open={isManualConsentOpen}
+        open={isManualConsentOpen && !isReadOnly}
         onOpenChange={(open) => {
           setIsManualConsentOpen(open);
           if (!open) setConsentSuccess(null);

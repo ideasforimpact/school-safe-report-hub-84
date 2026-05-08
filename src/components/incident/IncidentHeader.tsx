@@ -22,13 +22,15 @@ interface IncidentHeaderProps {
   getStatusColor: (status: IncidentStatus) => string;
   onCloseButtonClick?: () => void;
   onIncidentUpdate?: () => void;
+  isReadOnly?: boolean;
 }
 
 const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   incident,
   getStatusColor,
   onCloseButtonClick,
-  onIncidentUpdate
+  onIncidentUpdate,
+  isReadOnly = false
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -81,26 +83,29 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
 
   // Get permissions for this specific incident
   const permissions = React.useMemo(() => {
-    if (!incident.reportedBy?.id) return { canEdit: false, canClose: false, canReopen: false };
+    if (isReadOnly || !incident.reportedBy?.id) return { canEdit: false, canClose: false, canReopen: false };
     
     return checkPermissions(
       incident.reportedBy.id,
       incident.owner?.id
     );
-  }, [incident.reportedBy?.id, incident.owner?.id, checkPermissions]);
+  }, [isReadOnly, incident.reportedBy?.id, incident.owner?.id, checkPermissions]);
 
   const handleEditClick = () => {
+    if (isReadOnly) return;
     console.log("Navigating to edit incident:", incident.id);
     navigate(`/incident/${incident.id}/edit`);
   };
 
   const handleCloseIncident = () => {
+    if (isReadOnly) return;
     if (onCloseButtonClick) {
       onCloseButtonClick();
     }
   };
 
   const handleReopenClick = () => {
+    if (isReadOnly) return;
     setReopenReason('');
     setShowReopenDialog(true);
   };

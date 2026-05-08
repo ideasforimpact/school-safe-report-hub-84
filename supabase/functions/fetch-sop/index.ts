@@ -74,7 +74,7 @@ serve(async (req) => {
         .eq('client_id', client_id);
 
       // Filter by employee_id if provided
-      if (employee_id) {
+      if (employee_id && !is_super_admin) {
         query = query.eq('employee_id', employee_id);
       }
 
