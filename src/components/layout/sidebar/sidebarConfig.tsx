@@ -82,8 +82,18 @@ export const isBackofficeModuleVisible = (module: Pick<Module, 'name' | 'level'>
 //   });
 // };
 
+// Modules excluded from the post-login landing-page calculation.
+// They may still appear in the sidebar (handled separately by isBackofficeModuleVisible),
+// but we don't want the user to land on a generic Dashboard route after sign-in —
+// the first actionable module (e.g. Clients) is a better default.
+const BACKOFFICE_DEFAULT_PATH_SKIP = new Set<string>(['dashboard']);
+
 export const getBackofficeDefaultPath = (modules: Module[]) => {
-  const firstVisibleModule = modules.find(isBackofficeModuleVisible);
+  const firstVisibleModule = modules.find(
+    (module) =>
+      isBackofficeModuleVisible(module) &&
+      !BACKOFFICE_DEFAULT_PATH_SKIP.has(module.name.toLowerCase())
+  );
 
   if (!firstVisibleModule) {
     return '/backoffice/clients';
